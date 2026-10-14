@@ -2,21 +2,28 @@
 -- keys.md 9, link.md 5. The hub signing key is not here: it lives in <state>/hub_sign.key.
 
 -- The owner key's public half (keys.md 3). At most one is active; a key proposed by a device
--- waits as 'pending' until an owner session or the hub's CLI confirms it.
+-- waits as 'pending' until an owner session or the hub's CLI confirms it. On confirmation the
+-- hub signs the document too (hub_sig); the hub and the devices use a key only with both
+-- signatures, so a row written straight into the database is ignored.
 CREATE TABLE owner_key (
   fp            TEXT    NOT NULL PRIMARY KEY,      -- keys.md 2: 24 base32 characters
-  pub           BLOB    NOT NULL CHECK (length(pub) = 32),   -- Ed25519 public key
+  pub           BLOB    NOT NULL CHECK (length(pub) = 32),   -- Ed25519 public key (copy of the body's)
+  body          BLOB    NOT NULL,                  -- the owner_key document body, as signed (keys.md 4.1)
+  self_sig      BLOB    NOT NULL CHECK (length(self_sig) = 64),
+  hub_sig       BLOB    CHECK (hub_sig IS NULL OR length(hub_sig) = 64),   -- the hub's confirmation (keys.md 3.3)
   state         TEXT    NOT NULL CHECK (state IN ('pending', 'active', 'retired')),
   proposed_by   TEXT    NOT NULL,                  -- device id, or 'cli' (hub machine)
   created_at    INTEGER NOT NULL,
   confirmed_at  INTEGER,
   confirmed_by  TEXT,                              -- owner session device id, or 'cli'
-  retired_at    INTEGER
+  retired_at    INTEGER,
+  CHECK ((state = 'pending') = (hub_sig IS NULL))
 ) STRICT;
 CREATE UNIQUE INDEX owner_key_active ON owner_key(state) WHERE state = 'active';
 
 -- One device's link keys and its certificate (keys.md 4). The certificate body is kept as the
--- exact bytes that were signed; the columns beside it are copies for queries.
+-- exact bytes that were signed; the columns beside it are copies for queries. The hub takes
+-- keys only from cert after checking hub_sig (link.md 3.2), never from the copies.
 CREATE TABLE device_key (
   device_id     TEXT    NOT NULL PRIMARY KEY REFERENCES device(id) ON DELETE CASCADE,
   sign_alg      TEXT    NOT NULL CHECK (sign_alg IN ('ed25519', 'p256')),
@@ -62,7 +69,7 @@ CREATE TABLE link_queue (
   device_id     TEXT    NOT NULL REFERENCES device(id) ON DELETE CASCADE,
   seq           INTEGER NOT NULL,
   type          TEXT    NOT NULL CHECK (type IN ('alert', 'refresh', 'peer_msg', 'peer_status', 'matrix', 'revoke')),
-  tag           TEXT    NOT NULL DEFAULT '',       -- collapse key; '' never collapses
+  tag           TEXT    NOT NULL DEFAULT '' CHECK (length(tag) <= 64 AND tag NOT GLOB '*[^A-Za-z0-9_:.-]*'),   -- collapse key; '' never collapses
   body          BLOB    NOT NULL,                  -- sealed to the device (link.md 4)
   sig           BLOB    NOT NULL CHECK (length(sig) = 64),   -- hub signature, made at enqueue
   exp           INTEGER NOT NULL,
