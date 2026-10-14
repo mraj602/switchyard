@@ -239,6 +239,10 @@ primary = "~/.claude"
 mcp = true                                   # true | false | "external"
 mcp_exclude = []
 
+[peers]                                      # PE1 (peers.md 2.4, 8.5)
+enabled = false                              # sy hook writes the session files; sy peers works only when true
+delivery = "honest"                          # honest | accept | courier (peers.md 8.5)
+
 [terminal]                                   # phase 7 (terminal.md T12)
 titles = false                               # written only by sy term titles on|off (sy config set refuses it)
 band = true                                  # pane: band above the prompt when another session needs you

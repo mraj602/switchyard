@@ -518,8 +518,10 @@ as the trust boundary (as for Claude Code itself):
 installer, npm, Homebrew, the desktop app's bundled CLI). The environment marker catches a
 renamed binary, the ancestry catches a cleared environment; neither is relied on alone.
 
-The same check (steps 1 and 2 only) is how `sy peers send` finds its calling session
-(peers.md 4.1): there a hit is required instead of refused.
+The same walk (step 2 only) is how `sy peers send` finds its calling session (peers.md 4.1):
+there a hit is required instead of refused, and the environment marker is **not** part of the
+test, because every child of a session carries `CLAUDECODE` and the walk would stop at the
+Bash tool's shell.
 
 ## 9. Schema v7
 
