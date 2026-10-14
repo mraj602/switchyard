@@ -563,8 +563,11 @@ On a `peer_msg` frame:
 
 A replayed frame (same `msg` already final in `<state>/peers/seen.json`, kept 48 h) is acked and
 not delivered twice; its stored result is sent again (the first one may not have reached the
-hub). The frame is left unacked (the hub replays it) only when the result could not be sent
-or `seen.json` not written; every other outcome is final.
+hub). The frame is left unacked (the hub replays it) only when the result could not be sent,
+or when `seen.json` could not be written for a message that was **not** delivered (a replay
+cannot duplicate it). If the message was delivered and `seen.json` cannot be written, the agent
+logs it, reports the result and acks anyway: a replay would deliver it twice, and the only cost
+of acking is that a replay after a lost ack goes undetected. Every other outcome is final.
 
 ### 8.5 Writing to the inbox
 
