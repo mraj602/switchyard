@@ -929,6 +929,22 @@ No hub yet: everything is written to the local outbox and read back locally.
 - [ ] A 50-tab memory test passes.
 - [ ] The account field has been offered upstream.
 
+### Addendum tracks: foundation, Android notifications, peers
+
+An addendum (Oct 2026; the full text lives with the plan's working drafts, outside the repo)
+adds three tracks after phases 0–8 have been tested by hand. Android only, fully self-hosted:
+no Firebase, Expo account, EAS, Play Store or other third-party account.
+
+| Track | Phases | Spec |
+| --- | --- | --- |
+| **F** Foundation: owner key, hub signing key, device keys, the link, `sy agent` | F0 spec, F1 build | [keys.md](spec/keys.md), [link.md](spec/link.md), schema v7 |
+| **N** Native Android notifications over the link, release build and updater | N0 spec, N1 tailnet, N2 release and updater, N3 Funnel (optional) | [push.md](spec/push.md) 13–14, [phone.md](spec/phone.md) P6.7, P13, P16, schema v8 |
+| **PE** Peers across accounts and machines, no approvals, account matrix | PE0 lab, PE1 one machine, PE2 across machines, PE3 screens | [peers.md](spec/peers.md), schema v9 |
+
+Changes to sections above: section 1 gains the optional `sy agent` user service; section 10's
+QR carries the hub key fingerprint and a registration seal; section 13 gains the matrix gate
+and "machine tokens still only write"; the Expo channel is off in the self-hosted profile.
+
 ### Before going public
 
 - Ask Anthropic about the desktop account tabs and the 5-minute web usage reading (decision 2), and include the warning text.

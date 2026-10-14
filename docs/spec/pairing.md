@@ -70,6 +70,12 @@ and the web app fetches the VAPID key from the hub after pairing. tokens.md 5's 
 (`{"hub", "code", "kind"}`) is replaced by this URL, because a phone camera opens URLs and
 not JSON.
 
+**F1 update:** from F1 the QR also carries `h` (the hub signing key's fingerprint) and `k` (a
+registration seal), and a claim may carry the device's keys (`keys` or `keys_sealed`); the
+reply then carries the hub key, the device's certificate and the link URLs. That supersedes
+the deviation above for the Android app: see [keys.md](keys.md) 7. The web app ignores both
+parameters.
+
 QR encoding: byte mode, error correction **M**, quiet zone 4 modules. Library
 `rsc.io/qr` (pure Go, BSD, no dependencies; the QR standard does not change, so its age is
 not a concern). The hub renders the module matrix once and serves it in two forms:

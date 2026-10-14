@@ -28,16 +28,16 @@ var (
 	registry   = map[string]HandlerFactory{}
 )
 
-// Register installs the handler of a phase 4, 5 or 6 operation. Call it from init(). It panics when
-// the operation is not in the phase 4, 5 or 6 table (a typo, or a path owned by server.go) or is
+// Register installs the handler of a phase 4, 5, 6 or addendum operation. Call it from init(). It
+// panics when the operation is not in one of those tables (a typo, or a path owned by server.go) or is
 // registered twice, so a mistake fails every test of the package at start.
 func Register(method, path string, f HandlerFactory) {
 	key := method + " " + path
 	if f == nil {
 		panic("api: Register " + key + ": nil factory")
 	}
-	if !isPhase4(method, path) && !isPhase5(method, path) && !isPhase6(method, path) {
-		panic(fmt.Sprintf("api: Register %s: not a phase 4, 5 or 6 operation (see routes_phase4.go, routes_phase5.go, routes_phase6.go)", key))
+	if !isPhase4(method, path) && !isPhase5(method, path) && !isPhase6(method, path) && !isAddendum(method, path) {
+		panic(fmt.Sprintf("api: Register %s: not a phase 4, 5, 6 or addendum operation (see routes_phase4.go, routes_phase5.go, routes_phase6.go, routes_addendum.go)", key))
 	}
 	registryMu.Lock()
 	defer registryMu.Unlock()

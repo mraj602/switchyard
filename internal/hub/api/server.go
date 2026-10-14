@@ -138,10 +138,12 @@ func (s *Server) Routes() []Route {
 		{"GET", "/v1/analytics/{report}", []string{"read"}, true},
 	}
 	// Phase 4, 5 and 6 operations live in routes_phase4.go, routes_phase5.go and
-	// routes_phase6.go; reserved until a handler registers.
+	// routes_phase6.go, the addendum's (keys, link, peers, app updates) in
+	// routes_addendum.go; reserved until a handler registers.
 	base = append(base, phase4RoutesNow()...)
 	base = append(base, phase5RoutesNow()...)
-	return append(base, phase6RoutesNow()...)
+	base = append(base, phase6RoutesNow()...)
+	return append(base, addendumRoutesNow()...)
 }
 
 // Handler is the whole hub: API, stream, board, with request logging.
