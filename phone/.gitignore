@@ -28,3 +28,7 @@ credentials.json
 .metro-health-check*
 npm-debug.*
 expo-env.d.ts
+
+# Gradle output of local modules (phone/modules/*/android)
+modules/*/android/build/
+modules/*/android/.cxx/
