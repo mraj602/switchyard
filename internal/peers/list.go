@@ -1,7 +1,7 @@
 package peers
 
 // List is the session list for the caller StartPID reaches (peers.md 3.2). Inside a session
-// it is what that session may reach (all: every session, with what the matrix allows);
+// it is what that session may reach (all is ignored there: `--all` is terminal only, 3.2);
 // at a terminal only all is allowed. asked says the list is from a session's point of view.
 func (e Env) List(all bool) (entries []ListEntry, asked bool, rf *Refusal) {
 	dir := e.Directory()
@@ -21,7 +21,7 @@ func (e Env) List(all bool) (entries []ListEntry, asked bool, rf *Refusal) {
 	default:
 		return nil, false, rf
 	}
-	return e.Entries(append(dir, e.remoteSessions()...), from, all || from == nil), from != nil, nil
+	return e.Entries(append(dir, e.remoteSessions()...), from, from == nil), from != nil, nil
 }
 
 // remoteSessions are the other machines' sessions when the agent has a hub (none on error:
