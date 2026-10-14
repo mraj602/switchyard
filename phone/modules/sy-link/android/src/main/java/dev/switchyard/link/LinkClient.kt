@@ -83,9 +83,7 @@ class LinkClient(
 
   fun stop() = exec.execute {
     running = false
-    cancelTimer()
-    closeSocket(1000)
-    stopPoll()
+    drop()
     setState("off", null, null)
   }
 
@@ -93,10 +91,14 @@ class LinkClient(
   fun reconnectNow() = exec.execute {
     if (!running) return@execute
     backoff.reset()
+    drop()
+    connect()
+  }
+
+  private fun drop() {
     cancelTimer()
     closeSocket(1000)
     stopPoll()
-    connect()
   }
 
   /** An exact alarm fired: connect now if a retry timer was waiting. */
@@ -211,7 +213,7 @@ class LinkClient(
     phase = Phase.READY
     connectedAt = System.currentTimeMillis()
     codeStreak = 0
-    b.optJSONArray("urls")?.let { a -> List(a.length()) { a.optString(it) }.filter { it.startsWith("wss://") || it.startsWith("ws://") } }
+    b.optJSONArray("urls")?.let { a -> List(a.length()) { a.optString(it) }.filter(::isLinkUrl) }
       ?.takeIf { it.isNotEmpty() }?.let { store.setUrls(it) }
     setState("connected", "ws", null, connectedSince = connectedAt)
     // queued actions go out now (14.6 step 3), off this thread: they wait for answers on it
@@ -428,6 +430,15 @@ class LinkClient(
     } catch (_: IOException) {
       null
     }
+
+    /** The action transport without a link (no service, or no client yet): `POST <origin>/v1/actions/<token>` only. */
+    val HTTP_ONLY = object : ActionTransport {
+      override fun viaLink(id: String, token: String, timeoutMs: Long): Int? = null
+      override fun viaHttp(origin: String, token: String, timeoutMs: Long): Int? = postAction(origin, token, timeoutMs)
+    }
+
+    /** A link URL (link.md 2): the WebSocket schemes only. */
+    fun isLinkUrl(u: String) = u.startsWith("wss://") || u.startsWith("ws://")
 
     fun newActionId(): String = "act_" + UUID.randomUUID().toString().replace("-", "").take(16)
   }

@@ -86,8 +86,6 @@ object Link {
   fun batteryExempt(ctx: Context): Boolean =
     ctx.getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(ctx.packageName) == true
 
-  fun canExact(ctx: Context): Boolean = ctx.getSystemService(AlarmManager::class.java)?.canScheduleExactAlarms() == true
-
   /** An alarm to AlarmReceiver: exact when allowed (14.2 "Exact alarms"), else inexact while idle. */
   fun alarm(ctx: Context, action: String, atMs: Long, exactOnlyWhenExempt: Boolean) {
     val am = ctx.getSystemService(AlarmManager::class.java) ?: return
@@ -95,7 +93,7 @@ object Link {
       ctx, action.hashCode(), Intent(ctx, AlarmReceiver::class.java).setAction(action),
       PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
-    val exact = canExact(ctx) && (!exactOnlyWhenExempt || batteryExempt(ctx))
+    val exact = am.canScheduleExactAlarms() && (!exactOnlyWhenExempt || batteryExempt(ctx))
     try {
       if (exact) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMs, pi)
       else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMs, pi)
@@ -246,12 +244,8 @@ class SyLinkService : Service(), LinkEvents {
 
   /** An action tapped while the service runs: the link first (it is up), in the client's time. */
   fun runAction(a: PendingAction) {
-    val c = client
+    val transport = client ?: LinkClient.HTTP_ONLY
     Thread({
-      val transport = c ?: object : ActionTransport {
-        override fun viaLink(id: String, token: String, timeoutMs: Long): Int? = null
-        override fun viaHttp(origin: String, token: String, timeoutMs: Long): Int? = LinkClient.postAction(origin, token, timeoutMs)
-      }
       ActionRunner(store, transport, System::currentTimeMillis).run(a)
     }, "sy-link-action").start()
   }

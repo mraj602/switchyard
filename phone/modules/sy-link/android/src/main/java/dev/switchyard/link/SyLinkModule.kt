@@ -64,7 +64,7 @@ class SyLinkModule : Module() {
       val origin = cfg["origin"] as? String ?: throw bad("origin")
       val device = cfg["device"] as? String ?: throw bad("device")
       @Suppress("UNCHECKED_CAST")
-      val urls = (cfg["urls"] as? List<Any?>)?.filterIsInstance<String>()?.filter { it.startsWith("wss://") || it.startsWith("ws://") }
+      val urls = (cfg["urls"] as? List<Any?>)?.filterIsInstance<String>()?.filter(LinkClient::isLinkUrl)
         ?: throw bad("urls")
       if (urls.isEmpty()) throw bad("urls")
       val pingS = (cfg["pingS"] as? Number)?.toLong()?.coerceIn(60, 900) ?: Store.DEFAULT_PING_S
