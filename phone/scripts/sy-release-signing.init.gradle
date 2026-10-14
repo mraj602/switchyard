@@ -7,8 +7,13 @@
 //   SY_ANDROID_KEYSTORE_PASSWORD   the keystore password
 //   SY_ANDROID_KEY_PASSWORD        the key password (the keystore password when unset)
 // A missing value fails the build; no value is ever printed or written to a file.
+//
+// Ordering matters: this afterEvaluate is registered when the project is created, so it runs
+// after the app's own build.gradle (whose release build type points at the debug key, expo
+// prebuild's template) and before the Android plugin's own afterEvaluate freezes the DSL.
 allprojects { p ->
-  p.plugins.withId('com.android.application') {
+  p.afterEvaluate {
+    if (!p.plugins.hasPlugin('com.android.application')) return
     def need = { String name ->
       def v = System.getenv(name)
       if (v == null || v.isEmpty()) throw new GradleException("release signing: ${name} is not set (see phone/README.md)")
