@@ -23,11 +23,8 @@ interface Fetcher {
 }
 
 class OkFetcher(
-  private val client: OkHttpClient = OkHttpClient.Builder()
-    .connectTimeout(15, TimeUnit.SECONDS)
-    .readTimeout(60, TimeUnit.SECONDS)
-    .followSslRedirects(false) // https stays https; GitHub's asset hosts redirect within https
-    .build(),
+  // https stays https (followSslRedirects false); GitHub's asset hosts redirect within https.
+  private val client: OkHttpClient = LinkClient.HTTP.newBuilder().readTimeout(60, TimeUnit.SECONDS).followRedirects(true).build(),
 ) : Fetcher {
   private fun req(url: String, token: String?): Request {
     val b = Request.Builder().url(url).header("User-Agent", "switchyard-app").header("Accept", "application/json")

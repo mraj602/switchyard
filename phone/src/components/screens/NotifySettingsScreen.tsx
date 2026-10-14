@@ -21,14 +21,14 @@ export default function NotifySettingsScreen() {
   const toast = useToast();
   const { self } = useSelf(toast.show);
   const link = api.link;
-  const [st, setSt] = useState<LinkState | null>(null);
+  const [s, setS] = useState<LinkState | null>(null);
   const [test, setTest] = useState<PushTestResult | null>(null);
   const [testing, setTesting] = useState(false);
 
   const reload = useCallback(async () => {
     if (!link) return;
     try {
-      setSt(await link.getState());
+      setS(await link.getState());
     } catch {
       // keep the last one
     }
@@ -36,7 +36,7 @@ export default function NotifySettingsScreen() {
 
   useEffect(() => {
     if (!link) return;
-    const sub = link.addListener('state', (x) => setSt(x));
+    const sub = link.addListener('state', setS);
     return () => sub.remove();
   }, [link]);
 
@@ -45,7 +45,7 @@ export default function NotifySettingsScreen() {
     if (!link) return;
     let live = true;
     link.getState().then(
-      (x) => live && setSt(x),
+      (x) => live && setS(x),
       () => {},
     );
     return () => {
@@ -111,7 +111,6 @@ export default function NotifySettingsScreen() {
     }
   };
 
-  const s = st;
   const guide = makerGuide(api.app.maker);
   const showGuide = !!s && (!s.batteryExempt || knownMaker(api.app.maker));
   const origin = api.client?.origin;
@@ -182,7 +181,7 @@ export default function NotifySettingsScreen() {
         <Section title="This phone">
           <Card>
             <KV k="Notifications" v={s.notificationsAllowed ? 'Allowed' : 'Blocked in system settings'} />
-            {!s.notificationsAllowed ? <Btn label="Open settings" testID="link-perm-settings" onPress={() => void Linking.openSettings()} /> : null}
+            {!s.notificationsAllowed ? <Btn label="Open settings" testID="link-perm-settings" onPress={() => void act('Could not open settings', () => Linking.openSettings())} /> : null}
             <Text testID="link-verified" style={{ color: s.verified === 'changed' ? t.bad : t.text, marginTop: 8 }}>
               {verifiedWords(s)}
             </Text>
@@ -213,7 +212,7 @@ export default function NotifySettingsScreen() {
       <Section title="Backup: Web Push">
         <Card>
           <Muted>{"Also get alerts in the installed web app (uses Google's push service, encrypted, no account)."}</Muted>
-          <Btn label="Open the web app" testID="link-webpush" disabled={!origin} onPress={() => origin && void Linking.openURL(`${origin}/#/pair`)} />
+          <Btn label="Open the web app" testID="link-webpush" disabled={!origin} onPress={() => origin && void act('Could not open the web app', () => Linking.openURL(`${origin}/#/pair`))} />
         </Card>
       </Section>
     </Page>

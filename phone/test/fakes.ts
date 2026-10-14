@@ -389,6 +389,8 @@ export const linkState = {
   updateError: null as string | null,
   installResult: 'started' as 'started' | 'refused',
   installError: null as string | null,
+  /** The module's in-memory (origin, token) of the last checkUpdate that found a hub release (push.md 14.8). */
+  hubAuth: false,
   listeners: new Map<string, Set<(p: unknown) => void>>(),
 };
 
@@ -463,6 +465,7 @@ export const syLink = {
     rec('link.reset', []);
     linkState.config = null;
     linkState.state = linkInitial();
+    linkState.hubAuth = false;
   },
   addListener(event: string, cb: (p: unknown) => void) {
     rec('link.addListener', [event]);
@@ -475,10 +478,12 @@ export const syLink = {
     // The token is a secret: only its presence is recorded.
     rec('link.checkUpdate', [origin, token ? '<token>' : '']);
     if (linkState.updateError) throw codedError('ERR_SY_UPDATE', `sy-link: ${linkState.updateError}`);
+    linkState.hubAuth = linkState.update?.source === 'hub';
     return linkState.update;
   },
-  async installUpdate(info: { version: string }) {
+  async installUpdate(info: { version: string; source?: string }) {
     rec('link.installUpdate', [info.version]);
+    if (info.source === 'hub' && !linkState.hubAuth) throw codedError('ERR_SY_UPDATE', 'sy-link: check for updates first');
     if (linkState.installError) throw codedError('ERR_SY_UPDATE', `sy-link: ${linkState.installError}`);
     return linkState.installResult;
   },
@@ -518,5 +523,6 @@ export function resetFakes(): void {
   linkState.updateError = null;
   linkState.installResult = 'started';
   linkState.installError = null;
+  linkState.hubAuth = false;
   linkState.listeners.clear();
 }

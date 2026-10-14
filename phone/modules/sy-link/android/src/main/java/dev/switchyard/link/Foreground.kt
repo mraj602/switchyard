@@ -10,7 +10,17 @@ object Foreground {
   const val TYPE_SPECIAL_USE = 1 shl 30
   const val API_SPECIAL_USE = 34
 
-  fun <N> go(sdk: Int, n: N, plain: (N) -> Unit, typed: (N, Int) -> Unit) {
+  /**
+   * False when Android refused: ForegroundServiceStartNotAllowedException (an
+   * IllegalStateException) on a background start such as a START_STICKY restart on API 31+,
+   * or a SecurityException for the type on 34+. The caller stops instead of crashing.
+   */
+  fun <N> go(sdk: Int, n: N, plain: (N) -> Unit, typed: (N, Int) -> Unit): Boolean = try {
     if (sdk >= API_SPECIAL_USE) typed(n, TYPE_SPECIAL_USE) else plain(n)
+    true
+  } catch (_: IllegalStateException) {
+    false
+  } catch (_: SecurityException) {
+    false
   }
 }
