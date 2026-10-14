@@ -5,6 +5,7 @@ package detecttest
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -15,6 +16,12 @@ import (
 	"github.com/mraj602/switchyard/internal/setup/model"
 	"github.com/mraj602/switchyard/internal/setup/testtree"
 )
+
+// jsonEsc escapes s for the inside of a JSON string literal (Windows paths carry backslashes).
+func jsonEsc(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b[1 : len(b)-1])
+}
 
 // Home is a fixture home folder.
 type Home struct {
@@ -101,7 +108,7 @@ func Laptop(t testing.TB) *Home {
 	settings := fmt.Sprintf(`{
   "statusLine": {
     "type": "command",
-    "command": "bash %[1]s/.claude/statusline-command.sh"
+    "command": "bash %[1]s"
   },
   "enabledPlugins": {
     "alpha@market": false,
@@ -117,7 +124,7 @@ func Laptop(t testing.TB) *Home {
     "PostToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "bash %[2]s # switchyard-hook"}]}]
   }
 }
-`, h.Root, hook)
+`, jsonEsc(h.Abs(".claude/statusline-command.sh")), jsonEsc(hook))
 	b.File(".claude/settings.json", settings, 0o644)
 	b.File(".claude/CLAUDE.md", "# instructions\n", 0o644)
 	b.File(".claude/commands/hello.md", "hello\n", 0o644)
@@ -125,7 +132,7 @@ func Laptop(t testing.TB) *Home {
 	b.File(".claude/projects/-home-u-p/s1.jsonl", "{}\n", 0o600)
 	b.File(".claude/history.jsonl", "{\"timestamp\":1}\n", 0o600)
 	b.File(".claude/plans/plan.md", "plan\n", 0o644)
-	b.File(".claude/plugins/installed_plugins.json", fmt.Sprintf(`{"version":2,"plugins":{"alpha@market":[{"installPath":"%s/.claude-2/plugins/cache/market/alpha/1"}],"beta@market":[{}],"gamma@market":[{}]}}`, h.Root), 0o644)
+	b.File(".claude/plugins/installed_plugins.json", fmt.Sprintf(`{"version":2,"plugins":{"alpha@market":[{"installPath":"%s"}],"beta@market":[{}],"gamma@market":[{}]}}`, jsonEsc(h.Abs(".claude-2/plugins/cache/market/alpha/1"))), 0o644)
 	b.File(".claude/plugins/known_marketplaces.json", `{"market":{"source":{"source":"github","repo":"someone/market"}}}`, 0o644)
 	b.File(".claude/sync-mcp-to-2.sh", "#!/bin/sh\njq '.mcpServers' \"$HOME/.claude.json\"\n", 0o755)
 	b.File(".claude/.credentials.json", `{"secret":"do-not-read"}`, 0o600)
