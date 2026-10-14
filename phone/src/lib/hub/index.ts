@@ -69,6 +69,8 @@ export interface HubClient {
   unpairSelf(): Promise<void>; // DELETE /v1/devices/self, best effort
   addTarget(body: ExpoTargetNew): Promise<PushTarget>;
   testTarget(id: string): Promise<PushTestResult>;
+  /** PATCH /v1/push/targets/{id}: the "Instant delivery" switch is the link target's `enabled` (push.md 13.7). */
+  patchTarget(id: string, patch: { enabled?: boolean }): Promise<PushTarget>;
 }
 
 interface Call {
@@ -232,6 +234,7 @@ export function createHubClient(deps: HubClientDeps): HubClient {
     },
     addTarget: (body) => call<PushTarget>('POST', '/v1/push/targets', body),
     testTarget: (id) => call<PushTestResult>('POST', `/v1/push/targets/${seg(id)}/test`),
+    patchTarget: (id, patch) => call<PushTarget>('PATCH', `/v1/push/targets/${seg(id)}`, patch),
   };
 }
 

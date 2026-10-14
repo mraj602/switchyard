@@ -4,6 +4,7 @@
 // app/_layout.tsx. Tests pass a fake (test/screen-harness.tsx).
 import { createContext, useContext, type ReactNode } from 'react';
 import type { Me } from '../contract/api';
+import type { LinkLike } from '../contract/link';
 import type { AppInfo } from '../contract/platform';
 import type { DataAction, HubData } from '../lib/data';
 import type { HubClient } from '../lib/hub';
@@ -39,6 +40,11 @@ export interface HubApi {
    * a hub pref. Absent (Android): no switch.
    */
   autoCountdown?: { on: boolean; set(on: boolean): Promise<void> };
+  /**
+   * The sy-link module (self-hosted profile on Android, push.md 14.8): Settings → Notifications
+   * (P6.7). Absent: the Expo profile, iOS or a build without the module.
+   */
+  link?: LinkLike;
   /** DELETE /v1/devices/self (best effort), then clear the keychain, cache and widget data. */
   unpair(): Promise<void>;
 }

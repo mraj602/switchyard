@@ -11,5 +11,6 @@ export const go = {
   machines: (machine?: string) => router.push(`/more/machines${machine ? `?machine=${enc(machine)}` : ''}` as never),
   alerts: () => router.push('/more/alerts' as never),
   settings: () => router.push('/more/settings' as never),
+  notifySettings: () => router.push('/more/settings/notifications' as never),
   now: () => router.replace('/' as never),
 };
