@@ -61,7 +61,7 @@ export const pillNav = (items, current) =>
 
 // Pill row shown under the title of the screens behind the More tab.
 export function moreTabs(current, { owner } = {}) {
-  const items = [['alerts', '#/more/alerts', 'Alerts'], ['machines', '#/machines', 'Machines'], ['settings', '#/more/settings', 'Settings']];
+  const items = [['alerts', '#/more/alerts', 'Alerts'], ['machines', '#/machines', 'Machines'], ['settings', '#/more/settings', 'Settings'], ['peers', '#/more/peers', 'Peers']];
   if (owner) items.push(['devices', '#/more/devices', 'Devices']);
   return pillNav(items, current);
 }

@@ -1,0 +1,195 @@
+// Settings → Peers (peers.md 5, 10, 11): the account matrix (rows send, columns receive), the
+// matrix version, Pause all peers, and the audit list (metadata only, never text).
+// Narrowing works from any sign-in that can write; widening needs the owner session, and the
+// hub signs it only then. A control that is not available says why.
+
+import { h } from '../components/dom.js';
+import { section, toggle, toast, moreTabs } from '../components/ui.js';
+import { store, isOwner, canPush } from '../store.js';
+import { getMatrix, editMatrix, pausePeers, getPeerAudit, getPeerMessages } from '../api.js';
+import { agoLabel, dateTime } from '../format.js';
+import {
+  peerAccounts, cellState, cellLabel, cellEdit, editBody, whyNot, detailText, eventLabel, auditWho,
+  messageWho, outcomeLabel, sizeLabel, CELL_GLYPH, CELL_WORD,
+} from '../components/peers-fmt.js';
+
+const st = { matrix: null, audit: null, messages: null, error: null, pick: null, busy: false };
+const again = () => window.dispatchEvent(new Event('sy-rerender'));
+
+export async function load() {
+  st.error = null;
+  st.pick = null;
+  const [m, a, msg] = await Promise.allSettled([getMatrix(), getPeerAudit({ limit: '50' }), getPeerMessages({ limit: '50' })]);
+  if (m.status === 'fulfilled') st.matrix = m.value;
+  else if (m.reason && m.reason.name !== 'AuthError') st.error = m.reason.message;
+  if (a.status === 'fulfilled') st.audit = a.value.entries || [];
+  // The messages list is optional: an older hub answers 404 or 501, a read-only sign-in 403.
+  st.messages = msg.status === 'fulfilled' ? msg.value.messages || [] : null;
+  again();
+}
+
+async function refreshAudit() {
+  try { st.audit = (await getPeerAudit({ limit: '50' })).entries || []; } catch (_) { /* keep the old list */ }
+}
+
+// Sends an edit (or the pause switch); a stale version (409) reloads the matrix.
+async function change(widens, send) {
+  const why = whyNot({ widens, owner: isOwner(), push: canPush(), offline: !!store.offline });
+  if (why) { toast(why); return; }
+  st.busy = true;
+  again();
+  try {
+    st.matrix = await send();
+    st.pick = null;
+    await refreshAudit();
+  } catch (ex) {
+    if (ex.status === 409) { try { st.matrix = await getMatrix(); } catch (_) { /* shown below */ } toast('The matrix changed meanwhile. Check it and try again.'); }
+    else toast(ex.message || 'Could not change the matrix');
+  }
+  st.busy = false;
+  again();
+}
+
+const edit = (patch, widens) => change(widens, () => editMatrix(editBody(st.matrix.matrix, patch)));
+
+// ---- Pause all peers ----------------------------------------------------------------------
+
+function killSwitch() {
+  const m = st.matrix.matrix;
+  const owner = isOwner();
+  const off = whyNot({ widens: m.paused, owner, push: canPush(), offline: !!store.offline });
+  return h('section', { class: `block kill${m.paused ? ' kill-on' : ''}`, 'aria-label': 'Pause all peers' },
+    h('div', { class: 'panel pad-s col' },
+      h('p', { class: m.paused ? 'strong status-warn' : 'strong status-ok', role: 'status', 'data-key': 'peers-state' },
+        m.paused ? 'All peers are paused' : 'Peers are on'),
+      h('p', { class: 'muted small' }, m.paused
+        ? 'No message passes between sessions on any machine until the owner resumes.'
+        : 'Pausing stops every machine at once: new messages are refused and queued ones dropped.'),
+      h('button', {
+        type: 'button', class: m.paused ? 'btn' : 'btn btn-danger btn-big', 'data-key': 'peers-pause',
+        disabled: st.busy || !!off, title: off || undefined,
+        onclick: () => change(m.paused, () => pausePeers(!m.paused)),
+      }, m.paused ? 'Resume peers' : 'Pause all peers'),
+      off ? h('p', { class: 'muted small', 'data-key': 'peers-pause-why' }, off) : null));
+}
+
+// ---- the grid -----------------------------------------------------------------------------
+
+function grid(accts, m) {
+  const pick = st.pick;
+  const head = h('tr', {}, h('th', { scope: 'col', class: 'mx-corner' }, h('span', { class: 'sr-only' }, 'From, to'), h('span', { 'aria-hidden': 'true' }, 'from \\ to')),
+    accts.map((a) => h('th', { scope: 'col', class: 'mx-col' }, a.label)));
+  const rows = accts.map((r) => h('tr', {}, h('th', { scope: 'row', class: 'mx-row' }, r.label),
+    accts.map((c) => {
+      if (r.account === c.account) {
+        return h('td', { class: 'mx-cell mx-self', title: `Same account: ${m.same_account ? 'on' : 'off'}` },
+          h('span', { 'aria-label': `${r.label} to itself: same account ${m.same_account ? 'on' : 'off'}` }, '='));
+      }
+      const state = cellState(m.allow, r.account, c.account);
+      const on = pick && pick.from === r.account && pick.to === c.account;
+      return h('td', { class: 'mx-cell' }, h('button', {
+        type: 'button', class: `mx-btn mx-${state}`, 'aria-pressed': String(!!on), 'data-key': `cell-${r.account}-${c.account}`,
+        'aria-label': cellLabel(state, r.label, c.label), title: CELL_WORD[state],
+        onclick: () => { st.pick = on ? null : { from: r.account, to: c.account }; again(); },
+      }, CELL_GLYPH[state]));
+    })));
+  return h('div', { class: 'mx-wrap' }, h('table', { class: 'mx', 'data-key': 'matrix' }, h('thead', {}, head), h('tbody', {}, rows)));
+}
+
+function editor(accts, m) {
+  const p = st.pick;
+  if (!p) return h('p', { class: 'muted small' }, 'Pick a cell to change it. A row starts threads with a column.');
+  const from = accts.find((a) => a.account === p.from), to = accts.find((a) => a.account === p.to);
+  if (!from || !to) return null;
+  const cur = cellState(m.allow, p.from, p.to);
+  const owner = isOwner(), push = canPush(), offline = !!store.offline;
+  const opts = [['none', 'None'], ['out', `${from.label} → ${to.label}`], ['in', `${to.label} → ${from.label}`], ['both', 'Both ways']];
+  const whys = [];
+  const btns = opts.map(([target, text]) => {
+    const e = cellEdit(m.allow, p.from, p.to, target);
+    const why = target === cur ? '' : whyNot({ widens: e.widens, owner, push, offline });
+    if (why && !whys.includes(why)) whys.push(why);
+    return h('button', {
+      type: 'button', class: `btn btn-sm${target === cur ? ' btn-primary' : ''}`, 'data-key': `set-${target}`,
+      'aria-pressed': String(target === cur), disabled: st.busy || target === cur || !!why, title: why || undefined,
+      onclick: () => edit(e, e.widens),
+    }, text);
+  });
+  return h('div', { class: 'col mx-edit', 'data-key': 'cell-editor' },
+    h('p', { class: 'strong' }, `${from.label} and ${to.label}`),
+    h('div', { class: 'actions' }, btns),
+    whys.map((w) => h('p', { class: 'muted small', 'data-key': 'cell-why' }, w)));
+}
+
+function matrixBlock() {
+  const info = st.matrix;
+  const m = info.matrix;
+  const seats = (store.overview && store.overview.seats) || [];
+  const accts = peerAccounts(seats, m);
+  const owner = isOwner();
+  const sameOff = whyNot({ widens: !m.same_account, owner, push: canPush(), offline: !!store.offline });
+  return section('Accounts',
+    h('div', { class: 'panel pad-s col' },
+      h('p', { class: 'muted small', 'data-key': 'matrix-version' },
+        `Matrix version ${m.version} · signed by ${info.signer}${info.created_at ? ` · ${agoLabel(info.created_at, Date.now())}` : ''} · max ${m.max_turns} turns`),
+      accts.length < 2
+        ? h('p', { class: 'muted' }, 'Peers between accounts need at least two accounts on this hub.')
+        : [grid(accts, m), editor(accts, m)],
+      h('p', { class: 'muted small' }, '⇄ both ways · → may start a thread · ← only the other may start one · · none (the default) · = same account. Replies inside a thread are always allowed.'),
+      toggle({
+        label: 'Same account', sub: 'Sessions of one account may message each other (what native /peers allows).', checked: m.same_account,
+        disabled: st.busy || !!sameOff, key: 'same-account',
+        onChange: (v) => edit({ same_account: v }, v),
+      }),
+      sameOff ? h('p', { class: 'muted small' }, sameOff) : null));
+}
+
+// ---- audit --------------------------------------------------------------------------------
+
+function auditBlock(label) {
+  const list = st.audit;
+  const rows = [];
+  if (list) {
+    for (const e of list) {
+      rows.push(h('li', { class: 'row audit-row', 'data-key': `audit-${e.id}` },
+        h('span', { class: 'row-text' },
+          h('span', {}, eventLabel(e.event)),
+          h('span', { class: 'muted small' }, [auditWho(e, label), detailText(e.detail)].filter(Boolean).join(' · '))),
+        h('time', { class: 'muted small', datetime: e.at, title: dateTime(e.at) }, agoLabel(e.at, Date.now()))));
+    }
+  }
+  return section('Audit',
+    h('p', { class: 'muted small' }, 'Who changed what, and when. Metadata only: no message text is ever stored or shown.'),
+    !list ? h('p', { class: 'muted' }, 'Loading…') : !rows.length ? h('p', { class: 'muted' }, 'Nothing yet.') : h('ul', { class: 'panel audit-list' }, rows));
+}
+
+function messagesBlock(label) {
+  const list = st.messages;
+  if (!list) return null;
+  return section('Messages',
+    h('p', { class: 'muted small' }, 'Who messaged whom: when, size and outcome. Never the text.'),
+    !list.length ? h('p', { class: 'muted' }, 'No messages yet.') : h('ul', { class: 'panel audit-list' }, list.map((x) =>
+      h('li', { class: 'row audit-row', 'data-key': `msg-${x.id}` },
+        h('span', { class: 'row-text' },
+          h('span', {}, messageWho(x, label)),
+          h('span', { class: 'muted small' }, [x.kind, sizeLabel(x.size), outcomeLabel(x.status)].filter(Boolean).join(' · '))),
+        h('time', { class: 'muted small', datetime: x.created_at, title: dateTime(x.created_at) }, agoLabel(x.created_at, Date.now()))))));
+}
+
+export function render() {
+  const owner = isOwner();
+  const head = [h('header', { class: 'page-head' }, h('h1', {}, 'Peers')), moreTabs('peers', { owner })];
+  if (!st.matrix) {
+    return { title: 'Peers · Switchyard', node: h('div', { class: 'page' }, head, h('p', { class: 'muted' }, st.error || 'Loading…')) };
+  }
+  const seats = (store.overview && store.overview.seats) || [];
+  const names = new Map(peerAccounts(seats, st.matrix.matrix).map((a) => [a.account, a.label]));
+  const label = (id) => names.get(id) || String(id).slice(0, 8);
+  const node = h('div', { class: 'page' }, head,
+    killSwitch(),
+    matrixBlock(),
+    auditBlock(label),
+    messagesBlock(label),
+    !owner ? h('p', { class: 'muted small' }, 'Widening, and resuming after a pause, need an owner sign-in: run sy hub owner-link on the hub.') : null);
+  return { title: 'Peers · Switchyard', node };
+}

@@ -49,6 +49,8 @@ type Server struct {
 	lastTest  map[string]time.Time
 	buildHash string // /_dev/build override; "" = hash of the static files
 	seq       int
+
+	peerState *peersState // peers.go; made on first use
 }
 
 type event struct {
@@ -118,6 +120,7 @@ func (s *Server) routes() {
 	s.phase4Routes()
 	s.phase5Routes()
 	s.phase6Routes()
+	s.peersRoutes()
 	if s.opts.Dev {
 		s.mux.HandleFunc("POST /_dev/promote", s.promote)
 		s.mux.HandleFunc("POST /_dev/build", s.devBuild)
