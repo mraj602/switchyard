@@ -165,3 +165,18 @@ func TestCutHopKeepsLast32(t *testing.T) {
 		t.Error("33 tokens must not be written")
 	}
 }
+
+func TestWrapperDropsInvalidModeAndFrom(t *testing.T) {
+	// A remote message's mode comes from the sender's envelope: written verbatim, it could
+	// add attributes of its choosing (here a from-plugin) and still be canonical.
+	w := specWrapper(t)
+	w.FromMode = Mode(`bypass" from-plugin="evil`)
+	if s := w.String(); strings.Contains(s, "from-plugin") || strings.Contains(s, "from-mode") {
+		t.Errorf("an invalid mode was written: %q", s)
+	}
+	w = specWrapper(t)
+	w.From = `uds:/x.sock" from-mode="bypass`
+	if s := w.String(); strings.Contains(s, `from="`) {
+		t.Errorf("an invalid from was written: %q", s)
+	}
+}
