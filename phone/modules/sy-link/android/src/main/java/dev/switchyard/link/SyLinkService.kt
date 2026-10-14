@@ -1,7 +1,6 @@
 package dev.switchyard.link
 
 import android.app.AlarmManager
-import android.app.ForegroundServiceStartNotAllowedException
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
@@ -167,15 +166,6 @@ class SyLinkService : Service(), LinkEvents {
       stopSelf()
       return START_NOT_STICKY
     }
-    when (intent?.action) {
-      ACTION_STOP -> {
-        client?.stop()
-        stopSelfNow()
-        return START_NOT_STICKY
-      }
-      ACTION_RECONNECT -> client?.reconnectNow()
-      ACTION_RETRY -> client?.retryIfWaiting()
-    }
     if (!store.enabled || !store.configured || store.verified == "changed") {
       stopSelfNow()
       return START_NOT_STICKY
@@ -267,26 +257,34 @@ class SyLinkService : Service(), LinkEvents {
   }
 
   companion object {
-    const val ACTION_STOP = "dev.switchyard.link.STOP"
-    const val ACTION_RECONNECT = "dev.switchyard.link.RECONNECT"
-    const val ACTION_RETRY = "dev.switchyard.link.RETRY"
-
     @Volatile var instance: SyLinkService? = null
 
     /**
      * startForegroundService, which Android 12+ refuses from the background unless an exemption
-     * applies (14.2). Refused → false, and Settings says delivery is paused.
+     * applies (14.2). Refused (ForegroundServiceStartNotAllowedException, an
+     * IllegalStateException) → false, and Settings says delivery is paused.
      */
-    fun start(ctx: Context, action: String? = null): Boolean = try {
-      ctx.startForegroundService(Intent(ctx, SyLinkService::class.java).setAction(action))
+    fun start(ctx: Context): Boolean = try {
+      ctx.startForegroundService(Intent(ctx, SyLinkService::class.java))
       true
-    } catch (e: ForegroundServiceStartNotAllowedException) {
+    } catch (e: IllegalStateException) {
       Link.store(ctx).setError(BACKGROUND_BLOCKED)
       SyLinkModule.emit("state", Link.state(ctx, Link.store(ctx)))
       false
-    } catch (e: IllegalStateException) {
-      Link.store(ctx).setError(BACKGROUND_BLOCKED)
-      false
+    }
+
+    // A running service is in this process: it gets its commands directly. Another
+    // startForegroundService from the background (an inexact alarm, the module) could be
+    // refused while the service runs, and would then report a blocked start that never was.
+
+    /** "Reconnect now", a new ping interval, start(): the running link reconnects; else the service starts. */
+    fun reconnect(ctx: Context) {
+      instance?.client?.reconnectNow() ?: start(ctx)
+    }
+
+    /** A long retry timer's alarm (14.4). */
+    fun retry(ctx: Context) {
+      instance?.client?.retryIfWaiting() ?: start(ctx)
     }
 
     fun stop(ctx: Context) {
