@@ -3,6 +3,7 @@ package plan_test
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -71,7 +72,11 @@ func TestLaptopDefaults(t *testing.T) {
 	}
 	var now string
 	_ = json.Unmarshal(sl.Value, &now)
-	wantNow := fmt.Sprintf("%s statusline --wrap 'bash %s'", h.Abs(".local/bin/sy"), h.Abs(".claude/statusline-command.sh"))
+	sy := h.Abs(".local/bin/sy")
+	if strings.Contains(sy, `\`) { // a Windows path with backslashes is single-quoted for the shell
+		sy = "'" + sy + "'"
+	}
+	wantNow := fmt.Sprintf("%s statusline --wrap 'bash %s'", sy, h.Abs(".claude/statusline-command.sh"))
 	if now != wantNow {
 		t.Errorf("statusline value %q", now)
 	}
@@ -161,7 +166,7 @@ func TestFreshAdd(t *testing.T) {
 				t.Errorf("mkdir mode %s", a.Mode)
 			}
 		case model.OpLink:
-			links = append(links, strings.TrimPrefix(a.Path, h.Root+"/"))
+			links = append(links, filepath.ToSlash(strings.TrimPrefix(a.Path, h.Root+string(filepath.Separator))))
 		}
 	}
 	if strings.Join(mk, ",") != h.Abs(".claude-2")+","+h.Abs(".claude-3") {
@@ -181,7 +186,7 @@ func TestFreshAdd(t *testing.T) {
 				t.Errorf("env: %+v", a)
 			}
 		}
-		if a.Op == model.OpWriteFile && strings.Contains(a.Path, ".local/bin/claude-") {
+		if a.Op == model.OpWriteFile && strings.Contains(filepath.ToSlash(a.Path), ".local/bin/claude-") {
 			launchers++
 		}
 	}
@@ -344,7 +349,7 @@ func TestNextFreeFolder(t *testing.T) {
 	var mk []string
 	for _, a := range p.Actions {
 		if a.Op == model.OpMkdir {
-			mk = append(mk, strings.TrimPrefix(a.Path, h.Root+"/"))
+			mk = append(mk, filepath.ToSlash(strings.TrimPrefix(a.Path, h.Root+string(filepath.Separator))))
 		}
 	}
 	// .claude-8.bak blocks 8; the laptop uses links, so new folders get all eight links.

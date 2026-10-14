@@ -74,6 +74,8 @@ func termGolden(t *testing.T, name string, p model.Plan) {
 	t.Helper()
 	got, _ := json.MarshalIndent(p, "", "  ")
 	got = append(got, '\n')
+	// The fake home is POSIX-shaped; plan joins with the host separator, JSON-escaped here.
+	got = []byte(strings.ReplaceAll(string(got), `\\`, "/"))
 	file := filepath.Join("testdata", "terminal", name+".json")
 	if *updateGoldens {
 		if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
@@ -170,7 +172,7 @@ func TestTerminalShape(t *testing.T) {
 	for _, a := range p.Actions {
 		steps = append(steps, string(a.Step))
 		if a.Op == model.OpRun {
-			mark := a.Touches[len(a.Touches)-1]
+			mark := filepath.ToSlash(a.Touches[len(a.Touches)-1])
 			if !strings.HasPrefix(mark, "/home/u/.local/state/switchyard/term/journal/") {
 				t.Errorf("run without a journal mark: %+v", a)
 			}

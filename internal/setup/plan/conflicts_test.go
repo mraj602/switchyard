@@ -44,7 +44,7 @@ func conflictHome(t *testing.T) (*detecttest.Home, model.State) {
 func actionsOn(p model.Plan, h *detecttest.Home, rel string) []model.Action {
 	var out []model.Action
 	for _, a := range p.Actions {
-		if a.Path == h.Abs(rel) || a.From == h.Abs(rel) || strings.HasPrefix(a.From, h.Abs(rel)+"/") {
+		if a.Path == h.Abs(rel) || a.From == h.Abs(rel) || strings.HasPrefix(a.From, h.Abs(rel)+string(filepath.Separator)) {
 			out = append(out, a)
 		}
 	}
