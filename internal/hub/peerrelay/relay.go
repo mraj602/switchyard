@@ -260,6 +260,13 @@ func (r *Relay) relay(ctx context.Context, device string, doc keys.Doc) (peers.P
 			ack = refused(env.Msg, detail)
 			return tx.InsertPeerMessage(row)
 		}
+		// The rate token is taken here, once, for the verified sender and before any other
+		// check, so a machine that keeps sending refused envelopes is limited like one that
+		// sends good ones (a repeat above took none; a message the checks below refuse still
+		// counts, peers.md 9.2).
+		if !r.takeRate(now, env.From.Session, env.To.Session) {
+			return refuse(peers.CodeRateLimited)
+		}
 		// 2. the target: live, on to.machine, whose agent device is to.device.
 		to, ok, err := tx.PeerSession(env.To.Session)
 		if err != nil {
@@ -324,9 +331,6 @@ func (r *Relay) relay(ctx context.Context, device string, doc keys.Doc) (peers.P
 				return tx.InsertPeerAudit(store.PeerAuditRow{At: nowMS, Actor: "hub", Event: "loop_guard", Thread: th.ID, Msg: env.Msg})
 			})
 			return refuse(peers.CodeLoopGuard)
-		}
-		if !r.takeRate(now, env.From.Session, env.To.Session) {
-			return refuse(peers.CodeRateLimited)
 		}
 		// 4. record, count in the thread, queue for the target machine.
 		body, err := json.Marshal(peers.QueuedPeerMsg{V: 1, Doc: doc, Cert: cert.Doc})
