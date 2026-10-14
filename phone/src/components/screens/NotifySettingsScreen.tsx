@@ -21,14 +21,14 @@ export default function NotifySettingsScreen() {
   const toast = useToast();
   const { self } = useSelf(toast.show);
   const link = api.link;
-  const [st, setSt] = useState<LinkState | null>(null);
+  const [s, setS] = useState<LinkState | null>(null);
   const [test, setTest] = useState<PushTestResult | null>(null);
   const [testing, setTesting] = useState(false);
 
   const reload = useCallback(async () => {
     if (!link) return;
     try {
-      setSt(await link.getState());
+      setS(await link.getState());
     } catch {
       // keep the last one
     }
@@ -36,7 +36,7 @@ export default function NotifySettingsScreen() {
 
   useEffect(() => {
     if (!link) return;
-    const sub = link.addListener('state', (x) => setSt(x));
+    const sub = link.addListener('state', setS);
     return () => sub.remove();
   }, [link]);
 
@@ -45,7 +45,7 @@ export default function NotifySettingsScreen() {
     if (!link) return;
     let live = true;
     link.getState().then(
-      (x) => live && setSt(x),
+      (x) => live && setS(x),
       () => {},
     );
     return () => {
@@ -111,7 +111,6 @@ export default function NotifySettingsScreen() {
     }
   };
 
-  const s = st;
   const guide = makerGuide(api.app.maker);
   const showGuide = !!s && (!s.batteryExempt || knownMaker(api.app.maker));
   const origin = api.client?.origin;
