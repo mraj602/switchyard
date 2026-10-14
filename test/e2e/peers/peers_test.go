@@ -406,6 +406,31 @@ func TestHubRateLimitsRefusedEnvelopes(t *testing.T) {
 	refusedWith(t, last, peers.CodeRateLimited)
 }
 
+// A hub that takes the envelope but does not answer in time is not "not delivered": the send
+// is reported queued (unconfirmed) and counts in the sender's thread (peers.md 4.3).
+func TestAckTimeoutIsQueuedUnconfirmed(t *testing.T) {
+	w := newWorld(t, 30)
+	w.laptop.remote.AckWait = 300 * time.Millisecond
+	w.h.setRogue(func(ctx context.Context, device string, u link.Up) (bool, string, any, error) {
+		return u.T == link.TypePeerMsg, "", nil, nil // swallowed: no peer_ack
+	})
+	rep := w.laptop.send("api", toWorker, "no answer", 0, 0)
+	if rf := rep.Refusal(); rf != nil {
+		t.Fatalf("refused: %v", rf)
+	}
+	if rep.Status != "queued" || rep.Detail != "unconfirmed" {
+		t.Fatalf("reply %+v", rep)
+	}
+	ts := peers.LoadThreads(w.laptop.env().ThreadsPath())
+	if len(ts.Threads) != 1 || ts.Threads[0].Turns != 1 {
+		t.Errorf("threads %+v", ts.Threads)
+	}
+	res := peers.SendResult{Status: "queued", Unconfirmed: true, Target: peers.Session{Handle: "worker"}, Msg: rep.Msg}
+	if !strings.Contains(res.Line(), "queued for worker") || !strings.Contains(res.Line(), "not confirmed") {
+		t.Errorf("line %q", res.Line())
+	}
+}
+
 // A revoked machine is not reachable: the hub no longer lists an agent for it, and an
 // envelope sealed to its key would be refused by the sender's own revocation check.
 func TestRevokedTarget(t *testing.T) {
