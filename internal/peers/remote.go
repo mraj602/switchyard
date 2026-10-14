@@ -1,6 +1,7 @@
 package peers
 
 import (
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -63,12 +64,18 @@ type SendOpts struct {
 	TTL time.Duration
 }
 
-// stateMu serialises the read-change-write of the state files (threads.json, limits.json)
-// between the agent's sends and its deliveries of remote messages: one agent process per
-// machine, so a process-wide lock is enough. It is never held while waiting on the hub.
+// stateMu and <state>/peers/state.lock serialise the read-change-write of the state files
+// (threads.json, limits.json): the mutex between the agent's sends and its deliveries of
+// remote messages, the file lock with `sy peers send` processes that write the inbox
+// themselves (no agent running), which would otherwise each start from the same budget.
+// Neither is held while waiting on the hub.
 var stateMu sync.Mutex
 
-func lockState() func() {
+func lockState(state string) func() {
 	stateMu.Lock()
-	return stateMu.Unlock
+	unlockFile := lockFile(filepath.Join(state, "peers", "state.lock"))
+	return func() {
+		unlockFile()
+		stateMu.Unlock()
+	}
 }
