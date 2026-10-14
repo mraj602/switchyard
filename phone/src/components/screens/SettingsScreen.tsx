@@ -5,6 +5,7 @@ import { Alert as RNAlert, Switch, Text, TextInput, View } from 'react-native';
 import type { PushTestResult, QuietHours, TapMode } from '../../contract/api';
 import { clock } from '../../lib/format';
 import { useHubApi } from '../hub-api';
+import { go } from '../nav';
 import { useTheme } from '../theme';
 import { useSelf } from '../use-self';
 import { Btn, Calm, Card, Chip, KV, Muted, Page, Section, useToast } from '../ui';
@@ -85,7 +86,15 @@ export default function SettingsScreen() {
           <Text testID="notif-state" style={{ color: t.text }}>
             {api.pushState ? PUSH_TEXT[api.pushState] ?? '' : 'Off. Turn on to get a push when a session needs you.'}
           </Text>
-          {api.pushState === 'registered' ? (
+          {api.link ? (
+            <>
+              <Muted>{"Delivered over this phone's own connection to your hub."}</Muted>
+              {api.pushState !== 'registered' && api.pushState !== 'blocked' ? (
+                <Btn kind="primary" label="Turn on notifications" testID="turn-on" onPress={() => void api.enablePush()} />
+              ) : null}
+              <Btn label="Notification settings" testID="notify-settings" onPress={go.notifySettings} />
+            </>
+          ) : api.pushState === 'registered' ? (
             <>
               <Btn label="Send test push" testID="test-push" disabled={off || !target || testing} onPress={() => void sendTest()} />
               {test || testing ? <Muted>{testText(test, testing)}</Muted> : null}
