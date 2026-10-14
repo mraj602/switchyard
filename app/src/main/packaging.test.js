@@ -4,6 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
+import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { resolveTarget, ldflags, sumFor } from '../../scripts/fetch-sy.mjs';
@@ -63,9 +64,11 @@ test('after-pack flips exactly the C2 fuses', () => {
 test('after-pack finds the executable on each platform', () => {
   const packager = { appInfo: { productFilename: 'Switchyard' }, executableName: 'switchyard-desktop' };
   const p = (electronPlatformName) => afterPack.executablePath({ electronPlatformName, appOutDir: '/o', packager });
-  assert.equal(p('linux'), '/o/switchyard-desktop');
-  assert.equal(p('darwin'), '/o/Switchyard.app/Contents/MacOS/Switchyard');
-  assert.equal(p('win32'), '/o/Switchyard.exe');
+  // appOutDir is a host path (electron-builder runs on the build host), so the expectation
+  // is joined with the host separator too.
+  assert.equal(p('linux'), path.join('/o', 'switchyard-desktop'));
+  assert.equal(p('darwin'), path.join('/o', 'Switchyard.app', 'Contents', 'MacOS', 'Switchyard'));
+  assert.equal(p('win32'), path.join('/o', 'Switchyard.exe'));
 });
 
 test('fetch-sy: target names, ldflags, checksums', () => {
