@@ -70,7 +70,7 @@ if [ "$1 $2 $3 $4" = "plugin marketplace add warpdotdev/claude-code-warp#main" ]
 fi
 exec "`+filepath.Join(fakeClaudeDir(t), "claude")+`" "$@"
 `)
-	opener := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \""+th.openLog+"\"\n"
+	opener := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"" + th.openLog + "\"\n"
 	writeExec(t, filepath.Join(bin, "xdg-open"), opener)
 	writeExec(t, filepath.Join(bin, "open"), opener) // macOS
 	for i, kv := range s.env {
