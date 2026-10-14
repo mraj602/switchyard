@@ -98,7 +98,8 @@ When `[peers] enabled = true`, `sy hook` also writes
 {"v":1,"session":"c41e…","pid":4242,"config_dir":"~/.claude-2","mode":"bypassPermissions","mode_at":"…","human_at":"…","ended_at":null}
 ```
 
-- `pid`: the claude process (the hook's ancestor found by keys.md 8's walk).
+- `pid`: the claude process (the hook's nearest Claude-looking ancestor, 4.1 step 1). It is
+  looked up on `SessionStart` and when the file has no pid; other events only compare `mode`.
 - `mode`: the hook payload's `permission_mode`, unchanged.
 - `human_at`: the time of the last `UserPromptSubmit` whose `prompt` does **not** start with
   `<cross-session-message` (a peer message that started a turn is not a human). **Uncertain**
@@ -141,7 +142,9 @@ The hook does a single small atomic write and nothing else; it never connects to
   or reply to in an open thread (`can: "reply"`). `--all` (terminal only) shows the rest with
   `can: "none"`.
 - `handle` = `<name>@<account label>.<machine name>`, made unique by appending `-2`, `-3`
-  when needed. `name` is the registry's session name, else the project folder's base name.
+  to the **name part** when needed (`api-2@work.laptop`), so the `@label.machine` suffix stays
+  addressable by prefix. Spaces and `@"<>` in a name, label or machine part are replaced by `-`
+  or removed, so a handle never needs quoting. `name` is the registry's session name, else the project folder's base name.
 - Same account on the same machine is listed too (`local: true`): it works through Switchyard
   as well, although Claude's native `/peers` already reaches it.
 
@@ -157,8 +160,13 @@ listing the candidates.
 
 `sy peers send` must run inside a Claude Code session (normally its Bash tool):
 
-1. Walk the ancestors (keys.md 8 step 2) to the nearest Claude Code process: its pid is
-   `claude_pid`. None → exit 4 "sy peers send works only inside a Claude Code session".
+1. Walk the ancestors (keys.md 8 step 2) and collect those that look like Claude Code by
+   **process identity only** (executable, `argv[0]`, `comm`, install path). The environment
+   marker `CLAUDECODE` is **not** used here: every child of a session (the Bash tool's shell,
+   hooks) inherits it, so it would pick the shell, not claude. The nearest candidate that has
+   a registry file in a managed slot (step 4) is `claude_pid`; the registry decides, so a false
+   process-name hit costs one lookup. None → exit 4 "sy peers send works only inside a Claude
+   Code session".
 2. `config_dir` = `CLAUDE_CONFIG_DIR` from the environment, else `~/.claude`.
 3. Send `{"op":"send","claude_pid","config_dir",…}` to the agent.
 4. The agent verifies the caller's pid (peer credentials) has `claude_pid` as an ancestor,
@@ -365,10 +373,13 @@ sy peers audit [--since 24h] [--json]  metadata from the hub (owner) or this mac
 ### 7.2 Exit codes
 
 0 delivered or done; 1 internal error; 2 usage or ambiguous target; 3 not supported here
-(Windows); 4 refused by the signing guard or not inside a session; 5 refused by policy
-(`not_allowed`, `paused`, `loop_guard`, `off`); 6 limits (`too_big`, `rate_limited`, `secret`,
-`not_text`); 7 not delivered (`expired`, `target_gone`, `rejected`, `failed`); 8 queued, not
-yet final when `--wait` ended.
+(Windows, or a subcommand not built yet); 4 refused by the signing guard or not inside a
+session (`not_a_session`); 5 refused by policy (`not_allowed`, `paused`, `loop_guard`, `off`,
+`no_matrix`: no matrix is configured on this machine, which denies everything); 6 limits
+(`too_big`, `rate_limited`, `secret`, `not_text`); 7 not delivered (`unknown_target`,
+`expired`, `target_gone`, `rejected`, `failed`, `hub_unreachable`); 8 queued, not yet final
+when `--wait` ended. Refusals print their one line on stdout (it is the answer Claude reads);
+usage errors and `not_a_session` go to stderr.
 
 ### 7.3 Matrix print
 
@@ -488,15 +499,36 @@ The agent connects to the target's `messagingSocketPath` and writes one line, th
 | `from` (frame and attribute) | `uds:` + the agent's reply socket for this sender (8.6), with every byte outside `A-Za-z0-9:_/.-` percent-encoded, at most 300 characters. |
 | `from-session` | The sending session id. |
 | `hop-chain` | The envelope's `hop`: comma-separated 24-hex tokens, at most 32 kept (the last ones). Omitted when empty. The agent never adds a token of its own (it has none that Claude Code computes). |
-| `from-name` | The sender's handle, with control and format characters and `"<>` removed, cut to 64 code points. |
+| `from-name` | The sender's handle, with `"<>` and every control, format, surrogate and line/paragraph-separator character removed, trimmed, and cut to 64 code points; a cut name ends in `…`, as Claude Code's own cleaner does. |
 | `from-mode` | The envelope's `mode` (local path: the sender's session file). |
 | `from-plugin` | Omitted. |
-| Body | The `[Switchyard]` header line, the reply line, a blank line, then the text. Any `</cross-session-message` lookalike in the text is escaped as Claude Code's own builder does (`<\/` form; the exact escape comes from the E10 golden). |
+| Body | The `[Switchyard]` header line, the reply line, a blank line, then the text. Any `</cross-session-message` lookalike in the text is escaped as Claude Code's own builder does: the opening `<` (or a fullwidth/small look-alike of it) becomes `<\`, so `</cross-session-message` is written `<\/cross-session-message`; the match is case-insensitive and tolerates zero-width characters between letters. `internal/peers` ports a simplified form of Claude Code 2.1.300's pattern (`EscapeBody`); the E10 golden settles the rest. |
 | `file_attachments` | Never sent. |
 
 The wrapper builder is a Go port with golden tests from the lab capture (E10). If the builder's
 output ever differs from the golden, the agent still delivers (as plain text in a bypass
 receiver that means a hold) and `sy doctor` flags "inbox contract drift".
+
+What Claude Code 2.1.300's program shows for the element (read, not yet lab-confirmed; all of
+it lives in `internal/peers/wrapper.go`): the element is **canonical** only when it matches
+`^<cross-session-message( from="…")?( from-session="…")?( hop-chain="…")?( from-name="…")?( from-mode="…")?( from-plugin="…")?>\n(body)\n</cross-session-message>$`
+and rebuilding it from the parsed parts gives the same bytes. `from` is at most 300
+characters of `A-Za-z0-9%:_/.\-` (backslash allowed), `from-session` matches
+`^[A-Za-z0-9_-]{1,80}$`, `hop-chain` is 1 to 32 tokens of 24 hex characters, `from-mode` is
+`bypass` or `prompting`. An attribute that fails its pattern is left out by the builder. The
+receiver's gate reports one of these causes: `bypass-default`, `explicit-setting`,
+`invalid-setting`, `managed-setting`, `mode-mismatch`, `mode-unknown`, `no-mode-asserted`;
+`crossSessionInbound` takes `accept`, `hold` (and `refuse` from managed settings, which turns
+messages away). The fake inbox (15) applies the gate as: own child admits; `accept` admits,
+`hold` holds, `refuse` drops; otherwise a canonical wrapper whose `from-mode` equals the
+receiver's class is admitted, a different one is held, and a missing mode is held by a bypass
+receiver and admitted by a prompting one (E1, E2). A frame is written as one JSON line without
+HTML escaping.
+
+**PE1 without the agent:** `sy peers send` writes the frame itself. The `from` address names
+the sender's reply socket (8.6) by its path, but nothing listens there yet, so a native
+`SendMessage` to it finds nobody and the header's `Reply with: sy peers send …` line is the
+only reply path.
 
 **Delivery modes,** chosen once per machine by `sy doctor --peers-probe` (13.3) and stored in
 `config.toml` `[peers] delivery`:
@@ -547,10 +579,11 @@ about the mode to avoid it.
 | Scope | Limit | Enforced by |
 | --- | --- | --- |
 | Per sending session | 10 a minute, burst 20 | sender's agent, hub |
-| Per session pair | 60 an hour | sender's agent, hub |
+| Per session pair | 60 an hour, both directions counted together | sender's agent, hub |
 | Per hub | 2 000 a day | hub |
 
-All below Claude Code's own inbox limits (30 burst, 0.5 a second per sender), so Switchyard
+A send takes its token when the rate check passes (step 4 of 4.2), so a message the matrix
+then refuses still counts. All below Claude Code's own inbox limits (30 burst, 0.5 a second per sender), so Switchyard
 refuses first with a clear reason. `rate_limited` names when to retry.
 
 ### 9.3 Offline and expiry
@@ -711,6 +744,11 @@ captured on reply sockets.
   HPKE `info` with another `from.device` → open fails; uncertified or revoked sender → reject;
   a certificate whose `machine` differs from `from.machine` → reject; replay → single
   delivery; the sender refuses to seal to an uncertified target key.
+- **Test seams (PE1):** tests that import the fake inbox are external (`package peers_test`,
+  an in-package test would be an import cycle); `make test` runs `-tags fakeinbox,peerstest`
+  for `internal/peers` and `cmd/sy`. `peerstest` adds `matrix_peerstest.go`, an unsigned allow
+  file (`SY_PEERS_TEST_ALLOW`) standing in for the matrix; `check-release-seams.sh` proves a
+  release binary has none of it. Without the tag the matrix is `NoMatrix`.
 - **Fake inbox** (`internal/peers/fakeinbox`, build tag `fakeinbox`, refused in release builds
   by `check-release-seams.sh`): the 8.1 behaviour as a test double (canonical check, mode gate
   with a switch, `session_id` guard, hold buffer, limits), plus a recorder.

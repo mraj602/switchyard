@@ -15,7 +15,7 @@ var wantEvents = []string{
 
 func TestEmbedHasPluginFiles(t *testing.T) {
 	fsys := FS()
-	for _, p := range []string{".claude-plugin/plugin.json", "hooks/hooks.json", "README.md", "skills/status/SKILL.md"} {
+	for _, p := range []string{".claude-plugin/plugin.json", "hooks/hooks.json", "README.md", "skills/status/SKILL.md", "skills/peers/SKILL.md"} {
 		if _, err := fs.Stat(fsys, p); err != nil {
 			t.Errorf("%s: %v", p, err)
 		}

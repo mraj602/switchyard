@@ -10,6 +10,7 @@ affiliated with Anthropic.
   `PATH` and does nothing, silently, when `sy` is not installed.
 - `skills/status/`: `/switchyard:status`, which runs `sy status`.
 - Phase 3 adds `/switchyard:setup` and `/switchyard:add-account`.
+- `skills/peers/`: teaches Claude to message other sessions with `sy peers list` and `sy peers send` (docs/spec/peers.md 12).
 
 Check it: `claude plugin validate plugin/switchyard --strict`.
 
