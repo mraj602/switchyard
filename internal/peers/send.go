@@ -141,7 +141,7 @@ func (e Env) SendWith(c Caller, to, text string, o SendOpts) (SendResult, *Refus
 	if ttl < MinTTL || ttl > MaxTTL {
 		return SendResult{}, Refuse(CodeFailed, "the TTL must be between 1m and 24h")
 	}
-	unlock := lockState()
+	unlock := lockState(e.State)
 	defer func() {
 		if unlock != nil {
 			unlock()
@@ -226,7 +226,7 @@ func (e Env) sendRemote(unlock *func(), out Outgoing, thread Thread) (SendResult
 	(*unlock)()
 	*unlock = nil
 	p, rf := e.Remote.Send(out)
-	*unlock = lockState()
+	*unlock = lockState(e.State)
 	line := auditLine{Msg: out.Msg, Thread: thread.ID, From: out.From.Entry.SessionID, To: out.To.Entry.SessionID,
 		FromA: out.From.Account, ToA: out.To.Account, Size: len(out.Text)}
 	if rf != nil {

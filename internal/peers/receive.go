@@ -32,7 +32,7 @@ func (e Env) Receive(in Incoming) ReceiveResult {
 	if e.Off() {
 		return reject(CodeOff)
 	}
-	unlock := lockState()
+	unlock := lockState(e.State)
 	defer unlock()
 	now := e.now()
 	dir := e.Directory()
