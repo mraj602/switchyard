@@ -9,6 +9,7 @@
 //   board login, every screen, live updates, keyboard      (the phase 2 checks)
 //   a phone claim by QR secret, the phone screens, Seen from the row menu, swipe Snooze
 //   an owner sign-in, Alerts/Settings/Devices and the Add phone dialog
+//   Settings → Peers as the owner (grid, pause/resume, widen, audit) and as a paired phone (narrow only)
 // Once (phone viewport, Android user agent unless noted): manifest and installability,
 // service worker control and caches, offline banner, update banner, push display, push
 // registration (subscribe stubbed), iPhone pairing path (no claim, digits shown).
@@ -294,13 +295,124 @@ async function machinesFlow(page, sizeName) {
   // Add machine dialog: the two commands.
   await page.evaluate(() => { location.hash = '#/more/devices'; });
   await page.waitForSelector('[data-key=add-machine]');
-  await page.click('[data-key=add-machine]');
+  await press(page, 'add-machine');
   try { await page.waitForSelector('dialog[open] [data-key=cmd-machine-add]', { timeout: 4000 }); } catch (e) { fail(page.tag('Add machine did not show the sy machine add command')); }
   await want('[data-key=cmd-machine-add]', /^sy machine add user@host$/, 'machine add command');
   await want('[data-key=cmd-install]', /install\.sh \| sh -s -- -- --hub join:http.*--code 482-913/, 'install command');
   await shot(page, `${sizeName}-o-add-machine`);
   await page.click('[data-key=dialog-close]');
   await page.evaluate(() => { location.hash = '#/more/devices'; });
+}
+
+// ---- Settings → Peers (owner and paired phone) ----------------------------------------------------
+
+const ACCT = (n) => `3f1c6a2e-0000-4000-8000-0000000000${String(n).padStart(2, '0')}`;
+const CELL = (a, b) => `[data-key="cell-${ACCT(a)}-${ACCT(b)}"]`;
+
+async function peersChecks(page, sizeName, who, owner) {
+  const t = (m) => page.tag(`peers ${who}: ${m}`);
+  const txt = (sel) => page.$eval(sel, (e) => e.textContent.trim()).catch(() => null);
+  const pressSel = (sel) => page.evaluate((k) => document.querySelector(k).click(), sel);
+  const settle = () => sleep(350);
+  const cellIs = (sel, cls) => page.waitForFunction((k, c) => document.querySelector(k) && document.querySelector(k).classList.contains(c), { timeout: 4000 }, sel, cls);
+  await visit(page, sizeName, `${who}-peers`, '#/more/peers', '[data-key=matrix]');
+
+  // The grid renders with the mock matrix: four accounts, 12 cells and 4 self cells.
+  const g = await page.evaluate(() => ({
+    cols: document.querySelectorAll('[data-key=matrix] thead th.mx-col').length,
+    rows: document.querySelectorAll('[data-key=matrix] tbody th.mx-row').length,
+    btns: document.querySelectorAll('[data-key=matrix] .mx-btn').length,
+    self: document.querySelectorAll('[data-key=matrix] .mx-self').length,
+  }));
+  if (g.cols !== 4 || g.rows !== 4 || g.btns !== 12 || g.self !== 4) fail(t(`grid is ${JSON.stringify(g)}`));
+  if (!/^Matrix version \d+ · signed by hub/.test((await txt('[data-key=matrix-version]')) || '')) fail(t('matrix version line missing'));
+  // The page must not scroll sideways (visit checks); the grid may scroll inside its own container.
+  const wrap = await page.$eval('.mx-wrap', (e) => e.offsetWidth);
+  const vw = await page.evaluate(() => document.documentElement.clientWidth);
+  if (wrap > vw) fail(t(`grid container (${wrap}px) is wider than the viewport (${vw}px)`));
+
+  // Audit: metadata only.
+  if (!(await page.$('.audit-list .row'))) fail(t('audit list is empty'));
+  const audit = await page.evaluate(async () => (await (await fetch('/v1/peers/audit')).json()).entries);
+  if (audit.some((e) => e.msg)) fail(t('mock audit carries message text'));
+
+  // Pause, then resume (owner) or see why not (device).
+  if (await page.$eval('[data-key=peers-pause]', (b) => b.disabled)) fail(t('pause button is disabled'));
+  await pressSel('[data-key=peers-pause]');
+  try { await page.waitForFunction(() => /All peers are paused/.test((document.querySelector('[data-key=peers-state]') || {}).textContent || ''), { timeout: 4000 }); } catch (e) { fail(t('pause did not show "All peers are paused"')); }
+  await settle();
+  await shot(page, `${sizeName}-${who}-peers-paused`);
+  if (owner) {
+    if (await page.$eval('[data-key=peers-pause]', (b) => b.disabled)) fail(t('resume is disabled for the owner'));
+    await pressSel('[data-key=peers-pause]');
+    try { await page.waitForFunction(() => /Peers are on/.test((document.querySelector('[data-key=peers-state]') || {}).textContent || ''), { timeout: 4000 }); } catch (e) { fail(t('resume did not show "Peers are on"')); }
+  } else {
+    // Resuming widens: a device cannot, and the page says why.
+    if (!(await page.$eval('[data-key=peers-pause]', (b) => b.disabled)) || !/owner/.test((await txt('[data-key=peers-pause-why]')) || '')) fail(t('device resume is not disabled with a reason'));
+  }
+  const events = await page.evaluate(async () => (await (await fetch('/v1/peers/audit')).json()).entries.map((e) => e.event));
+  if (!events.includes('pause')) fail(t('audit has no pause entry'));
+
+  await page.evaluate(() => { location.hash = '#/more/peers'; });
+  await page.waitForSelector(CELL(1, 11));
+  if (owner) {
+    // Widen: personal and work both ways, personal to client one way.
+    await pressSel(CELL(1, 11));
+    await page.waitForSelector('[data-key=cell-editor]');
+    if (await page.$eval('[data-key=set-both]', (b) => b.disabled)) fail(t('widening button is disabled for the owner'));
+    await pressSel('[data-key=set-both]');
+    try { await cellIs(CELL(1, 11), 'mx-both'); } catch (e) { fail(t('widening did not turn the cell to both ways')); }
+    await pressSel(CELL(1, 21));
+    await page.waitForSelector('[data-key=set-out]');
+    await pressSel('[data-key=set-out]');
+    try { await cellIs(CELL(1, 21), 'mx-out'); } catch (e) { fail(t('widening did not turn the cell one way')); }
+    await settle();
+    await shot(page, `${sizeName}-${who}-peers-widened`);
+    const ev = await page.evaluate(async () => (await (await fetch('/v1/peers/audit')).json()).entries.slice(0, 3).map((e) => `${e.event}:${e.detail.widens}`));
+    if (!ev.includes('matrix:true')) fail(t(`audit shows no widened matrix entry: ${ev}`));
+  } else {
+    // Device: personal/work is both ways, personal/client one way (left by the owner part).
+    await pressSel(CELL(1, 11));
+    await page.waitForSelector('[data-key=cell-editor]');
+    const dis = await page.evaluate(() => Object.fromEntries(['none', 'out', 'in', 'both'].map((k) => [k, document.querySelector(`[data-key=set-${k}]`).disabled])));
+    // both is the current state; none, out and in only remove pairs.
+    if (dis.none || dis.out || dis.in || !dis.both) fail(t(`device buttons on a both-ways cell: ${JSON.stringify(dis)}`));
+    await pressSel(CELL(1, 21));
+    await page.waitForSelector('[data-key=set-both]');
+    const d2 = await page.evaluate(() => ({ both: document.querySelector('[data-key=set-both]').disabled, in: document.querySelector('[data-key=set-in]').disabled, none: document.querySelector('[data-key=set-none]').disabled, why: (document.querySelector('[data-key=cell-why]') || {}).textContent }));
+    if (!d2.both || !d2.in || d2.none || !/owner sign-in/.test(d2.why || '')) fail(t(`device widen not disabled with a reason: ${JSON.stringify(d2)}`));
+    await settle();
+    await shot(page, `${sizeName}-${who}-peers-editor`);
+    await pressSel('[data-key=set-none]');
+    try { await cellIs(CELL(1, 21), 'mx-none'); } catch (e) { fail(t('narrowing did not clear the cell')); }
+    await settle();
+    await shot(page, `${sizeName}-${who}-peers-narrowed`);
+    // Dark mode follows prefers-color-scheme; the paused panel and the cells must stay readable.
+    await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+    await settle();
+    await shot(page, `${sizeName}-${who}-peers-dark`);
+    await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+  }
+}
+
+async function peersFlow(sizeName, w, hgt) {
+  const octx = await browser.createBrowserContext();
+  const opage = await newPage(octx, sizeName, w, hgt, { label: 'peers-owner', mobile: false });
+  await opage.goto(`${BASE}/#/owner?s=${OWNER}`, { waitUntil: 'networkidle2' });
+  await opage.waitForSelector('[data-key=hub-address]');
+  await peersChecks(opage, sizeName, 'owner', true);
+  await octx.close();
+
+  // The owner's edits stay in the mock: a paired phone (read + push) now narrows them.
+  const pctx = await browser.createBrowserContext();
+  const ppage = await newPage(pctx, sizeName, w, hgt, { ua: ANDROID, label: 'peers-phone' });
+  await ppage.goto(`${BASE}/#/pair?s=${SECRET}&c=${CODE}`, { waitUntil: 'networkidle2' });
+  await ppage.waitForSelector('[data-key=paired-as]');
+  await ppage.click('[data-key=pair-continue]');
+  await ppage.waitForSelector('.needs-card');
+  await peersChecks(ppage, sizeName, 'device', false);
+  await pctx.close();
+  await resetHub();
 }
 
 // ---- installability, worker, offline, update, push, iPhone ---------------------------------------
@@ -461,6 +573,7 @@ async function pwaFlow() {
       await boardFlow(sizeName, w, hgt);
       await phoneFlow(sizeName, w, hgt);
       await ownerFlow(sizeName, w, hgt);
+      await peersFlow(sizeName, w, hgt);
     }
     await pwaFlow();
   } finally {
