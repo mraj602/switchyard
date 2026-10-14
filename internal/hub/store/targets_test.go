@@ -36,8 +36,8 @@ func addDevice(t *testing.T, st *store.Store, ctx context.Context, id string) {
 func TestChannelsSeededAndSettable(t *testing.T) {
 	st, ctx := openTargets(t)
 	cs, err := st.Channels(ctx)
-	// expo: seeded by schema v6 (push.md 12).
-	if err != nil || len(cs) != 3 || cs[0].Kind != "expo" || cs[1].Kind != "ntfy" || cs[2].Kind != "webpush" || !cs[1].Enabled {
+	// expo: seeded by schema v6 (push.md 12); link by schema v8 (push.md 13).
+	if err != nil || len(cs) != 4 || cs[0].Kind != "expo" || cs[1].Kind != "link" || cs[2].Kind != "ntfy" || cs[3].Kind != "webpush" || !cs[2].Enabled {
 		t.Fatalf("%+v %v", cs, err)
 	}
 	c, err := st.SetChannel(ctx, "ntfy", false, nil)

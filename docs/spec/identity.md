@@ -115,6 +115,11 @@ for those names) and a test records every open to prove it.
 under `daemon/`, and never runs `claude` with arguments other than `auth status --json`,
 `agents --json` and `--version`.
 
+Peers (PE1) adds one allowance: `sy agent` and `sy peers` read each slot's session registry
+files `<config>/sessions/<digits>.json` (pid, session id, cwd, socket path, name, status;
+[peers.md](peers.md) 3.1). The file-system layer allows exactly that name pattern in
+`sessions/` and still returns `ErrForbidden` for `sessions/*.key` and anything else there.
+
 ## 5. How the hub joins records
 
 1. **Seat.** On a record with `seat.account` and `seat.org`: upsert `account` and `org`,
