@@ -21,6 +21,7 @@ import (
 	"github.com/mraj602/switchyard/internal/config"
 	"github.com/mraj602/switchyard/internal/linkclient"
 	"github.com/mraj602/switchyard/internal/paths"
+	"github.com/mraj602/switchyard/internal/peerlink"
 	peerspkg "github.com/mraj602/switchyard/internal/peers"
 	"github.com/mraj602/switchyard/internal/service"
 	"github.com/mraj602/switchyard/internal/timer"
@@ -117,10 +118,22 @@ func agentRun(stderr io.Writer) error {
 	defer stop()
 	fmt.Fprintf(stderr, "sy agent: listening on %s\n", agentSocket(pe.Env))
 	lc := agentLink
+	// Sessions on other machines are reached through the link (peers.md 8.2-8.4).
+	remote := peerlink.New(pe.Env, log.New(stderr, "sy agent: ", log.LstdFlags))
 	if lc == nil {
-		if lc, err = newAgentLink(pe.Env.State, stderr); err != nil {
+		var c *linkclient.Client
+		if c, err = newAgentLink(pe.Env.State, remote, stderr); err != nil {
 			fmt.Fprintf(stderr, "sy agent: no link to the hub: %v\n", err)
 		}
+		if c != nil {
+			lc, remote.Link = c, c
+		}
+	} else if s, ok := lc.(peerlink.Sender); ok {
+		remote.Link = s
+	}
+	var rm peerspkg.Remote
+	if remote.Link != nil {
+		rm = remote
 	}
 	return agent.Run(ctx, agent.Config{
 		Socket: agentSocket(pe.Env),
@@ -129,6 +142,7 @@ func agentRun(stderr io.Writer) error {
 			return p.Env, p.Enabled, err
 		},
 		Link:     lc,
+		Remote:   rm,
 		LogPath:  filepath.Join(pe.Env.State, "logs", "agent.log"),
 		Version:  version.Version,
 		PeerCred: agentPeerCred,
@@ -138,7 +152,7 @@ func agentRun(stderr io.Writer) error {
 // newAgentLink builds the machine link client from config hub.url and hub.dial (link.md:
 // machines always use their configured hub address, never the welcome's urls). (nil, nil)
 // when no hub is configured.
-func newAgentLink(state string, stderr io.Writer) (agent.LinkClient, error) {
+func newAgentLink(state string, ph linkclient.PeerHandler, stderr io.Writer) (*linkclient.Client, error) {
 	d, err := paths.Resolve(paths.FromOS())
 	if err != nil {
 		return nil, err
@@ -160,7 +174,7 @@ func newAgentLink(state string, stderr io.Writer) (agent.LinkClient, error) {
 			return nil, err
 		}
 	}
-	return linkclient.New(linkclient.Config{State: state, URL: u, HTTP: hc, HubMayWiden: cfg.Peers.HubMayWiden,
+	return linkclient.New(linkclient.Config{State: state, URL: u, HTTP: hc, HubMayWiden: cfg.Peers.HubMayWiden, Peers: ph,
 		Version: version.Version, Log: log.New(stderr, "sy agent: ", log.LstdFlags)}), nil
 }
 

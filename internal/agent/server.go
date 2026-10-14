@@ -24,6 +24,9 @@ type Config struct {
 	Load func() (env peers.Env, enabled bool, err error)
 	// Link is the link client (nil: same-machine only).
 	Link LinkClient
+	// Remote reaches sessions on other machines through the link (PE2; nil: this machine
+	// only).
+	Remote peers.Remote
 	// LogPath is <state>/logs/agent.log; empty logs nowhere.
 	LogPath string
 	Version string
@@ -40,7 +43,6 @@ type server struct {
 	cfg     Config
 	log     io.Writer
 	started time.Time
-	sendMu  sync.Mutex // threads.json and limits.json are read, changed and written per send
 }
 
 // Run serves the control socket until ctx is done, then removes the socket. It refuses to
@@ -209,6 +211,9 @@ func (s *server) dispatch(req Request, pid int) Reply {
 		return fail(peers.CodeOff, "peers are not enabled on this machine")
 	}
 	env.StartPID = pid
+	if s.cfg.Remote != nil {
+		env.Remote = s.cfg.Remote
+	}
 	switch req.Op {
 	case OpState:
 		st := LinkStatus{State: "none"}
@@ -251,15 +256,65 @@ func (s *server) dispatch(req Request, pid int) Reply {
 	if req.Op == OpWhoami {
 		return Reply{Session: &SessionInfo{Session: caller.Entry.SessionID, PID: caller.ClaudePID, ConfigDir: caller.Slot.Name}}
 	}
-	s.sendMu.Lock()
-	res, rf := env.Send(caller, req.To, req.Text)
-	s.sendMu.Unlock()
+	res, rf := env.SendWith(caller, req.To, req.Text, peers.SendOpts{TTL: time.Duration(req.TTLs) * time.Second})
 	if rf != nil {
 		s.logf("send from=%s status=%s size=%d", caller.Entry.SessionID, rf.Code, len(req.Text))
 		return Reply{Error: &Error{Code: rf.Code, Detail: rf.Detail}}
 	}
+	if res.Status == "queued" {
+		return s.waitFinal(req, res)
+	}
 	s.logf("send msg=%s thread=%s from=%s to=%s status=delivered size=%d", res.Msg, res.Thread, res.Sender.Entry.SessionID, res.Target.Entry.SessionID, len(req.Text))
 	return Reply{Msg: res.Msg, Thread: res.Thread, Status: "delivered", To: res.Target.Handle, HeldLikely: res.HeldLikely}
+}
+
+// Waits of a send to another machine (peers.md 4.3: --wait, default 10 s, at most 60 s).
+const (
+	DefaultWait = 10 * time.Second
+	MaxWait     = 60 * time.Second
+)
+
+// waitFinal waits for the final status of a message the hub queued: delivered, a final
+// refusal, or still queued when the wait ends.
+func (s *server) waitFinal(req Request, res peers.SendResult) Reply {
+	wait := DefaultWait
+	switch {
+	case req.WaitS < 0: // --wait 0
+		wait = 0
+	case req.WaitS > 0:
+		wait = min(time.Duration(req.WaitS)*time.Second, MaxWait)
+	}
+	from, to := res.Sender.Entry.SessionID, res.Target.Entry.SessionID
+	if f, ok := res.Pending.Wait(wait); ok {
+		s.logf("send msg=%s thread=%s from=%s to=%s status=%s detail=%s", res.Msg, res.Thread, from, to, f.Status, f.Detail)
+		if f.Status == "delivered" {
+			return Reply{Msg: res.Msg, Thread: res.Thread, Status: "delivered", To: res.Target.Handle, HeldLikely: f.Detail == "held_likely"}
+		}
+		return Reply{Msg: res.Msg, Thread: res.Thread, Error: &Error{Code: f.Status, Detail: finalDetail(res.Target.Handle, f)}}
+	}
+	s.logf("send msg=%s thread=%s from=%s to=%s status=queued", res.Msg, res.Thread, from, to)
+	r := Reply{Msg: res.Msg, Thread: res.Thread, Status: "queued", To: res.Target.Handle,
+		Expires: res.Expires.UTC().Format(time.RFC3339)}
+	if res.Offline {
+		r.Detail = "offline"
+	}
+	return r
+}
+
+// finalDetail is the refusal line's detail for a remote message's final status.
+func finalDetail(handle string, f peers.Final) string {
+	switch f.Status {
+	case peers.CodeExpired:
+		if f.Detail == peers.CodePaused {
+			return "peers were paused before " + handle + "'s machine took it"
+		}
+		return handle + "'s machine did not take it before it expired"
+	case peers.CodeTargetGone:
+		return handle + " has ended"
+	case peers.CodeRejected:
+		return handle + "'s machine refused it (" + f.Detail + "); do not retry"
+	}
+	return handle + "'s machine could not deliver it (" + f.Detail + ")"
 }
 
 // caller identifies the session the connecting process is inside, and refuses a request that

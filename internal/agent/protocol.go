@@ -65,18 +65,21 @@ type State struct {
 // Reply is one JSON line back. A send fills Msg, Thread, Status ("delivered"), To (the
 // target's handle) and HeldLikely; a refusal fills only Error.
 type Reply struct {
-	Error      *Error            `json:"error,omitempty"`
-	OK         bool              `json:"ok,omitempty"`
-	Msg        string            `json:"msg,omitempty"`
-	Thread     string            `json:"thread,omitempty"`
-	Status     string            `json:"status,omitempty"`
-	Detail     string            `json:"detail,omitempty"`
-	To         string            `json:"to,omitempty"`
-	HeldLikely bool              `json:"held_likely,omitempty"`
-	Session    *SessionInfo      `json:"session,omitempty"`
-	Entries    []peers.ListEntry `json:"entries,omitempty"`
-	Asked      bool              `json:"asked,omitempty"`
-	State      *State            `json:"state,omitempty"`
+	Error      *Error `json:"error,omitempty"`
+	OK         bool   `json:"ok,omitempty"`
+	Msg        string `json:"msg,omitempty"`
+	Thread     string `json:"thread,omitempty"`
+	Status     string `json:"status,omitempty"`
+	Detail     string `json:"detail,omitempty"`
+	To         string `json:"to,omitempty"`
+	HeldLikely bool   `json:"held_likely,omitempty"`
+	// Expires is when a queued message expires (RFC 3339); Detail is then "offline" when
+	// the target's machine is not connected.
+	Expires string            `json:"expires,omitempty"`
+	Session *SessionInfo      `json:"session,omitempty"`
+	Entries []peers.ListEntry `json:"entries,omitempty"`
+	Asked   bool              `json:"asked,omitempty"`
+	State   *State            `json:"state,omitempty"`
 }
 
 // Refusal is the reply's error as a *peers.Refusal, or nil.
