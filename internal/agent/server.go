@@ -127,8 +127,17 @@ func Run(ctx context.Context, cfg Config) error {
 // listen makes the socket folder (0700) and the socket (0600), replacing a stale socket file
 // but never one something answers on.
 func listen(path string) (net.Listener, error) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
+	}
+	// The folder may be a per-user one in a shared temp dir (SocketPath's fallback): refuse a
+	// symlink; chmod fails when someone else owns it.
+	if fi, err := os.Lstat(dir); err != nil || !fi.IsDir() {
+		return nil, fmt.Errorf("%s is not a plain folder", dir)
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		return nil, fmt.Errorf("the socket folder %s is not yours: %w", dir, err)
 	}
 	if c, err := net.DialTimeout("unix", path, time.Second); err == nil {
 		c.Close()

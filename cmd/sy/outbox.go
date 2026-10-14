@@ -232,7 +232,7 @@ func outboxDrain(stdin io.Reader, args []string, stdout, stderr io.Writer) error
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	dopts := client.DrainOptions{Outbox: ob, Machine: m.ID, Name: m.Name,
+	dopts := client.DrainOptions{Outbox: ob, Machine: m.ID, Name: identity.ClampMachineName(m.Name),
 		Logf: func(f string, a ...any) { fmt.Fprintf(stderr, "sy outbox drain: "+f+"\n", a...) }}
 	if d, err := paths.Resolve(paths.FromOS()); err == nil {
 		if f, err := config.Load(d.Config.Path); err == nil {

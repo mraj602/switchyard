@@ -99,7 +99,7 @@ func TestUninstallRemovesAgentUnit(t *testing.T) {
 	bin := t.TempDir()
 	log := filepath.Join(s.syHome, "systemctl.log")
 	script := "#!/bin/sh\necho \"$(basename $0) $*\" >> " + log + "\nexit 0\n"
-	for _, n := range []string{"systemctl", "loginctl"} {
+	for _, n := range []string{"systemctl", "loginctl", "launchctl"} {
 		if err := os.WriteFile(filepath.Join(bin, n), []byte(script), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -108,6 +108,9 @@ func TestUninstallRemovesAgentUnit(t *testing.T) {
 	s.env = append(s.env, "XDG_CONFIG_HOME=", "XDG_RUNTIME_DIR="+filepath.Join(s.syHome, "run"))
 	s.mustSy(t, "agent", "enable")
 	unit := h.Abs(".config/systemd/user/switchyard-agent.service")
+	if runtime.GOOS == "darwin" {
+		unit = h.Abs("Library/LaunchAgents/" + service.LaunchdLabel("switchyard-agent") + ".plist")
+	}
 	if _, err := os.Stat(unit); err != nil {
 		t.Fatalf("enable wrote no unit: %v", err)
 	}
@@ -122,7 +125,11 @@ func TestUninstallRemovesAgentUnit(t *testing.T) {
 		t.Errorf("uninstall left the unit: %v", err)
 	}
 	b, _ := os.ReadFile(log)
-	if !strings.Contains(string(b), "systemctl --user disable --now switchyard-agent.service") {
-		t.Errorf("fake systemctl log: %q", b)
+	want := "systemctl --user disable --now switchyard-agent.service"
+	if runtime.GOOS == "darwin" {
+		want = "launchctl bootout"
+	}
+	if !strings.Contains(string(b), want) {
+		t.Errorf("fake service manager log (want %q): %q", want, b)
 	}
 }

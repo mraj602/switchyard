@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/mraj602/switchyard/internal/atomicfile"
 )
@@ -108,7 +109,18 @@ func shortHostname(host func() (string, error)) string {
 	if h == "" {
 		return "machine"
 	}
-	return h
+	return ClampMachineName(h)
+}
+
+// ClampMachineName cuts a name to MaxMachineName characters on a rune boundary (the hub
+// counts runes, pair.MaxNameLen), trimming space left at the cut. A name that is already
+// short enough comes back unchanged.
+func ClampMachineName(n string) string {
+	if utf8.RuneCountInString(n) <= MaxMachineName {
+		return n
+	}
+	r := []rune(n)
+	return strings.TrimSpace(string(r[:MaxMachineName]))
 }
 
 // newULID makes a 26-character Crockford base32 ULID: 48-bit millisecond time, 80 random
