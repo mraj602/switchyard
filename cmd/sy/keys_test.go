@@ -205,6 +205,32 @@ func TestKeysInitCertifyPasswdRevoke(t *testing.T) {
 	}
 }
 
+// A tofu machine that replaced its keys is listed (reason "replaced") but live: sy keys
+// revoke must still revoke it, not answer "already revoked".
+func TestKeysRevokeAfterReplacedKeys(t *testing.T) {
+	r := newKeysRig(t)
+	ctx := context.Background()
+	fp := r.initOwner()
+	if _, err := r.ks.Confirm(ctx, fp, "cli"); err != nil {
+		t.Fatal(err)
+	}
+	other := pairMachine(t, r)
+	dk, _ := keys.NewDeviceKeys(time.Now(), rand.Reader)
+	pub, _ := dk.Public()
+	if _, err := r.ks.RegisterKeys(ctx, other, pub); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.run([]string{pass1}, "revoke", other, "--yes"); err != nil {
+		t.Fatal(err, r.out.String())
+	}
+	if strings.Contains(r.out.String(), "already revoked") {
+		t.Fatalf("replaced keys counted as a revocation: %s", r.out.String())
+	}
+	if d, _ := r.ks.Store.DeviceDetailByID(ctx, other); d.RevokedAt == 0 {
+		t.Fatal("the hub did not revoke the device")
+	}
+}
+
 // pairMachine pairs another machine over the API with a typed code and returns its id.
 func pairMachine(t *testing.T, r *keysRig) string {
 	t.Helper()

@@ -1,6 +1,10 @@
 # Release: a tag v<semver> runs the checks, builds the six archives with
 # scripts/release/build.sh (the same script the E2E harness uses), attests build provenance
 # for every archive and publishes a GitHub Release with every file. See docs/spec/setup.md 1.1.
+#
+# Phone releases (`phone-vX.Y.Z`) are not built here: `v*` does not match them, and the Android
+# APK is signed with the owner's own keystore on their laptop (`make phone-apk-release`,
+# docs/spec/phone.md P13, P16.1), never by CI.
 name: release
 
 on:

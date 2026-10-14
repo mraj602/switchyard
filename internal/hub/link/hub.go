@@ -38,6 +38,7 @@ const (
 	MaxTotal        = 50_000
 	InFlight        = 64
 	MaxChallenging  = 64
+	MaxNonces       = 10_000 // outstanding challenges (each lives ChallengeTTL)
 	LoginTimeout    = 10 * time.Second
 	ChallengeTTL    = 60 * time.Second
 	LoginsPerMinute = 10
@@ -128,6 +129,8 @@ type Hub struct {
 
 	stop chan struct{}
 	done chan struct{}
+
+	afterLogin func(device string) // tests: runs between a login's checks and registering it
 }
 
 // New builds a hub link. Start runs its sweeper.
@@ -360,13 +363,38 @@ func withMissed(plaintext []byte, n int) []byte {
 }
 
 // ackTx is a cumulative ack: delete rows up to seq and set delivered_at on the deliveries
-// they carried (link.md 5.6, push.md 13.4).
-func ackTx(tx *store.Tx, device string, seq int64) error {
+// they carried (link.md 5.6, push.md 13.4). Rows that expired before the ack were never
+// sent (the pump skips them): they expire as in the sweeper, not count as delivered.
+func (h *Hub) ackTx(tx *store.Tx, device string, seq int64) error {
+	if err := h.expireTx(tx, device, seq); err != nil {
+		return err
+	}
 	refs, err := tx.LinkAck(device, seq)
 	if err != nil {
 		return err
 	}
 	return tx.DeliveriesDelivered(refs, tx.NowMS())
+}
+
+// expireTx expires the device's rows up to seq that are past exp.
+func (h *Hub) expireTx(tx *store.Tx, device string, seq int64) error {
+	rows, err := tx.LinkExpireUpTo(device, seq, h.now().Unix())
+	if err != nil {
+		return err
+	}
+	return h.peerExpiredTx(tx, rows)
+}
+
+// peerExpiredTx tells the peer relay about expired peer_msg rows.
+func (h *Hub) peerExpiredTx(tx *store.Tx, rows []store.LinkRow) error {
+	for _, r := range rows {
+		if id, ok := cutPrefix(r.Ref, "pm:"); ok && h.cfg.PeerExpired != nil {
+			if err := h.cfg.PeerExpired(tx, id); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // reject deletes one row the device refused (link.md 5.6); it never moves acked_seq.
@@ -520,6 +548,20 @@ func (h *Hub) Revoked(ctx context.Context, device string) {
 	}
 }
 
+// stillLive re-reads the device after its connection or poll is registered: a revocation
+// committed between login's check and the registration ran Revoked before there was
+// anything to close, so the new link would stay up until the sweeper.
+func (h *Hub) stillLive(ctx context.Context, device string) (bool, error) {
+	d, err := h.cfg.Store.DeviceDetailByID(ctx, device)
+	if errors.Is(err, store.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return d.RevokedAt == 0, nil
+}
+
 // Connected reports whether the device is logged in now: a WebSocket, or a long poll
 // waiting (the peer relay's "its machine is offline", peers.md 4.3).
 func (h *Hub) Connected(device string) bool {
@@ -572,14 +614,7 @@ func (h *Hub) Sweep(ctx context.Context) {
 			return err
 		}
 		expired = len(rows)
-		for _, r := range rows {
-			if id, ok := cutPrefix(r.Ref, "pm:"); ok && h.cfg.PeerExpired != nil {
-				if err := h.cfg.PeerExpired(tx, id); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
+		return h.peerExpiredTx(tx, rows)
 	})
 	if err != nil {
 		h.log.Printf("link sweep: %v", err)

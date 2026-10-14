@@ -69,6 +69,9 @@ cannot, and tags are limited to `[A-Za-z0-9_:.-]{0,64}` (5.3).
 - **Load.** At most 64 connections in the challenge phase hub-wide (behind `tailscale serve`
   every client has the proxy's address, so a per-IP cap means nothing); more are refused with
   HTTP 503. A connection that has not sent a valid `hello` within 10 s is closed with 4401.
+  At most 10 000 unexpired challenges are outstanding (WebSocket and poll together, since
+  `op: challenge` needs no credential); past that a WebSocket is closed with 4429 `busy` and
+  `op: challenge` answers HTTP 503 `busy`.
 
 ### 2.1 Long-poll fallback
 

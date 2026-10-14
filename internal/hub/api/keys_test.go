@@ -229,3 +229,28 @@ func TestKeysEndpointsWithoutHubKey(t *testing.T) {
 		t.Fatalf("GET /v1/keys without a hub key: %d", st)
 	}
 }
+
+// Removing a machine revokes its devices; their keys go on the revocation list as for
+// DELETE /v1/devices/{id} (keys.md 6).
+func TestMachineRemovePublishesRevocation(t *testing.T) {
+	h := newKeysHub(t)
+	ctx := context.Background()
+	const mid = "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4R"
+	mc, _ := h.pair.Create(ctx, pair.CreateRequest{Kind: "machine", Machine: mid, URL: "https://hub.example.ts.net"})
+	st, reply := h.call("POST", "/v1/pair/claim", "", map[string]any{"code": mc.Code, "keys": testMachineKeys(t)})
+	if st != 200 {
+		t.Fatalf("claim: %d %v", st, reply)
+	}
+	devID := reply["device"].(string)
+	cert, err := h.ks.Cert(ctx, devID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st, m := h.call("DELETE", "/v1/machines/"+mid, h.owner, nil); st != 204 {
+		t.Fatalf("remove: %d %v", st, m)
+	}
+	rl, err := h.ks.Revocations(ctx)
+	if err != nil || rl == nil || !rl.Body.RevokedDevice(devID) || !rl.Body.RevokedKey(cert.Body.SignFP()) {
+		t.Fatalf("revocations after machine removal: %v %+v", err, rl)
+	}
+}
