@@ -12,6 +12,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/mraj602/switchyard/internal/agent"
 	"github.com/mraj602/switchyard/internal/config"
 	"github.com/mraj602/switchyard/internal/identity"
 	"github.com/mraj602/switchyard/internal/paths"
@@ -87,7 +88,7 @@ func runPeers(args []string, stdout, stderr io.Writer) error {
 	case "off", "on":
 		return peersOffOn(sub == "off", rest, stdout, stderr)
 	case "enable", "disable", "status", "matrix", "allow", "deny", "same-account", "max-turns", "pause", "resume", "audit":
-		return peersExit(peerspkg.ExitUnsupported, fmt.Errorf("peers %s is not built yet: it needs the keys, matrix and agent (peers.md PE1-PE3)", sub))
+		return peersExit(peerspkg.ExitUnsupported, fmt.Errorf("peers %s is not built yet: it needs the keys and matrix (peers.md PE2-PE3); sy agent enable installs the agent", sub))
 	}
 	fmt.Fprintf(stderr, "sy peers: unknown subcommand %q\n\n%s", sub, peersUsage)
 	return errUsage
@@ -112,25 +113,14 @@ func peersList(args []string, stdout, stderr io.Writer) error {
 	if !pe.Enabled {
 		return peersExit(peerspkg.ExitPolicy, errors.New("peers are not enabled on this machine (sy config set peers.enabled true)"))
 	}
-	e := pe.Env
-	dir := e.Directory()
-	var from *peerspkg.Session
-	caller, rf := e.Whoami()
-	switch {
-	case rf == nil:
-		for i := range dir {
-			if dir[i].Entry.SessionID == caller.Entry.SessionID {
-				from = &dir[i]
-			}
+	entries, asked, rf := peersListEntries(pe, *all)
+	if rf != nil {
+		if rf.Code == peerspkg.CodeNotASession {
+			return peersExit(peerspkg.ExitGuard, errors.New(rf.Detail))
 		}
-	case rf.Code == peerspkg.CodeNotASession && *all:
-		// A terminal: every session, no asking session.
-	case rf.Code == peerspkg.CodeNotASession:
-		return peersExit(peerspkg.ExitGuard, errors.New("sy peers list works inside a Claude Code session; at a terminal use --all"))
-	default:
 		return peersExit(peerspkg.ExitCode(rf.Code), rf)
 	}
-	entries := e.Entries(dir, from, *all || from == nil)
+	e := pe.Env
 	if *asJSON {
 		if entries == nil {
 			entries = []peerspkg.ListEntry{}
@@ -141,7 +131,7 @@ func peersList(args []string, stdout, stderr io.Writer) error {
 		return enc.Encode(entries)
 	}
 	if len(entries) == 0 {
-		if from != nil && !*all {
+		if asked && !*all {
 			if e.MatrixConfigured() {
 				fmt.Fprintln(stdout, "No session you may message right now (the matrix allows none, or no other session is running).")
 			} else {
@@ -220,7 +210,10 @@ func peersSend(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if rf != nil {
 		return peersExit(peerspkg.ExitCode(rf.Code), errors.New(rf.Detail))
 	}
-	res, rf := pe.Env.Send(caller, to, text)
+	res, rf, err := peersDeliver(pe, caller, to, text)
+	if err != nil {
+		return err
+	}
 	if rf != nil {
 		fmt.Fprintln(stdout, peerspkg.Describe(rf))
 		return peersExit(peerspkg.ExitCode(rf.Code), nil)
@@ -248,4 +241,44 @@ func peersOffOn(off bool, args []string, stdout, stderr io.Writer) error {
 		fmt.Fprintln(stdout, "peers are on again on this machine.")
 	}
 	return nil
+}
+
+// peersAgent calls the agent when it runs; agent.ErrNoAgent means it does not, and the caller
+// takes the direct path (peers.md 8.5 "PE1 without the agent"). Any other error is final:
+// the request may have been handled, so it is never repeated.
+func peersAgent(pe peerEnv, req agent.Request) (agent.Reply, error) {
+	if c, rf := pe.Env.Whoami(); rf == nil {
+		req.ClaudePID, req.ConfigDir = c.ClaudePID, c.Slot.Name
+	}
+	return agent.Call(agentSocket(pe.Env), req, 30*time.Second)
+}
+
+func peersListEntries(pe peerEnv, all bool) ([]peerspkg.ListEntry, bool, *peerspkg.Refusal) {
+	rep, err := peersAgent(pe, agent.Request{Op: agent.OpList, All: all})
+	switch {
+	case err == nil:
+		if rf := rep.Refusal(); rf != nil {
+			return nil, false, rf
+		}
+		return rep.Entries, rep.Asked, nil
+	case !errors.Is(err, agent.ErrNoAgent):
+		return nil, false, peerspkg.Refuse(peerspkg.CodeFailed, "%v", err)
+	}
+	return pe.Env.List(all)
+}
+
+// peersDeliver sends through the agent when it runs, else writes the inbox itself.
+func peersDeliver(pe peerEnv, caller peerspkg.Caller, to, text string) (peerspkg.SendResult, *peerspkg.Refusal, error) {
+	rep, err := peersAgent(pe, agent.Request{Op: agent.OpSend, To: to, Text: text})
+	switch {
+	case err == nil:
+		if rf := rep.Refusal(); rf != nil {
+			return peerspkg.SendResult{}, rf, nil
+		}
+		return peerspkg.SendResult{Msg: rep.Msg, Thread: rep.Thread, Target: peerspkg.Session{Handle: rep.To}, HeldLikely: rep.HeldLikely}, nil, nil
+	case !errors.Is(err, agent.ErrNoAgent):
+		return peerspkg.SendResult{}, nil, fmt.Errorf("sy agent: %w", err)
+	}
+	res, rf := pe.Env.Send(caller, to, text)
+	return res, rf, nil
 }

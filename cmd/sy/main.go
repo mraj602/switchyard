@@ -44,6 +44,7 @@ func commands() map[string]command {
 		"machine":     {summary: "Print this machine's id and name", run: runMachine},
 		"outbox":      {summary: "Append to or inspect the local outbox (append, stat)", run: runOutbox},
 		"hook":        {summary: "Record one Claude Code hook event (stdin JSON)", run: runHook},
+		"agent":       {summary: "The peers agent service (enable, disable, status, run)", run: runAgent},
 		"peers":       {summary: "Message sessions in other accounts (list, send, off, on)", run: runPeers},
 		"statusline":  {summary: "Status line wrapper that also records limits", run: runStatusline},
 		"scan":        {summary: "Read token rows from transcripts", run: runScan},
