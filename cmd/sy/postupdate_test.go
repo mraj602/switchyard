@@ -20,7 +20,7 @@ func TestPostUpdateStepsAreRegisteredInOrder(t *testing.T) {
 	for _, s := range update.PostUpdateSteps() {
 		names = append(names, s.Name)
 	}
-	if got := strings.Join(names, ","); got != "plugin,timer,hub service,machine_info,doctor" {
+	if got := strings.Join(names, ","); got != "plugin,timer,hub service,agent service,machine_info,doctor" {
 		t.Errorf("post-update steps: %s", got)
 	}
 }

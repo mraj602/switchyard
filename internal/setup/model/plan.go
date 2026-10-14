@@ -248,11 +248,14 @@ type Report struct {
 // UninstallSteps are the `sy uninstall` steps that are not plan actions (setup.md 9.5 step
 // 3): listed in the plan shown before the confirmation, done after the plan applied.
 type UninstallSteps struct {
-	Timer      bool     `json:"timer,omitempty"`       // the OS timer that runs sy tick is removed
-	HubService string   `json:"hub_service,omitempty"` // the hub service of this name is removed
-	Copies     []string `json:"copies,omitempty"`      // synced copies that stop being synced (they stay)
-	Purge      bool     `json:"purge,omitempty"`       // --purge: config.toml and the state folder
-	Failed     []string `json:"failed,omitempty"`      // after the run: steps that failed (kept in the ledger)
+	Timer      bool   `json:"timer,omitempty"`       // the OS timer that runs sy tick is removed
+	HubService string `json:"hub_service,omitempty"` // the hub service of this name is removed
+	// AgentService is set when the peers agent's unit (`sy agent enable`) exists here; it is
+	// found by its file, not the ledger, and removed with the hub service.
+	AgentService string   `json:"agent_service,omitempty"`
+	Copies       []string `json:"copies,omitempty"` // synced copies that stop being synced (they stay)
+	Purge        bool     `json:"purge,omitempty"`  // --purge: config.toml and the state folder
+	Failed       []string `json:"failed,omitempty"` // after the run: steps that failed (kept in the ledger)
 }
 
 // HubResult is the `hub` object of an applied report.

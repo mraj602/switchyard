@@ -370,7 +370,10 @@ func uninstall(ctx context.Context, e *setupEnv, f accountFlags, purge bool) err
 	if led.HubService != nil {
 		steps.HubService = led.HubService.Name
 	}
-	others := steps.Timer || steps.HubService != "" || len(steps.Copies) > 0
+	if _, err := os.Stat(service.UnitPath(e.serviceEnv(), service.AgentSpec())); err == nil {
+		steps.AgentService = service.AgentName
+	}
+	others := steps.Timer || steps.HubService != "" || steps.AgentService != "" || len(steps.Copies) > 0
 	if p.Empty() && !others && !purge {
 		if f.asJSON {
 			return writeJSON(e.stdout, map[string]any{"v": 1, "mode": "uninstall", "status": "nothing-installed"})
@@ -457,6 +460,12 @@ func uninstall(ctx context.Context, e *setupEnv, f accountFlags, purge bool) err
 			steps.Failed = append(steps.Failed, "hub_service")
 		}
 	}
+	if steps.AgentService != "" {
+		if err := service.New(e.serviceEnv()).Uninstall(ctx, steps.AgentService); err != nil {
+			fmt.Fprintf(e.stderr, "sy uninstall: agent service: %v\n", err)
+			steps.Failed = append(steps.Failed, "agent_service") // the unit file stays, so a rerun finds it
+		}
+	}
 	if len(steps.Copies) > 0 {
 		if _, err := share.ForgetCopies(e.dirs.State.Path, func(string) bool { return true }); err != nil {
 			fmt.Fprintf(e.stderr, "sy uninstall: synced copies: %v\n", err)
@@ -489,6 +498,9 @@ func uninstallLines(e *setupEnv, s *model.UninstallSteps) []string {
 	}
 	if s.HubService != "" {
 		out = append(out, "− hub service "+s.HubService+" (the hub database stays)")
+	}
+	if s.AgentService != "" {
+		out = append(out, "− sy agent service "+s.AgentService+" (peers.enabled stays; keys stay)")
 	}
 	for _, c := range s.Copies {
 		out = append(out, "~ "+e.tilde(c)+"   synced copy → independent file (no longer synced)")
