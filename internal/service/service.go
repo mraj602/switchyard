@@ -26,7 +26,17 @@ import (
 const (
 	DefaultName   = "switchyard-hub"
 	DefaultListen = "127.0.0.1:8787"
+
+	// AgentName is the peers agent's service (`sy agent enable`, peers.md 2.1). The macOS
+	// label is com.switchyard.switchyard-agent.
+	AgentName = "switchyard-agent"
 )
+
+// AgentArgs are the arguments of the agent service's ExecStart.
+var AgentArgs = []string{"agent", "run"}
+
+// AgentSpec is the ServiceSpec `sy agent enable` installs.
+func AgentSpec() model.ServiceSpec { return model.ServiceSpec{Name: AgentName, Args: AgentArgs} }
 
 // Runner runs an external command (systemctl, loginctl, launchctl, schtasks). It is the
 // timer package's Runner, so timer.ExecRunner{} is the real one.
@@ -100,6 +110,9 @@ func normalize(spec model.ServiceSpec) (model.ServiceSpec, error) {
 	}
 	if spec.Listen == "" {
 		spec.Listen = DefaultListen
+	}
+	if len(spec.Args) == 0 && spec.Name == AgentName {
+		spec.Args = AgentArgs
 	}
 	if len(spec.Args) == 0 {
 		spec.Args = []string{"hub", "serve", "--listen", spec.Listen}
@@ -206,14 +219,35 @@ func hasControl(s string) bool {
 	return false
 }
 
+// describe is the one-line description of a service in its unit, plist and task.
+func describe(name string) string {
+	if name == AgentName {
+		return "Switchyard agent (peers)"
+	}
+	return "Switchyard hub (merged mode)"
+}
+
+// logName is the file launchd writes the service's stdout and stderr to, inside StateDir. The
+// agent writes its own rotated log (<state>/logs/agent.log), so launchd's gets another name.
+func logName(name string) string {
+	if name == AgentName {
+		return "agent.launchd.log"
+	}
+	return "hub.log"
+}
+
 // SystemdUnit renders the user unit. It matches deploy/systemd/switchyard-hub.service except
 // that ExecStart names sy by absolute path and Environment lines carry the folder overrides.
 func SystemdUnit(e Env, spec model.ServiceSpec) string {
 	var b strings.Builder
 	b.WriteString("[Unit]\n")
-	b.WriteString("Description=Switchyard hub (merged mode)\n")
+	agent := spec.Name == AgentName
+	b.WriteString("Description=" + describe(spec.Name) + "\n")
 	b.WriteString("Documentation=https://github.com/mraj602/switchyard\n")
-	b.WriteString("After=network.target\n\n")
+	if !agent {
+		b.WriteString("After=network.target\n")
+	}
+	b.WriteString("\n")
 	b.WriteString("[Service]\nType=simple\n")
 	for _, kv := range e.envPairs() {
 		fmt.Fprintf(&b, "Environment=%s\n", systemdEnvQuote(kv[0]+"="+kv[1]))
@@ -223,8 +257,14 @@ func SystemdUnit(e Env, spec model.ServiceSpec) string {
 		args = append(args, systemdQuote(a))
 	}
 	fmt.Fprintf(&b, "ExecStart=%s\n", strings.Join(args, " "))
-	b.WriteString("Restart=on-failure\nRestartSec=3\nTimeoutStopSec=20\n")
-	b.WriteString("NoNewPrivileges=yes\nPrivateTmp=yes\n\n")
+	if agent {
+		// The agent reads other processes' /proc entries and talks to Claude Code's sockets
+		// in $XDG_RUNTIME_DIR, so it gets no sandboxing beyond NoNewPrivileges.
+		b.WriteString("Restart=on-failure\nRestartSec=5\nNoNewPrivileges=yes\n\n")
+	} else {
+		b.WriteString("Restart=on-failure\nRestartSec=3\nTimeoutStopSec=20\n")
+		b.WriteString("NoNewPrivileges=yes\nPrivateTmp=yes\n\n")
+	}
 	b.WriteString("[Install]\nWantedBy=default.target\n")
 	return b.String()
 }
@@ -258,7 +298,7 @@ func LaunchdPlist(e Env, spec model.ServiceSpec) string {
 		}
 		b.WriteString("\t</dict>\n")
 	}
-	log := xmlEscape(filepath.Join(e.StateDir, "hub.log"))
+	log := xmlEscape(filepath.Join(e.StateDir, logName(spec.Name)))
 	b.WriteString(`	<key>RunAtLoad</key>
 	<true/>
 	<key>KeepAlive</key>
@@ -298,7 +338,7 @@ func WindowsTaskXML(e Env, spec model.ServiceSpec) string {
 	return `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
-    <Description>Switchyard hub (merged mode)</Description>
+    <Description>` + xmlEscape(describe(spec.Name)) + `</Description>
   </RegistrationInfo>
   <Triggers>
     <LogonTrigger>
@@ -390,13 +430,17 @@ func (s *Service) installSystemd(spec model.ServiceSpec) error {
 	unit := spec.Name + ".service"
 	for _, args := range [][]string{{"--user", "daemon-reload"}, {"--user", "enable", "--now", unit}} {
 		if out, err := s.run("systemctl", args...); err != nil {
-			return fmt.Errorf("systemctl %s: %v: %s\nThe unit file is %s; start the hub later with:\n  systemctl --user enable --now %s",
+			return fmt.Errorf("systemctl %s: %v: %s\nThe unit file is %s; start the service later with:\n  systemctl --user enable --now %s",
 				strings.Join(args, " "), err, strings.TrimSpace(string(out)), p, unit)
 		}
 	}
 	if e.Out != nil && e.User != "" {
 		if out, err := s.run("loginctl", "show-user", e.User, "--property=Linger"); err == nil && strings.Contains(string(out), "Linger=no") {
-			e.printf("%s\n", LingerNote(e.User))
+			note := LingerNote(e.User)
+			if spec.Name == AgentName {
+				note = strings.Replace(note, "the hub", "the agent", 1)
+			}
+			e.printf("%s\n", note)
 		}
 	}
 	return nil
