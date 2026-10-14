@@ -28,11 +28,6 @@ object Codec {
 
   fun hex(b: ByteArray): String = b.joinToString("") { "%02x".format(it) }
 
-  fun unhex(s: String): ByteArray {
-    require(s.length % 2 == 0) { "odd hex" }
-    return ByteArray(s.length / 2) { i -> s.substring(2 * i, 2 * i + 2).toInt(16).toByte() }
-  }
-
   private const val B32 = "abcdefghijklmnopqrstuvwxyz234567"
 
   /** RFC 4648 base32, lower case, no padding. */

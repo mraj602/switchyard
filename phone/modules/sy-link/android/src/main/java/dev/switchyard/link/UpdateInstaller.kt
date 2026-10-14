@@ -59,7 +59,7 @@ class UpdateInstaller(
     val m = offer.manifest
     val fromHub = offer.source == "hub" && Updates.sendsToken(offer.url, origin)
     if (!offer.url.startsWith("https://") && !fromHub) return Result.Refused("the update address is not https")
-    clean()
+    dir.listFiles()?.forEach { it.delete() } // what a killed process left
     dir.mkdirs()
     val file = File(dir, "update.apk")
     try {
@@ -76,10 +76,6 @@ class UpdateInstaller(
     } finally {
       file.delete() // the session holds its own copy
     }
-  }
-
-  fun clean() {
-    dir.listFiles()?.forEach { it.delete() }
   }
 
   companion object {
@@ -115,22 +111,16 @@ class UpdateInstaller(
   }
 }
 
-/** The installer's answer (a manifest receiver, not exported): opens the confirmation, cleans up. */
+/** The installer's answer (a manifest receiver, not exported): opens Android's confirmation. */
 class InstallResultReceiver : BroadcastReceiver() {
   override fun onReceive(ctx: Context, intent: Intent) {
-    when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
-      PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-        @Suppress("DEPRECATION")
-        val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
-        if (confirm != null) {
-          try {
-            ctx.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-          } catch (_: Exception) {
-            // the user will find the installer's notification instead
-          }
-        }
-      }
-      else -> UpdateInstaller(ctx).clean() // success (the process is replaced anyway), abort or failure
+    if (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE) != PackageInstaller.STATUS_PENDING_USER_ACTION) return
+    @Suppress("DEPRECATION")
+    val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT) ?: return
+    try {
+      ctx.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    } catch (_: Exception) {
+      // the user will find the installer's notification instead
     }
   }
 }

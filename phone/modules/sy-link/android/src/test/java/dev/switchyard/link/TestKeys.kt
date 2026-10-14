@@ -17,6 +17,39 @@ import javax.crypto.spec.SecretKeySpec
 
 // Software stand-ins for the Keystore keys and the hub key, for the JVM tests only.
 
+/** The store's KV in a map. */
+class MemoryKV : KV {
+  val map = HashMap<String, Any?>()
+
+  @Synchronized override fun getString(k: String): String? = map[k] as String?
+  @Synchronized override fun getLong(k: String, def: Long): Long = (map[k] as Long?) ?: def
+  @Synchronized override fun getBoolean(k: String, def: Boolean): Boolean = (map[k] as Boolean?) ?: def
+  @Synchronized override fun put(values: Map<String, Any?>, commit: Boolean) {
+    for ((k, v) in values) if (v == null) map.remove(k) else map[k] = v
+  }
+  @Synchronized override fun clear() = map.clear()
+}
+
+fun Codec.unhex(s: String): ByteArray {
+  require(s.length % 2 == 0) { "odd hex" }
+  return ByteArray(s.length / 2) { i -> s.substring(2 * i, 2 * i + 2).toInt(16).toByte() }
+}
+
+/** Bounds of the n-th backoff delay (0-based). */
+fun Backoff.Companion.bounds(n: Int): LongRange {
+  val base = STEPS_S[minOf(n, STEPS_S.size - 1)] * 1000L
+  return (base * (1 - JITTER)).toLong()..(base * (1 + JITTER)).toLong()
+}
+
+/** The hub's side of keys.md 7.1's seal. */
+fun ClaimSeal.open(k: ByteArray, secret: String, sealed: String): ByteArray {
+  val b = Codec.unb64u(sealed)!!
+  val c = Cipher.getInstance("AES/GCM/NoPadding")
+  c.init(Cipher.DECRYPT_MODE, SecretKeySpec(k, "AES"), GCMParameterSpec(128, b.copyOfRange(0, 12)))
+  c.updateAAD(Codec.utf8("sy-reg-v1\n$secret"))
+  return c.doFinal(b, 12, b.size - 12)
+}
+
 /** A P-256 key agreement key in memory, from a raw scalar (RFC 8291's ua_private) or fresh. */
 class SoftwareAgreement private constructor(private val priv: PrivateKey, override val publicKey: ByteArray) : Agreement {
   override fun agree(peer: ByteArray): ByteArray {
