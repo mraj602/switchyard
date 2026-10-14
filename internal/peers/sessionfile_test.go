@@ -70,6 +70,53 @@ func TestSessionFileLifecycle(t *testing.T) {
 	}
 }
 
+// The pid lookup is an ancestor walk (on macOS one ps per step): a pid that was not found
+// must not be looked for again on every later hook event.
+func TestSessionFilePIDLookupOnlyOnStartAndNewFile(t *testing.T) {
+	f := newFx(t)
+	calls := 0
+	c := peers.HookContext{State: f.state, ConfigDir: "~/.claude-2", Now: f.now, FindPID: func() int { calls++; return 0 }}
+	ev := func(name string) peers.HookEvent {
+		return peers.HookEvent{SessionID: "s-pid", Name: name, PermissionMode: "default", Prompt: "x"}
+	}
+	peers.UpdateSessionFile(c, ev("UserPromptSubmit")) // a new file: looked up once
+	for _, n := range []string{"PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop"} {
+		peers.UpdateSessionFile(c, ev(n))
+	}
+	if calls != 1 {
+		t.Errorf("looked up %d times, want 1", calls)
+	}
+	peers.UpdateSessionFile(c, ev("SessionStart"))
+	if calls != 2 {
+		t.Errorf("SessionStart must look up again (%d)", calls)
+	}
+}
+
+// countProc counts the processes read.
+type countProc struct {
+	peers.Proc
+	n int
+}
+
+func (c *countProc) Info(pid int) (peers.ProcInfo, error) { c.n++; return c.Proc.Info(pid) }
+
+func TestNearestClaudeStopsAtTheFirst(t *testing.T) {
+	f := newFx(t)
+	f.proc(9, 1, "init-ish", "", "x", 1)
+	for pid := 10; pid < 20; pid++ {
+		f.proc(pid, pid-1, "zsh", "", "zsh", pid)
+	}
+	f.claudeProc(20, 19, "", 20)
+	f.proc(21, 20, "sh", "/bin/sh", "sh", 21)
+	p := &countProc{Proc: peers.LinuxProc{Root: f.procRoot}}
+	if pid := peers.NearestClaude(p, 21); pid != 20 || p.n != 2 {
+		t.Errorf("pid %d after %d reads", pid, p.n)
+	}
+	if pid := peers.NearestClaude(p, 15); pid != 0 {
+		t.Errorf("no claude above 15, got %d", pid)
+	}
+}
+
 func TestSessionFileHasNoPromptAndRestrictedMode(t *testing.T) {
 	f := newFx(t)
 	c := hookCtx(f, 1)

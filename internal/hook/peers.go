@@ -26,14 +26,9 @@ func recordPeers(env *clientenv.Env, payload []byte, getenv func(string) string,
 		State:     env.Dirs.State.Path,
 		ConfigDir: env.Slot.Name,
 		Now:       time.Now(),
-		FindPID: func() int {
-			// The nearest Claude-looking ancestor of the hook (keys.md 8's walk). Only asked
-			// on SessionStart or when the file has no pid yet.
-			if c := peers.ClaudeCandidates(proc, os.Getppid()); len(c) > 0 {
-				return c[0].PID
-			}
-			return 0
-		},
+		// The nearest Claude-looking ancestor of the hook (keys.md 8's walk). Only asked on
+		// SessionStart or when the file is new.
+		FindPID: func() int { return peers.NearestClaude(proc, os.Getppid()) },
 	}, ev)
 	if err != nil {
 		logError(env, getenv, event, err)
