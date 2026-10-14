@@ -116,6 +116,8 @@ class ReleaseFilterTest {
     assertNull(Updates.newestRelease("[" + rel("v1.0.0") + "]"))
     assertNull(Updates.newestRelease("not json"))
     assertNull(Updates.newestRelease("[]"))
+    // numbers too large for an Int are skipped, not thrown
+    assertEquals("phone-v0.9.0", Updates.newestRelease("[" + rel("phone-v99999999999.0.0") + "," + rel("phone-v0.9.0") + "]")!!.tag)
   }
 }
 
