@@ -99,7 +99,7 @@ func TestUninstallRemovesTerminalPieces(t *testing.T) {
 	h := detecttest.Fresh(t)
 	h.B.File(".claude-2/.claude.json", `{}`, 0o600)
 	th := newTermHome(t, h)
-	folder := h.Abs(".local/share/warp-terminal/tab_configs")
+	folder := filepath.Join(h.Abs(warpDataRel()), "tab_configs")
 	if err := os.MkdirAll(filepath.Dir(folder), 0o755); err != nil {
 		t.Fatal(err)
 	}

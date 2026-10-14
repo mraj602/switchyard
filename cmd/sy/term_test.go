@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -295,7 +296,7 @@ func TestTermWarpTabsAndOpen(t *testing.T) {
 	if code != 4 || !strings.Contains(errOut, "Warp not found") {
 		t.Fatalf("no Warp: exit %d %s", code, errOut)
 	}
-	folder := h.Abs(".local/share/warp-terminal/tab_configs")
+	folder := filepath.Join(h.Abs(warpDataRel()), "tab_configs")
 	if err := os.MkdirAll(filepath.Dir(folder), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -384,4 +385,12 @@ func TestTermWarpTabsAndOpen(t *testing.T) {
 	if after := parentSnap(t, th.root, th.syHome); strings.Join(after, "\n") != strings.Join(before, "\n") {
 		t.Errorf("something was written next to the temp roots:\n%v\n%v", before, after)
 	}
+}
+
+// warpDataRel is Warp data folder under the temp HOME for this OS (see warp.DataFolder).
+func warpDataRel() string {
+	if runtime.GOOS == "darwin" {
+		return ".warp"
+	}
+	return ".local/share/warp-terminal"
 }
