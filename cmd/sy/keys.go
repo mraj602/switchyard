@@ -741,7 +741,9 @@ func keysRevoke(ctx context.Context, env keysEnv, args []string) error {
 		if err != nil {
 			return fmt.Errorf("the hub's revocation list does not verify: %w", err)
 		}
-		if s.Body.RevokedDevice(id) {
+		// The device's current keys, not its id: a live tofu device is listed with the keys
+		// it replaced (keys.md 4.2 step 3) and must still be revocable.
+		if s.Body.RevokedKey(c.Body.SignFP()) && s.Body.RevokedKey(c.Body.BoxFP()) {
 			fmt.Fprintf(env.stdout, "%s is already revoked.\n", id)
 			return nil
 		}
