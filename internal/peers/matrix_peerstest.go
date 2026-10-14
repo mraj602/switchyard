@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+
+	"github.com/mraj602/switchyard/internal/keys"
 )
 
 // TestAllowEnv names the file an unsigned local allow list is read from in `peerstest`
@@ -13,16 +15,9 @@ import (
 // binary contains no trace of it.
 const TestAllowEnv = "SY_PEERS_TEST_ALLOW"
 
-type allowFile struct {
-	Paused      bool       `json:"paused"`
-	SameAccount bool       `json:"same_account"`
-	MaxTurnsN   int        `json:"max_turns"`
-	Allow       [][]string `json:"allow"`
-}
-
-// DefaultMatrix reads an unsigned allow file: $SY_PEERS_TEST_ALLOW, else
-// <state>/peers/test-allow.json; none means NoMatrix. It evaluates peers.md 5.3 and does
-// nothing else (no signatures).
+// DefaultMatrix reads an unsigned allow file ({"paused","same_account","max_turns","allow"}):
+// $SY_PEERS_TEST_ALLOW, else <state>/peers/test-allow.json, evaluated like a signed document
+// (no signatures). With no file it is the signed document, as in a release build.
 func DefaultMatrix(state string) Matrix {
 	p := os.Getenv(TestAllowEnv)
 	if p == "" {
@@ -30,45 +25,18 @@ func DefaultMatrix(state string) Matrix {
 	}
 	b, err := os.ReadFile(p)
 	if err != nil {
-		return LocalMatrix(state) // no test file: the signed document, as in a release build
+		return LocalMatrix(state)
 	}
-	var f allowFile
+	var f keys.MatrixBody
 	if json.Unmarshal(b, &f) != nil {
 		return NoMatrix{}
 	}
-	return f
-}
-
-func (f allowFile) MaxTurns() int {
-	if f.MaxTurnsN > 0 {
-		return f.MaxTurnsN
-	}
-	return DefaultMaxTurns
-}
-
-func (f allowFile) has(from, to string) bool {
-	for _, p := range f.Allow {
-		if len(p) == 2 && p[0] == from && p[1] == to {
-			return true
+	allow := f.Allow[:0]
+	for _, pair := range f.Allow {
+		if len(pair) == 2 {
+			allow = append(allow, pair)
 		}
 	}
-	return false
-}
-
-func (f allowFile) Allowed(from, to Party, th *Thread) Decision {
-	no := Decision{Reason: CodeNotAllowed, Detail: "the matrix does not allow " + from.Label + " → " + to.Label}
-	switch {
-	case f.Paused:
-		return Decision{Reason: CodePaused, Detail: "peers are paused"}
-	case from.Account != "" && from.Account == to.Account:
-		if f.SameAccount {
-			return Decision{Allowed: true}
-		}
-		return no
-	case f.has(from.Account, to.Account):
-		return Decision{Allowed: true}
-	case th != nil && th.A == to.Session && f.has(to.Account, from.Account):
-		return Decision{Allowed: true} // reply rule
-	}
-	return no
+	f.Allow = allow
+	return NewDocMatrix(f)
 }

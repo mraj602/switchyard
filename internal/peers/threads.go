@@ -87,11 +87,7 @@ func (s *ThreadSet) FindOpen(x, y string) *Thread {
 
 // Start opens a thread: from is a_session.
 func (s *ThreadSet) Start(from, to, fromAccount, toAccount string, now time.Time) *Thread {
-	s.Threads = append(s.Threads, Thread{
-		ID: ThreadID(from, to, now), A: from, B: to, AAccount: fromAccount, BAccount: toAccount,
-		OpenedAt: now, LastAt: now,
-	})
-	return &s.Threads[len(s.Threads)-1]
+	return s.Adopt(ThreadID(from, to, now), from, to, fromAccount, toAccount, "", now)
 }
 
 // Adopt opens a thread whose id another machine made (a remote message, peers.md 6.1: the
