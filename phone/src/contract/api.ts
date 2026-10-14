@@ -227,7 +227,7 @@ export interface DevicePrefs {
   widgets?: boolean;
 }
 
-export type ChannelKind = 'webpush' | 'ntfy' | 'expo';
+export type ChannelKind = 'webpush' | 'ntfy' | 'expo' | 'link';
 
 export type Platform = 'ios' | 'android';
 
@@ -251,6 +251,8 @@ export interface PushTarget {
   created_at?: Iso;
   platform?: Platform | null;
   app_version?: string | null;
+  /** push.md 13.7: link targets only (link.md 9). */
+  link?: { connected: boolean; last_seen_at?: Iso | null; queued?: number } | null;
 }
 
 /** POST /v1/push/targets body for the app (push.md 12.7). */
@@ -296,6 +298,31 @@ export interface PairClaim {
   expect_kind: 'phone';
   cookie: false;
   client: string; // "app/<version>+<build>"
+  /** keys.md 7.1: typed-code claims only (never with a secret). */
+  keys?: DeviceKeysNew;
+  /** keys.md 7.1: QR claims with `k`: the keys sealed with it. */
+  keys_sealed?: string;
+}
+
+/** api.yaml DeviceKeysNew (keys.md 7.1), as a phone sends it. */
+export interface DeviceKeysNew {
+  sign: { alg: 'p256'; pub: string };
+  box: { alg: 'p256'; pub: string };
+  auth?: string;
+}
+
+/** api.yaml PublicKey. */
+export interface PublicKey {
+  alg: string;
+  pub: string;
+  fp: string;
+}
+
+/** api.yaml SignedDoc (keys.md 4.1). */
+export interface SignedDoc {
+  type: string;
+  body: string;
+  sigs: { by: string; fp?: string; sig: string }[];
 }
 
 /** api.yaml PairClaimReply (200 of POST /v1/pair/claim). */
@@ -307,6 +334,12 @@ export interface PairClaimReply {
   token?: string; // shown once; kept only in the keychain (P3)
   machine?: string | null;
   hub: { url?: string; version?: string };
+  /** keys.md 7.3, from F1 on. */
+  hub_key?: PublicKey;
+  owner_key?: SignedDoc | null;
+  cert?: SignedDoc;
+  link?: { urls?: string[]; ping_s?: number };
+  reg?: 'qr' | 'tofu' | 'ssh' | 'local';
 }
 
 /** api.yaml PushSettings (in GET /v1/rules `settings`); `expo_refresh_min` is phase 8. */
