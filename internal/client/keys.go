@@ -1,12 +1,15 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/mraj602/switchyard/internal/keys"
@@ -109,4 +112,123 @@ func (c *Client) DeleteSelf(ctx context.Context) error {
 		return statusError(resp, b)
 	}
 	return nil
+}
+
+// ---- the key endpoints (api.yaml tag keys) ----
+
+// KeysInfo is GET /v1/keys.
+type KeysInfo struct {
+	HubKey             PublicKey      `json:"hub_key"`
+	OwnerKey           *OwnerKeyInfo  `json:"owner_key"`
+	Pending            []OwnerKeyInfo `json:"pending"`
+	RevocationsVersion int            `json:"revocations_version"`
+	Devices            []KeyDevice    `json:"devices"`
+}
+
+// OwnerKeyInfo is api.yaml OwnerKey.
+type OwnerKeyInfo struct {
+	FP         string   `json:"fp"`
+	Pub        string   `json:"pub"`
+	State      string   `json:"state"`
+	ProposedBy string   `json:"proposed_by"`
+	CreatedAt  string   `json:"created_at"`
+	Doc        keys.Doc `json:"doc"`
+}
+
+// KeyDevice is one entry of KeysInfo.Devices.
+type KeyDevice struct {
+	ID   string `json:"id"`
+	Kind string `json:"kind"`
+	Name string `json:"name"`
+	Keys struct {
+		SignFP      string `json:"sign_fp"`
+		BoxFP       string `json:"box_fp"`
+		Reg         string `json:"reg"`
+		OwnerSigned bool   `json:"owner_signed"`
+	} `json:"keys"`
+}
+
+// doJSON sends in (nil: no body) with the bearer token and decodes a 2xx reply into out
+// (nil: ignored). Anything else is *StatusError.
+func (c *Client) doJSON(ctx context.Context, method, path string, in, out any) error {
+	var body io.Reader
+	if in != nil {
+		b, err := json.Marshal(in)
+		if err != nil {
+			return err
+		}
+		body = bytes.NewReader(b)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.endpoint(path), body)
+	if err != nil {
+		return err
+	}
+	if in != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	req.Header.Set("Authorization", "Bearer "+c.Token)
+	resp, err := c.http().Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if resp.StatusCode/100 != 2 {
+		return statusError(resp, b)
+	}
+	if out == nil || len(b) == 0 {
+		return nil
+	}
+	return json.Unmarshal(b, out)
+}
+
+// Keys is GET /v1/keys.
+func (c *Client) Keys(ctx context.Context) (KeysInfo, error) {
+	var k KeysInfo
+	return k, c.doJSON(ctx, http.MethodGet, "/v1/keys", nil, &k)
+}
+
+// ProposeOwner is POST /v1/keys/owner.
+func (c *Client) ProposeOwner(ctx context.Context, doc keys.Doc) (OwnerKeyInfo, error) {
+	var o OwnerKeyInfo
+	return o, c.doJSON(ctx, http.MethodPost, "/v1/keys/owner", map[string]any{"doc": doc}, &o)
+}
+
+// DeviceCert is GET /v1/devices/{id}/cert.
+func (c *Client) DeviceCert(ctx context.Context, id string) (keys.Doc, bool, error) {
+	var r struct {
+		Cert        keys.Doc `json:"cert"`
+		OwnerSigned bool     `json:"owner_signed"`
+	}
+	err := c.doJSON(ctx, http.MethodGet, "/v1/devices/"+url.PathEscape(id)+"/cert", nil, &r)
+	return r.Cert, r.OwnerSigned, err
+}
+
+// Certify is POST /v1/devices/{id}/cert.
+func (c *Client) Certify(ctx context.Context, id, fp, sig string) error {
+	return c.doJSON(ctx, http.MethodPost, "/v1/devices/"+url.PathEscape(id)+"/cert", map[string]string{"fp": fp, "sig": sig}, nil)
+}
+
+// Revocations is GET /v1/keys/revocations; nil when nothing was revoked.
+func (c *Client) Revocations(ctx context.Context) (*keys.Doc, error) {
+	var r struct {
+		Doc *keys.Doc `json:"doc"`
+	}
+	return r.Doc, c.doJSON(ctx, http.MethodGet, "/v1/keys/revocations", nil, &r)
+}
+
+// UploadRevocations is POST /v1/keys/revocations; it returns the devices the hub revoked.
+func (c *Client) UploadRevocations(ctx context.Context, doc keys.Doc) ([]string, error) {
+	var r struct {
+		Revoked []string `json:"revoked"`
+	}
+	return r.Revoked, c.doJSON(ctx, http.MethodPost, "/v1/keys/revocations", map[string]any{"doc": doc}, &r)
+}
+
+// PutKeys is PUT /v1/devices/self/keys; it returns the hub-signed certificate.
+func (c *Client) PutKeys(ctx context.Context, k keys.DeviceKeysNew) (keys.Doc, error) {
+	var r struct {
+		Cert keys.Doc `json:"cert"`
+	}
+	return r.Cert, c.doJSON(ctx, http.MethodPut, "/v1/devices/self/keys", k, &r)
 }

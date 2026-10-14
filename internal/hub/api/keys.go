@@ -126,7 +126,46 @@ func (s *Server) keysGet(w http.ResponseWriter, r *http.Request) {
 		rv = rl.Body.Version
 	}
 	out["revocations_version"] = rv
+	// For `sy keys certify` on the owner machine (a write token): the live devices with keys
+	// and whether the owner signed them. Viewer tokens do not get it.
+	if caller.HasScope("owner") || caller.HasScope("write") {
+		list, err := s.keysDevices(r.Context())
+		if err != nil {
+			keysFail(w, err)
+			return
+		}
+		out["devices"] = list
+	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// keyDeviceJSON is one entry of KeysInfo.devices.
+type keyDeviceJSON struct {
+	ID   string     `json:"id"`
+	Kind string     `json:"kind"`
+	Name string     `json:"name"`
+	Keys devKeyJSON `json:"keys"`
+}
+
+func (s *Server) keysDevices(ctx context.Context) ([]keyDeviceJSON, error) {
+	certs, err := s.cfg.Keys.Certs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	live, err := s.Store().Devices(ctx, false)
+	if err != nil {
+		return nil, err
+	}
+	out := []keyDeviceJSON{}
+	for _, d := range live {
+		i, ok := certs[d.ID]
+		if !ok || d.RevokedAt != 0 {
+			continue
+		}
+		out = append(out, keyDeviceJSON{ID: d.ID, Kind: i.Kind, Name: i.Name, Keys: devKeyJSON{SignFP: i.SignFP, BoxFP: i.BoxFP,
+			Reg: i.Reg, OwnerSigned: i.OwnerSigned, CertifiedAt: store.Time(i.CertifiedAt)}})
+	}
+	return out, nil
 }
 
 func (s *Server) keysPropose(w http.ResponseWriter, r *http.Request) {

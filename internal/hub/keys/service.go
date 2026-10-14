@@ -338,6 +338,8 @@ type DeviceKeyInfo struct {
 	SignFP, BoxFP, Reg string
 	OwnerSigned        bool
 	CertifiedAt        int64
+	// Kind and Name are the certificate's (as signed).
+	Kind, Name string
 }
 
 // Certs returns every device's verified certificate summary, by device id. Rows that do not
@@ -357,7 +359,8 @@ func (s *Service) Certs(ctx context.Context) (map[string]DeviceKeyInfo, error) {
 		if err != nil {
 			continue
 		}
-		i := DeviceKeyInfo{SignFP: c.Body.SignFP(), BoxFP: c.Body.BoxFP(), Reg: c.Body.Reg, OwnerSigned: c.OwnerSigned}
+		i := DeviceKeyInfo{SignFP: c.Body.SignFP(), BoxFP: c.Body.BoxFP(), Reg: c.Body.Reg, OwnerSigned: c.OwnerSigned,
+			Kind: c.Body.Kind, Name: c.Body.Name}
 		if c.OwnerSigned {
 			i.CertifiedAt = r.Certified
 		}
