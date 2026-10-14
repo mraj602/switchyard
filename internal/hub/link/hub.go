@@ -38,6 +38,7 @@ const (
 	MaxTotal        = 50_000
 	InFlight        = 64
 	MaxChallenging  = 64
+	MaxNonces       = 10_000 // outstanding challenges (each lives ChallengeTTL)
 	LoginTimeout    = 10 * time.Second
 	ChallengeTTL    = 60 * time.Second
 	LoginsPerMinute = 10

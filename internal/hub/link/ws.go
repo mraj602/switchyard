@@ -179,6 +179,9 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 // wsLogin sends a challenge and reads the hello (link.md 3.1, 3.2).
 func (h *Hub) wsLogin(ctx context.Context, ws *websocket.Conn, ip string) (*session, error) {
 	ch, err := h.newChallenge()
+	if errors.Is(err, errBusy) {
+		return nil, refuse(link.CloseRateLimited, "busy")
+	}
 	if err != nil {
 		return nil, err
 	}

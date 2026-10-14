@@ -35,6 +35,9 @@ type session struct {
 }
 
 // newChallenge makes a challenge with a fresh single-use nonce (link.md 3.1).
+// errBusy: MaxNonces challenges are outstanding.
+var errBusy = errors.New("too many outstanding challenges")
+
 func (h *Hub) newChallenge() (link.Challenge, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -43,13 +46,17 @@ func (h *Hub) newChallenge() (link.Challenge, error) {
 	nonce := keys.B64(b)
 	exp := h.now().Add(ChallengeTTL).Unix()
 	h.mu.Lock()
-	if len(h.nonces) > 10_000 { // a flood of challenges: forget the expired ones now
+	if len(h.nonces) >= MaxNonces { // a flood of challenges: forget the expired ones now
 		now := h.now().Unix()
 		for n, e := range h.nonces {
 			if e < now {
 				delete(h.nonces, n)
 			}
 		}
+	}
+	if len(h.nonces) >= MaxNonces { // op challenge needs no credential: bound what it can pin
+		h.mu.Unlock()
+		return link.Challenge{}, errBusy
 	}
 	h.nonces[nonce] = exp
 	h.mu.Unlock()

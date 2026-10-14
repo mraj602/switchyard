@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -590,5 +591,43 @@ func TestRevokedDuringLogin(t *testing.T) {
 	pl := &linktest.Poller{D: q, URL: f.pollURL()}
 	if r, _ := pl.Poll(f.ctx); r.Status != http.StatusForbidden {
 		t.Fatalf("poll %d", r.Status)
+	}
+}
+
+// op challenge needs no credential (and is on Funnel): outstanding nonces are capped, and
+// expired ones make room again.
+func TestChallengeFloodCapped(t *testing.T) {
+	f := newFix(t)
+	post := func() int {
+		resp, err := http.Post(f.pollURL(), "application/json", strings.NewReader(`{"op":"challenge"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		return resp.StatusCode
+	}
+	exp := f.clk.Now().Add(ChallengeTTL).Unix()
+	f.h.mu.Lock()
+	for i := 0; i < MaxNonces; i++ {
+		f.h.nonces[fmt.Sprint("n", i)] = exp
+	}
+	f.h.mu.Unlock()
+	if code := post(); code != http.StatusServiceUnavailable {
+		t.Fatalf("over the cap: %d", code)
+	}
+	f.h.mu.Lock()
+	n := len(f.h.nonces)
+	f.h.mu.Unlock()
+	if n != MaxNonces {
+		t.Fatalf("%d nonces", n)
+	}
+	ctx, cancel := context.WithTimeout(f.ctx, 5*time.Second)
+	defer cancel()
+	if _, err := linktest.Dial(ctx, f.wsURL(), f.phone(22)); linktest.CloseCode(err) != link.CloseRateLimited {
+		t.Fatalf("ws over the cap: %v", err)
+	}
+	f.clk.Add(ChallengeTTL + time.Second)
+	if code := post(); code != http.StatusOK {
+		t.Fatalf("after expiry: %d", code)
 	}
 }
