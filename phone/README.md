@@ -25,6 +25,45 @@ phone by scanning the hub's QR (its keys go in sealed), then check Settings → 
 (battery optimisation, the maker guide, "Verified by QR"). Build the APK yourself with
 `expo prebuild` and Gradle (phone.md P13); nothing here signs or uploads it.
 
+### Release build and updates (N2): you run it
+
+`make phone-apk-release` does `expo prebuild` and Gradle `assembleRelease` on your laptop and
+signs with **your own keystore**. It refuses to start without one, and nothing it needs is ever
+written into the repo. No agent and no CI job runs it, and nothing is uploaded.
+
+Create the keystore once, outside the repository (a secrets folder; keep two offline copies,
+because losing it means every phone must uninstall and reinstall). This is the command; no
+`make` target runs it for you:
+
+```sh
+keytool -genkeypair -v -keystore ~/secrets/switchyard-release.jks -alias switchyard \
+  -keyalg RSA -keysize 4096 -validity 10000
+```
+
+Then give the build the keystore, either in your shell:
+
+```sh
+export SY_ANDROID_KEYSTORE=~/secrets/switchyard-release.jks
+export SY_ANDROID_KEY_ALIAS=switchyard
+read -rs SY_ANDROID_KEYSTORE_PASSWORD && export SY_ANDROID_KEYSTORE_PASSWORD   # no echo, not in history
+# SY_ANDROID_KEY_PASSWORD too, only when the key password differs
+make phone-apk-release
+```
+
+or as a properties file outside the repo (`storeFile`, `keyAlias`, `storePassword`,
+`keyPassword`) named by `SY_ANDROID_SIGNING_PROPERTIES`; an environment variable wins over it.
+The passwords go to Gradle and keytool through the environment only and are never printed.
+
+Output in `phone/dist/`: `switchyard-<version>.apk`, `SHA256SUMS` and `manifest.json` (version,
+versionCode as `build`, size, sha256, the signing certificate's SHA-256 as `cert_sha256`, min
+sdk). The certificate fingerprint is printed too: publish it with the release, and compare it
+after a build with `keytool -list -v -keystore <your keystore>`. Then, by hand, publish the three
+files as a GitHub release tagged `phone-vX.Y.Z` (the hub mirrors it daily, `docs/spec/phone.md`
+P16.2; the app installs it after checking the checksum and that the signing key is yours).
+`SY_RELEASE_NOTES` fills the manifest's `notes`. The Android `versionCode` is
+`MAJOR*10000 + MINOR*100 + PATCH` of the app version, so bump `version` in `app.config.ts` and
+`package.json` for each release.
+
 The steps below are the phase 8 Expo profile (`SY_PUSH=expo`) and the iPhone.
 
 ## What you need, in order (Expo profile)
