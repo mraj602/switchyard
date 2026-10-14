@@ -97,6 +97,9 @@ func (s *Server) machineDelete(w http.ResponseWriter, r *http.Request) {
 	err := s.store.Write(r.Context(), func(tx *store.Tx) error {
 		var err error
 		rm, err = tx.MachineRemove(id, s.now().UnixMilli())
+		if err == nil && s.cfg.Keys != nil {
+			err = s.cfg.Keys.RevokedTx(tx, rm.Devices, caller.ID, "revoked")
+		}
 		return err
 	})
 	if errors.Is(err, store.ErrNotFound) {
@@ -107,6 +110,7 @@ func (s *Server) machineDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.logf("machine removed id=%s devices=%d pull=%d alerts=%d", id, len(rm.Devices), len(rm.Pull), len(rm.Alerts))
+	s.linkRevoked(r.Context(), rm.Devices...)
 	if m, err := s.store.MachineByID(r.Context(), id, s.now()); err == nil {
 		s.publishMachine(m)
 	}
