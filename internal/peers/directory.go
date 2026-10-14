@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-// Session is one live session of this machine in the directory (peers.md 3.1, local
-// source). The hub source (other machines) is added by the agent in PE2.
+// Session is one live session in the directory (peers.md 3.1): of this machine (the local
+// source), or of another machine from the hub's directory (Remote, through Env.Remote).
 type Session struct {
 	Entry        RegistryEntry
 	Account      string
@@ -19,6 +19,12 @@ type Session struct {
 	Mode         Mode // from the session file; prompting when there is none
 	File         SessionFile
 	HasFile      bool
+	MachineName  string
+	// Remote: the session runs on another machine; Device is that machine's agent device
+	// ("" when it runs none, so it cannot be reached) and State the hub's session state.
+	Remote bool
+	Device string
+	State  string
 }
 
 // ListEntry is one line of `sy peers list --json` (peers.md 3.2).
@@ -72,7 +78,7 @@ func (e Env) Directory() []Session {
 			if !e.alive(ent.SocketOf(e.Runtime)) {
 				continue
 			}
-			s := Session{Entry: ent, Account: acct, AccountLabel: label, Project: e.tildeDir(ent.CWD)}
+			s := Session{Entry: ent, Account: acct, AccountLabel: label, Project: e.tildeDir(ent.CWD), MachineName: e.Machine.Name}
 			s.Name = sanitizeHandlePart(ent.Name)
 			if s.Name == "" {
 				s.Name = sanitizeHandlePart(filepath.Base(ent.CWD))
@@ -122,13 +128,20 @@ func (e Env) Entries(dir []Session, from *Session, all bool) []ListEntry {
 		}
 		le := ListEntry{
 			Session: s.Entry.SessionID, Handle: s.Handle, Name: s.Name, Account: s.Account,
-			AccountLabel: s.AccountLabel, Machine: e.Machine.Name, Project: s.Project,
-			State: s.Entry.Status, Local: from != nil && from.Account != "" && from.Account == s.Account,
+			AccountLabel: s.AccountLabel, Machine: s.MachineName, Project: s.Project,
+			State: s.Entry.Status, Local: !s.Remote && from != nil && from.Account != "" && from.Account == s.Account,
 			Can: "none",
 		}
-		if from != nil {
+		if s.Remote {
+			le.State = s.State
+			if s.Device != "" {
+				d := s.Device
+				le.Device = &d
+			}
+		}
+		if from != nil && (!s.Remote || s.Device != "") {
 			le.Can = e.can(m, threads, *from, s)
-			le.MayAsk = from.Mode != s.Mode
+			le.MayAsk = !s.Remote && from.Mode != s.Mode
 		}
 		if from != nil && !all && le.Can == "none" {
 			continue

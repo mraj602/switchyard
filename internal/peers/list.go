@@ -21,5 +21,18 @@ func (e Env) List(all bool) (entries []ListEntry, asked bool, rf *Refusal) {
 	default:
 		return nil, false, rf
 	}
-	return e.Entries(dir, from, all || from == nil), from != nil, nil
+	return e.Entries(append(dir, e.remoteSessions()...), from, all || from == nil), from != nil, nil
+}
+
+// remoteSessions are the other machines' sessions when the agent has a hub (none on error:
+// the list then shows this machine only).
+func (e Env) remoteSessions() []Session {
+	if e.Remote == nil {
+		return nil
+	}
+	rs, err := e.Remote.Sessions()
+	if err != nil {
+		return nil
+	}
+	return rs
 }

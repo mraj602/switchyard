@@ -41,6 +41,9 @@ type Thread struct {
 	Turns    int        `json:"turns"`             // messages since HumanAt
 	PausedAt *time.Time `json:"paused_at,omitempty"`
 	ClosedAt *time.Time `json:"closed_at,omitempty"`
+	// Remote is the session of the two that runs on another machine ("" for a same-machine
+	// thread): this machine cannot see it end, so only idleness closes such a thread.
+	Remote string `json:"remote,omitempty"`
 }
 
 // ThreadID is "t_" + the first 16 hex of SHA-256(a ‖ "\n" ‖ b ‖ "\n" ‖ decimal(opened_at ms)).
@@ -91,12 +94,23 @@ func (s *ThreadSet) Start(from, to, fromAccount, toAccount string, now time.Time
 	return &s.Threads[len(s.Threads)-1]
 }
 
+// Adopt opens a thread whose id another machine made (a remote message, peers.md 6.1: the
+// sender's agent makes the id and every envelope carries it). a is the opener; remote is the
+// session on the other machine.
+func (s *ThreadSet) Adopt(id, a, b, aAccount, bAccount, remote string, now time.Time) *Thread {
+	s.Threads = append(s.Threads, Thread{ID: id, A: a, B: b, AAccount: aAccount, BAccount: bAccount, OpenedAt: now, LastAt: now,
+		Remote: remote})
+	return &s.Threads[len(s.Threads)-1]
+}
+
 // Expire closes threads idle for ThreadIdle or with a session that ended (live says whether a
-// session id is still running), and forgets threads closed for over 7 days.
+// session id is still running; the remote session of a thread counts as live), and forgets
+// threads closed for over 7 days.
 func (s *ThreadSet) Expire(now time.Time, live func(session string) bool) {
 	var keep []Thread
 	for _, t := range s.Threads {
-		if t.Open() && (now.Sub(t.LastAt) > ThreadIdle || (live != nil && (!live(t.A) || !live(t.B)))) {
+		alive := func(id string) bool { return live == nil || id == t.Remote || live(id) }
+		if t.Open() && (now.Sub(t.LastAt) > ThreadIdle || !alive(t.A) || !alive(t.B)) {
 			c := now
 			t.ClosedAt = &c
 		}
