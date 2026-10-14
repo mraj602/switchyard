@@ -3,12 +3,13 @@ package main
 // End-to-end tests of `sy term` and `sy open` (docs/phases/7.md WP-E): the sy binary
 // against fakeclaude in a temp home. A wrapper `claude` in front of fakeclaude records
 // every argv with its CLAUDE_CONFIG_DIR and points Warp's GitHub marketplace at a local
-// copy; a fake xdg-open records the URI sy open hands it.
+// copy; fake xdg-open and open (macOS) record the URI sy open hands it.
 
 import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -69,7 +70,9 @@ if [ "$1 $2 $3 $4" = "plugin marketplace add warpdotdev/claude-code-warp#main" ]
 fi
 exec "`+filepath.Join(fakeClaudeDir(t), "claude")+`" "$@"
 `)
-	writeExec(t, filepath.Join(bin, "xdg-open"), "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \""+th.openLog+"\"\n")
+	opener := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"" + th.openLog + "\"\n"
+	writeExec(t, filepath.Join(bin, "xdg-open"), opener)
+	writeExec(t, filepath.Join(bin, "open"), opener) // macOS
 	for i, kv := range s.env {
 		if strings.HasPrefix(kv, "PATH=") {
 			s.env[i] = "PATH=" + bin + ":" + strings.TrimPrefix(kv, "PATH=")
@@ -295,7 +298,7 @@ func TestTermWarpTabsAndOpen(t *testing.T) {
 	if code != 4 || !strings.Contains(errOut, "Warp not found") {
 		t.Fatalf("no Warp: exit %d %s", code, errOut)
 	}
-	folder := h.Abs(".local/share/warp-terminal/tab_configs")
+	folder := filepath.Join(h.Abs(warpDataRel()), "tab_configs")
 	if err := os.MkdirAll(filepath.Dir(folder), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -384,4 +387,12 @@ func TestTermWarpTabsAndOpen(t *testing.T) {
 	if after := parentSnap(t, th.root, th.syHome); strings.Join(after, "\n") != strings.Join(before, "\n") {
 		t.Errorf("something was written next to the temp roots:\n%v\n%v", before, after)
 	}
+}
+
+// warpDataRel is Warp data folder under the temp HOME for this OS (see warp.DataFolder).
+func warpDataRel() string {
+	if runtime.GOOS == "darwin" {
+		return ".warp"
+	}
+	return ".local/share/warp-terminal"
 }
