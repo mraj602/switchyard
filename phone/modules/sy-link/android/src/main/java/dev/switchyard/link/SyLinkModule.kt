@@ -25,6 +25,7 @@ class SyLinkModule : Module() {
 
   private val store get() = Link.store(ctx)
   private var batteryPromise: Promise? = null
+  @Volatile private var updateAuth: Pair<String, String>? = null
 
   override fun definition() = ModuleDefinition {
     Name("SyLink")
@@ -163,12 +164,31 @@ class SyLinkModule : Module() {
       Unit
     }
 
-    // The updater (phone.md P16) comes in N2; the API shape is here so the app compiles against it.
-    AsyncFunction("checkUpdate") { _: String, _: String -> notYet() }
-    AsyncFunction("installUpdate") { _: Map<String, Any?> -> notYet() }
-  }
+    // The updater (phone.md P16). The hub's token is kept in memory from checkUpdate until
+    // installUpdate (never stored by the module), and goes only to the origin it was given with.
+    AsyncFunction("checkUpdate") { origin: String, token: String ->
+      val o = origin.trimEnd('/')
+      if (!o.startsWith("https://") && !o.startsWith("http://")) throw CodedException("ERR_SY_UPDATE", "sy-link: origin must be an http(s) address", null)
+      val installed = ctx.packageManager.getPackageInfo(ctx.packageName, 0).longVersionCode
+      try {
+        val offer = UpdateClient(OkFetcher()).check(o, token, installed, Build.VERSION.SDK_INT)
+        updateAuth = if (offer?.source == "hub") o to token else null
+        offer?.toMap()
+      } catch (e: UpdateException) {
+        throw CodedException("ERR_SY_UPDATE", "sy-link: ${e.message}", null)
+      }
+    }
 
-  private fun notYet(): String? = throw CodedException("ERR_SY_UPDATE", "sy-link: the updater is not built yet (N2)", null)
+    AsyncFunction("installUpdate") { info: Map<String, Any?> ->
+      val offer = UpdateOffer.fromMap(info) ?: throw CodedException("ERR_SY_UPDATE", "sy-link: malformed update info", null)
+      val auth = updateAuth
+      if (offer.source == "hub" && auth == null) throw CodedException("ERR_SY_UPDATE", "sy-link: check for updates first", null)
+      when (UpdateInstaller(ctx).install(offer, auth?.first, auth?.second)) {
+        is UpdateInstaller.Result.Started -> "started"
+        is UpdateInstaller.Result.Refused -> "refused"
+      }
+    }
+  }
 
   private fun bad(field: String) = CodedException("ERR_SY_CONFIG", "sy-link: configure needs $field", null)
 
