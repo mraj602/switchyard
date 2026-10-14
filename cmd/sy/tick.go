@@ -24,6 +24,7 @@ import (
 	"github.com/mraj602/switchyard/internal/identity"
 	"github.com/mraj602/switchyard/internal/machineinfo"
 	"github.com/mraj602/switchyard/internal/paths"
+	peerspkg "github.com/mraj602/switchyard/internal/peers"
 	"github.com/mraj602/switchyard/internal/setup/apply"
 	"github.com/mraj602/switchyard/internal/setup/ledger"
 	"github.com/mraj602/switchyard/internal/setup/model"
@@ -94,6 +95,7 @@ func runTick(args []string, stdout, stderr io.Writer) error {
 	keep("flush", runFlush(fa, out, errw))
 	keep("direct push", tickDirectPush(ctx, d, cfg, errw))
 	keep("title files", tickPruneTitles(d.State.Path, time.Now()))
+	peerspkg.PruneSessionFiles(d.State.Path, time.Now())
 	return quietErr(*quiet, first)
 }
 

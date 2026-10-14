@@ -102,6 +102,13 @@ type Config struct {
 		Source       string `toml:"source"` // auto | hub | local
 		ASCII        bool   `toml:"ascii"`
 	} `toml:"terminal"`
+	// Peers is the [peers] table of docs/spec/peers.md (PE1). Enabled turns on the session
+	// files `sy hook` writes (2.4); `sy agent enable` (PE2) sets it too. Delivery is the
+	// inbox delivery mode chosen by the PE0 probe (8.5): honest | accept | courier.
+	Peers struct {
+		Enabled  bool   `toml:"enabled"`
+		Delivery string `toml:"delivery"`
+	} `toml:"peers"`
 }
 
 // MCPMode returns share.mcp as "true", "false" or "external" ("" when unset).
@@ -137,6 +144,7 @@ func Defaults() Config {
 	c.Terminal.Band = true
 	c.Terminal.PaneAutoOpen = true
 	c.Terminal.Source = TerminalSourceAuto
+	c.Peers.Delivery = "honest"
 	return c
 }
 
@@ -188,6 +196,8 @@ var known = map[string]spec{
 	"terminal.pane_auto_open":   {kind: kBool, def: true},
 	"terminal.source":           {kind: kString, def: TerminalSourceAuto},
 	"terminal.ascii":            {kind: kBool, def: false},
+	"peers.enabled":             {kind: kBool, def: false},
+	"peers.delivery":            {kind: kString, def: "honest"},
 }
 
 // labelsPrefix: "slots.labels.<slot>" is a free-form key; the slot (e.g. "~/.claude-2")
