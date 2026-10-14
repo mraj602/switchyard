@@ -59,10 +59,13 @@ func startSession(t *testing.T, m *machine, dir, sid string) *session {
 	writeFile(t, script, `#!/bin/sh
 SY="$1"; DIR="$2"; SID="$3"
 stty raw -echo 2>/dev/null
-"$SY" board --follow --ndjson --session "$SID" <&0 >"$DIR/board.out" 2>"$DIR/board.err" &
+# A background command gets /dev/null as stdin, and dash (Debian, Ubuntu) applies that before
+# an explicit "<&0", so the terminal is handed over on another descriptor.
+exec 3<&0
+"$SY" board --follow --ndjson --session "$SID" <&3 3<&- >"$DIR/board.out" 2>"$DIR/board.err" &
 echo $! > "$DIR/board.pid"
 : > "$DIR/ready"
-exec cat > "$DIR/input.log"
+exec cat 3<&- > "$DIR/input.log"
 `, 0o755)
 	cmd := exec.Command("/bin/sh", script, syBin, dir, sid)
 	cmd.Env = m.envFor()
