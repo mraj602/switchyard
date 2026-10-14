@@ -99,6 +99,7 @@ func Run(args []string, stdin io.Reader, getenv func(string) string) {
 		startRefresh(env)
 	}
 	startFlush(env)
+	recordPeers(env, in, getenv, event)
 }
 
 // readStdin reads the whole payload, giving up after a few seconds so a caller that never
