@@ -326,6 +326,20 @@ func TestSendPausedBeforeRateToken(t *testing.T) {
 	}
 }
 
+// `--all` is terminal only (peers.md 3.2): from inside a session it is ignored.
+func TestListAllIgnoredInsideSession(t *testing.T) {
+	w := newWorld(t, peers.ModeBypass, peers.ModeBypass)
+	w.allow([][]string{{"acc-personal", "acc-work"}}, nil) // work may not start a thread with personal
+	e, _ := w.asA()
+	got, asked, rf := e.List(true)
+	if rf != nil || !asked {
+		t.Fatalf("list: asked=%v %v", asked, rf)
+	}
+	if len(got) != 0 {
+		t.Errorf("--all inside a session listed unreachable sessions: %+v", got)
+	}
+}
+
 func TestSendRateLimit(t *testing.T) {
 	w := newWorld(t, peers.ModeBypass, peers.ModeBypass)
 	w.allow([][]string{{"acc-work", "acc-personal"}}, map[string]any{"max_turns": 500})
