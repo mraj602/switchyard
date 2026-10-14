@@ -4,5 +4,6 @@
 *.sh text eol=lf
 *.go text eol=lf
 test/e2e/setup/golden/* text eol=lf
+**/testdata/** text eol=lf
 # Raw terminal captures keep their CR bytes.
 internal/setup/tui/testdata/raw_*.golden -text

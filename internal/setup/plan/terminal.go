@@ -86,7 +86,7 @@ func TerminalWith(st model.State, c model.TermChoices, f TermFacts, opt Options)
 	if !warp.ValidChannel(c.Channel) {
 		return model.Plan{}, fmt.Errorf("unknown Warp channel %q (stable or preview)", c.Channel)
 	}
-	tp := &tplanner{planner: &planner{st: st, opt: opt, home: filepath.Clean(st.Home),
+	tp := &tplanner{planner: &planner{st: st, opt: opt, home: cleanPath(st.Home),
 		steps: map[model.Step][]model.Action{}, warned: map[string]bool{}}, c: c, f: f}
 	tp.win = st.OS == "windows"
 	if st.Ledger != nil && st.Ledger.Terminal != nil {
@@ -175,7 +175,7 @@ func (t ttarget) listed(id string) bool {
 func (t ttarget) via() []string {
 	var out []string
 	for _, f := range t.folders {
-		if sp := filepath.Join(f.Dir, "settings.json"); sp != t.path {
+		if sp := filepath.Join(f.Dir, "settings.json"); sp != filepath.Clean(t.path) {
 			out = append(out, sp)
 		}
 	}
@@ -253,7 +253,7 @@ func (tp *tplanner) roots() []troot {
 		}
 		if !found {
 			for _, f := range r.folders {
-				if filepath.Join(f.Dir, "plugins") == r.root {
+				if filepath.Join(f.Dir, "plugins") == filepath.Clean(r.root) {
 					r.owner = f
 					break
 				}
@@ -626,7 +626,7 @@ type TabSpec struct {
 // TabSpecs lists the tab config of every account that has a launcher file, in folder
 // order, for the tab_configs folder of f.Warp; the warnings name the accounts left out.
 func TabSpecs(st model.State, f TermFacts) (specs []TabSpec, warnings []string) {
-	p := &planner{st: st, home: filepath.Clean(st.Home)}
+	p := &planner{st: st, home: cleanPath(st.Home)}
 	for i, fo := range st.Folders {
 		label := FolderLabel(fo)
 		colour := fo.Colour

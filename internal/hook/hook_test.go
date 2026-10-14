@@ -6,6 +6,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -311,6 +312,9 @@ func TestErrorLogIsCapped(t *testing.T) {
 func TestReadOnlyOutboxStillExitsZero(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root ignores directory permissions")
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows directory mode bits do not make a folder read-only")
 	}
 	sb := newSandbox(t)
 	ob := filepath.Join(sb.state(), "outbox")

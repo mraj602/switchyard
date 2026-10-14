@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -88,7 +89,7 @@ func PlanWith(st model.State, c model.Choices, opt Options) (model.Plan, error) 
 	if opt.Version == "" {
 		opt.Version = version.Version
 	}
-	p := &planner{st: st, c: c, opt: opt, home: filepath.Clean(st.Home), steps: map[model.Step][]model.Action{},
+	p := &planner{st: st, c: c, opt: opt, home: cleanPath(st.Home), steps: map[model.Step][]model.Action{},
 		warned: map[string]bool{}}
 	p.win = st.OS == "windows"
 	p.symlinks = st.SymlinkOK == nil || *st.SymlinkOK
@@ -116,11 +117,25 @@ func (p *planner) expand(s string) string {
 	switch {
 	case s == "~":
 		return p.home
+	case strings.HasPrefix(s, "~/") && posixRooted(p.home):
+		return path.Join(p.home, s[2:])
 	case strings.HasPrefix(s, "~/"):
 		return filepath.Join(p.home, filepath.FromSlash(s[2:]))
 	}
+	return cleanPath(s)
+}
+
+// cleanPath is filepath.Clean that leaves a POSIX-rooted path in its own separator.
+func cleanPath(s string) string {
+	if posixRooted(s) {
+		return path.Clean(s)
+	}
 	return filepath.Clean(s)
 }
+
+// posixRooted reports whether s is a /-rooted path with no backslash: it keeps its own
+// separator even where the host's is `\` (a test pretending to be a POSIX machine).
+func posixRooted(s string) bool { return strings.HasPrefix(s, "/") && !strings.Contains(s, `\`) }
 
 func (p *planner) warn(format string, a ...any) {
 	s := fmt.Sprintf(format, a...)
