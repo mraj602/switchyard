@@ -384,6 +384,11 @@ export const linkState = {
   /** What requestBatteryExemption() turns batteryExempt into. */
   exemptAfterRequest: true,
   refresh: null as import('../modules/sy-link').LinkRefresh | null,
+  /** What checkUpdate() finds (null: up to date), what it rejects with, and installUpdate()'s answer or rejection. */
+  update: null as import('../modules/sy-link').UpdateInfo | null,
+  updateError: null as string | null,
+  installResult: 'started' as 'started' | 'refused',
+  installError: null as string | null,
   listeners: new Map<string, Set<(p: unknown) => void>>(),
 };
 
@@ -466,11 +471,16 @@ export const syLink = {
     linkState.listeners.set(event, set);
     return { remove: () => set.delete(cb) };
   },
-  async checkUpdate() {
-    throw codedError('ERR_SY_UPDATE', 'sy-link: the updater is not built yet (N2)');
+  async checkUpdate(origin: string, token: string) {
+    // The token is a secret: only its presence is recorded.
+    rec('link.checkUpdate', [origin, token ? '<token>' : '']);
+    if (linkState.updateError) throw codedError('ERR_SY_UPDATE', `sy-link: ${linkState.updateError}`);
+    return linkState.update;
   },
-  async installUpdate() {
-    throw codedError('ERR_SY_UPDATE', 'sy-link: the updater is not built yet (N2)');
+  async installUpdate(info: { version: string }) {
+    rec('link.installUpdate', [info.version]);
+    if (linkState.installError) throw codedError('ERR_SY_UPDATE', `sy-link: ${linkState.installError}`);
+    return linkState.installResult;
   },
 };
 
@@ -504,5 +514,9 @@ export function resetFakes(): void {
   linkState.prepareError = false;
   linkState.exemptAfterRequest = true;
   linkState.refresh = null;
+  linkState.update = null;
+  linkState.updateError = null;
+  linkState.installResult = 'started';
+  linkState.installError = null;
   linkState.listeners.clear();
 }
