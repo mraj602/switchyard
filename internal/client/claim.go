@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/mraj602/switchyard/internal/keys"
 	"github.com/mraj602/switchyard/internal/version"
 )
 
@@ -22,6 +23,8 @@ type ClaimRequest struct {
 	ExpectKind string `json:"expect_kind,omitempty"`
 	Cookie     bool   `json:"cookie,omitempty"`
 	Client     string `json:"client,omitempty"`
+	// Keys are this device's public keys in the clear (typed codes only, keys.md 7.1).
+	Keys *keys.DeviceKeysNew `json:"keys,omitempty"`
 }
 
 // ClaimReply is the 200 body of POST /v1/pair/claim. Token is set unless Cookie was asked.
@@ -36,6 +39,26 @@ type ClaimReply struct {
 		URL     string `json:"url"`
 		Version string `json:"version"`
 	} `json:"hub"`
+	// keys.md 7.3, from F1 hubs: the hub key, the active owner key document (nil until one
+	// is active), this device's certificate when keys were sent, and the link settings.
+	HubKey   *PublicKey `json:"hub_key"`
+	OwnerKey *keys.Doc  `json:"owner_key"`
+	Cert     *keys.Doc  `json:"cert"`
+	Reg      string     `json:"reg"`
+	Link     *LinkInfo  `json:"link"`
+}
+
+// PublicKey is api.yaml PublicKey.
+type PublicKey struct {
+	Alg string `json:"alg"`
+	Pub string `json:"pub"`
+	FP  string `json:"fp"`
+}
+
+// LinkInfo is the claim reply's link object (push.md 13.6).
+type LinkInfo struct {
+	URLs  []string `json:"urls"`
+	PingS int      `json:"ping_s"`
 }
 
 // Claim swaps a pairing code for a device token at the hub baseURL. No token is needed:
