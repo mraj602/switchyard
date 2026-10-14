@@ -49,8 +49,9 @@ type Remote struct {
 	// Link is set once the link client exists.
 	Link   Sender
 	Logger *log.Logger
-	// AckWait and ListWait override the defaults (tests).
-	AckWait, ListWait time.Duration
+	// AckWait, ListWait and Fresh override AckWait, ListWait and ListFresh (tests; a
+	// negative Fresh asks the hub every time).
+	AckWait, ListWait, Fresh time.Duration
 
 	mu     sync.Mutex
 	lists  map[string]chan *peers.PeersReply
@@ -99,7 +100,11 @@ func newID() string {
 // directory asks the hub for its session directory, reusing an answer for ListFresh.
 func (r *Remote) directory() (*peers.PeersReply, error) {
 	r.mu.Lock()
-	if r.cache.reply != nil && r.now().Sub(r.cache.at) < ListFresh {
+	fresh := r.Fresh
+	if fresh == 0 {
+		fresh = ListFresh
+	}
+	if r.cache.reply != nil && r.now().Sub(r.cache.at) < fresh {
 		rep := r.cache.reply
 		r.mu.Unlock()
 		return rep, nil
