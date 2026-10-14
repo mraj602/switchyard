@@ -118,7 +118,7 @@ func newPeersWorldAt(t *testing.T, state string) *peersWorld {
 			Home: w.home, State: w.state, Runtime: w.runtime,
 			Machine:    identity.Machine{ID: "m_T", Name: "laptop"},
 			SlotLabels: map[string]string{"~/.claude-2": "work", "~/.claude-5": "personal"},
-			MaxTurns:   30, Proc: peerspkg.LinuxProc{Root: w.procRoot}, StartPID: w.startPID, FS: identity.OSFS{},
+			Proc:       peerspkg.LinuxProc{Root: w.procRoot}, StartPID: w.startPID, FS: identity.OSFS{},
 			Now: time.Now,
 		}}, nil
 	}

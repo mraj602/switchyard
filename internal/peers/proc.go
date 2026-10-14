@@ -245,13 +245,3 @@ func NearestClaude(p Proc, start int) int {
 	}
 	return 0
 }
-
-// IsAncestor reports whether anc is an ancestor of pid (the agent's check, peers.md 2.3).
-func IsAncestor(p Proc, pid, anc int) bool {
-	for _, a := range Ancestors(p, pid) {
-		if a.PID == anc && a.PID != pid {
-			return true
-		}
-	}
-	return false
-}

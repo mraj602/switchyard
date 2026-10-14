@@ -19,7 +19,6 @@ type Env struct {
 	// SlotExtra and SlotLabels are config.toml's slots.extra and slots.labels.
 	SlotExtra  []string
 	SlotLabels map[string]string
-	MaxTurns   int // when the matrix does not say
 
 	Proc     Proc
 	StartPID int // where the ancestor walk starts: os.Getppid()
@@ -204,7 +203,9 @@ func (e Env) tildeDir(dir string) string {
 	return identity.Tilde(e.Home, dir)
 }
 
-func sanitizeHandlePart(s string) string {
+// HandlePart cleans one part of a handle (name, account label or machine name), so the
+// local and the hub's directories make the same handles (peers.md 3.2).
+func HandlePart(s string) string {
 	s = strings.Map(func(r rune) rune {
 		switch {
 		case r == '@' || r == '"' || r == '<' || r == '>' || r == '\'' || r == '`':

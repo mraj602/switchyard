@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
+	"strings"
 	"time"
 
 	"github.com/mraj602/switchyard/internal/keys"
@@ -246,19 +246,4 @@ func (e Envelope) Open(box *ecdh.PrivateKey) (string, error) {
 
 // HopTokens splits the envelope's hop chain (comma-separated 24-hex tokens), keeping valid
 // tokens only, the last MaxHopTokens.
-func HopTokens(hop string) []string {
-	var out []string
-	start := 0
-	for i := 0; i <= len(hop); i++ {
-		if i == len(hop) || hop[i] == ',' {
-			if t := hop[start:i]; hopTokenRe.MatchString(t) {
-				out = append(out, t)
-			}
-			start = i + 1
-		}
-	}
-	if len(out) > MaxHopTokens {
-		out = slices.Clone(out[len(out)-MaxHopTokens:])
-	}
-	return out
-}
+func HopTokens(hop string) []string { return CutHop(strings.Split(hop, ",")) }

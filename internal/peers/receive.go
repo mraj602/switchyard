@@ -73,7 +73,7 @@ func (e Env) Receive(in Incoming) ReceiveResult {
 	}
 	maxTurns := m.MaxTurns()
 	if maxTurns <= 0 {
-		maxTurns = e.MaxTurns
+		maxTurns = DefaultMaxTurns
 	}
 	if LoopGuard(th, human, maxTurns, now) {
 		_ = threads.Save(e.ThreadsPath())

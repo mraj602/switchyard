@@ -111,7 +111,6 @@ func (f *fx) env() peers.Env {
 		FS:         identity.OSFS{},
 		Now:        func() time.Time { return f.now },
 		SlotLabels: map[string]string{"~/.claude-2": "work", "~/.claude-5": "personal"},
-		MaxTurns:   peers.DefaultMaxTurns,
 		NewID: func() func() string {
 			n := 0
 			return func() string { n++; return fmt.Sprintf("00000000-0000-4000-8000-%012d", n) }

@@ -16,10 +16,9 @@ type Decision struct {
 	Detail  string // human text for the refusal line, e.g. "work → personal"
 }
 
-// Matrix is the hook point for the signed matrix document (peers.md 5): the keys/matrix
-// package satisfies it once it has accepted a document. thread is the open thread between
-// the two sessions, or nil; 5.3 step 4 (replies) needs it. Implementations must not retry or
-// widen anything: a "no" is final.
+// Matrix evaluates the account matrix (peers.md 5): DocMatrix for an accepted signed
+// document, NoMatrix for none. thread is the open thread between the two sessions, or nil;
+// 5.3 step 4 (replies) needs it. A "no" is final.
 type Matrix interface {
 	// Allowed is peers.Allowed(m, from_account, to_account, thread) of peers.md 5.3.
 	Allowed(from, to Party, thread *Thread) Decision
@@ -28,7 +27,6 @@ type Matrix interface {
 }
 
 // NoMatrix is the matrix of a machine that has none configured: it denies every message.
-// It is what `sy` uses until the keys and matrix package is wired in.
 type NoMatrix struct{}
 
 func (NoMatrix) Allowed(from, to Party, _ *Thread) Decision {

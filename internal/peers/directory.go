@@ -49,10 +49,10 @@ type ListEntry struct {
 // the slot, else the folder's name without its dot ("claude-2"). (The hub's seat label wins
 // once the agent has the hub source.)
 func (e Env) accountLabel(slotName string) string {
-	if l := sanitizeHandlePart(e.SlotLabels[slotName]); l != "" {
+	if l := HandlePart(e.SlotLabels[slotName]); l != "" {
 		return l
 	}
-	return sanitizeHandlePart(strings.TrimPrefix(filepath.Base(slotName), "."))
+	return HandlePart(strings.TrimPrefix(filepath.Base(slotName), "."))
 }
 
 // Directory lists the live local sessions: every managed slot's registry entries whose pid
@@ -79,9 +79,9 @@ func (e Env) Directory() []Session {
 				continue
 			}
 			s := Session{Entry: ent, Account: acct, AccountLabel: label, Project: e.tildeDir(ent.CWD), MachineName: e.Machine.Name}
-			s.Name = sanitizeHandlePart(ent.Name)
+			s.Name = HandlePart(ent.Name)
 			if s.Name == "" {
-				s.Name = sanitizeHandlePart(filepath.Base(ent.CWD))
+				s.Name = HandlePart(filepath.Base(ent.CWD))
 			}
 			if s.Name == "" || s.Name == "." || s.Name == "/" {
 				s.Name = "session-" + strconv.Itoa(ent.PID)
@@ -101,11 +101,11 @@ func (e Env) Directory() []Session {
 	// Unique handles.
 	count := map[string]int{}
 	for i := range out {
-		base := out[i].Name + "@" + out[i].AccountLabel + "." + sanitizeHandlePart(e.Machine.Name)
+		base := out[i].Name + "@" + out[i].AccountLabel + "." + HandlePart(e.Machine.Name)
 		count[base]++
 		if n := count[base]; n > 1 {
 			out[i].Name += "-" + strconv.Itoa(n)
-			base = out[i].Name + "@" + out[i].AccountLabel + "." + sanitizeHandlePart(e.Machine.Name)
+			base = out[i].Name + "@" + out[i].AccountLabel + "." + HandlePart(e.Machine.Name)
 		}
 		out[i].Handle = base
 	}
@@ -180,10 +180,6 @@ func (e Env) can(m Matrix, ts *ThreadSet, from, to Session) string {
 	}
 	return "none"
 }
-
-// HandlePart cleans one part of a handle (name, account label or machine name) as the local
-// directory does, so the hub's directory makes the same handles (peers.md 3.2).
-func HandlePart(s string) string { return sanitizeHandlePart(s) }
 
 func party(s Session) Party {
 	return Party{Session: s.Entry.SessionID, Account: s.Account, Label: s.AccountLabel}

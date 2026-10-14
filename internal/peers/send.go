@@ -52,11 +52,8 @@ func (r SendResult) Line() string {
 // a native SendMessage to it finds nobody, and the header's "Reply with: sy peers send"
 // line is the reply path.
 func ReplySocketPath(runtime, senderSession string) string {
-	if runtime == "" {
-		runtime = "/run/user/" + fmt.Sprint(os.Getuid())
-	}
 	sum := sha256.Sum256([]byte(senderSession))
-	return filepath.Join(runtime, "sy", "r", hex.EncodeToString(sum[:])[:16]+".sock")
+	return filepath.Join(runtimeDir(runtime), "sy", "r", hex.EncodeToString(sum[:])[:16]+".sock")
 }
 
 // Header is the first two lines of the message body (peers.md 8.5). The parts of a remote
@@ -178,7 +175,7 @@ func (e Env) SendWith(c Caller, to, text string, o SendOpts) (SendResult, *Refus
 	}
 	maxTurns := m.MaxTurns()
 	if maxTurns <= 0 {
-		maxTurns = e.MaxTurns
+		maxTurns = DefaultMaxTurns
 	}
 	if LoopGuard(th, newestHuman(sender, &target), maxTurns, now) {
 		_ = threads.Save(e.ThreadsPath()) // keeps paused_at
