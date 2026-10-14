@@ -117,6 +117,18 @@ func (d Doc) Has(by string) bool {
 	return ok
 }
 
+// Only is the document with the signatures by `by` alone: to check the hub's part of a
+// certificate when the owner key that may also have signed it is not known here.
+func (d Doc) Only(by string) Doc {
+	out := Doc{Type: d.Type, Body: d.Body}
+	for _, s := range d.Sigs {
+		if s.By == by {
+			out.Sigs = append(out.Sigs, s)
+		}
+	}
+	return out
+}
+
 // SigOf returns the signature by `by` (unchecked).
 func (d Doc) SigOf(by string) (Sig, bool) {
 	for _, s := range d.Sigs {

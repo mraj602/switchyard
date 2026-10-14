@@ -51,6 +51,11 @@ machine)
 setup) cat > "$HOME/setup.stdin"; echo "$@" > "$HOME/setup.args"; cat "$HOME/setup.json" 2>/dev/null || echo '{"mode":"new"}'; exit "$(cat "$HOME/setup.exit" 2>/dev/null || echo 0)";;
 connect) echo "$@" >> "$HOME/connect.args"; exit "$(cat "$HOME/connect.exit" 2>/dev/null || echo 0)";;
 direct-push) cat > "$HOME/dp.stdin"; echo "$@" > "$HOME/dp.args";;
+keys)
+  case "$2" in
+  device) echo "$@" >> "$HOME/keysdevice.args"; cat "$HOME/keysdevice.json";;
+  pin-ssh) cat > "$HOME/pin.stdin"; cat "$HOME/pin.json" 2>/dev/null || echo '{"hub":"ssh","owner":""}'; exit "$(cat "$HOME/pin.exit" 2>/dev/null || echo 0)";;
+  esac;;
 esac
 `
 
@@ -97,6 +102,10 @@ func hubAnswers(now time.Time) func(args []string, stdin []byte) ([]byte, error)
 			return []byte("ok\n"), nil
 		case "pull run":
 			return []byte(`[{"id":"pt_01ABC","name":"gpu-box","target":"me@gpu-box:22","state":"ok"}]`), nil
+		case "keys register":
+			return fakeRegister(args, stdin)
+		case "keys certify":
+			return []byte("certified\n"), nil
 		}
 		return nil, &AdminError{Args: args, Exit: 3, Stderr: "not implemented"}
 	}
@@ -126,6 +135,7 @@ func newWorld(t *testing.T) *world {
 	keys := filepath.Join(w.remote, "etc-ssh")
 	os.MkdirAll(keys, 0o755)
 	os.WriteFile(filepath.Join(keys, "ssh_host_ed25519_key.pub"), []byte("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHost root@gpu-box\n"), 0o644)
+	w.deviceReport(testDevice)
 	return w
 }
 

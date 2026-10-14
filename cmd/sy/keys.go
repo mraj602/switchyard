@@ -42,6 +42,8 @@ Commands:
   recover                               rebuild owner.sealed from the recovery code
   trust-owner <fp>                      replace this machine's owner pin (prints old and new)
   show-owner [--json]                   print the owner public key and fingerprint
+  device --json [--renew]               this machine's device id and public link keys, made at first use (sy machine add)
+  pin-ssh --json                        pin the hub and owner keys sy machine add hands over SSH on stdin
 `
 
 // keysTTY is the controlling terminal: passphrases and the recovery code never go anywhere
@@ -57,6 +59,7 @@ type keysTTY interface {
 type keysEnv struct {
 	state          string
 	stdout, stderr io.Writer
+	stdin          io.Reader // pin-ssh's handoff
 	stdoutTTY      bool
 	guard          func() error
 	tty            func() (keysTTY, error)
@@ -85,7 +88,7 @@ func realKeysEnv(stdout, stderr io.Writer) (keysEnv, error) {
 		return keysEnv{}, err
 	}
 	env := keysEnv{
-		state: d.State.Path, stdout: stdout, stderr: stderr,
+		state: d.State.Path, stdout: stdout, stderr: stderr, stdin: os.Stdin,
 		stdoutTTY: term.IsTerminal(int(os.Stdout.Fd())),
 		guard:     keys.CheckNotUnderClaude,
 		tty:       openKeysTTY,
@@ -187,6 +190,10 @@ func keysMain(ctx context.Context, env keysEnv, args []string) error {
 		return keysStatus(ctx, env, rest)
 	case "show-owner":
 		return keysShowOwner(env, rest)
+	case "device":
+		return keysDevice(ctx, env, rest)
+	case "pin-ssh":
+		return keysPinSSH(env, rest)
 	case "init", "certify", "revoke", "passwd", "recover", "trust-owner":
 	default:
 		fmt.Fprintf(env.stderr, "sy keys: unknown command %q\n\n%s", sub, keysUsageText)

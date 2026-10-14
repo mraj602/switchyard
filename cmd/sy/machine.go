@@ -85,9 +85,12 @@ func osMachineEnv() (*machineEnv, error) {
 func localHub(ctx context.Context, args []string, stdin []byte) ([]byte, []byte, int) {
 	var out, errb bytes.Buffer
 	var err error
-	if len(args) > 0 && args[0] == "pull" {
+	switch {
+	case len(args) > 0 && args[0] == "pull":
 		err = cli.PullIn(bytes.NewReader(stdin), args[1:], &out, &errb)
-	} else {
+	case len(args) > 0 && args[0] == "keys":
+		err = cli.KeysIn(bytes.NewReader(stdin), args[1:], &out, &errb)
+	default:
 		err = cli.Run(args, &out, &errb)
 	}
 	switch {
@@ -363,6 +366,7 @@ func machineAdd(ctx context.Context, e *machineEnv, args []string, stdout, stder
 			return cfg.Push.Direct.Server, cfg.Push.Direct.Private, b, err
 		},
 	}
+	machineAddKeys(env, e.dirs.State.Path, interactive, stderr)
 	enc := json.NewEncoder(stdout)
 	env.Events = func(ev machineadd.Event) {
 		if *asJSON {
