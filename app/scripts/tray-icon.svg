@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" width="22" height="22">
+  <g fill="none" stroke="#E8B04B" stroke-width="2.2" stroke-linejoin="miter" stroke-linecap="butt">
+    <path d="M2 18 L9.5 4 L17 18"/>
+    <path d="M5.8 18 L9.5 11 L13.2 18"/>
+  </g>
+  <!--BADGE-->
+  <circle cx="15.5" cy="6.5" r="6.5" fill="#D64545"/>
+  <text x="15.5" y="@LABEL_Y@" text-anchor="middle" font-family="Liberation Sans, DejaVu Sans, Arial, sans-serif" font-weight="bold" font-size="@LABEL_SIZE@" fill="#FFFFFF">@LABEL@</text>
+  <!--/BADGE-->
+</svg>

@@ -1,0 +1,8 @@
+# Goldens and scripts are compared byte for byte or run by sh: keep LF on every platform
+# (Windows runners check out with core.autocrlf=true otherwise).
+*.golden text eol=lf
+*.sh text eol=lf
+*.go text eol=lf
+test/e2e/setup/golden/* text eol=lf
+# Raw terminal captures keep their CR bytes.
+internal/setup/tui/testdata/raw_*.golden -text

@@ -1,0 +1,56 @@
+// What the screens need from the app core (phases/8.md). WP-S codes against this interface only;
+// WP-I's glue (src/state/glue.tsx, `HubGlue`) derives it from WP-P's `useHub()` state plus the
+// integration (push state, snooze_min, countdown) and renders <HubApiProvider> in
+// app/_layout.tsx. Tests pass a fake (test/screen-harness.tsx).
+import { createContext, useContext, type ReactNode } from 'react';
+import type { Me } from '../contract/api';
+import type { AppInfo } from '../contract/platform';
+import type { DataAction, HubData } from '../lib/data';
+import type { HubClient } from '../lib/hub';
+import type { RegisterState } from '../lib/notify';
+
+export interface HubApi {
+  /** The reducer state: last good replies, `offline`, `fetchedAt`. */
+  data: HubData;
+  dispatch(a: DataAction): void;
+  /** Refresh now (pull to refresh, after Seen or Snooze). */
+  kick(): Promise<void>;
+  /** A clock that ticks (every 30 s or so), so ages and countdowns stay fresh. */
+  now: number;
+  /** The paired hub's host name ("hub.example.ts.net"). */
+  host: string;
+  /** null before pairing (the app shows Pair then). */
+  client: HubClient | null;
+  me: Me | null;
+  app: AppInfo;
+  /** Result of registerForPush; null until it ran. */
+  pushState: RegisterState | null;
+  /** Ask for permission and register this phone again (Settings). */
+  enablePush(): Promise<void>;
+  /** Settings "snooze_min" of the hub (GET /v1/rules); labels the Snooze button. Default 15. */
+  snoozeMin?: number;
+  /**
+   * "Count down on Lock Screen" (iOS, P12). WP-W's live module decides which card qualifies and
+   * starts the Live Activity; WP-I wires it here. Absent (Android, or not wired): no button.
+   */
+  countdown?: { can(seatId: string): boolean; start(seatId: string): Promise<void> };
+  /**
+   * Settings "Auto countdown" (iOS, P12): a local app setting (AsyncStorage `sy.local.v1`), not
+   * a hub pref. Absent (Android): no switch.
+   */
+  autoCountdown?: { on: boolean; set(on: boolean): Promise<void> };
+  /** DELETE /v1/devices/self (best effort), then clear the keychain, cache and widget data. */
+  unpair(): Promise<void>;
+}
+
+const Ctx = createContext<HubApi | null>(null);
+
+export function HubApiProvider({ value, children }: { value: HubApi; children: ReactNode }) {
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+export function useHubApi(): HubApi {
+  const v = useContext(Ctx);
+  if (!v) throw new Error('useHubApi: no HubApiProvider above this screen');
+  return v;
+}

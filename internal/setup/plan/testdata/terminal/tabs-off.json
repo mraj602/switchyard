@@ -1,0 +1,62 @@
+{
+  "plan_id": "p_53eca29d0dcb",
+  "actions": [
+    {
+      "id": "a1",
+      "step": "terminal",
+      "op": "move_to_backup",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-me.toml",
+      "note": "tab config me",
+      "pre": [
+        {
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-me.toml",
+          "state": {
+            "type": "file",
+            "sha256": "df4b0e9301c36f660e42227e74eaa96d1df8bbc2121107bc69d2243d19f060b6"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a2",
+      "step": "terminal",
+      "op": "move_to_backup",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-work.toml",
+      "note": "tab config work",
+      "pre": [
+        {
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-work.toml",
+          "state": {
+            "type": "file",
+            "sha256": "19fbf0aae224849d9308e3031216b1555d5f85e4b1b17de325d7732fe3c15b97"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a3",
+      "step": "terminal",
+      "op": "move_to_backup",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-claude-3.toml",
+      "note": "tab config claude-3",
+      "pre": [
+        {
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-claude-3.toml",
+          "state": {
+            "type": "file",
+            "sha256": "65f58e55fcbdaf4848065de618317d7d144f491340857d77faf13056256a24a1"
+          }
+        }
+      ]
+    }
+  ],
+  "keep": [],
+  "conflicts": [],
+  "needs": [],
+  "summary": {
+    "changes": 3,
+    "backed_up": 3,
+    "links_changed": 0,
+    "logins_touched": 0
+  }
+}

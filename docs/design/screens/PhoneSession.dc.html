@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Switchyard phone — Session detail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#7A4E00}a:hover{color:#4F3200}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F3F4F1; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #17191B; display: flex; flex-direction: column; overflow: hidden">
+  <div style="flex: 1; overflow: hidden; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 14px">
+    <a href="PhoneNow.dc.html" style="font-size: 15px; color: #5E646B; text-decoration: none; min-height: 32px; display: flex; align-items: center">← Back</a>
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #5E646B"><span style="width: 9px; height: 9px; border-radius: 50%; background: #6A4FD6"></span>work · you@work.example</div>
+      <h1 style="margin: 0; font-size: 22px; font-weight: 700">api · migrate-orders</h1>
+      <div style="font-size: 13px; color: #5E646B">gpu-box · ~/src/api · ~/.claude</div>
+    </div>
+    <div style="background: #FBE9DF; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 12px; font-weight: 600; color: #9A3412">ASKED A QUESTION · 4 MIN AGO</div>
+      <div style="font-size: 15px; line-height: 1.45">Should I also update the migration, or keep the old column until the backfill finishes? Option 1 drops it now; option 2 keeps both for a week.</div>
+      <div style="font-size: 12px; color: #7C2D12">Claude's last message, first 200 characters</div>
+    </div>
+    <a href="#" style="display: flex; justify-content: center; align-items: center; min-height: 48px; background: #17191B; color: #FFFFFF; border-radius: 12px; font-weight: 600; text-decoration: none">Open in Claude (Remote Control)</a>
+    <div style="display: flex; gap: 8px">
+      <button type="button" style="flex: 1; font: inherit; font-size: 14px; background: #FFFFFF; border: 1px solid #C9CCC6; border-radius: 12px; min-height: 44px">Copy resume command</button>
+      <button type="button" style="flex: 1; font: inherit; font-size: 14px; background: #FFFFFF; border: 1px solid #C9CCC6; border-radius: 12px; min-height: 44px">Snooze 15 min</button>
+    </div>
+    <code style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; background: #16191C; color: #E6E8EA; padding: 10px 12px; border-radius: 10px">ssh gpu-box -t 'cd ~/src/api &amp;&amp; claude --resume 7c1e…'</code>
+    <div style="font-size: 12px; color: #5E646B; margin-top: -6px">The Claude app is signed in to one account at a time: if it shows another account, use the resume command.</div>
+
+    <div style="background: #FFFFFF; border: 1px solid #DFE1DC; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="font-size: 13px; font-weight: 600">Today</div>
+      <div style="display: grid; grid-template-columns: 52px 1fr; row-gap: 8px; font-size: 13px">
+        <span style="color: #5E646B; font-family: 'IBM Plex Mono', monospace">14:03</span><span style="color: #9A3412">Asked a question</span>
+        <span style="color: #5E646B; font-family: 'IBM Plex Mono', monospace">13:41</span><span>Working · you replied</span>
+        <span style="color: #5E646B; font-family: 'IBM Plex Mono', monospace">13:39</span><span>Needed permission · Bash(psql …) · approved</span>
+        <span style="color: #5E646B; font-family: 'IBM Plex Mono', monospace">13:12</span><span>Started · Opus · context 54% now</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

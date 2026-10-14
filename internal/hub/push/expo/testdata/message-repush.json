@@ -1,0 +1,34 @@
+{
+  "to": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+  "title": "Still waiting · 19 min · work · api · asked a question",
+  "body": "Should I also update the migration?",
+  "data": {
+    "v": 1,
+    "type": "alert",
+    "alert": "al_01JA3B7Q0001",
+    "alerts": [
+      "al_01JA3B7Q0001"
+    ],
+    "trigger": "asked",
+    "title": "Still waiting · 19 min · work · api · asked a question",
+    "body": "Should I also update the migration?",
+    "tag": "sy-s-sess_01JA3B7Q",
+    "url": "/#/sessions/sess_01JA3B7Q?alert=al_01JA3B7Q0001",
+    "remote_url": "https://claude.ai/code/session_01JA3B7Q",
+    "tap": "auto",
+    "session": "sess_01JA3B7Q",
+    "needs_you": 3,
+    "actions": {
+      "snooze": "a1.YWxfMDFKQTNCN1EwMDAxAHNub296ZQAAAAACcHRfMDFKQTNCMDAwMDAwMDAwMDAwMDAwMDAwMAAAAAAAas-LWA.RqOqZww3VbMRvkHYpxSuXw",
+      "seen": "a1.YWxfMDFKQTNCN1EwMDAxAHNlZW4AAAAAAnB0XzAxSkEzQjAwMDAwMDAwMDAwMDAwMDAwMDAAAAAAAGrPi1g.rkiOcMMQnFK15Xh69iTVYQ"
+    },
+    "private": false,
+    "ts": "2026-10-13T14:02:00.000Z"
+  },
+  "categoryId": "sy_alert",
+  "channelId": "sy_needs_you",
+  "sound": "default",
+  "badge": 3,
+  "priority": "high",
+  "ttl": 21600
+}

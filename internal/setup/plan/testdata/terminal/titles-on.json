@@ -1,0 +1,77 @@
+{
+  "plan_id": "p_d3835389938d",
+  "actions": [
+    {
+      "id": "a1",
+      "step": "terminal",
+      "op": "json_set",
+      "file": "/home/u/.claude/settings.json",
+      "via": [
+        "/home/u/.claude-2/settings.json"
+      ],
+      "pointer": "/env/CLAUDE_CODE_DISABLE_TERMINAL_TITLE",
+      "value": "1",
+      "covers": [
+        "~/.claude",
+        "~/.claude-2"
+      ],
+      "note": "Claude Code's own title off",
+      "pre": [
+        {
+          "path": "/home/u/.claude/settings.json",
+          "state": {
+            "type": "file"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a2",
+      "step": "terminal",
+      "op": "json_set",
+      "file": "/home/u/.claude-3/settings.json",
+      "pointer": "/env/CLAUDE_CODE_DISABLE_TERMINAL_TITLE",
+      "value": "1",
+      "covers": [
+        "~/.claude-3"
+      ],
+      "note": "Claude Code's own title off",
+      "pre": [
+        {
+          "path": "/home/u/.claude-3/settings.json",
+          "state": {
+            "type": "file"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a3",
+      "step": "config",
+      "op": "config_set",
+      "path": "/home/u/.config/switchyard/config.toml",
+      "value": true,
+      "key": "terminal.titles",
+      "pre": [
+        {
+          "path": "/home/u/.config/switchyard/config.toml",
+          "state": {
+            "type": "file"
+          }
+        }
+      ]
+    }
+  ],
+  "keep": [],
+  "conflicts": [],
+  "needs": [],
+  "summary": {
+    "changes": 3,
+    "backed_up": 3,
+    "links_changed": 0,
+    "logins_touched": 0
+  },
+  "warnings": [
+    "Claude Code's own tab title goes off (CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1); this also skips its background session-title request (/resume shows no generated title) and its OSC 7501 status reports to the terminal"
+  ]
+}

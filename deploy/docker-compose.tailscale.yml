@@ -1,0 +1,16 @@
+# Override: publish the hub on this machine's Tailscale address instead of loopback.
+#
+#   tailscale ip -4                      # e.g. 100.101.102.103
+#   echo 'SY_BIND=100.101.102.103' > .env
+#   docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d
+#
+# Only machines on your tailnet can then reach http://<tailscale-name>:8787. Traffic between
+# tailnet machines is encrypted by WireGuard, so plain http is fine there; for https in
+# the browser use `tailscale serve --bg 8787` instead and keep the default loopback bind.
+#
+# Docker starts before tailscaled on some systems; `restart: unless-stopped` retries the
+# bind until the Tailscale address exists.
+services:
+  hub:
+    ports: !override
+      - "${SY_BIND:?set SY_BIND to the Tailscale IPv4 address}:${SY_PORT:-8787}:8787"

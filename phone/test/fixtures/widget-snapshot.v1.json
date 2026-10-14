@@ -1,0 +1,17 @@
+{
+  "v": 1,
+  "as_of": "2026-10-13T14:02:00.000Z",
+  "hub": "hub.example.ts.net",
+  "needs_you": 2,
+  "top": {"seat": "work", "project": "api", "what": "asked", "since": "2026-10-13T13:58:00.000Z"},
+  "seats": [
+    {"id": "seat_work", "label": "work", "colour": "#7c5cff",
+     "five_hour": {"pct": 62, "resets_at": "2026-10-13T17:00:00.000Z"},
+     "seven_day": {"pct": 41, "resets_at": "2026-10-16T09:00:00.000Z"}},
+    {"id": "seat_home", "label": "home", "colour": "#2fb380",
+     "five_hour": {"pct": 88, "resets_at": "2026-10-13T15:30:00.000Z"},
+     "seven_day": null}
+  ],
+  "next_reset": {"seat": "home", "window": "five_hour", "resets_at": "2026-10-13T15:30:00.000Z", "pct": 88},
+  "private": false
+}

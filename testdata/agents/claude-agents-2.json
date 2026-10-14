@@ -1,0 +1,47 @@
+[
+  {
+    "id": "bg000004",
+    "cwd": "/home/user/projects/area-a/backend",
+    "kind": "background",
+    "startedAt": 1789460032864,
+    "sessionId": "00000000-0000-4000-8000-000000000003",
+    "name": "session 2",
+    "state": "blocked"
+  },
+  {
+    "id": "bg000006",
+    "cwd": "/home/user/projects/area-a/backend",
+    "kind": "background",
+    "startedAt": 1789489503674,
+    "sessionId": "00000000-0000-4000-8000-000000000005",
+    "name": "session 3",
+    "state": "blocked"
+  },
+  {
+    "pid": 3861972,
+    "cwd": "/home/user/claude-home",
+    "kind": "interactive",
+    "startedAt": 1791811646461,
+    "sessionId": "00000000-0000-4000-8000-000000000007",
+    "name": "session 4",
+    "status": "idle"
+  },
+  {
+    "pid": 3865645,
+    "cwd": "/home/user/projects/area-a/neo-backend",
+    "kind": "interactive",
+    "startedAt": 1791811803405,
+    "sessionId": "00000000-0000-4000-8000-000000000008",
+    "name": "session 5",
+    "status": "idle"
+  },
+  {
+    "pid": 3868984,
+    "cwd": "/home/user/projects/area-a/neo-backend",
+    "kind": "interactive",
+    "startedAt": 1791811849919,
+    "sessionId": "00000000-0000-4000-8000-000000000009",
+    "name": "session 6",
+    "status": "busy"
+  }
+]

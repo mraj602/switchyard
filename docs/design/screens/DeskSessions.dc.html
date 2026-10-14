@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Switchyard — Sessions</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#7A4E00}a:hover{color:#4F3200}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #F3F4F1; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #17191B; display: flex; flex-wrap: wrap">
+  <nav aria-label="Main" style="flex: 0 0 232px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #DFE1DC; padding: 20px 14px; display: flex; flex-direction: column; gap: 4px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 16px"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M3 18 L11 4 L19 18" fill="none" stroke="#17191B" stroke-width="2"/><path d="M7 18 L11 11 L15 18" fill="none" stroke="#E8B04B" stroke-width="2"/></svg><span style="font-weight: 700; font-size: 17px">Switchyard</span></div>
+    <a href="DeskHome.dc.html" style="padding: 9px 10px; border-radius: 8px; color: #17191B; text-decoration: none">Home</a>
+    <a href="DeskSessions.dc.html" style="display: flex; justify-content: space-between; padding: 9px 10px; border-radius: 8px; background: #F1EADB; color: #17191B; text-decoration: none; font-weight: 600">Sessions <span style="background: #C2410C; color: #FFFFFF; font-size: 12px; padding: 1px 7px; border-radius: 10px">3</span></a>
+    <a href="#" style="padding: 9px 10px; border-radius: 8px; color: #17191B; text-decoration: none">Analytics</a>
+    <div style="margin: 18px 10px 6px; font-size: 12px; font-weight: 600; color: #5E646B; text-transform: uppercase; letter-spacing: 0.06em">Accounts</div>
+    <a href="DeskAccountTab.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; color: #17191B; text-decoration: none"><span style="width: 9px; height: 9px; border-radius: 50%; background: #0E7C76"></span>personal</a>
+    <a href="DeskAccountTab.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; color: #17191B; text-decoration: none"><span style="width: 9px; height: 9px; border-radius: 50%; background: #6A4FD6"></span>work</a>
+    <a href="DeskAccountTab.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; color: #17191B; text-decoration: none"><span style="width: 9px; height: 9px; border-radius: 50%; background: #9A7400"></span>client</a>
+    <a href="DeskAccountTab.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; color: #17191B; text-decoration: none"><span style="width: 9px; height: 9px; border-radius: 50%; background: #2F6FDE"></span>research</a>
+    <div style="flex: 1"></div>
+    <a href="DeskAccounts.dc.html" style="padding: 9px 10px; color: #17191B; text-decoration: none">Settings</a>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 28px 32px 40px; display: flex; flex-direction: column; gap: 18px">
+    <header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+      <h1 style="margin: 0; font-size: 26px; font-weight: 600">Sessions</h1>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+        <button type="button" style="font: inherit; font-size: 14px; border: 1px solid #C2410C; background: #FBE9DF; color: #9A3412; font-weight: 600; border-radius: 18px; padding: 6px 14px; min-height: 36px">Needs you 3</button>
+        <button type="button" style="font: inherit; font-size: 14px; border: 1px solid #C9CCC6; background: #FFFFFF; border-radius: 18px; padding: 6px 14px; min-height: 36px">Working 6</button>
+        <button type="button" style="font: inherit; font-size: 14px; border: 1px solid #C9CCC6; background: #FFFFFF; border-radius: 18px; padding: 6px 14px; min-height: 36px">Done 5</button>
+        <button type="button" style="font: inherit; font-size: 14px; border: 1px solid #17191B; background: #17191B; color: #FFFFFF; border-radius: 18px; padding: 6px 14px; min-height: 36px">All 14</button>
+        <label style="font-size: 14px; color: #5E646B; margin-left: 8px">Group by <select style="font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid #C9CCC6; border-radius: 8px; background: #FFFFFF"><option>Account</option><option>Machine</option><option>Project</option></select></label>
+      </div>
+    </header>
+
+    <div style="overflow-x: auto; background: #FFFFFF; border: 1px solid #DFE1DC; border-radius: 12px">
+      <table style="width: 100%; min-width: 980px; border-collapse: collapse; font-size: 14px">
+        <thead>
+          <tr style="text-align: left; color: #5E646B; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em">
+            <th style="padding: 12px 16px; font-weight: 600">State</th><th style="padding: 12px 8px; font-weight: 600">Session</th><th style="padding: 12px 8px; font-weight: 600">Machine</th><th style="padding: 12px 8px; font-weight: 600">Last line</th><th style="padding: 12px 8px; font-weight: 600">Context</th><th style="padding: 12px 8px; font-weight: 600">For</th><th style="padding: 12px 16px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="background: #F7F5EF"><td colspan="7" style="padding: 9px 16px; border-top: 1px solid #DFE1DC; font-weight: 600"><span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #6A4FD6; margin-right: 8px"></span>work <span style="font-weight: 400; color: #5E646B">· you@work.example · 41% of 5h · 4 sessions</span></td></tr>
+          <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 12px 16px; white-space: nowrap"><span style="color: #9A3412; font-weight: 600">● Asked</span></td><td style="padding: 12px 8px"><b style="font-weight: 600">api</b> <span style="color: #5E646B">· migrate-orders</span></td><td style="padding: 12px 8px">gpu-box</td><td style="padding: 12px 8px; color: #3A3F45; max-width: 360px">Should I also update the migration, or keep the old column…</td><td style="padding: 12px 8px; font-family: 'IBM Plex Mono', monospace">54%</td><td style="padding: 12px 8px; color: #5E646B">4 min</td><td style="padding: 12px 16px"><a href="#">Open</a></td></tr>
+          <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 12px 16px; white-space: nowrap"><span style="color: #1D4ED8">● Working</span></td><td style="padding: 12px 8px"><b style="font-weight: 600">api</b> <span style="color: #5E646B">· flaky-tests</span></td><td style="padding: 12px 8px">gpu-box</td><td style="padding: 12px 8px; color: #3A3F45">Running the integration suite again with --runInBand</td><td style="padding: 12px 8px; font-family: 'IBM Plex Mono', monospace">31%</td><td style="padding: 12px 8px; color: #5E646B">2 min</td><td style="padding: 12px 16px"><a href="#">Open</a></td></tr>
+          <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 12px 16px; white-space: nowrap"><span style="color: #1D4ED8">● Working</span></td><td style="padding: 12px 8px"><b style="font-weight: 600">infra</b> <span style="color: #5E646B">· terraform-plan</span></td><td style="padding: 12px 8px">laptop</td><td style="padding: 12px 8px; color: #3A3F45">Reading modules/network/main.tf</td><td style="padding: 12px 8px; font-family: 'IBM Plex Mono', monospace; color: #B42318; font-weight: 600">92%</td><td style="padding: 12px 8px; color: #5E646B">40 s</td><td style="padding: 12px 16px"><a href="#">Open</a></td></tr>
+          <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 12px 16px; white-space: nowrap"><span style="color: #5E646B">○ Done</span></td><td style="padding: 12px 8px"><b style="font-weight: 600">docs</b> <span style="color: #5E646B">· changelog</span></td><td style="padding: 12px 8px">laptop</td><td style="padding: 12px 8px; color: #3A3F45">Updated CHANGELOG.md with the three fixes.</td><td style="padding: 12px 8px; font-family: 'IBM Plex Mono', monospace">18%</td><td style="padding: 12px 8px; color: #5E646B">25 min</td><td style="padding: 12px 16px"><a href="#">Open</a></td></tr>
+
+          <tr style="background: #F7F5EF"><td colspan="7" style="padding: 9px 16px; border-top: 1px solid #DFE1DC; font-weight: 600"><span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #9A7400; margin-right: 8px"></span>client <span style="font-weight: 400; color: #5E646B">· you@client.example · 5h limit reached, resets 17:00 · 3 sessions</span></td></tr>
+          <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 12px 16px; white-space: nowrap"><span style="color: #9A3412; font-weight: 600">● Permission</span></td><td style="padding: 12px 8px"><b style="font-weight: 600">storefront</b> <span style="color: #5E646B">· deploy</span></td><td style="padding: 12px 8px">laptop</td><td style="padding: 12px 8px; color: #3A3F45; font-family: 'IBM Plex Mono', monospace; font-size: 13px">Bash(npm run deploy -- --prod)</td><td style="padding: 12px 8px; font-family: 'IBM Plex Mono', monospace">40%</td><td style="padding: 12px 8px; color: #5E646B">1 min</td><td style="padding: 12px 16px"><a href="#">Open</a></td></tr>
+          <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 12px 16px; white-space: nowrap"><span style="color: #B42318; font-weight: 600">■ Limited</span></td><td style="padding: 12px 8px"><b style="font-weight: 600">data-pipeline</b> <span style="color: #5E646B">· backfill</span></td><td style="padding: 12px 8px">laptop</td><td style="padding: 12px 8px; color: #3A3F45">You've hit your 5-hour limit · resets 17:00</td><td style="padding: 12px 8px; font-family: 'IBM Plex Mono', monospace">67%</td><td style="padding: 12px 8px; color: #5E646B">9 min</td><td style="padding: 12px 16px"><a href="#">Open</a></td></tr>
+          <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 12px 16px; white-space: nowrap"><span style="color: #8A9098">◌ Gone</span></td><td style="padding: 12px 8px"><b style="font-weight: 600">storefront</b> <span style="color: #5E646B">· seo-audit</span></td><td style="padding: 12px 8px">laptop</td><td style="padding: 12px 8px; color: #5E646B">Ended without a goodbye (terminal closed)</td><td style="padding: 12px 8px; font-family: 'IBM Plex Mono', monospace">—</td><td style="padding: 12px 8px; color: #5E646B">2 h</td><td style="padding: 12px 16px"><a href="#">Resume</a></td></tr>
+
+          <tr style="background: #F7F5EF"><td colspan="7" style="padding: 9px 16px; border-top: 1px solid #DFE1DC; font-weight: 600"><span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #0E7C76; margin-right: 8px"></span>personal <span style="font-weight: 400; color: #5E646B">· you@example.com · 62% of 5h · 7 sessions (3 shown)</span></td></tr>
+          <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 12px 16px; white-space: nowrap"><span style="color: #1D4ED8">● Working</span></td><td style="padding: 12px 8px"><b style="font-weight: 600">switchyard</b> <span style="color: #5E646B">· hub-ingest</span></td><td style="padding: 12px 8px">laptop</td><td style="padding: 12px 8px; color: #3A3F45">Writing server/ingest.go</td><td style="padding: 12px 8px; font-family: 'IBM Plex Mono', monospace">47%</td><td style="padding: 12px 8px; color: #5E646B">5 min</td><td style="padding: 12px 16px"><a href="#">Open</a></td></tr>
+          <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 12px 16px; white-space: nowrap"><span style="color: #1D4ED8">● Working</span></td><td style="padding: 12px 8px"><b style="font-weight: 600">blog</b> <span style="color: #5E646B">· draft-post</span></td><td style="padding: 12px 8px">gpu-box</td><td style="padding: 12px 8px; color: #3A3F45">Fetching three sources for the intro</td><td style="padding: 12px 8px; font-family: 'IBM Plex Mono', monospace">12%</td><td style="padding: 12px 8px; color: #5E646B">20 s</td><td style="padding: 12px 16px"><a href="#">Open</a></td></tr>
+          <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 12px 16px; white-space: nowrap"><span style="color: #5E646B">○ Done</span></td><td style="padding: 12px 8px"><b style="font-weight: 600">finance</b> <span style="color: #5E646B">· october-export</span></td><td style="padding: 12px 8px">laptop</td><td style="padding: 12px 8px; color: #3A3F45">Exported 214 rows to october.csv.</td><td style="padding: 12px 8px; font-family: 'IBM Plex Mono', monospace">9%</td><td style="padding: 12px 8px; color: #5E646B">1 h</td><td style="padding: 12px 16px"><a href="#">Open</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin: 0; font-size: 13px; color: #5E646B">States come from Claude Code's hooks; "Asked" also catches plain-text questions at the end of a turn. Open = Remote Control link when on, else the resume command for the right account (claude-2 --resume …).</p>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Switchyard — Settings, accounts and sharing</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#7A4E00}a:hover{color:#4F3200}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #F3F4F1; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #17191B; display: flex; flex-wrap: wrap">
+  <nav aria-label="Settings" style="flex: 0 0 232px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #DFE1DC; padding: 20px 14px; display: flex; flex-direction: column; gap: 4px">
+    <a href="DeskHome.dc.html" style="padding: 0 10px 16px; color: #5E646B; text-decoration: none; font-size: 14px">← Back to Home</a>
+    <div style="padding: 0 10px 10px; font-weight: 700; font-size: 17px">Settings</div>
+    <a href="DeskAccounts.dc.html" style="padding: 9px 10px; border-radius: 8px; background: #F1EADB; color: #17191B; text-decoration: none; font-weight: 600">Accounts and sharing</a>
+    <a href="DeskMachines.dc.html" style="padding: 9px 10px; color: #17191B; text-decoration: none">Hub and machines</a>
+    <a href="DeskAlerts.dc.html" style="padding: 9px 10px; color: #17191B; text-decoration: none">Phone and notifications</a>
+    <a href="#" style="padding: 9px 10px; color: #17191B; text-decoration: none">Background</a>
+    <a href="#" style="padding: 9px 10px; color: #17191B; text-decoration: none">Privacy</a>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 28px 32px 40px; display: flex; flex-direction: column; gap: 26px; max-width: 1160px">
+    <header style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px">
+      <h1 style="margin: 0; font-size: 26px; font-weight: 600">Accounts and sharing</h1>
+      <div style="display: flex; gap: 8px"><button type="button" style="font: inherit; font-size: 14px; background: #FFFFFF; border: 1px solid #C9CCC6; border-radius: 8px; padding: 8px 14px; min-height: 40px">Add claude.ai tab</button><button type="button" style="font: inherit; font-size: 14px; font-weight: 600; background: #17191B; color: #FFFFFF; border: 0; border-radius: 8px; padding: 8px 14px; min-height: 40px">Add Claude Code account</button></div>
+    </header>
+
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 17px; font-weight: 600">Accounts</h2>
+      <p style="margin: 0; font-size: 14px; color: #5E646B">One row per login. Folders and tabs with the same login join the same row, on every machine.</p>
+      <div style="overflow-x: auto; background: #FFFFFF; border: 1px solid #DFE1DC; border-radius: 12px">
+        <table style="width: 100%; min-width: 860px; border-collapse: collapse; font-size: 14px">
+          <thead><tr style="text-align: left; font-size: 12px; color: #5E646B; text-transform: uppercase; letter-spacing: 0.05em"><th style="padding: 12px 16px; font-weight: 600">Label</th><th style="padding: 12px 8px; font-weight: 600">Login</th><th style="padding: 12px 8px; font-weight: 600">Plan</th><th style="padding: 12px 8px; font-weight: 600">Used on</th><th style="padding: 12px 16px; font-weight: 600">Read web usage</th></tr></thead>
+          <tbody>
+            <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 12px 16px"><span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: #0E7C76; margin-right: 8px; vertical-align: -1px"></span><b style="font-weight: 600">personal</b></td><td style="padding: 12px 8px">you@example.com</td><td style="padding: 12px 8px">Max 20x</td><td style="padding: 12px 8px; color: #3A3F45">laptop ~/.claude · gpu-box ~/.claude-2 · tab</td><td style="padding: 12px 16px"><label><input type="checkbox" checked> every 5 min</label></td></tr>
+            <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 12px 16px"><span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: #6A4FD6; margin-right: 8px; vertical-align: -1px"></span><b style="font-weight: 600">work</b></td><td style="padding: 12px 8px">you@work.example</td><td style="padding: 12px 8px">Team · Acme</td><td style="padding: 12px 8px; color: #3A3F45">laptop ~/.claude-2 · gpu-box ~/.claude</td><td style="padding: 12px 16px"><span style="color: #5E646B">no tab — status line only</span></td></tr>
+            <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 12px 16px"><span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: #9A7400; margin-right: 8px; vertical-align: -1px"></span><b style="font-weight: 600">client</b></td><td style="padding: 12px 8px">you@client.example</td><td style="padding: 12px 8px">Max 5x</td><td style="padding: 12px 8px; color: #3A3F45">laptop ~/.claude-3 · tab</td><td style="padding: 12px 16px"><label><input type="checkbox" checked> every 5 min</label></td></tr>
+            <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 12px 16px"><span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: #2F6FDE; margin-right: 8px; vertical-align: -1px"></span><b style="font-weight: 600">research</b></td><td style="padding: 12px 8px">you@lab.example</td><td style="padding: 12px 8px">Pro</td><td style="padding: 12px 8px; color: #3A3F45">tab only</td><td style="padding: 12px 16px"><label><input type="checkbox"> only when I open the tab</label></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 17px; font-weight: 600">What Claude Code accounts on this computer share</h2>
+      <p style="margin: 0; font-size: 14px; color: #5E646B">Shared parts point at ~/.claude. Changes apply at once; open sessions see them after a restart.</p>
+      <div style="overflow-x: auto; background: #FFFFFF; border: 1px solid #DFE1DC; border-radius: 12px">
+        <table style="width: 100%; min-width: 860px; border-collapse: collapse; font-size: 14px">
+          <thead><tr style="text-align: left; font-size: 13px; color: #5E646B"><th style="padding: 12px 16px; font-weight: 600">Part</th><th style="padding: 12px 8px; font-weight: 600; color: #0E7C76">~/.claude personal</th><th style="padding: 12px 8px; font-weight: 600; color: #6A4FD6">~/.claude-2 work</th><th style="padding: 12px 8px; font-weight: 600; color: #7A5C00">~/.claude-3 client</th><th style="padding: 12px 16px; font-weight: 600">How</th></tr></thead>
+          <tbody>
+            <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 11px 16px">Settings (hooks, permissions, plugins on/off)</td><td style="padding: 11px 8px; color: #5E646B">source</td><td style="padding: 11px 8px"><input type="checkbox" checked aria-label="work shares settings"></td><td style="padding: 11px 8px"><input type="checkbox" checked aria-label="client shares settings"></td><td style="padding: 11px 16px; color: #5E646B">link</td></tr>
+            <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 11px 16px">Instructions (CLAUDE.md, rules)</td><td style="padding: 11px 8px; color: #5E646B">source</td><td style="padding: 11px 8px"><input type="checkbox" checked aria-label="work shares instructions"></td><td style="padding: 11px 8px"><input type="checkbox" aria-label="client shares instructions"></td><td style="padding: 11px 16px; color: #5E646B">link</td></tr>
+            <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 11px 16px">Skills, agents, commands</td><td style="padding: 11px 8px; color: #5E646B">source</td><td style="padding: 11px 8px"><input type="checkbox" checked aria-label="work shares skills"></td><td style="padding: 11px 8px"><input type="checkbox" checked aria-label="client shares skills"></td><td style="padding: 11px 16px; color: #5E646B">link</td></tr>
+            <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 11px 16px">Plugins</td><td style="padding: 11px 8px; color: #5E646B">source</td><td style="padding: 11px 8px"><input type="checkbox" checked aria-label="work shares plugins"></td><td style="padding: 11px 8px"><input type="checkbox" checked aria-label="client shares plugins"></td><td style="padding: 11px 16px; color: #5E646B">one plugin folder</td></tr>
+            <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 11px 16px">MCP servers <span style="color: #5E646B">(sign-ins stay per account)</span></td><td style="padding: 11px 8px; color: #5E646B">source</td><td style="padding: 11px 8px"><input type="checkbox" checked aria-label="work shares MCP servers"></td><td style="padding: 11px 8px"><input type="checkbox" aria-label="client shares MCP servers"></td><td style="padding: 11px 16px; color: #5E646B">list copied</td></tr>
+            <tr style="border-top: 1px solid #ECEDEA"><td style="padding: 11px 16px">History and memory (transcripts, auto-memory)</td><td style="padding: 11px 8px; color: #5E646B">source</td><td style="padding: 11px 8px"><input type="checkbox" checked aria-label="work shares history"></td><td style="padding: 11px 8px"><input type="checkbox" aria-label="client shares history"></td><td style="padding: 11px 16px; color: #5E646B">link</td></tr>
+            <tr style="border-top: 1px solid #ECEDEA; color: #8A9098"><td style="padding: 11px 16px">Login, tokens, live sessions, usage counters</td><td style="padding: 11px 8px">own</td><td style="padding: 11px 8px">own</td><td style="padding: 11px 8px">own</td><td style="padding: 11px 16px">never shared</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: #5E646B">client keeps its own instructions, MCP servers and history, for a customer's work kept apart.</p>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

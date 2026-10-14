@@ -1,0 +1,4 @@
+title: client · 7-day at 81%
+body: Resets Thu 17:00
+url: /#/accounts?seat=seat-client
+tag: sy-l-seat-client-seven_day

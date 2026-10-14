@@ -1,0 +1,30 @@
+# docker compose up -d   (reads .env next to this file; copy .env.example first)
+services:
+  switchyard:
+    build: .
+    image: switchyard-server:latest
+    container_name: switchyard
+    restart: unless-stopped          # comes back after reboots once the Docker daemon starts
+    env_file: .env
+    ports:
+      # localhost only by default; put a reverse proxy / Tailscale / Cloudflare Tunnel in front
+      # for phone access, or change to "8787:8787" on a trusted network.
+      - "127.0.0.1:${SWITCHYARD_PORT:-8787}:8787"
+    volumes:
+      - switchyard-data:/data
+      # Optional: let the server scan Claude Code transcripts itself (read-only), so token
+      # analytics keep updating while the desktop app is closed. Mount at the SAME paths as
+      # on the host so symlinked projects/ folders resolve, set SWITCHYARD_SCAN_HOME in .env,
+      # and run as your uid (user: below) so the files are readable.
+      # - ${HOME}/.claude:${HOME}/.claude:ro
+      # - ${HOME}/.claude.json:${HOME}/.claude.json:ro
+      # - ${HOME}/.claude-2:${HOME}/.claude-2:ro
+      # - ${HOME}/.claude-3:${HOME}/.claude-3:ro
+    # user: "1000:1000"
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+
+volumes:
+  switchyard-data:

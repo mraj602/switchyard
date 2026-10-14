@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Switchyard — Home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#7A4E00}a:hover{color:#4F3200}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #F3F4F1; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #17191B; display: flex; flex-wrap: wrap">
+  <nav aria-label="Main" style="flex: 0 0 232px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #DFE1DC; padding: 20px 14px; display: flex; flex-direction: column; gap: 4px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 16px">
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M3 18 L11 4 L19 18" fill="none" stroke="#17191B" stroke-width="2"/><path d="M7 18 L11 11 L15 18" fill="none" stroke="#E8B04B" stroke-width="2"/></svg>
+      <span style="font-weight: 700; font-size: 17px; letter-spacing: -0.01em">Switchyard</span>
+    </div>
+    <a href="DeskHome.dc.html" style="display: flex; justify-content: space-between; padding: 9px 10px; border-radius: 8px; background: #F1EADB; color: #17191B; text-decoration: none; font-weight: 600">Home</a>
+    <a href="DeskSessions.dc.html" style="display: flex; justify-content: space-between; padding: 9px 10px; border-radius: 8px; color: #17191B; text-decoration: none">Sessions <span style="background: #C2410C; color: #FFFFFF; font-size: 12px; font-weight: 600; padding: 1px 7px; border-radius: 10px">3</span></a>
+    <a href="#" style="padding: 9px 10px; border-radius: 8px; color: #17191B; text-decoration: none">Analytics</a>
+    <div style="margin: 18px 10px 6px; font-size: 12px; font-weight: 600; color: #5E646B; text-transform: uppercase; letter-spacing: 0.06em">Accounts</div>
+    <a href="DeskAccountTab.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; color: #17191B; text-decoration: none"><span style="width: 9px; height: 9px; border-radius: 50%; background: #0E7C76"></span><span style="flex: 1">personal</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5E646B">62%</span></a>
+    <a href="DeskAccountTab.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; color: #17191B; text-decoration: none"><span style="width: 9px; height: 9px; border-radius: 50%; background: #6A4FD6"></span><span style="flex: 1">work</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5E646B">41%</span></a>
+    <a href="DeskAccountTab.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; color: #17191B; text-decoration: none"><span style="width: 9px; height: 9px; border-radius: 50%; background: #9A7400"></span><span style="flex: 1">client</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #B42318; font-weight: 600">91%</span></a>
+    <a href="DeskAccountTab.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; color: #17191B; text-decoration: none"><span style="width: 9px; height: 9px; border-radius: 50%; background: #2F6FDE"></span><span style="flex: 1">research</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5E646B">8%</span></a>
+    <a href="DeskAccounts.dc.html" style="padding: 8px 10px; color: #5E646B; text-decoration: none">+ Add account</a>
+    <div style="flex: 1"></div>
+    <a href="DeskAccounts.dc.html" style="padding: 9px 10px; border-radius: 8px; color: #17191B; text-decoration: none">Settings</a>
+    <div style="display: flex; align-items: center; gap: 8px; padding: 10px; font-size: 13px; color: #5E646B"><span style="width: 8px; height: 8px; border-radius: 50%; background: #2E8540"></span>Hub · this computer · live</div>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 28px 32px 40px; display: flex; flex-direction: column; gap: 28px; max-width: 1240px">
+    <header style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px">
+      <h1 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.01em">3 sessions need you</h1>
+      <span style="font-size: 13px; color: #5E646B">4 accounts · 14 sessions on 3 machines · updated 12 s ago</span>
+    </header>
+
+    <section aria-label="Needs you" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px">
+      <article style="background: #FFFFFF; border: 1px solid #DFE1DC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 13px"><span style="background: #FBE9DF; color: #9A3412; font-weight: 600; padding: 2px 8px; border-radius: 6px">Asked a question</span><span style="color: #5E646B">4 min</span></div>
+        <div style="font-size: 15px; line-height: 1.45">Should I also update the migration, or keep the old column until the backfill finishes?</div>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #5E646B"><span style="width: 8px; height: 8px; border-radius: 50%; background: #6A4FD6"></span>work · api · gpu-box</div>
+        <div style="display: flex; gap: 8px"><button type="button" style="font: inherit; font-size: 14px; font-weight: 600; background: #17191B; color: #FFFFFF; border: 0; border-radius: 8px; padding: 9px 14px; min-height: 40px">Open in Claude</button><button type="button" style="font: inherit; font-size: 14px; background: #FFFFFF; color: #17191B; border: 1px solid #C9CCC6; border-radius: 8px; padding: 9px 14px; min-height: 40px">Snooze</button></div>
+      </article>
+      <article style="background: #FFFFFF; border: 1px solid #DFE1DC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 13px"><span style="background: #FBE9DF; color: #9A3412; font-weight: 600; padding: 2px 8px; border-radius: 6px">Needs permission</span><span style="color: #5E646B">1 min</span></div>
+        <div style="font-size: 15px; line-height: 1.45; font-family: 'IBM Plex Mono', monospace">Bash(npm run deploy -- --prod)</div>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #5E646B"><span style="width: 8px; height: 8px; border-radius: 50%; background: #9A7400"></span>client · storefront · laptop</div>
+        <div style="display: flex; gap: 8px"><button type="button" style="font: inherit; font-size: 14px; font-weight: 600; background: #17191B; color: #FFFFFF; border: 0; border-radius: 8px; padding: 9px 14px; min-height: 40px">Go to terminal</button><button type="button" style="font: inherit; font-size: 14px; background: #FFFFFF; color: #17191B; border: 1px solid #C9CCC6; border-radius: 8px; padding: 9px 14px; min-height: 40px">Snooze</button></div>
+      </article>
+      <article style="background: #FFFFFF; border: 1px solid #DFE1DC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 13px"><span style="background: #FDE8E7; color: #B42318; font-weight: 600; padding: 2px 8px; border-radius: 6px">Rate limited</span><span style="color: #5E646B">9 min</span></div>
+        <div style="font-size: 15px; line-height: 1.45">5-hour limit reached. Resets at 17:00. <span style="color: #5E646B">work has 59% left.</span></div>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #5E646B"><span style="width: 8px; height: 8px; border-radius: 50%; background: #9A7400"></span>client · data-pipeline · laptop</div>
+        <div style="display: flex; gap: 8px"><button type="button" style="font: inherit; font-size: 14px; font-weight: 600; background: #17191B; color: #FFFFFF; border: 0; border-radius: 8px; padding: 9px 14px; min-height: 40px">Copy resume command</button><button type="button" style="font: inherit; font-size: 14px; background: #FFFFFF; color: #17191B; border: 1px solid #C9CCC6; border-radius: 8px; padding: 9px 14px; min-height: 40px">Seen</button></div>
+      </article>
+    </section>
+
+    <section aria-label="Accounts" style="display: flex; flex-direction: column; gap: 12px">
+      <h2 style="margin: 0; font-size: 17px; font-weight: 600">Accounts</h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px">
+        <article style="background: #FFFFFF; border: 1px solid #DFE1DC; border-top: 3px solid #0E7C76; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+          <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-weight: 600; font-size: 16px">personal</span><span style="font-size: 12px; color: #5E646B">Max 20x</span></div>
+          <div style="font-size: 13px; color: #5E646B; margin-top: -8px">you@example.com · laptop, gpu-box, web</div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between; font-size: 13px"><span>5-hour</span><span style="font-family: 'IBM Plex Mono', monospace">62% · 16:40</span></div><div style="height: 8px; background: #E9EBE6; border-radius: 4px"><div style="width: 62%; height: 8px; background: #0E7C76; border-radius: 4px"></div></div></div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between; font-size: 13px"><span>7-day</span><span style="font-family: 'IBM Plex Mono', monospace">48% · Thu 09:00</span></div><div style="height: 8px; background: #E9EBE6; border-radius: 4px"><div style="width: 48%; height: 8px; background: #0E7C76; border-radius: 4px"></div></div></div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between; font-size: 13px"><span>7-day · Opus</span><span style="font-family: 'IBM Plex Mono', monospace">22%</span></div><div style="height: 8px; background: #E9EBE6; border-radius: 4px"><div style="width: 22%; height: 8px; background: #0E7C76; border-radius: 4px"></div></div></div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px; color: #5E646B"><span>Cloud credits (iguana_necktie)</span><span style="font-family: 'IBM Plex Mono', monospace">30%</span></div>
+          <div style="font-size: 13px; color: #2E6B3A; background: #E7F2E9; padding: 4px 8px; border-radius: 6px; align-self: flex-start">On pace: ~85% at reset</div>
+        </article>
+        <article style="background: #FFFFFF; border: 1px solid #DFE1DC; border-top: 3px solid #6A4FD6; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+          <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-weight: 600; font-size: 16px">work</span><span style="font-size: 12px; color: #5E646B">Team · Acme</span></div>
+          <div style="font-size: 13px; color: #5E646B; margin-top: -8px">you@work.example · laptop, gpu-box</div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between; font-size: 13px"><span>5-hour</span><span style="font-family: 'IBM Plex Mono', monospace">41% · 15:10</span></div><div style="height: 8px; background: #E9EBE6; border-radius: 4px"><div style="width: 41%; height: 8px; background: #6A4FD6; border-radius: 4px"></div></div></div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between; font-size: 13px"><span>7-day</span><span style="font-family: 'IBM Plex Mono', monospace">30% · Mon 11:00</span></div><div style="height: 8px; background: #E9EBE6; border-radius: 4px"><div style="width: 30%; height: 8px; background: #6A4FD6; border-radius: 4px"></div></div></div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px; color: #5E646B"><span>Extra usage</span><span style="font-family: 'IBM Plex Mono', monospace">off</span></div>
+          <div style="font-size: 13px; color: #2E6B3A; background: #E7F2E9; padding: 4px 8px; border-radius: 6px; align-self: flex-start">Most room this week</div>
+        </article>
+        <article style="background: #FFFFFF; border: 1px solid #DFE1DC; border-top: 3px solid #9A7400; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+          <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-weight: 600; font-size: 16px">client</span><span style="font-size: 12px; color: #5E646B">Max 5x</span></div>
+          <div style="font-size: 13px; color: #5E646B; margin-top: -8px">you@client.example · laptop</div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between; font-size: 13px"><span>5-hour</span><span style="font-family: 'IBM Plex Mono', monospace; color: #B42318; font-weight: 600">100% · 17:00</span></div><div style="height: 8px; background: #E9EBE6; border-radius: 4px"><div style="width: 100%; height: 8px; background: #9A7400; border-radius: 4px"></div></div></div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between; font-size: 13px"><span>7-day</span><span style="font-family: 'IBM Plex Mono', monospace">91% · Sat 08:00</span></div><div style="height: 8px; background: #E9EBE6; border-radius: 4px"><div style="width: 91%; height: 8px; background: #9A7400; border-radius: 4px"></div></div></div>
+          <div style="font-size: 13px; color: #9A3412; background: #FBE9DF; padding: 4px 8px; border-radius: 6px; align-self: flex-start">At this pace: 100% on Thursday</div>
+        </article>
+        <article style="background: #FFFFFF; border: 1px solid #DFE1DC; border-top: 3px solid #2F6FDE; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+          <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-weight: 600; font-size: 16px">research</span><span style="font-size: 12px; color: #5E646B">Pro</span></div>
+          <div style="font-size: 13px; color: #5E646B; margin-top: -8px">you@lab.example · web only</div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between; font-size: 13px"><span>5-hour</span><span style="font-family: 'IBM Plex Mono', monospace">8% · 18:20</span></div><div style="height: 8px; background: #E9EBE6; border-radius: 4px"><div style="width: 8%; height: 8px; background: #2F6FDE; border-radius: 4px"></div></div></div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between; font-size: 13px"><span>7-day</span><span style="font-family: 'IBM Plex Mono', monospace">12% · Tue 14:00</span></div><div style="height: 8px; background: #E9EBE6; border-radius: 4px"><div style="width: 12%; height: 8px; background: #2F6FDE; border-radius: 4px"></div></div></div>
+          <div style="font-size: 13px; color: #5E646B">From the desktop app only (no Claude Code)</div>
+        </article>
+      </div>
+    </section>
+
+    <section aria-label="Machines" style="display: flex; flex-direction: column; gap: 12px">
+      <h2 style="margin: 0; font-size: 17px; font-weight: 600">Machines</h2>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px">
+        <div style="flex: 1 1 220px; background: #FFFFFF; border: 1px solid #DFE1DC; border-radius: 12px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center"><span><span style="font-weight: 600">laptop</span><br><span style="font-size: 13px; color: #5E646B">9 sessions · 3 accounts</span></span><span style="font-size: 13px; color: #2E6B3A">live</span></div>
+        <div style="flex: 1 1 220px; background: #FFFFFF; border: 1px solid #DFE1DC; border-radius: 12px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center"><span><span style="font-weight: 600">gpu-box</span><br><span style="font-size: 13px; color: #5E646B">5 sessions · via Tailscale</span></span><span style="font-size: 13px; color: #2E6B3A">live</span></div>
+        <div style="flex: 1 1 220px; background: #FFFFFF; border: 1px solid #DFE1DC; border-radius: 12px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center"><span><span style="font-weight: 600">old-vps</span><br><span style="font-size: 13px; color: #5E646B">0 sessions · 212 records queued</span></span><span style="font-size: 13px; color: #9A3412">quiet 3 h</span></div>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

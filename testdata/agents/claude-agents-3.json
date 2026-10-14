@@ -1,0 +1,20 @@
+[
+  {
+    "pid": 3866868,
+    "cwd": "/home/user/projects/area-a/deployment-workflows",
+    "kind": "interactive",
+    "startedAt": 1791811819866,
+    "sessionId": "00000000-0000-4000-8000-000000000010",
+    "name": "session 7",
+    "status": "busy"
+  },
+  {
+    "pid": 3938689,
+    "cwd": "/home/user/projects/personal",
+    "kind": "interactive",
+    "startedAt": 1791813858318,
+    "sessionId": "00000000-0000-4000-8000-000000000011",
+    "name": "session 8",
+    "status": "busy"
+  }
+]

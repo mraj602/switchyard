@@ -1,0 +1,31 @@
+{
+  "v": 1,
+  "id": "ID",
+  "kind": "hook_event",
+  "ts": "TS",
+  "machine": "m_MACHINE",
+  "slot": "~/.claude-3",
+  "seat": {
+    "account": "aaaaaaaa-0000-4000-8000-000000000003",
+    "org": "bbbbbbbb-0000-4000-8000-000000000003",
+    "email": "user3@example.com",
+    "src": "claude_json"
+  },
+  "term": {
+    "app": "warp",
+    "id": "00000000000000000000000000000001",
+    "focus_url": "warp://session/00000000000000000000000000000001"
+  },
+  "client": "sy/dev",
+  "derived": {
+    "hook_ms": 0
+  },
+  "payload": {
+    "cwd": "/tmp/claude-1000/-home-user-projects-personal/92757a3d-04cd-4927-8177-c75bc52051b4/scratchpad/proj1",
+    "hook_event_name": "SessionEnd",
+    "prompt_id": "e96e8667-555e-4d77-a042-6f2ba81807df",
+    "reason": "other",
+    "session_id": "76cef052-a659-422c-b1eb-36dea6e22655",
+    "transcript_path": "/home/user/.claude-3/projects/-tmp-claude-1000--home-user-projects-personal-92757a3d-04cd-4927-8177-c75bc52051b4-scratchpad-proj1/76cef052-a659-422c-b1eb-36dea6e22655.jsonl"
+  }
+}

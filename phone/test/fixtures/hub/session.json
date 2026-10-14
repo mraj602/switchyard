@@ -1,0 +1,99 @@
+{
+  "alert": {
+    "due_at": "2026-10-13T06:27:51.742Z",
+    "fire_count": 0,
+    "fired_at": null,
+    "id": "al_pending",
+    "reason": null,
+    "seen_at": null,
+    "snoozed_until": null,
+    "status": "pending",
+    "trigger": "asked"
+  },
+  "context_pct": 71,
+  "cwd": "/home/me/api",
+  "detail": "question",
+  "ended_at": null,
+  "focus_url": null,
+  "id": "c41e0000-0000-4000-8000-000000000003",
+  "kind": "interactive",
+  "last_event_at": "2026-10-13T06:23:11.742Z",
+  "last_message": "Should I also update the migration, or keep the old column until the backfill finishes?",
+  "machine": "m_gpu",
+  "machine_name": "gpu-box",
+  "machine_stale": false,
+  "model": "claude-opus-4-7",
+  "name": null,
+  "needs_you": true,
+  "project": "api",
+  "question": "Should I also update the migration, or keep the old column until the backfill finishes?",
+  "remote_url": "https://claude.ai/code/session_demo",
+  "resume": "claude-2 --resume c41e0000-0000-4000-8000-000000000003",
+  "seat": "seat_work",
+  "seat_colour": "#6A4FD6",
+  "seat_label": "work",
+  "slot": "~/.claude",
+  "stale": false,
+  "started_at": "2026-10-13T04:53:11.742Z",
+  "state": "asked",
+  "state_since": "2026-10-13T06:23:11.742Z",
+  "timeline": [
+    {
+      "event": "SessionStart",
+      "last_message": null,
+      "state_after": "done",
+      "subtype": null,
+      "tool_name": null,
+      "ts": "2026-10-13T04:53:11.742Z"
+    },
+    {
+      "event": "UserPromptSubmit",
+      "last_message": null,
+      "state_after": "working",
+      "subtype": null,
+      "tool_name": null,
+      "ts": "2026-10-13T05:08:11.742Z"
+    },
+    {
+      "event": "PreToolUse",
+      "last_message": null,
+      "state_after": null,
+      "subtype": null,
+      "tool_name": "Bash",
+      "ts": "2026-10-13T05:23:11.742Z"
+    },
+    {
+      "event": "Stop",
+      "last_message": null,
+      "state_after": "done",
+      "subtype": null,
+      "tool_name": null,
+      "ts": "2026-10-13T05:38:11.742Z"
+    },
+    {
+      "event": "UserPromptSubmit",
+      "last_message": null,
+      "state_after": "working",
+      "subtype": null,
+      "tool_name": null,
+      "ts": "2026-10-13T05:53:11.742Z"
+    },
+    {
+      "event": "Stop",
+      "last_message": "Should I also update the migration, or keep the old column until the backfill finishes?",
+      "state_after": "asked",
+      "subtype": null,
+      "tool_name": null,
+      "ts": "2026-10-13T06:23:11.742Z"
+    }
+  ],
+  "title": "migrate-orders",
+  "tokens": {
+    "api_usd": 4.82,
+    "cache_read": 5120033,
+    "cache_write": 310442,
+    "input": 182340,
+    "output": 41210,
+    "replies": 37
+  }
+}

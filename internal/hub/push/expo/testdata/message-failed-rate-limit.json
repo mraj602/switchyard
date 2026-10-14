@@ -1,0 +1,33 @@
+{
+  "to": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+  "title": "client · data-pipeline · rate limited",
+  "body": "Resets 17:00 · work has 59% left",
+  "data": {
+    "v": 1,
+    "type": "alert",
+    "alert": "al_01JA3B7Q0005",
+    "alerts": [
+      "al_01JA3B7Q0005"
+    ],
+    "trigger": "failed",
+    "title": "client · data-pipeline · rate limited",
+    "body": "Resets 17:00 · work has 59% left",
+    "tag": "sy-s-sess_01JA3B7Q",
+    "url": "/#/sessions/sess_01JA3B7Q?alert=al_01JA3B7Q0005",
+    "tap": "auto",
+    "session": "sess_01JA3B7Q",
+    "needs_you": 1,
+    "actions": {
+      "snooze": "a1.YWxfMDFKQTNCN1EwMDA1AHNub296ZQAAAAABcHRfMDFKQTNCMDAwMDAwMDAwMDAwMDAwMDAwMAAAAAAAas-LWA.bT__3_UAvtsVtHwl5ZKkcw",
+      "seen": "a1.YWxfMDFKQTNCN1EwMDA1AHNlZW4AAAAAAXB0XzAxSkEzQjAwMDAwMDAwMDAwMDAwMDAwMDAAAAAAAGrPi1g.CQvFFBkroz681CWqWTRHtw"
+    },
+    "private": false,
+    "ts": "2026-10-13T14:02:00.000Z"
+  },
+  "categoryId": "sy_alert",
+  "channelId": "sy_needs_you",
+  "sound": "default",
+  "badge": 1,
+  "priority": "high",
+  "ttl": 21600
+}

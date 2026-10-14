@@ -1,0 +1,1206 @@
+# Alerts and pushes
+
+Status: spec v1, phase 4; section 12 (the Expo channel) phase 8. Implemented in `internal/hub/push/...` (rules, engine, channels),
+`internal/hub/store` (alerts, rules, targets), `internal/hub/api` (handlers). The web app
+side (service worker, permission, subscription) is in [pwa.md](pwa.md); pairing and devices
+in [pairing.md](pairing.md). Plan sections 7 (S6, S7), 9, 11, 12, 13 and 15; screens
+`PhoneAlerts`, `PhoneLock`, `PhoneNow`, `DeskAlerts` in `docs/design/screens/`.
+
+The hub decides and sends every push; phones only receive. Nothing here can make a client
+do anything: snooze and seen change only the hub's own alert rows.
+
+## 1. Words
+
+| Word | Meaning |
+| --- | --- |
+| **Trigger** | A kind of condition: `needs_permission`, `asked`, `failed`, `limit_80`, `limit_95`, `reset`, `machine_silent`. |
+| **Rule** | Whether, and after how long, a trigger notifies, for which seats/projects/machines/windows. Global, owned by the owner (section 3). |
+| **Episode** | One continuous occurrence of a condition: one session sitting in one needs-you state, one window instance crossing 80%, one silence of one machine. Identified by its **episode key** (3.2). |
+| **Alert** | The hub's row for one episode (`alert` table): due time, status, snooze, seen. At most one per episode (unique key): this is the dedupe. |
+| **Target** | One place a push goes: one browser's Web Push subscription, one ntfy topic, or one phone app's Expo push token (`push_target`). |
+| **Channel** | A kind of target, `webpush`, `ntfy` or `expo` (the phone app, section 12; phase 8), with a hub-wide on/off switch (`channel`). |
+| **Delivery** | One attempt to bring one alert to one target (`delivery`): pending, held, sent, failed, skipped, gone. |
+| **Device prefs** | Per-device choices: muted triggers, own quiet hours, private, tap behaviour (5.4). They decide whether *this device* receives an alert, never whether the alert exists. |
+
+Global rules vs device prefs, in one line: **the rule decides if and when an alert fires; the
+device prefs decide which of the owner's devices hear it.** A phone (push scope) can change
+its own prefs; only the owner can change rules.
+
+## 2. Hub settings
+
+One JSON object in `setting` key `push.settings` (owner: `PUT /v1/push/settings`):
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `quiet_hours` | `{"enabled": false, "start": "23:00", "end": "08:00", "tz": <hub tz>}` | Hub-wide quiet hours (5.2). Devices may override. |
+| `private` | `false` | Default for devices whose `prefs.private` is null (5.5). ntfy targets on `ntfy.sh` default to private regardless (7.1). |
+| `skip_remote` | `false` | Don't push `needs_permission` / `asked` for sessions with a Remote Control link (Claude's own app already notifies). |
+| `snooze_min` | `15` | Snooze length (5–240). |
+| `max_age_s` | `900` | An alert that would first push more than this long after it was due is not pushed (`stale`, 3.3). |
+| `batch_s` | `2` | Alerts due within this many seconds of each other are sent as one push per target (5.3). |
+| `flood` | `{"max": 6, "per_s": 600}` | At most `max` pushes per target per `per_s` seconds; the excess is merged (5.3). |
+| `vapid_subject` | the hub's public URL | VAPID `sub` claim (6.2). |
+| `webpush_hosts` | see 6.6 | Push service hosts a subscription endpoint may point at. |
+
+Other settings: `hub.public_url` (pairing.md 2.3), `hub.tz` (IANA name; default the `TZ`
+environment variable of `sy hub serve`, else UTC; used for hub-wide quiet hours and for
+times in push text when a device has no `prefs.tz`), `push.vapid_public` (6.2),
+`push.baseline_done` (3.8).
+
+## 3. Rules
+
+### 3.1 Triggers
+
+| Trigger | Subject | Condition (all must hold) | Default rule | Leaves when |
+| --- | --- | --- | --- | --- |
+| `needs_permission` | session | `session_state.state = needs_permission` | on, delay **30 s** | state or `since_at` changes |
+| `asked` | session | `state = asked` (any detail: `question`, `elicitation`, `tool`) | on, delay **60 s** | state or `since_at` changes |
+| `failed` | session | `state = failed` and `needs_you = 1` (so not `overloaded` / `server_error`, states.md 1) | on, delay **0**, `bypass_quiet` | state or `since_at` changes |
+| `limit_80` | seat × window | current `usage_window` (`resets_at > now`) of a watched key (default `five_hour`, `seven_day`) with `peak_pct >= 80`, from a sample at most 30 minutes old | on, delay 0 | the window's `resets_at` passes |
+| `limit_95` | seat × window | as above with `>= 95` | on, delay 0 | as above |
+| `reset` | seat × window | a watched window whose `peak_pct >= 80` reaches its `resets_at` | **off**, fires at `resets_at` | — |
+| `machine_silent` | machine | no record received from the machine for `delay_s` (default **3600**), measured from `max(machine.last_seen, awake_at)` (3.3), while it has at least one session in `working`, `needs_permission` or `asked` that is not `stale` (states.md 5). Since phase 5 a pull `hello` counts as hearing from it (machines.md 3.5), and removed machines (`removed_at`) never alert | on | a record or a pull `hello` arrives from it (`recovered`) |
+
+Not triggers (by design, plan section 11): "turn finished" (board only) and "context 90%"
+(reserved for phase 7).
+
+`limit_80` and `limit_95` use `peak_pct`, so a window that dips back under 80% after crossing
+it does not cross again. A first sample already at or above 95% creates both episodes: the
+95 one fires and the 80 one is stored `skipped` with reason `superseded`, so "crossing 80%
+sends exactly one push" also holds for a window that jumps straight past 95%.
+
+### 3.2 Episode keys (dedupe)
+
+| Trigger | Episode key |
+| --- | --- |
+| session triggers | `s:<session id>:<state>:<since_at ms>` |
+| `limit_80`, `limit_95` | `l:<seat id>:<window key>:<resets_at ms>:80` / `:95` |
+| `reset` | `r:<seat id>:<window key>:<resets_at ms>` |
+| `machine_silent` | `m:<machine id>:<last_seen ms at the moment it fired>` |
+
+- `since_at` moves only when the *state* changes (states.md 3), so a second
+  `permission_prompt`, a `PermissionRequest` for the same prompt, or a second StopFailure
+  while `failed`, all fall in the same episode: one push.
+- `usage_window.resets_at` is the window's primary key and stays fixed for the window's life
+  (samples join a window within 5 minutes, phase 2), so a window instance alerts once per
+  threshold, however many samples arrive.
+- `alert.episode` is `UNIQUE`: creating an alert is `INSERT … ON CONFLICT(episode) DO
+  NOTHING`. Restarts, refolds, replays and two code paths racing can never make two alerts
+  for one episode.
+- Phase 5's direct ntfy push from `sy` (plan section 8) computes the same session key on the
+  machine (it knows the session, the state and the record `ts` that entered it). It reports
+  each push in a **`direct_push` record** (record.md 4.9; an earlier draft put
+  `derived.direct_push` on a hook record, which cannot work because outbox records are
+  never rewritten). When the hub types that record it creates the alert as `fired` with
+  reason `direct`, or turns a `pending` (or `skipped`/`stale`) alert of that episode into
+  `fired`/`direct`, and sends nothing. Rules in [machines.md](machines.md) 5.5.
+
+### 3.3 Timing
+
+All times are hub times in milliseconds except `since_at`, which is the client `ts` of the
+record that entered the state (states.md: the fold uses record times, not the hub clock).
+
+- **Due time** of a session alert: `due = clamp(since_at + delay, now, now + delay)`, with
+  `now` = hub time when the alert is created. The clamp keeps the person's experience right
+  despite delivery lag and clock skew: a record that reaches the hub 10 s late still pushes
+  about `delay` after the event; a machine whose clock runs ahead can never postpone a push
+  by more than `delay`.
+- Limit and failure alerts: `due = now`. `reset`: `due = resets_at`. `machine_silent`: the
+  sweep (3.6) creates it already due.
+- **Stale guard.** If at creation `now > since_at + delay + max_age_s`, the alert is created
+  `skipped` with reason `stale` (records flushed from an outbox after hours away are history,
+  not news; the board still shows the session as needing you). The same holds when the
+  scheduler finds an alert, a snooze or a retry more than `max_age_s` overdue (after a hub
+  restart or a suspended laptop): it is not pushed.
+- **Catch-up hold** (phase 5, machines.md 5.5). A session alert created already overdue
+  (`due <= now`) from a batch whose machine reported more records queued (`X-Sy-Backlog`
+  above the batch size, or a drain batch with `more`) gets `due = now + 10 s`; at fire time it
+  (like any pending session alert of that machine) is postponed by 10 s more while that
+  machine's latest heartbeat (at most 10 s old) still reports a backlog, for at most 2 minutes
+  after the alert's creation. The backlog reports are kept in memory only: after a hub restart
+  nothing is held until the machine reports again. This lets a `direct_push` record a
+  few batches behind arrive first. The stale guard is unchanged.
+- **`awake_at`.** The engine sets `awake_at = now` when it starts and whenever it detects a
+  wall-clock jump (the laptop running a merged hub was suspended): on each wake-up it compares
+  wall-clock elapsed time with monotonic elapsed time, and a difference over 60 s counts as a
+  jump. Silence is measured from `max(machine.last_seen, awake_at)`, so a hub that was itself
+  down or asleep never reports every machine as silent.
+
+### 3.4 Rule matching and overrides
+
+`rule` rows are either a **base rule** (one per trigger, `base = 1`, id `rule_<trigger>`,
+cannot be deleted, only disabled) or an **override** (`base = 0`), which applies to part of
+the world:
+
+```json
+{"seats": ["seat_01JA…"], "projects": ["api"], "machines": [], "windows": ["seven_day_opus"]}
+```
+
+Empty or missing lists mean "any". `projects` compares with `session.project` (case
+sensitive). `windows` is only meaningful for limit and reset triggers; for them an empty
+`windows` means `["five_hour", "seven_day"]`.
+
+For one subject the engine picks, among the rules of that trigger whose scope matches, the one
+with the **most non-empty lists**; ties go to an override over the base rule, then to the
+newest `updated_at`, then to the lowest id. The picked rule's `enabled`, `delay_s` and
+`bypass_quiet` apply. A disabled pick means no push: the alert is still created, as
+`skipped` with reason `rule_off`, so the Now inbox can show and act on it.
+
+Examples: "asked: 5 minutes for project `infra`", "everything off for seat `research`" (one
+override per trigger, or the API's `scope` with `enabled: false`), "push at 80% of
+`seven_day_opus` for seat `client`".
+
+The rule in force is resolved twice: when the alert is created (delay) and again when it
+fires (an owner who switches a rule off during a delay stops the push: `cancelled`,
+`rule_off`).
+
+### 3.5 Reconcile (how alerts follow state)
+
+The engine never reacts to individual events. After each committed ingest batch it receives
+the batch's `Changes` (sessions, seats, machines touched; `internal/hub/ingest`) and
+**reconciles** each touched subject: it compares what *should* exist now with what does.
+This is idempotent, so it is also run for every needs-you session and every hot window at
+start-up, and it is correct after refolds and late records.
+
+For a session:
+
+```
+cur  := session_state + session (state, since_at, needs_you, seat, project, machine, remote_url)
+want := episode key for cur, if cur matches a session trigger (3.1), else none
+for each alert of this session in status pending | fired | snoozed | seen:
+    if alert.episode != want:
+        reason := answered    if cur.state in (working, done)
+                  ended       if cur.state in (ended, gone)
+                  superseded  otherwise (another needs-you state)
+        pending          → cancelled (reason)        -- the push never happened
+        fired | snoozed  → closed (reason)           -- a snooze re-push is dropped
+        seen             → closed (reason)
+if want != none and no alert has episode want:
+    rule := match(trigger, subject)
+    create alert (pending, due 3.3) or skipped (stale | rule_off | remote_control | baseline)
+```
+
+`remote_control`: `skip_remote` is on, the trigger is `needs_permission` or `asked`, and the
+session has a `remote_url`.
+
+For a seat: for each current watched window, create the `limit_80` / `limit_95` alerts that
+the window's `peak_pct` calls for, and the `reset` alert (status pending, `due = resets_at`)
+when `reset` is enabled and `peak_pct >= 80`. Alerts whose window has reset are closed with
+reason `reset_passed` (a `limit_*` alert never stays open past its window).
+
+For a machine: a record from it closes its open `machine_silent` alert (`recovered`). No push
+is sent for recovery.
+
+"Answering in the terminal at 40 seconds means no push" (phase 4 done-when): the
+UserPromptSubmit record reaches the hub about 2 s after the answer (`sy flush` debounce), the
+fold moves the session to `working`, reconcile cancels the pending alert (due at 60 s) with
+reason `answered`, and the Alerts log shows it as **cancelled**.
+
+### 3.6 Scheduler
+
+One goroutine owns all timing. It sleeps until the earliest of: the earliest `alert.due_at`,
+the earliest `delivery.next_at`, the next silence sweep (every 60 s), or a poke (new
+changes, an API action). Nothing is held only in memory: every timer is a column
+(`alert.due_at`, `delivery.next_at`), so a restart resumes exactly (subject to the stale
+guard). On wake-up:
+
+1. Wall-clock jump check (3.3).
+2. Silence sweep: machines with a live session (3.1) and `max(last_seen, awake_at) + delay
+   <= now` and no alert with their current key → create `machine_silent` (due now).
+3. Due alerts: every alert with `due_at <= now + batch_s` in status `pending` or `snoozed`.
+   For each: re-check the condition (re-read the session state; for limits the window) and
+   the rule; if the episode is over, apply reconcile's outcome instead of firing. Otherwise
+   **fire** it (section 4) as part of this batch.
+4. Fan out the batch to targets (section 5).
+5. Due deliveries: retries and held deliveries with `next_at <= now` (5.2, 5.6).
+
+While the setting `hub.frozen` is set (a hub move, machines.md 8.1) the scheduler skips steps
+2–5: nothing is created by the sweep and nothing is sent, so an old and a new hub never both
+push. Unfreezing resumes, subject to the stale guard; it also counts as waking up
+(`awake_at` = the unfreeze), so machines that kept queueing while the hub was frozen are not
+reported silent the moment it resumes. Reconcile keeps running while frozen (an episode that
+ends is still closed or cancelled), and the scheduler polls every 10 s to notice the unfreeze.
+
+All database work goes through `store.Write`; the engine never holds a transaction while
+sending HTTP. Sends run on a small worker pool (4) with a 10 s timeout each, inside a send
+budget of 40 s per pass and at most 200 pushes per pass: a push that was not started (budget
+used up, or over the cap) stays `pending` with its first retry slot and goes out in a later
+pass; a send that has not returned when the budget ends counts as a timed-out try. The write
+transaction before the sends and the write-back after them use separate contexts (the
+write-back gets a fresh 30 s and is retried), so slow targets can never make the write-back
+fail and leave a successful send `pending` to be sent again. Results are written back in one
+transaction per pass.
+
+### 3.7 Rules API
+
+`GET /v1/rules` (read, push, owner) returns `{rules, settings}`; `POST /v1/rules`,
+`PUT /v1/rules/{id}`, `DELETE /v1/rules/{id}` (owner) manage overrides and base-rule
+switches; `PUT /v1/push/settings` (owner) replaces `push.settings`. Shapes in api.yaml
+(`Rule`, `PushSettings`). Validation: `delay_s` 0–86400; ids of seats and machines must
+exist; `projects` 1–100 characters each; at most 200 rules.
+
+### 3.8 First start (baseline)
+
+The prototype's rule "never flood on first start" carries over. The first time the engine
+starts on a hub (`push.baseline_done` unset), every condition that already holds (sessions
+waiting, windows over 80%, silent machines) is recorded as `skipped` with reason
+`baseline`, then `push.baseline_done = true`. Later starts reconcile normally. The Alerts log
+hides `baseline` rows.
+
+## 4. Alert lifecycle
+
+| Status | Meaning | `due_at` |
+| --- | --- | --- |
+| `pending` | Waiting for its delay. | first push time |
+| `fired` | Pushed (deliveries made); the episode is still open. | — |
+| `snoozed` | Pushed, then snoozed; will push again if still open. | re-push time |
+| `seen` | Acknowledged ("Seen" from a push, the Now inbox or the session page). No more pushes for this episode. | — |
+| `cancelled` | The episode ended before any push (`answered`, `ended`, `superseded`, `rule_off`). | — |
+| `closed` | The episode ended after a push or a seen (same reasons, plus `recovered`, `reset_passed`). | — |
+| `skipped` | Never pushes by design (`stale`, `rule_off`, `remote_control`, `superseded`, `baseline`). | — |
+
+```
+            create
+              │
+   ┌──────────┼───────────────┐
+   ▼          ▼               ▼
+ skipped   pending ──────► cancelled         (episode over before due, or rule off at fire time)
+              │ due
+              ▼
+            fired ◄──────── snoozed           (snooze due and still open: fire again, fire_count+1)
+              │ ├─ snooze ──►   ▲
+              │ │               │
+              │ └───────────────┘
+              ├─ seen ──► seen
+              ▼
+            closed        (episode over; also from snoozed and seen)
+```
+
+- **Fire.** `fired_at` = first push time, `fire_count += 1`, deliveries are made (section 5).
+  A fire with zero eligible targets still counts as fired (the log says "no devices").
+- **Snooze** (`POST /v1/alerts/{id}/snooze`, an action token, or a swipe in the Now inbox):
+  allowed in `pending`, `fired`, `snoozed`; sets `snoozed_until = due_at = now + snooze_min`
+  (or the request's `minutes`, 5–240) and status `snoozed`. A snoozed alert that is still
+  open at `due_at` fires again; the push says "Still waiting · 19 min" and replaces the
+  earlier notification (same tag). Snoozing a `pending` alert simply moves its first push.
+- **Seen** (`POST /v1/alerts/{id}/seen` or action token): allowed in `pending`, `fired`,
+  `snoozed`; sets `seen_at`, `seen_by` (device id), status `seen`, drops `due_at`, and marks
+  its not-yet-sent deliveries `skipped` (`seen`). It does not change the session. The Now
+  inbox still lists the session (it still needs you), dimmed, with "seen".
+- Snooze and seen on `cancelled`, `closed` or `skipped` alerts: 409 `conflict`, except seen on
+  a `skipped` alert whose episode is still open, which is allowed (so the inbox can quiet a
+  `rule_off` or `stale` row).
+- Cross-device: a push already on a lock screen cannot be withdrawn (Web Push has no silent
+  "dismiss" message on iOS, and Chrome shows a generic notice for pushes that show nothing).
+  Seen on one device stops future pushes everywhere.
+- Every status change publishes one `alert` event on `/v1/stream` (api.yaml `StreamAlert`)
+  and sets the `alert` brief on the session in the read API.
+
+## 5. Delivery
+
+### 5.1 Fan-out
+
+For each alert fired in a batch, the eligible targets are those with `enabled = 1`,
+`gone_at IS NULL`, whose channel is enabled, and whose device (if any) is not revoked or
+expired. For each target, with its effective prefs (5.4):
+
+1. Trigger in `prefs.mute` → delivery `skipped` (`muted`).
+2. Quiet hours active for this target and the rule does not bypass them → delivery `held`,
+   `next_at` = end of the quiet period (5.2).
+3. Over the flood cap → delivery `held` (`flood`), `next_at` = when the cap frees (5.3).
+4. Otherwise → delivery `pending`, sent in this batch.
+
+### 5.2 Quiet hours
+
+- Shape: `{"enabled": bool, "start": "HH:MM", "end": "HH:MM", "tz": "<IANA>",
+  "critical": bool}`. `start > end` spans midnight (23:00–08:00). `start == end` is off.
+  Inclusive start, exclusive end, evaluated in `tz` with Go's `time.LoadLocation`, so
+  daylight-saving days are handled by the zone (a non-existent local time moves forward).
+- Effective quiet hours: the device's `prefs.quiet_hours` when not null, else the hub's.
+- "Quiet hours hold everything except failures" (plan section 11): a rule with
+  `bypass_quiet = 1` (default only `failed`) goes through, unless the effective quiet hours
+  say `"critical": false` (a device that wants true silence).
+- At the end of a quiet period the scheduler takes every `held` (`quiet`) delivery of that
+  target: those whose alert is still `fired` or `snoozed` (still open, not seen) are sent as
+  **one** summary push ("While you were away: 2 sessions still need you"; a single one is
+  sent as itself); the rest become `skipped` (`resolved`).
+
+### 5.3 Batching, summaries and the flood cap
+
+- **Batch.** Session alerts (`needs_permission`, `asked`, `failed`) due within `batch_s` of
+  each other and going to the same target are sent as one push: title "3 sessions need you",
+  body up to four lines `work · api — asked`, tag `sy-summary`, deep link `/#/`. Their
+  deliveries share one `batch` id. Limit, reset and silence alerts are never merged.
+- **Flood cap.** At most `flood.max` pushes per target per `flood.per_s`. Further deliveries
+  are `held` (`flood`) and go out as one summary when the window frees. This protects a phone
+  from a burst (a replay, many sessions hitting a limit at once) and keeps within ntfy.sh
+  limits.
+
+### 5.4 Device prefs
+
+`device.prefs` (schema v3), edited with `PATCH /v1/devices/self` (the device) or
+`PATCH /v1/devices/{id}` (owner). Targets with a device use their device's prefs; targets
+with no device (an ntfy topic the owner added) use `push_target.prefs`.
+
+```json
+{
+  "mute": ["limit_80"],
+  "quiet_hours": null,
+  "private": null,
+  "tap": "auto",
+  "tz": "Asia/Kolkata"
+}
+```
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `mute` | `[]` | Triggers this device does not receive. A device cannot receive a trigger whose rule is off. |
+| `quiet_hours` | `null` | `null` = follow the hub; an object = this device's own (5.2). |
+| `private` | `null` | `null` = hub default; `true`/`false` overrides (5.5). |
+| `tap` | `"auto"` | What tapping a push opens: `session` (the web app's session page), `claude` (the Remote Control link when there is one), `auto` (session page if the hub answers within 1.5 s, else the Remote Control link; pwa.md 5). |
+| `tz` | `null` | Time zone for times in push text ("resets 17:00"). The web app sends `Intl.DateTimeFormat().resolvedOptions().timeZone` when it registers. |
+
+The phone's Alerts screen (`PhoneAlerts`) shows the rule list with the global delays
+read-only and a switch per trigger that edits `mute`; the owner's board shows the same list
+with the global switches and delays editable (`DeskAlerts`).
+
+### 5.5 What a push says (text and privacy)
+
+Labels: `seat` = the seat's label, else the account email's local part, else
+"Unattributed"; `project` = `session.project`; `machine` = machine name; times in the
+target's `tz`, else `hub.tz`, as `HH:MM` today, `Thu 17:00` within a week. Every field is cut
+to fit (title 80, body 180 characters, with `…`).
+
+| Trigger | Title | Body |
+| --- | --- | --- |
+| `needs_permission` | `work · api · needs permission` | Tool name and Claude Code's own notification text when kept (record.md 4.1: `message`, e.g. "Claude needs your permission to use Bash"), then `· gpu-box` |
+| `asked`, detail `question` | `work · api · asked a question` | `session_state.question`, else the first line of the last message, else "Waiting for your answer · gpu-box" |
+| `asked`, detail `tool` | `work · api · plan ready` (ExitPlanMode) or `asked a question` (AskUserQuestion) | `derived.question` when kept, else as above |
+| `asked`, detail `elicitation` | `work · api · is waiting for input` | Notification `message` |
+| `failed` | `client · data-pipeline · rate limited` (`rate_limit`), `login needed` (`authentication_failed`), `billing problem` (`billing_error`), else `stopped: <detail>` | rate limit: "Resets 17:00 · work has 59% left" (5.7); else machine name |
+| `limit_80` / `limit_95` | `client · 5-hour at 82%` (at ≥ 100: `client · 5-hour limit reached`) | "Resets 17:00 · work has 59% left" |
+| `reset` | `client · 5-hour reset` | "Back to 0% · peaked at 97%" |
+| `machine_silent` | `old-vps silent for 1 h` | "3 live sessions · last record 13:02" |
+| snooze re-push | as the trigger, title prefixed `Still waiting · 19 min · ` | as the trigger |
+| summary | `3 sessions need you` | up to four `work · api — asked` lines, then `+2 more` |
+
+Question and message text appear only when the hub has them, which needs last messages
+allowed (plan section 13); otherwise the generic body is used.
+
+**Private pushes** (`prefs.private` or hub default) replace title and body with:
+"Switchyard" / "1 session needs you" (session triggers), "N sessions need you" (summary),
+"An account is near its limit" (limits), "A limit has reset", "A machine went quiet". The
+deep link becomes `/#/alerts/<alert id>`, which the web app resolves after it has loaded
+(pwa.md 3), so neither the text nor the link names a project, account or session.
+
+Who can read push text:
+
+| Channel | Payload readable by | So private mode protects |
+| --- | --- | --- |
+| Web Push | Only the subscribed browser: RFC 8291 encrypts the payload end to end; Apple, Google and Mozilla see a ciphertext, its size and timing | The lock screen and notification history only |
+| ntfy, self-hosted | Your ntfy server; for iOS instant delivery your server forwards a hash of the topic and a message id (not the text) to ntfy.sh's upstream | The lock screen, and the ntfy server if it is not yours |
+| ntfy.sh | ntfy.sh, and anyone who learns the topic name (topics are open; the random name is the only secret) | Content in transit and at rest on ntfy.sh. **Private is forced on** for ntfy.sh targets unless the owner explicitly unchecks it on that target |
+| Expo (phone app, section 12) | Expo, Apple and Google: the title, body and `data` are not end-to-end encrypted | The text everywhere, and the Remote Control link: an Expo push in private mode carries no `remote_url` (12.2) |
+
+This corrects plan section 11's "Apple, Google … can read that text" for Web Push; it remains
+true for ntfy and for the phase 8 Expo channel.
+
+### 5.6 Retries and dead targets
+
+| Result | Delivery | Target |
+| --- | --- | --- |
+| Web Push 201 (or any 2xx); ntfy 200 | `sent` | `last_ok_at`, `fail_count = 0` |
+| Web Push 404 or 410 | `gone` | `gone_at = now`, `enabled = 0`. Never retried. The web app re-subscribes on its next start (pwa.md 6). Gone targets are deleted after 30 days. |
+| 429, 500–599, timeout, connection error | `pending`, `tries + 1`, `next_at` = now + 15 s, 1 min, 5 min, 15 min (then `failed`); a `Retry-After` header (seconds or HTTP date) is honoured up to 1 hour | `last_error`, `fail_count + 1` |
+| Web Push 400, 401, 403 (bad VAPID JWT, Apple `BadJwtToken`, key mismatch), 413 | `failed`, not retried | `last_error` with the status and the first 200 bytes of the reply; shown in Settings |
+| ntfy 401, 403 (bad token, topic reserved), 413 | `failed`, not retried | `last_error` is `HTTP <status>` only (7.3) |
+| Any target with `fail_count >= 20` and no success for 7 days | — | `enabled = 0`, reason shown in Settings |
+
+Before every retry the alert is re-checked: if it is no longer `fired` or `snoozed`, the
+delivery becomes `skipped` (`resolved`). Retries also stop once the push's TTL (6.4) has
+passed.
+
+### 5.7 "Who has room"
+
+For a rate-limit failure or a limit alert, the body names the seat with the most room in the
+same window key: the lowest `used_pct` among non-hidden seats other than the subject, with a
+current window updated within 6 hours, and only if it is under 80%. Wording: "work has 59%
+left". Nothing is said when no seat qualifies. Switchyard never switches accounts (plan
+section 13).
+
+### 5.8 Remote Control link and deep links
+
+- **Remote Control link.** `session.remote_url`, filled by ingest from a hook record's
+  `derived.remote_url` (`sy hook` finds it in the transcript tail) or from a `token_rows`
+  record's `sessions[].remote_url` (`sy scan`), newest wins (record.md 4.1 and 4.4). The
+  engine copies it into `alert.facts` when the alert is created and refreshes it when it
+  fires, so a link found during the delay is still included. **Uncertain:** a stored link
+  says Remote Control was on at some point, not that it is on now; a stale link opens a
+  finished session in the Claude app.
+- **Deep links** into the web app (hash routes, pwa.md 3):
+
+  | Push | Link |
+  | --- | --- |
+  | session alert | `/#/sessions/<session id>?alert=<alert id>` |
+  | limit, reset | `/#/accounts?seat=<seat id>` |
+  | machine silent | `/#/machines?machine=<machine id>` |
+  | summary | `/#/` (Now) |
+  | private (any) | `/#/alerts/<alert id>` (the app looks the alert up and redirects) |
+
+  ntfy needs absolute URLs: the hub prefixes `hub.public_url`.
+
+## 6. Web Push
+
+### 6.1 Decision: implement it in the hub, no library
+
+Web Push needs three pieces: a VAPID JWT (RFC 8292, ES256), the `aes128gcm` payload
+encryption (RFC 8291 over RFC 8188), and an HTTP POST (RFC 8030).
+
+- The usual Go library, `github.com/SherClockHolmes/webpush-go`, is alive but slow-moving: as
+  of October 2026 its newest release is v1.4.0 (January 2025), the one before was 2023, it has
+  10 open issues, and it pulls `github.com/golang-jwt/jwt/v5` and `golang.org/x/crypto` into a
+  module that has neither.
+- Everything needed is in Go 1.27's standard library: `crypto/ecdh` (P-256 key agreement),
+  `crypto/hkdf` (standard since Go 1.24), `crypto/aes` + `crypto/cipher` (GCM),
+  `crypto/ecdsa` + `crypto/sha256` (ES256), `encoding/base64`.
+- Our implementation is about 250 lines, single record (4096 bytes) only, and is tested
+  byte-for-byte against the worked example in RFC 8291 section 5 and appendix A (section 11.2) plus an
+  independent decoder (`http_ece`, Martin Thomson's reference implementation) in an opt-in
+  test.
+
+So: package `internal/hub/push/webpush`, no new dependency (ARCHITECTURE.md rule:
+"standard library first").
+
+### 6.2 VAPID keys
+
+- Made at the engine's first start: `ecdh.P256().GenerateKey(rand.Reader)`. The private
+  scalar (32 bytes) goes in `hub_secret` key `vapid_private`; the public key, uncompressed
+  (65 bytes, `0x04‖X‖Y`) and base64url without padding, in setting `push.vapid_public` and in
+  `GET /v1/push/config` (the web app passes it as `applicationServerKey`).
+- The keys are part of the database, so `sy hub backup`, export and import keep every
+  subscription valid. Rotating the keys invalidates every subscription (browsers bind a
+  subscription to the key), so there is no rotation command in phase 4.
+- JWT: header `{"typ":"JWT","alg":"ES256"}`, claims `{"aud": "<scheme>://<host>[:port]
+  of the endpoint>", "exp": now + 12 h, "sub": <vapid_subject>}`. The signature is the raw
+  64-byte `R‖S` (each left-padded to 32 bytes), **not** ASN.1 DER as `ecdsa.SignASN1` returns.
+  Tokens are cached per audience and reused until 1 hour before `exp`.
+- `vapid_subject` defaults to `hub.public_url` (an `https:` URL). **Uncertain:** Apple has been
+  reported to reject `sub` values it considers invalid (`BadJwtToken`); if a real iPhone
+  test fails with 403 `BadJwtToken`, set `vapid_subject` to `mailto:<your email>`.
+- Header: `Authorization: vapid t=<jwt>, k=<public key b64url>`.
+
+### 6.3 Encryption (RFC 8291 / RFC 8188 `aes128gcm`)
+
+Inputs from the subscription: `ua_public` (`keys.p256dh`, 65 bytes) and `auth_secret`
+(`keys.auth`, 16 bytes). Per message:
+
+```
+as_private, as_public = new ephemeral P-256 key pair          (65-byte uncompressed public)
+salt                  = 16 random bytes
+ecdh_secret           = ECDH(as_private, ua_public)
+key_info              = "WebPush: info" ‖ 0x00 ‖ ua_public ‖ as_public
+IKM                   = HKDF(salt = auth_secret, ikm = ecdh_secret, info = key_info, 32)
+PRK                   = HKDF-Extract(salt = salt, ikm = IKM)
+CEK                   = HKDF-Expand(PRK, "Content-Encoding: aes128gcm" ‖ 0x00, 16)
+NONCE                 = HKDF-Expand(PRK, "Content-Encoding: nonce" ‖ 0x00, 12)
+plaintext record      = payload ‖ 0x02 ‖ 0x00 * pad           (0x02 = last record)
+ciphertext            = AES-128-GCM(CEK, NONCE, record)       (16-byte tag appended)
+body                  = salt(16) ‖ rs(4, big-endian, 4096) ‖ idlen(1) = 65 ‖ as_public(65) ‖ ciphertext
+```
+
+- `pad` brings `len(payload) + 1` up to the next multiple of 128 bytes, so the push service
+  learns only a coarse size. The payload is at most 3 000 bytes of JSON (the record limit is
+  4096 − 86 header − 16 tag − 1 delimiter = 3 993); text fields are cut before encoding.
+- `rand` is injectable (an `io.Reader` field) so the RFC example can be reproduced exactly.
+- Keys are validated on registration (`POST /v1/push/targets`): `p256dh` must decode to a
+  point on P-256 (`ecdh.P256().NewPublicKey`), `auth` to 16 bytes.
+
+### 6.4 The request
+
+```
+POST <endpoint>
+Authorization: vapid t=…, k=…
+Content-Encoding: aes128gcm
+Content-Type: application/octet-stream
+TTL: <seconds>
+Urgency: high | normal | low
+Topic: <first 22 chars of base64url(SHA-256(tag))>
+```
+
+| Alert | TTL | Urgency |
+| --- | --- | --- |
+| session triggers, summaries | 21 600 (6 h) | high |
+| `limit_95` | until the window resets, at most 86 400 | high |
+| `limit_80`, `machine_silent` | 21 600 | normal |
+| `reset` | 3 600 | low |
+| test | 60 | high |
+
+`Topic` (RFC 8030 5.4) makes the push service replace an undelivered message with the same
+topic, so a phone that was offline gets the latest state of a session, not every step.
+No redirects are followed; the client timeout is 10 s.
+
+### 6.5 The payload (shared with the service worker)
+
+The plaintext is one JSON object. pwa.md 5 is its consumer; `internal/hub/push/model`
+holds the Go type.
+
+```json
+{
+  "v": 1,
+  "type": "alert",
+  "alert": "al_01JA3B…",
+  "alerts": ["al_01JA3B…"],
+  "trigger": "asked",
+  "title": "work · api · asked a question",
+  "body": "Should I also update the migration?",
+  "tag": "sy-s-c41e0000-0000-4000-8000-000000000003",
+  "url": "/#/sessions/c41e0000-0000-4000-8000-000000000003?alert=al_01JA3B…",
+  "remote_url": "https://claude.ai/code/session_…",
+  "tap": "auto",
+  "session": "c41e0000-0000-4000-8000-000000000003",
+  "needs_you": 3,
+  "actions": {"snooze": "a1.…", "seen": "a1.…"},
+  "private": false,
+  "ts": "2026-10-12T14:04:01.000Z"
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `type` | `alert`, `summary` or `test`; `refresh` only in an Expo push's `data` (12.9: silent, never shown, not this object's other fields). |
+| `alert` / `alerts` | The alert (for `summary`: the first) and the alerts in the push, at most 20 ids: a larger summary lists the first ones (and fewer if the payload would not fit 3 000 bytes); the app refetches the list. |
+| `tag` | Notification tag: `sy-s-<session>`, `sy-l-<seat>-<window>`, `sy-r-<seat>-<window>`, `sy-m-<machine>`, `sy-summary`, `sy-test`. The same tag replaces the earlier notification. |
+| `url` | Deep link, relative to the hub origin. Private: `/#/alerts/<alert>`. Summary: `/#/`. |
+| `remote_url` | The session's Remote Control link, when known (5.8), also in private mode (the payload is encrypted; it is never displayed). |
+| `tap` | The device's `prefs.tap`. |
+| `needs_you` | Sessions needing you at send time, for the app icon badge (`navigator.setAppBadge`). |
+| `actions` | Action tokens (section 8) for Snooze and Seen; absent for `test` and summaries. |
+
+### 6.6 Endpoint allow-list (SSRF guard)
+
+A push-scoped token chooses the URL the hub will POST to, so endpoints are checked on
+registration: `https://` only, port 443, and the host must match `push.settings.webpush_hosts`,
+default:
+
+```
+fcm.googleapis.com, *.googleapis.com, web.push.apple.com, *.push.apple.com,
+updates.push.services.mozilla.com, *.push.services.mozilla.com, *.notify.windows.com
+```
+
+Others get 400 "unknown push service host; the owner can add it to webpush_hosts". The send
+client also refuses to connect to non-public addresses after DNS resolution (a custom
+`net.Dialer.Control`, shared with ntfy as `internal/hub/push/netguard`): loopback, private,
+link-local, unspecified, multicast, carrier-grade NAT (100.64.0.0/10), `0.0.0.0/8`,
+`198.18.0.0/15`, `240.0.0.0/4` and the NAT64 prefix `64:ff9b::/96`. It follows no redirect.
+The service worker likewise ignores a payload deep link that does not start with a single `/`
+or that contains a backslash (browsers read `/\` as `//`).
+
+## 7. ntfy
+
+### 7.1 Targets
+
+An ntfy target is `{server, topic, token?, name?, private?}`:
+
+- `server`: default `https://ntfy.sh`. The **owner** may name any `https://` URL, or `http://`
+  for loopback, private, and tailnet addresses (the `sy connect` rule, tokens.md 4), so a
+  self-hosted ntfy keeps working. A **push-scoped device** may name only an `https://` server
+  on a public DNS name or public address (no loopback, private, tailnet, single-label or
+  `.local`/`.internal` hosts), otherwise 400. The hub's ntfy client mirrors this at connect
+  time: targets with a `device_id` use the dial guard of 6.6 (public addresses only), the
+  owner's own targets (`device_id` NULL) may reach any address; neither follows redirects.
+- A device may hold at most **10** push targets of any kind (409 `conflict` on the 11th;
+  re-adding one of its own is not a new target).
+- `topic`: when omitted the hub makes one: `sy-` + 24 base62 characters (about 143 bits).
+  Topics on ntfy.sh are readable by anyone who knows the name, so the name is the secret
+  and is shown only to the owner and the device that made it.
+- `token`: optional ntfy access token (`tk_…`), sent as `Authorization: Bearer`; stored in
+  `push_target.secret`, never returned by the API (the API shows `token_set: true`).
+- Who adds one: a phone for itself (`POST /v1/push/targets` with its push scope; the target
+  gets its `device_id` and follows its prefs) or the owner for the hub (`device_id` NULL;
+  prefs on the target). Private defaults to true on `ntfy.sh` (5.5).
+- The web app's Settings shows how to subscribe: the server and topic, and an
+  `ntfy://<host>/<topic>` link (**uncertain** whether every ntfy app version handles it;
+  the server/topic text always works).
+
+### 7.2 Message
+
+JSON publishing to the server root (as the prototype does, `server/server.js`), which keeps
+UTF-8 titles intact:
+
+```json
+{
+  "topic": "sy-4fQx0Lr2…",
+  "title": "work · api · asked a question",
+  "message": "Should I also update the migration?",
+  "priority": 4,
+  "tags": ["question"],
+  "click": "https://hub.example.ts.net/#/sessions/c41e…?alert=al_01JA3B…",
+  "actions": [
+    {"action": "view", "label": "Open in Claude", "url": "https://claude.ai/code/session_…", "clear": true},
+    {"action": "http", "label": "Snooze 15 min", "url": "https://hub.example.ts.net/v1/actions/a1.…", "method": "POST", "headers": {"Content-Type": "application/json"}, "body": "{}", "clear": true},
+    {"action": "http", "label": "Seen", "url": "https://hub.example.ts.net/v1/actions/a1.…", "method": "POST", "headers": {"Content-Type": "application/json"}, "body": "{}", "clear": true}
+  ]
+}
+```
+
+- `click` is the hub deep link (or the Remote Control link when `tap` is `claude`). The first
+  action is **Open in Claude** when the session has a Remote Control link, else **Open** with
+  the deep link. ntfy allows three actions.
+- `http` actions are run by the ntfy app on the phone, so they need the phone to reach the
+  hub (the tailnet), like opening the app does. When they fail, the ntfy app shows the error.
+- Priority: 4 for session triggers, `limit_95` and summaries; 3 for `limit_80` and
+  `machine_silent`; 2 for `reset`. Tags (ntfy emoji): `lock` (permission), `question`
+  (asked), `rotating_light` (failed), `warning` (limits), `zzz` (silent), `bell` (summary).
+- Private: title and body as 5.5, `click` = `/#/alerts/<id>` deep link, no Remote Control
+  action (ntfy sees the text, unlike Web Push), Snooze and Seen kept (their URLs reveal only
+  the hub's host name).
+- Messages are at most 4 096 bytes (ntfy's limit); the builder cuts the body first.
+- **iOS caveat.** Tapping a link from the ntfy app opens Safari, which on iOS is not the
+  installed web app and has no pairing cookie: the deep link lands on the pair screen. On
+  iOS the useful ntfy taps are "Open in Claude" and the Snooze/Seen buttons. Android opens
+  links inside the installed web app (Chrome captures links in its scope).
+
+### 7.3 Responses
+
+200 is `sent`. 429 (ntfy.sh's daily and burst limits) and 5xx are retried (5.6). 401/403/413
+fail without retry. ntfy has no "gone" state: a topic always accepts. The reply body is never
+kept or shown: `last_error` and the `/test` result carry only the outcome and `HTTP <status>`
+(transport errors are reduced to `timeout`, `canceled`, `refusing to connect to a non-public
+address` or `connection failed`), so a hub is not an oracle for internal services.
+
+## 8. Action tokens (Snooze and Seen without a session)
+
+Buttons in a push must work without the app's cookie: the ntfy app has none, and a service
+worker may run when the cookie is not usable. Each push carries one token per action.
+
+```
+a1.<base64url(payload)>.<base64url(mac)>
+payload = alert id ‖ 0x00 ‖ action ("snooze" | "seen") ‖ 0x00 ‖ fire_count (uint32) ‖ target id ‖ 0x00 ‖ expires (uint64 unix seconds)
+mac     = first 16 bytes of HMAC-SHA256(action_key, "a1" ‖ payload)
+```
+
+- `action_key`: 32 random bytes in `hub_secret`, made at first use.
+- `POST /v1/actions/{token}` (no other credential; GET is 405 so link previews and
+  prefetching can never act): at most 30 requests a minute per client IP (429 with
+  `Retry-After`); verify the MAC (constant time) and `expires` (fire time + 24 h) **before**
+  any write transaction, with the key cached in memory, so a flood of bad tokens never takes
+  the write lock; then check that the alert exists. Then:
+  - `seen`: idempotent; applies 4's seen rules.
+  - `snooze`: applies only if `alert.fire_count` equals the token's `fire_count` and the alert
+    is `fired`; otherwise it does nothing. So a token snoozes at most once (a replay or a
+    second tap after the re-push is a no-op), which is the "one-time" property without a
+    table of used tokens.
+  - Reply 200 `{"alert": AlertBrief, "applied": bool}`; 400 malformed; 401 bad MAC;
+    410 expired; 404 unknown alert.
+- `seen_by` records the target's device (or `ntfy:<target id>`).
+- A leaked token (ntfy.sh sees the action URLs) can only snooze or mark seen one alert for 24
+  hours.
+
+## 9. Schema v3
+
+The implementer adds `internal/hub/store/migrations/0003_push.sql` with exactly this, updates
+`docs/spec/schema.sql` to v3 (the full schema, with a `v3 phase 4` line in its header), and the
+schema test keeps comparing the two. `pair_code`, `channel`, `push_target`, `rule`, `alert`
+and `delivery` have existed since v1 but nothing has ever written them, so they are dropped
+and recreated in their final shape rather than altered (SQLite cannot change a CHECK or a NOT
+NULL in place). `usage_window.alerted_80` / `alerted_95` stay but are unused: the alert
+episode keys are the record of what fired.
+
+```sql
+-- Version 3 (phase 4): pairing, owner sessions, push targets, rules, alerts, deliveries.
+-- push.md section 9. The v1 placeholders for these tables were never written, so they are
+-- recreated with their final shape.
+
+DROP TABLE delivery;
+DROP TABLE alert;
+DROP TABLE rule;
+DROP TABLE push_target;
+DROP TABLE channel;
+DROP TABLE pair_code;
+
+-- Owner sessions expire (pairing.md 4); NULL = never.
+ALTER TABLE device ADD COLUMN expires_at INTEGER;
+-- Per-device push preferences (push.md 5.4).
+ALTER TABLE device ADD COLUMN prefs TEXT CHECK (prefs IS NULL OR json_valid(prefs));
+
+-- Secrets the hub makes for itself. Kept in the database so backups and moves keep push
+-- subscriptions valid. (The pairing pepper is deliberately not here: pairing.md 2.1.)
+CREATE TABLE hub_secret (
+  key           TEXT    NOT NULL PRIMARY KEY,      -- vapid_private, action_key
+  value         BLOB    NOT NULL,
+  created_at    INTEGER NOT NULL
+) STRICT;
+
+-- One-time pairing codes and owner sign-in links (pairing.md 2 and 4).
+CREATE TABLE pair_code (
+  id            TEXT    NOT NULL PRIMARY KEY,      -- 'pc_' + ULID
+  kind          TEXT    NOT NULL CHECK (kind IN ('machine', 'desktop', 'phone', 'browser', 'owner')),
+  code_hash     BLOB    CHECK (code_hash IS NULL OR length(code_hash) = 32),   -- HMAC of the digits; NULL for owner links
+  secret_hash   BLOB    NOT NULL UNIQUE CHECK (length(secret_hash) = 32),      -- HMAC of the QR/link secret
+  name          TEXT,                               -- suggested device name
+  machine_id    TEXT,                               -- optional, machine/desktop codes
+  url           TEXT    NOT NULL,                   -- hub URL put in the QR
+  created_at    INTEGER NOT NULL,
+  created_by    TEXT    NOT NULL,                   -- 'cli', 'owner:<device id>'
+  expires_at    INTEGER NOT NULL,
+  claimed_at    INTEGER,
+  cancelled_at  INTEGER,
+  device_id     TEXT    REFERENCES device(id),
+  claim_ip      TEXT
+) STRICT;
+CREATE INDEX pair_code_live ON pair_code(code_hash) WHERE claimed_at IS NULL AND cancelled_at IS NULL;
+
+-- Channel kinds with a hub-wide switch.
+CREATE TABLE channel (
+  kind          TEXT    NOT NULL PRIMARY KEY CHECK (kind IN ('webpush', 'ntfy', 'expo')),
+  enabled       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+  settings      TEXT    NOT NULL DEFAULT '{}' CHECK (json_valid(settings)),
+  updated_at    INTEGER NOT NULL
+) STRICT;
+INSERT INTO channel (kind, enabled, settings, updated_at) VALUES
+  ('webpush', 1, '{}', 0),
+  ('ntfy', 1, '{}', 0);
+
+-- One place a push goes: a browser subscription or an ntfy topic.
+CREATE TABLE push_target (
+  id            TEXT    NOT NULL PRIMARY KEY,      -- 'pt_' + ULID
+  kind          TEXT    NOT NULL REFERENCES channel(kind),
+  device_id     TEXT    REFERENCES device(id),     -- NULL: an ntfy topic added by the owner for the hub
+  name          TEXT,                               -- "iPhone · Safari", "ntfy.sh/sy-4fQx…"
+  endpoint      TEXT    NOT NULL,                   -- webpush: endpoint URL; ntfy: server URL + '/' + topic
+  keys          TEXT    CHECK (keys IS NULL OR json_valid(keys)),     -- webpush: {"p256dh": "…", "auth": "…"} base64url
+  secret        TEXT,                               -- ntfy access token; never returned by the API
+  prefs         TEXT    CHECK (prefs IS NULL OR json_valid(prefs)),   -- only for targets without a device
+  enabled       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL,
+  last_ok_at    INTEGER,
+  last_error    TEXT,
+  last_error_at INTEGER,
+  fail_count    INTEGER NOT NULL DEFAULT 0,
+  gone_at       INTEGER,                            -- push service answered 404/410
+  UNIQUE (kind, endpoint)
+) STRICT;
+CREATE INDEX push_target_device ON push_target(device_id);
+
+-- Global rules: one base rule per trigger plus scoped overrides (push.md 3).
+CREATE TABLE rule (
+  id            TEXT    NOT NULL PRIMARY KEY,      -- 'rule_<trigger>' for base rules, 'rule_' + ULID for overrides
+  owner_id      TEXT    NOT NULL DEFAULT 'owner' REFERENCES owner(id),
+  trigger       TEXT    NOT NULL,                   -- unknown triggers are ignored by older hubs
+  base          INTEGER NOT NULL DEFAULT 0 CHECK (base IN (0, 1)),
+  enabled       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+  delay_s       INTEGER NOT NULL DEFAULT 0 CHECK (delay_s BETWEEN 0 AND 86400),
+  bypass_quiet  INTEGER NOT NULL DEFAULT 0 CHECK (bypass_quiet IN (0, 1)),
+  scope         TEXT    NOT NULL DEFAULT '{}' CHECK (json_valid(scope)),   -- {"seats","projects","machines","windows"}
+  updated_at    INTEGER NOT NULL
+) STRICT;
+CREATE UNIQUE INDEX rule_base ON rule(trigger) WHERE base = 1;
+-- The owner row normally appears after the migrations; the seeded rules below need it now.
+INSERT OR IGNORE INTO owner (id, created_at) VALUES ('owner', 0);
+INSERT INTO rule (id, trigger, base, enabled, delay_s, bypass_quiet, scope, updated_at) VALUES
+  ('rule_needs_permission', 'needs_permission', 1, 1,   30, 0, '{}', 0),
+  ('rule_asked',            'asked',            1, 1,   60, 0, '{}', 0),
+  ('rule_failed',           'failed',           1, 1,    0, 1, '{}', 0),
+  ('rule_limit_80',         'limit_80',         1, 1,    0, 0, '{"windows":["five_hour","seven_day"]}', 0),
+  ('rule_limit_95',         'limit_95',         1, 1,    0, 0, '{"windows":["five_hour","seven_day"]}', 0),
+  ('rule_reset',            'reset',            1, 0,    0, 0, '{"windows":["five_hour","seven_day"]}', 0),
+  ('rule_machine_silent',   'machine_silent',   1, 1, 3600, 0, '{}', 0);
+
+-- One row per episode (push.md 3.2 and 4).
+CREATE TABLE alert (
+  id            TEXT    NOT NULL PRIMARY KEY,      -- 'al_' + ULID
+  episode       TEXT    NOT NULL UNIQUE,            -- dedupe key
+  trigger       TEXT    NOT NULL,
+  rule_id       TEXT,                               -- rule in force at creation (not an FK: overrides can be deleted)
+  session_id    TEXT    REFERENCES session(id),
+  seat_id       TEXT    REFERENCES seat(id),
+  machine_id    TEXT    REFERENCES machine(id),
+  window_key    TEXT,
+  status        TEXT    NOT NULL CHECK (status IN ('pending', 'fired', 'snoozed', 'seen', 'cancelled', 'closed', 'skipped')),
+  reason        TEXT,                               -- answered, ended, superseded, stale, rule_off, remote_control, baseline, recovered, reset_passed, direct
+  since_at      INTEGER,                            -- when the condition began (client ts for sessions)
+  created_at    INTEGER NOT NULL,
+  due_at        INTEGER,                            -- next scheduler action (pending, snoozed); NULL otherwise
+  fired_at      INTEGER,                            -- first push
+  fire_count    INTEGER NOT NULL DEFAULT 0,
+  snoozed_until INTEGER,
+  seen_at       INTEGER,
+  seen_by       TEXT,                               -- device id or 'ntfy:<target id>'
+  ended_at      INTEGER,                            -- when it became cancelled, closed or skipped
+  facts         TEXT    NOT NULL DEFAULT '{}' CHECK (json_valid(facts)),   -- text inputs at creation: labels, question, pct, resets_at, remote_url
+  updated_at    INTEGER NOT NULL
+) STRICT;
+CREATE INDEX alert_due ON alert(due_at) WHERE due_at IS NOT NULL;
+CREATE INDEX alert_open ON alert(session_id) WHERE status IN ('pending', 'fired', 'snoozed', 'seen');
+CREATE INDEX alert_created ON alert(created_at);
+
+-- One attempt to bring one alert (fire) to one target.
+CREATE TABLE delivery (
+  id            INTEGER NOT NULL PRIMARY KEY,
+  alert_id      TEXT    NOT NULL REFERENCES alert(id) ON DELETE CASCADE,
+  target_id     TEXT    NOT NULL,                   -- not an FK: the log outlives a removed target
+  target_kind   TEXT    NOT NULL,
+  fire          INTEGER NOT NULL,                   -- alert.fire_count this belongs to
+  batch         TEXT,                               -- 'pb_' + ULID; deliveries sent as one push share it
+  status        TEXT    NOT NULL CHECK (status IN ('pending', 'held', 'sent', 'failed', 'skipped', 'gone')),
+  reason        TEXT,                               -- muted, quiet, flood, resolved, seen, channel_off
+  tries         INTEGER NOT NULL DEFAULT 0,
+  next_at       INTEGER,                            -- pending: next try; held: release time
+  http_status   INTEGER,
+  last_error    TEXT,
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL,
+  UNIQUE (alert_id, target_id, fire)
+) STRICT;
+CREATE INDEX delivery_next ON delivery(next_at) WHERE next_at IS NOT NULL;
+CREATE INDEX delivery_batch ON delivery(batch);
+```
+
+Retention: `sy hub prune` and the daily maintenance delete alerts (and their deliveries)
+older than 365 days, gone targets after 30 days, and pair codes 30 days after they expire.
+
+## 10. Engine structure
+
+```
+internal/hub/push/model      types shared by everything below and the API: Trigger, Alert, AlertBrief,
+                             Prefs, QuietHours, Message, Payload (6.5), Target, Result, Sender
+internal/hub/push/clock      Clock (Now, Timer) + Fake for tests
+internal/hub/push/rules      pure: trigger table, episode keys, rule matching, due/stale, quiet-hour
+                             arithmetic, reconcile decisions, text rendering (5.5), who-has-room
+internal/hub/push/engine     scheduler, reconcile I/O, fan-out, batching, flood cap, retries, snooze/seen,
+                             baseline, awake_at; owns no HTTP
+internal/hub/push/action     action tokens (section 8)
+internal/hub/push/webpush    VAPID, RFC 8291 encryption, Sender; webpushtest: fake push service + decoder
+internal/hub/push/ntfy       Sender; ntfytest: httptest stub
+```
+
+```go
+// model.Sender is implemented by webpush and ntfy.
+type Sender interface {
+    Kind() string                                   // "webpush" | "ntfy"
+    Send(ctx context.Context, t Target, m Message) Result
+}
+type Result struct {
+    Outcome    Outcome        // Sent, Retry, Gone, Failed
+    HTTPStatus int
+    RetryAfter time.Duration  // from Retry-After, 0 if none
+    Err        string         // first 200 bytes of the reply or the transport error
+}
+```
+
+`engine.Engine` is created by `sy hub serve` with the store, the clock, the senders and the
+`events.Broker`; `api.Server` calls `engine.Notify(ingest.Changes)` after publishing a batch
+(non-blocking; changes are merged while the engine is busy), and the alert handlers call
+`engine.Snooze`, `engine.Seen`, `engine.Act(token)`. A nil engine (tests, `--no-push`) makes
+the alert endpoints answer 503.
+
+Logging: one line per fire (`alert fire al_… trigger=asked session=c41e… targets=2`), per
+non-2xx delivery (`push fail pt_… 410 gone`), and per skip reason other than `baseline`;
+never the payload text.
+
+### 10.1 Decisions made while building (phase 4 WP-B)
+
+Where the sections above left a case open, the engine does this:
+
+- **Batching (5.3)** looks ahead only when something is due now: alerts due within `batch_s`
+  of a due alert go out in the same push; nothing is pushed early on its own.
+- **Snooze past `max_age_s`**: a snooze whose re-push time is overdue (the hub slept) goes back
+  to `fired` without a re-push, like a stale pending alert is skipped `stale`. Its
+  `fire_count` is incremented so the snooze token of the earlier fire cannot snooze it again.
+- **Reset alerts** are created at reconcile time, due at `resets_at`, only when the reset rule
+  is enabled and the peak reached 80%; a fired reset alert closes 1 h after `resets_at`
+  (`reset_passed`). A reset alert found at baseline stays `pending` (its push is in the future).
+- **Summaries of mixed triggers** (limits with sessions) are titled `N alerts`; the private
+  variant is `N things need you`. Only all-session summaries say `N sessions need you`.
+- **Targets that stop being eligible** (disabled, channel off) between fan-out and send get
+  their delivery `skipped` with reason `channel_off`; a retry whose alert has ended or moved to
+  another fire is `skipped` `resolved`; a retry older than `max_age_s` past its first attempt is
+  `skipped` `stale`.
+- **Held deliveries** (quiet hours) are released together as one push at the end of the quiet
+  window and are not counted against the flood cap a second time.
+- **Crash safety**: a delivery being sent carries `next_at = now + 15 s`, so a hub that dies
+  mid-send retries it after restart instead of losing it.
+- **Quiet hours on a fall-back night**: a local end time that happens twice is its first
+  occurrence (the spring-forward gap rule of 5.2 is unchanged).
+- **ntfy private flag**: a target's own `prefs.private` wins over its device's prefs, then the
+  ntfy.sh default (5.5), then the hub default.
+- **`Session.alert`** is the alert of the session's current episode while it is open
+  (`pending`, `fired`, `snoozed`, `seen`); otherwise null.
+- **`PUT /v1/push/settings`** stores the object as sent over the defaults; a missing
+  `quiet_hours.tz` is not frozen to the current hub zone (the response shows the effective one).
+- **`POST /v1/rules`**: `delay_s` and `bypass_quiet` default to the base rule of the same
+  trigger; `enabled` defaults to true. A base rule's `scope` may only set `windows`.
+- **`GET /v1/actions/{token}`** answers 404 (the `/v1/` fallback), not 405; only POST acts.
+
+## 11. Tests
+
+### 11.1 Rules engine (fake clock, real store in a temp directory)
+
+Each row starts from an empty hub at T = 0 with one webpush target (fake sender) and default
+rules unless stated; the "events" column lists ingested records (with their `ts`) and clock
+moves; "expect" lists sends and final alert status.
+
+| # | Scenario | Events | Expect |
+| --- | --- | --- | --- |
+| 1 | Question pushed after 1 min | Stop(question) ts 0, arrives 0.5 s; advance to 59 s; to 60 s | Nothing at 59 s; one push at 60 s; status `fired` |
+| 2 | Answered at 40 s | as 1; UserPromptSubmit ts 40 s arrives 42 s; advance to 120 s | No push; `cancelled` / `answered` |
+| 3 | Permission 30 s | PermissionRequest 0; Notification(permission_prompt) 0.2 s; advance 30 s | One push at 30 s (same episode) |
+| 4 | Permission answered by Stop | as 3; Stop ts 10 s | `cancelled` / `answered` |
+| 5 | Asked then permission | asked at 0; PermissionRequest at 20 s | asked alert `cancelled` / `superseded`; permission alert pushes at 50 s |
+| 6 | Failure immediate | StopFailure(rate_limit) | Push in the same pass; body names the seat with most room |
+| 7 | Overloaded is not a failure push | StopFailure(overloaded) | No alert |
+| 8 | Repeat failure same episode | StopFailure ×2 (different errors) | One push |
+| 9 | Late record (outbox) | Stop(question) ts 0 arrives at 50 s | Push at 60 s (due = clamp(60, 50, 110)) |
+| 10 | Very late record | Stop(question) ts 0 arrives at 30 min | `skipped` / `stale`, no push |
+| 11 | Clock-skewed machine | Stop(question) ts = +10 min (future), arrives 0 | Push at 60 s (clamped) |
+| 12 | Limit 80 once | limit samples 79, 81, 85, 82 in one window | One push at the 81 sample |
+| 13 | Limit jump past 95 | first sample 97 | One push (95); 80 `skipped` / `superseded` |
+| 14 | New window | 81 in window A; window A resets; 81 in window B | Two pushes (one per window) |
+| 15 | Stale sample | sample at 85 with ts 2 h old | No alert |
+| 16 | Quiet hours hold | quiet 23:00–08:00; asked at 23:10 | Delivery `held`; at 08:00 one push if still asked; `skipped` / `resolved` if answered at 02:00 |
+| 17 | Failure bypasses quiet | quiet on; StopFailure(billing_error) at 01:00 | Pushed at once |
+| 18 | Device quiet without critical | device quiet `critical: false`; failure at 01:00 | Held for that device only; another device without quiet gets it |
+| 19 | Snooze | fired at 60 s; snooze at 70 s; still asked at 16 min 10 s | Second push "Still waiting"; `fire_count = 2` |
+| 20 | Snooze then answered | as 19; answered at 5 min | No second push; `closed` / `answered` |
+| 21 | Seen | fired; seen; 30 min pass | No more pushes; `seen`, then `closed` when answered |
+| 22 | Action token replay | snooze token used twice | Second call `applied: false` |
+| 23 | Batch | 3 sessions asked within 1 s | One summary push "3 sessions need you" with 3 deliveries in one batch |
+| 24 | Flood cap | 10 limit alerts in one minute | 6 pushes, then one summary when the window frees |
+| 25 | Muted trigger | device mutes `limit_80` | Delivery `skipped` / `muted` for that device only |
+| 26 | Rule off during delay | asked at 0; owner disables `asked` at 30 s | `cancelled` / `rule_off` at 60 s |
+| 27 | Override | override `asked` delay 300 for project `infra` | `infra` pushes at 5 min, others at 1 min |
+| 28 | Remote Control skip | `skip_remote` on; session with `remote_url` asks | `skipped` / `remote_control` |
+| 29 | Hub restart mid-delay | asked at 0; engine stopped at 20 s, restarted at 40 s | Push at 60 s (timer from the table) |
+| 30 | Hub down past max age | asked at 0; engine down 0–20 min | No push after restart; `skipped` / `stale` |
+| 31 | Machine silent | session working; machine sends nothing; advance 61 min | One push; record arrives → `closed` / `recovered`; silent again 1 h → a second episode |
+| 32 | Hub was down, not the machine | machine last seen T; hub down T…T+2 h; restart | No silent push before `awake_at + 1 h` |
+| 33 | Laptop suspend | wall clock jumps 3 h, monotonic does not | Treated as restart: overdue alerts stale, silence from `awake_at` |
+| 34 | Baseline | first start with 2 sessions asked and a window at 90% | 3 `skipped` / `baseline`; nothing sent |
+| 35 | Refold | late record makes an `asked` session `working` retroactively | Pending alert `cancelled` |
+| 36 | Gone target | fake service returns 410 | Delivery `gone`, target disabled, next alert not sent to it |
+| 37 | Retry | 503, 503, 201 | Sent on the third try at +15 s, +1 min; skipped if the session was answered in between |
+| 38 | Private | device private | Payload title "Switchyard", url `/#/alerts/<id>`, no question text |
+
+`rules` (pure) gets its own table tests for episode keys, due/stale arithmetic, rule
+matching, quiet-hour windows across midnight and DST (Europe/London 2026-03-29 and
+2026-10-25, America/New_York), and the text table of 5.5 (golden files).
+
+### 11.2 Web Push
+
+- **RFC 8291 example** (section 5, intermediate values in appendix A): the given `ua_public`, `auth_secret`, `as_private` and
+  `salt`, plaintext "When I grow up, I want to be a watermelon" → the exact body bytes given
+  in the RFC (no padding in this test; padding is a separate option).
+- **RFC 8292**: sign a JWT, verify it with `ecdsa.Verify` on `R‖S`; check `aud` for
+  endpoints with and without ports; check the cached token is reused and renewed.
+- **Fake push service** (`webpushtest.Server`): an `httptest` TLS server that holds a test
+  subscription's private key, decrypts every request with an independent decoder written in
+  the test package (RFC 8188 decryption), verifies the `vapid` header, and answers scripted
+  statuses (201, 404, 410, 413, 429 + `Retry-After`, 500, slow). Used by the engine tests and
+  the end-to-end test.
+- **Independent check** (opt-in, `SY_WEBPUSH_NODE=1`): Node's `http_ece` package decrypts a
+  body made by our encoder.
+
+### 11.3 ntfy
+
+- `ntfytest.Server` (`httptest`): records published JSON; asserts title, priority, tags,
+  click, the three actions and the Bearer token; scripted 429/401/500.
+- Opt-in real server (`SY_NTFY_DOCKER=1`): `docker run --rm -p 127.0.0.1:0:80
+  binwiederhier/ntfy serve` (podman works the same), publish through the sender, read it back
+  with `GET /<topic>/json?poll=1`, and check the actions survived. CI runs it on Linux only.
+
+### 11.4 End to end (hub process)
+
+`sy hub serve` in a test with the fake clock, the fake push service and an ntfy stub: pair a
+phone (pairing.md), register a webpush target, ingest a Stop(question) through
+`/v1/ingest` with a machine token, advance 60 s, decrypt the push the fake service received
+and check it against 6.5; then repeat with a UserPromptSubmit at 40 s and check nothing
+arrives; then cross 80% with three `limit_sample` records and check exactly one push.
+
+## 12. The Expo channel (phase 8)
+
+The phone app ([phone.md](phone.md)) receives native pushes through Expo's push service. This
+section is the hub side: the `expo` sender, receipts, credentials, registration and silent
+widget refresh pushes. Web Push and ntfy do not change. Code: `internal/hub/push/expo`,
+`internal/hub/push/expotest` (the fake service), `internal/hub/store/expo.go`.
+
+### 12.1 Choice
+
+Expo's push service (`https://exp.host/--/api/v2/push/send`), for the
+reasons in phases/8.md decision 2. Compared:
+
+| | Expo push service (chosen) | Direct APNs + FCM v1 | Project-run relay |
+| --- | --- | --- | --- |
+| Credentials on the hub | None, or an optional Expo access token | An APNs `.p8` key, team and key ids, and an FCM service account, all from the app publisher | A relay token per hub |
+| Works for a store-installed app on any self-hosted hub | Yes | Only if the hub owner builds and signs their own app | Yes |
+| Who can read the text | Expo (in memory only, per its FAQ), Apple, Google | Apple, Google | The relay, Apple, Google |
+| Reliability | Expo, then APNs/FCM; receipts give `DeviceNotRegistered`; 600 pushes/s per project | Fewest hops; HTTP/2 and OAuth to manage | An extra service to run |
+| Live Activity remote updates | No | Yes (`apns-push-type: liveactivity`) | Possible |
+
+The sender takes a base URL (channel setting `base_url`, default `https://exp.host`), so a
+relay that speaks Expo's API can replace it later without a schema change.
+
+### 12.2 Message
+
+One message per target per push. Expo accepts up to 100 per request, but
+the engine sends per target and volumes are tiny:
+
+```json
+{
+  "to": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+  "title": "work · api · asked a question",
+  "body": "Should I also update the migration?",
+  "data": { "v": 1, "type": "alert", "alert": "al_01JA3B…", "...": "6.5 exactly" },
+  "categoryId": "sy_alert",
+  "channelId": "sy_needs_you",
+  "sound": "default",
+  "badge": 3,
+  "priority": "high",
+  "ttl": 21600
+}
+```
+
+| Field | Rule |
+| --- | --- |
+| `data` | The 6.5 payload as built for this target, except that the Expo channel always drops `remote_url` when `private` is true. Expo, Apple and Google can read `data`, unlike Web Push. |
+| `categoryId` | `sy_alert` when `data.actions` is present; omitted otherwise |
+| `channelId` | phone.md P6.1 by trigger; `sy_test` for tests |
+| `priority` / `ttl` | `high` / `normal` / `normal` for the Web Push urgencies `high` / `normal` / `low`; `ttl` = 6.4 TTL in seconds |
+| `badge` | `needs_you` |
+| size | At most 4096 bytes in total (Expo's limit, `MessageTooBig`). The builder cuts `body`, then `alerts`, then `title`, never `actions` |
+| **refresh** (12.9) | `{"to", "data": {"v": 1, "type": "refresh", "needs_you": n, "ts"}, "contentAvailable": true, "priority": "normal", "ttl": 900}`: no title, body, sound or category (Android data-only, iOS background). Expo's docs name the field `contentAvailable`; `_contentAvailable` is its deprecated alias, so do not send that |
+
+Headers: `Content-Type: application/json`, `Accept: application/json`, and
+`Authorization: Bearer <access token>` only when one is set (12.5).
+
+### 12.3 Response mapping
+
+(to `model.Result`; `Err` never contains message text):
+
+| Expo answer | Outcome | Notes |
+| --- | --- | --- |
+| 200, `data[0].status = "ok"` | `sent` | `Ref` = `data[0].id` (the ticket) |
+| 200, `status = "error"`, `details.error = "DeviceNotRegistered"` | `gone` | Target disabled, as for Web Push 410 |
+| 200, `MessageRateExceeded` | `retry` | `RetryAfter` 60 s |
+| 200, `MessageTooBig` | `failed` | Should be impossible (12.2); logged as a bug |
+| 200, `InvalidCredentials` / `MismatchSenderId` | `failed` | `Err`: "Expo has no push credentials for this app (see phone/README)" |
+| 200 with top-level `errors[]` (`PUSH_TOO_MANY_*`, `TOO_MANY_REQUESTS`) | `retry` | Backoff of 5.6 |
+| 401 / 403 (`UNAUTHORIZED`: enhanced security on, token missing or wrong) | `failed` | `Err`: "Expo access token missing or wrong" |
+| 429, 500–599, timeout, connection error | `retry` | `Retry-After` honoured as in 5.6 |
+| 400, 413, other | `failed` | `Err` = `HTTP <status>` plus Expo's error code, never the body |
+
+### 12.4 Receipts
+
+A poller in `internal/hub/push/expo` runs every 5 minutes (one goroutine,
+started by `sy hub serve`, stopped on shutdown):
+
+- It takes deliveries with `ticket IS NOT NULL AND receipt_at IS NULL` sent between 24 h
+  and 15 min ago, and POSTs up to 1000 ids per request to `/--/api/v2/push/getReceipts`.
+- `ok` → `receipt_at = now`.
+- `DeviceNotRegistered` → the target becomes gone (`ApplyTargetResult` with `gone`) and
+  `delivery.last_error = "DeviceNotRegistered"`.
+- Any other error → the target's `last_error` (shown in Settings), with the same text as
+  the send path (12.3): `InvalidCredentials` / `MismatchSenderId` give the "no push
+  credentials" text, `MessageTooBig` stays bare, anything else is `Expo: <code>`.
+- Ids missing from the answer after 24 h → `receipt_at = now` (Expo clears receipts after
+  24 hours).
+
+### 12.5 Credentials and settings
+
+- `PUT /v1/push/channels/expo` (owner) takes `settings: {base_url?, access_token?}`. The
+  access token is stored in `hub_secret` key `expo_access_token`, never returned (the
+  channel shows `access_token_set`) and never logged. `base_url` must be `https://` on
+  port 443. The token is Expo's credential for that host: a PUT that changes the base
+  host (the default host counts as `exp.host`) deletes the stored token unless a new
+  `access_token` comes in the same request.
+- APNs and FCM credentials never touch the hub: you upload them to EAS (manual steps).
+
+### 12.6 Network
+
+The sender uses `netguard.NewClient()` (public addresses only, no
+redirects, 10 s timeout). The test hook `SY_TEST_EXPO_DIAL=<host:port>` (build tag
+`fakeclock` only, like `SY_TEST_WEBPUSH_DIAL`) sends every request to the fake service.
+`scripts/ci/check-release-seams.sh` already refuses `fakeclock` in a release build.
+
+### 12.7 Registration
+
+`POST /v1/push/targets {kind: "expo", expo_token, name?, platform,
+app?}`:
+
+- `expo_token` must match `^Expo(nent)?PushToken\[[A-Za-z0-9_-]{8,200}\]$` (else 400).
+- `platform` is `ios` or `android`; `app` is `{version, build}`, strings of at most 32
+  characters each.
+- Stored as `endpoint = expo_token`, `meta = {"platform", "app_version", "app_build"}`.
+- It upserts by `(kind, endpoint)` and re-binds to the caller, as for Web Push. The cap of
+  10 targets per device applies.
+- A token held by another device is not taken over (409) unless that device is revoked or
+  has not been seen for 30 days (a phone that unpaired while offline). A device seen
+  within 30 days keeps its token, so one live phone cannot redirect another's pushes.
+- `PushTarget` adds `platform` and `app_version` for `expo` targets. `endpoint` (the token)
+  goes only to the owning device and the owner, as for Web Push.
+
+### 12.8 API and schema (v6)
+
+**api.yaml** (every change additive; no new path):
+
+- `/v1/push/channels/{kind}` path enum and `Channel.kind`: add `expo`. `Channel.settings`
+  for `expo`: `{base_url, access_token_set}` out, and `{base_url?, access_token?}` in (the
+  token is write-only).
+- `PushTargetNew.kind` and `PushTarget.kind`: add `expo`. `PushTargetNew` gains
+  `expo_token`, `platform` (`ios` | `android`) and `app` (`{version, build}`).
+  `PushTarget` gains `platform` and `app_version`.
+- `DevicePrefs.widgets`: boolean, default false.
+- `PushSettings.expo_refresh_min`: integer, 10–240, default 15.
+- 6.5 `type` gains `refresh` (Expo only, never shown).
+
+**Migration** `internal/hub/store/migrations/0006_expo.sql`, and `docs/spec/schema.sql`
+becomes v6 with a `v6 phase 8` header line:
+
+```sql
+-- Version 6 (phase 8): the Expo channel for the store app. push.md 12.
+
+-- channel.kind has allowed 'expo' since v3; the row was never seeded.
+INSERT INTO channel (kind, enabled, settings, updated_at) VALUES ('expo', 1, '{}', 0);
+
+-- Per-target facts that are not secrets: {"platform": "ios", "app_version": "0.8.0", "app_build": "12"}.
+ALTER TABLE push_target ADD COLUMN meta TEXT CHECK (meta IS NULL OR json_valid(meta));
+
+-- Expo answers with a ticket; the receipt comes later (push.md 12.4).
+ALTER TABLE delivery ADD COLUMN ticket TEXT;
+ALTER TABLE delivery ADD COLUMN receipt_at INTEGER;
+CREATE INDEX delivery_ticket_open ON delivery(created_at) WHERE ticket IS NOT NULL AND receipt_at IS NULL;
+```
+
+**Go model** (`internal/hub/push/model`):
+
+- `KindExpo = "expo"`, `TypeRefresh = "refresh"`;
+- `Result.Ref string` (a ticket id, empty for other senders);
+- `Prefs.Widgets *bool`;
+- `Settings.ExpoRefreshMin int` (default 15).
+
+The engine writes `Result.Ref` into `delivery.ticket` in the same transaction that writes
+the result.
+
+Wave 0 also: `Delivery.kind` in api.yaml gains `expo`; `TargetMeta{Platform, AppVersion,
+AppBuild}` is `Target.Meta`; `model.PlatformIOS` / `PlatformAndroid`; `Prefs.WidgetsOn()`.
+`Settings.Validate` refuses `expo_refresh_min` outside 10–240. `store.DeliveryRow.Ticket` is
+read and written with the rest of the row; `receipt_at` belongs to the receipts poller.
+The store still refuses `expo` targets (`UpsertTarget`) and the API refuses `PUT
+/v1/push/channels/expo` until WP-H adds those branches.
+
+### 12.9 Widget refresh pushes
+
+- `expo.Refresher` subscribes to the `events.Broker`, with session and usage changes
+  debounced 10 s. For each enabled `expo` target whose device has `prefs.widgets = true` and
+  is not revoked, it computes a digest: the needs-you count, the `used_pct` of each seat ×
+  watched window bucketed to 5 points, and the next `resets_at`. When the digest differs from
+  the last one sent to that target, and the last refresh is at least `expo_refresh_min`
+  (default 15, 10–240) ago, it sends one `refresh` message (12.2).
+- It also sends one when a watched window passes its `resets_at`, still subject to the
+  minimum.
+- Refreshes ignore quiet hours (they are silent), are not alerts and write no `delivery`
+  rows. A `gone` result disables the target as usual. Digests live in memory, so a restart
+  sends at most one refresh per target.
+- It sends nothing while the hub is frozen (`hub.frozen`); a skipped pass looks again
+  10 s later.
+- It logs one line per refresh pass with the count, never the digest.

@@ -1,0 +1,46 @@
+// Adapters from the native modules to the platform interfaces of src/contract/platform.ts.
+// Owner: WP-P. The only place (with app/) where src code imports expo-* for state.
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Application from 'expo-application';
+import Constants from 'expo-constants';
+import * as Device from 'expo-device';
+import * as SecureStore from 'expo-secure-store';
+import { AppState, Platform } from 'react-native';
+import type { AppInfo, AppStateSource, Clock, FetchLike, KVStore } from '../contract/platform';
+import { createSecureHub, secureOptions } from '../lib/secure';
+import type { SecureHub } from '../lib/secure';
+
+export function getAppInfo(): AppInfo {
+  const extra = Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined;
+  return {
+    version: Application.nativeApplicationVersion ?? Constants.expoConfig?.version ?? '0.0.0',
+    build: Application.nativeBuildVersion ?? '0',
+    model: Device.modelName ?? 'Phone',
+    platform: Platform.OS === 'ios' ? 'ios' : 'android',
+    projectId: extra?.eas?.projectId ?? null,
+    dev: __DEV__,
+  };
+}
+
+export const systemClock: Clock = {
+  now: () => Date.now(),
+  setTimeout: (fn, ms) => setTimeout(fn, ms),
+  clearTimeout: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
+};
+
+export const systemAppState: AppStateSource = {
+  current: () => AppState.currentState,
+  subscribe(fn) {
+    const sub = AppState.addEventListener('change', fn);
+    return () => sub.remove();
+  },
+};
+
+/** The keychain entry, readable while locked after the first unlock (P3). */
+export function systemSecureHub(): SecureHub {
+  return createSecureHub(SecureStore, secureOptions(SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY));
+}
+
+export const systemCache: KVStore = AsyncStorage;
+
+export const systemFetch: FetchLike = (url, init) => fetch(url, init as RequestInit) as unknown as ReturnType<FetchLike>;

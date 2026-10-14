@@ -1,0 +1,474 @@
+# Phone app
+
+Status: spec v1, phase 8. Implemented in `phone/` (Expo SDK 57, React Native). The work split,
+tests, decisions ("decision N"), risks ("risk N") and manual steps are in
+[phases/8.md](../phases/8.md); the screens are `docs/design/screens/Phone*.dc.html`. Unofficial;
+not affiliated with Anthropic.
+
+The phone app is a `phone` device (tokens.md 3: scopes `read` and `push`) with the PWA's
+screens, native pushes with **Open**, **Snooze** and **Seen**, home-screen widgets on iOS and
+Android, and an iOS Lock Screen countdown to a limit reset. It talks only to its hub's
+existing API; the hub side (the `expo` push channel and widget refresh pushes) is
+[push.md 12](push.md#12-the-expo-channel-phase-8).
+
+Related: pairing.md 2.2, 3.1 (the QR, `cookie: false`), tokens.md 3 (`phone` scopes),
+push.md 5.4 (`prefs`), 5.5 (texts), 5.8 (deep links), 6.5 (the payload), 8 (action tokens),
+12 (Expo), pwa.md 3 and 5 (screens and the service worker's tap rule), api.yaml (`expo`
+enums, `PushTargetNew.expo_token`, `DevicePrefs.widgets`, `PushSettings.expo_refresh_min`),
+schema.sql v6.
+
+Section numbers follow phases/8.md's contract: P8 to P10 (the hub side) are push.md 12.
+
+Code map (wave 0): `phone/src/contract/` is the TypeScript side of this spec:
+
+| File | Holds |
+| --- | --- |
+| `api.ts` | Mirrors of the api.yaml schemas the app reads or sends (`Overview`, `Session`, `Seat`, `Window`, `AlertBrief`, `Alert`, `Me`, `Device`, `DevicePrefs`, `PushTarget`, `ExpoTargetNew`, `PairClaim`, `PairClaimReply`, `PushSettings`, `ActionReply`, …) |
+| `payload.ts` | `Payload` (exactly Go `model.Payload`, `PAYLOAD_KEYS` in Go's key order), `RefreshData`, `ExpoMessage`, `ExpoTicket`, `AndroidChannelId` |
+| `snapshot.ts` | `WidgetSnapshot` v1 (P11), `TimelineEntry`, `SNAPSHOT_MAX_SEATS` 4, `SNAPSHOT_LABEL_MAX` 12, `TIMELINE_MAX` 8 |
+| `live.ts` | `LiveCountdownProps` (P12), `LIVE_MAX_H` 8, `LIVE_MIN_PCT` 80, `LIVE_END_AFTER_MS`, `LIVE_ACTIVITY_NAME` |
+| `routes.ts` | `SCHEME`, `AppRoute`, route paths, the hash routes and incoming hosts of P7 |
+| `constants.ts` | Storage keys (`sy.hub.v1`, `sy.cache.v1`, `sy.widget.v1`, `sy.local.v1`), the task name, category and action ids, channels (P6.1), timeouts, `ACTION_TOKEN` and `EXPO_TOKEN` patterns |
+| `platform.ts` | The service interfaces `src/lib` takes as arguments (`FetchLike`, `Clock`, `KVStore`, `SecureStoreLike`, `AppStateSource`, `AppInfo`) |
+| `validate.ts` | Runtime validators for all of the above (empty list = valid), used by the contract test and by the app on data it did not make |
+
+Each `src/lib/<module>/index.ts` holds the exported signatures of its wave 1 owner, throwing
+`"<module>.<fn>: not implemented (phase 8)"` until implemented.
+
+## P1. The app: layout and versions
+
+```
+phone/
+  package.json  package-lock.json  app.config.ts  eas.json  tsconfig.json
+  babel.config.js  jest.config.js  eslint.config.js  .gitignore  README.md
+  app/                      expo-router routes (P4); thin screens only
+  src/contract/             TypeScript mirrors of hub JSON (api.ts, payload.ts), WidgetSnapshot,
+                            LiveCountdownProps, route constants. Wave 0; changes go through WP-0's owner
+  src/lib/hub/              hub client: base URL, bearer, timeouts, errors, endpoints
+  src/lib/pair/             QR/typed input parsing, claim
+  src/lib/secure/           keychain wrapper (SecureStore behind an interface + in-memory fake)
+  src/lib/data/             poller, last-known cache (AsyncStorage, never secrets), reducer
+  src/lib/notify/           channels, categories, registration, response decisions, background task
+  src/lib/links/            hash route ↔ app route, incoming URL allow-list
+  src/lib/format/           ages, reset times, labels, state words (port of webui format.js)
+  src/lib/widget/           WidgetSnapshot builder, timeline, Android render props
+  src/lib/live/             countdown choice, Live Activity props, end policy
+  src/lib/integrate/        wave 2 glue (pure): after-refresh widget/live/badge steps, registration
+                            on pairing and start, the background task's refresh, auto countdown
+  src/state/                provider (the one source of truth), notification bridge, and glue.tsx:
+                            binds the real modules and derives the screens' HubApi from useHub()
+  src/components/           shared UI (rows, rings, chips, banners)
+  widgets/ios/              expo-widgets components ('widget' directive): NeedsYouSmall,
+                            AccountsMedium, ResetCountdown (Live Activity)
+  widgets/android/          react-native-android-widget components + task handler
+  plugins/                  local config plugins (with-sy-native.js)
+  scripts/                  check-no-secrets.mjs, prebuild-check.mjs, dump-fixtures.sh
+  test/                     setup.ts (installs the mocks), fakes.ts (recording fakes of the
+                            native modules), render-widget.ts, fixtures/hub/*.json,
+                            fixtures/widget-snapshot.v1.json
+```
+
+Rule: `src/lib/**` imports no `react-native`, no `expo-*` module and no React. It takes
+platform services as arguments (`fetch`, clock, storage, a `Notifications`-shaped object). A
+jest test walks the import graph and fails on a forbidden import (wave 0, like phase 7's
+lint test).
+
+Pinned versions (exact; all released on or before 2026-09-29; the native modules are the
+versions `expo@57.0.26`'s `bundledNativeModules.json` names):
+
+| Package | Version | Released | Why |
+| --- | --- | --- | --- |
+| `expo` | 57.0.26 | 2026-09-29 | SDK 57 (decision 1) |
+| `react` / `react-native` | 19.2.3 / 0.86.3 | — | SDK 57 pins |
+| `expo-router` | 57.0.24 | 2026-09-29 | Routes, deep links |
+| `expo-notifications` | 57.0.21 | 2026-09-24 | Push token, categories, responses, background task |
+| `expo-task-manager` | 57.0.21 | 2026-09-29 | Background notification task |
+| `expo-secure-store` | 57.0.4 | 2026-09-11 | Token in Keychain / Android Keystore |
+| `expo-camera` | 57.0.6 | 2026-09-29 | QR scanning (`CameraView` `onBarcodeScanned`; `expo-barcode-scanner` is abandoned) |
+| `expo-linking` | 57.0.11 | 2026-09-24 | Scheme URLs, opening `remote_url` |
+| `expo-constants` / `expo-device` / `expo-application` | 57.0.20 / 57.0.2 / 57.0.3 | ≤ 2026-09-29 | Project id, device name, app version |
+| `expo-widgets` | 57.0.22 | 2026-09-29 | iOS widgets and Live Activity (decision 7) |
+| `@expo/ui` | 57.0.21 | 2026-09-29 | SwiftUI components for widgets (`expo-widgets@57.0.22` depends on `~57.0.21`) |
+| `expo-clipboard` | 57.0.2 | 2026-09-11 | Copy resume command |
+| `react-native-android-widget` | 0.22.1 | 2026-08-17 | Android widgets |
+| `expo-build-properties` | 57.0.22 | 2026-09-24 | Deployment targets |
+| `expo-dev-client` | 57.0.19 | ≤ 2026-09-29 | Development builds (Expo Go has no remote push on Android since SDK 53) |
+| `@react-native-async-storage/async-storage` | 2.2.0 | — | Last-known cache only |
+| `react-native-safe-area-context` / `react-native-screens` | 5.7.0 / 4.26.2 | 2026-02-24 / 2026-07-16 | expo-router |
+| `typescript` | 6.0.3 | 2026-04-16 | SDK 57 template |
+| `jest-expo` | 57.0.5 | 2026-08-26 | Test preset |
+| `@testing-library/react-native` | 14.0.1 | 2026-06-23 | Screen tests (14.1.0 is too new) |
+| `eslint-config-expo` | 57.0.2 | 2026-08-26 | Lint |
+| `react-dom` | 19.2.3 | 2025-12-11 | Added in wave 0: expo-router and `@expo/metro-runtime` pull a newer `react-dom` (19.3, which wants React 19.3) unless it is pinned to SDK 57's `bundledNativeModules` value |
+| `babel-preset-expo` | 57.0.13 | 2026-09-24 | Added in wave 0: `babel.config.js` needs it at the top level. 57.0.15 (what `expo` nests) declares `expo-widgets ^57.0.24`, newer than our pin; 57.0.13 wants `^57.0.21` |
+| `test-renderer` | 1.2.0 | 2026-04-16 | Added in wave 0: RNTL 14's renderer peer; 1.3 uses `react-reconciler` 0.34, which wants React 19.3 |
+| `jest` / `@react-native/jest-preset` | 29.7.0 / 0.86.3 | 2023-09-12 / 2026-08-24 | jest-expo 57's runner and preset |
+| `eslint` | 9.39.5 | 2026-07-10 | eslint-config-expo 57's flat config (npm marks 9.x end of life; 10 is not supported by the config yet) |
+| `@types/react` / `@types/jest` / `@types/node` | 19.2.18 / 29.5.14 / 22.19.1 | ≤ 2026-07-30 | Types (`tsconfig` `types: ["jest", "node"]`: TypeScript 6 no longer loads every `@types` package) |
+
+No `expo-updates` (no over-the-air updates: decision in "Defaults").
+
+Check it with `make phone-check` (`npm ci`, `tsc`, `eslint`, `jest --ci`, the secrets check and
+both prebuild checks). `npm ci` prints peer-override warnings (`react-native-worklets`, the
+optional React 19.3 peers); they are expected and do not fail the install.
+
+## P2. Pairing
+
+- **Scan.** The Pair screen opens `CameraView` with `barcodeScannerSettings: {barcodeTypes:
+  ["qr"]}` and stops at the first string `parsePairInput` accepts.
+- **`parsePairInput(text)`** (pure) accepts:
+  - `https://<host>[:port]/#/pair?s=<22 base64url>&c=<6 digits>`, the QR of pairing.md 2.2;
+  - `switchyard://pair?u=<https origin>&s=…&c=…`, the "Open in app" link the web pair page
+    gains in wave 2;
+  - typed input: an address plus `482-913`, `482913` or `482 913`.
+
+  It returns `{origin, secret?, code?}` or a reason. The origin must be `https://`, with no
+  user info, path, query or fragment kept. Only `__DEV__` builds accept `http://` for
+  loopback and RFC 1918 addresses (pairing.md 2.3's `--insecure` hubs, for local testing).
+  It refuses a `javascript:` URL, an origin with a backslash and a host over 253 characters.
+- **Claim:** `POST <origin>/v1/pair/claim` with `{secret | code, name: "<model> · app",
+  expect_kind: "phone", cookie: false, client: "app/<version>+<build>"}`. On 200 it keeps
+  `{origin, token, device, name}` (P3). The error mapping follows pairing.md 3: 401 →
+  "Invalid or expired code", 409 → "That code is for a <kind>, not a phone", 429 → "Too many
+  tries, wait 10 minutes", network → "Can't reach <host>. Is Tailscale on?"
+- After pairing: `GET /v1/me` (to check it), then the notifications screen (P6), then Now.
+- A second pairing replaces the first, after confirming "Unpair from <host>?". There is one
+  hub per app install.
+
+## P3. Token storage and the hub client
+
+- SecureStore key `sy.hub.v1` holds JSON `{origin, token, device, name, paired_at}`, with
+  `keychainAccessible: AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`. That way the background
+  notification task and widget refresh can read it while the phone is locked after its first
+  unlock, and it is never restored onto another device. Android: Keystore-backed, and the app
+  sets `allowBackup=false` (P13).
+- `HubClient` (pure, `fetch` injected): it prefixes the origin, sends `Authorization: Bearer`,
+  times out after 10 s (1.5 s for the `/health` probe), follows no cross-origin redirect and
+  parses the `Error` schema. On 401 it calls `onUnauthorized` once: the app clears the
+  keychain entry, the cache and the widget data, ends Live Activities and shows Pair ("This
+  phone was unpaired on the hub"). A 401 from a client of an earlier pairing (after "Unpair
+  and pair") is ignored. Its errors and logs carry the path and status, never the token or
+  response bodies.
+- **Origins and redirects.** An origin is kept normalised: lower-case, no trailing slash, no
+  default port (`https://hub:443` is `https://hub`), so every same-origin check compares like
+  with like. Every request asks for `redirect: "error"`, and any 3xx answer, or an answer
+  whose final URL is on another origin, is fatal. React Native's `fetch` may follow a
+  redirect whatever `redirect` says, and then that check is after the fact: the request has
+  already gone out with its bearer. So the first contact with a new origin is a
+  `GET /health` without credentials (a claim sends the pairing secret or code only after it)
+  that must answer from that origin with no redirect; a 503 still counts as an answer. A
+  stored origin never changes except by pairing again, which probes again. If a paired
+  hub starts redirecting later, and the platform follows it carrying the header, the target
+  can see a bearer request before the app refuses the answer. That is the native limit,
+  accepted for a hub the person runs on their own tailnet.
+- Unpair (Settings): stop polling, record `{origin, token}` in SecureStore key
+  `sy.revoke.v1` (a short list), do the same local clearing (which also dismisses the old
+  hub's delivered notifications), then `DELETE /v1/devices/self`. An unpairing the hub has
+  not confirmed is retried on every start and foreground until it answers 2xx, 401 or 404;
+  pairing again with the same hub confirms it first, so its old push target (holding this
+  phone's Expo token) is gone before `POST /v1/push/targets`.
+- A keychain that cannot be read at start (locked before the first unlock) is state
+  `locked`, not unpaired: nothing is cleared, notification decisions stay queued, and the
+  entry is read again when the app becomes active.
+
+## P4. Screens and routes
+
+The same screens as the PWA (pwa.md 3, plan section 12), with phone tabs **Now, Sessions,
+Accounts, More**:
+
+| App route (expo-router) | Hash route it mirrors | Screen |
+| --- | --- | --- |
+| `/` (tab Now) | `#/` | Needs-you inbox with swipe Seen / Snooze (`POST /v1/alerts/{id}/seen`, `/snooze`), alert status words, rings per account, running count per machine |
+| `/sessions?filter=&by=` | `#/sessions` | Grouped list with filter chips |
+| `/sessions/[id]?alert=` | `#/sessions/<id>` | State history, last message, **Open in Claude** (`remote_url` with the wrong-account note), **Copy resume command**, Snooze |
+| `/accounts?seat=` | `#/accounts` | Cards, "most room", **Count down on Lock Screen** (iOS, P12) |
+| `/more` | `#/more` | Alerts, Machines, Settings |
+| `/more/alerts` | `#/more/alerts` | Rule switches as `prefs.mute` (`PATCH /v1/devices/self`), recent pushes (`GET /v1/alerts`) |
+| `/more/machines?machine=` | `#/machines` | Machines list |
+| `/more/settings` | `#/more/settings` | Hub and status, notifications state and **Send test push**, private pushes, tap behaviour, own quiet hours, widgets refresh switch (`prefs.widgets`), app version, **Unpair** |
+| `/alerts/[id]` | `#/alerts/<id>` | Loads the alert and replaces itself with its deep link (push.md 5.8) |
+| `/pair` | `#/pair` | P2 |
+
+Owner-only PWA screens (Devices, Add phone, rule editing, Analytics) are not in the app.
+Wording, ages and state words come from `src/lib/format` and match `webui/static/format.js`
+on a shared table (WP-S).
+
+## P5. Data refresh
+
+- Foreground (`AppState` `active`): poll every 15 s, plus at once on foreground, on a
+  received push and after a Seen or Snooze. Background: no polling. Data refreshes only
+  through the background notification task (P6.5).
+- The last good replies go to AsyncStorage key `sy.cache.v1` (no token, no secret). When the
+  hub cannot be reached, the screens show them under "Offline · showing 14:02", and Seen,
+  Snooze and test push are disabled, as in the PWA.
+- After every refresh the app rebuilds the widget snapshot (P11) and updates a running Live
+  Activity (P12). It writes the widgets only while the device's `prefs.widgets` is on, and
+  only once `GET /v1/me` has answered (private mode comes from `prefs.private`, else the hub's
+  `settings.private`); the Live Activity is kept up to date either way, and the badge is set
+  from the overview's needs-you count (P6.6). `GET /v1/rules` (`snooze_min`) and `GET /v1/me`
+  are read again at most every 5 minutes while polling.
+
+## P6. Notifications
+
+**P6.1 Android channels** (created before any permission or token call; Android 13+ shows
+the permission prompt only once a channel exists):
+
+| Channel id | Name | Importance | Used for |
+| --- | --- | --- | --- |
+| `sy_needs_you` | Needs you | HIGH | `needs_permission`, `asked`, `failed`, summaries |
+| `sy_limits` | Limits | DEFAULT | `limit_80`, `limit_95`, `reset` |
+| `sy_machines` | Machines | LOW | `machine_silent` |
+| `sy_test` | Test | DEFAULT | test pushes |
+
+**P6.2 Categories:**
+
+| Category | Actions (`identifier` · `buttonTitle` · options) | Used when |
+| --- | --- | --- |
+| `sy_alert` | `open` · "Open" · `opensAppToForeground: true`; `snooze` · "Snooze 15 min" · `opensAppToForeground: false`; `seen` · "Seen" · `opensAppToForeground: false` | The payload has `actions` |
+| none | Tap only | Summaries, `test`, private pushes still have actions (tokens reveal nothing) |
+
+The Snooze title uses `snooze_min` from `GET /v1/rules` (`settings.snooze_min`; a phone
+device may read it), and categories are re-registered when it changes. (Phases/8.md said
+`GET /v1/push/config`, which has no settings: corrected in wave 0.) Whether a non-foreground action runs the JS response handler
+on iOS while the app is killed is **unverified** (risk 3). If it does not, one constant,
+`BACKGROUND_ACTIONS_IOS`, flips Snooze and Seen to `opensAppToForeground: true`: the app
+opens briefly, acts and shows a toast.
+
+**P6.3 Registration** (`registerForPush(deps)`, pure with injected `Notifications`):
+
+1. Android: create the channels. Then `requestPermissionsAsync({ios: {allowAlert,
+   allowBadge, allowSound}})`. Anything but granted → Settings shows "Blocked in system
+   settings".
+2. `getExpoPushTokenAsync({projectId})`. `projectId` comes from
+   `Constants.expoConfig.extra.eas.projectId`. If it is missing (a build made without your
+   EAS project), Settings shows "This build can't receive pushes" and nothing is registered.
+3. `POST /v1/push/targets {kind: "expo", expo_token, name: "<model> · app", platform,
+   app: {version, build}}`, then `PATCH /v1/devices/self {prefs: {tz, widgets: true}}`.
+   `widgets: true` goes only on the first registration, when the device's `prefs.widgets`
+   has never been set (read from `GET /v1/me` or `GET /v1/devices/self`); later
+   registrations send `{tz}` only, so a person who turned widget refresh off keeps it off.
+4. Offer **Send test push** (`POST /v1/push/targets/{id}/test`).
+
+On every start with permission granted: get the token again. If it changed, or
+`GET /v1/devices/self` shows no live `expo` target with it (gone or deleted), repeat step 3
+silently. Expo push tokens are stable, but may change on an Android reinstall.
+
+**P6.4 Responses** (`decideResponse(response, reachable) → Decision`, pure):
+
+| Input | Decision |
+| --- | --- |
+| `actionIdentifier` `snooze` / `seen` with a token in `data.actions` | `{kind: "act", token}` → `POST <origin>/v1/actions/<token>` with `Content-Type: application/json` and body `{}`, no bearer; then dismiss that notification. The result is not retried, as in pwa.md 5 |
+| Default tap or `open` | The `tap` rule of `sw-lib.js` `chooseTarget`: `claude` with `remote_url` → open the link; `auto` with `remote_url` → probe `GET /health` (1.5 s), the link if no answer, else the route; otherwise the route from `data.url` (P7) |
+| `data` missing or `v` not 1 | Open Now |
+
+An act goes only to the hub that sent the notification. The payload has no hub identity
+today, so the app drops (and dismisses) an act on a notification the OS delivered before the
+current pairing was made (`notification.date` against `paired_at`, both on the phone's
+clock); when a payload names an `origin`, an act whose origin is not the paired one is
+dropped too. Each notification's Snooze or Seen runs once: the Android background task and
+the response listener share the AsyncStorage key `sy.acted.v1` (`"<id>|<action>"`, the last
+50, never a token).
+
+The listener is registered at module scope in `app/_layout.tsx`. On cold start,
+`getLastNotificationResponseAsync()` is read once and then cleared, so a response is never
+handled twice. Foreground pushes are shown (`setNotificationHandler`: banner, list, badge)
+and trigger a refresh.
+
+**P6.5 Background task** (`SY_NOTIFY_TASK`, `Notifications.registerTaskAsync`): it runs for
+`refresh` pushes (iOS `content-available`, Android data-only) and, on Android, for action
+taps while the app is in the background or killed. It reads the keychain entry, refreshes
+overview and accounts within about 20 s, rebuilds the widget timeline, updates the Live
+Activity and sets the badge from `needs_you`. For an action tap it does the same `act` as
+P6.4. It must finish without the UI tree (no React imports, only `src/lib` plus thin
+adapters).
+
+**P6.6 Badge:** iOS from the push's `badge` (P8.2), corrected after each refresh with
+`setBadgeCountAsync(needs_you)`.
+
+## P7. Deep links
+
+- Scheme `switchyard`. Accepted incoming URLs (an allow-list in `src/lib/links`; everything
+  else opens Now):
+  - `switchyard://now`
+  - `switchyard://sessions/<id>[?alert=<al_…>]`
+  - `switchyard://accounts[?seat=<id>]`
+  - `switchyard://machines[?machine=<id>]`
+  - `switchyard://alerts/<al_…>`
+  - `switchyard://pair?u=…&s=…&c=…`
+
+  Ids must match `^[A-Za-z0-9_.:-]{1,80}$`.
+- `hashToRoute(url)` maps a payload `url` (push.md 5.8: `/#/sessions/<id>?alert=…`,
+  `/#/accounts?seat=…`, `/#/machines?machine=…`, `/#/`, `/#/alerts/<id>`) to the app route.
+  Like `sw.js`, it rejects anything that does not start with a single `/` or that contains a
+  backslash.
+- `app/+native-intent.ts` (`redirectSystemPath`) runs every incoming URL through the
+  allow-list. A pair link never claims by itself: it opens the Pair screen pre-filled, and
+  the person taps **Pair with <host>**. The link's `u`, `s`, `c` become the route params
+  `origin`, `secret`, `code` (`/pair?origin=…&secret=…&code=…`), which the Pair screen reads;
+  it shows a confirm card for them and claims only on that tap (and, when already paired,
+  asks "Unpair from <host>?" after it).
+- Widgets link to `switchyard://now` and `switchyard://accounts?seat=<id>`. The Live
+  Activity links to `switchyard://accounts?seat=<id>`.
+
+## P11. Widgets
+
+**`WidgetSnapshot` v1** (`src/contract/snapshot.ts`; the jest golden is
+`test/fixtures/widget-snapshot.v1.json`):
+
+```json
+{
+  "v": 1,
+  "as_of": "2026-10-13T14:02:00.000Z",
+  "hub": "hub.example.ts.net",
+  "needs_you": 2,
+  "top": {"seat": "work", "project": "api", "what": "asked", "since": "2026-10-13T13:58:00.000Z"},
+  "seats": [
+    {"id": "seat_…", "label": "work", "colour": "#7c5cff",
+     "five_hour": {"pct": 62, "resets_at": "2026-10-13T17:00:00.000Z"},
+     "seven_day": {"pct": 41, "resets_at": "2026-10-16T09:00:00.000Z"}}
+  ],
+  "next_reset": {"seat": "work", "window": "five_hour", "resets_at": "2026-10-13T17:00:00.000Z", "pct": 62},
+  "private": false
+}
+```
+
+- `buildSnapshot(overview, accounts, now, prefs)` (pure). There are at most 4 seats, ordered
+  as the Accounts screen orders them. `top` is null in private mode. Labels are cut to 12
+  characters.
+- `buildTimeline(snapshot, now)` → entries `{date, props}`: one now, one at each `resets_at`
+  in the next 24 h (that ring drops to 0 and reads "reset"), and one at `as_of + 60 min`
+  that adds "as of 14:02" (stale). That makes at most 8 entries.
+- **iOS** (`expo-widgets`, App Group `group.<bundle id>`): `NeedsYouSmall` (`systemSmall`:
+  the needs-you count, the top item, and the next reset as `Text` `date` with `dateStyle:
+  "timer"`) and `AccountsMedium` (`systemMedium`: up to 4 rings with pct and reset time).
+  The app calls `updateTimeline(entries)` after every refresh. Widget components are pure
+  props → `@expo/ui/swift-ui` trees, with no hooks or state (an expo-widgets rule).
+- **Android** (`react-native-android-widget`): `SyNeedsYou` (target 2×2 cells) and
+  `SyAccounts` (4×2), `updatePeriodMillis: 1800000` (the library's minimum). The task handler
+  reads the last snapshot from AsyncStorage key `sy.widget.v1` (no secrets) and renders it.
+  The app calls `requestWidgetUpdate` after each refresh. Android shows reset as a clock time
+  ("resets 17:00"), not a ticking timer (no verified countdown primitive).
+- Neither side reads the keychain or calls the hub. Widgets show only what the app last
+  wrote.
+
+## P12. Live Activity (iOS)
+
+- `chooseCountdown(snapshot, now)` (pure) returns the seat × window with the highest pct
+  among windows resetting within `LIVE_MAX_H = 8` hours and at ≥ 80%, else null. 8 hours is
+  the commonly cited limit for an active Live Activity and is **unverified** (risk 7). So the
+  5-hour window qualifies and the 7-day window only in its last 8 hours.
+- Props: `{seat, colour, window, pct, resets_at, started_at}`. The `ResetCountdown`
+  component renders `Text` with `timerInterval: {lower: started_at, upper: resets_at}` (`@expo/ui`
+  `ClosedRangeDate`) and `countsDown`
+  (lock-screen banner, Dynamic Island compact, minimal and expanded regions).
+- Started by the app in the foreground: **Count down on Lock Screen** on a qualifying card,
+  or automatically when the app opens from a `limit_95` or rate-limit `failed` push, if
+  Settings "Auto countdown" is on (default on). At most one runs at a time (`getInstances()`
+  at start).
+- "Auto countdown" (iOS only, Settings: "Count down on the Lock Screen when a limit push is
+  opened") is a local app setting, not a hub pref: AsyncStorage key `sy.local.v1`
+  (`LOCAL_PREFS_KEY`) holds `{auto_countdown: boolean}`, never a secret, and survives an unpair.
+  Only a tap or **Open** counts (not Snooze or Seen). The payload carries no failure detail, so
+  `isLimitPush` (`src/lib/integrate`) takes a `failed` push as a rate limit when its title ends
+  in "rate limited" or its body is the "Resets 17:00 · …" line (push.md 5.5, 5.7); a private
+  `failed` push never counts. The response sets a one-shot flag and kicks a refresh; the next
+  refresh calls `syncCountdown(snapshot, now, true)`. It is updated after each refresh with the new pct. It ends with
+  `end(after(resets_at + 15 min))` (`after` from `expo-widgets`; wave 0 corrected the
+  `end("after", …)` form) at the reset, and immediately on unpair.
+- The activity is `createLiveActivity('ResetCountdown', component)` (`LIVE_ACTIVITY_NAME`).
+  It needs no plugin option: the generated widget bundle always includes
+  `WidgetLiveActivity()` (checked in the wave 0 iOS prebuild).
+- No push-to-start and no push updates (decision 9).
+
+## P13. Build configuration
+
+- `app.config.ts` reads only non-secret environment values:
+  - `SY_APP_ID`: bundle id and package name, default `dev.switchyard.app.local`;
+  - `EAS_PROJECT_ID` → `extra.eas.projectId`;
+  - `SY_GOOGLE_SERVICES_JSON`: a path outside the repo → `android.googleServicesFile`,
+    omitted when unset, so builds still compile without push. It must point outside
+    `phone/` (the config throws otherwise);
+  - `SY_APP_VARIANT`: `development` allows cleartext traffic (P2's loopback hubs); any
+    other value, or none, is a release config.
+- `scheme: "switchyard"`; iOS `ios.deploymentTarget` 16.4 (the app config field: the
+  `expo-build-properties` iOS option is deprecated since SDK 56, and `expo-widgets` reads
+  the same field for its extension), Android `minSdkVersion` 24 (through
+  `expo-build-properties`).
+- Android `permissions: [POST_NOTIFICATIONS, CAMERA]` and `blockedPermissions:
+  [RECORD_AUDIO, SYSTEM_ALERT_WINDOW, READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE]`.
+  POST_NOTIFICATIONS is listed so the prebuilt manifest shows it (expo-notifications would
+  otherwise add it only at Gradle merge time).
+- Plugins: `expo-router`; `expo-notifications` (icon, colour); `expo-secure-store`;
+  `expo-camera` (camera permission text "Scan the pairing QR code from your hub"; microphone
+  off); `expo-widgets` (`groupIdentifier: group.<SY_APP_ID>`, `bundleIdentifier:
+  <SY_APP_ID>.widgets` for the extension, the two widgets, `enablePushNotifications: false`,
+  `enableAndroid: false`); `react-native-android-widget` (the two widgets);
+  `./plugins/with-sy-native.js`.
+- `with-sy-native.js` (ours) sets:
+  - iOS `UIBackgroundModes: ["remote-notification"]` and `NSSupportsLiveActivities: true`;
+  - Android `allowBackup="false"`;
+  - removes `RECORD_AUDIO` and `SYSTEM_ALERT_WINDOW` if a library adds them;
+  - `usesCleartextTraffic` only in development builds.
+- `eas.json` profiles (run only by you):
+  - `development`: `developmentClient`, internal distribution;
+  - `preview`: Android `buildType: "apk"`, iOS internal;
+  - `production`: store builds, autoIncrement.
+
+## P14. Tests and fixtures
+
+- `test/setup.ts` (jest `setupFilesAfterEnv`) replaces `expo-notifications`,
+  `expo-secure-store`, `expo-camera`, `expo-widgets`, `@expo/ui/swift-ui` (and `/modifiers`),
+  `react-native-android-widget`, `expo-task-manager` and AsyncStorage with the recording fakes
+  of `test/fakes.ts`, makes global `fetch` reject, and resets every fake before each test.
+  Tests script the fakes through their exported state (`notificationsState.permission`,
+  `secureState.locked`, …) and read `calls` / `callsOf(prefix)`. The secure-store fake never
+  records a stored value. `emitNotificationResponse` and `runTask` play the OS's part.
+- Widget components render with `test/render-widget.ts` (`renderWidget`, `allOf`, `textOf`),
+  which uses `test-renderer` directly with `SwiftUI.Text` as the text host. RNTL's `render`
+  does not fit widget trees: it only lets React Native's `Text` hold strings. Every
+  `@expo/ui/swift-ui` component renders as a host element `SwiftUI.<Name>` and every
+  `react-native-android-widget` component as `Android.<Name>`; modifier helpers return
+  `{modifier, args}` and are recorded.
+- `test/fixtures/hub/*.json` are `webui/devserver` replies (`phone/scripts/dump-fixtures.sh`,
+  paired as a phone with `cookie: false`), with `_meta.json` giving the time they were taken.
+  The devserver's data is relative to its start, so tests that format times use
+  `_meta.json`'s `now_ms`. `test/fixtures/widget-snapshot.v1.json` is the P11 example.
+- `test/contract.test.ts` checks the Go Expo message goldens
+  (`internal/hub/push/expo/testdata/*.json`) with `validateExpoMessage` and, for alerts,
+  `validatePayload(…, exact)` (Go key order, no unknown keys), and every fixture with its
+  validator. Wave 0 ships `placeholder-alert.json` and `placeholder-refresh.json`; WP-H replaces
+  them with its `message-*.json` goldens.
+- `test/imports.test.ts` walks the import graph from `src/lib` and `src/contract` and fails on
+  any package import or a relative import that leaves them (P1). `eslint.config.js` also
+  forbids `react`, `react-native*`, `expo*`, `@expo/*` and `@react-native*` in `src/lib/**`
+  and `console` in `src/**`.
+- `test/stubs.test.ts` expects every wave 0 stub to throw; each wave 1 owner deletes their
+  module from its list.
+- `scripts/check-no-secrets.mjs` fails on a credential-shaped file in `phone/` (outside
+  `node_modules`, `android/`, `ios/`) or anywhere in `git ls-files`, and on a private key block
+  or service-account JSON in a tracked `phone/` file. `.env.example` / `.env.sample` are allowed.
+- `scripts/prebuild-check.mjs android|ios` copies `phone/` to a temp directory (with
+  `node_modules` symlinked), runs `expo prebuild --platform <p> --no-install --clean` there
+  with `SY_APP_VARIANT=production`, asserts the list in phases/8.md's test plan and deletes
+  the copy (`SY_KEEP_PREBUILD=1` keeps it for a look).
+
+## P15. Facts checked in wave 0
+
+Checked on 2026-10-13 on Fedora Linux (Node 22.22.2, no Xcode, no Android build), with the
+pins of P1:
+
+| # | Fact | Result |
+| --- | --- | --- |
+| 1 | `expo prebuild --platform android --no-install --clean` succeeds with every P13 plugin; the manifest has `POST_NOTIFICATIONS`, the `switchyard` intent filter, two `AppWidgetProvider` receivers (`.widget.SyNeedsYou`, `.widget.SyAccounts`) and `allowBackup="false"` | **Checked.** Needed one change: POST_NOTIFICATIONS is only merged from expo-notifications' library manifest at Gradle time, so P13 now lists it in `android.permissions`. Two `appwidget-provider` XML files are generated; react-native-android-widget's plugin writes to the right path (no doubled `android/android`). Cleartext is off in release. |
+| 2 | `expo prebuild --platform ios --no-install --clean` succeeds on Linux, with `Info.plist`, entitlements and the widget extension target | **Checked.** `ios/ExpoWidgetsTarget/` holds `NeedsYouSmall.swift`, `AccountsMedium.swift`, `index.swift` (the bundle, which includes `WidgetLiveActivity()`), `Info.plist` and its entitlements. The App Group is on the app and the extension, `aps-environment` on the app, the app-extension target is in `project.pbxproj`, and every target is iOS 16.4. Pods are not installed (`--no-install`), so this proves config, not compilation (risk 6 stays for the native compile). The iOS prebuild check stays in `make phone-check` and CI's `check` job. |
+| 3 | `expo-widgets@57.0.22` and `react-native-android-widget@0.22.1` coexist | **Checked.** Both plugins run in the same config without duplicate keys; each platform's prebuild generates its own widget set and the other plugin leaves it alone (`expo-widgets` has `enableAndroid: false`). No fallback needed. |
+| 4 | `jest-expo` renders `@expo/ui/swift-ui` widget trees through the mock | **Checked**, with `test/render-widget.ts` rather than RNTL's `render` (P14). `test/widget-mock.test.tsx` renders a `VStack` with a timer `Text` and an Android `FlexWidget`. |
+
+Notes for wave 1 from the same checks:
+
+- `babel-preset-expo` adds a widgets transform whenever `expo-widgets` is installed: widget
+  components are functions marked with the `'widget'` directive, serialised for the native
+  side. Components must stay pure (props in, tree out; no hooks, no closures over module
+  state).
+- `expo-widgets` warns about `userInterfaceStyle` on Android without `expo-system-ui`. That is
+  harmless; WP-S may ask for `expo-system-ui` if it wants the Android dark-mode setting.

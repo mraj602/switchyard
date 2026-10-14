@@ -1,0 +1,138 @@
+{
+  "plan_id": "p_98d20321999c",
+  "actions": [
+    {
+      "id": "a1",
+      "step": "terminal",
+      "op": "run",
+      "covers": [
+        "~/.claude",
+        "~/.claude-2"
+      ],
+      "argv": [
+        "claude",
+        "plugin",
+        "uninstall",
+        "warp@claude-code-warp",
+        "--json"
+      ],
+      "env": {
+        "CLAUDE_CONFIG_DIR": null
+      },
+      "touches": [
+        "/home/u/.claude/settings.json",
+        "/home/u/.claude/plugins/installed_plugins.json",
+        "/home/u/.local/state/switchyard/term/journal/warp-plugin.uninstall"
+      ],
+      "watch": [
+        "/home/u/.claude/plugins"
+      ],
+      "pre": [
+        {
+          "path": "/home/u/.claude/settings.json",
+          "state": {
+            "type": "file"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a2",
+      "step": "terminal",
+      "op": "run",
+      "covers": [
+        "~/.claude",
+        "~/.claude-2"
+      ],
+      "argv": [
+        "claude",
+        "plugin",
+        "marketplace",
+        "remove",
+        "claude-code-warp",
+        "--json"
+      ],
+      "env": {
+        "CLAUDE_CONFIG_DIR": null
+      },
+      "touches": [
+        "/home/u/.claude/settings.json",
+        "/home/u/.claude/plugins/known_marketplaces.json",
+        "/home/u/.local/state/switchyard/term/journal/warp-plugin.marketplace-remove"
+      ],
+      "watch": [
+        "/home/u/.claude/plugins"
+      ]
+    },
+    {
+      "id": "a3",
+      "step": "terminal",
+      "op": "run",
+      "covers": [
+        "~/.claude-3"
+      ],
+      "argv": [
+        "claude",
+        "plugin",
+        "uninstall",
+        "warp@claude-code-warp",
+        "--json"
+      ],
+      "env": {
+        "CLAUDE_CONFIG_DIR": "/home/u/.claude-3"
+      },
+      "touches": [
+        "/home/u/.claude-3/settings.json",
+        "/home/u/.claude-3/plugins/installed_plugins.json",
+        "/home/u/.local/state/switchyard/term/journal/warp-plugin.uninstall"
+      ],
+      "watch": [
+        "/home/u/.claude-3/plugins"
+      ],
+      "pre": [
+        {
+          "path": "/home/u/.claude-3/settings.json",
+          "state": {
+            "type": "file"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a4",
+      "step": "terminal",
+      "op": "run",
+      "covers": [
+        "~/.claude-3"
+      ],
+      "argv": [
+        "claude",
+        "plugin",
+        "marketplace",
+        "remove",
+        "claude-code-warp",
+        "--json"
+      ],
+      "env": {
+        "CLAUDE_CONFIG_DIR": "/home/u/.claude-3"
+      },
+      "touches": [
+        "/home/u/.claude-3/settings.json",
+        "/home/u/.claude-3/plugins/known_marketplaces.json",
+        "/home/u/.local/state/switchyard/term/journal/warp-plugin.marketplace-remove"
+      ],
+      "watch": [
+        "/home/u/.claude-3/plugins"
+      ]
+    }
+  ],
+  "keep": [],
+  "conflicts": [],
+  "needs": [],
+  "summary": {
+    "changes": 4,
+    "backed_up": 2,
+    "links_changed": 0,
+    "logins_touched": 0
+  }
+}

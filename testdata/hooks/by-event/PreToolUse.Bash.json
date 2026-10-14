@@ -1,0 +1,17 @@
+{
+  "session_id": "76cef052-a659-422c-b1eb-36dea6e22655",
+  "transcript_path": "/home/user/.claude-3/projects/-tmp-claude-1000--home-user-projects-personal-92757a3d-04cd-4927-8177-c75bc52051b4-scratchpad-proj1/76cef052-a659-422c-b1eb-36dea6e22655.jsonl",
+  "cwd": "/tmp/claude-1000/-home-user-projects-personal/92757a3d-04cd-4927-8177-c75bc52051b4/scratchpad/proj1",
+  "prompt_id": "e96e8667-555e-4d77-a042-6f2ba81807df",
+  "permission_mode": "acceptEdits",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "cat hello.txt",
+    "description": "Print hello.txt contents"
+  },
+  "tool_use_id": "toolu_0137sKoat468MF15fdTsLRGx"
+}

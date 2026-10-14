@@ -1,0 +1,107 @@
+// Session detail: state, last message, facts, transition timeline.
+
+import { h } from '../components/dom.js';
+import { dot, copyButton } from '../components/cards.js';
+import { seatIndex, sessionSeat } from '../components/seat.js';
+import { stateTag, stateInfo } from '../components/state.js';
+import { ago, agoLabel, dateTime, pct, projectOf, compact, humanKey, httpsUrl } from '../format.js';
+import { openDetail } from '../store.js';
+import { alertButtons, alertLine, alertText } from '../components/alerts.js';
+import { getAlert } from '../api.js';
+
+// The alert a push linked to (#/sessions/<id>?alert=<al>), when it is not the session's current one.
+let linked = null;
+
+export function load({ route }) {
+  linked = null;
+  const id = route.query.get('alert');
+  if (id) getAlert(id).then((a) => { linked = a; window.dispatchEvent(new Event('sy-rerender')); }).catch(() => {});
+  return openDetail(route.id);
+}
+
+const EVENT_NAMES = {
+  SessionStart: 'Session started', SessionEnd: 'Session ended', UserPromptSubmit: 'You sent a prompt',
+  Stop: 'Claude finished', StopFailure: 'Turn failed', PermissionRequest: 'Permission requested',
+  PermissionDenied: 'Permission denied', Notification: 'Notification', PreToolUse: 'Tool starting',
+  PostToolUse: 'Tool finished', PreCompact: 'Compacting', PostCompact: 'Compacted',
+};
+
+// Keep the events where the state changed (plus the first and last); the rest sit behind a toggle.
+function transitions(tl) {
+  return tl.filter((e, i) => i === 0 || i === tl.length - 1 || (e.state_after && e.state_after !== tl[i - 1].state_after));
+}
+
+let showAll = false;
+
+export function render({ store, route, now }) {
+  const back = h('a', { href: '#/sessions', class: 'back' }, '← Sessions');
+  const s = store.detail && store.detail.id === route.id ? store.detail : null;
+  if (!s) {
+    return { title: 'Session · Switchyard', node: h('div', { class: 'page' }, back,
+      h('p', { class: store.error ? 'calm' : 'muted pad' }, store.error || 'Loading session…')) };
+  }
+  const idx = seatIndex(store.overview.seats);
+  const seat = sessionSeat(s, idx);
+  const info = stateInfo(s);
+  const tl = s.timeline || [];
+  const events = showAll ? tl : transitions(tl);
+  const text = s.question || s.last_message;
+
+  const facts = [
+    ['Account', h('span', {}, dot(seat.colour), seat.label)],
+    ['Machine', s.machine_name],
+    ['Folder', s.slot],
+    ['Working directory', s.cwd && h('span', { class: 'mono' }, s.cwd)],
+    ['Model', s.model],
+    ['Kind', s.kind],
+    ['Context used', s.context_pct != null && pct(s.context_pct)],
+    ['Started', s.started_at && `${dateTime(s.started_at)} (${agoLabel(s.started_at, now)})`],
+    ['Last event', s.last_event_at && agoLabel(s.last_event_at, now)],
+    ['Ended', s.ended_at && dateTime(s.ended_at)],
+    ['Session id', h('span', { class: 'mono small' }, s.id)],
+  ].filter(([, v]) => v);
+
+  const t = s.tokens;
+  const node = h('div', { class: 'page' }, back,
+    h('header', { class: 'page-head col' },
+      h('h1', {}, projectOf(s), s.title || s.name ? h('span', { class: 'muted' }, ` · ${s.title || s.name}`) : null),
+      h('div', { class: 'head-meta' }, stateTag(s, true),
+        h('span', { class: 'muted' }, ` for ${ago(s.state_since, now)}`),
+        s.stale ? h('span', { class: 'flag' }, ' · stale: no events for 12 h') : null,
+        s.machine_stale ? h('span', { class: 'flag' }, ' · machine quiet') : null)),
+
+    h('div', { class: 'actions session-actions' },
+      httpsUrl(s.remote_url) ? h('a', { class: 'btn btn-primary btn-wide', href: httpsUrl(s.remote_url), target: '_blank', rel: 'noopener noreferrer' }, 'Open in Claude (Remote Control)') : null,
+      s.resume ? copyButton(s.resume, 'Copy resume command', 'copy-resume') : null,
+      alertButtons(s)),
+    s.alert ? h('p', { class: 'muted small alert-meta' }, 'Alert: ', alertLine(s.alert, now)) : null,
+    linked && (!s.alert || s.alert.id !== linked.id) ? h('p', { class: 'muted small alert-meta' }, `Alert from your push: ${alertText(linked, now)}`) : null,
+    s.resume ? h('pre', { class: 'cmd mono small' }, s.resume) : null,
+    httpsUrl(s.remote_url) ? h('p', { class: 'muted small' }, 'The Claude app is signed in to one account at a time: if it shows another account, use the resume command.') : null,
+
+    text ? h('section', { class: `card quote needs-${info.cls}`, 'aria-label': s.question ? 'Question' : 'Last message' },
+      h('div', { class: 'quote-label' }, s.question ? 'Waiting on you' : 'Last message'),
+      h('p', { class: s.state === 'needs_permission' ? 'mono' : '' }, text)) : null,
+
+    h('div', { class: 'cols' },
+      h('section', { class: 'card', 'aria-labelledby': 'h-facts' }, h('h2', { id: 'h-facts' }, 'Details'),
+        h('dl', { class: 'kv' }, facts.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])),
+        t ? h('p', { class: 'muted small tok' }, `Tokens: ${compact(t.input)} in · ${compact(t.output)} out · ${compact(t.cache_read)} cache read`,
+          t.api_usd != null ? ` · ~$${t.api_usd.toFixed(2)} API equivalent` : '') : null),
+
+      h('section', { class: 'card', 'aria-labelledby': 'h-tl' },
+        h('div', { class: 'block-head' }, h('h2', { id: 'h-tl' }, 'Timeline'),
+          tl.length > events.length || showAll ? h('button', { type: 'button', class: 'linkish', 'data-key': 'tl-toggle',
+            onclick: () => { showAll = !showAll; window.dispatchEvent(new Event('sy-rerender')); } },
+            showAll ? 'State changes only' : `Show all ${tl.length} events`) : null),
+        events.length === 0 ? h('p', { class: 'muted' }, 'No events yet.')
+          : h('ol', { class: 'timeline' }, [...events].reverse().map((e) => h('li', { class: 'tl-item' },
+            h('time', { datetime: e.ts, class: 'tl-time mono small' }, dateTime(e.ts)),
+            h('span', { class: 'tl-what' }, EVENT_NAMES[e.event] || humanKey(e.event),
+              e.tool_name ? h('span', { class: 'mono small' }, ` ${e.tool_name}`) : null,
+              e.subtype ? h('span', { class: 'muted small' }, ` (${e.subtype})`) : null),
+            e.state_after ? h('span', { class: 'muted small' }, `→ ${humanKey(e.state_after)}`) : null,
+            e.last_message ? h('div', { class: 'tl-msg muted small' }, e.last_message) : null))))));
+
+  return { title: `${projectOf(s)} · Switchyard`, node };
+}

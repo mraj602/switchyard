@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "Switchyard",
+  "short_name": "Switchyard",
+  "description": "Your Claude sessions and limits. Unofficial; not affiliated with Anthropic.",
+  "start_url": "/#/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#17191B",
+  "theme_color": "#17191B",
+  "icons": [
+    {"src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"},
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ],
+  "shortcuts": [
+    {"name": "Needs you", "url": "/#/", "icons": [{"src": "icons/icon-192.png", "sizes": "192x192"}]},
+    {"name": "Sessions", "url": "/#/sessions", "icons": [{"src": "icons/icon-192.png", "sizes": "192x192"}]}
+  ]
+}

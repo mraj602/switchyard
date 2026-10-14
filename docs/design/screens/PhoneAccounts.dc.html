@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Switchyard phone — Accounts</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#7A4E00}a:hover{color:#4F3200}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F3F4F1; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #17191B; display: flex; flex-direction: column; overflow: hidden">
+  <div style="flex: 1; overflow: hidden; padding: 20px 16px 12px; display: flex; flex-direction: column; gap: 12px">
+    <h1 style="margin: 0; font-size: 24px; font-weight: 700">Accounts</h1>
+    <div style="font-size: 13px; color: #2E6B3A; background: #E7F2E9; border-radius: 10px; padding: 8px 12px">Most room right now: <b style="font-weight: 600">work</b> (59% of 5h, 70% of week)</div>
+
+    <article style="background: #FFFFFF; border: 1px solid #DFE1DC; border-top: 3px solid #0E7C76; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 9px">
+      <div style="display: flex; justify-content: space-between"><b style="font-weight: 600">personal</b><span style="font-size: 12px; color: #5E646B">Max 20x</span></div>
+      <div style="display: grid; grid-template-columns: 92px 1fr 70px; align-items: center; column-gap: 8px; row-gap: 7px; font-size: 13px">
+        <span>5-hour</span><span style="height: 7px; background: #E9EBE6; border-radius: 4px"><span style="display: block; width: 62%; height: 7px; background: #0E7C76; border-radius: 4px"></span></span><span style="font-family: 'IBM Plex Mono', monospace; text-align: right">62% 16:40</span>
+        <span>7-day</span><span style="height: 7px; background: #E9EBE6; border-radius: 4px"><span style="display: block; width: 48%; height: 7px; background: #0E7C76; border-radius: 4px"></span></span><span style="font-family: 'IBM Plex Mono', monospace; text-align: right">48% Thu</span>
+        <span>7-day Opus</span><span style="height: 7px; background: #E9EBE6; border-radius: 4px"><span style="display: block; width: 22%; height: 7px; background: #0E7C76; border-radius: 4px"></span></span><span style="font-family: 'IBM Plex Mono', monospace; text-align: right">22%</span>
+        <span>Cloud credits</span><span style="height: 7px; background: #E9EBE6; border-radius: 4px"><span style="display: block; width: 30%; height: 7px; background: #0E7C76; border-radius: 4px"></span></span><span style="font-family: 'IBM Plex Mono', monospace; text-align: right">30%</span>
+      </div>
+      <div style="font-size: 12px; color: #5E646B">On pace: ~85% at weekly reset · 2 machines + web</div>
+    </article>
+
+    <article style="background: #FFFFFF; border: 1px solid #DFE1DC; border-top: 3px solid #6A4FD6; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 9px">
+      <div style="display: flex; justify-content: space-between"><b style="font-weight: 600">work</b><span style="font-size: 12px; color: #5E646B">Team · Acme</span></div>
+      <div style="display: grid; grid-template-columns: 92px 1fr 70px; align-items: center; column-gap: 8px; row-gap: 7px; font-size: 13px">
+        <span>5-hour</span><span style="height: 7px; background: #E9EBE6; border-radius: 4px"><span style="display: block; width: 41%; height: 7px; background: #6A4FD6; border-radius: 4px"></span></span><span style="font-family: 'IBM Plex Mono', monospace; text-align: right">41% 15:10</span>
+        <span>7-day</span><span style="height: 7px; background: #E9EBE6; border-radius: 4px"><span style="display: block; width: 30%; height: 7px; background: #6A4FD6; border-radius: 4px"></span></span><span style="font-family: 'IBM Plex Mono', monospace; text-align: right">30% Mon</span>
+      </div>
+      <div style="font-size: 12px; color: #5E646B">From status line only (no web tab)</div>
+    </article>
+
+    <article style="background: #FFFFFF; border: 1px solid #DFE1DC; border-top: 3px solid #9A7400; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 9px">
+      <div style="display: flex; justify-content: space-between"><b style="font-weight: 600">client</b><span style="font-size: 12px; color: #5E646B">Max 5x</span></div>
+      <div style="display: grid; grid-template-columns: 92px 1fr 70px; align-items: center; column-gap: 8px; row-gap: 7px; font-size: 13px">
+        <span>5-hour</span><span style="height: 7px; background: #E9EBE6; border-radius: 4px"><span style="display: block; width: 100%; height: 7px; background: #9A7400; border-radius: 4px"></span></span><span style="font-family: 'IBM Plex Mono', monospace; text-align: right; color: #B42318">100% 17:00</span>
+        <span>7-day</span><span style="height: 7px; background: #E9EBE6; border-radius: 4px"><span style="display: block; width: 91%; height: 7px; background: #9A7400; border-radius: 4px"></span></span><span style="font-family: 'IBM Plex Mono', monospace; text-align: right">91% Sat</span>
+      </div>
+      <div style="font-size: 12px; color: #9A3412">At this pace: 100% of the week on Thursday</div>
+    </article>
+
+    <article style="background: #FFFFFF; border: 1px solid #DFE1DC; border-top: 3px solid #2F6FDE; border-radius: 14px; padding: 12px 14px; display: flex; justify-content: space-between; font-size: 13px">
+      <b style="font-weight: 600">research</b><span style="font-family: 'IBM Plex Mono', monospace">8% · 12%</span>
+    </article>
+  </div>
+
+  <nav aria-label="Tabs" style="display: flex; justify-content: space-around; background: #FFFFFF; border-top: 1px solid #DFE1DC; padding: 8px 0 22px">
+    <a href="PhoneNow.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 64px; min-height: 44px; font-size: 11px; color: #5E646B; text-decoration: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5E646B" stroke-width="2" aria-hidden="true"><path d="M4 12h4l2-6 4 12 2-6h4"/></svg>Now</a>
+    <a href="PhoneSessions.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 64px; min-height: 44px; font-size: 11px; color: #5E646B; text-decoration: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5E646B" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Sessions</a>
+    <a href="PhoneAccounts.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 64px; min-height: 44px; font-size: 11px; font-weight: 600; color: #17191B; text-decoration: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#17191B" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 8 8"/></svg>Accounts</a>
+    <a href="PhoneAlerts.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 64px; min-height: 44px; font-size: 11px; color: #5E646B; text-decoration: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5E646B" stroke-width="2" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>More</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

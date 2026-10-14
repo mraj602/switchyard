@@ -1,0 +1,51 @@
+{
+  "session_id": "11111111-2222-4333-8444-555555555555",
+  "transcript_path": "/home/user/.claude-2/projects/-home-user-projects-demo/11111111-2222-4333-8444-555555555555.jsonl",
+  "cwd": "/home/user/projects/demo",
+  "model": {
+    "id": "claude-sonnet-5-5",
+    "display_name": "Sonnet 5.5"
+  },
+  "workspace": {
+    "current_dir": "/home/user/projects/demo",
+    "project_dir": "/home/user/projects/demo"
+  },
+  "version": "2.1.296",
+  "output_style": {
+    "name": "default"
+  },
+  "effort": {
+    "level": "high"
+  },
+  "cost": {
+    "total_cost_usd": 0.4172,
+    "total_duration_ms": 245000,
+    "total_api_duration_ms": 61000,
+    "total_lines_added": 42,
+    "total_lines_removed": 7
+  },
+  "exceeds_200k_tokens": true,
+  "context_window": {
+    "total_input_tokens": 210000,
+    "total_output_tokens": 4200,
+    "context_window_size": 1000000,
+    "used_percentage": 21,
+    "remaining_percentage": 79,
+    "current_usage": {
+      "input_tokens": 8,
+      "output_tokens": 312,
+      "cache_creation_input_tokens": 1500,
+      "cache_read_input_tokens": 16000
+    }
+  },
+  "rate_limits": {
+    "five_hour": {
+      "used_percentage": 100,
+      "resets_at": 1791824400
+    },
+    "seven_day": {
+      "used_percentage": 41.2,
+      "resets_at": 1792256400
+    }
+  }
+}

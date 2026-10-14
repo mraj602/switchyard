@@ -1,0 +1,14 @@
+// Package model holds the shared contract of `sy setup` (docs/spec/setup.md): the types the
+// detector, planner, applier, sharer, plugin installer and service code pass to each other,
+// and the interfaces that cross package boundaries. It contains data and tiny pure helpers
+// only; behaviour lives in the packages that implement the interfaces.
+//
+// JSON tags are the wire format of `sy setup --json` (setup.md 6.3), the backup manifest
+// (7.2) and the ledger (9.3). Optional fields use omitempty; fields the spec always prints
+// have no omitempty. Golden files: testdata/setup/*.json.
+//
+// Stability: wave 1 packages code against this package in parallel. Add fields freely
+// (always with omitempty and a doc comment); renaming or removing needs the orchestrator.
+//
+// Contract: docs/spec/setup.md. Phase 3. Depends on: internal/claudecli (types only).
+package model

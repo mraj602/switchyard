@@ -1,0 +1,182 @@
+# The phase 6 desktop app (app/): unit tests on three OSes, the Electron smoke under xvfb
+# against a real hub, packaging (never signed, never published) and the packaged-AppImage
+# end-to-end test. Design: docs/phases/6.md "CI job design". Action SHAs re-checked with
+# `git ls-remote` on 2026-10-13.
+name: app
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main, phase-6]
+    paths: ["app/**", "cmd/sy/**", "internal/**", "testdata/usage/**", ".github/workflows/app.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The root prototype stays live until the person retires it: no change to it may land here.
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          # the PR's own head (not the merge commit), so a [prototype-retire] message is seen
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - run: app/scripts/check-prototype-untouched.sh "${{ github.event.pull_request.base.sha || 'origin/main' }}"
+
+  unit:
+    name: unit (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: app
+        shell: bash
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "22.x"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run lint
+      - run: npm test
+
+  # S1-S12 (docs/phases/6.md "Electron smoke"): a real `sy hub serve` built from this commit,
+  # the fake claude.ai, a temp HOME. The harness passes --ozone-platform=x11 and
+  # --password-store=basic (never a real keyring).
+  smoke:
+    runs-on: ubuntu-latest
+    needs: unit
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: "1.27.x"
+          cache: true
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "22.x"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: CGO_ENABLED=0 go build -o "$RUNNER_TEMP/bin/sy" ./cmd/sy
+      - run: npm ci
+        working-directory: app
+      # Ubuntu 24.04 blocks unprivileged user namespaces through AppArmor, which Chromium's
+      # sandbox needs. Allow them on the runner instead of passing --no-sandbox.
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - run: sudo apt-get update && sudo apt-get install -y xvfb
+      - run: xvfb-run -a --server-args="-screen 0 1440x940x24" npm run smoke
+        working-directory: app
+        env:
+          SY_BIN: ${{ runner.temp }}/bin/sy
+          SY_SMOKE_OUT: ${{ runner.temp }}/smoke
+      # The S12 screenshots are always kept; logs and state dumps too when a step failed.
+      - if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: smoke
+          path: ${{ runner.temp }}/smoke
+          retention-days: 7
+          if-no-files-found: ignore
+
+  package:
+    name: package (${{ matrix.os }})
+    needs: smoke
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.os != 'ubuntu-latest' }}
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false" # never sign
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: "1.27.x"
+          cache: true
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "22.x"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm xvfb
+      # fetch-sy builds the bundled sy for this runner's OS and arch before electron-builder runs.
+      # The release build: no switchyard.allowCdp, so the packaged app refuses remote debugging
+      # switches (desktop.md C2). The e2e job below makes its own build with the flag.
+      - run: cd app && npm ci && node scripts/fetch-sy.mjs auto auto && npm run dist -- --publish never
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: app-${{ matrix.os }}
+          path: |
+            app/dist/*.AppImage
+            app/dist/*.deb
+            app/dist/*.rpm
+            app/dist/*.dmg
+            app/dist/*.exe
+          retention-days: 7
+          if-no-files-found: error
+
+  # The packaged AppImage with the sandbox on, no sy on PATH (docs/phases/6.md "End to end"). It
+  # is driven over --remote-debugging-port, which only the e2e build allows: scripts/dist-e2e.sh
+  # bakes switchyard.allowCdp=true into its asar (dist/e2e/). Its AppImage is never uploaded.
+  e2e:
+    runs-on: ubuntu-latest
+    needs: smoke
+    timeout-minutes: 40
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false" # never sign
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: "1.27.x"
+          cache: true
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "22.x"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: sudo apt-get update && sudo apt-get install -y xvfb
+      - run: cd app && npm ci && node scripts/fetch-sy.mjs auto auto && scripts/dist-e2e.sh
+      - run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          xvfb-run -a --server-args="-screen 0 1440x940x24" node --test app/test/e2e/*.test.mjs
+        env:
+          SY_SMOKE_OUT: ${{ runner.temp }}/e2e
+      - if: failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: e2e
+          path: ${{ runner.temp }}/e2e
+          retention-days: 7
+          if-no-files-found: ignore

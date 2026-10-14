@@ -1,0 +1,462 @@
+{
+ "actions": [
+  {
+   "content_sha256": "<hash>",
+   "id": "a1",
+   "note": "switchyard <version> (sy-local)",
+   "op": "write_tree",
+   "path": "$HOME/.local/state/switchyard/plugin/marketplace",
+   "pre": [
+    {
+     "path": "$HOME/.local/state/switchyard/plugin/marketplace",
+     "state": {
+      "type": "absent"
+     }
+    }
+   ],
+   "step": "plugin"
+  },
+  {
+   "argv": [
+    "claude",
+    "plugin",
+    "marketplace",
+    "add",
+    "$HOME/.local/state/switchyard/plugin/marketplace",
+    "--json"
+   ],
+   "env": {
+    "CLAUDE_CONFIG_DIR": null
+   },
+   "id": "a2",
+   "op": "run",
+   "pre": [
+    {
+     "path": "$HOME/.claude/settings.json",
+     "state": {
+      "type": "file"
+     }
+    },
+    {
+     "path": "$HOME/.claude/plugins/known_marketplaces.json",
+     "state": {
+      "type": "file"
+     }
+    }
+   ],
+   "step": "plugin",
+   "touches": [
+    "$HOME/.claude/settings.json",
+    "$HOME/.claude/plugins/known_marketplaces.json"
+   ],
+   "watch": [
+    "$HOME/.claude/plugins"
+   ]
+  },
+  {
+   "argv": [
+    "claude",
+    "plugin",
+    "install",
+    "switchyard@sy-local",
+    "--json"
+   ],
+   "covers": [
+    "~/.claude",
+    "~/.claude-2",
+    "~/.claude-3",
+    "~/.claude-4",
+    "~/.claude-5",
+    "~/.claude-6",
+    "~/.claude-7"
+   ],
+   "env": {
+    "CLAUDE_CONFIG_DIR": null
+   },
+   "id": "a3",
+   "note": "shared settings and plugins",
+   "op": "run",
+   "pre": [
+    {
+     "path": "$HOME/.claude/plugins/installed_plugins.json",
+     "state": {
+      "type": "file"
+     }
+    }
+   ],
+   "step": "plugin",
+   "touches": [
+    "$HOME/.claude/settings.json",
+    "$HOME/.claude/plugins/installed_plugins.json"
+   ],
+   "watch": [
+    "$HOME/.claude/plugins"
+   ]
+  },
+  {
+   "before": "bash $HOME/.claude/statusline-command.sh",
+   "covers": [
+    "~/.claude",
+    "~/.claude-2",
+    "~/.claude-3",
+    "~/.claude-4",
+    "~/.claude-5",
+    "~/.claude-6",
+    "~/.claude-7"
+   ],
+   "file": "$HOME/.claude/settings.json",
+   "id": "a4",
+   "op": "json_set",
+   "pointer": "/statusLine/command",
+   "pre": [
+    {
+     "path": "$HOME/.claude/settings.json",
+     "state": {
+      "type": "file"
+     }
+    }
+   ],
+   "step": "statusline",
+   "value": "$HOME/.local/bin/sy statusline --wrap 'bash $HOME/.claude/statusline-command.sh'",
+   "via": [
+    "$HOME/.claude-2/settings.json",
+    "$HOME/.claude-3/settings.json",
+    "$HOME/.claude-4/settings.json",
+    "$HOME/.claude-5/settings.json",
+    "$HOME/.claude-6/settings.json",
+    "$HOME/.claude-7/settings.json"
+   ]
+  },
+  {
+   "id": "a5",
+   "op": "config_set",
+   "path": "$HOME/.config/switchyard/config.toml",
+   "pre": [
+    {
+     "path": "$HOME/.config/switchyard/config.toml",
+     "state": {
+      "type": "absent"
+     }
+    }
+   ],
+   "step": "config",
+   "value": {
+    "share.mcp": "external",
+    "share.primary": "~/.claude",
+    "slots.colours.~/.claude": "#14b8a6",
+    "slots.colours.~/.claude-2": "#f59e0b",
+    "slots.colours.~/.claude-3": "#8b5cf6",
+    "slots.colours.~/.claude-4": "#f43f5e",
+    "slots.colours.~/.claude-5": "#0ea5e9",
+    "slots.colours.~/.claude-6": "#84cc16",
+    "slots.colours.~/.claude-7": "#f97316",
+    "slots.labels.~/.claude": "claude",
+    "slots.labels.~/.claude-2": "claude-2",
+    "slots.labels.~/.claude-3": "claude-3",
+    "slots.labels.~/.claude-4": "claude-4",
+    "slots.labels.~/.claude-5": "claude-5",
+    "slots.labels.~/.claude-6": "claude-6",
+    "slots.labels.~/.claude-7": "claude-7"
+   }
+  }
+ ],
+ "conflicts": [],
+ "keep": [
+  {
+   "path": "~/.claude-2/settings.json",
+   "target": "~/.claude/settings.json",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-3/settings.json",
+   "target": "~/.claude/settings.json",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-4/settings.json",
+   "target": "~/.claude/settings.json",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-5/settings.json",
+   "target": "~/.claude/settings.json",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-6/settings.json",
+   "target": "~/.claude/settings.json",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-7/settings.json",
+   "target": "~/.claude/settings.json",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-2/CLAUDE.md",
+   "target": "~/.claude/CLAUDE.md",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-3/CLAUDE.md",
+   "target": "~/.claude/CLAUDE.md",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-4/CLAUDE.md",
+   "target": "~/.claude/CLAUDE.md",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-5/CLAUDE.md",
+   "target": "~/.claude/CLAUDE.md",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-6/CLAUDE.md",
+   "target": "~/.claude/CLAUDE.md",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-7/CLAUDE.md",
+   "target": "~/.claude/CLAUDE.md",
+   "what": "link"
+  },
+  {
+   "path": "rules",
+   "what": "nothing-to-share"
+  },
+  {
+   "path": "~/.claude-2/skills",
+   "target": "~/.claude/skills",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-3/skills",
+   "target": "~/.claude/skills",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-4/skills",
+   "target": "~/.claude/skills",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-5/skills",
+   "target": "~/.claude/skills",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-6/skills",
+   "target": "~/.claude/skills",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-7/skills",
+   "target": "~/.claude/skills",
+   "what": "link"
+  },
+  {
+   "path": "agents",
+   "what": "nothing-to-share"
+  },
+  {
+   "path": "~/.claude-2/commands",
+   "target": "~/.claude/commands",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-3/commands",
+   "target": "~/.claude/commands",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-4/commands",
+   "target": "~/.claude/commands",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-5/commands",
+   "target": "~/.claude/commands",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-6/commands",
+   "target": "~/.claude/commands",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-7/commands",
+   "target": "~/.claude/commands",
+   "what": "link"
+  },
+  {
+   "path": "keybindings.json",
+   "what": "nothing-to-share"
+  },
+  {
+   "path": "~/.claude-2/projects",
+   "target": "~/.claude/projects",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-3/projects",
+   "target": "~/.claude/projects",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-4/projects",
+   "target": "~/.claude/projects",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-5/projects",
+   "target": "~/.claude/projects",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-6/projects",
+   "target": "~/.claude/projects",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-7/projects",
+   "target": "~/.claude/projects",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-2/history.jsonl",
+   "target": "~/.claude/history.jsonl",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-3/history.jsonl",
+   "target": "~/.claude/history.jsonl",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-4/history.jsonl",
+   "target": "~/.claude/history.jsonl",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-5/history.jsonl",
+   "target": "~/.claude/history.jsonl",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-6/history.jsonl",
+   "target": "~/.claude/history.jsonl",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-7/history.jsonl",
+   "target": "~/.claude/history.jsonl",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-2/plans",
+   "target": "~/.claude/plans",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-3/plans",
+   "target": "~/.claude/plans",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-4/plans",
+   "target": "~/.claude/plans",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-5/plans",
+   "target": "~/.claude/plans",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-6/plans",
+   "target": "~/.claude/plans",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-7/plans",
+   "target": "~/.claude/plans",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-2/plugins",
+   "target": "~/.claude/plugins",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-3/plugins",
+   "target": "~/.claude/plugins",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-4/plugins",
+   "target": "~/.claude/plugins",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-5/plugins",
+   "target": "~/.claude/plugins",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-6/plugins",
+   "target": "~/.claude/plugins",
+   "what": "link"
+  },
+  {
+   "path": "~/.claude-7/plugins",
+   "target": "~/.claude/plugins",
+   "what": "link"
+  },
+  {
+   "note": "external",
+   "path": "~/.claude/sync-mcp-to-2.sh",
+   "what": "mcp"
+  },
+  {
+   "note": "later",
+   "what": "hub"
+  },
+  {
+   "note": "3 hooks kept until a hub is live",
+   "path": "$HOME/.claude/switchyard-hook.sh",
+   "what": "prototype"
+  }
+ ],
+ "mode": "dry-run",
+ "needs": [
+  {
+   "command": "CLAUDE_CONFIG_DIR=~/.claude-4 claude auth login --claudeai",
+   "folder": "~/.claude-4",
+   "kind": "login"
+  },
+  {
+   "command": "CLAUDE_CONFIG_DIR=~/.claude-5 claude auth login --claudeai",
+   "folder": "~/.claude-5",
+   "kind": "login"
+  },
+  {
+   "command": "CLAUDE_CONFIG_DIR=~/.claude-6 claude auth login --claudeai",
+   "folder": "~/.claude-6",
+   "kind": "login"
+  },
+  {
+   "command": "CLAUDE_CONFIG_DIR=~/.claude-7 claude auth login --claudeai",
+   "folder": "~/.claude-7",
+   "kind": "login"
+  }
+ ],
+ "primary": "~/.claude",
+ "summary": {
+  "backed_up": 3,
+  "changes": 5,
+  "links_changed": 0,
+  "logins_touched": 0
+ }
+}

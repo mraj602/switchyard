@@ -1,0 +1,13 @@
+# Never commit dependencies, build output or the bundled sy binaries.
+node_modules/
+dist/
+out/
+resources/sy/
+*.AppImage
+*.deb
+*.rpm
+*.dmg
+*.exe
+*.blockmap
+# Smoke and e2e artifacts written locally
+test/smoke/out/

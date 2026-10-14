@@ -1,0 +1,32 @@
+{
+  "to": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+  "title": "Switchyard",
+  "body": "An account is near its limit",
+  "data": {
+    "v": 1,
+    "type": "alert",
+    "alert": "al_01JA3B7Q0011",
+    "alerts": [
+      "al_01JA3B7Q0011"
+    ],
+    "trigger": "limit_95",
+    "title": "Switchyard",
+    "body": "An account is near its limit",
+    "tag": "sy-l-seat-client-five_hour",
+    "url": "/#/alerts/al_01JA3B7Q0011",
+    "tap": "auto",
+    "needs_you": 0,
+    "actions": {
+      "snooze": "a1.YWxfMDFKQTNCN1EwMDExAHNub296ZQAAAAABcHRfMDFKQTNCMDAwMDAwMDAwMDAwMDAwMDAwMAAAAAAAas-LWA.eXcekyOsTakCCjsQ3Did8w",
+      "seen": "a1.YWxfMDFKQTNCN1EwMDExAHNlZW4AAAAAAXB0XzAxSkEzQjAwMDAwMDAwMDAwMDAwMDAwMDAAAAAAAGrPi1g.Ke0uKvuH596_SMlPv_VEwA"
+    },
+    "private": true,
+    "ts": "2026-10-13T14:02:00.000Z"
+  },
+  "categoryId": "sy_alert",
+  "channelId": "sy_limits",
+  "sound": "default",
+  "badge": 0,
+  "priority": "high",
+  "ttl": 10680
+}

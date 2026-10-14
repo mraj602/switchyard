@@ -1,0 +1,17 @@
+{"type":"assistant","timestamp":"2026-10-12T10:00:00.100Z","sessionId":"s-edge-1","cwd":"/work/a","isSidechain":false,"requestId":"req_1","message":{"id":"msg_dup","model":"claude-opus-5-5","usage":{"input_tokens":3,"output_tokens":10,"cache_creation":{"ephemeral_5m_input_tokens":100,"ephemeral_1h_input_tokens":0},"cache_read_input_tokens":500}}}
+{"type":"assistant","timestamp":"2026-10-12T10:00:00.900Z","sessionId":"s-edge-1","cwd":"/work/a","isSidechain":false,"requestId":"req_1","message":{"id":"msg_dup","model":"claude-opus-5-5","usage":{"input_tokens":3,"output_tokens":812,"cache_creation":{"ephemeral_5m_input_tokens":100,"ephemeral_1h_input_tokens":4210},"cache_read_input_tokens":499,"output_tokens_details":{"thinking_tokens":120}}}}
+{"type":"assistant","timestamp":"2026-10-12T10:00:01.000Z","sessionId":"s-edge-1","isSidechain":true,"requestId":"req_only","message":{"model":"claude-sonnet-4-5-20250929","usage":{"input_tokens":1,"output_tokens":2,"cache_creation_input_tokens":77,"cache_read_input_tokens":0}}}
+{"type":"assistant","timestamp":"2026-10-12T10:00:02.000Z","uuid":"uuid-only","message":{"usage":{"input_tokens":5}}}
+{"type":"assistant","timestamp":"2026-10-12T10:00:03.000Z","sessionId":"s-edge-1","message":{"id":"msg_nullcc","model":"claude-haiku-4-5","usage":{"input_tokens":1,"output_tokens":1,"cache_creation":{},"cache_creation_input_tokens":9}}}
+{"type":"assistant","timestamp":"not a date","sessionId":"s-edge-1","message":{"id":"msg_baddate","usage":{"input_tokens":1}}}
+{"type":"assistant","timestamp":"2026-10-12T10:00:04.000Z","sessionId":"s-edge-1","message":{"id":"msg_nousage","model":"claude-opus-5-5"}}
+{"type":"assistant","timestamp":"2026-10-12T10:05:00.000Z","sessionId":"s-edge-1","message":{"model":"<synthetic>","usage":{"input_tokens":0,"output_tokens":0}},"quotaLimits":{"rateLimitType":"five_hour","status":"rejected","resetsAt":1760270400}}
+{"type":"assistant","timestamp":"2026-10-12T10:05:00.000Z","sessionId":"s-edge-1","message":{"model":"<synthetic>","usage":{"input_tokens":0}},"quotaLimits":{"rateLimitType":"five_hour","status":"rejected","resetsAt":1760270999}}
+{"type":"assistant","timestamp":"2026-10-12T10:06:00.000Z","sessionId":"s-edge-1","message":{"model":"<synthetic>","usage":{"input_tokens":0}},"quotaLimits":{"rateLimitType":"seven_day"}}
+{"type":"assistant","timestamp":"2026-10-12T10:07:00.000Z","sessionId":"s-edge-1","message":{"model":"<synthetic>","usage":{"input_tokens":0}}}
+{"type":"bridge-session","sessionId":"s-edge-1","ownerAccountUuid":"aaaaaaaa-0000-4000-8000-000000000001","ownerOrganizationUuid":"bbbbbbbb-0000-4000-8000-000000000001"}
+{"type":"bridge-session","sessionId":"s-edge-1","ownerAccountUuid":"aaaaaaaa-0000-4000-8000-000000000002"}
+{"type":"bridge-session","sessionId":"s-edge-2","ownerOrganizationUuid":"bbbbbbbb-0000-4000-8000-000000000002"}
+{"type":"bridge-session","sessionId":"s-edge-3"}
+this line is not json "usage" "assistant"
+{"type":"user","message":{"usage":{"input_tokens":9},"content":"assistant"},"timestamp":"2026-10-12T10:08:00.000Z"}

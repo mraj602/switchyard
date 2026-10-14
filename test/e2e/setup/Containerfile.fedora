@@ -1,0 +1,12 @@
+# Setup E2E image, Fedora. No Go inside: binaries are built on the host and mounted.
+# systemd is installed so a scenario can run it as PID 1 (podman run --systemd=always) for
+# the hub-on-this-machine case; the default command is a plain shell.
+FROM fedora:42
+RUN dnf install -y --setopt=install_weak_deps=False \
+        bash coreutils curl findutils grep gawk sed tar gzip unzip zip python3 procps-ng \
+        shadow-utils util-linux systemd diffutils \
+    && dnf clean all
+RUN useradd -m -u 1000 -s /bin/bash me
+USER me
+WORKDIR /home/me
+CMD ["/bin/bash"]

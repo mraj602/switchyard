@@ -1,0 +1,71 @@
+# Packaging (docs/phases/6.md WP-F, decision 11). Nothing here publishes or signs:
+# publish is null (and the scripts pass --publish never), mac has no identity and no
+# notarizing, Windows has no signing, and electron-updater is not a dependency.
+# Signing and publishing are manual steps for "Before going public".
+appId: dev.switchyard.desktop
+productName: Switchyard
+copyright: Switchyard
+# deb and rpm need a homepage and an author; app/package.json is frozen after wave 0, so the
+# builder gets them here.
+extraMetadata:
+  homepage: https://github.com/mraj602/switchyard
+  author:
+    name: Switchyard
+    email: noreply@switchyard.invalid
+asar: true
+npmRebuild: false
+nodeGypRebuild: false
+buildDependenciesFromSource: false
+publish: null
+afterPack: build/after-pack.cjs
+
+directories:
+  buildResources: build
+  output: dist
+
+# No runtime npm dependencies, so only the app's own code goes in the asar. Tests, the
+# renderer's dev page and the test hooks never ship (a packaging test checks the asar).
+files:
+  - package.json
+  - src/**/*
+  - assets/**/*
+  - "!**/*.test.js"
+  - "!**/*.test.mjs"
+  - "!**/*.test.cjs"
+  - "!src/renderer/dev/**"
+  - "!src/main/test-hooks.js"
+
+# The bundled `sy` (scripts/fetch-sy.mjs fills resources/sy/<os>-<arch>/) lands at
+# <resources>/sy/sy[.exe], outside the asar so it can be executed.
+extraResources:
+  - from: resources/sy/${os}-${arch}/
+    to: sy
+    filter:
+      - "sy*"
+
+artifactName: Switchyard-${version}-${os}-${arch}.${ext}
+
+linux:
+  target: [AppImage, deb, rpm]
+  category: Utility
+  executableName: switchyard-desktop
+  synopsis: Claude account tabs, web usage and the Switchyard hub board
+  maintainer: Switchyard
+
+mac:
+  target: dmg
+  category: public.app-category.utilities
+  identity: null
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  notarize: false
+
+win:
+  target: nsis
+  signAndEditExecutable: false
+  verifyUpdateCodeSignature: false
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true

@@ -1,0 +1,40 @@
+# The Switchyard hub as a container.
+#
+#   cd deploy && docker compose up -d --build
+#   docker compose exec hub sy hub token create --kind machine --name laptop --machine <id>
+#
+# By default the hub is published on 127.0.0.1 only. To reach it from other machines over
+# Tailscale, add the override file (see docker-compose.tailscale.yml):
+#
+#   docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d
+#
+# The hub port is never published on 0.0.0.0.
+name: switchyard
+
+services:
+  hub:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        VERSION: ${SY_VERSION:-dev}
+        COMMIT: ${SY_COMMIT:-}
+    image: switchyard-hub:latest
+    container_name: switchyard-hub
+    restart: unless-stopped
+    ports:
+      - "${SY_BIND:-127.0.0.1}:${SY_PORT:-8787}:8787"
+    volumes:
+      - hub-data:/data
+    # SY_PUBLIC_URL (in .env) is the https address phones open, e.g. the
+    # https://<name>.<tailnet>.ts.net of `tailscale serve --bg 8787` (deploy/README.md C).
+    command: ["hub", "serve", "--listen", "0.0.0.0:8787", "--insecure-lan", "--public-url", "${SY_PUBLIC_URL:-}"]
+    environment:
+      TZ: ${TZ:-UTC}
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+
+volumes:
+  hub-data:

@@ -1,0 +1,21 @@
+# Used instead of the repo's .dockerignore when building with -f deploy/Dockerfile
+# (BuildKit, Docker 23+ and podman/buildah). Keep the context to what the Go build reads.
+.git
+.claude
+.github
+node_modules
+dist
+data
+test
+shell
+bin
+core
+server
+web
+plugin
+scripts
+testdata
+assets
+*.db
+*.db-*
+.env

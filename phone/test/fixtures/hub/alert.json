@@ -1,0 +1,23 @@
+{
+  "body": "Should I also update the migration, or keep the old column until the backfill finishes?",
+  "created_at": "2026-10-13T06:26:51.742Z",
+  "deliveries": [],
+  "due_at": "2026-10-13T06:27:51.742Z",
+  "ended_at": null,
+  "fire_count": 0,
+  "fired_at": null,
+  "id": "al_pending",
+  "machine": "m_gpu",
+  "reason": null,
+  "rule": "rule_asked",
+  "seat": "seat_work",
+  "seen_at": null,
+  "session": "c41e0000-0000-4000-8000-000000000003",
+  "since_at": "2026-10-13T06:23:11.742Z",
+  "snoozed_until": null,
+  "status": "pending",
+  "title": "work · api · asked a question",
+  "trigger": "asked",
+  "url": "/#/sessions/c41e0000-0000-4000-8000-000000000003?alert=al_pending",
+  "window_key": null
+}

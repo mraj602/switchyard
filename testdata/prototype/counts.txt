@@ -1,0 +1,13 @@
+accounts	3
+breakdown	5512
+config_dirs	7
+events	540
+files	2828
+kv	1
+limit_hits	311
+session_dirs	160
+session_owner	127
+sessions	26
+snapshots	2066
+tokens	143314
+windows	6888

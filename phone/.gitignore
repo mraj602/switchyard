@@ -1,0 +1,30 @@
+# Never commit dependencies, generated native projects, build output or credentials
+# (docs/spec/phone.md P1, P13; scripts/check-no-secrets.mjs enforces the credential list).
+node_modules/
+.expo/
+dist/
+web-build/
+coverage/
+
+# Continuous native generation: `expo prebuild` writes these; never committed or hand-edited.
+/ios/
+/android/
+
+# Credentials (hard rule 1). They live in EAS or outside the repository.
+*.p8
+*.p12
+*.mobileprovision
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist
+credentials.json
+*-service-account*.json
+.env
+.env.*
+
+# Metro and tooling
+*.tsbuildinfo
+.metro-health-check*
+npm-debug.*
+expo-env.d.ts

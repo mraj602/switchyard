@@ -1,0 +1,17 @@
+[1mSwitchyard[0m  6 sessions · 2 machines · hub live
+[1;33mNEEDS YOU (2)[0m
+[1m›[0m[1;33m▲[0m [1mapi · migrate-orders[0m[38;2;245;158;11m  work[0m                                                [1;33masked        [0m[2m  79%[0m[2m   4m[0m
+    Update the migration, or keep the old column?
+ [1;33m▲[0m storefront · deploy[38;2;245;158;11m  work[0m                                                 [1;33mperm · Bash  [0m[33m  80%[0m[2m   1m[0m
+[38;2;245;158;11m● [0m[1;38;2;245;158;11mwork[0m[2m  5h 41% · 15:10[0m[2m  7d 30%[0m
+ [32m●[0m api · flaky-tests                                                         [32m2m           [0m[1;31m  92%[0m[2m   2m[0m
+[2m    Running the suite again with -race.[0m
+[38;2;59;130;246m● [0m[1;38;2;59;130;246mpersonal[0m[31m  limited[0m[2m  5h 100% · 17:00[0m[2m  7d 64%[0m
+ [31m■[0m notes · weekly-review                                                     [31mlimit · 17:00[0m     [2m  12m[0m
+[2;31m    Usage limit reached[0m
+ [2m○[0m blog · draft-post                                                         [2mdone         [0m     [2m  20m[0m
+[2m    Draft saved.[0m
+[38;2;16;185;129m● [0m[1;38;2;16;185;129mclient[0m
+ [32m●[0m infra · tf-plan[2;36m  [gpu-box][0m                                                [32m40s          [0m     [2m  40s[0m
+
+[2m↑↓ move  ⏎ focus  c copy  o open  f filter  / search  e ended  r refresh  ? help  q quit[0m

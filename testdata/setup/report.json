@@ -1,0 +1,23 @@
+{
+  "v": 1,
+  "mode": "dry-run",
+  "plan_id": "p_9c41e0a7d2b3",
+  "primary": "~/.claude",
+  "state": { "claude": {"path": "~/.local/bin/claude", "version": "2.1.296"},
+             "folders": [{"folder": "~/.claude-2", "logged_in": true, "email": "you@work.example",
+                          "org": "Work Inc", "plan": "team", "label": "work", "colour": "#f59e0b",
+                          "launcher": {"name": "claude-2", "kind": "shell-function", "ours": false},
+                          "items": {"settings.json": {"state": "linked", "target": "~/.claude/settings.json"}}}],
+             "hub": {"url": null, "healthy": false} },
+  "keep":      [{"what": "link", "path": "~/.claude-2/settings.json", "target": "~/.claude/settings.json"}],
+  "actions":   [{"id": "a3", "step": "statusline", "op": "json_set", "file": "~/.claude/settings.json",
+                 "via": ["~/.claude-2/settings.json"], "pointer": "/statusLine/command",
+                 "before": "bash ~/.claude/statusline-command.sh",
+                 "value": "/home/u/.local/bin/sy statusline --wrap 'bash ~/.claude/statusline-command.sh'",
+                 "covers": ["~/.claude", "~/.claude-2"]}],
+  "conflicts": [{"folder": "~/.claude-3", "item": "CLAUDE.md", "resolution": "keep",
+                 "choices": ["keep", "primary", "folder"]}],
+  "needs":     [{"kind": "login", "folder": "~/.claude-4",
+                 "command": "CLAUDE_CONFIG_DIR=~/.claude-4 claude auth login --claudeai"}],
+  "summary":   {"changes": 4, "backed_up": 3, "links_changed": 0, "logins_touched": 0}
+}

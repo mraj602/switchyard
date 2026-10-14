@@ -1,0 +1,553 @@
+// Package machines is the phase 5 end-to-end test over real SSH (docs/phases/5.md, "End to
+// end over real SSH", scenario M3): the real `sy` binary adds an Ubuntu sshd container as a
+// pull machine, the hub pulls records from it, and `sy machine remove` takes it back out.
+//
+//	go test ./test/e2e/machines          (what `make e2e-machines` runs)
+//
+// The operator is this machine with a temporary HOME; the hub is `sy hub serve` on a
+// loopback port (so the admin channel is `local`); the server is a container whose sshd is
+// published on 127.0.0.1. The container needs a runtime: SY_E2E_RUNTIME, else podman, else
+// docker. The test skips (never fails) when there is none, when it cannot run containers,
+// with -short, on Windows, and when ssh is missing.
+//
+// Host key checking is never turned off: the harness reads the container's host keys with
+// `<runtime> exec` and writes a known_hosts, and the hub pins the keys `sy machine add`
+// probes from /etc/ssh on the server. Nothing here touches the real HOME, ~/.ssh,
+// CLAUDE_CONFIG_DIR or any systemd/launchd unit (the container has no systemd and the
+// operator's sy runs with a temp HOME).
+package machines
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/mraj602/switchyard/internal/record"
+)
+
+// rig is the whole setup: container, operator home, hub.
+type rig struct {
+	t       *testing.T
+	rt      string // container runtime binary
+	tmp     string
+	home    string // operator HOME
+	env     []string
+	sy      string // sy for this machine (the hub and the operator)
+	syLinux string // sy for the container (linux/amd64), installed with --binary
+	sshCfg  string
+	sshPort string
+	cname   string
+	hubBase string
+	hubLog  *syncBuf
+}
+
+type syncBuf struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (s *syncBuf) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.Write(p)
+}
+
+func (s *syncBuf) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.String()
+}
+
+// repoRoot is the module root (go env GOMOD).
+func repoRoot(t *testing.T) string {
+	t.Helper()
+	out, err := exec.Command("go", "env", "GOMOD").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return filepath.Dir(strings.TrimSpace(string(out)))
+}
+
+func goBuild(t *testing.T, root, goos, goarch, out, pkg string) {
+	t.Helper()
+	cmd := exec.Command("go", "build", "-trimpath", "-o", out, pkg)
+	cmd.Dir = root
+	cmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS="+goos, "GOARCH="+goarch)
+	if b, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go build %s (%s/%s): %v\n%s", pkg, goos, goarch, err, b)
+	}
+}
+
+// pickRuntime follows SY_E2E_RUNTIME, then podman, then docker, and skips when the chosen
+// one cannot run containers (rootless podman without user namespaces, a stopped docker).
+func pickRuntime(t *testing.T) string {
+	t.Helper()
+	cands := []string{"podman", "docker"}
+	if v := os.Getenv("SY_E2E_RUNTIME"); v != "" {
+		cands = []string{v}
+	}
+	for _, c := range cands {
+		p, err := exec.LookPath(c)
+		if err != nil {
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		err = exec.CommandContext(ctx, p, "info").Run()
+		cancel()
+		if err != nil {
+			t.Skipf("%s is installed but `%s info` fails (%v): cannot run containers here", c, c, err)
+		}
+		return p
+	}
+	t.Skip("no container runtime (podman or docker; SY_E2E_RUNTIME selects one)")
+	return ""
+}
+
+// cleanEnv is the parent's environment without anything that could point sy or Claude Code
+// at a real home, plus a temp HOME.
+func cleanEnv(home string) []string {
+	var env []string
+	for _, kv := range os.Environ() {
+		k, _, _ := strings.Cut(kv, "=")
+		if strings.HasPrefix(k, "CLAUDE") || strings.HasPrefix(k, "SY_") || strings.HasPrefix(k, "XDG_") ||
+			k == "HOME" || k == "TZ" || k == "NO_COLOR" || k == "SSH_AUTH_SOCK" {
+			continue
+		}
+		env = append(env, kv)
+	}
+	return append(env, "HOME="+home, "TZ=UTC", "NO_COLOR=1")
+}
+
+// runCmd runs a command and returns stdout, stderr and the exit code (-1 when it did not
+// start).
+func runCmd(env []string, stdin string, name string, args ...string) (string, string, int) {
+	cmd := exec.Command(name, args...)
+	cmd.Env = env
+	if stdin != "" {
+		cmd.Stdin = strings.NewReader(stdin)
+	}
+	var out, errb bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &errb
+	err := cmd.Run()
+	code := 0
+	if err != nil {
+		code = -1
+		if ee, ok := err.(*exec.ExitError); ok {
+			code = ee.ExitCode()
+		}
+	}
+	return out.String(), errb.String(), code
+}
+
+func newRig(t *testing.T) *rig {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("end-to-end: builds sy and runs a container")
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("needs a POSIX host (ssh, unix paths)")
+	}
+	for _, tool := range []string{"ssh", "ssh-keygen", "go"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("%s not found on PATH", tool)
+		}
+	}
+	r := &rig{t: t, rt: pickRuntime(t), hubLog: &syncBuf{}}
+	root := repoRoot(t)
+	r.tmp = t.TempDir()
+	r.home = filepath.Join(r.tmp, "home")
+	if err := os.MkdirAll(r.home, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	// Binaries: sy for the container and for this host (one build when they match), and the
+	// phase 3 fake claude for the container. Built into temp dirs; nothing is committed.
+	bin := filepath.Join(r.tmp, "bin")
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	r.syLinux = filepath.Join(bin, "sy-linux-amd64")
+	goBuild(t, root, "linux", "amd64", r.syLinux, "./cmd/sy")
+	r.sy = r.syLinux
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		r.sy = filepath.Join(bin, "sy")
+		goBuild(t, root, runtime.GOOS, runtime.GOARCH, r.sy, "./cmd/sy")
+	}
+
+	// Build context for the image: Containerfile, the test key and the fake claude.
+	ctxDir := filepath.Join(r.tmp, "image")
+	if err := os.MkdirAll(ctxDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cf, err := os.ReadFile(filepath.Join(root, "test", "e2e", "machines", "Containerfile.sshd"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ctxDir, "Containerfile"), cf, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	goBuild(t, root, "linux", "amd64", filepath.Join(ctxDir, "claude"), "./test/e2e/setup/fakeclaude")
+	sshDir := filepath.Join(r.tmp, "ssh")
+	if err := os.MkdirAll(sshDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	key := filepath.Join(sshDir, "id_ed25519")
+	if _, errb, code := runCmd(os.Environ(), "", "ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "sy-e2e", "-f", key); code != 0 {
+		t.Fatalf("ssh-keygen: %s", errb)
+	}
+	pub, _ := os.ReadFile(key + ".pub")
+	if err := os.WriteFile(filepath.Join(ctxDir, "authorized_key.pub"), pub, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	suffix := make([]byte, 4)
+	_, _ = rand.Read(suffix)
+	id := hex.EncodeToString(suffix)
+	image := "sy-e2e-sshd:" + id
+	r.cname = "sy-e2e-srv-" + id
+	t.Cleanup(func() {
+		// Even on failure: the container and the image go.
+		_ = exec.Command(r.rt, "rm", "-f", r.cname).Run()
+		_ = exec.Command(r.rt, "rmi", "-f", image).Run()
+	})
+	if out, err := exec.Command(r.rt, "build", "-q", "-t", image, "-f", filepath.Join(ctxDir, "Containerfile"), ctxDir).CombinedOutput(); err != nil {
+		t.Fatalf("%s build: %v\n%s", r.rt, err, out)
+	}
+	if out, err := exec.Command(r.rt, "run", "-d", "--name", r.cname, "-p", "127.0.0.1::22", image).CombinedOutput(); err != nil {
+		t.Fatalf("%s run: %v\n%s", r.rt, err, out)
+	}
+	out, err := exec.Command(r.rt, "port", r.cname, "22/tcp").Output()
+	if err != nil {
+		t.Fatalf("%s port: %v", r.rt, err)
+	}
+	// "127.0.0.1:40123" (podman may also print an IPv6 line): take the first line's port.
+	line := strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0])
+	_, r.sshPort, err = net.SplitHostPort(line)
+	if err != nil {
+		t.Fatalf("cannot parse published port %q: %v", line, err)
+	}
+
+	// known_hosts from the container's own host keys (never disabled, never scanned blind).
+	var kh strings.Builder
+	for _, typ := range []string{"ed25519", "ecdsa", "rsa"} {
+		o, err := exec.Command(r.rt, "exec", r.cname, "cat", "/etc/ssh/ssh_host_"+typ+"_key.pub").Output()
+		if err != nil {
+			t.Fatalf("reading the %s host key: %v", typ, err)
+		}
+		f := strings.Fields(string(o))
+		if len(f) < 2 {
+			t.Fatalf("odd host key file: %q", o)
+		}
+		fmt.Fprintf(&kh, "[127.0.0.1]:%s %s %s\n", r.sshPort, f[0], f[1])
+	}
+	known := filepath.Join(sshDir, "known_hosts")
+	if err := os.WriteFile(known, []byte(kh.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r.sshCfg = filepath.Join(sshDir, "ssh_config")
+	cfg := fmt.Sprintf(`Host srv
+  HostName 127.0.0.1
+  Port %s
+  User dev
+  IdentityFile %s
+  IdentitiesOnly yes
+  UserKnownHostsFile %s
+  GlobalKnownHostsFile /dev/null
+  StrictHostKeyChecking yes
+  BatchMode yes
+  ConnectTimeout 10
+`, r.sshPort, key, known)
+	if err := os.WriteFile(r.sshCfg, []byte(cfg), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// SY_SSH_COMMAND is how the operator's sy reaches the server (OpenSSH reads ~/.ssh from
+	// the password database, not $HOME, so a config file is passed explicitly).
+	r.env = append(cleanEnv(r.home), "SY_SSH_COMMAND=ssh -F "+r.sshCfg)
+
+	// sshd needs a moment after `run`.
+	deadline := time.Now().Add(60 * time.Second)
+	for {
+		if _, errb, code := runCmd(r.env, "", "ssh", "-F", r.sshCfg, "srv", "true"); code == 0 {
+			break
+		} else if time.Now().After(deadline) {
+			logs, _ := exec.Command(r.rt, "logs", r.cname).CombinedOutput()
+			t.Fatalf("sshd in the container never accepted the test key: %s\ncontainer log:\n%s", errb, logs)
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	r.startHub()
+	return r
+}
+
+// startHub runs `sy hub serve` on a free loopback port with the operator's HOME, so the
+// operator's `sy hub …` commands (the `local` admin channel) share its database.
+func (r *rig) startHub() {
+	t := r.t
+	cmd := exec.Command(r.sy, "hub", "serve", "--listen", "127.0.0.1:0", "--no-push")
+	cmd.Env = r.env
+	pr, pw := io.Pipe()
+	cmd.Stderr = pw
+	cmd.Stdout = r.hubLog
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait(); pw.Close() }()
+	t.Cleanup(func() {
+		_ = cmd.Process.Signal(os.Interrupt)
+		select {
+		case <-done:
+		case <-time.After(20 * time.Second):
+			_ = cmd.Process.Kill()
+			<-done
+		}
+		if t.Failed() {
+			t.Logf("hub log:\n%s", r.hubLog)
+		}
+	})
+	addr := make(chan string, 1)
+	listening := regexp.MustCompile(`listening on http://(\S+)`)
+	go func() {
+		sc := bufio.NewScanner(pr)
+		for sc.Scan() {
+			fmt.Fprintln(r.hubLog, sc.Text())
+			if m := listening.FindStringSubmatch(sc.Text()); m != nil {
+				select {
+				case addr <- m[1]:
+				default:
+				}
+			}
+		}
+	}()
+	select {
+	case a := <-addr:
+		r.hubBase = "http://" + a
+	case err := <-done:
+		t.Fatalf("hub exited: %v\n%s", err, r.hubLog)
+	case <-time.After(30 * time.Second):
+		t.Fatalf("hub did not start:\n%s", r.hubLog)
+	}
+}
+
+// syLocal runs the operator's sy; the test fails on a non-zero exit unless want says
+// otherwise.
+func (r *rig) syLocal(stdin string, args ...string) (string, string) {
+	r.t.Helper()
+	out, errb, code := runCmd(r.env, stdin, r.sy, args...)
+	if code != 0 {
+		r.t.Fatalf("sy %s: exit %d\n%s%s", strings.Join(args, " "), code, out, errb)
+	}
+	return out, errb
+}
+
+// ssh runs a command on the server as dev, through the test ssh config.
+func (r *rig) ssh(stdin string, remote ...string) (string, string, int) {
+	return runCmd(r.env, stdin, "ssh", append([]string{"-F", r.sshCfg, "srv"}, remote...)...)
+}
+
+func sha256File(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := sha256.Sum256(b)
+	return hex.EncodeToString(s[:])
+}
+
+// TestPullRoundTrip is scenario M3 against one server: add --reach pull, the hub pulls
+// records, remove.
+func TestPullRoundTrip(t *testing.T) {
+	r := newRig(t)
+
+	// 1. One command sets the server up; the hub is local, so --hub-admin local is implied by
+	// hub.db existing, but the test passes it to be explicit.
+	out, errb := r.syLocal("", "machine", "add", "srv", "--name", "srv1", "--reach", "pull",
+		"--hub-admin", "local", "--binary", r.syLinux, "--yes", "--json")
+	var sum struct {
+		Machine  string `json:"machine"`
+		Reach    string `json:"reach"`
+		PullID   string `json:"pull_target"`
+		PullName string `json:"pull_target_name"`
+		Verified bool   `json:"verified"`
+		Exit     int    `json:"exit_code"`
+	}
+	for _, ln := range strings.Split(out, "\n") {
+		var w struct {
+			Summary *json.RawMessage `json:"summary"`
+		}
+		if json.Unmarshal([]byte(ln), &w) == nil && w.Summary != nil {
+			_ = json.Unmarshal(*w.Summary, &sum)
+		}
+	}
+	if sum.Machine == "" || sum.PullID == "" {
+		t.Fatalf("no machine/pull target in the add summary:\n%s%s", out, errb)
+	}
+	if sum.Reach != "pull" || !sum.Verified {
+		t.Errorf("summary: reach %q verified %v, want pull, true", sum.Reach, sum.Verified)
+	}
+
+	// 2. The binary on the server is byte-identical to the one we built.
+	shaOut, _, code := r.ssh("", "sha256sum", ".local/bin/sy")
+	if code != 0 {
+		t.Fatalf("remote sha256sum: exit %d", code)
+	}
+	if got, want := strings.Fields(shaOut)[0], sha256File(t, r.syLinux); got != want {
+		t.Errorf("remote sy sha256 %s, want %s", got, want)
+	}
+
+	// 3. authorized_keys has the test key and exactly one hub line, restricted to the drain.
+	ak, _, _ := r.ssh("", "cat", ".ssh/authorized_keys")
+	var pullLines []string
+	for _, ln := range strings.Split(ak, "\n") {
+		if strings.Contains(ln, "sy-pull:") {
+			pullLines = append(pullLines, ln)
+		}
+	}
+	if len(pullLines) != 1 {
+		t.Fatalf("want exactly one sy-pull line in authorized_keys, got %d:\n%s", len(pullLines), ak)
+	}
+	line := pullLines[0]
+	if !strings.HasPrefix(line, "restrict,") || !strings.Contains(line, `command="`) ||
+		!strings.Contains(line, "/sy outbox drain --stdio") || !strings.HasSuffix(line, "sy-pull:"+sum.PullID) {
+		t.Errorf("authorized_keys line is not the restricted drain line for %s:\n%s", sum.PullID, line)
+	}
+	if !strings.Contains(ak, "sy-e2e") {
+		t.Errorf("the test key vanished from authorized_keys:\n%s", ak)
+	}
+
+	// 4. Records written on the server (through its own outbox, as a hook would) reach the hub
+	// by pull, with reach pull.
+	idOut, _, code := r.ssh("", ".local/bin/sy", "machine", "show", "--json")
+	if code != 0 {
+		t.Fatalf("remote sy machine show: exit %d", code)
+	}
+	var rm struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal([]byte(idOut), &rm); err != nil || rm.ID != sum.Machine {
+		t.Fatalf("remote machine id %q (%v), want the registered %s", rm.ID, err, sum.Machine)
+	}
+	var recs strings.Builder
+	sessions := []string{"e2e-sess-1", "e2e-sess-2", "e2e-sess-3"}
+	for _, sid := range sessions {
+		raw, _ := json.Marshal(map[string]any{"session_id": sid, "hook_event_name": "SessionStart", "source": "startup",
+			"cwd": "/home/dev/api", "transcript_path": "/home/dev/.claude/projects/x/" + sid + ".jsonl"})
+		rec, err := record.NewHookEvent(record.Meta{Machine: sum.Machine, Slot: "~/.claude",
+			Seat: &record.Seat{Account: "acc-e2e", Org: "org-e2e", Email: "e2e@example.com"}, Client: "sy/e2e"}, raw, record.HookOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := rec.Encode()
+		if err != nil {
+			t.Fatal(err)
+		}
+		recs.Write(b)
+		recs.WriteByte('\n')
+	}
+	if _, errb, code := r.ssh(recs.String(), ".local/bin/sy", "outbox", "append"); code != 0 {
+		t.Fatalf("remote sy outbox append: exit %d: %s", code, errb)
+	}
+	r.syLocal("", "hub", "pull", "run", sum.PullName, "--wait")
+
+	tok, _ := r.syLocal("", "hub", "token", "create", "--kind", "desktop", "--machine", sum.Machine, "--name", "e2e-reader", "--json")
+	var tk struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal([]byte(tok), &tk); err != nil || tk.Token == "" {
+		t.Fatalf("token create: %q (%v)", tok, err)
+	}
+	var got map[string]bool
+	deadline := time.Now().Add(60 * time.Second)
+	for {
+		var body struct {
+			Sessions []struct {
+				ID      string `json:"id"`
+				Machine string `json:"machine"`
+			} `json:"sessions"`
+		}
+		r.api(tk.Token, "/v1/sessions?machine="+sum.Machine+"&include_ended=true", &body)
+		got = map[string]bool{}
+		for _, s := range body.Sessions {
+			got[s.ID] = true
+		}
+		if len(got) >= len(sessions) || time.Now().After(deadline) {
+			break
+		}
+		r.syLocal("", "hub", "pull", "run", sum.PullName, "--wait")
+	}
+	if len(got) != len(sessions) {
+		list, _ := r.syLocal("", "hub", "pull", "list")
+		t.Fatalf("hub sees sessions %v, want %d from the pull\npull list:\n%s", got, len(sessions), list)
+	}
+	mj, _ := r.syLocal("", "hub", "machine", "show", sum.Machine, "--json")
+	var m struct {
+		Reach *string `json:"reach"`
+		Pull  *struct {
+			State string `json:"state"`
+		} `json:"pull"`
+	}
+	if err := json.Unmarshal([]byte(mj), &m); err != nil {
+		t.Fatal(err)
+	}
+	if m.Reach == nil || *m.Reach != "pull" {
+		t.Errorf("machine reach = %v, want pull\n%s", m.Reach, mj)
+	}
+	if m.Pull == nil || m.Pull.State == "host_key" || m.Pull.State == "refused" {
+		t.Errorf("pull target state is bad: %s", mj)
+	}
+
+	// 5. Remove: the authorized_keys line and the pull target are gone, the test key stays.
+	r.syLocal("", "machine", "remove", "srv1")
+	ak, _, _ = r.ssh("", "cat", ".ssh/authorized_keys")
+	if strings.Contains(ak, "sy-pull:") {
+		t.Errorf("the hub's line is still in authorized_keys after remove:\n%s", ak)
+	}
+	if !strings.Contains(ak, "sy-e2e") {
+		t.Errorf("remove took the test key out of authorized_keys:\n%s", ak)
+	}
+	list, _ := r.syLocal("", "hub", "pull", "list", "--json")
+	if strings.Contains(list, sum.PullID) {
+		t.Errorf("pull target %s still listed after remove:\n%s", sum.PullID, list)
+	}
+	// The server keeps working for the operator (remove does not lock anyone out).
+	if _, _, code := r.ssh("", "true"); code != 0 {
+		t.Errorf("the operator can no longer ssh to the server after remove")
+	}
+}
+
+// api GETs a hub path with a bearer token and decodes the JSON reply.
+func (r *rig) api(token, path string, into any) {
+	r.t.Helper()
+	req, _ := http.NewRequest("GET", r.hubBase+path, nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		r.t.Fatalf("GET %s: %d %s", path, resp.StatusCode, b)
+	}
+	if err := json.Unmarshal(b, into); err != nil {
+		r.t.Fatalf("GET %s: %v: %s", path, err, b)
+	}
+}

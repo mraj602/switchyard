@@ -1,0 +1,180 @@
+{
+  "machines": [
+    {
+      "alert": null,
+      "arch": "amd64",
+      "backlog": 0,
+      "backlog_at": null,
+      "backlog_oldest": null,
+      "direct_push": false,
+      "held": 0,
+      "id": "m_laptop",
+      "last_record": "2026-10-13T06:27:03.742Z",
+      "last_seen": "2026-10-13T06:27:03.742Z",
+      "linger": null,
+      "live_sessions": 9,
+      "name": "laptop",
+      "os": "Fedora 44",
+      "pull": null,
+      "reach": "direct",
+      "record_v": 1,
+      "silent": false,
+      "slots": [
+        {
+          "claude_version": "2.1.296",
+          "folder": "~/.claude",
+          "launcher": "claude",
+          "logged_in": true,
+          "seat": "seat_personal"
+        },
+        {
+          "claude_version": "2.1.296",
+          "folder": "~/.claude-2",
+          "launcher": "claude-2",
+          "logged_in": true,
+          "seat": "seat_work"
+        },
+        {
+          "claude_version": "2.1.296",
+          "folder": "~/.claude-3",
+          "launcher": "claude-3",
+          "logged_in": true,
+          "seat": "seat_client"
+        },
+        {
+          "claude_version": null,
+          "folder": "~/.claude-4",
+          "launcher": null,
+          "logged_in": false,
+          "seat": null
+        }
+      ],
+      "sy_version": "0.5.0",
+      "timer_ok": true,
+      "version_status": "same"
+    },
+    {
+      "alert": null,
+      "arch": "amd64",
+      "backlog": 1240,
+      "backlog_at": "2026-10-13T06:26:41.742Z",
+      "backlog_oldest": "2026-10-13T03:27:11.742Z",
+      "direct_push": true,
+      "held": 0,
+      "id": "m_gpu",
+      "last_record": "2026-10-13T06:26:40.742Z",
+      "last_seen": "2026-10-13T06:26:40.742Z",
+      "linger": true,
+      "live_sessions": 5,
+      "name": "gpu-box",
+      "os": "Ubuntu 24.04",
+      "pull": null,
+      "reach": "forward",
+      "record_v": 1,
+      "silent": false,
+      "slots": [
+        {
+          "claude_version": "2.1.290",
+          "folder": "~/.claude",
+          "launcher": "claude",
+          "logged_in": true,
+          "seat": "seat_work"
+        },
+        {
+          "claude_version": "2.1.290",
+          "folder": "~/.claude-2",
+          "launcher": "claude-2",
+          "logged_in": true,
+          "seat": "seat_personal"
+        }
+      ],
+      "sy_version": "0.4.2",
+      "timer_ok": true,
+      "version_status": "older"
+    },
+    {
+      "alert": {
+        "due_at": "2026-10-13T03:42:11.742Z",
+        "fire_count": 1,
+        "fired_at": "2026-10-13T03:42:11.742Z",
+        "id": "al_silent_vps",
+        "reason": null,
+        "seen_at": null,
+        "snoozed_until": null,
+        "status": "fired",
+        "trigger": "machine_silent"
+      },
+      "arch": "arm64",
+      "backlog": 212,
+      "backlog_at": "2026-10-13T03:27:11.742Z",
+      "backlog_oldest": "2026-10-13T03:27:11.742Z",
+      "direct_push": false,
+      "held": 0,
+      "id": "m_vps",
+      "last_record": "2026-10-13T03:27:11.742Z",
+      "last_seen": "2026-10-13T03:27:11.742Z",
+      "linger": false,
+      "live_sessions": 1,
+      "name": "old-vps",
+      "os": "Debian 12",
+      "pull": {
+        "interval_s": 60,
+        "last_error": "ssh: connect to host old-vps port 22: Connection timed out",
+        "last_ok": "2026-10-13T03:27:11.742Z",
+        "last_try": "2026-10-13T06:26:11.742Z",
+        "name": "old-vps",
+        "next_at": "2026-10-13T06:28:11.742Z",
+        "state": "failing",
+        "target": "me@old-vps"
+      },
+      "reach": "pull",
+      "record_v": 1,
+      "silent": true,
+      "slots": [
+        {
+          "claude_version": "2.1.280",
+          "folder": "~/.claude",
+          "launcher": "claude",
+          "logged_in": true,
+          "seat": "seat_personal"
+        }
+      ],
+      "sy_version": "0.4.0",
+      "timer_ok": false,
+      "version_status": "older"
+    },
+    {
+      "alert": null,
+      "arch": "arm64",
+      "backlog": 37,
+      "backlog_at": "2026-10-13T06:26:31.742Z",
+      "backlog_oldest": "2026-10-13T06:07:11.742Z",
+      "direct_push": false,
+      "held": 37,
+      "id": "m_oci",
+      "last_record": "2026-10-13T06:26:31.742Z",
+      "last_seen": "2026-10-13T06:26:31.742Z",
+      "linger": true,
+      "live_sessions": 0,
+      "name": "oci-box",
+      "os": "Ubuntu 24.04",
+      "pull": {
+        "interval_s": 60,
+        "last_error": null,
+        "last_ok": "2026-10-13T06:26:31.742Z",
+        "last_try": "2026-10-13T06:26:31.742Z",
+        "name": "oci-box",
+        "next_at": "2026-10-13T06:27:31.742Z",
+        "state": "ok",
+        "target": "ubuntu@oci-box"
+      },
+      "reach": "pull",
+      "record_v": 2,
+      "silent": false,
+      "slots": [],
+      "sy_version": "0.6.0",
+      "timer_ok": true,
+      "version_status": "newer"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+[1mSwitchyard[0m  6 sessions · 2 machines · h…
+[1;33mNEEDS YOU (2)[0m
+[1m›[0m[1;33m▲[0m [1mapi · migrate-orders[0m    [1;33masked        [0m
+ [1;33m▲[0m storefront · depl… [1;33mperm · Bash  [0m [33m 80%[0m
+[38;2;245;158;11m● [0m[1;38;2;245;158;11mwork[0m[2m  5h 41% · 15:10[0m[2m  7d 30%[0m
+ [32m●[0m api · flaky-tests  [32m2m           [0m [1;31m 92%[0m
+[38;2;59;130;246m● [0m[1;38;2;59;130;246mpersonal[0m[31m  limited[0m[2m  5h 100% · 17:00[0m[2m  7[0m[2m…[0m
+ [31m■[0m notes · weekly-review   [31mlimit · 17:00[0m
+ [2m○[0m blog · draft-post       [2mdone         [0m
+[38;2;16;185;129m● [0m[1;38;2;16;185;129mclient[0m
+ [32m●[0m infra · tf-plan[2;36m  [gpu-[0m[2;36m…[0m [32m40s          [0m
+
+[2m↑↓ ⏎ c o f / e r ? q[0m

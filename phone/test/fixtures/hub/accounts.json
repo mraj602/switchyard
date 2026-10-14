@@ -1,0 +1,273 @@
+{
+  "accounts": [
+    {
+      "account": "3f1c6a2e-0000-4000-8000-000000000001",
+      "colour": "#0E7C76",
+      "email": "you@example.com",
+      "extra_usage": {
+        "is_enabled": false
+      },
+      "hidden": false,
+      "id": "seat_personal",
+      "label": "personal",
+      "live_sessions": 4,
+      "order": 0,
+      "org": "9b20d4f1-0000-4000-8000-000000000002",
+      "org_name": null,
+      "places": [
+        {
+          "machine": "m_laptop",
+          "machine_name": "laptop",
+          "slot": "~/.claude",
+          "tab_id": null
+        },
+        {
+          "machine": "m_gpu",
+          "machine_name": "gpu-box",
+          "slot": "~/.claude-2",
+          "tab_id": null
+        }
+      ],
+      "plan": "Max 20x",
+      "spend": null,
+      "web_raw_at": "2026-10-13T06:24:11.742Z",
+      "windows": [
+        {
+          "key": "five_hour",
+          "label": "5-hour",
+          "pace": {
+            "band": "on_track",
+            "full_at": null,
+            "projected_pct": 85
+          },
+          "peak_pct": 62,
+          "resets_at": "2026-10-13T08:07:11.742Z",
+          "source": "both",
+          "started_at": null,
+          "unused_pct": null,
+          "updated_at": "2026-10-13T06:26:31.742Z",
+          "used_pct": 62
+        },
+        {
+          "key": "seven_day",
+          "label": "7-day",
+          "pace": {
+            "band": "comfortable",
+            "full_at": null,
+            "projected_pct": 71
+          },
+          "peak_pct": 48,
+          "resets_at": "2026-10-16T15:27:11.742Z",
+          "source": "both",
+          "started_at": null,
+          "unused_pct": null,
+          "updated_at": "2026-10-13T06:26:31.742Z",
+          "used_pct": 48
+        },
+        {
+          "key": "seven_day_opus",
+          "label": "7-day · Opus",
+          "peak_pct": 22,
+          "resets_at": "2026-10-16T15:27:11.742Z",
+          "source": "web",
+          "started_at": null,
+          "unused_pct": null,
+          "updated_at": "2026-10-13T06:26:31.742Z",
+          "used_pct": 22
+        },
+        {
+          "key": "iguana_necktie",
+          "label": "Cloud session credits",
+          "peak_pct": 30,
+          "resets_at": "2026-10-16T15:27:11.742Z",
+          "source": "web",
+          "started_at": null,
+          "unused_pct": null,
+          "updated_at": "2026-10-13T06:26:31.742Z",
+          "used_pct": 30
+        }
+      ]
+    },
+    {
+      "account": "3f1c6a2e-0000-4000-8000-000000000011",
+      "colour": "#6A4FD6",
+      "email": "you@work.example",
+      "extra_usage": null,
+      "hidden": false,
+      "id": "seat_work",
+      "label": "work",
+      "live_sessions": 3,
+      "order": 1,
+      "org": "9b20d4f1-0000-4000-8000-000000000012",
+      "org_name": "Acme",
+      "places": [
+        {
+          "machine": "m_laptop",
+          "machine_name": "laptop",
+          "slot": "~/.claude-2",
+          "tab_id": null
+        },
+        {
+          "machine": "m_gpu",
+          "machine_name": "gpu-box",
+          "slot": "~/.claude",
+          "tab_id": null
+        }
+      ],
+      "plan": "Team",
+      "spend": null,
+      "web_raw_at": null,
+      "windows": [
+        {
+          "key": "five_hour",
+          "label": "5-hour",
+          "pace": {
+            "band": "comfortable",
+            "full_at": null,
+            "projected_pct": 52
+          },
+          "peak_pct": 55,
+          "resets_at": "2026-10-13T07:37:11.742Z",
+          "source": "statusline",
+          "started_at": null,
+          "unused_pct": null,
+          "updated_at": "2026-10-13T06:26:31.742Z",
+          "used_pct": 41
+        },
+        {
+          "key": "seven_day",
+          "label": "7-day",
+          "pace": {
+            "band": "comfortable",
+            "full_at": null,
+            "projected_pct": 44
+          },
+          "peak_pct": 30,
+          "resets_at": "2026-10-18T06:27:11.742Z",
+          "source": "statusline",
+          "started_at": null,
+          "unused_pct": null,
+          "updated_at": "2026-10-13T06:26:31.742Z",
+          "used_pct": 30
+        }
+      ]
+    },
+    {
+      "account": "3f1c6a2e-0000-4000-8000-000000000021",
+      "colour": "#9A7400",
+      "email": "you@client.example",
+      "extra_usage": {
+        "currency": "USD",
+        "is_enabled": true,
+        "monthly_limit": 5000,
+        "used_credits": 1240
+      },
+      "hidden": false,
+      "id": "seat_client",
+      "label": "client",
+      "live_sessions": 3,
+      "order": 2,
+      "org": "9b20d4f1-0000-4000-8000-000000000022",
+      "org_name": null,
+      "places": [
+        {
+          "machine": "m_laptop",
+          "machine_name": "laptop",
+          "slot": "~/.claude-3",
+          "tab_id": null
+        }
+      ],
+      "plan": "Max 5x",
+      "spend": {
+        "month_to_date_usd": 12.4
+      },
+      "web_raw_at": "2026-10-13T06:25:11.742Z",
+      "windows": [
+        {
+          "key": "five_hour",
+          "label": "5-hour",
+          "pace": {
+            "band": "runaway",
+            "full_at": "2026-10-13T06:25:11.742Z",
+            "projected_pct": 100
+          },
+          "peak_pct": 100,
+          "resets_at": "2026-10-13T06:36:11.742Z",
+          "source": "both",
+          "started_at": null,
+          "unused_pct": null,
+          "updated_at": "2026-10-13T06:26:31.742Z",
+          "used_pct": 100
+        },
+        {
+          "key": "seven_day",
+          "label": "7-day",
+          "pace": {
+            "band": "runaway",
+            "full_at": "2026-10-14T12:27:11.742Z",
+            "projected_pct": 118
+          },
+          "peak_pct": 91,
+          "resets_at": "2026-10-15T10:27:11.742Z",
+          "source": "both",
+          "started_at": null,
+          "unused_pct": null,
+          "updated_at": "2026-10-13T06:26:31.742Z",
+          "used_pct": 91
+        },
+        {
+          "key": "seven_day_sonnet",
+          "label": "7-day · Sonnet",
+          "peak_pct": 12,
+          "resets_at": "2026-10-15T10:27:11.742Z",
+          "source": "web",
+          "started_at": null,
+          "unused_pct": null,
+          "updated_at": "2026-10-13T06:26:31.742Z",
+          "used_pct": 12
+        }
+      ]
+    },
+    {
+      "account": "3f1c6a2e-0000-4000-8000-000000000031",
+      "colour": null,
+      "email": "you@lab.example",
+      "extra_usage": null,
+      "hidden": false,
+      "id": "seat_research",
+      "label": "research",
+      "live_sessions": 0,
+      "order": 3,
+      "org": "9b20d4f1-0000-4000-8000-000000000032",
+      "org_name": null,
+      "places": [],
+      "plan": "Pro",
+      "spend": null,
+      "web_raw_at": "2026-10-13T05:47:11.742Z",
+      "windows": [
+        {
+          "key": "five_hour",
+          "label": "5-hour",
+          "peak_pct": 8,
+          "resets_at": "2026-10-13T09:27:11.742Z",
+          "source": "web",
+          "started_at": null,
+          "unused_pct": null,
+          "updated_at": "2026-10-13T06:26:31.742Z",
+          "used_pct": 8
+        },
+        {
+          "key": "seven_day",
+          "label": "7-day",
+          "peak_pct": 12,
+          "resets_at": "2026-10-17T06:27:11.742Z",
+          "source": "web",
+          "started_at": null,
+          "unused_pct": null,
+          "updated_at": "2026-10-13T06:26:31.742Z",
+          "used_pct": 12
+        }
+      ]
+    }
+  ]
+}

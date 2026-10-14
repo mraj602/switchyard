@@ -1,0 +1,3 @@
+{"id":"acct0001","label":"Account 1","color":"#199e70","email":"user2@example.com","ord":0,"plan":"Max 5x","updated":1791811615659}
+{"id":"acct0002","label":"Account 2","color":"#e66767","email":"user1@example.com","ord":1,"plan":"Max 5x","updated":1791811615659}
+{"id":"acct0003","label":"Account 3","color":"#9085e9","email":"user3@example.com","ord":2,"plan":"Team","updated":1791811615659}

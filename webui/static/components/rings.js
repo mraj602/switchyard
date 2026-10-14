@@ -1,0 +1,30 @@
+// The phone's Now header: one ring per account showing the 5-hour window (PhoneNow).
+
+import { h } from './dom.js';
+import { svg } from './ui.js';
+import { seatName, seatIndex } from './seat.js';
+import { clock, pct } from '../format.js';
+
+const R = 18, C = 2 * Math.PI * R;
+
+function ring(seat, colour, now) {
+  const w = (seat.windows || []).find((x) => x.key === 'five_hour');
+  const used = w && w.used_pct != null ? w.used_pct : null;
+  const hot = used != null && used >= 90;
+  const name = seatName(seat);
+  const filled = used == null ? 0 : (Math.min(100, Math.max(0, used)) / 100) * C;
+  return h('a', { class: 'ring', href: `#/accounts?seat=${encodeURIComponent(seat.id)}`, 'aria-label': `${name}, ${used == null ? 'no data' : pct(used) + ' of the 5-hour window'}` },
+    svg('svg', { width: 48, height: 48, viewBox: '0 0 48 48', 'aria-hidden': 'true' },
+      svg('circle', { cx: 24, cy: 24, r: R, fill: 'none', class: 'ring-track', 'stroke-width': 6 }),
+      svg('circle', { cx: 24, cy: 24, r: R, fill: 'none', stroke: colour, 'stroke-width': 6, 'stroke-linecap': 'round', 'stroke-dasharray': `${filled.toFixed(1)} ${C.toFixed(1)}`, transform: 'rotate(-90 24 24)' }),
+      (() => { const t = svg('text', { x: 24, y: 28, 'text-anchor': 'middle', 'font-size': 11, class: `ring-num${hot ? ' hot' : ''}` }); t.textContent = used == null ? '–' : String(Math.round(used)); return t; })()),
+    h('span', { class: 'ring-name' }, name),
+    h('span', { class: `ring-reset${hot ? ' hot' : ''}` }, w && w.resets_at ? clock(w.resets_at, now) : ''));
+}
+
+export function ringRow(seats, now) {
+  const idx = seatIndex(seats);
+  const shown = seats.filter((s) => !s.hidden);
+  if (!shown.length) return null;
+  return h('div', { class: 'rings phone-only', role: 'group', 'aria-label': '5-hour limit per account' }, shown.map((s) => ring(s, idx.get(s.id).colour, now)));
+}

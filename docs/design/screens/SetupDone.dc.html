@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>sy setup — Phone and done</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#E8B04B}a:hover{color:#F3CB7A}
+</style>
+</helmet>
+<div style="width: 960px; height: 640px; box-sizing: border-box; background: #0B0C0E; padding: 24px; font-family: 'IBM Plex Mono', ui-monospace, monospace; color: #D7DADF">
+  <div style="height: 100%; display: flex; flex-direction: column; border: 1px solid #2A2E33; border-radius: 10px; overflow: hidden; background: #111315">
+    <div style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #2A2E33; background: #16191C; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; color: #8B929B">
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3F45"></span>
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3F45"></span>
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3F45"></span>
+      <span style="margin-left: 10px">laptop — sy setup</span>
+    </div>
+    <div style="flex: 1; padding: 22px 26px; display: flex; gap: 28px; font-size: 14px; line-height: 22px">
+      <div style="width: 300px; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; justify-content: space-between"><span style="font-weight: 600; color: #F2F3F5">Phone</span><span style="color: #8B929B">step 5 of 5</span></div>
+        <div style="color: #8B929B">Scan with the Switchyard app or your camera. Optional — skip with s.</div>
+        <div style="width: 220px; height: 220px; background: #F2F3F5; border-radius: 8px; padding: 14px; box-sizing: border-box; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px">
+          <span style="background: #111315; grid-column: span 2; grid-row: span 2; border-radius: 3px"></span><span></span><span style="background: #111315"></span><span></span><span style="background: #111315; grid-column: span 2; grid-row: span 2; border-radius: 3px"></span>
+          <span style="background: #111315"></span><span></span><span style="background: #111315"></span>
+          <span style="background: #111315"></span><span></span><span style="background: #111315"></span><span style="background: #111315"></span><span></span><span></span><span style="background: #111315"></span>
+          <span></span><span style="background: #111315"></span><span></span><span style="background: #111315"></span><span style="background: #111315"></span><span></span><span style="background: #111315"></span>
+          <span style="background: #111315"></span><span style="background: #111315"></span><span></span><span></span><span style="background: #111315"></span><span style="background: #111315"></span><span></span>
+          <span style="background: #111315; grid-column: span 2; grid-row: span 2; border-radius: 3px"></span><span style="background: #111315"></span><span></span><span style="background: #111315"></span><span></span><span style="background: #111315"></span>
+          <span></span><span style="background: #111315"></span><span style="background: #111315"></span><span></span><span></span>
+        </div>
+        <div>Code <span style="color: #F2F3F5; font-weight: 600; letter-spacing: 0.08em">482-913</span> <span style="color: #8B929B">· 10 min</span></div>
+        <div style="color: #8B929B">Pushes: <span style="color: #D7DADF">app</span> · ntfy · web push</div>
+      </div>
+
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 4px; border-left: 1px solid #2A2E33; padding-left: 28px">
+        <div style="font-weight: 600; color: #F2F3F5; margin-bottom: 4px">Done. Here's what changed</div>
+        <div style="display: grid; grid-template-columns: 3ch 1fr; column-gap: 10px; row-gap: 2px">
+          <span style="color: #6CC08B">+</span><span>Plugin <span style="color: #8B929B">switchyard</span> enabled in the shared settings</span>
+          <span style="color: #6CC08B">+</span><span>Status line wrapped <span style="color: #8B929B">(yours still prints)</span></span>
+          <span style="color: #6CC08B">+</span><span>Account ~/.claude-4 <span style="color: #8B929B">research</span>, launcher claude-4</span>
+          <span style="color: #6CC08B">+</span><span>Hub service on 127.0.0.1:8787</span>
+          <span style="color: #6CC08B">+</span><span>Catch-up timer <span style="color: #8B929B">every 5 min</span></span>
+          <span style="color: #E8B04B">−</span><span>Old prototype hooks removed <span style="color: #8B929B">(backup kept)</span></span>
+        </div>
+        <div style="margin-top: 12px; font-weight: 600; color: #F2F3F5">sy doctor</div>
+        <div style="display: grid; grid-template-columns: 6ch 1fr; column-gap: 10px; row-gap: 2px">
+          <span style="color: #6CC08B">pass</span><span>hub reachable, token accepted</span>
+          <span style="color: #6CC08B">pass</span><span>hooks in 4 of 4 folders</span>
+          <span style="color: #6CC08B">pass</span><span>status line in 4 of 4 folders</span>
+          <span style="color: #6CC08B">pass</span><span>timer active · outbox empty</span>
+          <span style="color: #E8B04B">note</span><span>5 Claude sessions are open: restart them to start reporting</span>
+        </div>
+        <div style="flex: 1"></div>
+        <div style="color: #8B929B">Next machine? On the hub: Add machine, or run <span style="color: #D7DADF">sy machine add user@host</span></div>
+        <div style="color: #8B929B">Dashboard: <a href="#">http://127.0.0.1:8787</a></div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":960,"height":640}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

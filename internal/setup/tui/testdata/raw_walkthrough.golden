@@ -1,0 +1,106 @@
+[H[2Jsy setup — 1/5 Main
+
+Claude Code 2.1.296 at ~/.local/bin/claude
+
+Accounts
+  ~/.claude    claude     you@example.com  logged in · Max   launcher: claude (shell function)
+  ~/.claude-2  claude-2   you@work.example  logged in · Max   launcher: claude-2 (shell function)
+  ~/.claude-3  claude-3   you@team.example  logged in · Team   launcher: claude-3 (shell function)
+  ~/.claude-4  claude-4   not logged in   launcher: claude-4 (shell function)
+  ~/.claude-5  claude-5   not logged in   launcher: claude-5 (shell function)
+  ~/.claude-6  claude-6   not logged in   launcher: claude-6 (shell function)
+  ~/.claude-7  claude-7   not logged in   launcher: claude-7 (shell function)
+
+Already set up by hand
+  keep     48 links between folders
+  keep     7 launcher(s): shell functions
+  keep     3 launcher(s): scripts
+  keep     MCP sync by your launcher (~/.claude/sync-mcp-to-2.sh)
+  wrap     status line in ~/.claude/settings.json
+  note     3 prototype hooks in ~/.claude/settings.json (kept until a hub is live)
+
+Nothing has been changed yet.
+
+Enter continue · e change something · q quit
+[H[2Jsy setup — 2/5 SetupSharing (accounts)
+
+Accounts
+  ~/.claude    claude     you@example.com  logged in · Max   launcher: claude (shell function)
+  ~/.claude-2  claude-2   you@work.example  logged in · Max   launcher: claude-2 (shell function)
+  ~/.claude-3  claude-3   you@team.example  logged in · Team   launcher: claude-3 (shell function)
+  ~/.claude-4  claude-4   not logged in   launcher: claude-4 (shell function)
+  ~/.claude-5  claude-5   not logged in   launcher: claude-5 (shell function)
+  ~/.claude-6  claude-6   not logged in   launcher: claude-6 (shell function)
+  ~/.claude-7  claude-7   not logged in   launcher: claude-7 (shell function)
+
+a add an account · Enter continue · Esc back · q quit
+[KNew account label (label or label:colour): [KNew account label (label or label:colour): w[KNew account label (label or label:colour): wo[KNew account label (label or label:colour): wor[KNew account label (label or label:colour): work[KNew account label (label or label:colour): work:[KNew account label (label or label:colour): work:s[KNew account label (label or label:colour): work:sk[KNew account label (label or label:colour): work:sky
+[H[2Jsy setup — 2/5 SetupSharing (accounts)
+
+Accounts
+  ~/.claude    claude     you@example.com  logged in · Max   launcher: claude (shell function)
+  ~/.claude-2  claude-2   you@work.example  logged in · Max   launcher: claude-2 (shell function)
+  ~/.claude-3  claude-3   you@team.example  logged in · Team   launcher: claude-3 (shell function)
+  ~/.claude-4  claude-4   not logged in   launcher: claude-4 (shell function)
+  ~/.claude-5  claude-5   not logged in   launcher: claude-5 (shell function)
+  ~/.claude-6  claude-6   not logged in   launcher: claude-6 (shell function)
+  ~/.claude-7  claude-7   not logged in   launcher: claude-7 (shell function)
+  + new folder   work       sky   log in after setup
+
+a add an account · Enter continue · Esc back · q quit
+[H[2Jsy setup — 3/5 SetupSharing (sharing)
+
+Sharing (primary ~/.claude)
+> [x] Settings                   linked by hand
+  [x] Instructions               link
+  [x] Skills, agents, commands   link
+  [x] Plugins                    shared plugin root  (on while Settings is on)
+  [ ] MCP servers                your launcher
+  [x] History and memory         linked by hand  (two accounts resuming one session write into one transcript)
+  [x] Prompt history, plans      linked by hand
+  Never shared: login and tokens, live sessions, caches, usage counters
+
+↑↓ move · space toggle · Enter continue · Esc back · q quit
+[H[2Jsy setup — 3/5 SetupSharing (sharing)
+
+Sharing (primary ~/.claude)
+  [x] Settings                   linked by hand
+> [x] Instructions               link
+  [x] Skills, agents, commands   link
+  [x] Plugins                    shared plugin root  (on while Settings is on)
+  [ ] MCP servers                your launcher
+  [x] History and memory         linked by hand  (two accounts resuming one session write into one transcript)
+  [x] Prompt history, plans      linked by hand
+  Never shared: login and tokens, live sessions, caches, usage counters
+
+↑↓ move · space toggle · Enter continue · Esc back · q quit
+[H[2Jsy setup — 3/5 SetupSharing (sharing)
+
+Sharing (primary ~/.claude)
+  [x] Settings                   linked by hand
+> [ ] Instructions               link
+  [x] Skills, agents, commands   link
+  [x] Plugins                    shared plugin root  (on while Settings is on)
+  [ ] MCP servers                your launcher
+  [x] History and memory         linked by hand  (two accounts resuming one session write into one transcript)
+  [x] Prompt history, plans      linked by hand
+  Never shared: login and tokens, live sessions, caches, usage counters
+
+↑↓ move · space toggle · Enter continue · Esc back · q quit
+[H[2Jsy setup — 4/5 SetupHub
+
+Hub
+> (•) Just this computer
+  ( ) Connect to my hub
+  ( ) I'll run the hub on another server
+  ( ) Later
+  Tailscale is up: the hub can be reached at laptop.tailnet.ts.net if you run `tailscale serve`.
+
+↑↓ choose · Enter continue · Esc back · q quit
+[H[2Jsy setup — 5/5 SetupDone
+
+Phone and done
+  Phone: later (sy phone pair)
+  Next: the plan is shown, and nothing changes until you accept it.
+
+Enter show the plan · Esc back · q quit

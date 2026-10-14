@@ -1,0 +1,73 @@
+{
+  "v": 1,
+  "as_of": "2026-10-13T06:27:12.846Z",
+  "hub": "hub.example.ts.net",
+  "needs_you": 3,
+  "top": {
+    "seat": "client",
+    "project": "data-pipeline",
+    "what": "failed",
+    "since": "2026-10-13T06:18:11.742Z"
+  },
+  "seats": [
+    {
+      "id": "seat_personal",
+      "label": "personal",
+      "colour": "#0E7C76",
+      "five_hour": {
+        "pct": 62,
+        "resets_at": "2026-10-13T08:07:11.742Z"
+      },
+      "seven_day": {
+        "pct": 48,
+        "resets_at": "2026-10-16T15:27:11.742Z"
+      }
+    },
+    {
+      "id": "seat_work",
+      "label": "work",
+      "colour": "#6A4FD6",
+      "five_hour": {
+        "pct": 41,
+        "resets_at": "2026-10-13T07:37:11.742Z"
+      },
+      "seven_day": {
+        "pct": 30,
+        "resets_at": "2026-10-18T06:27:11.742Z"
+      }
+    },
+    {
+      "id": "seat_client",
+      "label": "client",
+      "colour": "#9A7400",
+      "five_hour": {
+        "pct": 100,
+        "resets_at": "2026-10-13T06:36:11.742Z"
+      },
+      "seven_day": {
+        "pct": 91,
+        "resets_at": "2026-10-15T10:27:11.742Z"
+      }
+    },
+    {
+      "id": "seat_research",
+      "label": "research",
+      "colour": "#8a8a8a",
+      "five_hour": {
+        "pct": 8,
+        "resets_at": "2026-10-13T09:27:11.742Z"
+      },
+      "seven_day": {
+        "pct": 12,
+        "resets_at": "2026-10-17T06:27:11.742Z"
+      }
+    }
+  ],
+  "next_reset": {
+    "seat": "client",
+    "window": "five_hour",
+    "resets_at": "2026-10-13T06:36:11.742Z",
+    "pct": 100
+  },
+  "private": false
+}

@@ -1,0 +1,44 @@
+[
+  {
+    "file": "response-01.json",
+    "ts": 1791614696394,
+    "account_id": "acct0001",
+    "why": "earliest",
+    "plan": "Max 5x"
+  },
+  {
+    "file": "response-02.json",
+    "ts": 1791822164708,
+    "account_id": "acct0001",
+    "why": "latest",
+    "plan": "Max 5x"
+  },
+  {
+    "file": "response-03.json",
+    "ts": 1791614698218,
+    "account_id": "acct0002",
+    "why": "earliest",
+    "plan": "Max 5x"
+  },
+  {
+    "file": "response-04.json",
+    "ts": 1791822165699,
+    "account_id": "acct0002",
+    "why": "latest",
+    "plan": "Max 5x"
+  },
+  {
+    "file": "response-05.json",
+    "ts": 1791614700019,
+    "account_id": "acct0003",
+    "why": "earliest",
+    "plan": "Team"
+  },
+  {
+    "file": "response-06.json",
+    "ts": 1791822165041,
+    "account_id": "acct0003",
+    "why": "latest",
+    "plan": "Team"
+  }
+]

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Switchyard — Account tab</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#7A4E00}a:hover{color:#4F3200}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #F3F4F1; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #17191B; display: flex; flex-wrap: wrap">
+  <nav aria-label="Main" style="flex: 0 0 232px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #DFE1DC; padding: 20px 14px; display: flex; flex-direction: column; gap: 4px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 16px"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M3 18 L11 4 L19 18" fill="none" stroke="#17191B" stroke-width="2"/><path d="M7 18 L11 11 L15 18" fill="none" stroke="#E8B04B" stroke-width="2"/></svg><span style="font-weight: 700; font-size: 17px">Switchyard</span></div>
+    <a href="DeskHome.dc.html" style="padding: 9px 10px; color: #17191B; text-decoration: none">Home</a>
+    <a href="DeskSessions.dc.html" style="padding: 9px 10px; color: #17191B; text-decoration: none">Sessions</a>
+    <a href="#" style="padding: 9px 10px; color: #17191B; text-decoration: none">Analytics</a>
+    <div style="margin: 18px 10px 6px; font-size: 12px; font-weight: 600; color: #5E646B; text-transform: uppercase; letter-spacing: 0.06em">Accounts</div>
+    <a href="#" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; color: #17191B; text-decoration: none"><span style="width: 9px; height: 9px; border-radius: 50%; background: #0E7C76"></span>personal</a>
+    <a href="#" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: #EEEAFB; color: #17191B; text-decoration: none; font-weight: 600"><span style="width: 9px; height: 9px; border-radius: 50%; background: #6A4FD6"></span>work</a>
+    <a href="#" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; color: #17191B; text-decoration: none"><span style="width: 9px; height: 9px; border-radius: 50%; background: #9A7400"></span>client</a>
+    <a href="#" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; color: #17191B; text-decoration: none"><span style="width: 9px; height: 9px; border-radius: 50%; background: #2F6FDE"></span>research</a>
+    <div style="flex: 1"></div>
+    <a href="DeskAccounts.dc.html" style="padding: 9px 10px; color: #17191B; text-decoration: none">Settings</a>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 18px; padding: 10px 20px; background: #FFFFFF; border-bottom: 1px solid #DFE1DC; font-size: 13px">
+      <span style="display: flex; align-items: center; gap: 8px; font-weight: 600"><span style="width: 9px; height: 9px; border-radius: 50%; background: #6A4FD6"></span>work · you@work.example · Team</span>
+      <span style="display: flex; align-items: center; gap: 8px">5-hour <span style="width: 90px; height: 6px; background: #E9EBE6; border-radius: 3px; display: inline-block"><span style="display: block; width: 41%; height: 6px; background: #6A4FD6; border-radius: 3px"></span></span><span style="font-family: 'IBM Plex Mono', monospace">41% · 15:10</span></span>
+      <span style="display: flex; align-items: center; gap: 8px">7-day <span style="width: 90px; height: 6px; background: #E9EBE6; border-radius: 3px; display: inline-block"><span style="display: block; width: 30%; height: 6px; background: #6A4FD6; border-radius: 3px"></span></span><span style="font-family: 'IBM Plex Mono', monospace">30% · Mon</span></span>
+      <span style="color: #5E646B">read 2 min ago</span>
+      <span style="flex: 1"></span>
+      <button type="button" style="font: inherit; font-size: 13px; background: #FFFFFF; border: 1px solid #C9CCC6; border-radius: 8px; padding: 6px 12px; min-height: 32px">Refresh</button>
+      <button type="button" style="font: inherit; font-size: 13px; background: #FFFFFF; border: 1px solid #C9CCC6; border-radius: 8px; padding: 6px 12px; min-height: 32px">Sessions for work (4)</button>
+    </div>
+    <div style="flex: 1; min-height: 760px; margin: 0; background: repeating-linear-gradient(135deg, #F7F7F4 0 14px, #F1F1ED 14px 28px); display: flex; align-items: center; justify-content: center">
+      <div style="background: #FFFFFF; border: 1px dashed #B9BDB6; border-radius: 12px; padding: 28px 32px; max-width: 520px; text-align: center; display: flex; flex-direction: column; gap: 10px">
+        <div style="font-weight: 600; font-size: 17px">claude.ai, signed in as work</div>
+        <div style="font-size: 14px; color: #5E646B; line-height: 1.5">The real claude.ai page loads here, in this account's own isolated, persistent session: chat, Cowork, Claude Code on the web and Remote Control sessions. Every account tab stays signed in and live at once.</div>
+        <div style="font-size: 13px; color: #5E646B">Sign-in: email + code (Google sign-in is blocked in embedded browsers)</div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

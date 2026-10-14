@@ -1,0 +1,282 @@
+# Go side only (sy and the hub). The Electron prototype's tests need a display and are
+# not run in CI.
+name: ci
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: go (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.27.x"
+          cache: true
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install spec tools
+        run: python -m pip install --disable-pip-version-check --require-hashes -r scripts/ci/requirements.txt
+
+      - name: gofmt
+        run: |
+          out="$(gofmt -l $(git ls-files '*.go'))"
+          if [ -n "$out" ]; then echo "gofmt needed:"; echo "$out"; exit 1; fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: CGO_ENABLED=0 go build ./...
+
+      - name: go test
+        run: go test -race ./...
+
+      - name: spec check (schema load, OpenAPI validation)
+        run: make spec-check PYTHON=python
+
+      # A release build has neither the fakeclock nor the fakeopen test seam (builds sy twice,
+      # once with the tags as a positive control; never runs it).
+      - name: release build has no test seams
+        run: scripts/ci/check-release-seams.sh
+
+  # Phase 7 (docs/phases/7.md): the terminal packages and everything they touch must work on
+  # Windows too (Warp tab_configs path, opener argv, no HOME reads). Required, unlike the
+  # best-effort setup e2e below.
+  go-windows:
+    name: go (windows, terminal packages)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.27.x"
+          cache: true
+
+      - name: vet (windows)
+        run: GOOS=windows go vet ./internal/board/... ./internal/termctl/... ./internal/warp/... ./internal/termenv/... ./internal/hook/...
+
+      - name: board, termctl, warp, termenv, setup plan and hook tests
+        run: go test -race ./internal/board/... ./internal/termctl/... ./internal/warp/... ./internal/termenv/... ./internal/setup/plan/... ./internal/hook/...
+
+  # The Claude Code pane mod (plugin/switchyard-pane): `claude plugin validate` and
+  # `claude plugin test` against the pinned Claude Code, the allowed-surface check and tsc.
+  # No login and no network beyond npm: scripts/pane-check.sh runs claude in a temp HOME.
+  pane-check:
+    name: pane mod check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+
+      - name: install Claude Code (pinned)
+        run: npm install -g @anthropic-ai/claude-code@2.1.296
+
+      - name: pane-check
+        run: scripts/pane-check.sh
+
+      - name: pane-check self-test (the forbidden fixture must fail)
+        run: scripts/pane-check.sh --self-test
+
+  # Terminal end to end (docs/phases/7.md WP-E): sy board / term / open / ssh against a fake
+  # opener (-tags fakeopen), a temp HOME and no real terminal.
+  terminal-e2e:
+    name: terminal e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.27.x"
+          cache: true
+
+      - name: terminal scenarios
+        run: make e2e-terminal
+
+  # Setup end-to-end (docs/phases/3.md WP-G): the scenarios S1-S8 of test/e2e/setup against
+  # `sy` built from this commit and a fake `claude`, as a non-root user in a fresh Fedora and
+  # Ubuntu container. Docker has no `--systemd=always`, so the `--hub here` scenario (s6b) is
+  # reported as skipped here; it runs with podman on a developer machine.
+  setup-e2e:
+    name: setup e2e (${{ matrix.distro }}, docker)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: [fedora, ubuntu]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.27.x"
+          cache: true
+
+      - name: scenarios in the ${{ matrix.distro }} container
+        run: make e2e-setup-${{ matrix.distro }} E2E_ENGINE=docker
+
+  # Machines end-to-end (docs/phases/5.md, M3): `sy machine add --reach pull` against a real
+  # sshd container, the hub pulling its records over SSH, then `sy machine remove`. The host
+  # keys are checked strictly; the container has no systemd, and the operator side runs with a
+  # temp HOME.
+  e2e-machines:
+    name: machines e2e (docker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.27.x"
+          cache: true
+
+      - name: sy machine add / pull / remove over SSH
+        env:
+          SY_E2E_RUNTIME: docker
+        run: make e2e-machines
+
+  # The same scenarios on a macOS runner without containers: a temp HOME, the fake claude,
+  # `shasum`. S6 (hub join) skips itself here: its timer would be a launchd agent, and tests
+  # never bootstrap launchd. The launchd plists are covered by their golden unit tests.
+  setup-e2e-macos:
+    name: setup e2e (macos, native)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.27.x"
+          cache: true
+
+      - name: launchd plist goldens (nothing is bootstrapped)
+        run: go test ./internal/timer ./internal/service -run 'Golden|Mac|Launchd' -v
+
+      - name: scenarios, native
+        run: test/e2e/setup/run.sh --native
+
+  # Windows is best effort in v0.3 (docs/spec/setup.md 12 risk 8): junctions and synced
+  # copies (the share unit tests), install.ps1 against a local release server, and S1 with
+  # `.cmd` launchers by hand. Allowed to fail; not run anywhere but here.
+  setup-e2e-windows:
+    name: setup e2e (windows, best effort)
+    runs-on: windows-latest
+    continue-on-error: true
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.27.x"
+          cache: true
+
+      - name: share unit tests (junctions, copies), timer, launcher and backup tests
+        run: go test -race ./internal/share/... ./internal/jsonedit/... ./internal/timer/... ./internal/setup/launcher/... ./internal/setup/backup/...
+
+      - name: build the release archive and the fake claude
+        run: |
+          out="$PWD/dist/e2e"
+          SY_RELEASE_DIR="$out/release" SY_RELEASE_TARGETS=windows_amd64 scripts/release/build.sh 0.0.0-e2e
+          mkdir -p "$out/bin" "$out/srv/latest/download"
+          go build -o "$out/bin/claude.exe" ./test/e2e/setup/fakeclaude
+          cp "$out"/release/* "$out/srv/latest/download/"
+          cp "$out/release/install.ps1" "$out/srv/install.ps1"
+
+      - name: install.ps1 against a local server
+        shell: pwsh
+        run: |
+          $srv = Join-Path $PWD 'dist/e2e/srv'
+          $port = 18765
+          $server = Start-Process -PassThru -WindowStyle Hidden python -ArgumentList '-m', 'http.server', $port, '--bind', '127.0.0.1', '--directory', $srv
+          Start-Sleep -Seconds 2
+          $env:SY_INSTALL_BASE_URL = "http://127.0.0.1:$port"
+          $home1 = Join-Path $env:RUNNER_TEMP 'home-install'
+          New-Item -ItemType Directory -Force -Path $home1 | Out-Null
+          $env:USERPROFILE = $home1
+          & pwsh -NoProfile -File (Join-Path $srv 'install.ps1') -NoSetup
+          if ($LASTEXITCODE -ne 0) { throw "install.ps1 exited $LASTEXITCODE" }
+          & (Join-Path $home1 '.local\bin\sy.exe') --version
+          if ($LASTEXITCODE -ne 0) { throw "sy --version exited $LASTEXITCODE" }
+          # a tampered archive must fail with exit 3 and install nothing
+          $bad = Join-Path $env:RUNNER_TEMP 'srv-bad'
+          Copy-Item -Recurse $srv $bad
+          Get-ChildItem (Join-Path $bad 'latest/download') -Filter 'sy_*.zip' | ForEach-Object { Add-Content -Path $_.FullName -Value 'x' }
+          $server2 = Start-Process -PassThru -WindowStyle Hidden python -ArgumentList '-m', 'http.server', ($port + 1), '--bind', '127.0.0.1', '--directory', $bad
+          Start-Sleep -Seconds 2
+          $env:SY_INSTALL_BASE_URL = "http://127.0.0.1:$($port + 1)"
+          $home2 = Join-Path $env:RUNNER_TEMP 'home-bad'
+          New-Item -ItemType Directory -Force -Path $home2 | Out-Null
+          $env:USERPROFILE = $home2
+          & pwsh -NoProfile -File (Join-Path $bad 'install.ps1') -NoSetup
+          if ($LASTEXITCODE -ne 3) { throw "tampered archive: want exit 3, got $LASTEXITCODE" }
+          if (Test-Path (Join-Path $home2 '.local\bin\sy.exe')) { throw 'sy.exe installed from a tampered archive' }
+          Stop-Process -Id $server.Id, $server2.Id -Force
+          # the step's exit code is the last native command's (3 from the tampered run): all checks passed
+          exit 0
+
+      - name: S1 with .cmd launchers
+        run: |
+          out="$PWD/dist/e2e"
+          home="$RUNNER_TEMP/home-s1"
+          mkdir -p "$home"
+          sh test/e2e/setup/homes/fresh.sh "$home"
+          export USERPROFILE="$(cygpath -w "$home")" HOME="$home"
+          export PATH="$out/bin:$PATH"
+          mkdir -p "$home/.local/bin"
+          unzip -o -q "$out"/release/sy_*_windows_amd64.zip sy.exe -d "$home/.local/bin"
+          "$home/.local/bin/sy.exe" setup --yes --json --add work:amber,client --hub later --no-timer > "$RUNNER_TEMP/s1.json"
+          test -f "$home/.local/bin/claude-2.cmd"
+          test -f "$home/.local/bin/claude-3.cmd"
+          grep -q 'CLAUDE_CONFIG_DIR=%USERPROFILE%\\.claude-2' "$home/.local/bin/claude-2.cmd"
+          "$home/.local/bin/sy.exe" setup --undo --yes
+          test ! -e "$home/.local/bin/claude-2.cmd"

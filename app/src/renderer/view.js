@@ -1,0 +1,242 @@
+// Pure view helpers of the shell (WP-D): everything that decides what to show, with no DOM, so
+// node --test covers it. app.js turns these results into elements.
+// Shared code is imported as '../shared/<file>.js': that resolves to src/shared/ on disk (tests,
+// a static server rooted at src/) and to app://shell/shared/ under the protocol (C2 mapping).
+
+import { clock, agoLabel, humanKey } from '../shared/format.js';
+
+export const COLOUR_RE = /^#[0-9a-f]{6}$/;
+export const LABEL_RE = /^[a-z0-9][a-z0-9-]{0,23}$/;
+export const PAIR_CODE_RE = /^\d{3}-?\d{3}$/;
+export const TAB_NAME_MAX = 24;
+const SEAT_FALLBACK = ['var(--seat-0)', 'var(--seat-1)', 'var(--seat-2)', 'var(--seat-3)'];
+
+// ---- tabs
+
+/** What the top bar and strip call a tab: the seat label when known, else the name. */
+export const tabTitle = (tab) => tab.label || tab.name;
+
+/** A CSS colour for a tab's dot: the seat's #rrggbb when valid, else a board seat token. */
+export function tabColour(tab, index = 0) {
+  if (typeof tab.colour === 'string' && COLOUR_RE.test(tab.colour.toLowerCase())) return tab.colour.toLowerCase();
+  return SEAT_FALLBACK[((index % 4) + 4) % 4];
+}
+
+/** 0 → '', 3 → '3', 12 → '9+' (the badge on Hub). */
+export function badgeText(n) {
+  if (!Number.isInteger(n) || n <= 0) return '';
+  return n > 9 ? '9+' : String(n);
+}
+
+/** Tab name rules of C3: 1 to 24 characters after trimming. Returns an error text or ''. */
+export function nameError(name) {
+  const s = String(name ?? '').trim();
+  if (!s) return 'Give the tab a name.';
+  if (s.length > TAB_NAME_MAX) return `At most ${TAB_NAME_MAX} characters.`;
+  return '';
+}
+
+/** Seat label rule (SeatPatch): '' means clear. Returns an error text or ''. */
+export function labelError(label) {
+  const s = String(label ?? '');
+  if (s === '') return '';
+  return LABEL_RE.test(s) ? '' : 'Lower-case letters, digits and "-", up to 24, starting with a letter or digit.';
+}
+
+/** The order the keyboard walks: Hub first, then the tabs. */
+export const viewOrder = (state) => ['hub', ...state.tabs.map((t) => t.id)];
+
+/** Next view id when moving delta steps through the order, wrapping. */
+export function cycleView(order, current, delta) {
+  if (!order.length) return current;
+  const i = order.indexOf(current);
+  const from = i < 0 ? 0 : i;
+  return order[(((from + delta) % order.length) + order.length) % order.length];
+}
+
+/** Ctrl/Cmd+digit → view id: 0 Hub, 1…9 the tabs. null when there is no such tab. */
+export function viewForDigit(state, digit) {
+  if (digit === 0) return 'hub';
+  const t = state.tabs[digit - 1];
+  return t ? t.id : null;
+}
+
+/** New order of ids after moving `id` by delta places; null when nothing moves. */
+export function movedIds(ids, id, delta) {
+  const from = ids.indexOf(id);
+  const to = from + delta;
+  if (from < 0 || to < 0 || to >= ids.length) return null;
+  const out = ids.slice();
+  out.splice(to, 0, out.splice(from, 1)[0]);
+  return out;
+}
+
+/** The view the shell is really showing: a dialog opened over a tab keeps that tab's strip. */
+export const effectiveView = (state, overlayFor) => overlayFor || state.view;
+
+// ---- the strip
+
+/** Display label of a usage window: 5-hour, 7-day, else the hub label or the raw key. */
+export function windowLabel(w) {
+  if (w.key === 'five_hour') return '5-hour';
+  if (w.key === 'seven_day') return '7-day';
+  return w.label || humanKey(w.key);
+}
+
+/** Windows in strip order: 5h, 7d, then the rest by key. `primary` marks the two always shown. */
+export function windowRows(tab, now = Date.now()) {
+  const rank = (k) => (k === 'five_hour' ? 0 : k === 'seven_day' ? 1 : 2);
+  return [...(tab.windows || [])]
+    .sort((a, b) => rank(a.key) - rank(b.key) || String(a.key).localeCompare(String(b.key)))
+    .map((w) => ({
+      key: w.key,
+      label: windowLabel(w),
+      used: typeof w.used_pct === 'number' && Number.isFinite(w.used_pct) ? w.used_pct : null,
+      reset: clock(w.resets_at, now),
+      primary: rank(w.key) < 2,
+    }));
+}
+
+/**
+ * The reading state of a tab as one line and the action that goes with it.
+ * kind: signed_out | never_asked | off | stopped | retrying | reading | idle | waiting.
+ * action: 'review' (open the warning), 'resume', or null.
+ */
+export function readingStatus(tab, now = Date.now()) {
+  if (tab.reading === 'never_asked' || tab.needs_warning) {
+    return { kind: 'never_asked', text: 'Usage reading not enabled', action: 'review', actionLabel: 'Review' };
+  }
+  if (tab.reading === 'off' || tab.read_state === 'off') return { kind: 'off', text: 'Reading off', action: null };
+  if (tab.stopped) {
+    const s = tab.stopped.status;
+    const why = s === 429 ? 'rate limited' : s === 401 || s === 403 ? 'signed out' : 'error';
+    return { kind: 'stopped', text: `Stopped: ${why} (${s}).`, action: 'resume', actionLabel: 'Resume' };
+  }
+  if (!tab.signed_in) return { kind: 'signed_out', text: 'Sign in to read usage', action: null };
+  if (tab.read_state === 'retrying') {
+    const at = clock(tab.retry_at, now);
+    return { kind: 'retrying', text: at ? `Retrying at ${at}` : 'Retrying', action: null };
+  }
+  if (tab.read_state === 'reading') return { kind: 'reading', text: 'Reading…', action: null };
+  const last = agoLabel(tab.last_read, now);
+  return { kind: 'idle', text: last ? `read ${last}` : 'Waiting for the first read', action: null };
+}
+
+/** Last-read clock for the title attribute ("last read 14:05"). */
+export const lastReadTitle = (tab, now) => (tab.last_read ? `last read ${clock(tab.last_read, now)}` : '');
+
+// ---- hub banners
+
+/**
+ * The banner a hub status needs, or null when ok. action: 'pair' (code field + button),
+ * 'pair-click' (one click: admin channel or local hub), 'settings', or null.
+ */
+export function hubBanner(hub) {
+  if (!hub) return null;
+  switch (hub.status) {
+    case 'ok':
+      // e.g. a 403 from the hub: shown, but the token is kept (only a 401 means it is dead)
+      return hub.error ? { level: 'error', text: hub.error, command: null, action: null } : null;
+    case 'no_sy':
+      return { level: 'warn', text: 'sy was not found. Run "sy setup" in a terminal to connect this computer to a hub. Account tabs still work.', command: 'sy setup', action: null };
+    case 'not_connected':
+      return { level: 'warn', text: 'sy is not connected to a hub. Run "sy setup" in a terminal. Account tabs still work.', command: 'sy setup', action: null };
+    case 'dial':
+      return { level: 'warn', text: 'This computer reaches its hub in forward mode, which is not supported in the desktop app. Use the hub from a browser, or connect this computer directly.', command: null, action: null };
+    case 'needs_pairing':
+      return {
+        level: 'info',
+        text: hub.admin || hub.local
+          ? 'Pair the app with your hub to see the board here.'
+          : 'Pair the app with your hub: on the board open Devices, Add device, Desktop, and type the code here.',
+        command: null,
+        action: hub.admin || hub.local ? 'pair-click' : 'pair',
+      };
+    case 'unreachable':
+      return { level: 'error', text: hub.url ? `The hub at ${hub.url} is not reachable.` : 'The hub is not reachable.', command: null, action: hub.local ? 'service' : null };
+    default:
+      return null;
+  }
+}
+
+/** Whether the board itself can be shown (the hub module has a view to put over the shell). */
+export const hubUsable = (hub) => !!hub && hub.status === 'ok';
+
+/** One-line hub status for the top bar chip and Settings. */
+export function hubSummary(hub) {
+  if (!hub) return 'Hub: unknown';
+  switch (hub.status) {
+    case 'ok': return hub.version ? `Connected · v${hub.version}` : 'Connected';
+    case 'no_sy': return 'sy not found';
+    case 'not_connected': return 'sy not connected';
+    case 'dial': return 'Forward mode (unsupported)';
+    case 'needs_pairing': return 'Needs pairing';
+    case 'unreachable': return 'Unreachable';
+    default: return 'Unknown';
+  }
+}
+
+// ---- Claude Code folders (accounts:local) and sharing
+
+/** Share switches of `sy account share`, in the order of the table, with their rows' names. */
+export const SHARE_SWITCHES = Object.freeze([
+  { id: 'settings', label: 'Settings (hooks, permissions, plugins on/off)', items: ['settings.json'] },
+  { id: 'instructions', label: 'Instructions (CLAUDE.md, rules)', items: ['CLAUDE.md', 'rules'] },
+  { id: 'addons', label: 'Skills, agents, commands', items: ['skills', 'agents', 'commands', 'keybindings.json'] },
+  { id: 'plugins', label: 'Plugins', items: ['plugins'] },
+  { id: 'mcp', label: 'MCP servers (sign-ins stay per account)', items: [] },
+  { id: 'history', label: 'History and memory (transcripts, auto-memory)', items: ['projects'] },
+  { id: 'prompts', label: 'Prompt history and plans', items: ['history.jsonl', 'plans'] },
+]);
+
+/** The `folders` array of an `sy account list --json` reply, whatever wrapper it has. */
+export function foldersOf(reply) {
+  if (Array.isArray(reply)) return reply;
+  if (reply && Array.isArray(reply.folders)) return reply.folders;
+  if (reply && reply.state && Array.isArray(reply.state.folders)) return reply.state.folders;
+  return [];
+}
+
+/** The primary folder (the source of shared items), if the list says which. */
+export function isPrimary(folder) {
+  return folder.primary === true || folder.folder === '~/.claude';
+}
+
+/**
+ * State of one switch for one folder: 'source' (primary), 'on', 'off', 'elsewhere' (linked to
+ * another folder: shown but not editable) or 'unknown' (no data for it).
+ */
+export function switchState(folder, sw) {
+  if (isPrimary(folder)) return 'source';
+  if (sw.id === 'mcp') {
+    if (typeof folder.mcp_sync === 'boolean') return folder.mcp_sync ? 'on' : 'off';
+    if (typeof folder.mcp === 'boolean') return folder.mcp ? 'on' : 'off';
+    return 'unknown';
+  }
+  const states = sw.items.map((n) => folder.items?.[n]?.state).filter(Boolean);
+  if (!states.length) return 'unknown';
+  if (states.includes('elsewhere')) return 'elsewhere';
+  if (states.every((s) => s === 'linked' || s === 'copy')) return 'on';
+  return 'off';
+}
+
+/**
+ * The `--share` value for turning `changed` on or off for a folder: the switches that stay on,
+ * plus the changed one (or `-name` when it is turned off, which the CLI needs to un-share).
+ * Matches ^[a-z,=:+-]{1,200}$.
+ */
+export function shareSpec(folder, changed, on) {
+  const parts = [];
+  for (const sw of SHARE_SWITCHES) {
+    const st = sw.id === changed ? (on ? 'on' : 'off') : switchState(folder, sw);
+    if (st === 'on' || st === 'elsewhere') parts.push(sw.id);
+    else if (sw.id === changed) parts.push(`-${sw.id}`);
+  }
+  return parts.join(',');
+}
+
+/** `sy account login` command text for a folder (copied by the person; needs a terminal). */
+export const loginCommand = (folder) => `sy account login ${folder.label || folder.folder}`;
+
+/** Whether a folder path is acceptable as `accounts:share.folder`. */
+export const SHARE_FOLDER_RE = /^~?[A-Za-z0-9._/-]{1,200}$/;

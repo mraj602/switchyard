@@ -1,0 +1,12 @@
+{
+  "name": "switchyard",
+  "version": "0.1.0",
+  "description": "Switchyard for Claude Code: records session events and limits through the sy command, and adds /switchyard:status. Unofficial; not affiliated with Anthropic.",
+  "author": {"name": "mraj602"},
+  "keywords": [
+    "switchyard",
+    "sessions",
+    "usage",
+    "accounts"
+  ]
+}

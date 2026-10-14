@@ -1,0 +1,39 @@
+{
+  "v": 1,
+  "id": "ID",
+  "kind": "hook_event",
+  "ts": "TS",
+  "machine": "m_MACHINE",
+  "slot": "~/.claude-3",
+  "seat": {
+    "account": "aaaaaaaa-0000-4000-8000-000000000003",
+    "org": "bbbbbbbb-0000-4000-8000-000000000003",
+    "email": "user3@example.com",
+    "src": "claude_json"
+  },
+  "term": {
+    "app": "warp",
+    "id": "00000000000000000000000000000001",
+    "focus_url": "warp://session/00000000000000000000000000000001"
+  },
+  "client": "sy/dev",
+  "redacted": [
+    "last_assistant_message"
+  ],
+  "derived": {
+    "hook_ms": 0,
+    "last_message": "There's an issue with the ...[truncated]",
+    "last_message_chars": 40
+  },
+  "payload": {
+    "cwd": "/tmp/claude-1000/-home-user-projects-personal/92757a3d-04cd-4927-8177-c75bc52051b4/scratchpad/proj1",
+    "effort": {
+      "level": "high"
+    },
+    "error": "model_not_found",
+    "hook_event_name": "StopFailure",
+    "prompt_id": "d9794691-e894-4b82-80d6-84537b698896",
+    "session_id": "4dc3c7db-b0ee-4cbb-8223-ff62cfa0b22d",
+    "transcript_path": "/home/user/.claude-3/projects/-tmp-claude-1000--home-user-projects-personal-92757a3d-04cd-4927-8177-c75bc52051b4-scratchpad-proj1/4dc3c7db-b0ee-4cbb-8223-ff62cfa0b22d.jsonl"
+  }
+}

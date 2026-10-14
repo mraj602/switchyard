@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Switchyard phone — Sessions</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#7A4E00}a:hover{color:#4F3200}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F3F4F1; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #17191B; display: flex; flex-direction: column; overflow: hidden">
+  <div style="flex: 1; overflow: hidden; padding: 20px 16px 12px; display: flex; flex-direction: column; gap: 12px">
+    <h1 style="margin: 0; font-size: 24px; font-weight: 700">Sessions</h1>
+    <div style="display: flex; gap: 6px">
+      <button type="button" style="font: inherit; font-size: 13px; border: 1px solid #C9CCC6; background: #FFFFFF; border-radius: 16px; padding: 6px 12px; min-height: 36px">Needs you 3</button>
+      <button type="button" style="font: inherit; font-size: 13px; border: 1px solid #17191B; background: #17191B; color: #FFFFFF; border-radius: 16px; padding: 6px 12px; min-height: 36px">All 14</button>
+      <button type="button" style="font: inherit; font-size: 13px; border: 1px solid #C9CCC6; background: #FFFFFF; border-radius: 16px; padding: 6px 12px; min-height: 36px">By machine</button>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; margin-top: 4px"><span style="width: 9px; height: 9px; border-radius: 50%; background: #6A4FD6"></span>work <span style="font-weight: 400; color: #5E646B">· 41% of 5h</span></div>
+    <div style="background: #FFFFFF; border: 1px solid #DFE1DC; border-radius: 14px">
+      <a href="PhoneSession.dc.html" style="display: flex; gap: 10px; padding: 12px 14px; color: inherit; text-decoration: none; border-bottom: 1px solid #ECEDEA"><span style="width: 10px; height: 10px; margin-top: 5px; border-radius: 50%; background: #C2410C; flex: 0 0 10px"></span><span style="flex: 1; min-width: 0"><span style="display: flex; justify-content: space-between"><b style="font-weight: 600">api · migrate-orders</b><span style="font-size: 12px; color: #5E646B">4m</span></span><span style="display: block; font-size: 13px; color: #9A3412">Asked: update the migration?</span><span style="display: block; font-size: 12px; color: #5E646B">gpu-box · ctx 54%</span></span></a>
+      <div style="display: flex; gap: 10px; padding: 12px 14px; border-bottom: 1px solid #ECEDEA"><span style="width: 10px; height: 10px; margin-top: 5px; border-radius: 50%; background: #2563EB; flex: 0 0 10px"></span><span style="flex: 1"><span style="display: flex; justify-content: space-between"><b style="font-weight: 600">api · flaky-tests</b><span style="font-size: 12px; color: #5E646B">2m</span></span><span style="display: block; font-size: 13px; color: #3A3F45">Running the integration suite again</span><span style="display: block; font-size: 12px; color: #5E646B">gpu-box · ctx 31%</span></span></div>
+      <div style="display: flex; gap: 10px; padding: 12px 14px"><span style="width: 10px; height: 10px; margin-top: 5px; border-radius: 50%; background: #2563EB; flex: 0 0 10px"></span><span style="flex: 1"><span style="display: flex; justify-content: space-between"><b style="font-weight: 600">infra · terraform-plan</b><span style="font-size: 12px; color: #5E646B">40s</span></span><span style="display: block; font-size: 13px; color: #3A3F45">Reading modules/network/main.tf</span><span style="display: block; font-size: 12px; color: #B42318">laptop · ctx 92%</span></span></div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; margin-top: 4px"><span style="width: 9px; height: 9px; border-radius: 50%; background: #9A7400"></span>client <span style="font-weight: 400; color: #B42318">· limit reached, 17:00</span></div>
+    <div style="background: #FFFFFF; border: 1px solid #DFE1DC; border-radius: 14px">
+      <div style="display: flex; gap: 10px; padding: 12px 14px; border-bottom: 1px solid #ECEDEA"><span style="width: 10px; height: 10px; margin-top: 5px; border-radius: 50%; background: #C2410C; flex: 0 0 10px"></span><span style="flex: 1"><span style="display: flex; justify-content: space-between"><b style="font-weight: 600">storefront · deploy</b><span style="font-size: 12px; color: #5E646B">1m</span></span><span style="display: block; font-size: 13px; color: #9A3412">Permission: Bash(npm run deploy…)</span><span style="display: block; font-size: 12px; color: #5E646B">laptop · ctx 40%</span></span></div>
+      <div style="display: flex; gap: 10px; padding: 12px 14px"><span style="width: 10px; height: 10px; margin-top: 5px; border-radius: 2px; background: #B42318; flex: 0 0 10px"></span><span style="flex: 1"><span style="display: flex; justify-content: space-between"><b style="font-weight: 600">data-pipeline · backfill</b><span style="font-size: 12px; color: #5E646B">9m</span></span><span style="display: block; font-size: 13px; color: #B42318">Rate limited</span><span style="display: block; font-size: 12px; color: #5E646B">laptop · ctx 67%</span></span></div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; margin-top: 4px"><span style="width: 9px; height: 9px; border-radius: 50%; background: #0E7C76"></span>personal <span style="font-weight: 400; color: #5E646B">· 7 sessions</span></div>
+    <div style="background: #FFFFFF; border: 1px solid #DFE1DC; border-radius: 14px">
+      <div style="display: flex; gap: 10px; padding: 12px 14px"><span style="width: 10px; height: 10px; margin-top: 5px; border-radius: 50%; background: #2563EB; flex: 0 0 10px"></span><span style="flex: 1"><span style="display: flex; justify-content: space-between"><b style="font-weight: 600">switchyard · hub-ingest</b><span style="font-size: 12px; color: #5E646B">5m</span></span><span style="display: block; font-size: 13px; color: #3A3F45">Writing server/ingest.go</span></span></div>
+    </div>
+  </div>
+
+  <nav aria-label="Tabs" style="display: flex; justify-content: space-around; background: #FFFFFF; border-top: 1px solid #DFE1DC; padding: 8px 0 22px">
+    <a href="PhoneNow.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 64px; min-height: 44px; font-size: 11px; color: #5E646B; text-decoration: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5E646B" stroke-width="2" aria-hidden="true"><path d="M4 12h4l2-6 4 12 2-6h4"/></svg>Now</a>
+    <a href="PhoneSessions.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 64px; min-height: 44px; font-size: 11px; font-weight: 600; color: #17191B; text-decoration: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#17191B" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Sessions</a>
+    <a href="PhoneAccounts.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 64px; min-height: 44px; font-size: 11px; color: #5E646B; text-decoration: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5E646B" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 8 8"/></svg>Accounts</a>
+    <a href="PhoneAlerts.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 64px; min-height: 44px; font-size: 11px; color: #5E646B; text-decoration: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5E646B" stroke-width="2" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>More</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>sy setup — Detect</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#E8B04B}a:hover{color:#F3CB7A}
+</style>
+</helmet>
+<div style="width: 960px; height: 640px; box-sizing: border-box; background: #0B0C0E; padding: 24px; font-family: 'IBM Plex Mono', ui-monospace, monospace; color: #D7DADF">
+  <div style="height: 100%; display: flex; flex-direction: column; border: 1px solid #2A2E33; border-radius: 10px; overflow: hidden; background: #111315">
+    <div style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #2A2E33; background: #16191C; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; color: #8B929B">
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3F45"></span>
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3F45"></span>
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3F45"></span>
+      <span style="margin-left: 10px">laptop — sy setup</span>
+    </div>
+    <div style="flex: 1; padding: 22px 26px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 22px">
+      <div style="color: #8B929B">$ curl -fsSL https://[SITE]/install.sh | sh</div>
+      <div style="color: #8B929B">  sy 0.1.0 downloaded, checksum ok, installed to ~/.local/bin/sy</div>
+      <div style="height: 10px"></div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <span style="font-weight: 600; color: #F2F3F5">Switchyard setup</span>
+        <span style="color: #8B929B">step 1 of 5 · <span style="color: #E8B04B">Detect</span></span>
+      </div>
+      <div style="display: flex; gap: 6px; margin-bottom: 8px">
+        <span style="flex: 1; height: 3px; background: #E8B04B; border-radius: 2px"></span>
+        <span style="flex: 1; height: 3px; background: #2A2E33; border-radius: 2px"></span>
+        <span style="flex: 1; height: 3px; background: #2A2E33; border-radius: 2px"></span>
+        <span style="flex: 1; height: 3px; background: #2A2E33; border-radius: 2px"></span>
+        <span style="flex: 1; height: 3px; background: #2A2E33; border-radius: 2px"></span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 22ch 10ch 1fr 10ch; column-gap: 16px">
+        <span style="color: #8B929B">Claude Code</span><span>2.1.296</span><span style="color: #8B929B">~/.local/bin/claude</span><span style="color: #6CC08B">ok</span>
+      </div>
+
+      <div style="margin-top: 10px; color: #F2F3F5; font-weight: 500">Config folders</div>
+      <div style="display: grid; grid-template-columns: 14ch 10ch 22ch 10ch 1fr; column-gap: 16px; row-gap: 2px">
+        <span>~/.claude</span><span style="color: #3CC1B8">personal</span><span>you@example.com</span><span style="color: #8B929B">Max 20x</span><span style="color: #6CC08B">logged in</span>
+        <span>~/.claude-2</span><span style="color: #A08CFF">work</span><span>you@work.example</span><span style="color: #8B929B">Team</span><span style="color: #6CC08B">logged in</span>
+        <span>~/.claude-3</span><span style="color: #E2C044">client</span><span>you@client.example</span><span style="color: #8B929B">Max 5x</span><span style="color: #6CC08B">logged in</span>
+        <span>~/.claude-4</span><span style="color: #5D646C">—</span><span style="color: #5D646C">(empty folder)</span><span></span><span style="color: #E8B04B">not logged in</span>
+      </div>
+
+      <div style="margin-top: 10px; color: #F2F3F5; font-weight: 500">Already set up by hand</div>
+      <div style="display: grid; grid-template-columns: 1fr 14ch; column-gap: 16px; row-gap: 2px">
+        <span>settings.json, CLAUDE.md, skills/, commands/ <span style="color: #8B929B">linked to ~/.claude</span></span><span style="color: #6CC08B">keep</span>
+        <span>~/bin/claude-launch <span style="color: #8B929B">(your launcher)</span></span><span style="color: #6CC08B">keep</span>
+        <span>Status line <span style="color: #8B929B">bash ~/.claude/statusline-command.sh</span></span><span style="color: #E8B04B">wrap</span>
+        <span>Hooks <span style="color: #8B929B">3 → ~/.claude/switchyard-hook.sh (prototype)</span></span><span style="color: #E8B04B">replace</span>
+      </div>
+
+      <div style="flex: 1"></div>
+      <div style="color: #8B929B">Nothing has been changed yet.</div>
+      <div style="display: flex; gap: 22px; padding-top: 10px; border-top: 1px solid #2A2E33">
+        <span><span style="color: #111315; background: #E8B04B; padding: 1px 7px; border-radius: 4px">Enter</span> continue</span>
+        <span><span style="color: #D7DADF; background: #2A2E33; padding: 1px 7px; border-radius: 4px">e</span> change something</span>
+        <span><span style="color: #D7DADF; background: #2A2E33; padding: 1px 7px; border-radius: 4px">q</span> quit</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":960,"height":640}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

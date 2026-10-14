@@ -1,0 +1,81 @@
+{
+  "plan_id": "p_813aa0b6127f",
+  "actions": [
+    {
+      "id": "a1",
+      "step": "terminal",
+      "op": "mkdir",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs",
+      "mode": "0755",
+      "note": "Warp's tab_configs folder",
+      "pre": [
+        {
+          "path": "/home/u/.local/share/warp-terminal/tab_configs",
+          "state": {
+            "type": "absent"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a2",
+      "step": "terminal",
+      "op": "write_file",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-me.toml",
+      "mode": "0644",
+      "content_sha256": "df4b0e9301c36f660e42227e74eaa96d1df8bbc2121107bc69d2243d19f060b6",
+      "note": "me · cyan · ~/.local/bin/claude",
+      "pre": [
+        {
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-me.toml",
+          "state": {
+            "type": "absent"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a3",
+      "step": "terminal",
+      "op": "write_file",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-work.toml",
+      "mode": "0644",
+      "content_sha256": "19fbf0aae224849d9308e3031216b1555d5f85e4b1b17de325d7732fe3c15b97",
+      "note": "work · yellow · ~/.local/bin/claude-2",
+      "pre": [
+        {
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-work.toml",
+          "state": {
+            "type": "absent"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a4",
+      "step": "terminal",
+      "op": "write_file",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-claude-3.toml",
+      "mode": "0644",
+      "content_sha256": "65f58e55fcbdaf4848065de618317d7d144f491340857d77faf13056256a24a1",
+      "note": "claude-3 · magenta · ~/.local/bin/claude-3",
+      "pre": [
+        {
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-claude-3.toml",
+          "state": {
+            "type": "absent"
+          }
+        }
+      ]
+    }
+  ],
+  "keep": [],
+  "conflicts": [],
+  "needs": [],
+  "summary": {
+    "changes": 4,
+    "backed_up": 0,
+    "links_changed": 0,
+    "logins_touched": 0
+  }
+}

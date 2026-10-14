@@ -1,0 +1,5 @@
+{
+  "name": "pane-forbidden-bracket",
+  "version": "0.0.1",
+  "description": "Fixture for scripts/pane-check.sh --self-test: runs another program through a computed property of $."
+}

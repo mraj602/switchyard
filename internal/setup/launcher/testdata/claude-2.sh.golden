@@ -1,0 +1,6 @@
+#!/bin/sh
+# sy-launcher v1 slot=~/.claude-2 label=work
+# Claude Code as ~/.claude-2. Written by sy setup; sy uninstall removes it.
+CLAUDE_CONFIG_DIR="$HOME/.claude-2"
+export CLAUDE_CONFIG_DIR
+exec claude "$@"
