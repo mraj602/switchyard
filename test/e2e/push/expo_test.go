@@ -50,6 +50,13 @@ func (r *rig) ownerSession() string {
 	return ""
 }
 
+// expoOn turns the expo channel on: the self-hosted profile turned it off at the hub's first
+// start (push.md 13.6).
+func (r *rig) expoOn(owner string) {
+	r.t.Helper()
+	r.must(200, "PUT", "/v1/push/channels/expo", owner, map[string]any{"enabled": true})
+}
+
 // pairApp pairs a phone the way the app does (phone.md P2): the owner makes a code, the app
 // claims it with the QR's secret, expect_kind phone and cookie false, and keeps the token
 // from the body.
@@ -120,6 +127,7 @@ func (r *rig) settleExpo() int {
 func TestExpoEndToEnd(t *testing.T) {
 	r := newRig(t)
 	owner := r.ownerSession()
+	r.expoOn(owner)
 
 	// ---- X1: pair as the app; the bearer from the body reads /v1/me.
 	phoneA, devA := r.pairApp(owner, "iPhone A")
@@ -264,6 +272,7 @@ func TestExpoEndToEnd(t *testing.T) {
 func TestExpoWidgetRefresh(t *testing.T) {
 	r := newRig(t)
 	owner := r.ownerSession()
+	r.expoOn(owner)
 	phone, _ := r.pairApp(owner, "iPhone")
 	if code, b := r.registerExpo(phone, expoToken2); code != 201 {
 		t.Fatalf("register: %d %s", code, b)
@@ -316,6 +325,7 @@ func TestExpoWidgetRefresh(t *testing.T) {
 // target on the same phone, which gets each push as well.
 func TestExpoWebPushUnchanged(t *testing.T) {
 	r := newRig(t)
+	r.expoOn(r.ownerSession())
 	phase4(t, r, true)
 	if n := r.settleExpo(); n != 2 {
 		t.Errorf("X8 the app target got %d messages, want 2 (question, limit_80)", n)
