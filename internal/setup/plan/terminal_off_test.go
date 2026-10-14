@@ -1,6 +1,7 @@
 package plan_test
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -12,7 +13,8 @@ func runsOf(p model.Plan) []string {
 	var out []string
 	for _, a := range p.Actions {
 		if a.Op == model.OpRun {
-			out = append(out, strings.Join(a.Argv[2:len(a.Argv)-1], " ")+"@"+a.Touches[0])
+			// The fake home is POSIX-shaped; plan joins with the host separator.
+			out = append(out, filepath.ToSlash(strings.Join(a.Argv[2:len(a.Argv)-1], " ")+"@"+a.Touches[0]))
 		}
 	}
 	return out
