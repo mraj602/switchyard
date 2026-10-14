@@ -156,6 +156,7 @@ func openKeysTTY() (keysTTY, error) {
 func (t *devTTY) Password(prompt string) (string, error) {
 	fmt.Fprint(t.f, prompt)
 	b, err := term.ReadPassword(int(t.f.Fd()))
+	defer clear(b)
 	fmt.Fprintln(t.f)
 	return string(b), err
 }
@@ -279,6 +280,7 @@ func unseal(env keysEnv, t keysTTY) (ed25519.PrivateKey, error) {
 		return nil, err
 	}
 	if p, err := keys.ReadPin(env.ownerPinPath()); err == nil && p.FP != so.FP {
+		clear(priv)
 		return nil, fmt.Errorf("owner.sealed holds %s but this machine pins %s; run sy keys trust-owner if you replaced the key",
 			keys.GroupFP(so.FP), keys.GroupFP(p.FP))
 	}
@@ -381,6 +383,7 @@ func keysInit(ctx context.Context, env keysEnv, args []string) error {
 			return err
 		}
 	}
+	defer clear(priv)
 	doc, err := keys.NewOwnerKeyDoc(priv, hubFP, env.now())
 	if err != nil {
 		return err
@@ -446,7 +449,9 @@ func newOwnerKey(env keysEnv, t keysTTY, replace bool) (ed25519.PrivateKey, erro
 			return nil, errors.New("the code was not typed back; nothing was written (run sy keys init again)")
 		}
 	}
-	so, err := keys.SealOwner(priv.Seed(), pass, env.iter, env.now(), env.rand)
+	seed := priv.Seed()
+	defer clear(seed)
+	so, err := keys.SealOwner(seed, pass, env.iter, env.now(), env.rand)
 	if err != nil {
 		return nil, err
 	}
@@ -668,6 +673,7 @@ func keysCertify(ctx context.Context, env keysEnv, args []string) error {
 	if err != nil {
 		return err
 	}
+	defer clear(priv)
 	ownerFP := keys.Fingerprint(priv.Public().(ed25519.PublicKey))
 	if info.OwnerKey == nil || info.OwnerKey.FP != ownerFP {
 		return fmt.Errorf("the hub's active owner key is not %s; confirm it first (sy hub keys confirm-owner, or the board)", keys.GroupFP(ownerFP))
@@ -767,6 +773,7 @@ func keysRevoke(ctx context.Context, env keysEnv, args []string) error {
 	if err != nil {
 		return err
 	}
+	defer clear(priv)
 	raw, err := json.Marshal(next)
 	if err != nil {
 		return err
@@ -799,11 +806,14 @@ func keysPasswd(env keysEnv, args []string) error {
 	if err != nil {
 		return err
 	}
+	defer clear(priv)
 	pass, err := readNewPassphrase(t)
 	if err != nil {
 		return err
 	}
-	so, err := keys.SealOwner(priv.Seed(), pass, env.iter, env.now(), env.rand)
+	seed := priv.Seed()
+	defer clear(seed)
+	so, err := keys.SealOwner(seed, pass, env.iter, env.now(), env.rand)
 	if err != nil {
 		return err
 	}
@@ -837,6 +847,7 @@ func keysRecover(env keysEnv, args []string) error {
 	if err != nil {
 		return err
 	}
+	defer clear(priv)
 	pub := priv.Public().(ed25519.PublicKey)
 	fp := keys.Fingerprint(pub)
 	p, perr := keys.ReadPin(env.ownerPinPath())
@@ -847,7 +858,9 @@ func keysRecover(env keysEnv, args []string) error {
 	if err != nil {
 		return err
 	}
-	so, err := keys.SealOwner(priv.Seed(), pass, env.iter, env.now(), env.rand)
+	seed := priv.Seed()
+	defer clear(seed)
+	so, err := keys.SealOwner(seed, pass, env.iter, env.now(), env.rand)
 	if err != nil {
 		return err
 	}
