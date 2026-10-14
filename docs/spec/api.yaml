@@ -1461,7 +1461,6 @@ paths:
       tags: [peers]
       operationId: getMatrix
       summary: The newest matrix document and its decoded body
-      x-reserved: "PE1"
       x-scopes: [owner, read, push, write]
       responses:
         "200":
@@ -1470,7 +1469,6 @@ paths:
             application/json:
               schema: {$ref: "#/components/schemas/MatrixInfo"}
         "401": {$ref: "#/components/responses/Unauthorized"}
-        "501": {$ref: "#/components/responses/NotImplemented"}
     put:
       tags: [peers]
       operationId: putMatrix
@@ -1480,7 +1478,6 @@ paths:
         accepted from any caller with one of the scopes. `edit`: the hub builds and signs the
         next version; an edit that widens (keys.md 5.2) needs the `owner` scope (`403`
         otherwise), a narrowing edit is accepted from any of the scopes.
-      x-reserved: "PE1"
       x-scopes: [owner, push, write]
       requestBody:
         required: true
@@ -1504,7 +1501,6 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "409": {$ref: "#/components/responses/Conflict"}
-        "501": {$ref: "#/components/responses/NotImplemented"}
 
   /v1/peers/pause:
     post:
@@ -1512,7 +1508,6 @@ paths:
       operationId: pausePeers
       summary: Pause all peers (any device) or resume (owner)
       description: peers.md 11. Shorthand for a matrix edit of `paused`; resuming widens, so it needs `owner`.
-      x-reserved: "PE1"
       x-scopes: [owner, push, write]
       requestBody:
         required: true
@@ -1531,7 +1526,6 @@ paths:
               schema: {$ref: "#/components/schemas/MatrixInfo"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
-        "501": {$ref: "#/components/responses/NotImplemented"}
 
   /v1/peers/threads/{id}/resume:
     post:
@@ -1582,7 +1576,6 @@ paths:
       tags: [peers]
       operationId: listPeerAudit
       summary: Matrix changes, pauses, loop-guard stops and refusals
-      x-reserved: "PE1"
       x-scopes: [owner, read]
       parameters:
         - {name: since, in: query, schema: {type: string, format: date-time}}
@@ -1601,7 +1594,6 @@ paths:
                     items: {$ref: "#/components/schemas/PeerAuditEntry"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
-        "501": {$ref: "#/components/responses/NotImplemented"}
 
   /v1/app/android:
     get:

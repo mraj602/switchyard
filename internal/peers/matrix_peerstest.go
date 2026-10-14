@@ -30,7 +30,7 @@ func DefaultMatrix(state string) Matrix {
 	}
 	b, err := os.ReadFile(p)
 	if err != nil {
-		return NoMatrix{}
+		return LocalMatrix(state) // no test file: the signed document, as in a release build
 	}
 	var f allowFile
 	if json.Unmarshal(b, &f) != nil {
