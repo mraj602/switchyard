@@ -386,6 +386,26 @@ func TestRateLimits(t *testing.T) {
 	onlyContent(t, w.worker.session("worker").inbox, peers.SessionBurst)
 }
 
+// A sender that forgot its limits and threads and keeps sending envelopes the hub refuses
+// (here the loop guard) is rate-limited at the hub like any other sender.
+func TestHubRateLimitsRefusedEnvelopes(t *testing.T) {
+	w := newWorld(t, 2)
+	rep := w.laptop.send("api", toWorker, "turn one", 0, 0)
+	delivered(t, rep, rep.Status)
+	back := w.worker.send("worker", toAPI, "turn two", 0, 0)
+	delivered(t, back, back.Status)
+	var last *peers.Refusal
+	for i := 0; i < peers.SessionBurst+3; i++ {
+		_ = os.Remove(filepath.Join(w.laptop.state, "peers", "threads.json"))
+		_ = os.Remove(filepath.Join(w.laptop.state, "peers", "limits.json"))
+		last = w.laptop.send("api", toWorker, "again", 0, 0).Refusal()
+		if last == nil {
+			t.Fatalf("send %d was delivered", i)
+		}
+	}
+	refusedWith(t, last, peers.CodeRateLimited)
+}
+
 // A revoked machine is not reachable: the hub no longer lists an agent for it, and an
 // envelope sealed to its key would be refused by the sender's own revocation check.
 func TestRevokedTarget(t *testing.T) {

@@ -520,6 +520,8 @@ On `peer_msg` the hub:
 1. checks the envelope signature against the sending device's certificate (hub row) and that
    `from.device` is the link's device, `from.machine` its machine, and `from.session` a
    session the hub has seen on that machine → else `refused` `forbidden`;
+   Once the sender is verified, the hub takes the 9.2 rate token (a repeated `msg` takes none)
+   before the checks below, so refused envelopes are limited like good ones; no later step takes one;
 2. looks up `to.session` (live, on `to.machine`, whose agent device is `to.device`) → else
    `refused` `unknown_target` or `target_gone`;
 3. runs 5.3 (matrix, with the accounts it knows for both sessions: the hub's own view wins
