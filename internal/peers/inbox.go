@@ -113,11 +113,14 @@ func Alive(sock string) bool {
 // SocksDir is the default inbox folder: <runtime>/cc-socks. **Uncertain** on macOS (peers.md
 // 14: there the registry's messagingSocketPath is used, never this guess). runtime is
 // $XDG_RUNTIME_DIR, or /run/user/<uid> when it is empty.
-func SocksDir(runtime string) string {
+func SocksDir(runtime string) string { return filepath.Join(runtimeDir(runtime), SocksDirName) }
+
+// runtimeDir is $XDG_RUNTIME_DIR, or /run/user/<uid> when it is empty.
+func runtimeDir(runtime string) string {
 	if runtime == "" {
-		runtime = "/run/user/" + strconv.Itoa(os.Getuid())
+		return "/run/user/" + strconv.Itoa(os.Getuid())
 	}
-	return filepath.Join(runtime, SocksDirName)
+	return runtime
 }
 
 // DefaultSocketPath is where a session with this pid listens when its registry file does not

@@ -22,7 +22,7 @@ class AlarmReceiver : BroadcastReceiver() {
     if (!store.configured || !store.enabled || store.verified == "changed" || store.status == "revoked") return
     when (intent.action) {
       RESTART -> if (SyLinkService.instance == null) SyLinkService.start(ctx)
-      RETRY -> if (SyLinkService.instance == null) SyLinkService.start(ctx) else SyLinkService.start(ctx, SyLinkService.ACTION_RETRY)
+      RETRY -> SyLinkService.retry(ctx)
     }
   }
 
@@ -54,11 +54,7 @@ class ActionReceiver : BroadcastReceiver() {
     val pending = goAsync()
     Thread({
       try {
-        val transport = object : ActionTransport {
-          override fun viaLink(id: String, token: String, timeoutMs: Long): Int? = null
-          override fun viaHttp(origin: String, token: String, timeoutMs: Long): Int? = LinkClient.postAction(origin, token, timeoutMs)
-        }
-        ActionRunner(Link.store(ctx), transport, System::currentTimeMillis).run(a, budgetMs = RECEIVER_BUDGET_MS)
+        ActionRunner(Link.store(ctx), LinkClient.HTTP_ONLY, System::currentTimeMillis).run(a, budgetMs = RECEIVER_BUDGET_MS)
       } finally {
         pending.finish()
       }

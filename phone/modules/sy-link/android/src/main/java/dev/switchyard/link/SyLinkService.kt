@@ -1,7 +1,6 @@
 package dev.switchyard.link
 
 import android.app.AlarmManager
-import android.app.ForegroundServiceStartNotAllowedException
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
@@ -87,8 +86,6 @@ object Link {
   fun batteryExempt(ctx: Context): Boolean =
     ctx.getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(ctx.packageName) == true
 
-  fun canExact(ctx: Context): Boolean = ctx.getSystemService(AlarmManager::class.java)?.canScheduleExactAlarms() == true
-
   /** An alarm to AlarmReceiver: exact when allowed (14.2 "Exact alarms"), else inexact while idle. */
   fun alarm(ctx: Context, action: String, atMs: Long, exactOnlyWhenExempt: Boolean) {
     val am = ctx.getSystemService(AlarmManager::class.java) ?: return
@@ -96,7 +93,7 @@ object Link {
       ctx, action.hashCode(), Intent(ctx, AlarmReceiver::class.java).setAction(action),
       PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
-    val exact = canExact(ctx) && (!exactOnlyWhenExempt || batteryExempt(ctx))
+    val exact = am.canScheduleExactAlarms() && (!exactOnlyWhenExempt || batteryExempt(ctx))
     try {
       if (exact) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMs, pi)
       else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMs, pi)
@@ -153,24 +150,19 @@ class SyLinkService : Service(), LinkEvents {
   }
 
   /** 14.2: within 5 s of startForegroundService, per API level. */
-  private fun goForeground() {
-    Foreground.go(
-      Build.VERSION.SDK_INT, notifier.connection(),
-      plain = { n -> startForeground(NotifyIds.CONNECTION, n) },
-      typed = { n, type -> startForeground(NotifyIds.CONNECTION, n, type) },
-    )
-  }
+  private fun goForeground(): Boolean = Foreground.go(
+    Build.VERSION.SDK_INT, notifier.connection(),
+    plain = { n -> startForeground(NotifyIds.CONNECTION, n) },
+    typed = { n, type -> startForeground(NotifyIds.CONNECTION, n, type) },
+  )
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    goForeground()
-    when (intent?.action) {
-      ACTION_STOP -> {
-        client?.stop()
-        stopSelfNow()
-        return START_NOT_STICKY
-      }
-      ACTION_RECONNECT -> client?.reconnectNow()
-      ACTION_RETRY -> client?.retryIfWaiting()
+    if (!goForeground()) {
+      // Refused from the background (14.2): Settings says delivery is paused; the watchdog checks.
+      store.setError(BACKGROUND_BLOCKED)
+      SyLinkModule.emit("state", Link.state(this, store))
+      stopSelf()
+      return START_NOT_STICKY
     }
     if (!store.enabled || !store.configured || store.verified == "changed") {
       stopSelfNow()
@@ -252,37 +244,41 @@ class SyLinkService : Service(), LinkEvents {
 
   /** An action tapped while the service runs: the link first (it is up), in the client's time. */
   fun runAction(a: PendingAction) {
-    val c = client
+    val transport = client ?: LinkClient.HTTP_ONLY
     Thread({
-      val transport = c ?: object : ActionTransport {
-        override fun viaLink(id: String, token: String, timeoutMs: Long): Int? = null
-        override fun viaHttp(origin: String, token: String, timeoutMs: Long): Int? = LinkClient.postAction(origin, token, timeoutMs)
-      }
       ActionRunner(store, transport, System::currentTimeMillis).run(a)
     }, "sy-link-action").start()
   }
 
   companion object {
-    const val ACTION_STOP = "dev.switchyard.link.STOP"
-    const val ACTION_RECONNECT = "dev.switchyard.link.RECONNECT"
-    const val ACTION_RETRY = "dev.switchyard.link.RETRY"
-
     @Volatile var instance: SyLinkService? = null
 
     /**
      * startForegroundService, which Android 12+ refuses from the background unless an exemption
-     * applies (14.2). Refused → false, and Settings says delivery is paused.
+     * applies (14.2). Refused (ForegroundServiceStartNotAllowedException, an
+     * IllegalStateException) → false, and Settings says delivery is paused.
      */
-    fun start(ctx: Context, action: String? = null): Boolean = try {
-      ctx.startForegroundService(Intent(ctx, SyLinkService::class.java).setAction(action))
+    fun start(ctx: Context): Boolean = try {
+      ctx.startForegroundService(Intent(ctx, SyLinkService::class.java))
       true
-    } catch (e: ForegroundServiceStartNotAllowedException) {
+    } catch (e: IllegalStateException) {
       Link.store(ctx).setError(BACKGROUND_BLOCKED)
       SyLinkModule.emit("state", Link.state(ctx, Link.store(ctx)))
       false
-    } catch (e: IllegalStateException) {
-      Link.store(ctx).setError(BACKGROUND_BLOCKED)
-      false
+    }
+
+    // A running service is in this process: it gets its commands directly. Another
+    // startForegroundService from the background (an inexact alarm, the module) could be
+    // refused while the service runs, and would then report a blocked start that never was.
+
+    /** "Reconnect now", a new ping interval, start(): the running link reconnects; else the service starts. */
+    fun reconnect(ctx: Context) {
+      instance?.client?.reconnectNow() ?: start(ctx)
+    }
+
+    /** A long retry timer's alarm (14.4). */
+    fun retry(ctx: Context) {
+      instance?.client?.retryIfWaiting() ?: start(ctx)
     }
 
     fun stop(ctx: Context) {

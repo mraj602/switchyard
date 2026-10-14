@@ -13,6 +13,7 @@ import (
 	"io"
 	"log"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -108,14 +109,12 @@ func (r *Relay) Up(ctx context.Context, device string, u link.Up) (string, any, 
 	return "", nil, nil
 }
 
-func (r *Relay) now() time.Time { return r.Now() }
-
 // ---- the directory (peers.md 3) ----
 
 // Directory is the hub's session directory: every live session with its handle and the agent
 // device of its machine ("" when none).
 func (r *Relay) Directory(ctx context.Context) ([]peers.WireSession, error) {
-	ss, err := r.Store.PeerSessions(ctx, r.now().Add(-DirectoryWindow).UnixMilli())
+	ss, err := r.Store.PeerSessions(ctx, r.Now().Add(-DirectoryWindow).UnixMilli())
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +250,7 @@ func (r *Relay) relay(ctx context.Context, device string, doc keys.Doc) (peers.P
 		} else if !errors.Is(err, store.ErrNotFound) {
 			return err
 		}
-		now := r.now()
+		now := r.Now()
 		nowMS := now.UnixMilli()
 		row := store.PeerMessageRow{ID: env.Msg, Thread: env.Thread, FromSession: env.From.Session, FromDevice: device,
 			FromAcct: env.From.Account, ToSession: env.To.Session, ToDevice: env.To.Device, ToAcct: env.To.Account,
@@ -447,7 +446,7 @@ func (r *Relay) result(ctx context.Context, device string, m peers.PeerResultUp)
 			r.Log.Printf("peers: %s reported a result for message %s, which is not for it; ignored", device, m.Msg)
 			return nil
 		}
-		nowMS := r.now().UnixMilli()
+		nowMS := r.Now().UnixMilli()
 		if t, err := time.Parse(time.RFC3339Nano, m.HumanAt); err == nil {
 			if err := tx.PeerThreadHuman(row.Thread, t.UnixMilli()); err != nil {
 				return err
@@ -471,7 +470,7 @@ func (r *Relay) result(ctx context.Context, device string, m peers.PeerResultUp)
 // statusTx queues peer_status for a message's sender.
 func (r *Relay) statusTx(tx *store.Tx, row store.PeerMessageRow, status, detail string) error {
 	b, _ := json.Marshal(peers.PeerStatusBody{V: 1, Msg: row.ID, Status: status, Detail: detail,
-		At: r.now().UTC().Format(time.RFC3339Nano)})
+		At: r.Now().UTC().Format(time.RFC3339Nano)})
 	_, err := r.Link.EnqueueTx(tx, row.FromDevice, link.TypePeerStatus, "ps:"+row.ID, hublink.TTLPeerStatus, b, "")
 	if errors.Is(err, hublink.ErrNoLink) {
 		return nil // the sender's machine was revoked or removed
@@ -492,7 +491,7 @@ func (r *Relay) finishTx(tx *store.Tx, id, status, detail string) error {
 	if err != nil {
 		return err
 	}
-	final, err := tx.FinishPeerMessage(id, status, detail, r.now().UnixMilli())
+	final, err := tx.FinishPeerMessage(id, status, detail, r.Now().UnixMilli())
 	if err != nil || !final {
 		return err
 	}
@@ -517,8 +516,8 @@ func (r *Relay) MatrixChanged(ctx context.Context, d keys.Doc) error {
 			return err
 		}
 		for _, row := range rows {
-			if len(row.Ref) > 3 && row.Ref[:3] == "pm:" {
-				if err := r.finishTx(tx, row.Ref[3:], peers.CodeExpired, peers.CodePaused); err != nil {
+			if id, ok := strings.CutPrefix(row.Ref, "pm:"); ok && id != "" {
+				if err := r.finishTx(tx, id, peers.CodeExpired, peers.CodePaused); err != nil {
 					return err
 				}
 			}
@@ -539,7 +538,7 @@ func (r *Relay) peerLog(ctx context.Context, device string, m peers.PeerLogUp) e
 	}
 	at, err := time.Parse(time.RFC3339Nano, m.At)
 	if err != nil {
-		at = r.now()
+		at = r.Now()
 	}
 	return r.Store.Write(ctx, func(tx *store.Tx) error {
 		acct := func(id string) string {

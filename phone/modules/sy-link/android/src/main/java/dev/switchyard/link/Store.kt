@@ -16,18 +16,6 @@ interface KV {
   fun clear()
 }
 
-class MemoryKV : KV {
-  val map = HashMap<String, Any?>()
-
-  @Synchronized override fun getString(k: String): String? = map[k] as String?
-  @Synchronized override fun getLong(k: String, def: Long): Long = (map[k] as Long?) ?: def
-  @Synchronized override fun getBoolean(k: String, def: Boolean): Boolean = (map[k] as Boolean?) ?: def
-  @Synchronized override fun put(values: Map<String, Any?>, commit: Boolean) {
-    for ((k, v) in values) if (v == null) map.remove(k) else map[k] = v
-  }
-  @Synchronized override fun clear() = map.clear()
-}
-
 /** One action waiting for a connection (push.md 14.6 step 3). Never logged. */
 data class PendingAction(val id: String, val token: String, val action: String, val alert: String, val origin: String, val at: Long) {
   fun toJson(): JSONObject = JSONObject()
@@ -58,7 +46,6 @@ class Store(private val kv: KV) {
 
   /** The RFC 8291 auth secret (14.3: kept as it is; on its own it opens nothing). */
   val auth get() = Codec.unb64u(kv.getString("auth"))
-  val keysReady get() = kv.getBoolean("keys_ready", false)
 
   /** prepareKeys() keys not used by a configure yet: reused by the next prepareKeys (14.8). */
   val keysFresh get() = kv.getBoolean("keys_fresh", false)
@@ -90,7 +77,7 @@ class Store(private val kv: KV) {
     )
   }
 
-  fun saveKeys(auth: ByteArray) = kv.put(mapOf("auth" to Codec.b64u(auth), "keys_ready" to true, "keys_fresh" to true), commit = true)
+  fun saveKeys(auth: ByteArray) = kv.put(mapOf("auth" to Codec.b64u(auth), "keys_fresh" to true), commit = true)
 
   fun setEnabled(on: Boolean) = kv.put(mapOf("enabled" to on), commit = true)
   fun setPing(s: Long) = kv.put(mapOf("ping_s" to s))

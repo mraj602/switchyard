@@ -226,12 +226,22 @@ func ClaudeCandidates(p Proc, start int) []ProcInfo {
 	return out
 }
 
-// IsAncestor reports whether anc is an ancestor of pid (the agent's check, peers.md 2.3).
-func IsAncestor(p Proc, pid, anc int) bool {
-	for _, a := range Ancestors(p, pid) {
-		if a.PID == anc && a.PID != pid {
-			return true
+// NearestClaude is the pid of the nearest ancestor of start that looks like Claude Code, or 0.
+// It stops at the first one: `sy hook` asks it, and on macOS every step runs ps.
+func NearestClaude(p Proc, start int) int {
+	pid := start
+	for i := 0; i < MaxWalk && pid > 1; i++ {
+		in, err := p.Info(pid)
+		if err != nil {
+			return 0
 		}
+		if LooksLikeClaude(in) {
+			return in.PID
+		}
+		if in.PPID == pid {
+			return 0
+		}
+		pid = in.PPID
 	}
-	return false
+	return 0
 }

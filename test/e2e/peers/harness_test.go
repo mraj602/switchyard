@@ -504,8 +504,7 @@ func (m *machine) env() peers.Env {
 	ov := m.override
 	m.mu.Unlock()
 	return peers.Env{Home: m.home, State: m.state, Runtime: m.runtime, Machine: identity.Machine{ID: m.id, Name: m.name},
-		Proc: peers.LinuxProc{Root: m.procRoot}, FS: identity.OSFS{}, Now: m.h.clk.Now, SlotLabels: labels,
-		MaxTurns: peers.DefaultMaxTurns, Matrix: ov}
+		Proc: peers.LinuxProc{Root: m.procRoot}, FS: identity.OSFS{}, Now: m.h.clk.Now, SlotLabels: labels, Matrix: ov}
 }
 
 // setMatrix makes this machine's sender use m instead of its accepted matrix (a machine with

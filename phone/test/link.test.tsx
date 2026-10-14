@@ -420,6 +420,19 @@ describe('Settings → Notifications', () => {
     openURL.mockRestore();
   });
 
+  it('a system screen that will not open is said, not an unhandled rejection', async () => {
+    linkState.state = state({ notificationsAllowed: false });
+    const openSettings = jest.spyOn(Linking, 'openSettings').mockRejectedValue(new Error('No Activity found'));
+    const openURL = jest.spyOn(Linking, 'openURL').mockRejectedValue(new Error('No Activity found'));
+    await show();
+    await fireEvent.press(await screen.findByTestId('link-perm-settings'));
+    expect(await screen.findByText('Could not open settings: No Activity found')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('link-webpush'));
+    expect(await screen.findByText('Could not open the web app: No Activity found')).toBeTruthy();
+    openSettings.mockRestore();
+    openURL.mockRestore();
+  });
+
   it('a phone without a link target is told to pair again', async () => {
     const client = fakeClient({ deviceSelf: jest.fn(async () => ({ ...linkDevice(), targets: [] })) });
     await show({ client });

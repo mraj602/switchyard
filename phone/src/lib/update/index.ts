@@ -61,19 +61,23 @@ export function createUpdater(d: UpdaterDeps): Updater {
     }
   };
 
+  /** Asks the module (the paired hub, then GitHub) and keeps the answer; null when nothing is offered. */
+  async function fetchOffer(): Promise<UpdateInfo | null> {
+    const hub = await d.loadHub();
+    if (!hub) throw new Error('Pair with your hub first.');
+    const info = await d.link.checkUpdate(hub.origin, hub.token);
+    const offer = info && info.build > d.installedBuild ? info : null;
+    view = { ...view, info: offer, checkedAt: d.clock.now() };
+    await save();
+    return offer;
+  }
+
   async function run(): Promise<void> {
     if (view.phase === 'checking' || view.phase === 'installing') return;
     set({ phase: 'checking', message: null });
     try {
-      const hub = await d.loadHub();
-      if (!hub) {
-        set({ phase: 'error', message: 'Pair with your hub first.' });
-        return;
-      }
-      const info = await d.link.checkUpdate(hub.origin, hub.token);
-      const offer = info && info.build > d.installedBuild ? info : null;
-      set({ phase: offer ? 'available' : 'none', info: offer, checkedAt: d.clock.now(), message: null });
-      await save();
+      const offer = await fetchOffer();
+      set({ phase: offer ? 'available' : 'none', message: null });
     } catch (e) {
       set({ phase: 'error', message: errText(e) });
     }
@@ -91,10 +95,17 @@ export function createUpdater(d: UpdaterDeps): Updater {
       await run();
     },
     async install() {
-      const info = view.info;
-      if (!info || view.phase === 'installing' || view.phase === 'checking') return;
+      if (!view.info || view.phase === 'installing' || view.phase === 'checking') return;
       set({ phase: 'installing', message: null });
       try {
+        // The module keeps the hub's token for the download in memory from the last checkUpdate
+        // only (push.md 14.8): check again, so an offer remembered across a restart or from a
+        // previous pairing installs from the current hub, or goes when it has none.
+        const info = await fetchOffer();
+        if (!info) {
+          set({ phase: 'none', message: null });
+          return;
+        }
         const r = await d.link.installUpdate(info);
         set(r === 'started' ? { phase: 'started', message: 'Android is asking you to confirm the update.' } : { phase: 'refused', info: null, message: REFUSED_TEXT });
         if (r === 'refused') await save();

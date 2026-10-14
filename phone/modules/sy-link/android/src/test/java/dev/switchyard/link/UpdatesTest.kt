@@ -116,6 +116,8 @@ class ReleaseFilterTest {
     assertNull(Updates.newestRelease("[" + rel("v1.0.0") + "]"))
     assertNull(Updates.newestRelease("not json"))
     assertNull(Updates.newestRelease("[]"))
+    // numbers too large for an Int are skipped, not thrown
+    assertEquals("phone-v0.9.0", Updates.newestRelease("[" + rel("phone-v99999999999.0.0") + "," + rel("phone-v0.9.0") + "]")!!.tag)
   }
 }
 
@@ -218,5 +220,69 @@ class UpdateCheckTest {
       throw AssertionError("expected UpdateException")
     } catch (_: UpdateException) {
     }
+  }
+}
+
+/** installUpdate's order: download, checksum, certificate, then the session (P16.3). */
+class InstallTest {
+  private val apk = "the real apk".toByteArray()
+  private val sha = Codec.hex(Codec.sha256(apk))
+  private val key = "my release key".toByteArray()
+  private val dir = java.nio.file.Files.createTempDirectory("sy-update").toFile()
+
+  private inner class Net : Fetcher {
+    val downloads = mutableListOf<Pair<String, String?>>()
+    override fun get(url: String, token: String?) = Fetched(0, null)
+    override fun download(url: String, token: String?, dest: java.io.File, maxBytes: Long): String {
+      downloads += url to token
+      dest.writeBytes(apk)
+      return sha
+    }
+  }
+
+  /** The PackageManager, with an optional hook that runs while it reads the archive. */
+  private inner class Source(val during: (java.io.File) -> Unit = {}) : SigningSource {
+    override fun archive(path: String): ArchiveFacts {
+      during(java.io.File(path))
+      return ArchiveFacts("dev.switchyard.app", 900, listOf(key))
+    }
+    override fun installed() = ArchiveFacts("dev.switchyard.app", 800, listOf(key))
+  }
+
+  private fun offer(url: String, source: String = "hub") =
+    UpdateOffer(Manifest("0.9.0", 900, 0, "", apk.size.toLong(), sha, Codec.hex(Codec.sha256(key)), ""), url, source)
+
+  private fun installer(net: Net, source: Source, written: java.io.ByteArrayOutputStream) =
+    UpdateInstaller(dir, net, source) { f, sha -> f.inputStream().use { Updates.copyChecked(it, written, sha) } }
+
+  @Test fun theSessionGetsTheCheckedBytesAndTheFileIsGone() {
+    val written = java.io.ByteArrayOutputStream()
+    val net = Net()
+    val r = installer(net, Source(), written).install(offer("https://hub.ts.net/v1/app/android/apk"), "https://hub.ts.net", "tok")
+    assertTrue(r is UpdateInstaller.Result.Started)
+    assertTrue(written.toByteArray().contentEquals(apk))
+    assertEquals(listOf("https://hub.ts.net/v1/app/android/apk" to "tok"), net.downloads)
+    assertTrue(dir.listFiles()!!.isEmpty())
+  }
+
+  @Test fun aFileSwappedAfterItsChecksIsNotInstalled() {
+    // TOCTOU: the file changes between the checksum/certificate checks and the session write.
+    val written = java.io.ByteArrayOutputStream()
+    val r = installer(Net(), Source { it.writeBytes("something else".toByteArray()) }, written)
+      .install(offer("https://hub.ts.net/v1/app/android/apk"), "https://hub.ts.net", "tok")
+    assertTrue(r is UpdateInstaller.Result.Refused)
+    assertTrue(dir.listFiles()!!.isEmpty())
+  }
+
+  @Test fun plainHttpOnlyFromThePairedHubItself() {
+    // An http hub (development) may serve its own APK; a lookalike host may not, token or not.
+    val net = Net()
+    val r = installer(net, Source(), java.io.ByteArrayOutputStream())
+      .install(offer("http://hub.lan.evil.example/v1/app/android/apk"), "http://hub.lan", "tok")
+    assertTrue(r is UpdateInstaller.Result.Refused)
+    assertTrue(net.downloads.isEmpty())
+    val ok = installer(net, Source(), java.io.ByteArrayOutputStream()).install(offer("http://hub.lan/v1/app/android/apk"), "http://hub.lan", "tok")
+    assertTrue(ok is UpdateInstaller.Result.Started)
+    assertEquals(listOf("http://hub.lan/v1/app/android/apk" to "tok"), net.downloads)
   }
 }
