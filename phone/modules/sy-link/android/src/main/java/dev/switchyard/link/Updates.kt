@@ -138,6 +138,22 @@ object Updates {
     return m to origin.trimEnd('/') + rel
   }
 
+  /**
+   * Copies [input] to [out] and throws [UpdateException] unless the bytes copied hash to
+   * [sha256]: the installer session gets exactly the bytes that were checked.
+   */
+  fun copyChecked(input: java.io.InputStream, out: java.io.OutputStream, sha256: String) {
+    val md = java.security.MessageDigest.getInstance("SHA-256")
+    val buf = ByteArray(64 * 1024)
+    while (true) {
+      val k = input.read(buf)
+      if (k < 0) break
+      md.update(buf, 0, k)
+      out.write(buf, 0, k)
+    }
+    if (Codec.hex(md.digest()) != sha256.lowercase()) throw UpdateException("the update changed after its check")
+  }
+
   /** Whether the hub's bearer token may go with this request: only to the paired hub's own origin. */
   fun sendsToken(url: String, origin: String?): Boolean =
     origin != null && (url == origin.trimEnd('/') || url.startsWith(origin.trimEnd('/') + "/"))
