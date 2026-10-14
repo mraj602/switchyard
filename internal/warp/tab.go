@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -33,6 +34,9 @@ func FileName(label string) string { return Prefix + label + Suffix }
 func TabPath(folder, label string) string {
 	if strings.Contains(folder, `\`) && !strings.Contains(folder, "/") {
 		return strings.TrimRight(folder, `\`) + `\` + FileName(label)
+	}
+	if strings.Contains(folder, "/") && !strings.Contains(folder, `\`) {
+		return path.Join(folder, FileName(label))
 	}
 	return filepath.Join(folder, FileName(label))
 }

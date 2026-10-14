@@ -6,6 +6,8 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -74,6 +76,8 @@ func termGolden(t *testing.T, name string, p model.Plan) {
 	t.Helper()
 	got, _ := json.MarshalIndent(p, "", "  ")
 	got = append(got, '\n')
+	// The fake home is POSIX-shaped; plan joins with the host separator, JSON-escaped here.
+	got = []byte(strings.ReplaceAll(string(got), `\\`, "/"))
 	file := filepath.Join("testdata", "terminal", name+".json")
 	if *updateGoldens {
 		if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
@@ -86,6 +90,12 @@ func termGolden(t *testing.T, name string, p model.Plan) {
 	want, err := os.ReadFile(file)
 	if err != nil {
 		t.Fatalf("%v (go test -run TestTerminalGoldens -update)", err)
+	}
+	if runtime.GOOS == "windows" {
+		// plan_id hashes the host-separator paths, so it differs from the POSIX golden; the
+		// rest of the plan is compared.
+		id := regexp.MustCompile(`"plan_id": "p_[0-9a-f]+"`)
+		got = id.ReplaceAll(got, id.Find(want))
 	}
 	if string(got) != strings.ReplaceAll(string(want), "\r\n", "\n") {
 		t.Fatalf("%s differs from golden:\n%s", name, got)
@@ -170,7 +180,7 @@ func TestTerminalShape(t *testing.T) {
 	for _, a := range p.Actions {
 		steps = append(steps, string(a.Step))
 		if a.Op == model.OpRun {
-			mark := a.Touches[len(a.Touches)-1]
+			mark := filepath.ToSlash(a.Touches[len(a.Touches)-1])
 			if !strings.HasPrefix(mark, "/home/u/.local/state/switchyard/term/journal/") {
 				t.Errorf("run without a journal mark: %+v", a)
 			}

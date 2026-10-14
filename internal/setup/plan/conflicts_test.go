@@ -44,7 +44,7 @@ func conflictHome(t *testing.T) (*detecttest.Home, model.State) {
 func actionsOn(p model.Plan, h *detecttest.Home, rel string) []model.Action {
 	var out []model.Action
 	for _, a := range p.Actions {
-		if a.Path == h.Abs(rel) || a.From == h.Abs(rel) || strings.HasPrefix(a.From, h.Abs(rel)+"/") {
+		if a.Path == h.Abs(rel) || a.From == h.Abs(rel) || strings.HasPrefix(a.From, h.Abs(rel)+string(filepath.Separator)) {
 			out = append(out, a)
 		}
 	}
@@ -157,7 +157,7 @@ func TestConflictResolutions(t *testing.T) {
 	linked := false
 	for _, x := range p.Actions {
 		if x.Op == model.OpMove && strings.HasPrefix(x.From, h.Abs(".claude-3/skills")) {
-			moves = append(moves, strings.TrimPrefix(x.To, h.Abs(".claude")+"/"))
+			moves = append(moves, filepath.ToSlash(strings.TrimPrefix(x.To, h.Abs(".claude")+string(filepath.Separator))))
 		}
 		if x.Op == model.OpReplaceWithLink && x.Path == h.Abs(".claude-3/skills") {
 			linked = true
@@ -342,7 +342,7 @@ func TestHubPrototypeMCPLaunchers(t *testing.T) {
 	p = mustPlan(t, fs, model.Choices{NamedLaunchers: true, Labels: map[string]model.LabelColour{"~/.claude-2": {Label: "work"}}})
 	var names []string
 	for _, a := range p.Actions {
-		if a.Op == model.OpWriteFile && strings.Contains(a.Path, ".local/bin/") {
+		if a.Op == model.OpWriteFile && strings.Contains(filepath.ToSlash(a.Path), ".local/bin/") {
 			names = append(names, filepath.Base(a.Path))
 		}
 	}
