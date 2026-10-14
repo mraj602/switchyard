@@ -170,7 +170,7 @@ one folder.
   app/android/                 mirrored phone release: current and previous APK + manifest (phone.md P16.2)
 ```
 
-Runtime sockets (Linux, `$XDG_RUNTIME_DIR`): `sy/agent.sock` and `sy/r/<16 hex>.sock`, folders
+Runtime sockets (Linux, `$XDG_RUNTIME_DIR`): `sy/agent.sock` and `sy/r/<16 hex>.sock`, folders The agent socket falls back to `$TMPDIR/sy-<uid>/agent.sock` when the path would exceed the sun_path limit (103 bytes macOS, 107 Linux).
 0700, sockets 0600 (peers.md 2.3, 8.6). `sy` reads, never writes, each slot's
 `<config>/sessions/<pid>.json` and never opens `sessions/*.key` (identity.md 4).
 

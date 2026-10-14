@@ -87,16 +87,44 @@ func (r Reply) Refusal() *peers.Refusal {
 	return &peers.Refusal{Code: r.Error.Code, Detail: r.Error.Detail}
 }
 
-// SocketPath is the control socket (peers.md 2.3): $XDG_RUNTIME_DIR/sy/agent.sock on Linux,
-// <state>/agent/agent.sock on macOS.
-func SocketPath(goos, runtime, state string) string {
+// MaxSocketPath is the longest socket path that binds: sun_path is 104 bytes on macOS and
+// 108 on Linux, and both count the trailing NUL.
+func MaxSocketPath(goos string) int {
 	if goos == "darwin" {
-		return filepath.Join(state, "agent", "agent.sock")
+		return 103
 	}
-	if runtime == "" {
-		runtime = fmt.Sprintf("/run/user/%d", os.Getuid())
+	return 107
+}
+
+// SocketPath is the control socket (peers.md 2.3): $XDG_RUNTIME_DIR/sy/agent.sock on Linux,
+// <state>/agent/agent.sock on macOS. When that path is longer than the OS allows (a deep
+// state folder, a long $XDG_RUNTIME_DIR), it falls back to $TMPDIR/sy-<uid>/agent.sock, and
+// to /tmp/sy-<uid>/agent.sock when even that is too long. The fallback folder is 0700 and
+// the server checks it (listen). The agent and every client call this with the same inputs,
+// so they agree on the path.
+func SocketPath(goos, runtime, state string) string {
+	return socketPath(goos, runtime, state, os.TempDir(), os.Getuid())
+}
+
+func socketPath(goos, runtime, state, tmp string, uid int) string {
+	var p string
+	if goos == "darwin" {
+		p = filepath.Join(state, "agent", "agent.sock")
+	} else {
+		if runtime == "" {
+			runtime = fmt.Sprintf("/run/user/%d", uid)
+		}
+		p = filepath.Join(runtime, "sy", "agent.sock")
 	}
-	return filepath.Join(runtime, "sy", "agent.sock")
+	max := MaxSocketPath(goos)
+	if len(p) <= max {
+		return p
+	}
+	dir := fmt.Sprintf("sy-%d", uid)
+	if q := filepath.Join(tmp, dir, "agent.sock"); len(q) <= max {
+		return q
+	}
+	return filepath.Join("/tmp", dir, "agent.sock")
 }
 
 // ErrNoAgent means nothing is listening on the control socket: the caller falls back to the
