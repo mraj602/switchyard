@@ -312,7 +312,7 @@ func (r *Relay) relay(ctx context.Context, device string, doc keys.Doc) (peers.P
 		if d := m.Allowed(fromP, toP, &pt); !d.Allowed {
 			return refuse(d.Reason)
 		}
-		human := time.UnixMilli(th.HumanAt)
+		human := pt.HumanAt // zero when none is known (not 1970)
 		if t, err := time.Parse(time.RFC3339Nano, env.From.HumanAt); err == nil && t.After(human) {
 			human = t
 		}

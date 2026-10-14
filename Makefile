@@ -47,6 +47,7 @@ build:
 test:
 	$(GO) test ./...
 	$(GO) test -tags fakeinbox,peerstest ./internal/peers/... ./cmd/sy
+	$(GO) test -tags fakeinbox ./test/e2e/peers
 
 lint:
 	@out="$$(gofmt -l $(GOFILES))"; if [ -n "$$out" ]; then echo "gofmt needed:"; echo "$$out"; exit 1; fi
