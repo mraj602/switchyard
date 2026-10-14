@@ -520,6 +520,16 @@ func (h *Hub) Revoked(ctx context.Context, device string) {
 	}
 }
 
+// Connected reports whether the device is logged in now: a WebSocket, or a long poll
+// waiting (the peer relay's "its machine is offline", peers.md 4.3).
+func (h *Hub) Connected(device string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	_, ws := h.conns[device]
+	_, poll := h.polls[device]
+	return ws || poll
+}
+
 // ---- the sweeper (link.md 5.4) ----
 
 // Start notes the current document versions (machines learn older changes from `known` at

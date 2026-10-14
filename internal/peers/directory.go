@@ -181,6 +181,10 @@ func (e Env) can(m Matrix, ts *ThreadSet, from, to Session) string {
 	return "none"
 }
 
+// HandlePart cleans one part of a handle (name, account label or machine name) as the local
+// directory does, so the hub's directory makes the same handles (peers.md 3.2).
+func HandlePart(s string) string { return sanitizeHandlePart(s) }
+
 func party(s Session) Party {
 	return Party{Session: s.Entry.SessionID, Account: s.Account, Label: s.AccountLabel}
 }

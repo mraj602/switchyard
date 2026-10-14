@@ -8,6 +8,8 @@ import (
 
 	"github.com/mraj602/switchyard/internal/hub/auth"
 	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
+	"github.com/mraj602/switchyard/internal/hub/peerrelay"
+	"github.com/mraj602/switchyard/internal/hub/store"
 	"github.com/mraj602/switchyard/internal/keys"
 )
 
@@ -31,6 +33,77 @@ func init() {
 	reg("PUT", "/v1/peers/matrix", (*Server).matrixPut)
 	reg("POST", "/v1/peers/pause", (*Server).peersPause)
 	reg("GET", "/v1/peers/audit", (*Server).peersAudit)
+	reg("GET", "/v1/peers", (*Server).peersList)
+	reg("GET", "/v1/peers/messages", (*Server).peerMessages)
+}
+
+// peersList is the session directory for viewers (api.yaml PeerSession): every live
+// session the hub knows, with whether its machine runs an agent.
+func (s *Server) peersList(w http.ResponseWriter, r *http.Request) {
+	dir, err := peerrelay.New(s.Store(), s.cfg.Keys, s.Store().Now, nil).Directory(r.Context())
+	if err != nil {
+		keysFail(w, err)
+		return
+	}
+	out := []map[string]any{}
+	for _, d := range dir {
+		e := map[string]any{"session": d.Session, "handle": d.Handle, "name": d.Name, "account": d.Account,
+			"account_label": nullable(d.AccountLabel), "machine": d.MachineID, "machine_name": d.Machine,
+			"project": nullable(d.Project), "state": d.State, "agent": d.Device != nil}
+		if d.State == "" {
+			e["state"] = "working" // no fold yet: it has only just started
+		}
+		out = append(out, e)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"sessions": out})
+}
+
+func nullable(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+// peerMessages is GET /v1/peers/messages: metadata only (ids, accounts, size, status), never
+// text, newest first.
+func (s *Server) peerMessages(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	pq := store.PeerMessageQuery{Thread: q.Get("thread"), Session: q.Get("session"), Limit: 100}
+	if v := q.Get("since"); v != "" {
+		t, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			auth.WriteError(w, http.StatusBadRequest, "bad_request", "since is an RFC 3339 time")
+			return
+		}
+		pq.SinceMS = t.UnixMilli()
+	}
+	if v := q.Get("limit"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 || n > 500 {
+			auth.WriteError(w, http.StatusBadRequest, "bad_request", "limit is 1 to 500")
+			return
+		}
+		pq.Limit = n
+	}
+	rows, err := s.Store().PeerMessages(r.Context(), pq)
+	if err != nil {
+		keysFail(w, err)
+		return
+	}
+	out := []map[string]any{}
+	for _, m := range rows {
+		e := map[string]any{"id": m.ID, "thread": m.Thread,
+			"from": map[string]string{"session": m.FromSession, "device": m.FromDevice, "account": m.FromAcct},
+			"to":   map[string]string{"session": m.ToSession, "device": m.ToDevice, "account": m.ToAcct},
+			"kind": m.Kind, "size": m.Size, "local": m.Local, "status": m.Status, "detail": nullable(m.Detail),
+			"created_at": msTime(m.CreatedAt), "final_at": nil}
+		if m.FinalAt != 0 {
+			e["final_at"] = msTime(m.FinalAt)
+		}
+		out = append(out, e)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"messages": out})
 }
 
 // matrixInfo is api.yaml MatrixInfo.

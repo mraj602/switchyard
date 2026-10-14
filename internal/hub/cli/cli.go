@@ -36,6 +36,7 @@ import (
 	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
 	hublink "github.com/mraj602/switchyard/internal/hub/link"
 	"github.com/mraj602/switchyard/internal/hub/pair"
+	"github.com/mraj602/switchyard/internal/hub/peerrelay"
 	"github.com/mraj602/switchyard/internal/hub/pull"
 	"github.com/mraj602/switchyard/internal/hub/push/clock"
 	"github.com/mraj602/switchyard/internal/hub/push/engine"
@@ -280,7 +281,9 @@ func serve(args []string, stdout, stderr io.Writer) error {
 	// The link (link.md): made before the server (the server routes it) and the engine (it
 	// is a push channel); it reaches the server's action and settings through srv, set below.
 	var srv *api.Server
-	lk := hublink.New(hublink.Config{Store: st, Keys: ks, Now: now, Log: logger,
+	// The peer relay (peers.md 8.3) answers the machines' peer frames on the link.
+	relay := peerrelay.New(st, ks, now, logger)
+	lk := hublink.New(hublink.Config{Store: st, Keys: ks, Now: now, Log: logger, Peers: relay, PeerExpired: relay.Expired,
 		Settings: func(ctx context.Context) hublink.Settings {
 			urls, ping := srv.LinkSettings(ctx)
 			return hublink.Settings{URLs: urls, PingS: ping}
@@ -288,8 +291,13 @@ func serve(args []string, stdout, stderr io.Writer) error {
 		Action: func(ctx context.Context, token string) (any, bool, int) { return srv.LinkAction(ctx, token) },
 	})
 	cfg.Link = lk
+	relay.Link = lk
 	// A new matrix goes to every machine at once (link.md 7); the sweeper catches the rest.
-	ks.OnMatrix = func(keys.Doc) {
+	// A pause also drops the queued peer messages (peers.md 11).
+	ks.OnMatrix = func(d keys.Doc) {
+		if err := relay.MatrixChanged(context.Background(), d); err != nil {
+			logger.Printf("peers: applying the matrix: %v", err)
+		}
 		if err := lk.PublishDocs(context.Background()); err != nil {
 			logger.Printf("link: publishing the matrix: %v", err)
 		}
