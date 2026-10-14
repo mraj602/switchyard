@@ -76,6 +76,7 @@ Commands:
   machine show ID    One machine's hub-side state, for sy machine add (phase 5)
   keys show          The hub key, the owner key and pending proposals (F1)
   keys confirm-owner FP  Activate a pending owner key proposal (F1)
+  keys register / certify  A machine's link keys over SSH, for sy machine add (F1)
 
 Every command takes --db <file> (default <data>/hub.db, see sy paths).
 sy hub pair --help and sy hub owner-link --help show their flags.

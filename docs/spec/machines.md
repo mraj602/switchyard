@@ -455,7 +455,23 @@ idempotent: rerunning after a failure redoes only what is missing.
 9. **Direct push** (`--direct-push`): `sy direct-push on --server <s> --private <bool>
    --secret-stdin` on the remote, with topic and token from the operator's
    `<state>/push/direct.json` on stdin (section 5).
-10. **Registry.** Write `{name, machine, ssh: host, reach, port?, pull_target?, os, arch,
+10. **Link keys** (`direct` and `forward`; keys.md 4.2, peers.md 2.1). `sy keys device
+    --json` on the remote makes (first use) and prints its device id, machine id and public
+    link keys; `sy hub keys register <device> --machine <id> --keys-stdin --json` through the
+    admin channel signs them (`reg = ssh`) and returns the certificate, the hub key and the
+    active owner key. The operator checks the certificate with that hub key (this device,
+    machine and keys) and refuses a hub key other than the one its own `keys/hub.pub` pins.
+    `sy keys pin-ssh --json` on the remote (stdin: hub key, owner key, certificate) checks the
+    certificate against its own keys and pins both keys (`how = ssh`). Last, on the owner
+    machine at a terminal, the operator signs the certificate with the owner key (passphrase,
+    signing guard) and stores the signature with `sy hub keys certify`; elsewhere the summary
+    says "run `sy keys certify <device>` on the owner machine". Keys on the revocation list
+    are renewed once (`sy keys device --renew`). With no admin channel the step is skipped
+    with "run `sy agent enable` on <host>" (`reg = tofu`, then `sy keys certify`). `pull`
+    machines have no route to the hub and hold no link, so they get no link keys: peers there
+    reach only that machine's own sessions. Failures here do not undo the join; running the
+    add again is idempotent (same keys, same pins).
+11. **Registry.** Write `{name, machine, ssh: host, reach, port?, pull_target?, os, arch,
     sy_version, added_at, updated_at}` to `<state>/machines.json` (atomic, 0600).
 
 Summary (screen `SetupDone` style): one line per step, then "gpu-box reports to
@@ -495,7 +511,9 @@ machine token can never make codes). `--hub-admin`:
 The prefix is split into words like `SY_SSH_COMMAND` (no shell); `sy` itself never interprets
 it beyond appending arguments. Commands used: `sy hub pair --kind machine … --json`,
 `sy hub pull add … --json`, `sy hub pull run <name> --wait --json`, `sy hub machine show
-<id> --json`, `sy hub pull remove <name>`, `sy hub token revoke <device>`.
+<id> --json`, `sy hub keys register <device> --machine <id> --keys-stdin --json`, `sy hub
+keys certify <device> --fp <fp> --sig-stdin`, `sy hub pull remove <name>`, `sy hub token
+revoke <device>`.
 
 ### 4.5 Other machine commands
 

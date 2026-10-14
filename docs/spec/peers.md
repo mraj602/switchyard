@@ -49,10 +49,17 @@ B or C reads it as a cross-session message and answers with sy peers send (or Se
 - **Windows:** not in F1. Claude Code requires the per-session auth token on Windows inbox
   sockets, which lives in `sessions/*.key`; Switchyard never reads that file (identity.md 4).
   `sy agent enable` on Windows says so and exits 3 (so do `disable`, `status` and `run`).
-- `sy agent enable` makes the device keys if needed (keys.md 10), registers them (`PUT
-  /v1/devices/{id}/keys` with the machine token; the hub signs the certificate), prints the
-  key fingerprints for `sy keys certify` (the keys step is a seam in `cmd/sy`, empty until
-  `internal/keys` lands), turns `[peers] enabled = true` in `config.toml`, then installs and
+- `sy agent enable [--repin-hub]` makes the device keys if needed (keys.md 10), pins the hub
+  key on first use (`how = tofu`; a key that differs from the pin stops here with both
+  fingerprints and "run `sy agent enable --repin-hub`", which replaces the pin after the
+  guard and a TTY confirmation, keys.md 3.5), registers the keys unless the hub already holds
+  them (`PUT /v1/devices/self/keys` with the machine token, `reg = tofu`; a `qr` or `ssh`
+  machine whose keys were lost is told to run `sy machine add` again), pins the owner key on
+  first use, and prints the key fingerprints with "Owner-certified" or the next step `sy keys
+  certify <device>` on the owner machine. Machines added with `sy machine add` already have
+  `reg = ssh` keys and both pins (machines.md 4.2 step 10), so this is a no-op for them. A
+  `pull` machine (no route to the hub) gets no link keys and says so. Then it turns `[peers]
+  enabled = true` in `config.toml`, then installs and
   starts the service (hooks begin writing session files even if the service manager fails). `sy agent disable` stops and removes the service
   and sets `enabled = false`; keys stay (`sy uninstall --purge` removes them). `sy uninstall`
   removes the unit too (found by its file, not the ledger: enabling is not a setup step) and
@@ -60,6 +67,10 @@ B or C reads it as a cross-session message and answers with sy peers send (or Se
   `sy agent status` prints the service state and, from the `state` op, pid, start time and
   link state. `sy doctor` adds an `agent` line when peers are enabled: running, or a warning
   "not running (same-machine sends write the inbox directly)" with the fix `sy agent enable`.
+  With a hub to reach (not `pull`) a `link keys` line follows: a warning when the machine has
+  no keys, the hub has none or other keys for it, or the certificate has no owner signature
+  ("peers on other machines refuse this machine", fix `sy keys certify <device>` on the owner
+  machine); OK with `reg` and the fingerprint when certified.
 - Plan section 1 ("nothing stays running") gets its one exception here: the agent is installed
   only by `sy agent enable` (or `sy peers enable`, which calls it). Hooks, the status line and
   `sy tick` never depend on it.

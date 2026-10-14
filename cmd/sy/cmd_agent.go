@@ -28,7 +28,7 @@ import (
 	"github.com/mraj602/switchyard/internal/version"
 )
 
-const agentUsage = `usage: sy agent enable | disable | status
+const agentUsage = `usage: sy agent enable [--repin-hub] | disable | status
        sy agent run          (the foreground process the service runs)
 
 The agent is the per-machine service behind sy peers (docs/spec/peers.md 2).
@@ -70,9 +70,9 @@ var (
 	// from hub.url (newAgentLink).
 	agentLink agent.LinkClient
 	// agentKeysStep is what `sy agent enable` does about device keys before installing the
-	// service (peers.md 2.1: make them, register them, print the fingerprints). Nil until
-	// the keys package provides it.
-	agentKeysStep func(ctx context.Context, stdout io.Writer) error
+	// service (peers.md 2.1: make them, register them, pin the hub key, print the
+	// fingerprints); repin is --repin-hub. keys_link.go sets the real one; nil skips it.
+	agentKeysStep func(ctx context.Context, stdout io.Writer, repin bool) error
 )
 
 func agentSocket(e peerspkg.Env) string {
@@ -90,7 +90,8 @@ func runAgent(args []string, stdout, stderr io.Writer) error {
 	if runtime.GOOS == "windows" {
 		return peersExit(peerspkg.ExitUnsupported, errors.New("sy agent is not supported on Windows (Claude Code's inbox sockets need a per-session token that Switchyard never reads)"))
 	}
-	if len(args) > 1 {
+	repin := args[0] == "enable" && len(args) == 2 && args[1] == "--repin-hub"
+	if len(args) > 1 && !repin {
 		fmt.Fprintf(stderr, "sy agent %s: unexpected argument %q\n", args[0], args[1])
 		return errUsage
 	}
@@ -98,7 +99,7 @@ func runAgent(args []string, stdout, stderr io.Writer) error {
 	case "run":
 		return agentRun(stderr)
 	case "enable":
-		return agentEnable(stdout, stderr)
+		return agentEnable(stdout, stderr, repin)
 	case "disable":
 		return agentDisable(stdout, stderr)
 	case "status":
@@ -198,13 +199,15 @@ func setPeersEnabled(on bool) error {
 	return f.Save()
 }
 
-func agentEnable(stdout, stderr io.Writer) error {
+// agentEnable is `sy agent enable [--repin-hub]` (peers.md 2.1): the keys step, then peers
+// on and the service.
+func agentEnable(stdout, stderr io.Writer, repin bool) error {
 	se, err := agentServiceEnv(stderr)
 	if err != nil {
 		return err
 	}
 	if agentKeysStep != nil {
-		if err := agentKeysStep(context.Background(), stdout); err != nil {
+		if err := agentKeysStep(context.Background(), stdout, repin); err != nil {
 			return err
 		}
 	}

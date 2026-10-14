@@ -69,6 +69,38 @@ func noMore(t *testing.T, in *fakeinbox.Server, n int) {
 	}
 }
 
+// A worker added with sy machine add (keys registered over SSH through the admin channel,
+// reg ssh, then owner-certified) holds a link and exchanges a message with a QR-paired laptop.
+func TestSSHAddedMachineExchanges(t *testing.T) {
+	h := newHub(t, 30)
+	laptop := h.newMachine("laptop", laptopID, sessionSpec{slot: ".claude-2", label: "work", account: accWork, pid: 500, id: "sess-api", name: "api"})
+	worker := h.newMachineWith((*testHub).pairSSH, "worker", workerID,
+		sessionSpec{slot: ".claude-5", label: "personal", account: accPersonal, pid: 600, id: "sess-worker", name: "worker"})
+	c, err := h.ks.Cert(h.ctx, worker.device)
+	if err != nil || c.Body.Reg != keys.RegSSH || !c.OwnerSigned {
+		t.Fatalf("worker cert at the hub: reg %s owner-signed %v, %v", c.Body.Reg, c.OwnerSigned, err)
+	}
+	if p, err := keys.ReadPin(keys.Path(worker.state, keys.HubPinFile)); err != nil || p.How != keys.PinSSH {
+		t.Fatalf("worker hub pin %+v %v", p, err)
+	}
+	laptop.connect(matrixV)
+	worker.connect(matrixV)
+
+	const hello, answer = "okapi-tern-2208 to the ssh-added worker", "lemur-wren-5531 back over its link"
+	rep := laptop.send("api", toWorker, hello, 0, 0)
+	delivered(t, rep, rep.Status)
+	if got := onlyContent(t, worker.session("worker").inbox, 1); got[0].Outcome != fakeinbox.Deliver || !strings.Contains(got[0].Wrapper.Body, hello) {
+		t.Fatalf("worker got %s %q", got[0].Outcome, got[0].Wrapper.Body)
+	}
+	back := worker.send("worker", toAPI, answer, 0, 0)
+	delivered(t, back, back.Status)
+	if got := onlyContent(t, laptop.session("api").inbox, 1); got[0].Outcome != fakeinbox.Deliver || !strings.Contains(got[0].Wrapper.Body, answer) {
+		t.Fatalf("laptop got %s %q", got[0].Outcome, got[0].Wrapper.Body)
+	}
+	h.waitRow(rep.Msg, "delivered")
+	h.waitRow(back.Msg, "delivered")
+}
+
 // Laptop to worker is delivered with no prompt, the worker's session replies the way the
 // header says, and the hub's rows are metadata only.
 func TestDeliverAndReply(t *testing.T) {
