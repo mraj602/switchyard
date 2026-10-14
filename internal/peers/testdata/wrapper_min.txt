@@ -1,0 +1,3 @@
+<cross-session-message from="uds:/run/user/1000/sy/r/4f1a9c0d2b3e5a67.sock" from-session="c41e0000-1111-2222-3333-444455556666" from-mode="prompting">
+hi
+</cross-session-message>
