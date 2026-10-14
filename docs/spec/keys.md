@@ -175,7 +175,7 @@ signing guard 8). Nothing received over the network replaces a pin.
 
 **What TOFU trusts.** A machine that pins the owner key from the hub trusts the hub at that
 moment. Edited rows cannot exploit that (3.3 step 3). Anyone who can confirm a key of their own
-(an owner session, so also a database writer or code running as the hub, 5.4) can make a
+(an owner session, so also code running as the hub, 5.4) can make a
 machine **that pins afterwards** trust it; machines already pinned keep the real key, and
 their checks (peers.md 8.4) are the ones that count. `sy agent status` and the board show both
 fingerprints so a wrong pin is visible; `sy machine add` pins over SSH and avoids the window
@@ -333,7 +333,7 @@ addendum's "the hub can only narrow". Who can widen, per setting:
 | Attacker | `hub_may_widen = true` (default) | `false` |
 | --- | --- | --- |
 | A copy of `hub.db` or a backup (read only) | No | No |
-| Write access to `hub.db` only | **Yes**: it can mint an owner session (token hashes are unpeppered, tokens.md 2) and ask the hub to sign | No |
+| Write access to `hub.db` only | No: owner-session token hashes are keyed with `pair_pepper` (tokens.md 2), so it cannot mint one; it can mint a `write` token, which cannot ask for a widening | No |
 | Code running as the hub's OS user (reads `hub_sign.key`) | **Yes** | No |
 | A Claude Code session on the **hub machine**, as the same OS user | **Yes**, the same way | No |
 | A session on another machine | No (no owner session, no hub key) | No |

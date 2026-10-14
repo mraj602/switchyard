@@ -28,6 +28,13 @@ come from the `device` row.
 
 - The hub stores `device.token_hash` = SHA-256 of the full token string (including the
   prefix), as 32 raw bytes, with a unique index. Lookup is one indexed read.
+- Exception, owner sessions (`sy_o_`, pairing.md 4): `token_hash` = HMAC-SHA256(`pair_pepper`,
+  `"token:"` ‖ token), with the pairing pepper that lives outside the database (pairing.md 3).
+  A `sy_o_` token is looked up only by that hash, and a device with the `owner` scope (or
+  `created_by` `owner-link:…`) is accepted only through a `sy_o_` token. So write access to
+  `hub.db` alone cannot mint an owner session (keys.md 5.4): a row it writes either has a
+  plain hash (refused for the owner scope) or needs the pepper. Owner sessions made before this
+  rule are revoked by migration 7.
 - No salt or slow hash: the token has 256 bits of entropy, so a stolen hash cannot be
   brute-forced. (A slow hash is used only for the owner password, phase 4.)
 - Comparison is done by looking up the hash, so no timing-sensitive string compare is

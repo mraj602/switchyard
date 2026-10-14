@@ -15,6 +15,8 @@ import (
 
 var t0 = time.Date(2026, 10, 12, 9, 0, 0, 0, time.UTC)
 
+var testPepper = []byte("0123456789abcdef0123456789abcdef")
+
 type fakeClock struct {
 	mu sync.Mutex
 	t  time.Time
@@ -42,12 +44,13 @@ func newAuth(t *testing.T) (*Authenticator, *store.Store, *fakeClock) {
 	t.Cleanup(func() { st.Close() })
 	a := New(st)
 	a.Now = clk.Now
+	a.Pepper = func() ([]byte, error) { return testPepper, nil }
 	return a, st, clk
 }
 
 func ownerSession(t *testing.T, st *store.Store) Created {
 	t.Helper()
-	c, err := Create(context.Background(), st, CreateRequest{Kind: "browser", Name: "owner", Owner: true, CreatedBy: "owner-link:pc_x"})
+	c, err := Create(context.Background(), st, CreateRequest{Kind: "browser", Name: "owner", Owner: true, CreatedBy: "owner-link:pc_x", Pepper: testPepper})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -333,5 +336,38 @@ func TestRevokeCascadeDeletesTargetsAndCancelsDeliveries(t *testing.T) {
 	}
 	if err := Revoke(ctx, st, phone.Device.ID); err == nil {
 		t.Error("revoking twice should report not found")
+	}
+}
+
+// A database writer without the pepper file cannot make an owner session (keys.md 5.4).
+func TestOwnerTokenHashNeedsPepper(t *testing.T) {
+	a, st, _ := newAuth(t)
+	ctx := context.Background()
+	o := ownerSession(t, st)
+	if _, err := Create(ctx, st, CreateRequest{Kind: "browser", Name: "o", Owner: true, CreatedBy: "owner-link:pc_q"}); err == nil {
+		t.Fatal("owner session made without the pepper")
+	}
+	// The stored hash is not plain SHA-256.
+	if _, err := st.DeviceDetailByHash(ctx, Hash(o.Token)); err == nil {
+		t.Fatal("owner token stored as plain SHA-256")
+	}
+	// Rows a writer inserts: a sy_o_ token with a plain hash, and a sy_b_ token on a device
+	// with the owner scope.
+	tokO, _ := NewToken("owner")
+	tokB, _ := NewToken("browser")
+	for i, c := range []struct{ tok string }{{tokO}, {tokB}} {
+		d := store.Device{ID: store.NewID("dev_", t0.Add(time.Duration(i)*time.Millisecond)), Kind: "browser", Name: "evil",
+			TokenHint: Hint(c.tok), Scopes: []string{"owner", "read"}, CreatedAt: t0.UnixMilli(), CreatedBy: "owner-link:pc_evil"}
+		if err := st.Write(ctx, func(tx *store.Tx) error { return tx.InsertDevice(d, Hash(c.tok)) }); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := a.Lookup(ctx, c.tok); err != ErrUnauthorized {
+			t.Errorf("forged row %d accepted: %v", i, err)
+		}
+	}
+	// Without a pepper function no owner session authenticates.
+	a.Pepper = nil
+	if _, err := a.Lookup(ctx, o.Token); err != ErrUnauthorized {
+		t.Fatalf("no pepper: %v", err)
 	}
 }
