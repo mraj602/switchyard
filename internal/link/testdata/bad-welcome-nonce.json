@@ -1,0 +1,25 @@
+{
+  "name": "bad-welcome-nonce",
+  "keys": {
+    "device": "dev_01JA4VECT0RPH0NE00000000",
+    "hub": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w",
+    "hub_fp": "gr2q7gf5lh6pzfdnurnkvput"
+  },
+  "fields": {
+    "ctx": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+    "device": "dev_01JA4VECT0RPH0NE00000000",
+    "exp": 1760518920,
+    "payload_hex": "7b2276223a312c22646576696365223a226465765f30314a41345645435430525048304e453030303030303030222c226e657874223a35372c2270696e675f73223a3138302c2275726c73223a5b227773733a2f2f6875622e6578616d706c652e74732e6e65742f76312f6c696e6b225d2c226f776e6572223a6e756c6c2c227365727665725f74696d65223a22323032362d31302d31355430393a30303a30302e3030305a227d",
+    "seq": 0,
+    "t": "welcome",
+    "tag": ""
+  },
+  "frame": {
+    "t": "welcome",
+    "seq": 0,
+    "exp": 1760518920,
+    "tag": "",
+    "body": "eyJ2IjoxLCJkZXZpY2UiOiJkZXZfMDFKQTRWRUNUMFJQSDBORTAwMDAwMDAwIiwibmV4dCI6NTcsInBpbmdfcyI6MTgwLCJ1cmxzIjpbIndzczovL2h1Yi5leGFtcGxlLnRzLm5ldC92MS9saW5rIl0sIm93bmVyIjpudWxsLCJzZXJ2ZXJfdGltZSI6IjIwMjYtMTAtMTVUMDk6MDA6MDAuMDAwWiJ9",
+    "sig": "4HkdrhWKyXn3BgIoSfedS3L9mno9ehToTgnvzA6C7GtF1arduj_ESLmIx6b9HvHZAxaIbKJoY8Z2hGrZGdwHDw"
+  }
+}
