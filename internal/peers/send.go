@@ -13,7 +13,8 @@ import (
 	"time"
 )
 
-// SendResult is the outcome of a same-machine send (peers.md 4.3).
+// SendResult is the outcome of a send (peers.md 4.3): delivered (same machine, or a remote
+// message whose final status came in time) or queued at the hub.
 type SendResult struct {
 	Msg    string
 	Thread string
@@ -22,10 +23,23 @@ type SendResult struct {
 	// HeldLikely: the two permission classes differ, so Claude Code will probably hold the
 	// message for the receiver's approval (peers.md 8.5). The send still counts as delivered.
 	HeldLikely bool
+	// Status is "delivered" or "queued" ("" means delivered).
+	Status string
+	// Expires and Offline describe a queued message; Pending waits for its final status.
+	Expires time.Time
+	Offline bool
+	Pending *Pending
 }
 
 // Line is the one status line `sy peers send` prints on success.
 func (r SendResult) Line() string {
+	if r.Status == "queued" {
+		why := "not delivered yet"
+		if r.Offline {
+			why = "its machine is offline"
+		}
+		return fmt.Sprintf("queued for %s: %s; expires %s (msg %s)", r.Target.Handle, why, r.Expires.Local().Format("15:04"), r.Msg)
+	}
 	s := fmt.Sprintf("delivered to %s (msg %s, thread %s)", r.Target.Handle, r.Msg, r.Thread)
 	if r.HeldLikely {
 		s += ": the receiving session is in a different permission mode, so Claude Code may ask its user to approve it"
@@ -34,9 +48,9 @@ func (r SendResult) Line() string {
 }
 
 // ReplySocketPath is `$XDG_RUNTIME_DIR/sy/r/<16 hex>.sock`, the first 16 hex of
-// SHA-256(sender session id) (peers.md 8.6). PE1-local only names it (the agent that
-// listens there is PE2); a native SendMessage to it finds nobody, and the header's
-// "Reply with: sy peers send" line is the reply path.
+// SHA-256(sender session id) (peers.md 8.6). Nothing listens there yet (8.6 is not built);
+// a native SendMessage to it finds nobody, and the header's "Reply with: sy peers send"
+// line is the reply path.
 func ReplySocketPath(runtime, senderSession string) string {
 	if runtime == "" {
 		runtime = "/run/user/" + fmt.Sprint(os.Getuid())
@@ -63,15 +77,20 @@ func (e Env) newID() string {
 	return h[:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:]
 }
 
-// Send is the same-machine path of peers.md 4.2: the sender's checks in order, then the
-// write into the target's inbox (8.5). A *Refusal is final: nothing is retried. The caller
-// has been identified by Whoami; the directory is re-read here so a session that just ended
-// is `target_gone`.
+// Send is SendWith with the default options.
+func (e Env) Send(c Caller, to, text string) (SendResult, *Refusal) {
+	return e.SendWith(c, to, text, SendOpts{})
+}
+
+// SendWith is the sender's pipeline of peers.md 4.2: the checks in order, then the write into
+// a local target's inbox (8.5) or the envelope to the hub (8.2, through Env.Remote). A
+// *Refusal is final: nothing is retried. The caller has been identified by Whoami; the
+// directory is re-read here so a session that just ended is `target_gone`.
 //
 // Order: off; target resolves and is live; content; rate limits; matrix; loop guard;
-// delivery. The matrix, thread and rate files are updated only on delivery, except that a
-// rate token is taken when the rate check passes.
-func (e Env) Send(c Caller, to, text string) (SendResult, *Refusal) {
+// delivery. The thread file is updated only on delivery (or once the hub queued the
+// message), except that a rate token is taken when the rate check passes.
+func (e Env) SendWith(c Caller, to, text string, o SendOpts) (SendResult, *Refusal) {
 	if e.Off() {
 		return SendResult{}, Refuse(CodeOff, "peers are off on this machine (sy peers on turns them back on)")
 	}
@@ -85,17 +104,46 @@ func (e Env) Send(c Caller, to, text string) (SendResult, *Refusal) {
 	if sender == nil {
 		return SendResult{}, Refuse(CodeNotASession, "this session's inbox socket is not answering")
 	}
-	target, _, rf := Resolve(dir, to)
+	all := dir
+	var remoteErr error
+	if e.Remote != nil {
+		rs, err := e.Remote.Sessions()
+		if err != nil {
+			remoteErr = err
+		}
+		all = append(append([]Session(nil), dir...), rs...)
+	}
+	target, _, rf := Resolve(all, to)
 	if rf != nil {
+		if rf.Code == CodeUnknownTarget && remoteErr != nil {
+			return SendResult{}, Refuse(CodeHubUnreachable,
+				"no session on this machine matches %q, and the hub cannot be asked for other machines' sessions now (%v)", to, remoteErr)
+		}
 		return SendResult{}, rf
 	}
 	if target.Entry.SessionID == sender.Entry.SessionID {
 		return SendResult{}, Refuse(CodeUnknownTarget, "that is this session")
 	}
+	if target.Remote && target.Device == "" {
+		return SendResult{}, Refuse(CodeUnknownTarget, "%s runs on %s, which has no sy agent (sy agent enable there)", target.Handle, target.MachineName)
+	}
 	clean, rf := CheckText(text)
 	if rf != nil {
 		return SendResult{}, rf
 	}
+	ttl := o.TTL
+	if ttl == 0 {
+		ttl = DefaultTTL
+	}
+	if ttl < MinTTL || ttl > MaxTTL {
+		return SendResult{}, Refuse(CodeFailed, "the TTL must be between 1m and 24h")
+	}
+	unlock := lockState()
+	defer func() {
+		if unlock != nil {
+			unlock()
+		}
+	}()
 	now := e.now()
 	rates := LoadRates(e.RatesPath())
 	if wait, ok := CheckRate(rates, now, sender.Entry.SessionID, PairKey(sender.Entry.SessionID, target.Entry.SessionID)); !ok {
@@ -121,6 +169,9 @@ func (e Env) Send(c Caller, to, text string) (SendResult, *Refusal) {
 	}
 	if th == nil {
 		th = threads.Start(sender.Entry.SessionID, target.Entry.SessionID, sender.Account, target.Account, now)
+		if target.Remote {
+			th.Remote = target.Entry.SessionID
+		}
 	}
 	maxTurns := m.MaxTurns()
 	if maxTurns <= 0 {
@@ -129,6 +180,12 @@ func (e Env) Send(c Caller, to, text string) (SendResult, *Refusal) {
 	if LoopGuard(th, newestHuman(sender, &target), maxTurns, now) {
 		_ = threads.Save(e.ThreadsPath()) // keeps paused_at
 		return SendResult{}, Refuse(CodeLoopGuard, "%d automated turns without a human prompt in either session; paused until you type in one of them", maxTurns)
+	}
+	msg := e.newID()
+	kind := th.KindFor(sender.Entry.SessionID)
+	if target.Remote {
+		return e.sendRemote(&unlock, Outgoing{Msg: msg, Thread: th.ID, Kind: kind, From: *sender, To: target,
+			HumanAt: newestHuman(sender, sender), Text: clean, TTL: ttl, Now: now}, *th)
 	}
 
 	from, err := UDSAddress(ReplySocketPath(e.Runtime, sender.Entry.SessionID))
@@ -139,7 +196,6 @@ func (e Env) Send(c Caller, to, text string) (SendResult, *Refusal) {
 		From: from, FromSession: sender.Entry.SessionID, FromName: sender.Handle, FromMode: sender.Mode,
 		Body: Header(sender.Handle, sender.AccountLabel, e.Machine.Name, th.ID) + "\n\n" + clean,
 	}
-	msg := e.newID()
 	frame := NewFrame(msg, target.Entry.SessionID, w)
 	if err := WriteFrame(target.Entry.SocketOf(e.Runtime), frame); err != nil {
 		code := CodeFailed
@@ -151,8 +207,42 @@ func (e Env) Send(c Caller, to, text string) (SendResult, *Refusal) {
 	th.RecordMessage(now)
 	_ = threads.Save(e.ThreadsPath())
 	_ = MarkDelivered(e.State, target.Entry.SessionID, now)
-	e.audit(msg, th, *sender, target, len(clean), "delivered", now)
+	e.audit(auditLine{Msg: msg, Thread: th.ID, From: sender.Entry.SessionID, To: target.Entry.SessionID, FromA: sender.Account,
+		ToA: target.Account, Size: len(clean), Local: true, Status: "delivered"}, now)
+	if e.Remote != nil {
+		e.Remote.Log(LocalLog{Msg: msg, Thread: th.ID, FromSession: sender.Entry.SessionID, ToSession: target.Entry.SessionID,
+			Kind: kind, Status: "delivered", Size: len(clean), At: now})
+	}
 	return SendResult{Msg: msg, Thread: th.ID, Target: target, Sender: *sender, HeldLikely: sender.Mode != target.Mode}, nil
+}
+
+// sendRemote hands a checked message to the hub. The state lock is released while the hub
+// answers (a message from the other machine may be waiting for it on this link) and taken
+// again to count the message in its thread once the hub queued it.
+func (e Env) sendRemote(unlock *func(), out Outgoing, thread Thread) (SendResult, *Refusal) {
+	(*unlock)()
+	*unlock = nil
+	p, rf := e.Remote.Send(out)
+	*unlock = lockState()
+	line := auditLine{Msg: out.Msg, Thread: thread.ID, From: out.From.Entry.SessionID, To: out.To.Entry.SessionID,
+		FromA: out.From.Account, ToA: out.To.Account, Size: len(out.Text)}
+	if rf != nil {
+		line.Status, line.Detail = "refused", rf.Code
+		e.audit(line, out.Now)
+		return SendResult{}, rf
+	}
+	ts := LoadThreads(e.ThreadsPath())
+	th := ts.FindOpen(out.From.Entry.SessionID, out.To.Entry.SessionID)
+	if th == nil {
+		th = ts.Adopt(thread.ID, thread.A, thread.B, thread.AAccount, thread.BAccount, out.To.Entry.SessionID, thread.OpenedAt)
+		th.HumanAt, th.Turns = thread.HumanAt, thread.Turns
+	}
+	th.RecordMessage(out.Now)
+	_ = ts.Save(e.ThreadsPath())
+	line.Status = "queued"
+	e.audit(line, out.Now)
+	return SendResult{Msg: out.Msg, Thread: thread.ID, Target: out.To, Sender: out.From, Status: "queued", Expires: p.Expires,
+		Offline: p.Offline, Pending: p}, nil
 }
 
 func newestHuman(a, b *Session) time.Time {
@@ -166,26 +256,25 @@ func newestHuman(a, b *Session) time.Time {
 }
 
 // auditLine is one line of <state>/peers/audit.jsonl: ids, sizes and statuses, never text
-// (peers.md 10).
+// (peers.md 10). A message to another machine gets a line when the hub queued (or refused)
+// it and one with its final status; a message from another machine one when it is handled.
 type auditLine struct {
 	TS     string `json:"ts"`
 	Msg    string `json:"msg"`
-	Thread string `json:"thread"`
-	From   string `json:"from"`
-	To     string `json:"to"`
-	FromA  string `json:"from_account"`
-	ToA    string `json:"to_account"`
-	Size   int    `json:"size"`
+	Thread string `json:"thread,omitempty"`
+	From   string `json:"from,omitempty"`
+	To     string `json:"to,omitempty"`
+	FromA  string `json:"from_account,omitempty"`
+	ToA    string `json:"to_account,omitempty"`
+	Size   int    `json:"size,omitempty"`
 	Local  bool   `json:"local"`
 	Status string `json:"status"`
+	Detail string `json:"detail,omitempty"`
 }
 
-func (e Env) audit(msg string, th *Thread, from, to Session, size int, status string, now time.Time) {
-	b, err := json.Marshal(auditLine{
-		TS: now.UTC().Format(time.RFC3339Nano), Msg: msg, Thread: th.ID,
-		From: from.Entry.SessionID, To: to.Entry.SessionID, FromA: from.Account, ToA: to.Account,
-		Size: size, Local: true, Status: status,
-	})
+func (e Env) audit(l auditLine, now time.Time) {
+	l.TS = now.UTC().Format(time.RFC3339Nano)
+	b, err := json.Marshal(l)
 	if err != nil {
 		return
 	}
@@ -198,6 +287,12 @@ func (e Env) audit(msg string, th *Thread, from, to Session, size int, status st
 	}
 	defer f.Close()
 	_, _ = f.Write(append(b, '\n'))
+}
+
+// AuditFinal records the final status of a message this machine sent to another machine
+// (peer_status, link.md 6.4).
+func (e Env) AuditFinal(msg, status, detail string, at time.Time) {
+	e.audit(auditLine{Msg: msg, Status: status, Detail: detail}, at)
 }
 
 // Describe turns a refusal into the one line `sy peers send` prints (peers.md 4.3).
