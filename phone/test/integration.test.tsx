@@ -488,6 +488,10 @@ describe('auto countdown', () => {
 // ------------------------------------------------------------------ the unified provider
 
 describe('HubProvider + HubGlue', () => {
+  // The first mount pays the cold start of the whole screen tree (about 2.5 s locally, no real
+  // timers or polling: every wait here is a microtask flush), so a slow CI runner needs headroom.
+  jest.setTimeout(30_000);
+
   async function mountApp(platform: 'ios' | 'android') {
     const secureMem = createMemorySecureStore();
     const secure = createSecureHub(secureMem, secureOptions(KEYCHAIN_ACCESSIBLE));

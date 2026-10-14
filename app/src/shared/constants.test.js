@@ -16,7 +16,7 @@ test('the shell CSP meta tag equals SHELL_CSP_META, the header adds frame-ancest
   assert.equal(C.SHELL_CSP, `${C.SHELL_CSP_META}; frame-ancestors 'none'`);
   assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>/, 'no inline script');
   assert.doesNotMatch(html, /<style|style=/, 'no inline style');
-  const spec = read('../../../docs/spec/desktop.md').replace(/\n\s*/g, ' ');
+  const spec = read('../../../docs/spec/desktop.md').replace(/\r?\n\s*/g, ' ');
   assert.ok(spec.includes(C.SHELL_CSP), 'desktop.md C2 CSP differs');
 });
 

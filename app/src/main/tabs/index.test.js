@@ -207,7 +207,7 @@ test('tab:remove clears the partition, closes the view, deletes the folder after
   assert.equal(view.webContents.destroyed, true, 'the view is closed');
   assert.equal(r.f.callsOf('session.clearStorageData').length, 1);
   assert.equal(ses.cookies.jar.size, 0);
-  assert.deepEqual(r.rm, [[path.join('/ud', 'Partitions', `tab-${A}`), { recursive: true, force: true }]]);
+  assert.deepEqual(r.rm, [[path.resolve('/ud', 'Partitions', `tab-${A}`), { recursive: true, force: true }]]);
   assert.deepEqual(r.events.at(-1).tabs.map((t) => t.id), [B]);
   // order: closed, then cleared, then the folder removed
   const order = r.f.calls.map((c) => c.api).filter((a) => ['webContents.close', 'session.clearStorageData'].includes(a));
@@ -230,7 +230,7 @@ test('tab:remove of a tab with no view yet (imported before the restart) still d
   assert.equal(r.api.view(C), undefined);
   await r.ipc.call('tab:remove', { id: C });
   assert.deepEqual(r.store.get().tabs.map((t) => t.id), [A]);
-  assert.deepEqual(r.rm, [[path.join('/ud', 'Partitions', `tab-${C}`), { recursive: true, force: true }]]);
+  assert.deepEqual(r.rm, [[path.resolve('/ud', 'Partitions', `tab-${C}`), { recursive: true, force: true }]]);
 });
 
 test('openLink: the tab whose seat matches, else the first signed-in tab, else false', async () => {

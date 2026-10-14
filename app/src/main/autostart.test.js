@@ -60,7 +60,13 @@ test('an AppImage uses $APPIMAGE, and a development run names the app path and t
   const img = await setup({ appImage: '/home/u/Switchyard.AppImage' });
   assert.match(img.a.desktopEntry(true), /^Exec="\/home\/u\/Switchyard\.AppImage" --background$/m);
   const dev = await setup({ isPackaged: false, execPath: '/n/electron', appPath: '/src/app', env: { SY_APP_USER_DATA: '/tmp/x' } });
-  assert.match(dev.a.desktopEntry(true), /^Exec=env SY_APP_USER_DATA="\/tmp\/x" "\/n\/electron" "\/src\/app" --background$/m);
+  // The override is path.resolve()d (drive letter and backslashes on Windows), then quoted
+  // as in desktopEntry: backslashes and quotes are escaped.
+  const userData = path.resolve('/tmp/x').replace(/(["\\`$])/g, '\\$1');
+  assert.equal(
+    dev.a.desktopEntry(true).split('\n').find((l) => l.startsWith('Exec=')),
+    `Exec=env SY_APP_USER_DATA="${userData}" "/n/electron" "/src/app" --background`,
+  );
   const packaged = await setup({ env: { SY_APP_USER_DATA: '/tmp/x' } });
   assert.doesNotMatch(packaged.a.desktopEntry(true), /SY_APP_USER_DATA/);
 });

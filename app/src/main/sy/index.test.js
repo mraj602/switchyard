@@ -7,7 +7,7 @@ import path from 'node:path';
 import { create } from './index.js';
 import { cleanEnv } from './env.js';
 import { parseVersion, versionAtLeast } from './resolve.js';
-import { writeFakeSy } from '../../../test/fakes/hub.js';
+import { syExecFile, writeFakeSy } from '../../../test/fakes/hub.js';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'sy-wpc-'));
 const silent = { warn() {}, error() {}, debug() {}, info() {} };
@@ -18,7 +18,7 @@ function make(dir, over = {}) {
   const sy = create({
     env: { HOME: dir, PATH: '/nonexistent', ...(over.env ?? {}) }, fs: fsp, path, platform: process.platform,
     resourcesPath: over.resourcesPath ?? '', minSy: '0.6.0', log: silent, syBin: over.syBin === undefined ? fake.bin : over.syBin,
-    timers: over.timers,
+    timers: over.timers, execFile: syExecFile,
   });
   return { fake, sy };
 }
@@ -184,24 +184,24 @@ test('resolution: SY_BIN, then PATH or ~/.local/bin if new enough, else the bund
   const b = tmp();
   const old = writeFakeSy(path.join(b, 'bin'), { '--version': { stdout: 'sy 0.5.9' } });
   const bundled = writeFakeSy(path.join(b, 'res', 'sy'), { '--version': { stdout: 'x' } });
-  const sy1 = create({ env: { HOME: b, PATH: path.dirname(old.bin) }, fs: fsp, path, platform: 'linux', resourcesPath: path.join(b, 'res'), minSy: '0.6.0', log: silent });
+  const sy1 = create({ env: { HOME: b, PATH: path.dirname(old.bin) }, fs: fsp, path, platform: process.platform, execFile: syExecFile, resourcesPath: path.join(b, 'res'), minSy: '0.6.0', log: silent });
   const r1 = await sy1.resolved();
   assert.equal(r1.source, 'bundled');
   assert.equal(r1.bin, bundled.bin);
 
   // PATH: new enough wins over bundled
   old.script({ '--version': { stdout: 'sy 0.6.0' } });
-  const sy2 = create({ env: { HOME: b, PATH: path.dirname(old.bin) }, fs: fsp, path, platform: 'linux', resourcesPath: path.join(b, 'res'), minSy: '0.6.0', log: silent });
+  const sy2 = create({ env: { HOME: b, PATH: path.dirname(old.bin) }, fs: fsp, path, platform: process.platform, execFile: syExecFile, resourcesPath: path.join(b, 'res'), minSy: '0.6.0', log: silent });
   assert.equal((await sy2.resolved()).source, 'path');
 
   // ~/.local/bin after PATH
   const c = tmp();
   writeFakeSy(path.join(c, '.local', 'bin'), { '--version': { stdout: 'sy 0.7.0' } });
-  const sy3 = create({ env: { HOME: c, PATH: '/nonexistent' }, fs: fsp, path, platform: 'linux', resourcesPath: '', minSy: '0.6.0', log: silent });
+  const sy3 = create({ env: { HOME: c, PATH: '/nonexistent' }, fs: fsp, path, platform: process.platform, execFile: syExecFile, resourcesPath: '', minSy: '0.6.0', log: silent });
   assert.equal((await sy3.resolved()).source, 'local');
 
   // nothing at all: every call says so, without throwing
-  const sy4 = create({ env: { HOME: tmp(), PATH: '/nonexistent' }, fs: fsp, path, platform: 'linux', resourcesPath: '/nonexistent', minSy: '0.6.0', log: silent });
+  const sy4 = create({ env: { HOME: tmp(), PATH: '/nonexistent' }, fs: fsp, path, platform: process.platform, execFile: syExecFile, resourcesPath: '/nonexistent', minSy: '0.6.0', log: silent });
   assert.equal(await sy4.resolved(), null);
   const r = await sy4.info();
   assert.equal(r.ok, false);
