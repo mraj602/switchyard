@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/mraj602/switchyard/internal/hub/api"
+	"github.com/mraj602/switchyard/internal/hub/appmirror"
 	"github.com/mraj602/switchyard/internal/hub/auth"
 	"github.com/mraj602/switchyard/internal/hub/hublock"
 	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
@@ -194,6 +195,8 @@ func serve(args []string, stdout, stderr io.Writer) error {
 	publicURL := fs.String("public-url", "", "the hub's https address phones open, e.g. https://hub.tail1234.ts.net (stored as hub.public_url)")
 	noPush := fs.Bool("no-push", false, "run without the alert engine and push channels")
 	noPull := fs.Bool("no-pull", false, "do not pull servers over SSH (sy hub pull targets wait)")
+	noAppMirror := fs.Bool("no-app-mirror", false, "do not mirror the Android app release from GitHub (also: setting app.android_mirror=false)")
+	appRepo := fs.String("app-repo", "", "GitHub owner/name the Android app mirror reads (default the build's repository)")
 	pullDirFlag := fs.String("pull-dir", "", "the pull key and generated ssh files (default <state>/pull)")
 	if pos, err := parse(fs, args); err != nil || len(pos) > 0 {
 		if err == nil {
@@ -277,6 +280,13 @@ func serve(args []string, stdout, stderr io.Writer) error {
 	}
 	logger.Printf("hub key %s", keys.GroupFP(ks.Key.FP))
 	cfg.Keys = ks
+	// The Android app mirror (phone.md P16.2): served at /v1/app/android, refreshed daily.
+	// Fake-clock test runs never reach out.
+	var appMirror *appmirror.Mirror
+	if !hooks.Fake {
+		appMirror = newAppMirror(st, filepath.Dir(path), *appRepo, version.Repo, *noAppMirror, logger.Printf)
+		cfg.AppMirror = appMirror
+	}
 	// The link (link.md): made before the server (the server routes it) and the engine (it
 	// is a push channel); it reaches the server's action and settings through srv, set below.
 	var srv *api.Server
@@ -397,6 +407,9 @@ func serve(args []string, stdout, stderr io.Writer) error {
 	}
 	mctx, mcancel := context.WithCancel(context.Background())
 	mdone := make(chan struct{})
+	if appMirror != nil {
+		go appMirror.Run(mctx, appMirrorEvery)
+	}
 	go func() { defer close(mdone); maintain(mctx, st, clk, logger) }()
 	errc := make(chan error, 1)
 	go func() { errc <- hs.Serve(ln) }()
