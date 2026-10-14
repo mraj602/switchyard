@@ -1341,13 +1341,19 @@ phone/modules/sy-link/
     Frames.kt                  parsing, hub signature checks, seq bookkeeping
     Crypto.kt                  Keystore keys, RFC 8291 decryption, login signature
     Notifier.kt                channels, posting, ids, dismissals, actions
-    ActionReceiver.kt          BroadcastReceiver for Snooze and Seen
-    BootReceiver.kt            BOOT_COMPLETED, MY_PACKAGE_REPLACED
+    Receivers.kt               BootReceiver (BOOT_COMPLETED, MY_PACKAGE_REPLACED), AlarmReceiver
+                               (the exact-alarm restarts and retries, 14.4), ActionReceiver (Snooze, Seen)
     Watchdog.kt                WorkManager periodic worker
     Store.kt                   the module's private SharedPreferences
-    SyUpdate.kt                the updater (phone.md P16)
+    SyUpdate.kt                the updater (phone.md P16; N2)
   android/src/test/…           JVM tests (14.10)
 ```
+
+As built (N1), the Kotlin is split a little further: `Codec.kt` (b64u, base32, fingerprints),
+`Keystore.kt` (the two aliases of 14.3; `Crypto.kt` keeps RFC 8291, HKDF, the claim seal and
+the Tink verifier), `Backoff.kt`, `Channels.kt`, `Actions.kt` (the 14.6 order), `Pairing.kt`
+(keys.md 7.3's checks) and `Foreground.kt` (`goForeground()`'s API branches), so each piece has
+a JVM test without Android classes.
 
 Hub signatures (Ed25519) are verified with Tink's `Ed25519Verify` (pure Java, maintained by
 Google, no native code) on every API level: the platform's `Signature("Ed25519")` exists only
@@ -1380,8 +1386,13 @@ dependency; ECDH, HKDF and AES-GCM come from the platform.
     </intent-filter>
   </receiver>
   <receiver android:name=".ActionReceiver" android:exported="false"/>
+  <receiver android:name=".AlarmReceiver" android:exported="false"/>
 </application>
 ```
+
+`AlarmReceiver` receives the exact alarms of 14.4 (the `onTaskRemoved` restart and reconnect
+timers over 10 s): an alarm's `PendingIntent` must target a component, and a broadcast lets the
+receiver start the service (allowed from an exact alarm) or tell a running one to retry now.
 
 - **`specialUse`, not `dataSync`:** `dataSync` is capped at 6 hours a day from Android 15 and
   may not start from `BOOT_COMPLETED`; ntfy's Android app uses `specialUse` for the same need.
@@ -1435,11 +1446,11 @@ Made by `prepareKeys()` before the claim (phone.md P2):
 | Concern | Design |
 | --- | --- |
 | Start | `start()` from JS after pairing and on each app start while instant delivery is on; `BootReceiver` (boot, app update); the watchdog. `startForegroundService`, then `goForeground()` (14.2) within 5 s. |
-| Persistent notification | Channel `sy_connection` (importance MIN, no badge, no sound): "Connected to hub · 2 min", "Reconnecting… (next try in 20 s)", "Not connected: <reason>". Tapping it opens Settings → Notifications. It can be hidden in Android's settings. |
-| Connection | OkHttp `WebSocket` to the first working `urls` entry, subprotocol `sy-link.1`, `pingInterval` = `ping_s` (default 180; Settings allows 300–600 on the tailnet), read timeout 0, connect timeout 15 s. Long-poll (link.md 2.1) after 3 failed handshakes while `GET /health` answers. |
+| Persistent notification | Channel `sy_connection` (importance MIN, no badge, no sound): "Connected to hub · 2 min", "Reconnecting… (next try in 20 s)", "Not connected: <reason>". Tapping it opens Settings → Notifications (`switchyard://settings/notifications`, phone.md P7). It can be hidden in Android's settings. |
+| Connection | OkHttp `WebSocket` to the first working `urls` entry, subprotocol `sy-link.1`, `pingInterval` = `ping_s` (default 180; Settings allows 300–600 on the tailnet), read timeout 0, connect timeout 15 s. `ping_s` is the claim reply's (or `setPingInterval`'s); the `welcome`'s `ping_s` is not applied over the phone's own choice. Long-poll (link.md 2.1) after 3 failed handshakes while `GET /health` answers; while on long-poll the WebSocket is tried again every 30 min. In long-poll mode, pending actions (14.6) go in the `up` frames of the poll requests. |
 | Login | link.md 3: the challenge's hub signature and fingerprint are checked against the pin from pairing (`h=`); `hello` is signed with `sy_link_sign`. |
 | Reconnect | 1, 2, 5, 10, 20, 30, 60 s, then 120 s, each ±20 % jitter; reset after a connection that lasted 60 s. `registerDefaultNetworkCallback`: a new default network (Wi-Fi ↔ mobile, a VPN such as Tailscale coming up) reconnects at once with the backoff reset. |
-| Close codes | link.md 8. **4403**: stop the service and the watchdog, post "This phone was removed from the hub", emit `revoked` (JS shows Pair). **4426**: stop, emit `upgrade` (the updater checks). **4409**: this connection only. |
+| Close codes | link.md 8. **4403**: stop the service and the watchdog, post "This phone was removed from the hub", emit `revoked` (JS shows Pair). **4426**: stop, emit `upgrade` (the updater checks). **4409**: this connection only; the newer connection is normally this same client's, so nothing reconnects at once, but a retry is still scheduled after 120 s as a safety net (a superseding connection that then died would otherwise leave the phone offline). **4401** and **4400** three times in a row: stop with status `error`. **4429** and **4503**: retry after 60 s. |
 | Doze | The app asks once for the battery-optimisation exemption (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`), with the maker guide (phone.md P6.7). Reconnect timers longer than 10 s use `AlarmManager.setExactAndAllowWhileIdle` when exempt and `canScheduleExactAlarms()` (14.2), a coroutine delay otherwise. |
 | Wake lock | `PARTIAL_WAKE_LOCK` only while one frame is verified, decrypted and posted, 10 s cap; never across the connection. |
 | Task removed | `onTaskRemoved` sets an exact alarm 1 s ahead that restarts the service (an alarm is one of the allowed background starts, 14.2). |
@@ -1457,13 +1468,21 @@ Per frame, under the wake lock:
 3. Act:
    - `alert` with `type` `alert`, `summary` or `test`: post on the channel of phone.md P6.1 for
      the trigger (`sy_test` for tests). **Notification id** = the first 4 bytes of SHA-256(tag)
-     as a signed int, so a new alert with the same tag replaces the old one and the tag's
-     `dismiss` cancels it. Group `sy`. Buttons when `actions` is present: Open (the app at
-     `url`), "Snooze <n> min", "Seen" (14.6). Private payloads carry the hub's private text
+     read **big-endian** as a signed int (`ByteBuffer.getInt`, Java's default), so a new alert
+     with the same tag replaces the old one and the tag's `dismiss` cancels it. Group `sy`.
+     Buttons when `actions` is present: Open (the app at `url`), "Snooze <n> min", "Seen"
+     (14.6); `<n>` is the hub's `snooze_min`, which the app passes with `setSnoozeMinutes`
+     (default 15). The buttons are left off a payload whose `origin` is not the paired hub's.
+     **Tap and Open** (native, no JS): `tap: "claude"` with an `https` `remote_url` opens that
+     link; anything else opens the app at the payload's `url` mapped to the app link
+     (`/#/sessions/x` → `switchyard://sessions/x`, phone.md P7). The `auto` rule's `/health`
+     probe of phone.md P6.4 is not run natively. Private payloads carry the hub's private text
      (5.5). `when` = the payload's `ts`. A `missed` count emits `refresh` to JS.
    - `alert` with `type: "dismiss"`: cancel the tag's notification.
-   - `refresh`: store the snapshot and ask the widgets to redraw through a headless JS task
-     (phone.md P11), with no network call.
+   - `refresh`: store the snapshot and ask the widgets to redraw (an `APPWIDGET_UPDATE`
+     broadcast to the app's widget providers, which runs `react-native-android-widget`'s
+     headless task), with no network call; the task reads it with `getRefresh()` and draws
+     the stored snapshot with it applied (phone.md P11). Emits `refresh` to JS when the app runs.
    - Unknown `t` or `type`: ignore.
 4. Store `last = seq`, then ack (batched, link.md 5.6).
 
@@ -1478,6 +1497,10 @@ cancels the notification at once, then:
 1. Link connected: send `{"t":"action","id","token"}`, wait up to 5 s for `action_result`.
 2. Otherwise, or on timeout: `POST <origin>/v1/actions/<token>` (no bearer, body `{}`, 10 s;
    section 8).
+
+`ActionReceiver` uses `goAsync()`, whose window is about 10 s: it hands the action to the
+running service (which has the link), and only when the service is not running does it do
+steps 2 and 3 itself, with a 9 s budget for both.
 3. Otherwise: keep `{token, action, alert, at}` in `Store` (at most 50; dropped after 24 h,
    when the token expires) and send them over the link at the next connection.
 
@@ -1496,9 +1519,12 @@ handler of phone.md P6.4 is not involved for link notifications.
 
 ```ts
 // phone/modules/sy-link/index.ts
+export type SignedDoc = { type: string; body: string; sigs: { by: string; fp?: string; sig: string }[] };
 export type LinkConfig = {
   origin: string; device: string; urls: string[]; pingS: number;
   hubKey: { pub: string; fp: string }; reg: "qr" | "tofu";
+  cert?: SignedDoc | null;                // the claim reply's certificate, checked natively (keys.md 7.3)
+  qrFp?: string | null;                   // the QR's h=, when the claim was a QR scan
 };
 export type LinkState = {
   enabled: boolean;                       // the "Instant delivery" switch
@@ -1513,15 +1539,22 @@ export type LinkState = {
   notificationsAllowed: boolean;
   verified: "qr" | "tofu" | "changed";
   pingS: number;
+  checkCode: string | null;               // 14.7: "k7q2-m4xa", null without keys
 };
+export type LinkRefresh = { v: 1; needs_you: number; seats: { seat: string; window: string; used_pct: number; resets_at: string | null }[]; ts: string };
 export type PublicKeys = { sign: { alg: "p256"; pub: string }; box: { alg: "p256"; pub: string }; auth: string };
 
+export const available: boolean;                              // false off Android / without the module
 export function prepareKeys(): Promise<PublicKeys>;           // make keys for a claim (reused until configure)
-export function configure(cfg: LinkConfig): Promise<void>;    // after a claim: pins and urls
+export function sealKeys(k: string, secret: string): Promise<string>;  // keys.md 7.1 keys_sealed (b64u)
+export function configure(cfg: LinkConfig): Promise<void>;    // after a claim: checks, pins and urls
 export function start(): Promise<void>;                       // instant delivery on, service started
 export function stop(): Promise<void>;                        // off: the watchdog does 15-minute checks
+export function reconnect(): Promise<void>;                   // "Reconnect now": backoff reset, connect at once
 export function getState(): Promise<LinkState>;
 export function setPingInterval(seconds: number): Promise<void>;   // 60–900
+export function setSnoozeMinutes(minutes: number): Promise<void>;  // the hub's snooze_min (the Snooze button)
+export function getRefresh(): Promise<LinkRefresh | null>;    // the newest refresh frame, for the widgets
 export function requestBatteryExemption(): Promise<boolean>;  // system dialog; resolves with the new state
 export function openBatterySettings(): Promise<void>;         // the maker's screen when known, else Android's
 export function sendLocalTest(): Promise<void>;               // a local notification on sy_test, no hub
@@ -1535,7 +1568,18 @@ export function checkUpdate(origin: string, token: string): Promise<UpdateInfo |
 export function installUpdate(info: UpdateInfo): Promise<"started" | "refused">;
 ```
 
-The jest fake (`test/fakes.ts`) gains a recording `sy-link` fake with scriptable state.
+`sealKeys` exists because the seal (AES-128-GCM over the keys JSON, keys.md 7.1) needs the auth
+secret, which never leaves the module except inside that seal or the clear `keys` of a typed
+code. `configure` makes keys.md 7.3's certificate check natively (the app's JS has no Ed25519):
+the hub signature with `hubKey`, the device and hub in the body, the phone's own keys, `reg =
+qr` and `hubKey.fp = qrFp` when `qrFp` is given. It rejects with code `ERR_SY_HUB_KEY` (the key
+is not the QR's) or `ERR_SY_TAMPERED` (anything else), and other codes (`ERR_SY_CONFIG`) for a
+bad argument. `checkUpdate` and `installUpdate` reject with `ERR_SY_UPDATE` until N2.
+
+The jest fake (`test/fakes.ts`) gains a recording `sy-link` fake with scriptable state
+(`linkState`, `emitLink`); `test/setup.ts` mocks `modules/sy-link` with it, and
+`test/link-contract.test.ts` keeps `src/contract/link.ts` (the mirror `src/lib` uses, P1)
+equal to the module's types.
 
 ### 14.9 Instant delivery off
 
@@ -1548,12 +1592,14 @@ notification.
 
 - **JVM** (Robolectric where Android classes are needed): RFC 8291 decryption against RFC 8291
   appendix A and the hub's goldens (`internal/hub/push/webpush/testdata`, and
-  `internal/link/testdata/*.json`, link.md 10, copied into the module's test resources by a
-  Gradle task); Ed25519 against RFC 8032's vectors through Tink; the login signature verified by
+  `internal/link/testdata/*.json`, link.md 10, read in place: the module's `build.gradle` passes
+  both directories to the test JVM as system properties `sy.linkVectors` and
+  `sy.webpushVectors`, and the runner skips while a directory does not exist yet); Ed25519 against RFC 8032's vectors through Tink; the login signature verified by
   the Go side's golden check (`hello-phone`); frame signature checks (each field changed →
   `reject`, `last` unchanged); seq dedupe across a simulated restart; the clock offset; backoff
   bounds; the notification id from a tag; the action fallback order with a fake clock;
-  close-code handling; `goForeground()` on API 31 and 34 (Robolectric SDK config).
+  close-code handling; `goForeground()` on API 31 and 34 (as built: a pure branch helper,
+  `Foreground.go(sdk, …)`, tested on both levels without Robolectric).
 - **Emulator** (API 31, 34–36): Doze (`adb shell dumpsys deviceidle force-idle`), standby buckets,
   network switch, reboot, app update, task removed, revocation (4403).
 - **On the phone** (N1, plan addendum C): overnight Doze, reboot, Wi-Fi ↔ mobile, Tailscale off
