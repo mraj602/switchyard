@@ -175,7 +175,7 @@ func (t ttarget) listed(id string) bool {
 func (t ttarget) via() []string {
 	var out []string
 	for _, f := range t.folders {
-		if sp := filepath.Join(f.Dir, "settings.json"); sp != t.path {
+		if sp := filepath.Join(f.Dir, "settings.json"); sp != filepath.Clean(t.path) {
 			out = append(out, sp)
 		}
 	}
@@ -253,7 +253,7 @@ func (tp *tplanner) roots() []troot {
 		}
 		if !found {
 			for _, f := range r.folders {
-				if filepath.Join(f.Dir, "plugins") == r.root {
+				if filepath.Join(f.Dir, "plugins") == filepath.Clean(r.root) {
 					r.owner = f
 					break
 				}
