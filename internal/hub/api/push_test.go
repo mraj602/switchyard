@@ -79,7 +79,7 @@ func newPushRig(t *testing.T, withSenders bool) *pushRig {
 		}
 		return c.Token
 	}
-	r.owner = mk("browser", "owner", []string{"owner", "read", "push"})
+	r.owner = ownerSessionToken(t, st).Token
 	r.phone = mk("phone", "phone-1", nil)
 	r.other = mk("phone", "phone-2", nil)
 	return r
@@ -118,6 +118,14 @@ func (r *pushRig) json(method, path, token string, body any, wantStatus int) map
 }
 
 func (r *pushRig) deviceID(token string) string {
+	if auth.IsOwnerToken(token) { // keyed hash: find it by its hint
+		all, _ := r.st.Devices(context.Background(), false)
+		for _, d := range all {
+			if d.TokenHint == auth.Hint(token) {
+				return d.ID
+			}
+		}
+	}
 	d, err := r.st.DeviceByHash(context.Background(), auth.Hash(token))
 	if err != nil {
 		r.t.Fatal(err)

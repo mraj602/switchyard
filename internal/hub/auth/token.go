@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
@@ -82,6 +83,19 @@ func Hash(token string) []byte {
 	return h[:]
 }
 
+// OwnerHash is the stored hash of an owner session's sy_o_ token: HMAC-SHA256(pepper,
+// "token:" + token), with the pairing pepper (tokens.md 2, keys.md 5.4). Without the pepper
+// file a database writer cannot make a row that a sy_o_ token of its choosing matches.
+func OwnerHash(pepper []byte, token string) []byte {
+	h := hmac.New(sha256.New, pepper)
+	h.Write([]byte("token:"))
+	h.Write([]byte(token))
+	return h.Sum(nil)
+}
+
+// IsOwnerToken reports whether a token has the sy_o_ prefix of an owner session.
+func IsOwnerToken(token string) bool { return strings.HasPrefix(token, "sy_o_") }
+
 // Hint is the display form: kind prefix + "…" + last 4 characters.
 func Hint(token string) string {
 	if len(token) < 10 {
@@ -113,6 +127,8 @@ type CreateRequest struct {
 	// push, a sy_o_ token and Expires (default OwnerSessionAge). Kind must be "browser".
 	Owner   bool
 	Expires time.Duration
+	// Pepper is the pairing pepper; required with Owner (the token hash is OwnerHash).
+	Pepper []byte
 }
 
 // Created is a new device and its token (shown once).
@@ -140,6 +156,9 @@ func Prepare(req CreateRequest, now time.Time) (Prepared, error) {
 	if req.Owner {
 		if kind != "browser" {
 			return Prepared{}, errors.New("an owner session is a browser device")
+		}
+		if len(req.Pepper) < 32 {
+			return Prepared{}, errors.New("an owner session needs the pairing pepper")
 		}
 		scopes = append([]string(nil), OwnerSessionScopes...)
 	}
@@ -172,6 +191,7 @@ func Prepare(req CreateRequest, now time.Time) (Prepared, error) {
 	}
 	p := Prepared{Created: Created{Device: d, Token: tok}, Hash: Hash(tok), Parent: req.Parent}
 	if req.Owner {
+		p.Hash = OwnerHash(req.Pepper, tok)
 		age := req.Expires
 		if age <= 0 {
 			age = OwnerSessionAge

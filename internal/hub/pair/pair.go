@@ -207,6 +207,10 @@ func (s *Service) mac(prefix, value string) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
+// Pepper returns the pairing pepper (made at first use). The authenticator keys the hash
+// of sy_o_ tokens with it (auth.OwnerHash).
+func (s *Service) Pepper() ([]byte, error) { return s.key() }
+
 // CodeHash is HMAC-SHA256(pepper, "code:" + 6 digits).
 func (s *Service) CodeHash(digits string) ([]byte, error) { return s.mac("code:", digits) }
 
@@ -638,6 +642,10 @@ func (s *Service) OwnerSignIn(ctx context.Context, ip, secret, name string) (aut
 		s.logf("pair owner limited ip=%s retry=%ds", ip, int(retry.Seconds()))
 		return auth.Created{}, &LimitError{RetryAfter: retry}
 	}
+	pepper, err := s.key()
+	if err != nil {
+		return auth.Created{}, err
+	}
 	h, err := s.SecretHash(secret)
 	if err != nil {
 		return auth.Created{}, err
@@ -658,7 +666,7 @@ func (s *Service) OwnerSignIn(ctx context.Context, ip, secret, name string) (aut
 		if !hmac.Equal(row.SecretHash, h) || row.Kind != "owner" {
 			return ErrInvalid
 		}
-		p, err := auth.Prepare(auth.CreateRequest{Kind: "browser", Name: name, CreatedBy: "owner-link:" + row.ID, Owner: true}, time.UnixMilli(now))
+		p, err := auth.Prepare(auth.CreateRequest{Kind: "browser", Name: name, CreatedBy: "owner-link:" + row.ID, Owner: true, Pepper: pepper}, time.UnixMilli(now))
 		if err != nil {
 			return err
 		}
