@@ -160,6 +160,7 @@ export async function registerForPush(deps: RegisterDeps): Promise<RegisterState
   const n = deps.notifications;
   try {
     await setupChannels(n, deps.app.platform);
+    if (linkMode(deps.app)) return await registerLink(deps);
     if (!deps.app.projectId) return 'no-project';
     let perm = await n.getPermissionsAsync();
     if (!perm.granted) {
@@ -174,6 +175,23 @@ export async function registerForPush(deps: RegisterDeps): Promise<RegisterState
   }
 }
 
+/**
+ * The self-hosted profile (P6.3, P13): the link target comes from pairing (push.md 13.7), so
+ * only the channels, the permission prompt and the prefs PATCH run. Never an Expo token.
+ */
+export function linkMode(app: AppInfo): boolean {
+  return app.push === 'link';
+}
+
+async function registerLink(deps: RegisterDeps): Promise<RegisterState> {
+  const n = deps.notifications;
+  let perm = await n.getPermissionsAsync();
+  if (!perm.granted) perm = await n.requestPermissionsAsync({ ios: { allowAlert: true, allowBadge: true, allowSound: true } });
+  if (!perm.granted) return 'blocked';
+  await deps.patchSelf(registrationPrefs(deps.tz, await knownPrefs(deps)));
+  return 'registered';
+}
+
 export interface SyncDeps extends RegisterDeps {
   deviceSelf(): Promise<Device>;
 }
@@ -186,6 +204,10 @@ export interface SyncDeps extends RegisterDeps {
 export async function syncRegistration(deps: SyncDeps): Promise<RegisterState | 'unchanged'> {
   const n = deps.notifications;
   try {
+    if (linkMode(deps.app)) {
+      // Nothing to re-register: the link target is the hub's (push.md 13.7).
+      return (await n.getPermissionsAsync()).granted ? 'unchanged' : 'blocked';
+    }
     if (!deps.app.projectId) return 'no-project';
     const perm = await n.getPermissionsAsync();
     if (!perm.granted) return 'blocked';
@@ -613,3 +635,6 @@ export async function runNotifyTask(deps: TaskDeps, body: unknown): Promise<Task
     return 'failed';
   }
 }
+
+export * from './makers';
+export * from './link';

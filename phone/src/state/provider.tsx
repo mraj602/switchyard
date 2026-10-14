@@ -13,6 +13,7 @@ import { addPendingRevoke, createHubClient, flushPendingRevokes, normalizeOrigin
 import type { HubClient } from '../lib/hub';
 import { performDecision } from '../lib/notify';
 import type { NotificationsLike } from '../lib/notify';
+import type { ClaimLink } from '../contract/link';
 import type { PendingRevoke, SecureHub, StoredHub } from '../lib/secure';
 import { bridge } from './bridge';
 import { HubContext } from './context';
@@ -28,6 +29,8 @@ export interface ProviderDeps {
   app: AppInfo;
   /** expo-notifications (dismissing a notification after Snooze or Seen, P6.4). */
   notifications: NotificationsLike;
+  /** The sy-link module (self-hosted profile, Android): the claim carries keys (P2). */
+  link?: ClaimLink | null;
 }
 
 export interface HubProviderProps {
@@ -339,7 +342,7 @@ export function HubProvider({ deps: initialDeps, navigate, openUrl, children }: 
     refresh,
     pairWith,
     unpair,
-    claimDeps: { fetch: deps.fetch, clock: deps.clock, app: deps.app },
+    claimDeps: { fetch: deps.fetch, clock: deps.clock, app: deps.app, ...(deps.link ? { link: deps.link } : {}) },
     dev: deps.app.dev,
   };
   return <HubContext.Provider value={value}>{children}</HubContext.Provider>;

@@ -60,8 +60,9 @@ describe('RootLayout', () => {
     expect(typeof deps.run).toBe('function');
     expect(typeof deps.onReceived).toBe('function');
     expect(deps.notifications).toBeTruthy();
-    // the background task is defined and the state hooks are filled, at module scope
-    expect(fakes.taskState.tasks.has('SY_NOTIFY_TASK')).toBe(true);
+    // the self-hosted profile (the default) defines no silent-push task (P6.5, P13); the state
+    // hooks are filled at module scope
+    expect(fakes.taskState.tasks.has('SY_NOTIFY_TASK')).toBe(false);
     expect(typeof hooks.afterRefresh).toBe('function');
     expect(typeof hooks.onCleared).toBe('function');
     expect(typeof hooks.onPaired).toBe('function');

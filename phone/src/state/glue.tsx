@@ -16,7 +16,7 @@ import { clearAndroidWidgets, updateAndroidWidgets } from '../../widgets/android
 import { clearIos, startCountdown, syncCountdown, updateTimelines } from '../../widgets/ios/adapter';
 import { useHub } from './context';
 import { stateHooks } from './hooks';
-import { systemCache, systemClock, systemFetch, systemSecureHub } from './platform';
+import { systemCache, systemClock, systemFetch, systemLink, systemSecureHub } from './platform';
 
 /** The ticking `now` of the screens. */
 export const NOW_TICK_MS = 30_000;
@@ -44,6 +44,7 @@ export function systemGluePlatform(app: AppInfo, clock: Clock = systemClock): Gl
     clearIos: (now) => clearIos(now),
     clearAndroidWidgets: () => clearAndroidWidgets(),
     registerNotifyTask,
+    link: systemLink(app),
   };
 }
 
@@ -100,6 +101,9 @@ export function HubGlue({ glue, clock = systemClock, children }: { glue: Glue; c
     void glue.loadLocal();
   }, [glue]);
 
+  // The link's refresh and revoked events refresh now (push.md 14.8).
+  useEffect(() => glue.attachLink(), [glue]);
+
   useEffect(() => {
     glue.setContext({ me, origin, client, kick: () => void refresh(), reloadMe: () => void reloadMe() });
   }, [glue, me, origin, client, refresh, reloadMe]);
@@ -143,6 +147,7 @@ export function HubGlue({ glue, clock = systemClock, children }: { glue: Glue; c
     pushState: view.pushState,
     enablePush,
     snoozeMin: view.snoozeMin,
+    ...(glue.link ? { link: glue.link } : {}),
     ...(countdown ? { countdown } : {}),
     ...(autoCountdown ? { autoCountdown } : {}),
     unpair: hub.unpair,

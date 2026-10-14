@@ -17,6 +17,8 @@ export type AppRoute =
   | { name: 'alerts-settings' }
   | { name: 'machines'; machine?: string }
   | { name: 'settings' }
+  /** P6.7 (N1): Settings → Notifications; the link's persistent notification opens it. */
+  | { name: 'notify-settings' }
   | { name: 'alert'; id: string }
   | { name: 'pair'; origin?: string; secret?: string; code?: string };
 
@@ -30,6 +32,7 @@ export const ROUTE_PATHS = {
   'alerts-settings': '/more/alerts',
   machines: '/more/machines',
   settings: '/more/settings',
+  'notify-settings': '/more/settings/notifications',
   alert: '/alerts/[id]',
   pair: '/pair',
 } as const satisfies Record<AppRoute['name'], string>;
@@ -44,9 +47,10 @@ export const HASH_ROUTES = {
   'alerts-settings': '#/more/alerts',
   machines: '#/machines',
   settings: '#/more/settings',
+  'notify-settings': '#/more/settings', // no PWA screen of its own
   alert: '#/alerts/<id>',
   pair: '#/pair',
 } as const satisfies Record<AppRoute['name'], string>;
 
 /** Hosts of switchyard:// URLs the app accepts (P7 allow-list); everything else opens Now. */
-export const INCOMING_HOSTS = ['now', 'sessions', 'accounts', 'machines', 'alerts', 'pair'] as const;
+export const INCOMING_HOSTS = ['now', 'sessions', 'accounts', 'machines', 'alerts', 'pair', 'settings'] as const;

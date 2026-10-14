@@ -5,6 +5,7 @@
 // the recording fakes and the app binds the real modules (src/state/glue.tsx).
 import type { Me, Overview, PushSettings, Seat } from '../../contract/api';
 import { ACTION_OPEN, LOCAL_PREFS_KEY } from '../../contract/constants';
+import type { LinkLike } from '../../contract/link';
 import type { LiveCountdownProps } from '../../contract/live';
 import type { AppInfo, Clock, FetchLike, KVStore } from '../../contract/platform';
 import type { WidgetSnapshot } from '../../contract/snapshot';
@@ -15,6 +16,7 @@ import { createHubClient } from '../hub';
 import { countdownFor } from '../live';
 import {
   DEFAULT_ACTION,
+  linkMode,
   registerForPush,
   setupChannelsAndCategories,
   syncRegistration,
@@ -46,6 +48,11 @@ export interface GluePlatform {
   clearIos(now: number): Promise<void>;
   clearAndroidWidgets(): Promise<void>;
   registerNotifyTask(): Promise<void>;
+  /**
+   * The sy-link module (self-hosted profile, Android; push.md 14.8). With `app.push = 'link'` it
+   * replaces the Expo token and the background notification task (P6.5).
+   */
+  link?: LinkLike | null;
 }
 
 /** What the screens see of the integration (through HubApi). */
@@ -263,6 +270,13 @@ export interface Glue {
   canCountdown(d: Pick<HubData, 'overview' | 'accounts'>, seatId: string): boolean;
   startCountdown(d: Pick<HubData, 'overview' | 'accounts'>, seatId: string): Promise<void>;
   setAutoCountdown(on: boolean): Promise<void>;
+  /**
+   * The link's events (push.md 14.8): `refresh` and `revoked` refresh the data now (a revoked
+   * phone then gets the 401 that shows Pair, P3). Returns the unsubscribe.
+   */
+  attachLink(): () => void;
+  /** The link module when the self-hosted profile uses it (for Settings → Notifications). */
+  readonly link: LinkLike | null;
   /** Tests. */
   internals(): { wantStart: boolean; settings: PushSettings | null; categoriesMin: number | null };
 }
@@ -282,6 +296,19 @@ export function createGlue(p: GluePlatform): Glue {
   let gen = 0;
   let view: GlueView = { pushState, snoozeMin: DEFAULT_SNOOZE_MIN, autoCountdown };
   const subs = new Set<() => void>();
+  /** The self-hosted profile with the module present. */
+  const link = linkMode(p.app) && p.link ? p.link : null;
+  /** The background task is the Expo profile's (P6.5); the link does its work natively. */
+  const registerTask = () => (link ? Promise.resolve() : p.registerNotifyTask());
+  let snoozeSent: number | null = null;
+  const sendSnooze = async () => {
+    const min = snoozeMin();
+    if (!link || snoozeSent === min) return;
+    await quietly(async () => {
+      await link.setSnoozeMinutes(min);
+      snoozeSent = min;
+    });
+  };
 
   const snoozeMin = () => {
     const n = settings?.snooze_min;
@@ -324,6 +351,7 @@ export function createGlue(p: GluePlatform): Glue {
       return; // keep what we had; Snooze shows the default
     }
     emit();
+    await sendSnooze();
     if (categoriesMin !== null && categoriesMin !== snoozeMin()) await setupCategories();
   };
 
@@ -341,7 +369,7 @@ export function createGlue(p: GluePlatform): Glue {
     emit();
     if (await granted()) {
       await setupCategories();
-      await quietly(() => p.registerNotifyTask());
+      await quietly(registerTask);
     }
   };
 
@@ -381,6 +409,9 @@ export function createGlue(p: GluePlatform): Glue {
       await quietly(() => p.clearIos(p.clock.now()));
       await quietly(() => p.clearAndroidWidgets());
       await quietly(() => p.notifications.setBadgeCountAsync(0));
+      // Unpair: the link's keys, pins and storage go (push.md 14.8 reset).
+      if (link) await quietly(() => link.reset());
+      snoozeSent = null;
       settings = null;
       settingsAt = null;
       pushState = null;
@@ -393,6 +424,8 @@ export function createGlue(p: GluePlatform): Glue {
       startedFor = client;
       await loadSettings(client, true);
       await register(client);
+      // Instant delivery is on by default after pairing (P6.7); configure() ran in the claim.
+      if (link) await quietly(() => link.start());
     },
     async startUp(client) {
       if (startedFor === client) return;
@@ -412,7 +445,13 @@ export function createGlue(p: GluePlatform): Glue {
       emit();
       if (perm.granted) {
         await setupCategories();
-        await quietly(() => p.registerNotifyTask());
+        await quietly(registerTask);
+      }
+      // push.md 14.4: start on each app start while instant delivery is on.
+      if (link) {
+        await quietly(async () => {
+          if ((await link.getState()).enabled) await link.start();
+        });
       }
     },
     async enablePush(client) {
@@ -439,6 +478,12 @@ export function createGlue(p: GluePlatform): Glue {
       autoCountdown = on;
       emit();
       await quietly(() => saveLocalPrefs(p.local, { auto_countdown: on }));
+    },
+    link,
+    attachLink() {
+      if (!link) return () => {};
+      const subs = [link.addListener('refresh', () => ctx.kick()), link.addListener('revoked', () => ctx.kick())];
+      return () => subs.forEach((x) => x.remove());
     },
     internals: () => ({ wantStart, settings, categoriesMin }),
   };
