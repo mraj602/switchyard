@@ -34,6 +34,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/auth"
 	"github.com/mraj602/switchyard/internal/hub/hublock"
 	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
+	hublink "github.com/mraj602/switchyard/internal/hub/link"
 	"github.com/mraj602/switchyard/internal/hub/pair"
 	"github.com/mraj602/switchyard/internal/hub/pull"
 	"github.com/mraj602/switchyard/internal/hub/push/clock"
@@ -301,7 +302,22 @@ func serve(args []string, stdout, stderr io.Writer) error {
 	if !*noPull {
 		cfg.Puller = ref
 	}
-	srv := api.New(cfg)
+	// The link (link.md): made before the server (the server routes it); it reaches the
+	// server's action and settings through srv, set just below.
+	var srv *api.Server
+	lk := hublink.New(hublink.Config{Store: st, Keys: ks, Now: now, Log: logger,
+		Settings: func(ctx context.Context) hublink.Settings {
+			urls, ping := srv.LinkSettings(ctx)
+			return hublink.Settings{URLs: urls, PingS: ping}
+		},
+		Action: func(ctx context.Context, token string) (any, bool, int) { return srv.LinkAction(ctx, token) },
+	})
+	cfg.Link = lk
+	srv = api.New(cfg)
+	if err := lk.Start(ctx); err != nil {
+		return fmt.Errorf("link: %w", err)
+	}
+	defer lk.Close()
 	var sched *pull.Scheduler
 	if !*noPull {
 		dir, err := pullDir(*pullDirFlag)
@@ -378,6 +394,7 @@ func serve(args []string, stdout, stderr io.Writer) error {
 	sctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	srv.Close()
+	lk.Close() // a draining notice and 1001 on every link: Shutdown does not wait for hijacked connections
 	shutErr := hs.Shutdown(sctx)
 	if sched != nil {
 		// Running sessions end at their next frame; their ingests still reach the engine.
