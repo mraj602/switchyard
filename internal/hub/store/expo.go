@@ -207,11 +207,20 @@ func (s *Store) MarkReceipts(ctx context.Context, rs []ExpoReceipt, now int64) e
 // gone, channel on, with a device that is neither revoked nor expired and has
 // prefs.widgets = true. Prefs is set to the device's prefs.
 func (s *Store) ExpoRefreshTargets(ctx context.Context, now int64) ([]model.Target, error) {
+	return s.refreshTargets(ctx, model.KindExpo, now)
+}
+
+// LinkRefreshTargets is the same for link targets (push.md 13.5).
+func (s *Store) LinkRefreshTargets(ctx context.Context, now int64) ([]model.Target, error) {
+	return s.refreshTargets(ctx, model.KindLink, now)
+}
+
+func (s *Store) refreshTargets(ctx context.Context, kind string, now int64) ([]model.Target, error) {
 	rows, err := s.r.QueryContext(ctx, `SELECT `+targetCols+`, d.prefs FROM push_target t
 		JOIN device d ON d.id = t.device_id JOIN channel c ON c.kind = t.kind
 		WHERE t.kind = ? AND t.enabled = 1 AND t.gone_at IS NULL AND c.enabled = 1
 		AND d.revoked_at IS NULL AND (d.expires_at IS NULL OR d.expires_at > ?)
-		ORDER BY t.created_at, t.id`, model.KindExpo, now)
+		ORDER BY t.created_at, t.id`, kind, now)
 	if err != nil {
 		return nil, err
 	}
