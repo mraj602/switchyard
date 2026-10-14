@@ -105,23 +105,21 @@ object Updates {
       return null
     }
     var best: GhRelease? = null
-    var bestV: List<Int>? = null
+    var bestV = ""
     for (i in 0 until arr.length()) {
       val r = arr.optJSONObject(i) ?: continue
       if (r.optBoolean("draft") || r.optBoolean("prerelease")) continue
       val tag = r.optString("tag_name")
-      val g = TAG.matchEntire(tag) ?: continue
-      val v = g.groupValues.drop(1).map { it.toInt() }
-      if (bestV == null || compareVersions(v.joinToString("."), bestV.joinToString(".")) > 0) {
-        val assets = HashMap<String, String>()
-        val list = r.optJSONArray("assets") ?: JSONArray()
-        for (j in 0 until list.length()) {
-          val a = list.optJSONObject(j) ?: continue
-          assets[a.optString("name")] = a.optString("browser_download_url")
-        }
-        best = GhRelease(tag, assets)
-        bestV = v
+      val v = tag.removePrefix("phone-v")
+      if (!TAG.matches(tag) || parseVersion(v) == null || (best != null && compareVersions(v, bestV) <= 0)) continue
+      val assets = HashMap<String, String>()
+      val list = r.optJSONArray("assets") ?: JSONArray()
+      for (j in 0 until list.length()) {
+        val a = list.optJSONObject(j) ?: continue
+        assets[a.optString("name")] = a.optString("browser_download_url")
       }
+      best = GhRelease(tag, assets)
+      bestV = v
     }
     return best
   }
