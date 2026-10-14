@@ -244,7 +244,7 @@ Lifecycle:
 
 Phones are certified by the hub signature only: the hub learned their keys under the QR seal
 (`reg = qr`) or, for a typed code, over TLS (`reg = tofu`, shown as "Not verified" with a
-check code, push.md 14.6). `sy keys certify` may add an owner signature to a phone; nothing
+check code, push.md 14.7). `sy keys certify` may add an owner signature to a phone; nothing
 requires it.
 
 ## 5. Who may sign what
