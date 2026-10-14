@@ -35,6 +35,9 @@ type session struct {
 }
 
 // newChallenge makes a challenge with a fresh single-use nonce (link.md 3.1).
+// errBusy: MaxNonces challenges are outstanding.
+var errBusy = errors.New("too many outstanding challenges")
+
 func (h *Hub) newChallenge() (link.Challenge, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -43,13 +46,17 @@ func (h *Hub) newChallenge() (link.Challenge, error) {
 	nonce := keys.B64(b)
 	exp := h.now().Add(ChallengeTTL).Unix()
 	h.mu.Lock()
-	if len(h.nonces) > 10_000 { // a flood of challenges: forget the expired ones now
+	if len(h.nonces) >= MaxNonces { // a flood of challenges: forget the expired ones now
 		now := h.now().Unix()
 		for n, e := range h.nonces {
 			if e < now {
 				delete(h.nonces, n)
 			}
 		}
+	}
+	if len(h.nonces) >= MaxNonces { // op challenge needs no credential: bound what it can pin
+		h.mu.Unlock()
+		return link.Challenge{}, errBusy
 	}
 	h.nonces[nonce] = exp
 	h.mu.Unlock()
@@ -145,7 +152,7 @@ func (h *Hub) login(ctx context.Context, hl link.Hello, transport, ip string) (*
 			if err := h.resyncTx(tx, hl.Device, hl.Last, st.NextSeq); err != nil {
 				return err
 			}
-		} else if err := ackTx(tx, hl.Device, hl.Last); err != nil {
+		} else if err := h.ackTx(tx, hl.Device, hl.Last); err != nil {
 			return err
 		}
 		st, err = tx.LinkState(hl.Device)
