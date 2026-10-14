@@ -20,6 +20,7 @@ func TestExportImportUnfreezeCLI(t *testing.T) {
 	srcState := t.TempDir()
 	t.Setenv("SY_STATE_DIR", srcState)
 	os.WriteFile(filepath.Join(srcState, "pair_pepper"), []byte("pep"), 0o600)
+	os.WriteFile(filepath.Join(srcState, "hub_sign.key"), make([]byte, 32), 0o600)
 	srcDir := t.TempDir()
 	srcDB := filepath.Join(srcDir, "hub.db")
 	out, err := run(t, "token", "create", "--kind", "machine", "--machine", "m_01", "--name", "laptop", "--db", srcDB, "--json")
@@ -71,6 +72,9 @@ func TestExportImportUnfreezeCLI(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(filepath.Join(dstState, "pair_pepper")); string(b) != "pep" {
 		t.Errorf("pepper %q", b)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dstState, "hub_sign.key")); len(b) != 32 {
+		t.Errorf("hub key not restored (%d bytes)", len(b))
 	}
 	// the old token authenticates against the imported hub
 	d, err := store.Open(ctx, dstDB, store.Options{})

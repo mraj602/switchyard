@@ -760,7 +760,7 @@ captured on reply sockets.
 ## 15. Tests
 
 - **Unit (`internal/peers`):** matrix evaluation tables (every cell, diagonal, paused, reply
-  rule, opener narrowed); `Widens` (including against the version-1 baseline when a machine
+  rule, opener narrowed); `keys.Widens` (including against the version-1 baseline when a machine
   has no document); loop guard (reset by human, `max_turns` edge, pause and
   auto-resume); rate buckets with the fake clock; content cleaning and the secret list
   (positive and negative); wrapper builder goldens (attribute order, escaping, `from-name`

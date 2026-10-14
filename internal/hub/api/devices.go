@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -58,6 +59,33 @@ type devJSON struct {
 	Current      bool            `json:"current"`
 	Prefs        model.Prefs     `json:"prefs"`
 	Targets      []devTargetJSON `json:"targets"`
+	Keys         *devKeyJSON     `json:"keys"`
+}
+
+// devKeyJSON is api.yaml DeviceKeyInfo (keys.md 4).
+type devKeyJSON struct {
+	SignFP      string     `json:"sign_fp"`
+	BoxFP       string     `json:"box_fp"`
+	Reg         string     `json:"reg"`
+	OwnerSigned bool       `json:"owner_signed"`
+	CertifiedAt store.Time `json:"certified_at"`
+}
+
+// devKeys returns every device's verified key summary; nil without a hub key or on error
+// (the Devices list then shows no keys rather than failing).
+func (s *Server) devKeys(ctx context.Context) map[string]*devKeyJSON {
+	if s.cfg.Keys == nil {
+		return nil
+	}
+	m, err := s.cfg.Keys.Certs(ctx)
+	if err != nil {
+		return nil
+	}
+	out := make(map[string]*devKeyJSON, len(m))
+	for id, i := range m {
+		out[id] = &devKeyJSON{SignFP: i.SignFP, BoxFP: i.BoxFP, Reg: i.Reg, OwnerSigned: i.OwnerSigned, CertifiedAt: store.Time(i.CertifiedAt)}
+	}
+	return out
 }
 
 func devStrp(s string) *string {
@@ -132,8 +160,11 @@ func (s *Server) devList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := make([]devJSON, 0, len(ds))
+	ks := s.devKeys(r.Context())
 	for _, d := range ds {
-		out = append(out, devView(d, dev.ID, targets[d.ID]))
+		v := devView(d, dev.ID, targets[d.ID])
+		v.Keys = ks[d.ID]
+		out = append(out, v)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"devices": out})
 }
@@ -175,7 +206,9 @@ func (s *Server) devReply(w http.ResponseWriter, r *http.Request, id, current st
 		auth.WriteError(w, http.StatusServiceUnavailable, "unavailable", "database unavailable")
 		return
 	}
-	writeJSON(w, status, devView(d, current, targets[d.ID]))
+	v := devView(d, current, targets[d.ID])
+	v.Keys = s.devKeys(r.Context())[d.ID]
+	writeJSON(w, status, v)
 }
 
 var (
@@ -300,8 +333,13 @@ func (s *Server) devDelete(w http.ResponseWriter, r *http.Request) {
 		auth.WriteError(w, http.StatusServiceUnavailable, "unavailable", "database unavailable")
 		return
 	}
-	// Already revoked counts as done (ErrNotFound from the cascade).
-	if err := auth.Revoke(r.Context(), s.Store(), id); err != nil && !errors.Is(err, store.ErrNotFound) {
+	// Already revoked counts as done (ErrNotFound from the cascade). With a hub key the
+	// device's keys also go on the next revocation list (keys.md 6).
+	revoke := func() error { return auth.Revoke(r.Context(), s.Store(), id) }
+	if s.cfg.Keys != nil {
+		revoke = func() error { return s.cfg.Keys.RevokeDevice(r.Context(), id, caller.ID, "revoked") }
+	}
+	if err := revoke(); err != nil && !errors.Is(err, store.ErrNotFound) {
 		auth.WriteError(w, http.StatusServiceUnavailable, "unavailable", "database unavailable")
 		return
 	}

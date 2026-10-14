@@ -14,6 +14,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/ingest"
 	"github.com/mraj602/switchyard/internal/hub/pair"
 	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/switchyard/internal/keys"
 	"github.com/mraj602/switchyard/internal/version"
 )
 
@@ -36,6 +37,7 @@ func pairService(s *Server) *pair.Service {
 	}
 	svc := pair.NewService(s.Store(), PairPepperPath)
 	svc.Log = s.Config().Log
+	svc.Keys = s.Config().Keys
 	pairSvcs[s] = svc
 	return svc
 }
@@ -148,6 +150,10 @@ func (s *Server) pairClaim(w http.ResponseWriter, r *http.Request) {
 		ExpectKind string `json:"expect_kind"`
 		Cookie     bool   `json:"cookie"`
 		Client     string `json:"client"`
+		// keys.md 7.1: the device's public keys, in the clear (typed codes) or sealed with
+		// the QR's k (secret claims).
+		Keys       *keys.DeviceKeysNew `json:"keys"`
+		KeysSealed string              `json:"keys_sealed"`
 	}
 	if !pairDecode(w, r, &body) {
 		return
@@ -156,7 +162,8 @@ func (s *Server) pairClaim(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := pairService(s).Claim(r.Context(), auth.ClientIP(r), pair.ClaimRequest{Secret: body.Secret, Code: body.Code,
-		Name: body.Name, Machine: body.Machine, ExpectKind: body.ExpectKind, Cookie: body.Cookie, Client: body.Client})
+		Name: body.Name, Machine: body.Machine, ExpectKind: body.ExpectKind, Cookie: body.Cookie, Client: body.Client,
+		Keys: body.Keys, KeysSealed: body.KeysSealed})
 	if err != nil {
 		pairFail(w, err)
 		return
@@ -166,6 +173,7 @@ func (s *Server) pairClaim(w http.ResponseWriter, r *http.Request) {
 	if res.Machine != "" {
 		reply["machine"] = res.Machine
 	}
+	s.claimKeys(r.Context(), reply, res.Cert, res.Reg, res.HubURL)
 	if body.Cookie {
 		pairDropSession(r, s)
 		http.SetCookie(w, auth.SessionCookie(r, res.Token, auth.ClaimedCookieAge))

@@ -87,6 +87,7 @@ func TestExportImportHonourPullDir(t *testing.T) {
 	src := openTest(t, t.TempDir())
 	sd := t.TempDir()
 	os.WriteFile(filepath.Join(sd, "pair_pepper"), []byte("pp"), 0o600)
+	os.WriteFile(filepath.Join(sd, "hub_sign.key"), []byte("hk"), 0o600)
 	pd := t.TempDir()
 	os.WriteFile(filepath.Join(pd, "id_ed25519"), []byte("KEY"), 0o600)
 	out := filepath.Join(t.TempDir(), "h.syx")

@@ -31,6 +31,10 @@ type Authenticator struct {
 	// an Origin for cookie requests besides the request's own Host (pairing.md 3.2).
 	PublicURL func(ctx context.Context) string
 
+	// Pepper returns the pairing pepper, which keys the hash of sy_o_ tokens (OwnerHash).
+	// Nil: no owner session authenticates.
+	Pepper func() ([]byte, error)
+
 	mu        sync.Mutex
 	touched   map[string]time.Time
 	refreshed map[string]time.Time // device id -> last cookie refresh
@@ -54,8 +58,25 @@ func (a *Authenticator) LookupDetail(ctx context.Context, token string) (store.D
 	if !LooksLikeToken(token) {
 		return store.DeviceDetail{}, ErrUnauthorized
 	}
-	d, err := a.Store.DeviceDetailByHash(ctx, Hash(token))
+	h := Hash(token)
+	owner := IsOwnerToken(token)
+	if owner {
+		if a.Pepper == nil {
+			return store.DeviceDetail{}, ErrUnauthorized
+		}
+		k, err := a.Pepper()
+		if err != nil {
+			return store.DeviceDetail{}, err
+		}
+		h = OwnerHash(k, token)
+	}
+	d, err := a.Store.DeviceDetailByHash(ctx, h)
 	if errors.Is(err, store.ErrNotFound) || (err == nil && d.RevokedAt != 0) {
+		return store.DeviceDetail{}, ErrUnauthorized
+	}
+	// The owner scope only comes with a sy_o_ token whose hash needed the pepper: a row a
+	// database writer gave the owner scope and a plain SHA-256 hash is refused (keys.md 5.4).
+	if err == nil && (d.HasScope("owner") || IsOwnerSession(d.Device)) != owner {
 		return store.DeviceDetail{}, ErrUnauthorized
 	}
 	// A device with expires_at (owner sessions) is revoked from that instant; board
