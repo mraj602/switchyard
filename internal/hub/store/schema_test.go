@@ -50,6 +50,8 @@ func TestSpecSchemaApplies(t *testing.T) {
 		"session", "session_state", "hook_event", "token_row", "limit_hit", "history_day",
 		"limit_sample", "web_usage", "usage_window", "rollup_daily", "rule", "alert", "delivery",
 		"session_transition", "pull_target",
+		"owner_key", "device_key", "revocation_doc", "link_state", "link_queue",
+		"matrix_doc", "peer_thread", "peer_message", "peer_audit",
 	}
 	for _, name := range want {
 		var strict int
@@ -308,8 +310,8 @@ func TestSchemaV6Expo(t *testing.T) {
 	if n := count(`SELECT count(*) FROM channel WHERE kind = 'expo' AND enabled = 1 AND settings = '{}' AND updated_at = 0`); n != 1 {
 		t.Errorf("expo channel rows: %d, want 1", n)
 	}
-	if n := count(`SELECT count(*) FROM channel`); n != 3 {
-		t.Errorf("channels: %d, want 3", n)
+	if n := count(`SELECT count(*) FROM channel`); n != 4 { // v8 adds link (push.md 13)
+		t.Errorf("channels: %d, want 4", n)
 	}
 	if n := count(`SELECT count(*) FROM push_target WHERE meta IS NULL`); n != 2 {
 		t.Errorf("old targets with meta NULL: %d, want 2", n)
@@ -342,4 +344,87 @@ func TestSchemaV6Expo(t *testing.T) {
 	if n := count(`SELECT count(*) FROM delivery WHERE ticket IS NOT NULL AND receipt_at IS NULL`); n != 0 {
 		t.Errorf("open tickets after the receipt: %d, want 0", n)
 	}
+}
+
+// Schema v8 (push.md 13.8): migrating a seeded v6 database recreates channel and push_target
+// with 'link' allowed, keeps every target and its columns, keeps each channel's switch and
+// settings, seeds the link channel and adds delivery.delivered_at (NULL on old rows). Schema v7
+// and v9 (keys.md 9, peers.md 10) add the key, link and peer tables with their CHECKs.
+func TestSchemaV8LinkKeepsTargets(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "hub.db")
+	seedAt(t, 6, path, v5Push,
+		`INSERT INTO push_target (id, kind, endpoint, meta, created_at, updated_at, fail_count, last_error)
+		 VALUES ('pt_expo', 'expo', 'ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]', '{"platform":"android"}', 3, 3, 2, 'HTTP 500')`,
+		`UPDATE channel SET enabled = 0, settings = '{"base_url":"https://exp.host"}' WHERE kind = 'expo'`)
+	s, err := Open(ctx, path, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if v, _ := s.SchemaVersion(ctx); v != LatestVersion() || v < 9 {
+		t.Fatalf("schema version %d, want %d (>= 9)", v, LatestVersion())
+	}
+	count := func(q string, args ...any) int {
+		t.Helper()
+		var n int
+		if err := s.R().QueryRowContext(ctx, q, args...).Scan(&n); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+		return n
+	}
+	if n := count(`SELECT count(*) FROM push_target`); n != 3 {
+		t.Errorf("targets after v8: %d, want 3", n)
+	}
+	if n := count(`SELECT count(*) FROM push_target WHERE id = 'pt_expo' AND meta = '{"platform":"android"}' AND fail_count = 2 AND last_error = 'HTTP 500'`); n != 1 {
+		t.Error("expo target columns not kept")
+	}
+	if n := count(`SELECT count(*) FROM push_target WHERE id = 'pt_web' AND keys = '{"p256dh":"p","auth":"a"}'`); n != 1 {
+		t.Error("webpush keys not kept")
+	}
+	if n := count(`SELECT count(*) FROM channel WHERE kind = 'expo' AND enabled = 0 AND settings = '{"base_url":"https://exp.host"}'`); n != 1 {
+		t.Error("expo channel switch or settings not kept")
+	}
+	if n := count(`SELECT count(*) FROM channel WHERE kind = 'link' AND enabled = 1`); n != 1 {
+		t.Error("link channel not seeded")
+	}
+	if n := count(`SELECT count(*) FROM delivery WHERE delivered_at IS NULL`); n != 2 {
+		t.Errorf("old deliveries with delivered_at NULL: %d, want 2", n)
+	}
+	if n := count(`SELECT count(*) FROM sqlite_schema WHERE type = 'index' AND name = 'push_target_device'`); n != 1 {
+		t.Error("index push_target_device missing")
+	}
+	mustExec := func(q string) {
+		t.Helper()
+		if _, err := s.w.ExecContext(ctx, q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	refused := func(what, q string) {
+		t.Helper()
+		if _, err := s.w.ExecContext(ctx, q); err == nil {
+			t.Errorf("%s accepted", what)
+		}
+	}
+	mustExec(`INSERT INTO device (id, kind, name, token_hash, token_hint, scopes, created_at, created_by)
+	          VALUES ('dev_p', 'phone', 'Pixel · app', randomblob(32), 'sy_p_…abcd', '["read","push"]', 0, 'test')`)
+	mustExec(`INSERT INTO push_target (id, kind, device_id, endpoint, keys, created_at, updated_at)
+	          VALUES ('pt_link', 'link', 'dev_p', 'link:dev_p', '{"p256dh":"p","auth":"a"}', 4, 4)`)
+	refused("unknown channel kind", `INSERT INTO push_target (id, kind, endpoint, created_at, updated_at) VALUES ('pt_x', 'carrier', 'x', 5, 5)`)
+	mustExec(`INSERT INTO device_key (device_id, sign_alg, sign_pub, box_alg, box_pub, reg, cert, hub_sig, created_at)
+	          VALUES ('dev_p', 'p256', randomblob(65), 'p256', randomblob(65), 'qr', CAST('{}' AS BLOB), randomblob(64), 1)`)
+	refused("owner_fp without owner_sig", `UPDATE device_key SET owner_fp = 'x' WHERE device_id = 'dev_p'`)
+	mustExec(`INSERT INTO owner_key (fp, pub, state, proposed_by, created_at) VALUES ('a', randomblob(32), 'active', 'cli', 1)`)
+	refused("two active owner keys", `INSERT INTO owner_key (fp, pub, state, proposed_by, created_at) VALUES ('b', randomblob(32), 'active', 'cli', 1)`)
+	mustExec(`INSERT INTO link_state (device_id) VALUES ('dev_p')`)
+	mustExec(`INSERT INTO link_queue (device_id, seq, type, tag, body, sig, exp, created_at)
+	          VALUES ('dev_p', 1, 'alert', 'sy-s-1', x'00', randomblob(64), 10, 1)`)
+	refused("unknown link frame type", `INSERT INTO link_queue (device_id, seq, type, body, sig, exp, created_at)
+	          VALUES ('dev_p', 2, 'chat', x'00', randomblob(64), 10, 1)`)
+	mustExec(`INSERT INTO peer_thread (id, a_session, b_session, a_account, b_account, opened_at, last_at)
+	          VALUES ('t_0123456789abcdef', 's1', 's2', 'a1', 'a2', 1, 1)`)
+	refused("thread with itself", `INSERT INTO peer_thread (id, a_session, b_session, a_account, b_account, opened_at, last_at)
+	          VALUES ('t_same', 's1', 's1', 'a1', 'a1', 1, 1)`)
+	refused("unknown peer status", `INSERT INTO peer_message (id, thread_id, from_session, from_device, from_account, to_session,
+	          to_device, to_account, kind, size, status, created_at, expires_at) VALUES ('m1', 't', 's1', 'd1', 'a1', 's2', 'd2', 'a2', 'start', 1, 'read', 1, 2)`)
 }

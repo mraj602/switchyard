@@ -1,4 +1,4 @@
--- Switchyard hub schema, version 6.
+-- Switchyard hub schema, version 9.
 --
 -- One SQLite file (WAL mode). Applied by the hub at start (phase 2) inside one transaction
 -- after `PRAGMA foreign_keys = ON`. Later versions add numbered migrations
@@ -12,6 +12,10 @@
 --       (machines.md 9).
 --   v5  phase 6: seat.look_src (desktop.md C10).
 --   v6  phase 8: the expo channel row, push_target.meta, delivery.ticket/receipt_at (push.md 12).
+--   v7  F1: owner_key, device_key, revocation_doc, link_state, link_queue (keys.md 9, link.md 5).
+--   v8  N1: the link channel (channel and push_target recreated with 'link'), delivery.delivered_at
+--       (push.md 13.8).
+--   v9  PE1-PE3: matrix_doc, peer_thread, peer_message, peer_audit (peers.md 10).
 --
 -- Conventions
 --   * Times are INTEGER milliseconds since the Unix epoch, UTC (`*_at`, `ts`).
@@ -23,7 +27,7 @@
 --     It is always 'owner' on a single-user hub.
 --   * Driver: modernc.org/sqlite (pure Go, no cgo). Needs SQLite >= 3.37 for STRICT.
 --
--- Groups: meta, identity, access, activity, usage, alerts.
+-- Groups: meta, identity, access, activity, usage, alerts, keys and link, peers.
 
 PRAGMA foreign_keys = ON;
 
@@ -36,7 +40,7 @@ CREATE TABLE schema_version (
 ) STRICT;
 
 INSERT INTO schema_version (version, applied_at, sy_version)
-VALUES (6, CAST(unixepoch('subsec') * 1000 AS INTEGER), 'spec');
+VALUES (9, CAST(unixepoch('subsec') * 1000 AS INTEGER), 'spec');
 
 -- Hub-wide settings that are not secrets (retention days, last-message policy, …).
 CREATE TABLE setting (
@@ -204,7 +208,7 @@ CREATE INDEX pair_code_live ON pair_code(code_hash) WHERE claimed_at IS NULL AND
 
 -- Channel kinds with a hub-wide switch.
 CREATE TABLE channel (
-  kind          TEXT    NOT NULL PRIMARY KEY CHECK (kind IN ('webpush', 'ntfy', 'expo')),
+  kind          TEXT    NOT NULL PRIMARY KEY CHECK (kind IN ('webpush', 'ntfy', 'expo', 'link')),
   enabled       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
   settings      TEXT    NOT NULL DEFAULT '{}' CHECK (json_valid(settings)),
   updated_at    INTEGER NOT NULL
@@ -212,17 +216,20 @@ CREATE TABLE channel (
 INSERT INTO channel (kind, enabled, settings, updated_at) VALUES
   ('webpush', 1, '{}', 0),
   ('ntfy', 1, '{}', 0),
-  ('expo', 1, '{}', 0);
+  ('expo', 1, '{}', 0),
+  ('link', 1, '{}', 0);
 -- expo: v6 (phase 8, push.md 12): the store app's native pushes through Expo's push service.
+-- link: v8 (N1, push.md 13): the Android app's own connection to the hub. v8 recreated channel and
+-- push_target to widen the kind CHECK; the rows were copied unchanged.
 
--- One place a push goes: a browser subscription or an ntfy topic.
+-- One place a push goes: a browser subscription, an ntfy topic, an Expo token or a link device.
 CREATE TABLE push_target (
   id            TEXT    NOT NULL PRIMARY KEY,      -- 'pt_' + ULID
   kind          TEXT    NOT NULL REFERENCES channel(kind),
   device_id     TEXT    REFERENCES device(id),     -- NULL: an ntfy topic added by the owner for the hub
-  name          TEXT,                               -- "iPhone · Safari", "ntfy.sh/sy-4fQx…"
-  endpoint      TEXT    NOT NULL,                   -- webpush: endpoint URL; ntfy: server URL + '/' + topic
-  keys          TEXT    CHECK (keys IS NULL OR json_valid(keys)),     -- webpush: {"p256dh": "…", "auth": "…"} base64url
+  name          TEXT,                               -- "iPhone · Safari", "ntfy.sh/sy-4fQx…", "Pixel 9 · app"
+  endpoint      TEXT    NOT NULL,                   -- webpush: endpoint URL; ntfy: server URL + '/' + topic; expo: token; link: 'link:' + device id
+  keys          TEXT    CHECK (keys IS NULL OR json_valid(keys)),     -- webpush and link: {"p256dh": "…", "auth": "…"} base64url
   secret        TEXT,                               -- ntfy access token; never returned by the API
   prefs         TEXT    CHECK (prefs IS NULL OR json_valid(prefs)),   -- only for targets without a device
   enabled       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
@@ -232,12 +239,13 @@ CREATE TABLE push_target (
   last_error    TEXT,
   last_error_at INTEGER,
   fail_count    INTEGER NOT NULL DEFAULT 0,
-  gone_at       INTEGER, meta TEXT CHECK (meta IS NULL OR json_valid(meta)),                            -- push service answered 404/410
+  gone_at       INTEGER,                            -- push service answered 404/410
+  meta          TEXT    CHECK (meta IS NULL OR json_valid(meta)),     -- expo, link: {"platform", "app_version", "app_build"}
   UNIQUE (kind, endpoint)
 ) STRICT;
 CREATE INDEX push_target_device ON push_target(device_id);
--- meta: v6 (phase 8, push.md 12.7). Per-target facts that are not secrets, expo only:
--- {"platform": "ios", "app_version": "0.8.0", "app_build": "12"}. For expo, endpoint is the Expo push token.
+-- meta: v6 (phase 8, push.md 12.7), for expo; link targets (push.md 13.7) use it too. For expo,
+-- endpoint is the Expo push token; for link it is 'link:' + device id (one per device).
 
 ---------------------------------------------------------------------------- activity
 
@@ -504,13 +512,14 @@ CREATE TABLE delivery (
   http_status   INTEGER,
   last_error    TEXT,
   created_at    INTEGER NOT NULL,
-  updated_at    INTEGER NOT NULL, ticket TEXT, receipt_at INTEGER,
+  updated_at    INTEGER NOT NULL, ticket TEXT, receipt_at INTEGER, delivered_at INTEGER,
   UNIQUE (alert_id, target_id, fire)
 ) STRICT;
 CREATE INDEX delivery_next ON delivery(next_at) WHERE next_at IS NOT NULL;
 CREATE INDEX delivery_batch ON delivery(batch);
 -- ticket, receipt_at: v6 (phase 8, push.md 12.4). ticket: the Expo push ticket id of a sent expo delivery
 -- (NULL for other kinds); receipt_at: when its receipt was read (or given up after 24 h).
+-- delivered_at: v8 (N1, push.md 13.4). link only: when the phone acked the frame that carried it.
 CREATE INDEX delivery_ticket_open ON delivery(created_at) WHERE ticket IS NOT NULL AND receipt_at IS NULL;
 
 -- One remote the hub pulls over SSH (machines.md 3.4).
@@ -538,3 +547,142 @@ CREATE TABLE pull_target (
   next_at       INTEGER                                      -- scheduler: next run
 ) STRICT;
 CREATE INDEX pull_target_next ON pull_target(enabled, next_at);
+
+---------------------------------------------------------------------------- keys and link (v7)
+
+-- The owner key's public half (keys.md 3). At most one is active; a key proposed by a device
+-- waits as 'pending' until an owner session or the hub's CLI confirms it.
+CREATE TABLE owner_key (
+  fp            TEXT    NOT NULL PRIMARY KEY,      -- keys.md 2: 24 base32 characters
+  pub           BLOB    NOT NULL CHECK (length(pub) = 32),   -- Ed25519 public key
+  state         TEXT    NOT NULL CHECK (state IN ('pending', 'active', 'retired')),
+  proposed_by   TEXT    NOT NULL,                  -- device id, or 'cli' (hub machine)
+  created_at    INTEGER NOT NULL,
+  confirmed_at  INTEGER,
+  confirmed_by  TEXT,                              -- owner session device id, or 'cli'
+  retired_at    INTEGER
+) STRICT;
+CREATE UNIQUE INDEX owner_key_active ON owner_key(state) WHERE state = 'active';
+
+-- One device's link keys and its certificate (keys.md 4). The certificate body is kept as the
+-- exact bytes that were signed; the columns beside it are copies for queries.
+CREATE TABLE device_key (
+  device_id     TEXT    NOT NULL PRIMARY KEY REFERENCES device(id) ON DELETE CASCADE,
+  sign_alg      TEXT    NOT NULL CHECK (sign_alg IN ('ed25519', 'p256')),
+  sign_pub      BLOB    NOT NULL,                  -- 32 bytes (ed25519) or 65 bytes SEC1 uncompressed (p256)
+  box_alg       TEXT    NOT NULL CHECK (box_alg IN ('x25519', 'p256')),
+  box_pub       BLOB    NOT NULL,                  -- 32 bytes (x25519) or 65 bytes (p256, RFC 8291 p256dh)
+  reg           TEXT    NOT NULL CHECK (reg IN ('qr', 'tofu', 'ssh', 'local')),
+  cert          BLOB    NOT NULL,                  -- certificate body (JSON bytes, keys.md 4.2)
+  hub_sig       BLOB    NOT NULL CHECK (length(hub_sig) = 64),
+  owner_fp      TEXT,                              -- set once the owner key certified it
+  owner_sig     BLOB    CHECK (owner_sig IS NULL OR length(owner_sig) = 64),
+  created_at    INTEGER NOT NULL,
+  certified_at  INTEGER,
+  CHECK ((owner_fp IS NULL) = (owner_sig IS NULL))
+) STRICT;
+
+-- Every version of the signed revocation list (keys.md 6). The list only grows.
+CREATE TABLE revocation_doc (
+  version       INTEGER NOT NULL PRIMARY KEY,
+  body          BLOB    NOT NULL,                  -- the signed JSON bytes
+  signer        TEXT    NOT NULL CHECK (signer IN ('owner', 'hub')),
+  key_fp        TEXT    NOT NULL,
+  sig           BLOB    NOT NULL CHECK (length(sig) = 64),
+  made_by       TEXT    NOT NULL,                  -- device id or 'cli'
+  created_at    INTEGER NOT NULL
+) STRICT;
+
+-- Per-device position on the link (link.md 5).
+CREATE TABLE link_state (
+  device_id     TEXT    NOT NULL PRIMARY KEY REFERENCES device(id) ON DELETE CASCADE,
+  next_seq      INTEGER NOT NULL DEFAULT 1 CHECK (next_seq >= 1),
+  acked_seq     INTEGER NOT NULL DEFAULT 0 CHECK (acked_seq >= 0),
+  transport     TEXT    CHECK (transport IS NULL OR transport IN ('ws', 'poll')),
+  connected_at  INTEGER,                           -- current connection; NULL while disconnected
+  last_seen_at  INTEGER,                           -- last frame, ping or poll
+  last_close    TEXT,                              -- close code and word: '4409 superseded'
+  last_ip       TEXT,
+  hello         TEXT    CHECK (hello IS NULL OR json_valid(hello))   -- last hello's app/sy version and known doc versions
+) STRICT;
+
+-- The durable queue: one sealed, signed frame per row until the device acks it (link.md 5).
+CREATE TABLE link_queue (
+  device_id     TEXT    NOT NULL REFERENCES device(id) ON DELETE CASCADE,
+  seq           INTEGER NOT NULL,
+  type          TEXT    NOT NULL CHECK (type IN ('alert', 'refresh', 'peer_msg', 'peer_status', 'matrix', 'revoke')),
+  tag           TEXT    NOT NULL DEFAULT '',       -- collapse key; '' never collapses
+  body          BLOB    NOT NULL,                  -- sealed to the device (link.md 4)
+  sig           BLOB    NOT NULL CHECK (length(sig) = 64),   -- hub signature, made at enqueue
+  exp           INTEGER NOT NULL,
+  ref           TEXT,                              -- 'd:<delivery id>' or 'pm:<peer message id>'
+  created_at    INTEGER NOT NULL,
+  PRIMARY KEY (device_id, seq)
+) STRICT, WITHOUT ROWID;
+CREATE INDEX link_queue_tag ON link_queue(device_id, tag) WHERE tag <> '';
+CREATE INDEX link_queue_exp ON link_queue(exp);
+
+---------------------------------------------------------------------------- peers (v9)
+
+-- Every version of the signed account matrix (peers.md 5).
+CREATE TABLE matrix_doc (
+  version       INTEGER NOT NULL PRIMARY KEY,
+  body          BLOB    NOT NULL,                  -- the signed JSON bytes
+  signer        TEXT    NOT NULL CHECK (signer IN ('owner', 'hub')),
+  key_fp        TEXT    NOT NULL,
+  sig           BLOB    NOT NULL CHECK (length(sig) = 64),
+  widens        INTEGER NOT NULL CHECK (widens IN (0, 1)),   -- compared with the version before it
+  made_by       TEXT    NOT NULL,                  -- device id or 'cli'
+  created_at    INTEGER NOT NULL
+) STRICT;
+
+-- One conversation between two sessions (peers.md 6.2). a_session opened it.
+CREATE TABLE peer_thread (
+  id            TEXT    NOT NULL PRIMARY KEY,      -- 't_' + 16 hex
+  a_session     TEXT    NOT NULL,
+  b_session     TEXT    NOT NULL,
+  a_account     TEXT    NOT NULL,                  -- account uuids
+  b_account     TEXT    NOT NULL,
+  opened_at     INTEGER NOT NULL,
+  last_at       INTEGER NOT NULL,
+  human_at      INTEGER,                           -- newest human prompt reported in the thread
+  turns         INTEGER NOT NULL DEFAULT 0,        -- messages since human_at (loop guard)
+  paused_at     INTEGER,                           -- the loop guard stopped it
+  closed_at     INTEGER,
+  CHECK (a_session <> b_session)
+) STRICT;
+CREATE INDEX peer_thread_open ON peer_thread(last_at) WHERE closed_at IS NULL;
+
+-- One peer message, metadata only (peers.md 10).
+CREATE TABLE peer_message (
+  id            TEXT    NOT NULL PRIMARY KEY,      -- msg_id (uuid v4), also the inbox frame's msg_id
+  thread_id     TEXT    NOT NULL,                  -- not an FK: the log outlives a pruned thread
+  from_session  TEXT    NOT NULL,
+  from_device   TEXT    NOT NULL,
+  from_account  TEXT    NOT NULL,
+  to_session    TEXT    NOT NULL,
+  to_device     TEXT    NOT NULL,
+  to_account    TEXT    NOT NULL,
+  kind          TEXT    NOT NULL CHECK (kind IN ('start', 'reply')),
+  size          INTEGER NOT NULL CHECK (size >= 0), -- body bytes before sealing
+  local         INTEGER NOT NULL DEFAULT 0 CHECK (local IN (0, 1)),   -- same machine; reported by the agent
+  status        TEXT    NOT NULL CHECK (status IN ('queued', 'delivered', 'refused', 'rejected', 'expired', 'target_gone', 'failed')),
+  detail        TEXT,                              -- reason word: not_allowed, paused, loop_guard, bad_signature, …
+  created_at    INTEGER NOT NULL,
+  expires_at    INTEGER NOT NULL,
+  final_at      INTEGER
+) STRICT;
+CREATE INDEX peer_message_thread ON peer_message(thread_id, created_at);
+CREATE INDEX peer_message_created ON peer_message(created_at);
+
+-- Everything else worth a line: matrix versions, pause, loop guard, refusals at a machine.
+CREATE TABLE peer_audit (
+  id            INTEGER NOT NULL PRIMARY KEY,
+  at            INTEGER NOT NULL,
+  actor         TEXT    NOT NULL,                  -- device id, 'hub' or 'cli'
+  event         TEXT    NOT NULL,                  -- matrix, pause, resume, loop_guard, rejected, off, on, revoke
+  thread_id     TEXT,
+  msg_id        TEXT,
+  detail        TEXT    NOT NULL DEFAULT '{}' CHECK (json_valid(detail))
+) STRICT;
+CREATE INDEX peer_audit_at ON peer_audit(at);
