@@ -3,6 +3,7 @@ package dev.switchyard.link
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -198,6 +199,14 @@ class ForegroundTest {
       assertEquals(listOf("typed:n:1073741824"), calls) // ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
     }
   }
+
+  @Test fun aRefusedStartReturnsFalseInsteadOfCrashing() {
+    // ForegroundServiceStartNotAllowedException is an IllegalStateException (a START_STICKY
+    // restart from the background on API 31+); 34+ may also throw SecurityException for the type.
+    assertFalse(Foreground.go(31, "n", { throw IllegalStateException("not allowed") }, { _, _ -> }))
+    assertFalse(Foreground.go(34, "n", { }, { _, _ -> throw SecurityException("type") }))
+    assertTrue(Foreground.go(34, "n", { }, { _, _ -> }))
+  }
 }
 
 class PairingTest {
@@ -257,5 +266,33 @@ class PairingTest {
     assertEquals("p256", opened.getJSONObject("box").getString("alg"))
     assertEquals(Codec.b64u(box), opened.getJSONObject("box").getString("pub"))
     assertFalse(opened.has("priv"))
+  }
+}
+
+class SharedHttpTest {
+  @Test fun reconnectsPollsAndActionsShareTheOnePoolAndDispatcher() {
+    val p = TestPhone()
+    val events = object : LinkEvents {
+      override fun state() = Unit
+      override fun stopped(status: String, why: String) = Unit
+      override fun longTimer(atMs: Long) = Unit
+    }
+    val c = LinkClient(p.store, SoftwareSigner(), p.processor(), events, { JSONObject() }, { it() })
+    try {
+      val clients = listOf(
+        c.wsHttp(180), c.wsHttp(600), // two reconnects, the second after a ping change
+        LinkClient.Poller(p.store, SoftwareSigner(), p.processor(), { JSONObject() }, { it() }).http,
+        LinkClient.timed(1500),
+      )
+      for (x in clients) {
+        assertSame(LinkClient.HTTP.dispatcher, x.dispatcher)
+        assertSame(LinkClient.HTTP.connectionPool, x.connectionPool)
+        assertFalse(x.followRedirects)
+      }
+      assertEquals(600_000, clients[1].pingIntervalMillis)
+      assertEquals(0, clients[0].readTimeoutMillis)
+    } finally {
+      c.shutdown()
+    }
   }
 }

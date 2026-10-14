@@ -105,23 +105,21 @@ object Updates {
       return null
     }
     var best: GhRelease? = null
-    var bestV: List<Int>? = null
+    var bestV = ""
     for (i in 0 until arr.length()) {
       val r = arr.optJSONObject(i) ?: continue
       if (r.optBoolean("draft") || r.optBoolean("prerelease")) continue
       val tag = r.optString("tag_name")
-      val g = TAG.matchEntire(tag) ?: continue
-      val v = g.groupValues.drop(1).map { it.toInt() }
-      if (bestV == null || compareVersions(v.joinToString("."), bestV.joinToString(".")) > 0) {
-        val assets = HashMap<String, String>()
-        val list = r.optJSONArray("assets") ?: JSONArray()
-        for (j in 0 until list.length()) {
-          val a = list.optJSONObject(j) ?: continue
-          assets[a.optString("name")] = a.optString("browser_download_url")
-        }
-        best = GhRelease(tag, assets)
-        bestV = v
+      val v = tag.removePrefix("phone-v")
+      if (!TAG.matches(tag) || parseVersion(v) == null || (best != null && compareVersions(v, bestV) <= 0)) continue
+      val assets = HashMap<String, String>()
+      val list = r.optJSONArray("assets") ?: JSONArray()
+      for (j in 0 until list.length()) {
+        val a = list.optJSONObject(j) ?: continue
+        assets[a.optString("name")] = a.optString("browser_download_url")
       }
+      best = GhRelease(tag, assets)
+      bestV = v
     }
     return best
   }
@@ -136,6 +134,22 @@ object Updates {
     }
     if (!rel.startsWith("/v1/app/android")) return null
     return m to origin.trimEnd('/') + rel
+  }
+
+  /**
+   * Copies [input] to [out] and throws [UpdateException] unless the bytes copied hash to
+   * [sha256]: the installer session gets exactly the bytes that were checked.
+   */
+  fun copyChecked(input: java.io.InputStream, out: java.io.OutputStream, sha256: String) {
+    val md = java.security.MessageDigest.getInstance("SHA-256")
+    val buf = ByteArray(64 * 1024)
+    while (true) {
+      val k = input.read(buf)
+      if (k < 0) break
+      md.update(buf, 0, k)
+      out.write(buf, 0, k)
+    }
+    if (Codec.hex(md.digest()) != sha256.lowercase()) throw UpdateException("the update changed after its check")
   }
 
   /** Whether the hub's bearer token may go with this request: only to the paired hub's own origin. */

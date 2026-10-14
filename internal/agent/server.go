@@ -72,11 +72,14 @@ func Run(ctx context.Context, cfg Config) error {
 		defer l.Close()
 		s.log = l
 	}
-	ln, err := listen(cfg.Socket)
+	ln, err := listenSocket(cfg.Socket)
 	if err != nil {
 		return err
 	}
 	defer os.Remove(cfg.Socket)
+	// Every goroutine below ends with ctx: an accept error cancels it so wg.Wait returns.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	s.logf("start pid=%d socket=%s", os.Getpid(), cfg.Socket)
 
 	var wg sync.WaitGroup
@@ -115,6 +118,7 @@ func Run(ctx context.Context, cfg Config) error {
 				continue
 			}
 			ln.Close()
+			cancel()
 			wg.Wait()
 			return err
 		}
@@ -125,6 +129,9 @@ func Run(ctx context.Context, cfg Config) error {
 	s.logf("stop")
 	return nil
 }
+
+// listenSocket is listen; tests replace it.
+var listenSocket = listen
 
 // listen makes the socket folder (0700) and the socket (0600), replacing a stale socket file
 // but never one something answers on.

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/mraj602/switchyard/internal/keys"
@@ -108,12 +109,19 @@ func certReason(err error) string {
 	return ReasonBadSignature
 }
 
-// revoked reports whether a certificate's device or either of its keys is listed.
+// revoked reports whether either of a certificate's keys is listed, or its device is listed
+// without keys. The device id alone is not enough: a live tofu device is listed with the keys
+// it replaced (keys.md 4.2 step 3, 6).
 func revoked(c keys.Cert, rev *keys.RevocationBody) bool {
 	if rev == nil {
 		return false
 	}
-	return rev.RevokedDevice(c.Body.Device) || rev.RevokedKey(c.Body.SignFP()) || rev.RevokedKey(c.Body.BoxFP())
+	if rev.RevokedKey(c.Body.SignFP()) || rev.RevokedKey(c.Body.BoxFP()) {
+		return true
+	}
+	return slices.ContainsFunc(rev.Devices, func(d keys.RevokedDevice) bool {
+		return d.Device == c.Body.Device && len(d.Keys) == 0
+	})
 }
 
 func machineKind(kind string) bool { return kind == "machine" || kind == "desktop" }
@@ -246,19 +254,4 @@ func (e Envelope) Open(box *ecdh.PrivateKey) (string, error) {
 
 // HopTokens splits the envelope's hop chain (comma-separated 24-hex tokens), keeping valid
 // tokens only, the last MaxHopTokens.
-func HopTokens(hop string) []string {
-	var out []string
-	start := 0
-	for i := 0; i <= len(hop); i++ {
-		if i == len(hop) || hop[i] == ',' {
-			if t := hop[start:i]; hopTokenRe.MatchString(t) {
-				out = append(out, t)
-			}
-			start = i + 1
-		}
-	}
-	if len(out) > MaxHopTokens {
-		out = slices.Clone(out[len(out)-MaxHopTokens:])
-	}
-	return out
-}
+func HopTokens(hop string) []string { return CutHop(strings.Split(hop, ",")) }

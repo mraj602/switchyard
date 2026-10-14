@@ -2,10 +2,9 @@ package agent
 
 import "context"
 
-// LinkClient is the seam for the link client (link.md): the agent starts it in its own
-// goroutine and reports its status. A later package implements it (hub websocket, frames,
-// remote delivery) and `sy agent run` hands it to Config; the agent itself has no network
-// code. With none, the agent is a same-machine service.
+// LinkClient is the link client (link.md, internal/linkclient): the agent starts it in its
+// own goroutine and reports its status; the agent itself has no network code. With none, the
+// agent is a same-machine service.
 type LinkClient interface {
 	// Run blocks until ctx is done. An error is logged; the agent keeps serving local sends.
 	Run(ctx context.Context) error

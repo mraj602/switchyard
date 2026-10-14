@@ -318,3 +318,74 @@ func TestHookDoesNotImportAgent(t *testing.T) {
 		}
 	}
 }
+
+// A socket another user listens on (a shared /tmp fallback taken first) gets nothing.
+func TestCallRefusesAnotherUsersSocket(t *testing.T) {
+	base, err := os.MkdirTemp("", "sya")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(base) })
+	sock := filepath.Join(base, "agent.sock")
+	ln, err := net.Listen("unix", sock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	got := make(chan int, 1)
+	go func() {
+		c, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		defer c.Close()
+		_ = c.SetReadDeadline(time.Now().Add(2 * time.Second))
+		b := make([]byte, 64)
+		n, _ := c.Read(b)
+		got <- n
+	}()
+	old := ownUID
+	t.Cleanup(func() { ownUID = old })
+	ownUID = func() int { return os.Getuid() + 1 }
+	_, err = Call(sock, Request{Op: OpSend, Text: "the secret text"}, time.Second)
+	if !errors.Is(err, ErrNoAgent) {
+		t.Fatalf("Call: %v", err)
+	}
+	if n := <-got; n != 0 {
+		t.Errorf("another user's listener read %d bytes", n)
+	}
+}
+
+// brokenListener fails every Accept with an error that is not a timeout (EMFILE, say).
+type brokenListener struct{ net.Listener }
+
+func (b brokenListener) Accept() (net.Conn, error) {
+	return nil, errors.New("accept: too many open files")
+}
+
+func TestAcceptErrorEndsRun(t *testing.T) {
+	old := listenSocket
+	t.Cleanup(func() { listenSocket = old })
+	listenSocket = func(p string) (net.Listener, error) {
+		ln, err := listen(p)
+		return brokenListener{ln}, err
+	}
+	base, err := os.MkdirTemp("", "sya")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(base) })
+	done := make(chan error, 1)
+	go func() {
+		done <- Run(context.Background(), Config{Socket: filepath.Join(base, "sy", "agent.sock"), Tick: time.Hour,
+			Load: func() (peers.Env, bool, error) { return peers.Env{State: base}, true, nil }})
+	}()
+	select {
+	case err := <-done:
+		if err == nil || !strings.Contains(err.Error(), "too many open files") {
+			t.Errorf("Run: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("Run hung after an accept error (its goroutines were never told to stop)")
+	}
+}

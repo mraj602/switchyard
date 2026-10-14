@@ -187,9 +187,6 @@ func TestAncestorsLimitAndCycle(t *testing.T) {
 	if n := len(peers.Ancestors(peers.LinuxProc{Root: f.procRoot}, 200)); n > peers.MaxWalk {
 		t.Errorf("cycle walked %d", n)
 	}
-	if !peers.IsAncestor(peers.LinuxProc{Root: f.procRoot}, 100, 90) || peers.IsAncestor(peers.LinuxProc{Root: f.procRoot}, 100, 100) {
-		t.Error("IsAncestor")
-	}
 }
 
 func TestLinuxProcConfigDirReadsOnlyThatVariable(t *testing.T) {

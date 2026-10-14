@@ -52,7 +52,7 @@ var peersEnv = func() (peerEnv, error) {
 	return peerEnv{
 		Env: peerspkg.Env{
 			Home: home, State: dirs.State.Path, Runtime: os.Getenv("XDG_RUNTIME_DIR"), Machine: m,
-			SlotExtra: cfg.Slots.Extra, SlotLabels: cfg.Slots.Labels, MaxTurns: peerspkg.DefaultMaxTurns,
+			SlotExtra: cfg.Slots.Extra, SlotLabels: cfg.Slots.Labels,
 			Proc: peerspkg.NewProc(), StartPID: os.Getppid(), FS: identity.OSFS{},
 		},
 		Enabled: cfg.Peers.Enabled, NoHubWiden: !cfg.Peers.HubMayWiden,
@@ -70,9 +70,8 @@ type peerEnv struct {
 
 func peersExit(code int, err error) error { return &exitError{code: code, err: err} }
 
-// runPeers is `sy peers`. PE1 builds the same-machine commands: list, send, off, on. The
-// others (enable, matrix, allow, deny, pause, audit, ...) need the keys, matrix and agent
-// work and exit 3 until then.
+// runPeers is `sy peers`: list, send, off and on here, the matrix commands (enable, matrix,
+// allow, deny, pause, status, audit, ...) in cmd_peers_matrix.go.
 func runPeers(args []string, stdout, stderr io.Writer) error {
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" || args[0] == "help" {
 		fmt.Fprint(stdout, peersUsage)
@@ -168,17 +167,9 @@ func peersSend(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	ttl := fs.Duration("ttl", time.Hour, "how long a queued message may wait (1m-24h; used for other machines)")
 	wait := fs.Int("wait", 10, "seconds to wait for a final status (0-60; same-machine sends are final at once)")
 	useStdin := fs.Bool("stdin", false, "read the text from standard input")
-	var pos []string
-	rest := args
-	for {
-		if err := fs.Parse(rest); err != nil {
-			return usageErr(err)
-		}
-		if fs.NArg() == 0 {
-			break
-		}
-		pos = append(pos, fs.Arg(0))
-		rest = fs.Args()[1:]
+	pos, err := parsePeersFlags(fs, args)
+	if err != nil {
+		return err
 	}
 	if *ttl < time.Minute || *ttl > 24*time.Hour {
 		fmt.Fprintln(stderr, "sy peers send: --ttl must be between 1m and 24h")
@@ -231,7 +222,9 @@ func peersSend(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	return nil
 }
 
-// peersOffOn is `sy peers off|on`: this machine only, works with no hub (peers.md 11).
+// peersOffOn is `sy peers off|on`: this machine only, works with no hub (peers.md 11). Like
+// the agent's off and on ops it runs at a terminal only (peers.md 2.3): a session must not
+// switch the machine's messaging back on.
 func peersOffOn(off bool, args []string, stdout, stderr io.Writer) error {
 	if len(args) > 0 {
 		fmt.Fprintf(stderr, "sy peers: unexpected argument %q\n", args[0])
@@ -240,6 +233,9 @@ func peersOffOn(off bool, args []string, stdout, stderr io.Writer) error {
 	pe, err := peersEnv()
 	if err != nil {
 		return err
+	}
+	if _, rf := pe.Env.Whoami(); rf == nil || rf.Code != peerspkg.CodeNotASession {
+		return peersExit(peerspkg.ExitGuard, fmt.Errorf("sy peers %s runs at a terminal, not inside a session", map[bool]string{true: "off", false: "on"}[off]))
 	}
 	if err := pe.Env.SetOff(off); err != nil {
 		return err

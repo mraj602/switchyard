@@ -32,7 +32,7 @@ func (e Env) Receive(in Incoming) ReceiveResult {
 	if e.Off() {
 		return reject(CodeOff)
 	}
-	unlock := lockState()
+	unlock := lockState(e.State)
 	defer unlock()
 	now := e.now()
 	dir := e.Directory()
@@ -73,7 +73,7 @@ func (e Env) Receive(in Incoming) ReceiveResult {
 	}
 	maxTurns := m.MaxTurns()
 	if maxTurns <= 0 {
-		maxTurns = e.MaxTurns
+		maxTurns = DefaultMaxTurns
 	}
 	if LoopGuard(th, human, maxTurns, now) {
 		_ = threads.Save(e.ThreadsPath())

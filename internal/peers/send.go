@@ -52,15 +52,15 @@ func (r SendResult) Line() string {
 // a native SendMessage to it finds nobody, and the header's "Reply with: sy peers send"
 // line is the reply path.
 func ReplySocketPath(runtime, senderSession string) string {
-	if runtime == "" {
-		runtime = "/run/user/" + fmt.Sprint(os.Getuid())
-	}
 	sum := sha256.Sum256([]byte(senderSession))
-	return filepath.Join(runtime, "sy", "r", hex.EncodeToString(sum[:])[:16]+".sock")
+	return filepath.Join(runtimeDir(runtime), "sy", "r", hex.EncodeToString(sum[:])[:16]+".sock")
 }
 
-// Header is the first two lines of the message body (peers.md 8.5).
+// Header is the first two lines of the message body (peers.md 8.5). The parts of a remote
+// message come from the sender's envelope, so each is cleaned to one line (CleanName): a
+// newline in a handle would add a header line of the sender's choosing.
 func Header(handle, label, machine, thread string) string {
+	handle, label, machine, thread = CleanName(handle), CleanName(label), CleanName(machine), CleanName(thread)
 	return fmt.Sprintf("[Switchyard] from %s · account %s · machine %s · thread %s\nReply with: sy peers send %s \"…\"",
 		handle, label, machine, thread, handle)
 }
@@ -138,7 +138,7 @@ func (e Env) SendWith(c Caller, to, text string, o SendOpts) (SendResult, *Refus
 	if ttl < MinTTL || ttl > MaxTTL {
 		return SendResult{}, Refuse(CodeFailed, "the TTL must be between 1m and 24h")
 	}
-	unlock := lockState()
+	unlock := lockState(e.State)
 	defer func() {
 		if unlock != nil {
 			unlock()
@@ -175,7 +175,7 @@ func (e Env) SendWith(c Caller, to, text string, o SendOpts) (SendResult, *Refus
 	}
 	maxTurns := m.MaxTurns()
 	if maxTurns <= 0 {
-		maxTurns = e.MaxTurns
+		maxTurns = DefaultMaxTurns
 	}
 	if LoopGuard(th, newestHuman(sender, &target), maxTurns, now) {
 		_ = threads.Save(e.ThreadsPath()) // keeps paused_at
@@ -223,7 +223,7 @@ func (e Env) sendRemote(unlock *func(), out Outgoing, thread Thread) (SendResult
 	(*unlock)()
 	*unlock = nil
 	p, rf := e.Remote.Send(out)
-	*unlock = lockState()
+	*unlock = lockState(e.State)
 	line := auditLine{Msg: out.Msg, Thread: thread.ID, From: out.From.Entry.SessionID, To: out.To.Entry.SessionID,
 		FromA: out.From.Account, ToA: out.To.Account, Size: len(out.Text)}
 	if rf != nil {
@@ -233,9 +233,13 @@ func (e Env) sendRemote(unlock *func(), out Outgoing, thread Thread) (SendResult
 	}
 	ts := LoadThreads(e.ThreadsPath())
 	th := ts.FindOpen(out.From.Entry.SessionID, out.To.Entry.SessionID)
-	if th == nil {
+	switch {
+	case th == nil:
 		th = ts.Adopt(thread.ID, thread.A, thread.B, thread.AAccount, thread.BAccount, out.To.Entry.SessionID, thread.OpenedAt)
 		th.HumanAt, th.Turns = thread.HumanAt, thread.Turns
+	case thread.HumanAt.After(th.HumanAt):
+		// The loop guard reset the count for a new human prompt on the copy it checked.
+		th.HumanAt, th.Turns, th.PausedAt = thread.HumanAt, 0, nil
 	}
 	th.RecordMessage(out.Now)
 	_ = ts.Save(e.ThreadsPath())

@@ -160,14 +160,19 @@ export async function registerForPush(deps: RegisterDeps): Promise<RegisterState
   const n = deps.notifications;
   try {
     await setupChannels(n, deps.app.platform);
-    if (linkMode(deps.app)) return await registerLink(deps);
-    if (!deps.app.projectId) return 'no-project';
+    const link = linkMode(deps.app);
+    if (!link && !deps.app.projectId) return 'no-project';
     let perm = await n.getPermissionsAsync();
     if (!perm.granted) {
       perm = await n.requestPermissionsAsync({ ios: { allowAlert: true, allowBadge: true, allowSound: true } });
     }
     if (!perm.granted) return 'blocked';
-    const tok = await n.getExpoPushTokenAsync({ projectId: deps.app.projectId });
+    if (link) {
+      // The link target comes from pairing (push.md 13.7): only the prefs PATCH, never an Expo token.
+      await deps.patchSelf(registrationPrefs(deps.tz, await knownPrefs(deps)));
+      return 'registered';
+    }
+    const tok = await n.getExpoPushTokenAsync({ projectId: deps.app.projectId! });
     await postTarget(deps, tok.data);
     return 'registered';
   } catch {
@@ -175,21 +180,9 @@ export async function registerForPush(deps: RegisterDeps): Promise<RegisterState
   }
 }
 
-/**
- * The self-hosted profile (P6.3, P13): the link target comes from pairing (push.md 13.7), so
- * only the channels, the permission prompt and the prefs PATCH run. Never an Expo token.
- */
+/** The self-hosted profile (P6.3, P13): the app's own link to the hub instead of Expo push. */
 export function linkMode(app: AppInfo): boolean {
   return app.push === 'link';
-}
-
-async function registerLink(deps: RegisterDeps): Promise<RegisterState> {
-  const n = deps.notifications;
-  let perm = await n.getPermissionsAsync();
-  if (!perm.granted) perm = await n.requestPermissionsAsync({ ios: { allowAlert: true, allowBadge: true, allowSound: true } });
-  if (!perm.granted) return 'blocked';
-  await deps.patchSelf(registrationPrefs(deps.tz, await knownPrefs(deps)));
-  return 'registered';
 }
 
 export interface SyncDeps extends RegisterDeps {
@@ -211,7 +204,7 @@ export async function syncRegistration(deps: SyncDeps): Promise<RegisterState | 
     if (!deps.app.projectId) return 'no-project';
     const perm = await n.getPermissionsAsync();
     if (!perm.granted) return 'blocked';
-    const tok = await n.getExpoPushTokenAsync({ projectId: deps.app.projectId });
+    const tok = await n.getExpoPushTokenAsync({ projectId: deps.app.projectId! });
     const me = await deps.deviceSelf();
     const live = (me.targets ?? []).some(
       (t) => t.kind === 'expo' && t.endpoint === tok.data && t.status !== 'gone' && t.status !== 'disabled',

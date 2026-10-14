@@ -83,9 +83,7 @@ class LinkClient(
 
   fun stop() = exec.execute {
     running = false
-    cancelTimer()
-    closeSocket(1000)
-    stopPoll()
+    drop()
     setState("off", null, null)
   }
 
@@ -93,10 +91,14 @@ class LinkClient(
   fun reconnectNow() = exec.execute {
     if (!running) return@execute
     backoff.reset()
+    drop()
+    connect()
+  }
+
+  private fun drop() {
     cancelTimer()
     closeSocket(1000)
     stopPoll()
-    connect()
   }
 
   /** An exact alarm fired: connect now if a retry timer was waiting. */
@@ -114,13 +116,9 @@ class LinkClient(
 
   // ------------------------------------------------------------------ connect
 
-  private fun http(pingS: Long = store.pingS) = OkHttpClient.Builder()
-    .pingInterval(pingS, TimeUnit.SECONDS)
-    .readTimeout(0, TimeUnit.MILLISECONDS)
-    .connectTimeout(15, TimeUnit.SECONDS)
-    .followRedirects(false)
-    .followSslRedirects(false)
-    .build()
+  /** The WebSocket's client: derived from [HTTP], so a reconnect makes no new pool or threads. */
+  internal fun wsHttp(pingS: Long = store.pingS): OkHttpClient =
+    HTTP.newBuilder().pingInterval(pingS, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS).build()
 
   private fun connect() {
     if (!running) return
@@ -137,7 +135,7 @@ class LinkClient(
     nonce = null
     setState("connecting", "ws", store.lastError)
     val req = Request.Builder().url(url).header("Sec-WebSocket-Protocol", SUBPROTOCOL).build()
-    ws = http().newWebSocket(req, object : WebSocketListener() {
+    ws = wsHttp().newWebSocket(req, object : WebSocketListener() {
       override fun onOpen(webSocket: WebSocket, response: Response) = post(my) { opened = true }
       override fun onMessage(webSocket: WebSocket, text: String) = post(my) { onMessage(text) }
       override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
@@ -173,10 +171,11 @@ class LinkClient(
         val o = try { JSONObject(text) } catch (_: Exception) { return closeWith(4400, "bad_frame") }
         val pin = store.hubFp ?: return closeWith(1000, "not_configured")
         val pub = store.hubPub ?: return closeWith(1000, "not_configured")
-        val c = Login.checkChallenge(o, pin, TinkHubVerifier(pub))
+        val verifier = TinkHubVerifier(pub)
+        val c = Login.checkChallenge(o, pin, verifier)
         if (c == null) {
-          // 14.7 "Hub key changed": never sign a nonce for a hub we do not trust (link.md 3.1).
-          if (o.optString("t") == "challenge") return hubKeyChanged()
+          // Never sign a nonce for a hub we do not trust (link.md 3.1); another key is 14.7's "Hub key changed".
+          if (Login.fromAnotherHub(o, pin, verifier)) return hubKeyChanged()
           return closeWith(4400, "bad_frame")
         }
         failedHandshakes = 0
@@ -214,7 +213,7 @@ class LinkClient(
     phase = Phase.READY
     connectedAt = System.currentTimeMillis()
     codeStreak = 0
-    b.optJSONArray("urls")?.let { a -> List(a.length()) { a.optString(it) }.filter { it.startsWith("wss://") || it.startsWith("ws://") } }
+    b.optJSONArray("urls")?.let { a -> List(a.length()) { a.optString(it) }.filter(::isLinkUrl) }
       ?.takeIf { it.isNotEmpty() }?.let { store.setUrls(it) }
     setState("connected", "ws", null, connectedSince = connectedAt)
     // queued actions go out now (14.6 step 3), off this thread: they wait for answers on it
@@ -343,8 +342,7 @@ class LinkClient(
   private fun healthAnswers(): Boolean {
     val origin = store.origin ?: return false
     return try {
-      OkHttpClient.Builder().callTimeout(1500, TimeUnit.MILLISECONDS).followRedirects(false).build()
-        .newCall(Request.Builder().url("$origin/health").build()).execute().use { it.code in 200..599 && !it.isRedirect }
+      timed(1500).newCall(Request.Builder().url("$origin/health").build()).execute().use { it.code in 200..599 && !it.isRedirect }
     } catch (_: IOException) {
       false
     }
@@ -409,18 +407,38 @@ class LinkClient(
     const val SUPERSEDED_RETRY_MS = 120_000L
     private val JSON = "application/json".toMediaType()
 
+    /**
+     * The process's one OkHttp client (push.md 14.4): every request derives from it with
+     * newBuilder(), which shares its dispatcher, connection pool and their threads. A client
+     * built per reconnect would start a new pool and dispatcher each time.
+     */
+    val HTTP: OkHttpClient by lazy {
+      OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build()
+    }
+
+    /** [HTTP] with a whole-call timeout. */
+    fun timed(ms: Long): OkHttpClient = HTTP.newBuilder().callTimeout(ms, TimeUnit.MILLISECONDS).build()
+
     /** wss://hub/v1/link → https://hub/v1/link/poll. */
     fun pollUrl(ws: String): String =
       ws.replaceFirst(Regex("^wss://"), "https://").replaceFirst(Regex("^ws://"), "http://").trimEnd('/') + "/poll"
 
     /** `POST <origin>/v1/actions/<token>`, no bearer, body {} (push.md 8); the status or null. */
     fun postAction(origin: String, token: String, timeoutMs: Long): Int? = try {
-      OkHttpClient.Builder().callTimeout(timeoutMs, TimeUnit.MILLISECONDS).followRedirects(false).followSslRedirects(false).build()
-        .newCall(Request.Builder().url("${origin.trimEnd('/')}/v1/actions/$token").post("{}".toRequestBody(JSON)).build())
+      timed(timeoutMs).newCall(Request.Builder().url("${origin.trimEnd('/')}/v1/actions/$token").post("{}".toRequestBody(JSON)).build())
         .execute().use { it.code }
     } catch (_: IOException) {
       null
     }
+
+    /** The action transport without a link (no service, or no client yet): `POST <origin>/v1/actions/<token>` only. */
+    val HTTP_ONLY = object : ActionTransport {
+      override fun viaLink(id: String, token: String, timeoutMs: Long): Int? = null
+      override fun viaHttp(origin: String, token: String, timeoutMs: Long): Int? = postAction(origin, token, timeoutMs)
+    }
+
+    /** A link URL (link.md 2): the WebSocket schemes only. */
+    fun isLinkUrl(u: String) = u.startsWith("wss://") || u.startsWith("ws://")
 
     fun newActionId(): String = "act_" + UUID.randomUUID().toString().replace("-", "").take(16)
   }
@@ -435,8 +453,7 @@ class LinkClient(
   ) {
     class Stop(val status: String, val why: String) : Exception(why)
 
-    private val http = OkHttpClient.Builder().callTimeout(40, TimeUnit.SECONDS).readTimeout(35, TimeUnit.SECONDS)
-      .connectTimeout(15, TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build()
+    internal val http: OkHttpClient = timed(40_000).newBuilder().readTimeout(35, TimeUnit.SECONDS).build()
 
     private fun call(url: String, body: JSONObject): JSONObject {
       http.newCall(Request.Builder().url(url).post(body.toString().toRequestBody(JSON)).build()).execute().use { r ->
@@ -458,7 +475,7 @@ class LinkClient(
       while (alive() && n < rounds && System.currentTimeMillis() < until) {
         n++
         val c = Login.checkChallenge(challenge, pin, verifier)
-          ?: if (challenge.optString("t") == "challenge") throw Stop("changed", "Hub key changed: pair this phone again") else throw IOException("bad_challenge")
+          ?: if (Login.fromAnotherHub(challenge, pin, verifier)) throw Stop("changed", "Hub key changed: pair this phone again") else throw IOException("bad_challenge")
         val device = store.device ?: throw Stop("error", "not configured")
         val pending = store.pending(System.currentTimeMillis()).take(64)
         val up = JSONArray()

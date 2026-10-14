@@ -188,15 +188,6 @@ object ClaimSeal {
     c.updateAAD(Codec.utf8("sy-reg-v1\n$secret"))
     return Codec.b64u(Codec.cat(nonce, c.doFinal(plaintext)))
   }
-
-  /** The hub's side, for tests. */
-  fun open(k: ByteArray, secret: String, sealed: String): ByteArray {
-    val b = Codec.unb64u(sealed) ?: throw CryptoException("bad_seal", "not base64url")
-    val c = Cipher.getInstance("AES/GCM/NoPadding")
-    c.init(Cipher.DECRYPT_MODE, SecretKeySpec(k, "AES"), GCMParameterSpec(128, b.copyOfRange(0, 12)))
-    c.updateAAD(Codec.utf8("sy-reg-v1\n$secret"))
-    return c.doFinal(b, 12, b.size - 12)
-  }
 }
 
 /** keys.md 4.1: a document signature is Ed25519 over "sy-doc-v1\n" ‖ type ‖ "\n" ‖ body bytes. */

@@ -37,6 +37,7 @@ const (
 )
 
 var (
+	fromRe        = regexp.MustCompile(`^[A-Za-z0-9%:_/.\\-]{1,300}$`)
 	fromSessionRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,80}$`)
 	hopTokenRe    = regexp.MustCompile(`^[0-9a-f]{24}$`)
 	hopChainRe    = regexp.MustCompile(`^[0-9a-f]{24}(?:,[0-9a-f]{24}){0,31}$`)
@@ -142,7 +143,7 @@ func (w Wrapper) String() string {
 
 func (w Wrapper) attrs() string {
 	var a []string
-	if w.From != "" {
+	if w.From != "" && fromRe.MatchString(w.From) {
 		a = append(a, `from="`+w.From+`"`)
 	}
 	if w.FromSession != "" && fromSessionRe.MatchString(w.FromSession) {
@@ -156,7 +157,9 @@ func (w Wrapper) attrs() string {
 	if n := CleanName(w.FromName); n != "" {
 		a = append(a, `from-name="`+n+`"`)
 	}
-	if w.FromMode != "" {
+	// The mode of a remote message comes from the envelope: anything but the two classes
+	// would be written into the element verbatim.
+	if w.FromMode == ModeBypass || w.FromMode == ModePrompting {
 		a = append(a, `from-mode="`+string(w.FromMode)+`"`)
 	}
 	if w.Plugin != "" {

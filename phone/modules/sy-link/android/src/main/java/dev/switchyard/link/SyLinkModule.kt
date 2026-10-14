@@ -64,7 +64,7 @@ class SyLinkModule : Module() {
       val origin = cfg["origin"] as? String ?: throw bad("origin")
       val device = cfg["device"] as? String ?: throw bad("device")
       @Suppress("UNCHECKED_CAST")
-      val urls = (cfg["urls"] as? List<Any?>)?.filterIsInstance<String>()?.filter { it.startsWith("wss://") || it.startsWith("ws://") }
+      val urls = (cfg["urls"] as? List<Any?>)?.filterIsInstance<String>()?.filter(LinkClient::isLinkUrl)
         ?: throw bad("urls")
       if (urls.isEmpty()) throw bad("urls")
       val pingS = (cfg["pingS"] as? Number)?.toLong()?.coerceIn(60, 900) ?: Store.DEFAULT_PING_S
@@ -91,7 +91,7 @@ class SyLinkModule : Module() {
       if (!s.configured) throw CodedException("ERR_SY_NOT_CONFIGURED", "sy-link: configure first", null)
       s.setEnabled(true)
       Watchdog.schedule(ctx)
-      if (SyLinkService.instance == null) SyLinkService.start(ctx) else SyLinkService.start(ctx, SyLinkService.ACTION_RECONNECT)
+      SyLinkService.reconnect(ctx)
       Unit
     }
 
@@ -105,7 +105,7 @@ class SyLinkModule : Module() {
     }
 
     AsyncFunction("reconnect") {
-      if (store.enabled && store.configured) SyLinkService.start(ctx, SyLinkService.ACTION_RECONNECT)
+      if (store.enabled && store.configured) SyLinkService.reconnect(ctx)
       Unit
     }
 
@@ -114,7 +114,7 @@ class SyLinkModule : Module() {
     AsyncFunction("setPingInterval") { seconds: Int ->
       if (seconds < 60 || seconds > 900) throw CodedException("ERR_SY_RANGE", "sy-link: ping interval must be 60–900 s", null)
       store.setPing(seconds.toLong())
-      if (store.enabled && SyLinkService.instance != null) SyLinkService.start(ctx, SyLinkService.ACTION_RECONNECT)
+      if (store.enabled && SyLinkService.instance != null) SyLinkService.reconnect(ctx)
       Unit
     }
 
@@ -161,6 +161,7 @@ class SyLinkModule : Module() {
       Watchdog.cancel(ctx)
       Keystore.delete()
       store.clear()
+      updateAuth = null // the unpaired hub's token
       Unit
     }
 
