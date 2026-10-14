@@ -48,6 +48,7 @@ func (s *Server) peersRoutes() {
 	m("PUT /v1/peers/matrix", s.guard(s.putMatrix, "owner", "push", "write"))
 	m("POST /v1/peers/pause", s.guard(s.pausePeers, "owner", "push", "write"))
 	m("GET /v1/peers/audit", s.guard(s.peerAudit, "owner", "read"))
+	m("GET /v1/peers/messages", s.guard(s.peerMessages, "owner", "read"))
 }
 
 // peers returns the state, made on first use. Call with s.mu held.
@@ -202,6 +203,19 @@ func (s *Server) applyEdit(w http.ResponseWriter, c *caller, e matrixEdit) {
 		"same_account": next.sameAccount, "max_turns": next.maxTurns, "pairs": len(next.allow)})
 	*p = next
 	writeJSON(w, 200, s.matrixInfo(p))
+}
+
+// peerMessages lists message metadata (never text): a fixed few between the mock's accounts.
+func (s *Server) peerMessages(w http.ResponseWriter, r *http.Request, c *caller) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := s.opts.Now()
+	acct := func(n string) M { return M{"account": "3f1c6a2e-0000-4000-8000-0000000000" + n} }
+	writeJSON(w, 200, M{"messages": []M{
+		{"id": "pm_3", "thread": "th_1", "from": acct("11"), "to": acct("01"), "kind": "reply", "size": 412, "local": false, "status": "delivered", "detail": nil, "created_at": ts(now.Add(-20 * time.Minute)), "final_at": ts(now.Add(-19 * time.Minute))},
+		{"id": "pm_2", "thread": "th_1", "from": acct("01"), "to": acct("11"), "kind": "start", "size": 2300, "local": false, "status": "delivered", "detail": nil, "created_at": ts(now.Add(-25 * time.Minute)), "final_at": ts(now.Add(-24 * time.Minute))},
+		{"id": "pm_1", "thread": "th_2", "from": acct("21"), "to": acct("31"), "kind": "start", "size": 90, "local": false, "status": "refused", "detail": "no pair", "created_at": ts(now.Add(-3 * time.Hour)), "final_at": nil},
+	}})
 }
 
 func (s *Server) peerAudit(w http.ResponseWriter, r *http.Request, c *caller) {
