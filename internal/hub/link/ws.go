@@ -251,13 +251,13 @@ func (c *conn) pump() {
 				if skip {
 					continue
 				}
-				if err := c.send(frameOf(r)); err != nil {
-					return
-				}
-				c.mu.Lock()
+				c.mu.Lock() // before the write: the device may ack it before Write returns
 				c.sent[r.Seq] = true
 				c.lastSent = max(c.lastSent, r.Seq)
 				c.mu.Unlock()
+				if err := c.send(frameOf(r)); err != nil {
+					return
+				}
 				sentAny = true
 			}
 		}
