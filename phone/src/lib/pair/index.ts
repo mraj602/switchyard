@@ -1,6 +1,8 @@
 // Pairing input and claim (phone.md P2). Owner: WP-P.
 import { DEVICE_KIND, HEALTH_TIMEOUT_MS, REQUEST_TIMEOUT_MS } from '../../contract/constants';
-import type { PairClaim, PairClaimReply } from '../../contract/api';
+import type { DeviceKeysNew, PairClaim, PairClaimReply } from '../../contract/api';
+import type { ClaimLink, LinkConfig } from '../../contract/link';
+import { LINK_ERR_HUB_KEY, LINK_ERR_TAMPERED } from '../../contract/link';
 import type { AppInfo, Clock, FetchLike, ResponseLike } from '../../contract/platform';
 import { SCHEME } from '../../contract/routes';
 import { normalizeOrigin } from '../hub';
@@ -10,6 +12,10 @@ export interface PairInput {
   origin: string; // https://host[:port], nothing else kept
   secret?: string; // 22 base64url characters
   code?: string; // 6 digits
+  /** keys.md 7: the QR's `h`, the hub key's fingerprint (24 base32 characters). */
+  hubFp?: string;
+  /** keys.md 7: the QR's `k`, the registration seal key (22 base64url characters). */
+  sealKey?: string;
 }
 
 export type PairInputError =
@@ -33,6 +39,7 @@ export interface ParseOptions {
 const MAX_INPUT = 2048;
 const MAX_HOST = 253;
 const SECRET = /^[A-Za-z0-9_-]{22}$/;
+const HUB_FP = /^[a-z2-7]{24}$/;
 const HOSTNAME = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/;
 const DANGEROUS_SCHEME = /^(javascript|data|vbscript|file|blob|about|intent):/i;
 
@@ -108,7 +115,12 @@ function normaliseCode(raw: string): string | null {
   return /^\d{3}[\s-]?\d{3}$/.test(t) ? t.replace(/[\s-]/g, '') : null;
 }
 
-function finish(origin: string, secret: string | undefined, code: string | undefined): ParsedPair {
+function finish(
+  origin: string,
+  secret: string | undefined,
+  code: string | undefined,
+  pins?: { h?: string | undefined; k?: string | undefined },
+): ParsedPair {
   if (secret === undefined && code === undefined) return fail('no_secret_or_code');
   const input: PairInput = { origin };
   if (secret !== undefined) {
@@ -119,6 +131,16 @@ function finish(origin: string, secret: string | undefined, code: string | undef
     const c = normaliseCode(code);
     if (c === null) return fail('bad_code');
     input.code = c;
+  }
+  // keys.md 7: a damaged pin is a damaged link (never silently dropped: it is what protects the claim).
+  if (pins?.h !== undefined) {
+    const h = pins.h.toLowerCase();
+    if (!HUB_FP.test(h)) return fail('bad_secret');
+    input.hubFp = h;
+  }
+  if (pins?.k !== undefined) {
+    if (!SECRET.test(pins.k) || secret === undefined) return fail('bad_secret');
+    input.sealKey = pins.k;
   }
   return { ok: true, input };
 }
@@ -147,7 +169,7 @@ export function parsePairInput(text: string, opts: ParseOptions): ParsedPair {
     if (!u) return fail('bad_origin');
     const o = parseOrigin(u, opts.dev);
     if (!o.ok) return o;
-    return finish(o.origin, q.get('s'), q.get('c'));
+    return finish(o.origin, q.get('s'), q.get('c'), { h: q.get('h'), k: q.get('k') });
   }
   if (new RegExp(`^${SCHEME}:`, 'i').test(t)) return fail('bad_origin');
 
@@ -158,7 +180,7 @@ export function parsePairInput(text: string, opts: ParseOptions): ParsedPair {
     const hash = /#\/pair\?([^#]*)$/.exec(t);
     const q = hash ? params(hash[1] ?? '') : null;
     if (!q) return fail('no_secret_or_code');
-    return finish(o.origin, q.get('s'), q.get('c'));
+    return finish(o.origin, q.get('s'), q.get('c'), { h: q.get('h'), k: q.get('k') });
   }
 
   // Typed "address code": the address is the first token, the rest is the code.
@@ -169,7 +191,18 @@ export function parsePairInput(text: string, opts: ParseOptions): ParsedPair {
   return finish(o.origin, undefined, sp[2]);
 }
 
-export type ClaimFailure = 'invalid' | 'wrong_kind' | 'rate_limited' | 'unreachable' | 'other';
+export type ClaimFailure =
+  | 'invalid'
+  | 'wrong_kind'
+  | 'rate_limited'
+  | 'unreachable'
+  /** keys.md 7.3: the reply's hub key is not the QR's `h`. */
+  | 'hub_key'
+  /** keys.md 7.3: the certificate, the keys in it or `reg` are not what this phone sent. */
+  | 'tampered'
+  /** The phone could not make its link keys (push.md 14.3). */
+  | 'keys'
+  | 'other';
 
 export class ClaimError extends Error {
   constructor(
@@ -186,6 +219,11 @@ export interface ClaimDeps {
   fetch: FetchLike;
   clock: Clock;
   app: AppInfo;
+  /**
+   * The sy-link module (self-hosted profile, Android): keys go into the claim and the reply is
+   * checked and configured (P2 "Keys in the claim"). Absent: a claim without keys.
+   */
+  link?: ClaimLink;
 }
 
 /** "hub.example.ts.net:8443" from an origin. */
@@ -204,6 +242,12 @@ export function claimMessage(reason: ClaimFailure, host: string, kind?: string):
       return 'Too many tries, wait 10 minutes';
     case 'unreachable':
       return `Can't reach ${host}. Is Tailscale on?`;
+    case 'hub_key':
+      return "This hub's key does not match the QR code";
+    case 'tampered':
+      return 'Pairing was tampered with; try again on your home network';
+    case 'keys':
+      return "This phone couldn't make its keys. Try again";
     default:
       return 'Pairing failed. Try again';
   }
@@ -275,12 +319,15 @@ export async function claim(deps: ClaimDeps, input: PairInput): Promise<StoredHu
   const host = hostOf(origin);
   await probeOrigin(deps, origin, host);
   const name = `${deps.app.model} · app`;
+  const keys = await claimKeys(deps, input, host);
   const body: PairClaim = {
     ...(input.secret !== undefined ? { secret: input.secret } : { code: input.code }),
     name,
     expect_kind: DEVICE_KIND,
     cookie: false,
     client: `app/${deps.app.version}+${deps.app.build}`,
+    ...(keys?.sealed !== undefined ? { keys_sealed: keys.sealed } : {}),
+    ...(keys?.clear !== undefined ? { keys: keys.clear } : {}),
   };
   const ctl = new AbortController();
   const timer = deps.clock.setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS);
@@ -315,13 +362,104 @@ export async function claim(deps: ClaimDeps, input: PairInput): Promise<StoredHu
   if (typeof reply?.token !== 'string' || !reply.token || typeof reply.device !== 'string') {
     throw new ClaimError('other', 200, claimMessage('other', host));
   }
-  return {
+  const hub: StoredHub = {
     origin,
     token: reply.token,
     device: reply.device,
     name: typeof reply.name === 'string' ? reply.name : name,
     paired_at: new Date(deps.clock.now()).toISOString(),
   };
+  if (keys && deps.link) await configureLink(deps, deps.link, input, keys, reply, hub, host);
+  return hub;
+}
+
+type ClaimKeys = { sealed?: string; clear?: DeviceKeysNew };
+
+/**
+ * keys.md 7.1: with `k` from the QR the keys go sealed; with a typed code in the clear; with a
+ * QR secret but no `k` (a hub before F1) not at all, since the hub refuses clear keys with a
+ * secret. Null: no keys in this claim.
+ */
+async function claimKeys(deps: ClaimDeps, input: PairInput, host: string): Promise<ClaimKeys | null> {
+  const link = deps.link;
+  if (!link) return null;
+  if (input.secret !== undefined && input.sealKey === undefined) return null;
+  try {
+    const k = await link.prepareKeys();
+    if (input.secret !== undefined) return { sealed: await link.sealKeys(input.sealKey!, input.secret) };
+    return { clear: { sign: k.sign, box: k.box, auth: k.auth } };
+  } catch {
+    throw new ClaimError('keys', null, claimMessage('keys', host));
+  }
+}
+
+const codeOf = (e: unknown): string | undefined => (e && typeof e === 'object' ? (e as { code?: unknown }).code : undefined) as string | undefined;
+
+/**
+ * keys.md 7.3: check the reply and keep the pins. The QR's `h` against `hub_key.fp` and, after a
+ * sealed claim, a `cert` with `reg: qr` here; the certificate's signature and its keys natively
+ * (configure). A refusal deletes the new device with its token and throws; a reply from a hub
+ * without keys (no `hub_key`) after clear keys pairs without instant delivery.
+ */
+async function configureLink(
+  deps: ClaimDeps,
+  link: ClaimLink,
+  input: PairInput,
+  keys: ClaimKeys,
+  reply: PairClaimReply,
+  hub: StoredHub,
+  host: string,
+): Promise<void> {
+  const refuse = async (reason: 'hub_key' | 'tampered'): Promise<never> => {
+    await deleteSelf(deps, hub);
+    throw new ClaimError(reason, 200, claimMessage(reason, host));
+  };
+  const hk = reply.hub_key;
+  const sealed = keys.sealed !== undefined;
+  if (!hk || typeof hk.pub !== 'string' || typeof hk.fp !== 'string') {
+    if (sealed || input.hubFp !== undefined) await refuse('tampered');
+    return; // a hub before F1 took a typed code: paired, no link
+  }
+  if (input.hubFp !== undefined && hk.fp.toLowerCase() !== input.hubFp) await refuse('hub_key');
+  const reg = reply.reg;
+  if (!reply.cert || (reg !== 'qr' && reg !== 'tofu') || (sealed && reg !== 'qr')) await refuse('tampered');
+  const urls = Array.isArray(reply.link?.urls) ? reply.link!.urls.filter((u) => typeof u === 'string') : [];
+  const cfg: LinkConfig = {
+    origin: hub.origin,
+    device: hub.device,
+    urls,
+    pingS: typeof reply.link?.ping_s === 'number' ? reply.link.ping_s : 180,
+    hubKey: { pub: hk.pub, fp: hk.fp.toLowerCase() },
+    reg: reg as 'qr' | 'tofu',
+    cert: reply.cert ?? null,
+    qrFp: input.hubFp ?? null,
+  };
+  try {
+    await link.configure(cfg);
+  } catch (e) {
+    const code = codeOf(e);
+    if (code === LINK_ERR_HUB_KEY) await refuse('hub_key');
+    if (code === LINK_ERR_TAMPERED) await refuse('tampered');
+    // Anything else (no urls, a Keystore hiccup): paired; Settings → Notifications shows it.
+  }
+}
+
+/** DELETE /v1/devices/self with the new token after a refused reply (keys.md 7.3); best effort. */
+async function deleteSelf(deps: ClaimDeps, hub: StoredHub): Promise<void> {
+  const ctl = new AbortController();
+  const timer = deps.clock.setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    await deps.fetch(`${hub.origin}/v1/devices/self`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${hub.token}`, Accept: 'application/json' },
+      signal: ctl.signal,
+      redirect: 'error',
+    });
+  } catch {
+    // the hub will expire an unused device; the token is forgotten either way
+  } finally {
+    deps.clock.clearTimeout(timer);
+  }
 }
 
 export type { PairClaimReply };
