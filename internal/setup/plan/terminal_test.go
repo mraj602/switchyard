@@ -6,6 +6,8 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -88,6 +90,12 @@ func termGolden(t *testing.T, name string, p model.Plan) {
 	want, err := os.ReadFile(file)
 	if err != nil {
 		t.Fatalf("%v (go test -run TestTerminalGoldens -update)", err)
+	}
+	if runtime.GOOS == "windows" {
+		// plan_id hashes the host-separator paths, so it differs from the POSIX golden; the
+		// rest of the plan is compared.
+		id := regexp.MustCompile(`"plan_id": "p_[0-9a-f]+"`)
+		got = id.ReplaceAll(got, id.Find(want))
 	}
 	if string(got) != strings.ReplaceAll(string(want), "\r\n", "\n") {
 		t.Fatalf("%s differs from golden:\n%s", name, got)

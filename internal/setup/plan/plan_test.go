@@ -38,6 +38,12 @@ func ops(p model.Plan) []string {
 	return out
 }
 
+// jsonEsc escapes s for the inside of a JSON string (Windows paths carry backslashes).
+func jsonEsc(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b[1 : len(b)-1])
+}
+
 func dump(p model.Plan) string {
 	b, _ := json.MarshalIndent(p, "", " ")
 	return string(b)
@@ -182,7 +188,7 @@ func TestFreshAdd(t *testing.T) {
 	for _, a := range p.Actions {
 		if a.Op == model.OpJSONSet && a.Pointer == "/env" {
 			envSets++
-			if len(a.Covers) != 3 || !strings.Contains(string(a.Value), h.Abs(".claude/plugins")) {
+			if len(a.Covers) != 3 || !strings.Contains(string(a.Value), jsonEsc(h.Abs(".claude/plugins"))) {
 				t.Errorf("env: %+v", a)
 			}
 		}
