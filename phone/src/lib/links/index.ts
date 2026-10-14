@@ -136,6 +136,11 @@ export function incomingToRoute(url: string): AppRoute {
   const segs = [host, ...p.segs.slice(1)];
   if (host === 'now') return NOW;
   if (host === 'pair') return segs.length === 1 ? pairRoute(p.query) : NOW;
+  if (host === 'settings') {
+    // switchyard://settings/notifications: the link's persistent notification (push.md 14.4).
+    // Only that one page: switchyard://settings alone stays off the allow-list.
+    return segs.length === 2 && segs[1] === 'notifications' ? { name: 'notify-settings' } : NOW;
+  }
   return commonRoute(segs, p.query) ?? NOW;
 }
 

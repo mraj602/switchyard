@@ -1,6 +1,7 @@
 // Widget snapshot and timeline (phone.md P11). Owner: WP-W. Pure: no React, no native module.
 import type { Overview, Seat, Window } from '../../contract/api';
 import { WIDGET_KEY } from '../../contract/constants';
+import type { LinkRefresh } from '../../contract/link';
 import type { KVStore } from '../../contract/platform';
 import {
   SNAPSHOT_LABEL_MAX,
@@ -107,6 +108,37 @@ export function buildSnapshot(overview: Overview, accounts: Seat[], now: number,
     seats,
     next_reset: earliest(seats, now),
     private: prefs.private,
+  };
+}
+
+/**
+ * A link `refresh` frame (link.md 6.4, push.md 13.5) on top of the stored snapshot, so the
+ * widgets redraw with no network call (P11): `needs_you` and the windows of the seats the
+ * snapshot already shows. A refresh older than the snapshot, or no snapshot, changes nothing
+ * (the frame has no labels or colours to build one from). `top` is cleared when nothing needs
+ * you any more.
+ */
+export function applyLinkRefresh(snapshot: WidgetSnapshot | null, refresh: LinkRefresh | null): WidgetSnapshot | null {
+  if (!snapshot || !refresh || refresh.v !== 1) return snapshot;
+  const at = Date.parse(refresh.ts);
+  if (!Number.isFinite(at) || at <= Date.parse(snapshot.as_of)) return snapshot;
+  const seats = snapshot.seats.map((s) => {
+    const next: SnapshotSeat = { ...s };
+    for (const w of refresh.seats ?? []) {
+      if (w.seat !== s.id || (w.window !== 'five_hour' && w.window !== 'seven_day')) continue;
+      if (typeof w.used_pct !== 'number' || !Number.isFinite(w.used_pct) || !w.resets_at) continue;
+      next[w.window] = { pct: Math.min(100, Math.max(0, Math.round(w.used_pct))), resets_at: w.resets_at };
+    }
+    return next;
+  });
+  const needs = Math.max(0, Math.trunc(Number.isFinite(refresh.needs_you) ? refresh.needs_you : snapshot.needs_you));
+  return {
+    ...snapshot,
+    as_of: new Date(at).toISOString(),
+    needs_you: needs,
+    top: needs === 0 ? null : snapshot.top,
+    seats,
+    next_reset: earliest(seats, at),
   };
 }
 
