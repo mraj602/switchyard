@@ -48,7 +48,7 @@ const (
 	nonce      = "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA" // bytes 1..32
 	nonce2     = "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8" // bytes 32..63
 	chalExp    = 1760518860
-	serverTime = "2026-10-15T09:00:00.000Z"
+	serverTime = "2025-10-15T09:00:00.000Z" // chalExp − 60 s
 	alertExp   = 1760540400
 )
 
