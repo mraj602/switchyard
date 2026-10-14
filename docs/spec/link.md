@@ -29,7 +29,8 @@ hub ── link_queue(device) ── /v1/link (WebSocket, or /v1/link/poll) ─�
 
 **Honest limits.** Someone who can **write** the database can still delete queued rows or set
 `delivery.delivered_at` (loss and a false delivery log, never a forged frame), and can mint
-tokens (tokens.md stores unpeppered hashes), which matters for keys.md 5.4. TLS is the only
+tokens other than owner sessions (tokens.md 2 peppers only `sy_o_` hashes), so not the
+owner-session rights of keys.md 5.4. TLS is the only
 channel binding: a party that terminates TLS between the device and the hub can relay a live
 login, then drop frames, inject device→hub frames (acks, actions, `peer_result`) and read the
 inline fields of ephemeral frames while that connection lasts. It still cannot read a sealed

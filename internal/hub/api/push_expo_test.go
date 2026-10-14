@@ -52,7 +52,7 @@ func newExpoRig(t *testing.T) (*pushRig, *expotest.Server) {
 		}
 		return c.Token
 	}
-	r.owner = mk("browser", "owner", []string{"owner", "read", "push"})
+	r.owner = ownerSessionToken(t, st).Token
 	r.phone = mk("phone", "phone-1", nil)
 	r.other = mk("phone", "phone-2", nil)
 	return r, f

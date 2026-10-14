@@ -20,6 +20,7 @@ import (
 	"github.com/mraj602/switchyard/internal/client"
 	"github.com/mraj602/switchyard/internal/config"
 	"github.com/mraj602/switchyard/internal/identity"
+	"github.com/mraj602/switchyard/internal/keys"
 	"github.com/mraj602/switchyard/internal/machineinfo"
 	"github.com/mraj602/switchyard/internal/paths"
 	"github.com/mraj602/switchyard/internal/timer"
@@ -390,12 +391,30 @@ func claimMachineToken(ctx context.Context, deps connectDeps, url, code string) 
 		hc = &http.Client{Timeout: 15 * time.Second}
 	}
 	req := client.ClaimRequest{Name: m.Name, Machine: m.ID, ExpectKind: "machine"}
+	var dk keys.DeviceKeys
+	var sent keys.DeviceKeysNew
 	if pairSecretShape.MatchString(code) {
-		req.Secret = code // the 128-bit secret sy machine add passes on stdin
+		// The 128-bit secret sy machine add passes on stdin: a secret claim carries no clear
+		// keys (keys.md 7.1, no downgrade of the QR path).
+		req.Secret = code
 	} else {
 		req.Code = code
+		// A typed code registers this machine's link keys (reg tofu, keys.md 7.1).
+		if dk, _, err = keys.LoadOrCreateDeviceKeys(deps.dirs.State.Path, time.Now()); err != nil {
+			return "", fmt.Errorf("this machine's link keys: %w", err)
+		}
+		if sent, err = dk.Public(); err != nil {
+			return "", fmt.Errorf("this machine's link keys: %w", err)
+		}
+		req.Keys = &sent
 	}
 	rep, err := client.Claim(ctx, url, hc, req)
+	if err == nil && req.Keys != nil && (rep.HubKey != nil || rep.Cert != nil) {
+		err = keepClaimedKeys(ctx, deps, url, hc, rep, dk, sent)
+		if err != nil {
+			return "", err
+		}
+	}
 	if err != nil {
 		var se *client.StatusError
 		if errors.As(err, &se) {
@@ -411,4 +430,27 @@ func claimMachineToken(ctx context.Context, deps connectDeps, url, code string) 
 		return "", fmt.Errorf("could not claim the code: %w", err)
 	}
 	return rep.Token, nil
+}
+
+// keepClaimedKeys checks an F1 claim reply (keys.md 7.3) and pins the hub key (tofu) and a
+// confirmed owner key. A reply that does not hold up gives the new token back (best effort)
+// and fails; so does a hub key other than the one this machine pinned before.
+func keepClaimedKeys(ctx context.Context, deps connectDeps, url string, hc *http.Client, rep *client.ClaimReply, dk keys.DeviceKeys, sent keys.DeviceKeysNew) error {
+	giveBack := func() { _ = (&client.Client{BaseURL: url, Token: rep.Token, HTTP: hc}).DeleteSelf(ctx) }
+	ck, err := client.VerifyClaim(rep, sent, keys.RegTOFU, "")
+	if err != nil {
+		giveBack()
+		return fmt.Errorf("%w; the new token was not kept (if the hub still lists this machine, revoke it on the board)", err)
+	}
+	if _, err := client.PinClaimed(deps.dirs.State.Path, ck, keys.PinTOFU, time.Now()); err != nil {
+		if errors.Is(err, keys.ErrPinned) {
+			giveBack()
+			old, _ := keys.ReadPin(keys.Path(deps.dirs.State.Path, keys.HubPinFile))
+			return fmt.Errorf("this hub's key %s is not the one this machine pinned (%s). If you moved or rebuilt the hub, check the new fingerprint with `sy hub keys show` on the hub and run `sy agent enable --repin-hub`",
+				keys.GroupFP(ck.HubFP), keys.GroupFP(old.FP))
+		}
+		return err
+	}
+	dk.Device = rep.Device
+	return keys.WriteDeviceKeys(deps.dirs.State.Path, dk)
 }

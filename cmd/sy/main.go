@@ -69,6 +69,7 @@ func commands() map[string]command {
 		"term":        {summary: "Terminal pieces: pane, titles, Warp tabs and plugin (setup, titles, warp, off, status, focus)", phase: 7, run: runTerm},
 		"open":        {summary: "List accounts, or open one in a new Warp tab or this terminal", phase: 7, run: runOpen},
 		"ssh":         {summary: "ssh that lets the server's sessions be focused in this tab", phase: 7, run: runSSH},
+		"keys":        {summary: "Owner key, certificates, revocations and pins (init, status, certify, revoke, ...)", run: runKeys},
 	}
 }
 

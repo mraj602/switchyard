@@ -75,7 +75,7 @@ func TestHubPairJSONShape(t *testing.T) {
 	}
 	digits := strings.Replace(c.Code, "-", "", 1)
 	if !strings.HasPrefix(c.ID, "pc_") || c.Kind != "phone" || c.Name != "Anna" || len(c.Code) != 7 || len(c.Secret) != 22 || c.Command != nil ||
-		c.URL != "https://hub.example.ts.net/#/pair?s="+c.Secret+"&c="+digits {
+		!strings.HasPrefix(c.URL, "https://hub.example.ts.net/#/pair?s="+c.Secret+"&c="+digits+"&h=") || !strings.Contains(c.URL, "&k=") {
 		t.Errorf("shape %+v", c)
 	}
 	exp, err := time.Parse(time.RFC3339Nano, c.ExpiresAt)

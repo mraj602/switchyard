@@ -133,6 +133,7 @@ const (
 	memberManifest = "manifest.json"
 	memberDB       = "hub.db"
 	memberPepper   = "state/pair_pepper"
+	memberHubKey   = "state/hub_sign.key"
 	memberPullKey  = "state/pull/id_ed25519"
 	memberPullPub  = "state/pull/id_ed25519.pub"
 )
@@ -405,7 +406,7 @@ func (s *Store) Export(ctx context.Context, o ExportOptions) (res ExportResult, 
 		b, rerr := os.ReadFile(st.path)
 		if errors.Is(rerr, os.ErrNotExist) {
 			if st.required {
-				return res, fmt.Errorf("export: %s is missing; the export would not carry the pairing key (start the hub once, or pass the --db and --pull-dir the hub runs with)", st.path)
+				return res, fmt.Errorf("export: %s is missing; the export would not carry the pairing and signing keys (start the hub once, or pass the --db and --pull-dir the hub runs with)", st.path)
 			}
 			continue
 		}
@@ -475,6 +476,7 @@ func stateFiles(stateDir, pullDir string) []stateFile {
 	}
 	return []stateFile{
 		{memberPepper, filepath.Join(stateDir, "pair_pepper"), true},
+		{memberHubKey, filepath.Join(stateDir, "hub_sign.key"), true}, // keys.md 3.4
 		{memberPullKey, filepath.Join(pullDir, "id_ed25519"), false},
 		{memberPullPub, filepath.Join(pullDir, "id_ed25519.pub"), false},
 	}
@@ -576,7 +578,7 @@ func unpack(path, passphrase, dir string) (Manifest, error) {
 				return m, fmt.Errorf("damaged export: manifest: %w", err)
 			}
 			haveManifest = true
-		case memberDB, memberPepper, memberPullKey, memberPullPub:
+		case memberDB, memberPepper, memberHubKey, memberPullKey, memberPullPub:
 			if !haveManifest {
 				return m, errors.New("damaged export: manifest.json must come first")
 			}

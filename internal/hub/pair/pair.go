@@ -1,11 +1,13 @@
 package pair
 
 import (
+	"bytes"
 	"context"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -19,7 +21,9 @@ import (
 	"unicode"
 
 	"github.com/mraj602/switchyard/internal/hub/auth"
+	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
 	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/switchyard/internal/keys"
 	"github.com/mraj602/switchyard/internal/paths"
 )
 
@@ -87,6 +91,10 @@ type Service struct {
 	Log *log.Logger
 	// Rand is the randomness source; nil = crypto/rand. Tests inject.
 	Rand io.Reader
+
+	// Keys, when set, registers device keys at claim time and adds h= and k= to the QR
+	// (keys.md 7). Nil: pairing as before F1.
+	Keys *hubkeys.Service
 
 	pepperPath string
 	mu         sync.Mutex
@@ -205,6 +213,20 @@ func (s *Service) mac(prefix, value string) ([]byte, error) {
 	h.Write([]byte(prefix))
 	h.Write([]byte(value))
 	return h.Sum(nil), nil
+}
+
+// Pepper returns the pairing pepper (made at first use). The authenticator keys the hash
+// of sy_o_ tokens with it (auth.OwnerHash).
+func (s *Service) Pepper() ([]byte, error) { return s.key() }
+
+// SealKey is the QR's k: HMAC-SHA256(pepper, "seal:" + secret)[0:16] (keys.md 7). It is
+// recomputed from the secret at claim time; nothing is stored.
+func (s *Service) SealKey(secret string) ([]byte, error) {
+	m, err := s.mac("seal:", secret)
+	if err != nil {
+		return nil, err
+	}
+	return m[:keys.SealKeyLen], nil
 }
 
 // CodeHash is HMAC-SHA256(pepper, "code:" + 6 digits).
@@ -359,6 +381,12 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Code, error) {
 	if err != nil {
 		return Code{}, err
 	}
+	var seal []byte
+	if s.Keys != nil {
+		if seal, err = s.SealKey(secret); err != nil {
+			return Code{}, err
+		}
+	}
 	by := req.CreatedBy
 	if by == "" {
 		by = "cli"
@@ -398,8 +426,12 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Code, error) {
 			MachineID: req.Machine, URL: origin, CreatedAt: now, CreatedBy: by, ExpiresAt: exp}); err != nil {
 			return err
 		}
+		u := PairURL(origin, secret, digits)
+		if seal != nil {
+			u = PairURLKeys(origin, secret, digits, s.Keys.Key.FP, keys.B64(seal))
+		}
 		out = Code{ID: id, Kind: req.Kind, Name: name, Machine: req.Machine, Digits: digits, Code: FormatCode(digits),
-			Secret: secret, Hub: origin, URL: PairURL(origin, secret, digits), ExpiresAt: time.UnixMilli(exp).UTC(), PlainHTTP: plain}
+			Secret: secret, Hub: origin, URL: u, ExpiresAt: time.UnixMilli(exp).UTC(), PlainHTTP: plain}
 		return nil
 	})
 	if err != nil {
@@ -478,6 +510,11 @@ type ClaimRequest struct {
 	ExpectKind string
 	Cookie     bool
 	Client     string
+	// Keys are the device's public keys in the clear (typed codes and `sy connect --code`,
+	// reg tofu); KeysSealed the same JSON sealed with the QR's k (secret claims, reg qr).
+	// At most one; keys.md 7.1.
+	Keys       *keys.DeviceKeysNew
+	KeysSealed string
 }
 
 // ClaimResult is a new device. Token is empty in cookie mode: the caller sets the cookie.
@@ -487,6 +524,10 @@ type ClaimResult struct {
 	PairID  string
 	HubURL  string
 	Machine string
+	// Cert is the device's hub-signed certificate and Reg how its keys were registered,
+	// when the claim carried keys (keys.md 7.3).
+	Cert *keys.Doc
+	Reg  string
 }
 
 // Claim swaps a code or secret for a device (pairing.md 3, steps 1 to 6). ip is the
@@ -532,6 +573,29 @@ func (s *Service) Claim(ctx context.Context, ip string, req ClaimRequest) (Claim
 	}
 	if req.ExpectKind != "" && !validKind(req.ExpectKind) {
 		return ClaimResult{}, badRequest("expect_kind must be machine, desktop, phone or browser")
+	}
+	// keys.md 7.1: clear keys only with a typed code (no downgrade of the QR path), sealed
+	// keys only with a secret. Refused before the code is looked at, so it stays live.
+	if req.Keys != nil && req.KeysSealed != "" {
+		return ClaimResult{}, badRequest("send at most one of keys and keys_sealed")
+	}
+	if (req.Keys != nil && !typed) || (req.KeysSealed != "" && typed) {
+		return ClaimResult{}, badRequest(keys.ErrSeal.Error())
+	}
+	if (req.Keys != nil || req.KeysSealed != "") && s.Keys == nil {
+		return ClaimResult{}, badRequest("this hub has no signing key yet")
+	}
+	var devKeys *keys.DeviceKeysNew
+	reg := ""
+	var sealKey []byte
+	switch {
+	case req.Keys != nil:
+		devKeys, reg = req.Keys, keys.RegTOFU
+	case req.KeysSealed != "":
+		if sealKey, err = s.SealKey(req.Secret); err != nil {
+			return ClaimResult{}, err
+		}
+		reg = keys.RegQR
 	}
 
 	var res ClaimResult
@@ -597,6 +661,39 @@ func (s *Service) Claim(ctx context.Context, ip string, req ClaimRequest) (Claim
 		if err := p.Insert(tx); err != nil {
 			return err
 		}
+		if sealKey != nil {
+			// Opened only once the secret matched a live code: an unknown secret is still a
+			// 401 that the limiter counts. A seal that does not open is 400 and the
+			// transaction rolls back, so a tampered request cannot burn the phone's code.
+			plain, err := keys.OpenKeys(sealKey, req.Secret, req.KeysSealed)
+			if err != nil {
+				return badRequest(keys.ErrSeal.Error())
+			}
+			var dk keys.DeviceKeysNew
+			dec := json.NewDecoder(bytes.NewReader(plain))
+			dec.DisallowUnknownFields()
+			if err := dec.Decode(&dk); err != nil {
+				return badRequest(keys.ErrSeal.Error())
+			}
+			devKeys = &dk
+		}
+		var cert *keys.Doc
+		if devKeys != nil {
+			// The keys must match the code's kind; a failure rolls everything back and the
+			// code stays live (keys.md 7.1 steps 2 and 3).
+			if err := keys.CheckKeys(row.Kind, *devKeys, row.Kind == "phone"); err != nil {
+				return badRequest(keys.ErrSeal.Error() + ": " + err.Error())
+			}
+			d, err := s.Keys.RegisterTx(tx, p.Device, *devKeys, reg)
+			if err != nil {
+				var ke *hubkeys.Error
+				if errors.As(err, &ke) {
+					return badRequest(ke.Msg)
+				}
+				return err
+			}
+			cert = &d
+		}
 		won, err := tx.ClaimPairCode(row.ID, p.Device.ID, ip, now)
 		if err != nil {
 			return err
@@ -604,7 +701,10 @@ func (s *Service) Claim(ctx context.Context, ip string, req ClaimRequest) (Claim
 		if !won {
 			return ErrInvalid // a concurrent claim won: roll the device back
 		}
-		res = ClaimResult{Device: p.Device, Token: p.Token, PairID: row.ID, HubURL: row.URL, Machine: machine}
+		res = ClaimResult{Device: p.Device, Token: p.Token, PairID: row.ID, HubURL: row.URL, Machine: machine, Cert: cert}
+		if cert != nil {
+			res.Reg = reg
+		}
 		return nil
 	})
 	if err != nil {
@@ -638,6 +738,10 @@ func (s *Service) OwnerSignIn(ctx context.Context, ip, secret, name string) (aut
 		s.logf("pair owner limited ip=%s retry=%ds", ip, int(retry.Seconds()))
 		return auth.Created{}, &LimitError{RetryAfter: retry}
 	}
+	pepper, err := s.key()
+	if err != nil {
+		return auth.Created{}, err
+	}
 	h, err := s.SecretHash(secret)
 	if err != nil {
 		return auth.Created{}, err
@@ -658,7 +762,7 @@ func (s *Service) OwnerSignIn(ctx context.Context, ip, secret, name string) (aut
 		if !hmac.Equal(row.SecretHash, h) || row.Kind != "owner" {
 			return ErrInvalid
 		}
-		p, err := auth.Prepare(auth.CreateRequest{Kind: "browser", Name: name, CreatedBy: "owner-link:" + row.ID, Owner: true}, time.UnixMilli(now))
+		p, err := auth.Prepare(auth.CreateRequest{Kind: "browser", Name: name, CreatedBy: "owner-link:" + row.ID, Owner: true, Pepper: pepper}, time.UnixMilli(now))
 		if err != nil {
 			return err
 		}

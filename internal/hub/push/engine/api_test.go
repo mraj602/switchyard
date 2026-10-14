@@ -7,11 +7,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/mraj602/switchyard/internal/hub/api"
 	"github.com/mraj602/switchyard/internal/hub/auth"
+	"github.com/mraj602/switchyard/internal/hub/pair"
 	"github.com/mraj602/switchyard/internal/hub/push/model"
 )
 
@@ -34,7 +36,15 @@ func newAPIRig(t *testing.T, opts ...opt) *apiRig {
 	s := api.New(cfg)
 	r := &apiRig{h: h, srv: httptest.NewServer(s.Handler())}
 	t.Cleanup(func() { s.Close(); r.srv.Close() })
-	o, err := auth.Create(h.ctx, h.st, auth.CreateRequest{Kind: "browser", Name: "owner", Scopes: []string{"owner", "read", "push"}})
+	// An owner session's token hash is keyed with the pairing pepper: a temp one here.
+	old := api.PairPepperPath
+	api.PairPepperPath = filepath.Join(t.TempDir(), "pair_pepper")
+	t.Cleanup(func() { api.PairPepperPath = old })
+	pepper, err := pair.NewService(h.st, api.PairPepperPath).Pepper()
+	if err != nil {
+		t.Fatal(err)
+	}
+	o, err := auth.Create(h.ctx, h.st, auth.CreateRequest{Kind: "browser", Name: "owner", Owner: true, CreatedBy: "owner-link:pc_test", Pepper: pepper})
 	if err != nil {
 		t.Fatal(err)
 	}

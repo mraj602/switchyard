@@ -48,6 +48,15 @@ func (s *Store) DeviceDetailByID(ctx context.Context, id string) (DeviceDetail, 
 	return d, err
 }
 
+// DeviceDetailByID is the same inside a write transaction.
+func (tx *Tx) DeviceDetailByID(id string) (DeviceDetail, error) {
+	d, err := scanDetail(tx.queryRow(`SELECT `+detailCols+` FROM device WHERE id = ?`, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return d, ErrNotFound
+	}
+	return d, err
+}
+
 // DeviceDetails lists devices newest first. Revoked and expired ones (expires_at <= now,
 // ms) only with all.
 func (s *Store) DeviceDetails(ctx context.Context, all bool, now int64) ([]DeviceDetail, error) {

@@ -1,0 +1,111 @@
+{
+  "name": "revocations-hub",
+  "keys": {
+    "hub": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w",
+    "owner": "z_1xUJjYPtzCNqg7A9X7RRnaOzlwUFDlIrBYrQLSxTA"
+  },
+  "fields": {
+    "body": {
+      "devices": [
+        {
+          "at": "2026-10-15T09:10:00.000Z",
+          "device": "dev_01JA4MACHINE00000000000000",
+          "keys": [
+            "ni4ahvpqlgicuhdnv66jxjds",
+            "hv2dlhryvcfeewsx3byw7y6a"
+          ],
+          "reason": "lost"
+        }
+      ],
+      "hub": "gr2q7gf5lh6pzfdnurnkvput",
+      "issued_at": "2026-10-15T09:10:00.000Z",
+      "v": 1,
+      "version": 4
+    },
+    "body_text": "{\"v\":1,\"version\":4,\"hub\":\"gr2q7gf5lh6pzfdnurnkvput\",\"issued_at\":\"2026-10-15T09:10:00.000Z\",\"devices\":[{\"device\":\"dev_01JA4MACHINE00000000000000\",\"keys\":[\"ni4ahvpqlgicuhdnv66jxjds\",\"hv2dlhryvcfeewsx3byw7y6a\"],\"at\":\"2026-10-15T09:10:00.000Z\",\"reason\":\"lost\"}]}",
+    "type": "revocations"
+  },
+  "signed_hex": "73792d646f632d76310a7265766f636174696f6e730a7b2276223a312c2276657273696f6e223a342c22687562223a2267723271376766356c6836707a66646e75726e6b76707574222c226973737565645f6174223a22323032362d31302d31355430393a31303a30302e3030305a222c2264657669636573223a5b7b22646576696365223a226465765f30314a41344d414348494e453030303030303030303030303030222c226b657973223a5b226e693461687670716c6769637568646e7636366a786a6473222c22687632646c68727976636665657773783362797737793661225d2c226174223a22323032362d31302d31355430393a31303a30302e3030305a222c22726561736f6e223a226c6f7374227d5d7d",
+  "doc": {
+    "type": "revocations",
+    "body": "eyJ2IjoxLCJ2ZXJzaW9uIjo0LCJodWIiOiJncjJxN2dmNWxoNnB6ZmRudXJua3ZwdXQiLCJpc3N1ZWRfYXQiOiIyMDI2LTEwLTE1VDA5OjEwOjAwLjAwMFoiLCJkZXZpY2VzIjpbeyJkZXZpY2UiOiJkZXZfMDFKQTRNQUNISU5FMDAwMDAwMDAwMDAwMDAiLCJrZXlzIjpbIm5pNGFodnBxbGdpY3VoZG52NjZqeGpkcyIsImh2MmRsaHJ5dmNmZWV3c3gzYnl3N3k2YSJdLCJhdCI6IjIwMjYtMTAtMTVUMDk6MTA6MDAuMDAwWiIsInJlYXNvbiI6Imxvc3QifV19",
+    "sigs": [
+      {
+        "by": "hub",
+        "fp": "gr2q7gf5lh6pzfdnurnkvput",
+        "sig": "hQr-1sXgYHHIGFgq3GtnrCNZ929W9QNyDXLQl6t9zMpJZ4FYgxIRkhdUCfJnYBgsFnWJpLo55mOTQH99wBrxDQ"
+      }
+    ]
+  },
+  "bad": [
+    {
+      "why": "body byte changed",
+      "doc": {
+        "type": "revocations",
+        "body": "eyJ2IjoxLCJ2ZXJzaW9uIjo0LCJodWIiOiJncjJxN2dmNWxoNnB6ZmRudXJua3ZwdXQiLCJpc3N1ZWRfYXQiOiIyMDI2LTEwLTE1VDA5OjEwOjAwLjAwMFoiLCJkZXZpY2VzIjpbeyJkZXZpY2UiOiJkZXZfMDFKQTRNQUNISU5FMTAwMDAwMDAwMDAwMDAiLCJrZXlzIjpbIm5pNGFodnBxbGdpY3VoZG52NjZqeGpkcyIsImh2MmRsaHJ5dmNmZWV3c3gzYnl3N3k2YSJdLCJhdCI6IjIwMjYtMTAtMTVUMDk6MTA6MDAuMDAwWiIsInJlYXNvbiI6Imxvc3QifV19",
+        "sigs": [
+          {
+            "by": "hub",
+            "fp": "gr2q7gf5lh6pzfdnurnkvput",
+            "sig": "hQr-1sXgYHHIGFgq3GtnrCNZ929W9QNyDXLQl6t9zMpJZ4FYgxIRkhdUCfJnYBgsFnWJpLo55mOTQH99wBrxDQ"
+          }
+        ]
+      }
+    },
+    {
+      "why": "by swapped",
+      "doc": {
+        "type": "revocations",
+        "body": "eyJ2IjoxLCJ2ZXJzaW9uIjo0LCJodWIiOiJncjJxN2dmNWxoNnB6ZmRudXJua3ZwdXQiLCJpc3N1ZWRfYXQiOiIyMDI2LTEwLTE1VDA5OjEwOjAwLjAwMFoiLCJkZXZpY2VzIjpbeyJkZXZpY2UiOiJkZXZfMDFKQTRNQUNISU5FMDAwMDAwMDAwMDAwMDAiLCJrZXlzIjpbIm5pNGFodnBxbGdpY3VoZG52NjZqeGpkcyIsImh2MmRsaHJ5dmNmZWV3c3gzYnl3N3k2YSJdLCJhdCI6IjIwMjYtMTAtMTVUMDk6MTA6MDAuMDAwWiIsInJlYXNvbiI6Imxvc3QifV19",
+        "sigs": [
+          {
+            "by": "owner",
+            "fp": "gr2q7gf5lh6pzfdnurnkvput",
+            "sig": "hQr-1sXgYHHIGFgq3GtnrCNZ929W9QNyDXLQl6t9zMpJZ4FYgxIRkhdUCfJnYBgsFnWJpLo55mOTQH99wBrxDQ"
+          }
+        ]
+      }
+    },
+    {
+      "why": "no signature",
+      "doc": {
+        "type": "revocations",
+        "body": "eyJ2IjoxLCJ2ZXJzaW9uIjo0LCJodWIiOiJncjJxN2dmNWxoNnB6ZmRudXJua3ZwdXQiLCJpc3N1ZWRfYXQiOiIyMDI2LTEwLTE1VDA5OjEwOjAwLjAwMFoiLCJkZXZpY2VzIjpbeyJkZXZpY2UiOiJkZXZfMDFKQTRNQUNISU5FMDAwMDAwMDAwMDAwMDAiLCJrZXlzIjpbIm5pNGFodnBxbGdpY3VoZG52NjZqeGpkcyIsImh2MmRsaHJ5dmNmZWV3c3gzYnl3N3k2YSJdLCJhdCI6IjIwMjYtMTAtMTVUMDk6MTA6MDAuMDAwWiIsInJlYXNvbiI6Imxvc3QifV19",
+        "sigs": []
+      }
+    },
+    {
+      "why": "extra signature",
+      "doc": {
+        "type": "revocations",
+        "body": "eyJ2IjoxLCJ2ZXJzaW9uIjo0LCJodWIiOiJncjJxN2dmNWxoNnB6ZmRudXJua3ZwdXQiLCJpc3N1ZWRfYXQiOiIyMDI2LTEwLTE1VDA5OjEwOjAwLjAwMFoiLCJkZXZpY2VzIjpbeyJkZXZpY2UiOiJkZXZfMDFKQTRNQUNISU5FMDAwMDAwMDAwMDAwMDAiLCJrZXlzIjpbIm5pNGFodnBxbGdpY3VoZG52NjZqeGpkcyIsImh2MmRsaHJ5dmNmZWV3c3gzYnl3N3k2YSJdLCJhdCI6IjIwMjYtMTAtMTVUMDk6MTA6MDAuMDAwWiIsInJlYXNvbiI6Imxvc3QifV19",
+        "sigs": [
+          {
+            "by": "hub",
+            "fp": "gr2q7gf5lh6pzfdnurnkvput",
+            "sig": "hQr-1sXgYHHIGFgq3GtnrCNZ929W9QNyDXLQl6t9zMpJZ4FYgxIRkhdUCfJnYBgsFnWJpLo55mOTQH99wBrxDQ"
+          },
+          {
+            "by": "device",
+            "fp": "gr2q7gf5lh6pzfdnurnkvput",
+            "sig": "hQr-1sXgYHHIGFgq3GtnrCNZ929W9QNyDXLQl6t9zMpJZ4FYgxIRkhdUCfJnYBgsFnWJpLo55mOTQH99wBrxDQ"
+          }
+        ]
+      }
+    },
+    {
+      "why": "another type",
+      "doc": {
+        "type": "matrix",
+        "body": "eyJ2IjoxLCJ2ZXJzaW9uIjo0LCJodWIiOiJncjJxN2dmNWxoNnB6ZmRudXJua3ZwdXQiLCJpc3N1ZWRfYXQiOiIyMDI2LTEwLTE1VDA5OjEwOjAwLjAwMFoiLCJkZXZpY2VzIjpbeyJkZXZpY2UiOiJkZXZfMDFKQTRNQUNISU5FMDAwMDAwMDAwMDAwMDAiLCJrZXlzIjpbIm5pNGFodnBxbGdpY3VoZG52NjZqeGpkcyIsImh2MmRsaHJ5dmNmZWV3c3gzYnl3N3k2YSJdLCJhdCI6IjIwMjYtMTAtMTVUMDk6MTA6MDAuMDAwWiIsInJlYXNvbiI6Imxvc3QifV19",
+        "sigs": [
+          {
+            "by": "hub",
+            "fp": "gr2q7gf5lh6pzfdnurnkvput",
+            "sig": "hQr-1sXgYHHIGFgq3GtnrCNZ929W9QNyDXLQl6t9zMpJZ4FYgxIRkhdUCfJnYBgsFnWJpLo55mOTQH99wBrxDQ"
+          }
+        ]
+      }
+    }
+  ]
+}

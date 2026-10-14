@@ -166,8 +166,8 @@ Each device keeps the keys it trusts in its state folder (paths.md 3):
 
 | File | Holds | Set |
 | --- | --- | --- |
-| `<state>/keys/hub.pub` | `{"pub", "fp", "pinned_at", "how"}` | At pairing from the claim reply, checked against the QR's `h=` when there was one; `how` = `qr`, `tofu` (typed code, or `sy connect --token`), `ssh` (`sy machine add`) |
-| `<state>/keys/owner.pub` | `{"pub", "fp", "pinned_at", "how"}` | Out of band when possible: by `sy keys init` on the owner machine (`how = local`), by `sy machine add` over your SSH session (`how = ssh`), or by `sy keys trust-owner <fp>`. Otherwise from the hub the first time one is active (the claim reply, `GET /v1/keys` or the link's `welcome`), only with the owner's self-signature and the hub's confirmation signature (3.3): trust on first use, `how = tofu`, printed by `sy agent status` with the fingerprint to compare |
+| `<state>/keys/hub.pub` | `{"pub", "fp", "pinned_at", "how"}` | At pairing from the claim reply, checked against the QR's `h=` when there was one; `how` = `qr`, `tofu` (typed code, or `sy connect --token`), `ssh` (`sy machine add`), `hand` (`sy agent enable --repin-hub`) |
+| `<state>/keys/owner.pub` | `{"pub", "fp", "pinned_at", "how"}` | Out of band when possible: by `sy keys init` on the owner machine (`how = local`), by `sy machine add` over your SSH session (`how = ssh`), or by `sy keys trust-owner <fp>` (`how = hand`). Otherwise from the hub the first time one is active (the claim reply, `GET /v1/keys` or the link's `welcome`), only with the owner's self-signature and the hub's confirmation signature (3.3): trust on first use, `how = tofu`, printed by `sy agent status` with the fingerprint to compare |
 
 A pin changes only by `sy keys trust-owner <fp>` / `sy agent enable --repin-hub` typed on that
 machine, which print the old and the new fingerprint and ask for confirmation (TTY only,
@@ -175,7 +175,7 @@ signing guard 8). Nothing received over the network replaces a pin.
 
 **What TOFU trusts.** A machine that pins the owner key from the hub trusts the hub at that
 moment. Edited rows cannot exploit that (3.3 step 3). Anyone who can confirm a key of their own
-(an owner session, so also a database writer or code running as the hub, 5.4) can make a
+(an owner session, so also code running as the hub, 5.4) can make a
 machine **that pins afterwards** trust it; machines already pinned keep the real key, and
 their checks (peers.md 8.4) are the ones that count. `sy agent status` and the board show both
 fingerprints so a wrong pin is visible; `sy machine add` pins over SSH and avoids the window
@@ -224,10 +224,16 @@ Every signed object has one shape, whatever its type:
 | `device_cert` | 4.2 | `hub` always; `owner` for machines and desktops before they may send or receive peer messages |
 | `matrix` | peers.md 5.1 | One: `owner`, or `hub` under the rules of 5.4 |
 | `revocations` | 6 | One: `owner` or `hub` |
+| `peer_envelope` | peers.md 8.2 | `device`: the sending machine's key, checked against its certificate |
 
 `matrix` and `revocations` bodies carry `"hub": "<hub fp>"` as certificates do, so a document
 made for a test hub with the same owner key is refused by machines of another hub.
-| `peer_envelope` | peers.md 8.2 | `device`: the sending machine's key, checked against its certificate |
+
+**`owner_key` is the one self-describing type.** Its `by: owner` key is not looked up in a pin:
+the verifier decodes `pub` from the body first (the only body read before a signature is
+checked), requires `fp` = fingerprint(`pub`), checks the self-signature with that key and then
+the `by: hub` signature with the pinned (or the hub's own) hub key. A device pins the key only
+when both verify (3.5); the hub uses a row only when both verify. Code: `keys.VerifyOwnerKey`.
 
 ### 4.2 Device certificates
 
@@ -297,7 +303,8 @@ requires it.
 A matrix document **widens** compared with the one before it when any of these is true:
 an allowed directed pair is added, `same_account` goes from false to true, `paused` goes
 from true to false, or `max_turns` grows. Anything else narrows or is neutral. The rule is
-computed by one function (`peers.Widens(old, new)`) used by the hub, the agent and the CLI.
+computed by one function (`keys.Widens(old, new)`, in `internal/keys` beside the matrix body so
+the hub, the agent and the CLI share it without importing `internal/peers`).
 
 ### 5.3 Owner-key documents
 
@@ -333,7 +340,7 @@ addendum's "the hub can only narrow". Who can widen, per setting:
 | Attacker | `hub_may_widen = true` (default) | `false` |
 | --- | --- | --- |
 | A copy of `hub.db` or a backup (read only) | No | No |
-| Write access to `hub.db` only | **Yes**: it can mint an owner session (token hashes are unpeppered, tokens.md 2) and ask the hub to sign | No |
+| Write access to `hub.db` only | No: owner-session token hashes are keyed with `pair_pepper` (tokens.md 2), so it cannot mint one; it can mint a `write` token, which cannot ask for a widening | No |
 | Code running as the hub's OS user (reads `hub_sign.key`) | **Yes** | No |
 | A Claude Code session on the **hub machine**, as the same OS user | **Yes**, the same way | No |
 | A session on another machine | No (no owner session, no hub key) | No |
@@ -410,8 +417,13 @@ Hub steps, inside the claim transaction after pairing.md 3 step 3:
 1. Recompute `k`, open `keys_sealed`. Failure → **400** `bad_request` "key registration
    invalid", and the code is **not** consumed, so a tampered request cannot burn the real
    phone's code.
+   The seal is opened only after the secret matched a live code, so an unknown secret is
+   still 401 and counts against the limiter like any other wrong secret; a typed code with
+   `keys_sealed`, or both fields at once, is 400.
    **No downgrade:** a `secret` claim (the QR path) that carries `keys` in the clear is
-   refused the same way: clear keys are for typed codes only. A proxy can still strip the keys
+   refused the same way: clear keys are for typed codes only. A `secret` claim made without
+   the QR (`sy machine add` passing a code on stdin) therefore sends no keys and registers
+   them afterwards with `PUT /v1/devices/self/keys` (`reg = tofu`). A proxy can still strip the keys
    altogether; the app then sees a reply without `cert` / `reg = qr` and refuses (7.3).
 2. Check the keys: P-256 points on the curve (`ecdh.P256().NewPublicKey`, `ecdsa` parse),
    Ed25519/X25519 32 bytes, `auth` 16 bytes, algorithms matching the code's kind.
@@ -448,7 +460,11 @@ The device checks the reply before it keeps anything: the certificate's hub sign
 `hub_key` (and `hub_key.fp` against `h=` when the QR had one), that the certificate holds
 **its own** public keys, and, when it sent `keys_sealed`, that `reg` is `qr`. Any mismatch →
 it deletes the new device with its token (`DELETE /v1/devices/self`), forgets the token and
-shows "Pairing was tampered with; try again on your home network".
+shows "Pairing was tampered with; try again on your home network". A machine (`sy connect
+--code`, a `write` token) cannot call `DELETE /v1/devices/self` (owner and push scopes only):
+it tries, forgets the token whatever the answer, and tells you to revoke the device on the
+board if the hub still lists it. A machine that already pins another hub key refuses the
+reply the same way (`sy agent enable --repin-hub` after checking the new fingerprint).
 
 ## 8. The signing guard
 

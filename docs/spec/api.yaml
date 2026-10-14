@@ -1225,7 +1225,6 @@ paths:
       tags: [keys]
       operationId: getKeys
       summary: The hub key, the active owner key and (owner) pending proposals
-      x-reserved: "F1"
       x-scopes: [owner, read, push, write]
       responses:
         "200":
@@ -1247,7 +1246,6 @@ paths:
         proposal while a key is active retires that key (a replacement, keys.md 3.3 step 5):
         machines keep their pin until `sy keys trust-owner` is run on each. `409` while
         another proposal is pending.
-      x-reserved: "F1"
       x-scopes: [owner, write]
       requestBody:
         required: true
@@ -1260,7 +1258,7 @@ paths:
                 doc: {$ref: "#/components/schemas/SignedDoc"}
       responses:
         "201":
-          description: Stored (pending, or active for a rotation).
+          description: "Stored as pending (there is no rotation document, keys.md 3.3 step 5; merged mode activates through the CLI, not this endpoint)."
           content:
             application/json:
               schema: {$ref: "#/components/schemas/OwnerKey"}
@@ -1275,7 +1273,6 @@ paths:
       tags: [keys]
       operationId: confirmOwnerKey
       summary: Activate a pending owner key (owner session)
-      x-reserved: "F1"
       x-scopes: [owner]
       requestBody:
         required: true
@@ -1303,7 +1300,6 @@ paths:
       tags: [keys]
       operationId: getRevocations
       summary: The newest revocation document
-      x-reserved: "F1"
       x-scopes: [owner, read, push, write]
       responses:
         "200":
@@ -1324,7 +1320,6 @@ paths:
       tags: [keys]
       operationId: postRevocations
       summary: Upload an owner-signed revocation document; the hub revokes the devices it adds
-      x-reserved: "F1"
       x-scopes: [owner, write]
       requestBody:
         required: true
@@ -1336,7 +1331,17 @@ paths:
               properties:
                 doc: {$ref: "#/components/schemas/SignedDoc"}
       responses:
-        "200": {description: Accepted and queued to every machine.}
+        "200":
+          description: Accepted and queued to every machine; `revoked` lists the devices this upload revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revoked]
+                properties:
+                  revoked:
+                    type: array
+                    items: {type: string}
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "409": {$ref: "#/components/responses/Conflict"}
@@ -1353,7 +1358,6 @@ paths:
         replace the old certificate and are added to the next revocation list; `409` for a
         device whose keys came under the QR seal or SSH, or that the owner key certified
         (re-pair it instead).
-      x-reserved: "F1"
       x-scopes: [write, push]
       parameters:
         - {name: id, in: path, required: true, schema: {type: string}}
@@ -1383,7 +1387,6 @@ paths:
       tags: [keys]
       operationId: getDeviceCert
       summary: A device's certificate with its signatures
-      x-reserved: "F1"
       x-scopes: [owner, write]
       parameters:
         - {name: id, in: path, required: true, schema: {type: string}}
@@ -1406,7 +1409,6 @@ paths:
       operationId: certifyDevice
       summary: Add the owner signature to a device certificate (`sy keys certify`)
       description: keys.md 4.2 step 2. The signature must verify with the active owner key over the stored body.
-      x-reserved: "F1"
       x-scopes: [owner, write]
       parameters:
         - {name: id, in: path, required: true, schema: {type: string}}
@@ -2642,6 +2644,17 @@ components:
           description: Owner only.
           items: {$ref: "#/components/schemas/OwnerKey"}
         revocations_version: {type: integer}
+        devices:
+          type: array
+          description: "Owner and write callers only (`sy keys certify` on the owner machine, keys.md 4.2 step 2): live devices with a verified certificate."
+          items:
+            type: object
+            required: [id, kind, name, keys]
+            properties:
+              id: {type: string}
+              kind: {type: string}
+              name: {type: string}
+              keys: {$ref: "#/components/schemas/DeviceKeyInfo"}
 
     LinkStatus:
       type: [object, "null"]

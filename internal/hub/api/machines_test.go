@@ -57,12 +57,7 @@ func ownerToken(t *testing.T, h *hub) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c, err := auth.Create(context.Background(), h.st, auth.CreateRequest{Kind: "browser", Name: "owner",
-		CreatedBy: "login:" + d.Device.ID, Scopes: []string{"owner", "read", "push"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return c.Token
+	return ownerSessionBy(t, h.st, "login:"+d.Device.ID).Token
 }
 
 func machineInfoRec(t *testing.T, machine string) []byte {
