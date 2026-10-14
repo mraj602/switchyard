@@ -1408,6 +1408,7 @@ func (s *Server) devReset(w http.ResponseWriter, r *http.Request) {
 	s.revoked = map[string]bool{}
 	s.pair = pairState{}
 	s.lastTest = map[string]time.Time{}
+	s.peerState = nil
 	s.buildHash = ""
 	writeJSON(w, 200, M{"reset": true})
 	s.emitLocked("reset", M{})

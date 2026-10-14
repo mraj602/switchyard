@@ -9,6 +9,7 @@
 //   #/more/alerts            Alerts and rules
 //   #/more/settings          Settings
 //   #/more/devices           Devices (owner)
+//   #/more/peers             Settings → Peers: account matrix, Pause all peers, audit
 //   #/pair?s=<secret>&c=<digits>   Pairing
 //   #/owner?s=<secret>       Owner sign-in
 //   #/alerts/<id>            Redirects to the alert's deep link
@@ -20,7 +21,7 @@ export const PUBLIC_VIEWS = new Set(['login', 'pair', 'owner']);
 // Which bottom-tab (phone) is lit for a page.
 export const TAB_OF = {
   now: 'now', sessions: 'sessions', accounts: 'accounts',
-  machines: 'more', alerts: 'more', settings: 'more', devices: 'more', more: 'more',
+  machines: 'more', alerts: 'more', settings: 'more', devices: 'more', peers: 'more', more: 'more',
 };
 
 export function parseRoute(hash) {
@@ -41,6 +42,7 @@ export function parseRoute(hash) {
   if (a === 'more') {
     if (b === 'alerts') return { page: 'alerts', view: 'alerts', query };
     if (b === 'settings') return { page: 'settings', view: 'settings', query };
+    if (b === 'peers') return { page: 'peers', view: 'peers', query };
     if (b === 'devices') return { page: 'devices', view: 'devices', query };
     return { page: 'more', view: 'more', query };
   }

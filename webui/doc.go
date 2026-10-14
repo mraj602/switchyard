@@ -1,6 +1,6 @@
 // Package webui embeds the hub's web app: the desktop board and the installable phone app
 // (PWA), one responsive single-page app (Now, Sessions, Session detail, Accounts, Machines,
-// More, Alerts, Settings, Devices, Pair, Owner, Login) written as plain ES modules
+// More, Alerts, Settings, Peers, Devices, Pair, Owner, Login) written as plain ES modules
 // and CSS with no build step. The hub serves FS() at / and the pages call the read API
 // in docs/spec/api.yaml with the session cookie set by POST /v1/session/login.
 //

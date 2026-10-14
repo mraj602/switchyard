@@ -17,6 +17,7 @@ export function render({ store }) {
       item('#/more/alerts', 'Alerts', 'Which pushes you get, and the recent ones'),
       item('#/machines', 'Machines', `${store.overview.machines.length} reporting to this hub`),
       item('#/more/settings', 'Settings', 'Notifications, this phone, app version'),
+      item('#/more/peers', 'Peers', 'Which accounts may message each other, and Pause all peers'),
       owner ? item('#/more/devices', 'Devices', 'Phones, browsers and machines paired with this hub') : null,
       owner ? item('#/more/devices?add=phone', 'Add phone', 'Show a QR code to pair a phone') : null,
       h('li', {}, h('div', { class: 'more-link is-disabled', 'aria-disabled': 'true' },

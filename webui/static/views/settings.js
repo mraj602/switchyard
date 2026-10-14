@@ -272,6 +272,7 @@ export function render({ store }) {
     installBlock(),
     versionBlock(),
     deviceBlock(),
-    owner ? h('p', { class: 'muted small' }, h('a', { href: '#/more/devices' }, 'Manage paired devices')) : null);
+    h('p', { class: 'muted small' }, h('a', { href: '#/more/peers', 'data-key': 'peers-link' }, 'Peers: which accounts may message each other'),
+      owner ? [' · ', h('a', { href: '#/more/devices' }, 'Manage paired devices')] : null));
   return { title: 'Settings · Switchyard', node };
 }
