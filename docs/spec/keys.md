@@ -255,7 +255,7 @@ when both verify (3.5); the hub uses a row only when both verify. Code: `keys.Ve
 | Field | Rule |
 | --- | --- |
 | `kind` | The device row's kind: `machine`, `desktop` or `phone`. |
-| `machine` | For machine and desktop; `null` for a phone. |
+| `machine` | For machine and desktop; `null` for a phone. The device row's `machine_id`, which is the machine's own identity id (`identity.LoadOrCreateMachine`): `sy connect` and `sy setup` send it in the claim, a pull device is bound to the id its `hello` names, and ingest refuses records for another machine. The one exception is `sy hub token create --machine ID`, which takes the id as typed; give it the id `sy machine` prints on that machine, or the peer relay refuses its agent (it compares the two) or routes another machine's messages to it. |
 | `sign.alg` / `box.alg` | `ed25519` / `x25519` for machine and desktop; `p256` / `p256` for a phone. |
 | `reg` | How the hub learned the keys: `qr` (sealed by the QR, 7.2), `tofu` (over TLS with a bearer or a typed code), `ssh` (pushed by `sy machine add` over your SSH session, machines.md 4.2), `local` (the hub's own machine in merged mode). |
 | `hub` | The hub key's fingerprint, so a certificate cannot be replayed against another hub. |

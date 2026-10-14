@@ -410,13 +410,19 @@ func (s *Service) RegisterKeys(ctx context.Context, deviceID string, k keys.Devi
 		case err != nil:
 			return err
 		default:
-			if old.Reg != keys.RegTOFU || old.OwnerSig != nil {
-				return conflict("this device's keys were verified (%s%s); re-pair this device to change them", old.Reg,
-					map[bool]string{true: ", owner-certified", false: ""}[old.OwnerSig != nil])
-			}
 			_, owner, err := s.trustTx(tx)
 			if err != nil {
 				return err
+			}
+			// reg from the hub-signed certificate, not the row's column: a database writer
+			// must not turn qr/ssh keys into replaceable tofu ones (keys.md 4.2)
+			c, err := s.certFromRow(old, owner)
+			if err != nil {
+				return conflict("this device's certificate does not verify; re-pair this device")
+			}
+			if c.Body.Reg != keys.RegTOFU || c.OwnerSigned || old.OwnerSig != nil {
+				return conflict("this device's keys were verified (%s%s); re-pair this device to change them", c.Body.Reg,
+					map[bool]string{true: ", owner-certified", false: ""}[c.OwnerSigned || old.OwnerSig != nil])
 			}
 			if err := s.appendRevocationTx(tx, []keys.RevokedDevice{s.entryFor(old, owner, "replaced", tx.NowMS())}, deviceID); err != nil {
 				return err
@@ -580,6 +586,33 @@ func (s *Service) RevokeDevice(ctx context.Context, id, madeBy, reason string) e
 	})
 }
 
+// RevokedTx finishes, inside tx, devices another cascade just revoked (a machine's removal):
+// their link queues go, and their keys go on the next revocation list (keys.md 6).
+func (s *Service) RevokedTx(tx *store.Tx, ids []string, madeBy, reason string) error {
+	var entries []keys.RevokedDevice
+	for _, id := range ids {
+		if err := tx.DropLink(id); err != nil {
+			return err
+		}
+		r, err := tx.DeviceKey(id)
+		if errors.Is(err, store.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		_, owner, err := s.trustTx(tx)
+		if err != nil {
+			return err
+		}
+		entries = append(entries, s.entryFor(r, owner, reason, tx.NowMS()))
+	}
+	if len(entries) == 0 {
+		return nil
+	}
+	return s.appendRevocationTx(tx, entries, madeBy)
+}
+
 // AcceptOwnerRevocations takes an owner-signed revocation list (POST /v1/keys/revocations):
 // it must verify with the active owner key, be newer than the hub's and keep every entry.
 // The hub then revokes every device the list adds. It returns their ids.
@@ -626,7 +659,12 @@ func (s *Service) AcceptOwnerRevocations(ctx context.Context, doc keys.Doc, made
 			return err
 		}
 		for _, e := range next.Body.Devices {
-			if curBody != nil && curBody.RevokedDevice(e.Device) {
+			// Skip only entries the hub's list already has. A device can be listed while
+			// still live (its replaced tofu keys, RegisterKeys), so the device id alone is
+			// not "already revoked".
+			if curBody != nil && slices.ContainsFunc(curBody.Devices, func(c keys.RevokedDevice) bool {
+				return c.Device == e.Device && slices.Equal(c.Keys, e.Keys)
+			}) {
 				continue
 			}
 			if err := tx.RevokeDeviceCascade(e.Device); err != nil && !errors.Is(err, store.ErrNotFound) {

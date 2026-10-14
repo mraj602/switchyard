@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -563,4 +565,104 @@ func TestDeliveredAtOnAck(t *testing.T) {
 		})
 		return at != nil && *at > 0
 	})
+}
+
+// A revocation that lands between login's check and the connection's registration finds
+// nothing to close; the link must not stay up (or apply a poll's frames) until the sweeper.
+func TestRevokedDuringLogin(t *testing.T) {
+	f := newFix(t)
+	p := f.phone(20)
+	q := f.phone(21)
+	f.h.afterLogin = func(device string) {
+		if err := f.ks.RevokeDevice(f.ctx, device, "test", "revoked"); err != nil {
+			t.Error(err)
+		}
+		f.h.Revoked(f.ctx, device)
+	}
+	ctx, cancel := context.WithTimeout(f.ctx, 5*time.Second)
+	defer cancel()
+	c, err := linktest.Dial(ctx, f.wsURL(), p)
+	if err == nil {
+		defer c.Close()
+		_, err = c.Next(ctx)
+	}
+	if code := linktest.CloseCode(err); code != link.CloseRevoked {
+		t.Fatalf("ws: close %d (%v)", code, err)
+	}
+	pl := &linktest.Poller{D: q, URL: f.pollURL()}
+	if r, _ := pl.Poll(f.ctx); r.Status != http.StatusForbidden {
+		t.Fatalf("poll %d", r.Status)
+	}
+}
+
+// op challenge needs no credential (and is on Funnel): outstanding nonces are capped, and
+// expired ones make room again.
+func TestChallengeFloodCapped(t *testing.T) {
+	f := newFix(t)
+	post := func() int {
+		resp, err := http.Post(f.pollURL(), "application/json", strings.NewReader(`{"op":"challenge"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		return resp.StatusCode
+	}
+	exp := f.clk.Now().Add(ChallengeTTL).Unix()
+	f.h.mu.Lock()
+	for i := 0; i < MaxNonces; i++ {
+		f.h.nonces[fmt.Sprint("n", i)] = exp
+	}
+	f.h.mu.Unlock()
+	if code := post(); code != http.StatusServiceUnavailable {
+		t.Fatalf("over the cap: %d", code)
+	}
+	f.h.mu.Lock()
+	n := len(f.h.nonces)
+	f.h.mu.Unlock()
+	if n != MaxNonces {
+		t.Fatalf("%d nonces", n)
+	}
+	ctx, cancel := context.WithTimeout(f.ctx, 5*time.Second)
+	defer cancel()
+	if _, err := linktest.Dial(ctx, f.wsURL(), f.phone(22)); linktest.CloseCode(err) != link.CloseRateLimited {
+		t.Fatalf("ws over the cap: %v", err)
+	}
+	f.clk.Add(ChallengeTTL + time.Second)
+	if code := post(); code != http.StatusOK {
+		t.Fatalf("after expiry: %d", code)
+	}
+}
+
+// A row that expired before the sweeper ran is skipped by the pump; a cumulative ack past it
+// expires it (the peer relay hears so) instead of counting it delivered.
+func TestAckPastExpiredRow(t *testing.T) {
+	var mu sync.Mutex
+	var expired []string
+	f := newFix(t, func(c *Config) {
+		c.PeerExpired = func(_ *store.Tx, id string) error {
+			mu.Lock()
+			expired = append(expired, id)
+			mu.Unlock()
+			return nil
+		}
+	})
+	p := f.phone(23)
+	if _, err := f.h.Enqueue(f.ctx, p.ID, link.TypeAlert, "", time.Minute, []byte(`{"v":1,"n":1}`), "pm:msg_1"); err != nil {
+		t.Fatal(err)
+	}
+	f.enqueue(p, link.TypeAlert, "b", `{"v":1,"n":2}`)
+	f.clk.Add(2 * time.Minute)
+	c := f.dial(p)
+	if m := recv(t, c); m.Frame.Seq != 2 {
+		t.Fatalf("got seq %d", m.Frame.Seq)
+	}
+	c.Ack(f.ctx)
+	waitFor(t, "the expiry", func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(expired) == 1 && expired[0] == "msg_1"
+	})
+	if q := f.queued(p); len(q) != 0 {
+		t.Fatalf("queue %v", q)
+	}
 }

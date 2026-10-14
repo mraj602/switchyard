@@ -16,6 +16,12 @@ const GROUP_ID = `group.${APP_ID}`;
 const VERSION = '0.8.0';
 const DEV = process.env.SY_APP_VARIANT === 'development';
 
+/** Android versionCode (the updater's `build`, P16.1): MAJOR*10000 + MINOR*100 + PATCH of VERSION, so it only rises with the version. */
+export const VERSION_CODE = (() => {
+  const [major = 0, minor = 0, patch = 0] = VERSION.split('.').map(Number);
+  return major * 10000 + minor * 100 + patch;
+})();
+
 /** The delivery path (phone.md P13 self-hosted profile). Anything but "expo" is link. */
 export const PUSH: 'link' | 'expo' = process.env.SY_PUSH === 'expo' ? 'expo' : 'link';
 
@@ -109,6 +115,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       package: APP_ID,
+      versionCode: VERSION_CODE,
       ...(googleServices ? { googleServicesFile: googleServices } : {}),
       // Never back up the app's data (the keychain token, P3); with-sy-native.js also sets it.
       allowBackup: false,

@@ -1599,7 +1599,6 @@ paths:
       operationId: getAndroidRelease
       summary: The mirrored Android app release (updater manifest)
       description: phone.md P16.2. `404` when nothing is mirrored.
-      x-reserved: "N2"
       x-scopes: [owner, read, push]
       responses:
         "200":
@@ -1609,14 +1608,12 @@ paths:
               schema: {$ref: "#/components/schemas/AndroidRelease"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "404": {$ref: "#/components/responses/NotFound"}
-        "501": {$ref: "#/components/responses/NotImplemented"}
 
   /v1/app/android/apk:
     get:
       tags: [app]
       operationId: getAndroidApk
       summary: The mirrored APK, unchanged
-      x-reserved: "N2"
       x-scopes: [owner, read, push]
       responses:
         "200":
@@ -1626,7 +1623,6 @@ paths:
               schema: {type: string, contentMediaType: application/vnd.android.package-archive}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "404": {$ref: "#/components/responses/NotFound"}
-        "501": {$ref: "#/components/responses/NotImplemented"}
 
 components:
   securitySchemes:

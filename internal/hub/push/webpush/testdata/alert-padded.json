@@ -1,0 +1,12 @@
+{
+  "name": "alert-padded",
+  "note": "an alert-sized JSON payload padded to the hub's 128-byte multiple (push.md 6.3), other fixed keys",
+  "ua_private": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ",
+  "ua_public": "BHMQPsMLPM9X2q4I6TU0rvFEo1lAz2u7oSoM98vV1lpk2CyMmenTxF-SRbqbJ5gsmuqOwduUsZxEeVlCwOsiqjI",
+  "auth": "BwcHBwcHBwcHBwcHBwcHBw",
+  "as_private": "BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU",
+  "salt": "BgYGBgYGBgYGBgYGBgYGBg",
+  "pad_multiple": 128,
+  "plaintext": "{\"v\":1,\"alert\":\"al_1\",\"title\":\"work · api · asked a question\",\"body\":\"Should I also update the migration?\"}",
+  "body": "BgYGBgYGBgYGBgYGBgYGBgAAEABBBAeBDql0zqV3PmO4l_N-O-mgnnpf6blxpE0QZawqOpMRY35HpPmUZKD9zkSojsfXA6kYPB0GVS2eLWt2BpSBxXfGqmT6uW6bmArN1t-j47eqREU9446ECKA0mvRBXiJenGTJ3qBv7FE9i1JDMhOnx6vLZwHBDXdH_WYpGcruKcaM8i3Cd5NOlmYM5WrdlWH1kUt4BE-wfFY5gUdGlv6pw7rxWV61_V2CuIY2RVDwvoDATHzfk8X3fDnlkVjN5O0mPVMHvi8h9M4CARWewGeuMSI"
+}
