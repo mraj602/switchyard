@@ -39,6 +39,10 @@ tags:
   - name: devices
   - name: push
   - name: alerts
+  - name: keys
+  - name: link
+  - name: peers
+  - name: app
   - name: reserved
 
 paths:
@@ -820,10 +824,11 @@ paths:
         `expo` (push.md 12.5) takes `settings: {base_url?, access_token?}`. `base_url` must be
         `https://` on port 443 (default `https://exp.host`). The access token is stored in
         `hub_secret` key `expo_access_token`, is never returned (the channel shows
-        `access_token_set`) and never logged; an empty string removes it.
+        `access_token_set`) and never logged; an empty string removes it. `link` (push.md
+        13.6) takes `settings: {urls?, ping_s?}`.
       x-scopes: [owner]
       parameters:
-        - {name: kind, in: path, required: true, schema: {type: string, enum: [webpush, ntfy, expo]}}
+        - {name: kind, in: path, required: true, schema: {type: string, enum: [webpush, ntfy, expo, link]}}
       requestBody:
         required: true
         content:
@@ -1162,6 +1167,468 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
         "410": {$ref: "#/components/responses/Gone"}
         "429": {$ref: "#/components/responses/TooMany"}
+
+  # ------------------------------------------------------------------ F1 / N1 / PE1: keys, link, peers, app updates
+  # keys.md, link.md, peers.md, push.md 13-14, phone.md P16. Each operation keeps its
+  # `x-reserved` (501) until its phase builds it; the shapes are final.
+
+  /v1/link:
+    get:
+      tags: [link]
+      operationId: link
+      summary: The device link (WebSocket, subprotocol sy-link.1)
+      description: |
+        link.md. A WebSocket upgrade with `Sec-WebSocket-Protocol: sy-link.1`. No bearer:
+        the device logs in with a signed `hello` answering the hub's `challenge` (link.md 3).
+        Frames, acks, close codes: link.md 4-8. `Origin`, when sent, must be the hub's own.
+      x-reserved: "F1"
+      security: []
+      x-scopes: []
+      responses:
+        "101": {description: Switching to the WebSocket protocol.}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "426": {description: Missing or unknown subprotocol.}
+        "429": {$ref: "#/components/responses/TooMany"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  /v1/link/poll:
+    post:
+      tags: [link]
+      operationId: linkPoll
+      summary: Long-poll fallback for the link
+      description: |
+        link.md 2.1. `op: challenge` returns a challenge; `op: poll` carries a signed `hello`,
+        the cumulative ack and device frames, and is held up to 25 s while nothing is queued.
+        Each reply carries the next challenge. No bearer.
+      x-reserved: "F1"
+      security: []
+      x-scopes: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/LinkPollRequest"}
+      responses:
+        "200":
+          description: Frames for the device, results and the next challenge.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/LinkPollReply"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "429": {$ref: "#/components/responses/TooMany"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  /v1/keys:
+    get:
+      tags: [keys]
+      operationId: getKeys
+      summary: The hub key, the active owner key and (owner) pending proposals
+      x-reserved: "F1"
+      x-scopes: [owner, read, push, write]
+      responses:
+        "200":
+          description: Keys.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/KeysInfo"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  /v1/keys/owner:
+    post:
+      tags: [keys]
+      operationId: proposeOwnerKey
+      summary: Propose an owner key (self-signed `owner_key`) or rotate it (`owner_rotate`)
+      description: |
+        keys.md 3.3. A proposal is `pending` until an owner session confirms it. While a key
+        is active, only an `owner_rotate` document signed by the active key and the new one
+        is accepted (`409` otherwise).
+      x-reserved: "F1"
+      x-scopes: [owner, write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [doc]
+              properties:
+                doc: {$ref: "#/components/schemas/SignedDoc"}
+      responses:
+        "201":
+          description: Stored (pending, or active for a rotation).
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/OwnerKey"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  /v1/keys/owner/confirm:
+    post:
+      tags: [keys]
+      operationId: confirmOwnerKey
+      summary: Activate a pending owner key (owner session)
+      x-reserved: "F1"
+      x-scopes: [owner]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fp]
+              properties:
+                fp: {type: string, pattern: "^[a-z2-7]{24}$"}
+      responses:
+        "200":
+          description: Active.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/OwnerKey"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  /v1/keys/revocations:
+    get:
+      tags: [keys]
+      operationId: getRevocations
+      summary: The newest revocation document
+      x-reserved: "F1"
+      x-scopes: [owner, read, push, write]
+      responses:
+        "200":
+          description: "The document (wire form, keys.md 6); doc is null when nothing was revoked."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [doc]
+                properties:
+                  doc:
+                    oneOf:
+                      - {$ref: "#/components/schemas/SignedDoc"}
+                      - {type: "null"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+    post:
+      tags: [keys]
+      operationId: postRevocations
+      summary: Upload an owner-signed revocation document; the hub revokes the devices it adds
+      x-reserved: "F1"
+      x-scopes: [owner, write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [doc]
+              properties:
+                doc: {$ref: "#/components/schemas/SignedDoc"}
+      responses:
+        "200": {description: Accepted and queued to every machine.}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  /v1/devices/{id}/keys:
+    put:
+      tags: [keys]
+      operationId: putDeviceKeys
+      summary: Register a device's link keys (devices paired before F1, or new keys)
+      description: |
+        keys.md 4.2, push.md 13.7. `self` for machines (`write`) and phones (`push`); the hub
+        signs the certificate (`reg: tofu`) and, for a phone, makes its `link` target. New keys
+        replace the old certificate and are added to the next revocation list.
+      x-reserved: "F1"
+      x-scopes: [write, push]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/DeviceKeysNew"}
+      responses:
+        "200":
+          description: The hub-signed certificate.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [cert]
+                properties:
+                  cert: {$ref: "#/components/schemas/SignedDoc"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  /v1/devices/{id}/cert:
+    get:
+      tags: [keys]
+      operationId: getDeviceCert
+      summary: A device's certificate with its signatures
+      x-reserved: "F1"
+      x-scopes: [owner, write]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: The certificate.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [cert, owner_signed]
+                properties:
+                  cert: {$ref: "#/components/schemas/SignedDoc"}
+                  owner_signed: {type: boolean}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+    post:
+      tags: [keys]
+      operationId: certifyDevice
+      summary: Add the owner signature to a device certificate (`sy keys certify`)
+      description: keys.md 4.2 step 2. The signature must verify with the active owner key over the stored body.
+      x-reserved: "F1"
+      x-scopes: [owner, write]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fp, sig]
+              properties:
+                fp: {type: string, pattern: "^[a-z2-7]{24}$"}
+                sig: {type: string, pattern: "^[A-Za-z0-9_-]{86}$"}
+      responses:
+        "200": {description: Certified.}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  /v1/peers:
+    get:
+      tags: [peers]
+      operationId: listPeers
+      summary: Live sessions and whether peers can reach them (board, desktop, phone)
+      description: |
+        peers.md 3. For viewers. Machines read the directory over the link (`peers_list`),
+        so machine tokens stay write-only.
+      x-reserved: "PE1"
+      x-scopes: [owner, read]
+      responses:
+        "200":
+          description: Sessions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sessions]
+                properties:
+                  sessions:
+                    type: array
+                    items: {$ref: "#/components/schemas/PeerSession"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  /v1/peers/matrix:
+    get:
+      tags: [peers]
+      operationId: getMatrix
+      summary: The newest matrix document and its decoded body
+      x-reserved: "PE1"
+      x-scopes: [owner, read, push, write]
+      responses:
+        "200":
+          description: The matrix.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MatrixInfo"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+    put:
+      tags: [peers]
+      operationId: putMatrix
+      summary: A new matrix version (owner-signed document, or an edit the hub signs)
+      description: |
+        peers.md 5.4, keys.md 5. `doc`: an owner-signed `matrix` document, version = current + 1,
+        accepted from any caller with one of the scopes. `edit`: the hub builds and signs the
+        next version; an edit that widens (keys.md 5.2) needs the `owner` scope (`403`
+        otherwise), a narrowing edit is accepted from any of the scopes.
+      x-reserved: "PE1"
+      x-scopes: [owner, push, write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                doc: {$ref: "#/components/schemas/SignedDoc"}
+                edit: {$ref: "#/components/schemas/MatrixEdit"}
+              oneOf:
+                - {required: [doc]}
+                - {required: [edit]}
+      responses:
+        "200":
+          description: The new matrix.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MatrixInfo"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  /v1/peers/pause:
+    post:
+      tags: [peers]
+      operationId: pausePeers
+      summary: Pause all peers (any device) or resume (owner)
+      description: peers.md 11. Shorthand for a matrix edit of `paused`; resuming widens, so it needs `owner`.
+      x-reserved: "PE1"
+      x-scopes: [owner, push, write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paused]
+              properties:
+                paused: {type: boolean}
+      responses:
+        "200":
+          description: The new matrix.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MatrixInfo"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  /v1/peers/threads/{id}/resume:
+    post:
+      tags: [peers]
+      operationId: resumePeerThread
+      summary: Clear a thread's loop-guard stop (owner)
+      x-reserved: "PE3"
+      x-scopes: [owner]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, pattern: "^t_[0-9a-f]{16}$"}}
+      responses:
+        "204": {description: Resumed.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  /v1/peers/messages:
+    get:
+      tags: [peers]
+      operationId: listPeerMessages
+      summary: Peer message metadata (who, when, size, status; never text)
+      x-reserved: "PE1"
+      x-scopes: [owner, read]
+      parameters:
+        - {name: since, in: query, schema: {type: string, format: date-time}}
+        - {name: thread, in: query, schema: {type: string}}
+        - {name: session, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 500, default: 100}}
+      responses:
+        "200":
+          description: Messages, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [messages]
+                properties:
+                  messages:
+                    type: array
+                    items: {$ref: "#/components/schemas/PeerMessage"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  /v1/peers/audit:
+    get:
+      tags: [peers]
+      operationId: listPeerAudit
+      summary: Matrix changes, pauses, loop-guard stops and refusals
+      x-reserved: "PE1"
+      x-scopes: [owner, read]
+      parameters:
+        - {name: since, in: query, schema: {type: string, format: date-time}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 500, default: 100}}
+      responses:
+        "200":
+          description: Audit entries, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [entries]
+                properties:
+                  entries:
+                    type: array
+                    items: {$ref: "#/components/schemas/PeerAuditEntry"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  /v1/app/android:
+    get:
+      tags: [app]
+      operationId: getAndroidRelease
+      summary: The mirrored Android app release (updater manifest)
+      description: phone.md P16.2. `404` when nothing is mirrored.
+      x-reserved: "N2"
+      x-scopes: [owner, read, push]
+      responses:
+        "200":
+          description: The manifest.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AndroidRelease"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  /v1/app/android/apk:
+    get:
+      tags: [app]
+      operationId: getAndroidApk
+      summary: The mirrored APK, unchanged
+      x-reserved: "N2"
+      x-scopes: [owner, read, push]
+      responses:
+        "200":
+          description: The APK; `ETag` is its SHA-256.
+          content:
+            application/vnd.android.package-archive:
+              schema: {type: string, contentMediaType: application/vnd.android.package-archive}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
 
 components:
   securitySchemes:
@@ -1771,6 +2238,12 @@ components:
         expect_kind: {type: string, enum: [machine, desktop, phone, browser]}
         cookie: {type: boolean, default: false, description: "Phone and browser codes: set the sy_session cookie instead of returning the token."}
         client: {type: string}
+        keys: {$ref: "#/components/schemas/DeviceKeysNew"}
+        keys_sealed:
+          type: string
+          pattern: "^[A-Za-z0-9_-]+$"
+          maxLength: 2048
+          description: "keys.md 7.1: the `keys` object sealed with the QR's `k` (AES-128-GCM, base64url). Wrong seal: 400 and the code stays live."
       oneOf:
         - {required: [code]}
         - {required: [secret]}
@@ -1792,6 +2265,20 @@ components:
           properties:
             url: {type: string}
             version: {type: string}
+        hub_key: {$ref: "#/components/schemas/PublicKey"}
+        owner_key:
+          oneOf:
+            - {$ref: "#/components/schemas/PublicKey"}
+            - {type: "null"}
+        cert: {$ref: "#/components/schemas/SignedDoc"}
+        link:
+          type: object
+          properties:
+            urls:
+              type: array
+              items: {type: string}
+            ping_s: {type: integer}
+        reg: {type: string, enum: [qr, tofu, ssh, local]}
 
     Device:
       type: object
@@ -1817,6 +2304,12 @@ components:
         targets:
           type: array
           items: {$ref: "#/components/schemas/PushTarget"}
+        keys:
+          description: "keys.md 4: present once the device has link keys."
+          oneOf:
+            - {$ref: "#/components/schemas/DeviceKeyInfo"}
+            - {type: "null"}
+        link: {$ref: "#/components/schemas/LinkStatus"}
 
     QuietHours:
       type: object
@@ -1877,7 +2370,7 @@ components:
       type: object
       required: [kind, enabled]
       properties:
-        kind: {type: string, enum: [webpush, ntfy, expo]}
+        kind: {type: string, enum: [webpush, ntfy, expo, link]}
         enabled: {type: boolean}
         settings:
           type: object
@@ -1889,6 +2382,12 @@ components:
             base_url: {type: string, description: "expo: https on port 443; default https://exp.host."}
             access_token: {type: string, writeOnly: true, description: "expo: Expo access token (enhanced push security); never returned."}
             access_token_set: {type: boolean, readOnly: true, description: "expo: an access token is stored."}
+            urls:
+              type: array
+              maxItems: 4
+              items: {type: string, format: uri, pattern: "^wss://"}
+              description: "link: the URLs devices try, in order (push.md 13.6)."
+            ping_s: {type: integer, minimum: 60, maximum: 900, default: 180, description: "link: default ping interval."}
 
     PushConfig:
       type: object
@@ -1936,9 +2435,10 @@ components:
       required: [id, kind, enabled, status]
       properties:
         id: {type: string}
-        kind: {type: string, enum: [webpush, ntfy, expo]}
-        platform: {type: [string, "null"], enum: [ios, android, null], description: expo only.}
-        app_version: {type: [string, "null"], description: expo only.}
+        kind: {type: string, enum: [webpush, ntfy, expo, link]}
+        platform: {type: [string, "null"], enum: [ios, android, null], description: expo and link only.}
+        app_version: {type: [string, "null"], description: expo and link only.}
+        link: {$ref: "#/components/schemas/LinkStatus"}
         device: {type: [string, "null"]}
         name: {type: [string, "null"]}
         endpoint_host: {type: string, description: "web.push.apple.com, ntfy.sh…"}
@@ -2043,7 +2543,7 @@ components:
       required: [target, kind, status, fire]
       properties:
         target: {type: string}
-        kind: {type: string, enum: [webpush, ntfy, expo]}
+        kind: {type: string, enum: [webpush, ntfy, expo, link]}
         target_name: {type: [string, "null"]}
         fire: {type: integer}
         batch: {type: [string, "null"]}
@@ -2051,4 +2551,263 @@ components:
         reason: {type: [string, "null"]}
         tries: {type: integer}
         http_status: {type: [integer, "null"]}
+        delivered_at: {type: [string, "null"], format: date-time, description: "link: when the device acked the frame (push.md 13.4)."}
         updated_at: {type: string, format: date-time}
+
+    PublicKey:
+      type: object
+      required: [pub, fp]
+      properties:
+        alg: {type: string, enum: [ed25519, x25519, p256]}
+        pub: {type: string, description: "base64url, no padding (keys.md 2)."}
+        fp: {type: string, pattern: "^[a-z2-7]{24}$"}
+
+    SignedDoc:
+      type: object
+      description: "keys.md 4.1. Each signature is Ed25519 over \"sy-doc-v1\\n\" + type + \"\\n\" + body bytes."
+      required: [type, body, sigs]
+      properties:
+        type: {type: string, enum: [owner_key, owner_rotate, device_cert, matrix, revocations, peer_envelope]}
+        body: {type: string, description: The signed body bytes, base64url.}
+        sigs:
+          type: array
+          minItems: 1
+          maxItems: 2
+          items:
+            type: object
+            required: [by, fp, sig]
+            properties:
+              by: {type: string, enum: [hub, owner, device]}
+              fp: {type: string, pattern: "^[a-z2-7]{24}$"}
+              sig: {type: string, pattern: "^[A-Za-z0-9_-]{86}$"}
+
+    DeviceKeysNew:
+      type: object
+      description: "keys.md 7.1. Machines: ed25519 + x25519. Phones: p256 + p256 and the 16-byte RFC 8291 auth secret."
+      required: [sign, box]
+      properties:
+        sign:
+          type: object
+          required: [alg, pub]
+          properties:
+            alg: {type: string, enum: [ed25519, p256]}
+            pub: {type: string}
+        box:
+          type: object
+          required: [alg, pub]
+          properties:
+            alg: {type: string, enum: [x25519, p256]}
+            pub: {type: string}
+        auth: {type: string, description: "Phones only: 16 bytes, base64url."}
+
+    DeviceKeyInfo:
+      type: object
+      required: [sign_fp, box_fp, reg, owner_signed]
+      properties:
+        sign_fp: {type: string}
+        box_fp: {type: string}
+        reg: {type: string, enum: [qr, tofu, ssh, local]}
+        owner_signed: {type: boolean}
+        certified_at: {type: [string, "null"], format: date-time}
+
+    OwnerKey:
+      type: object
+      required: [fp, pub, state]
+      properties:
+        fp: {type: string}
+        pub: {type: string}
+        state: {type: string, enum: [pending, active, retired]}
+        proposed_by: {type: string}
+        created_at: {type: string, format: date-time}
+        confirmed_at: {type: [string, "null"], format: date-time}
+
+    KeysInfo:
+      type: object
+      required: [hub_key]
+      properties:
+        hub_key: {$ref: "#/components/schemas/PublicKey"}
+        owner_key:
+          oneOf:
+            - {$ref: "#/components/schemas/OwnerKey"}
+            - {type: "null"}
+        pending:
+          type: array
+          description: Owner only.
+          items: {$ref: "#/components/schemas/OwnerKey"}
+        revocations_version: {type: integer}
+
+    LinkStatus:
+      type: [object, "null"]
+      description: "link.md 9. Null for devices without link keys."
+      properties:
+        connected: {type: boolean}
+        transport: {type: [string, "null"], enum: [ws, poll, null]}
+        connected_at: {type: [string, "null"], format: date-time}
+        last_seen_at: {type: [string, "null"], format: date-time}
+        queued: {type: integer}
+        acked_seq: {type: integer}
+        last_close: {type: [string, "null"]}
+
+    LinkFrame:
+      type: object
+      description: "link.md 4-6. Hub frames carry `sig`; queued ones carry a sealed `body`."
+      required: [t]
+      properties:
+        t: {type: string}
+        seq: {type: integer, minimum: 0}
+        exp: {type: integer}
+        tag: {type: string}
+        body: {type: string}
+        sig: {type: string}
+      additionalProperties: true
+
+    LinkPollRequest:
+      type: object
+      required: [op]
+      properties:
+        op: {type: string, enum: [challenge, poll]}
+        hello: {$ref: "#/components/schemas/LinkFrame"}
+        acks: {type: integer, minimum: 0}
+        up:
+          type: array
+          maxItems: 64
+          items: {$ref: "#/components/schemas/LinkFrame"}
+
+    LinkPollReply:
+      type: object
+      properties:
+        challenge: {$ref: "#/components/schemas/LinkFrame"}
+        welcome: {$ref: "#/components/schemas/LinkFrame"}
+        frames:
+          type: array
+          items: {$ref: "#/components/schemas/LinkFrame"}
+        results:
+          type: array
+          items: {$ref: "#/components/schemas/LinkFrame"}
+        next: {$ref: "#/components/schemas/LinkFrame"}
+
+    PeerSession:
+      type: object
+      required: [session, handle, account, machine, state]
+      properties:
+        session: {type: string}
+        handle: {type: string}
+        name: {type: string}
+        account: {type: string}
+        account_label: {type: [string, "null"]}
+        machine: {type: string}
+        machine_name: {type: string}
+        project: {type: [string, "null"]}
+        state: {$ref: "#/components/schemas/SessionState"}
+        agent: {type: boolean, description: The machine runs sy agent.}
+
+    Matrix:
+      type: object
+      description: peers.md 5.1.
+      required: [v, version, paused, same_account, max_turns, allow]
+      properties:
+        v: {type: integer, const: 1}
+        version: {type: integer, minimum: 1}
+        issued_at: {type: string, format: date-time}
+        paused: {type: boolean}
+        same_account: {type: boolean}
+        max_turns: {type: integer, minimum: 2, maximum: 500}
+        accounts:
+          type: object
+          additionalProperties: {type: string}
+        allow:
+          type: array
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            items: {type: string}
+
+    MatrixInfo:
+      type: object
+      required: [doc, matrix, signer]
+      properties:
+        doc: {$ref: "#/components/schemas/SignedDoc"}
+        matrix: {$ref: "#/components/schemas/Matrix"}
+        signer: {type: string, enum: [owner, hub]}
+        widens: {type: boolean}
+        made_by: {type: string}
+        created_at: {type: string, format: date-time}
+
+    MatrixEdit:
+      type: object
+      description: Applied to the current version; the hub signs the result.
+      properties:
+        base_version: {type: integer, description: "Must equal the current version (409 otherwise)."}
+        allow:
+          type: array
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            items: {type: string}
+        deny:
+          type: array
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            items: {type: string, description: "Account uuid or * (deny only)."}
+        paused: {type: boolean}
+        same_account: {type: boolean}
+        max_turns: {type: integer, minimum: 2, maximum: 500}
+
+    PeerMessage:
+      type: object
+      required: [id, thread, from, to, kind, size, status, created_at]
+      properties:
+        id: {type: string}
+        thread: {type: string}
+        from:
+          type: object
+          properties:
+            session: {type: string}
+            device: {type: string}
+            account: {type: string}
+        to:
+          type: object
+          properties:
+            session: {type: string}
+            device: {type: string}
+            account: {type: string}
+        kind: {type: string, enum: [start, reply]}
+        size: {type: integer}
+        local: {type: boolean}
+        status: {type: string, enum: [queued, delivered, refused, rejected, expired, target_gone, failed]}
+        detail: {type: [string, "null"]}
+        created_at: {type: string, format: date-time}
+        final_at: {type: [string, "null"], format: date-time}
+
+    PeerAuditEntry:
+      type: object
+      required: [id, at, actor, event]
+      properties:
+        id: {type: integer}
+        at: {type: string, format: date-time}
+        actor: {type: string}
+        event: {type: string}
+        thread: {type: [string, "null"]}
+        msg: {type: [string, "null"]}
+        detail: {type: object, additionalProperties: true}
+
+    AndroidRelease:
+      type: object
+      description: phone.md P16.1, plus the hub's download URL.
+      required: [version, build, sha256, cert_sha256, url]
+      properties:
+        v: {type: integer}
+        version: {type: string}
+        build: {type: integer}
+        min_sdk: {type: integer}
+        apk: {type: string}
+        size: {type: integer}
+        sha256: {type: string, pattern: "^[0-9a-f]{64}$"}
+        cert_sha256: {type: string, pattern: "^[0-9a-f]{64}$"}
+        notes: {type: string}
+        published_at: {type: string, format: date-time}
+        url: {type: string}
