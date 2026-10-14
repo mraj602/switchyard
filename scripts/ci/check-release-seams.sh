@@ -13,8 +13,8 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$root"
 
 # Strings owned by the test-seam build tags (fakeclock: internal/hub/cli/hooks_fakeclock.go;
-# fakeopen: internal/termctl/fakeopen.go).
-markers=(SY_FAKE_CLOCK SY_TEST_WEBPUSH_DIAL SY_TEST_EXPO_DIAL SY_TEST_OPENER)
+# fakeopen: internal/termctl/fakeopen.go; peerstest: internal/peers/matrix_peerstest.go).
+markers=(SY_FAKE_CLOCK SY_TEST_WEBPUSH_DIAL SY_TEST_EXPO_DIAL SY_TEST_OPENER SY_PEERS_TEST_ALLOW)
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
@@ -41,7 +41,7 @@ build() { # build <out> [tags]
 has() { grep -aqF -- "$2" "$1"; }
 
 echo "release-check: building the test-seam binary (positive control)"
-build "$tmp/sy-seams" fakeclock,fakeopen
+build "$tmp/sy-seams" fakeclock,fakeopen,peerstest
 for m in "${markers[@]}"; do
   if ! has "$tmp/sy-seams" "$m"; then
     echo "release-check: FAIL: the control build lacks '$m'; the check would prove nothing" >&2
@@ -59,4 +59,4 @@ for m in "${markers[@]}"; do
   fi
 done
 [ "$bad" -eq 0 ] || exit 1
-echo "release-check: ok: no fakeclock or fakeopen seams in a release build"
+echo "release-check: ok: no fakeclock, fakeopen or peerstest seams in a release build"

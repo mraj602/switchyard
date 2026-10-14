@@ -138,6 +138,12 @@ func (e Env) Entries(dir []Session, from *Session, all bool) []ListEntry {
 	return out
 }
 
+// MatrixConfigured reports whether a matrix is in force, as opposed to NoMatrix, which denies
+// everything (the list command explains an empty result with it).
+func (e Env) MatrixConfigured() bool {
+	return e.matrix().Allowed(Party{}, Party{}, nil).Reason != CodeNoMatrix
+}
+
 func (e Env) matrix() Matrix {
 	if e.Matrix != nil {
 		return e.Matrix
