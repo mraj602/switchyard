@@ -43,15 +43,23 @@ B or C reads it as a cross-session message and answers with sy peers send (or Se
   `Restart=on-failure`, `RestartSec=5`, `WantedBy=default.target`. **macOS:** launchd agent
   `com.switchyard.switchyard-agent`, `KeepAlive` on failure. Both go through
   `internal/service`, as the hub's service does (machines.md), with the name
-  `switchyard-agent`.
+  `switchyard-agent`. The agent's unit differs from the hub's in three lines: no `PrivateTmp`
+  or `TimeoutStopSec`, `RestartSec=5`. launchd's own stdout/stderr go to
+  `<state>/agent.launchd.log`; the agent's log is 2.2's.
 - **Windows:** not in F1. Claude Code requires the per-session auth token on Windows inbox
   sockets, which lives in `sessions/*.key`; Switchyard never reads that file (identity.md 4).
-  `sy agent enable` on Windows says so and exits 3.
+  `sy agent enable` on Windows says so and exits 3 (so do `disable`, `status` and `run`).
 - `sy agent enable` makes the device keys if needed (keys.md 10), registers them (`PUT
   /v1/devices/{id}/keys` with the machine token; the hub signs the certificate), prints the
-  key fingerprints for `sy keys certify`, installs and starts the service, and turns
-  `[peers] enabled = true` in `config.toml`. `sy agent disable` stops and removes the service
-  and sets `enabled = false`; keys stay (`sy uninstall --purge` removes them).
+  key fingerprints for `sy keys certify` (the keys step is a seam in `cmd/sy`, empty until
+  `internal/keys` lands), turns `[peers] enabled = true` in `config.toml`, then installs and
+  starts the service (hooks begin writing session files even if the service manager fails). `sy agent disable` stops and removes the service
+  and sets `enabled = false`; keys stay (`sy uninstall --purge` removes them). `sy uninstall`
+  removes the unit too (found by its file, not the ledger: enabling is not a setup step) and
+  leaves `enabled` and the keys; `sy update` rewrites and restarts it like the hub's.
+  `sy agent status` prints the service state and, from the `state` op, pid, start time and
+  link state. `sy doctor` adds an `agent` line when peers are enabled: running, or a warning
+  "not running (same-machine sends write the inbox directly)" with the fix `sy agent enable`.
 - Plan section 1 ("nothing stays running") gets its one exception here: the agent is installed
   only by `sy agent enable` (or `sy peers enable`, which calls it). Hooks, the status line and
   `sy tick` never depend on it.
@@ -60,12 +68,19 @@ B or C reads it as a cross-session message and answers with sy peers send (or Se
 
 One process, several goroutines:
 
-- the link client (link.md), with the agent's `last` in `<state>/agent/link.json`;
+- the link client (link.md), with the agent's `last` in `<state>/agent/link.json`. F1 builds
+  only the seam (`agent.LinkClient`: `Run(ctx)`, `Status()`); with none the agent is a
+  same-machine service;
 - the control socket (2.3);
 - the local session directory (3.1), refreshed every 5 s and on demand;
-- reply sockets (8.6);
+- reply sockets (8.6). **Not in F1:** they are only useful once a native `SendMessage` to a
+  `from` address is confirmed (E10), and the frame format it writes is not known; the `from`
+  address is still named (`peers.ReplySocketPath`) and the header's `Reply with:` line is the
+  reply path;
 - the delivery queue for local and remote messages (8.4);
-- a 1-minute tick: thread expiry, local audit rotation, spool retries.
+- a 1-minute tick: thread expiry, local audit rotation, spool retries. F1: session files
+  older than 7 days are pruned (thread expiry runs on every send; the rest has nothing to
+  rotate or retry yet).
 
 It logs to `<state>/logs/agent.log` (rotated at 5 MB, 3 kept): one line per message with ids,
 sizes and statuses, never text.
@@ -83,6 +98,18 @@ sizes and statuses, never text.
 | `status` | `{"op":"status","claude_pid","config_dir","msg"?}` | the caller's recent messages and their statuses |
 | `pause`, `resume`, `off`, `on` | from a terminal only (7) | `{"ok":true}` or an error |
 | `state` | — | for `sy agent status` |
+
+F1 builds `whoami`, `list`, `send`, `off`, `on` (terminal only: a session gets `not_a_session`)
+and `state`; `status`, `pause` and `resume` answer `unsupported` until the hub exists. A reply
+carries `{"error":{"code","detail"}}` for a refusal (the codes of 4.2). A `send` reply also
+carries `to` (the target's handle) and `held_likely`, which is what `sy peers send` prints
+from; `list` carries `entries` and `asked` (the list is from a session's point of view).
+The ops run `peers.Env.Send` and `peers.Env.List`, so the agent and the no-agent path share
+one implementation; sends are serialised.
+
+`sy peers send` and `list` use the socket when something answers there and otherwise fall back
+to the direct path of 8.5. A failure after the connection is made is reported, never retried
+on the other path (it may already have been delivered).
 
 Every request is checked with the peer's credentials (`SO_PEERCRED` on Linux,
 `LOCAL_PEERPID` on macOS): same uid, and for the session ops the caller's ancestry must reach
@@ -744,6 +771,15 @@ captured on reply sockets.
   HPKE `info` with another `from.device` → open fails; uncertified or revoked sender → reject;
   a certificate whose `machine` differs from `from.machine` → reject; replay → single
   delivery; the sender refuses to seal to an uncertified target key.
+- **Agent (F1):** `internal/agent` tests the socket (modes 0600 / 0700, a live socket is not
+  stolen, a stale one is replaced, other uid and bad lines refused, state, link started and
+  reported, off/on terminal-only, prune on the tick, log rotation) and that nothing under the
+  hook, status line or tick imports the agent. `internal/service` has golden files for the
+  systemd unit and the launchd plist and an install/status/uninstall run with a recording
+  runner in a temp home (`systemctl --user` is never run for real). `cmd/sy` runs `sy agent
+  run` in a temp runtime dir with the fake inbox and sends through it, then stops it and sends
+  again on the fallback path; `sy agent enable|disable|status` with the recording runner;
+  and `sy uninstall` with fake `systemctl` and `loginctl` first on `PATH`.
 - **Test seams (PE1):** tests that import the fake inbox are external (`package peers_test`,
   an in-package test would be an import cycle); `make test` runs `-tags fakeinbox,peerstest`
   for `internal/peers` and `cmd/sy`. `peerstest` adds `matrix_peerstest.go`, an unsigned allow

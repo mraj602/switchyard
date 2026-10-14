@@ -34,6 +34,7 @@ func init() {
 		{Name: "plugin", Run: postUpdatePlugin},
 		{Name: "timer", Run: postUpdateTimer},
 		{Name: "hub service", Run: postUpdateService},
+		{Name: "agent service", Run: postUpdateAgent},
 		{Name: "machine_info", Run: postUpdateMachineInfo},
 		{Name: "doctor", Run: postUpdateDoctor},
 	} {
@@ -181,6 +182,25 @@ func postUpdateService(ctx context.Context, _ string) (string, error) {
 		return "no hub service here", nil
 	case res.Rewritten:
 		return "unit rewritten, restarted", nil
+	}
+	return "restarted", nil
+}
+
+// postUpdateAgent rewrites (if needed) and restarts the peers agent when its unit exists, so it
+// runs the new binary. Nothing is installed where `sy agent enable` never ran.
+func postUpdateAgent(ctx context.Context, _ string) (string, error) {
+	e, err := postUpdateEnv()
+	if err != nil {
+		return "", err
+	}
+	se := e.serviceEnv()
+	se.Out = io.Discard
+	res, err := service.New(se).Refresh(ctx, service.AgentName)
+	if err != nil {
+		return "", err
+	}
+	if !res.Installed {
+		return "no agent service here", nil
 	}
 	return "restarted", nil
 }

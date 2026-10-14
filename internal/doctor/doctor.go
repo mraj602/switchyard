@@ -121,6 +121,7 @@ func Run(ctx context.Context, o Options) Report {
 	}
 	checkSymlinks(&rep, o, slots)
 	checkSetup(&rep, o, cfg, slots)
+	checkAgent(&rep, o, cfg)
 	checkOutbox(&rep, o, cfg)
 	checkMachine(ctx, &rep, o, cfg)
 	checkPush(ctx, &rep, o)
