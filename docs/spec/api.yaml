@@ -1438,7 +1438,6 @@ paths:
       description: |
         peers.md 3. For viewers. Machines read the directory over the link (`peers_list`),
         so machine tokens stay write-only.
-      x-reserved: "PE1"
       x-scopes: [owner, read]
       responses:
         "200":
@@ -1548,7 +1547,6 @@ paths:
       tags: [peers]
       operationId: listPeerMessages
       summary: Peer message metadata (who, when, size, status; never text)
-      x-reserved: "PE1"
       x-scopes: [owner, read]
       parameters:
         - {name: since, in: query, schema: {type: string, format: date-time}}
