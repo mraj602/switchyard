@@ -141,8 +141,11 @@ optional React 19.3 peers); they are expected and do not fail the install.
   tries, wait 10 minutes", network → "Can't reach <host>. Is Tailscale on?"
 - **Keys in the claim (N1).** Before claiming, the app calls `SyLink.prepareKeys()` (push.md
   14.3). With `k` from the QR it sends `keys_sealed` (keys.md 7.1); with a typed code, `keys`
-  in the clear. The reply's `hub_key.fp` must equal `h` when the QR had one, else the app
-  refuses: "This hub's key does not match the QR code". On success it calls
+  in the clear (never with a QR secret: the hub refuses that). The reply's `hub_key.fp` must
+  equal `h` when the QR had one, else the app refuses: "This hub's key does not match the QR
+  code". It then makes keys.md 7.3's checks (certificate signed by `hub_key`, holding its own
+  keys, `reg = qr` after a sealed claim) and on any mismatch deletes the new device and
+  refuses. On success it calls
   `SyLink.configure({origin, device, urls: link.urls, pingS: link.ping_s, hubKey, reg})`, then
   `SyLink.start()`.
 - After pairing: `GET /v1/me` (to check it), then the notifications screen (P6), then Now.

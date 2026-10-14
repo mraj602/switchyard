@@ -130,8 +130,12 @@ The hook does a single small atomic write and nothing else; it never connects to
 ### 3.2 `list` entries
 
 ```json
-{"session":"c41e…","handle":"api-worker@work.worker","name":"api-worker","account":"3f1c…","account_label":"work","machine":"worker","project":"~/src/api","state":"working","local":false,"can":"start"}
+{"session":"c41e…","handle":"api-worker@work.worker","name":"api-worker","account":"3f1c…","account_label":"work","machine":"worker","project":"~/src/api","state":"working","local":false,"can":"start","device":"dev_01JA9…"}
 ```
+
+- `device`: the agent device of the session's machine (`null` when that machine runs no
+  agent: not reachable). The `peers` frame carries each such device's certificate once
+  (`certs`, link.md 6.3), which the sender checks before it seals to it (8.2).
 
 - Filtered for the asking session: only sessions it may start a thread with (`can: "start"`)
   or reply to in an open thread (`can: "reply"`). `--all` (terminal only) shows the rest with
@@ -158,12 +162,18 @@ listing the candidates.
 2. `config_dir` = `CLAUDE_CONFIG_DIR` from the environment, else `~/.claude`.
 3. Send `{"op":"send","claude_pid","config_dir",…}` to the agent.
 4. The agent verifies the caller's pid (peer credentials) has `claude_pid` as an ancestor,
-   reads `<config_dir>/sessions/<claude_pid>.json` (start time must match the live process),
-   and takes `sessionId` from it. The slot must be one `sy` manages. Mismatch → refused
-   `not_a_session`.
+   takes the config folder **from the claude process itself** (Linux: `CLAUDE_CONFIG_DIR` in
+   `/proc/<claude_pid>/environ`, set by the launcher before Claude Code started and not
+   changeable by the session; unset means `~/.claude`; that one variable is the only value
+   read), checks it equals the request's `config_dir`, reads
+   `<config_dir>/sessions/<claude_pid>.json` (start time must match the live process), and
+   takes `sessionId` from it. The slot must be one `sy` manages. Mismatch → refused
+   `not_a_session`. macOS cannot read another process's environment: there the agent uses the
+   one managed slot whose registry holds `<claude_pid>.json` with the matching start time, and
+   refuses when more than one does.
 
 The environment is only a hint; the process tree and the registry decide. A process outside
-any session (a terminal, cron) cannot send.
+any session (a terminal, cron, a re-parented `setsid` child) cannot send.
 
 ### 4.2 Sender's checks, in order
 
@@ -202,6 +212,7 @@ A signed document (keys.md 4.1) of type `matrix`:
 {
   "v": 1,
   "version": 4,
+  "hub": "<hub fp>",
   "issued_at": "2026-10-15T09:00:00.000Z",
   "paused": false,
   "same_account": true,
@@ -213,7 +224,8 @@ A signed document (keys.md 4.1) of type `matrix`:
 
 | Field | Rule |
 | --- | --- |
-| `version` | Previous + 1. Version 1 is made by the hub at first start of PE1: nothing allowed, `same_account: true`, `paused: false`, `max_turns: 30`, hub-signed. |
+| `version` | Previous + 1 at the hub; a machine accepts any version above its own (it may have missed some) and ignores lower ones. Version 1 is made by the hub at first start of PE1: nothing allowed, `same_account: true`, `paused: false`, `max_turns: 30`, hub-signed. That content is also the **baseline** a machine with no document compares against (keys.md 5.4), so version 1 is neutral and a first document that allows more is a widening. |
+| `hub` | The hub key's fingerprint (keys.md 4.1); another hub's document is refused. |
 | `paused` | The kill switch (11). |
 | `same_account` | Whether sessions of one account may message each other across machines and through Switchyard on one machine (the diagonal). Default true: it is what native `/peers` already allows. |
 | `max_turns` | Loop guard limit (6.3), 2–500. |
@@ -244,7 +256,13 @@ A signed document (keys.md 4.1) of type `matrix`:
 
 The same function runs in the sender's agent, the hub and the receiving agent, each with the
 newest document it has accepted (link.md 6.4). A mismatch between them can only narrow: any
-"no" refuses.
+"no" refuses. The **receiving agent's** check is the one that holds against a misbehaving hub:
+it uses its own pinned keys, its own `hub_may_widen` and its own thread state.
+
+Accounts come from different places: the hub from its own session records; the receiving
+agent from its own slot for the target and from the envelope for the sender (`from.account`).
+The sender's account is therefore the claim of an owner-certified machine: a compromised
+machine can lie about which of its own sessions is which account, but no other machine can.
 
 ### 5.4 Changing it
 
@@ -258,6 +276,23 @@ a `matrix` frame to every machine with an agent. A machine applies it on receipt
 for hub-signed widening). New messages see the change at once; messages already queued are
 checked again at the hub when sent and at the receiver (an earlier "yes" never survives a
 narrowing).
+
+### 5.5 What the matrix does not stop
+
+The matrix gates what **Switchyard** relays. It is not a sandbox around sessions, which run as
+your OS user. On its own machine a session can, without `sy`:
+
+- write a frame straight into any session's inbox socket (Claude Code accepts any process of
+  the same user, 8.1), whatever the matrix says;
+- edit `<state>/peers/` (its own `human_at`, which resets the loop guard; `threads.json`; `off`)
+  or `<state>/keys/matrix.json` (which only changes what this machine's agent allows);
+- on the hub machine, read `hub_sign.key` (keys.md 5.4).
+
+What it cannot do from one machine is make **another** machine's agent deliver a pair that
+machine's matrix refuses: that needs an owner signature, or a hub signature that the receiving
+machine accepts (`hub_may_widen`). So the matrix is a real boundary between machines, and a
+guard against mistakes and injected instructions on one machine, not against a session that
+sets out to escape on its own machine. The skill (12) tells Claude never to try.
 
 ## 6. Threads and the loop guard
 
@@ -292,6 +327,9 @@ message of a thread passes through both sessions' agents, so both always see the
   also offers "Resume thread" (owner session).
 - All three parties evaluate it with `peers.LoopGuard` and the same inputs; the first that
   refuses wins.
+- `human_at` comes from session files a session could edit (5.5), so the loop guard stops
+  runaway conversations, not a session that wants to keep going; the rates (9.2), enforced by
+  the hub as well, still bound it.
 - Claude Code's own hop-chain guard also applies (8.3): Switchyard carries `hop-chain`
   unchanged when it has one.
 
@@ -382,14 +420,19 @@ device key** (`by: "device"`, Ed25519 over `"sy-doc-v1\npeer_envelope\n" ‖ bod
 ```
 
 - `sealed` = HPKE (link.md 4.2's machine suite) to the **receiving machine's** box key from its
-  certificate, `info = "sy-peer-v1\n" ‖ msg ‖ "\n" ‖ to.device`; plaintext
-  `{"text": "…"}`. Only the receiving agent can open it: the hub, its database and its queue
-  hold ciphertext.
+  certificate, `info = "sy-peer-v1\n" ‖ msg ‖ "\n" ‖ from.device ‖ "\n" ‖ to.device`;
+  plaintext `{"text": "…"}`. Only the receiving agent can open it: the hub, its database and
+  its queue hold ciphertext. The sender takes that certificate from the hub's `peers` reply
+  (`certs`, link.md 6.3) and seals only after checking it like 8.4 step 1 does (hub and owner
+  signatures with its pins, `kind: machine`, not revoked, `device` = `to.device`): a hub that
+  hands out a key of its own gets an envelope it cannot open, because the sender refuses an
+  uncertified key.
+- `exp` is at most `created_at` + 24 h; `size` is the text's length in bytes.
 - `mode`: `bypass` when the sender's session file (2.4) says `bypassPermissions`, otherwise
   `prompting` (`default`, `acceptEdits`, `plan`, `auto`, `dontAsk`, unknown, or no file).
   This is the sender's **real** class; Switchyard never claims more.
-- The sending agent sends `{"t":"peer_msg","doc": <envelope>,"cert": <its device_cert>}` on
-  the link. The hub answers with the ephemeral `peer_ack` `{"msg","status":"queued"|"refused",
+- The sending agent sends `{"t":"peer_msg","doc": <envelope>}` on the link (the hub has its
+  certificate; the hub attaches it to the frame it queues, 8.3). The hub answers with the ephemeral `peer_ack` `{"msg","status":"queued"|"refused",
   "detail"?}` (link.md 6.3).
 
 ### 8.3 Hub relay
@@ -404,18 +447,20 @@ On `peer_msg` the hub:
 3. runs 5.3 (matrix, with the accounts it knows for both sessions: the hub's own view wins
    over the envelope's claim; a mismatch → `refused` `account_mismatch`), 6.3 and 9.2;
 4. writes `peer_message` (status `queued`), updates `peer_thread`, and enqueues
-   `peer_msg` to `to.device` (link.md 5.2, TTL from `exp`), the envelope unchanged inside the
-   sealed frame; answers `peer_ack`.
+   `peer_msg` to `to.device` (link.md 5.2, TTL from `exp`) with the body `{"v":1,"doc":
+   <envelope, unchanged>,"cert": <the sender's device_cert>}`; answers `peer_ack`.
 
 ### 8.4 Receiving agent
 
 On a `peer_msg` frame:
 
-1. Verify the envelope: signature by the key in the attached certificate; that certificate's
-   hub signature with the pinned hub key **and** its owner signature with the pinned owner key
-   (keys.md 4.2: a machine certificate without an owner signature is rejected,
-   `uncertified`); not in the revocation list; `to.device` is this device → else `rejected`
-   with `bad_signature` / `uncertified` / `revoked` / `wrong_device`.
+1. Verify the envelope: that certificate's hub signature with the pinned hub key **and** its
+   owner signature with the pinned owner key (keys.md 4.2: a machine certificate without an
+   owner signature is rejected, `uncertified`); the certificate's `kind` is `machine`, its
+   `device` and `machine` equal `from.device` and `from.machine`, its `hub` is the pinned hub;
+   the envelope signature by the certificate's sign key; neither key in the revocation list;
+   `to.device` is this device; `exp` not passed → else `rejected` with `bad_signature` /
+   `uncertified` / `revoked` / `wrong_device` / `expired`.
 2. 5.3 and 6.3 with its own matrix and threads, using the receiving session's account from its
    slot → `rejected` `not_allowed` / `paused` / `loop_guard`; `off` when `sy peers off`.
 3. The target session is live locally (3.1) → else `target_gone`.
@@ -655,14 +700,17 @@ captured on reply sockets.
 ## 15. Tests
 
 - **Unit (`internal/peers`):** matrix evaluation tables (every cell, diagonal, paused, reply
-  rule, opener narrowed); `Widens`; loop guard (reset by human, `max_turns` edge, pause and
+  rule, opener narrowed); `Widens` (including against the version-1 baseline when a machine
+  has no document); loop guard (reset by human, `max_turns` edge, pause and
   auto-resume); rate buckets with the fake clock; content cleaning and the secret list
   (positive and negative); wrapper builder goldens (attribute order, escaping, `from-name`
   cleaning, hop-chain cut to 32); `uds:` encoding; registry reader fixtures (torn, dead pid,
   recycled pid, `.key` files never opened, proven by the recording file system); ancestry with
   a fake `/proc`.
 - **Envelope:** signature over each field (tamper → reject); wrong `to.device`; HPKE round trip;
-  uncertified or revoked sender → reject; replay → single delivery.
+  HPKE `info` with another `from.device` → open fails; uncertified or revoked sender → reject;
+  a certificate whose `machine` differs from `from.machine` → reject; replay → single
+  delivery; the sender refuses to seal to an uncertified target key.
 - **Fake inbox** (`internal/peers/fakeinbox`, build tag `fakeinbox`, refused in release builds
   by `check-release-seams.sh`): the 8.1 behaviour as a test double (canonical check, mode gate
   with a switch, `session_id` guard, hold buffer, limits), plus a recorder.

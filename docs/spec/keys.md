@@ -18,23 +18,25 @@ here add three things tokens cannot give:
 3. **An authority the hub does not hold.** The owner key, on your own computer behind a
    passphrase, certifies machines and signs the account matrix and revocations. The hub
    relays these documents; it can always narrow, and it can widen the matrix only through an
-   owner session (5.4).
+   owner session, and only on machines that allow it (5.4).
 
 ## 1. The keys
 
 | Key | Algorithm | Made by | Kept in | Used for |
 | --- | --- | --- | --- | --- |
 | **Owner key** | Ed25519 | `sy keys init` on one computer (the "owner machine", normally the laptop) | `<state>/keys/owner.sealed`, sealed with a passphrase (3.1); recoverable from the printed recovery code (3.2) | Signs device certificates of machines and desktops, matrix documents, revocation lists |
-| **Hub signing key** | Ed25519 | `sy hub serve` at first start | `<state>/hub_sign.key` on the hub machine, **not** in the database (3.4) | Signs every link frame, every device certificate (as the second signature), the link challenge, hub-made matrix and revocation documents |
+| **Hub signing key** | Ed25519 | `sy hub serve` at first start | `<state>/hub_sign.key` on the hub machine, **not** in the database (3.4) | Signs every link frame, every device certificate, the link challenge, the confirmation of the owner key (3.3), hub-made matrix and revocation documents |
 | **Machine device keys** | Ed25519 (sign) + X25519 (box) | `sy` on the machine, at pairing (`sy connect --code`) or `sy agent enable` | `<state>/keys/device.json` | Link login; signing peer envelopes; opening frames and peer bodies sealed to it |
 | **Desktop device keys** | as machine | the bundled `sy` of the desktop app (desktop.md C11), in the same state folder as the machine | as machine | as machine |
-| **Phone device keys** | P-256 sign + P-256 key agreement, plus a 16-byte auth secret | The Android app's `sy-link` module at pairing (push.md 14) | Android Keystore, non-exportable (`sy_link_sign`, `sy_link_agree`); the auth secret wrapped by the Keystore key `sy_link_wrap` | Link login; opening RFC 8291 frames (push.md 13) |
+| **Phone device keys** | P-256 sign + P-256 key agreement, plus a 16-byte auth secret | The Android app's `sy-link` module at pairing (push.md 14) | Android Keystore, non-exportable (`sy_link_sign`, `sy_link_agree`); the auth secret in the module's private storage (push.md 14.3) | Link login; opening RFC 8291 frames (push.md 13) |
 | Browsers, owner sessions | none | — | — | Cookies only, as today (pairing.md 3.2, 4) |
 
 Random bytes always come from `crypto/rand` (Go) or `SecureRandom` (Android). Everything on the
 Go side is in the standard library of Go 1.27: `crypto/ed25519`, `crypto/ecdh`,
 `crypto/ecdsa`, `crypto/hpke` (link.md 4.2), `crypto/hkdf`, `crypto/pbkdf2`, `crypto/aes`,
-`crypto/cipher`, `crypto/sha256`. No new module.
+`crypto/cipher`, `crypto/sha256`. No new crypto module (the passphrase prompt uses
+`golang.org/x/term`, already in go.mod). Byte strings follow link.md 1's rules (`‖`, UTF-8,
+`"\n"`, `decimal`).
 
 ## 2. Encodings and fingerprints
 
@@ -71,16 +73,18 @@ Go side is in the standard library of Go 1.27: `crypto/ed25519`, `crypto/ecdh`,
 - `key = PBKDF2-HMAC-SHA256(passphrase bytes, salt, iter, 32)`; `ct = AES-256-GCM(key, nonce,
   seed, aad = "sy-owner-v1\n" ‖ fp)`. The seed is the 32-byte Ed25519 seed
   (`ed25519.NewKeyFromSeed`).
-- **Why PBKDF2 and not scrypt or argon2id:** both live in `golang.org/x/crypto`, which this
-  module does not use (go.mod), and the owner key is unsealed only when the matrix or a
+- **Why PBKDF2 and not scrypt or argon2id:** PBKDF2 is in the standard library
+  (`crypto/pbkdf2`, Go 1.24+); scrypt and argon2id live only in `golang.org/x/crypto`, which
+  this module does not use (go.mod), and the owner key is unsealed only when the matrix or a
   device changes. 600 000 iterations is the OWASP 2023 figure for PBKDF2-SHA256, the same
   KDF `sy hub export --encrypt` already uses (machines.md 8.1). `iter` is stored, so a later
   `sy keys passwd` can raise it. The passphrase must be at least 12 characters (`sy` refuses
   shorter ones); the prompt suggests four or more random words.
 - The passphrase is read **only from the controlling terminal** (`/dev/tty`,
   `golang.org/x/term` `ReadPassword`), twice when set. There is no flag, no environment
-  variable, no stdin and no file option for it, so a Claude Code session (which has no
-  terminal) cannot supply it even if the signing guard (8) were bypassed.
+  variable, no stdin and no file option for it. A Claude Code session's commands have no
+  controlling terminal (8), and even one that makes itself a pseudo-terminal still has to know
+  the passphrase: that, not the guard, is what stops it (8.1).
 - The unsealed seed lives in memory only for the one command, and is zeroed after use
   (best effort: Go may have copied it).
 
@@ -118,13 +122,24 @@ check = first 4 characters of base32(SHA-256("sy-recovery-v1" ‖ R))
    - on the board, Settings → Keys, by an **owner session** (pairing.md 4): "Owner key
      `k7q2-m4xa-…` proposed by laptop at 09:00. Is this the fingerprint your terminal
      printed?" → `POST /v1/keys/owner/confirm`; or
-   - on the hub machine: `sy hub keys confirm-owner <fp>` (direct database access, like `sy hub
-     token create`); or
+   - on the hub machine: `sy hub keys confirm-owner <fp>` (direct database access and
+     `hub_sign.key`, like `sy hub token create`); or
    - automatically when the hub runs on the same machine and the same state folder (merged
-     mode: `sy keys init` writes the row as `active` with `confirmed_by = 'cli'`).
-3. A pending key that is not confirmed within 24 hours is deleted. There is at most one
-   `active` row (`owner_key_active`). A second proposal while one is active is refused (409)
-   unless it is an `owner_rotate` document signed by the active key (3.5).
+     mode: `sy keys init` writes the row as `active` with `confirmed_by = 'cli'` and the hub
+     signature of step 3).
+3. **Confirmation signature.** On activation the hub adds its own signature to the
+   `owner_key` document (`by: hub`, over the same bytes, 4.1) and stores it
+   (`owner_key.hub_sig`). The hub uses an owner key only after checking that signature with
+   its own key, and devices pin one only with both signatures (3.5): a row written straight
+   into the database is ignored, so editing rows cannot install an owner key. (Confirming
+   through the API needs an owner session; who can get one is 5.4's table.)
+4. A pending key that is not confirmed within 24 hours is deleted. There is at most one
+   `active` row (`owner_key_active`).
+5. **Replacing it** (passphrase and recovery code both lost, or the key leaked): `sy keys init
+   --replace` proposes a new key the same way; confirming it retires the active one. No
+   machine follows automatically: each keeps its pin until you run `sy keys trust-owner <fp>`
+   there (3.5), and every machine must be certified again (`sy keys certify --all`). There is
+   no "rotation" document signed by the old key, on purpose: a leaked key would sign one too.
 
 Why a confirmation step: a stolen machine token must not be able to install its own owner
 key on a hub that has none yet.
@@ -152,14 +167,19 @@ Each device keeps the keys it trusts in its state folder (paths.md 3):
 | File | Holds | Set |
 | --- | --- | --- |
 | `<state>/keys/hub.pub` | `{"pub", "fp", "pinned_at", "how"}` | At pairing from the claim reply, checked against the QR's `h=` when there was one; `how` = `qr`, `tofu` (typed code, or `sy connect --token`), `ssh` (`sy machine add`) |
-| `<state>/keys/owner.pub` | `{"pub", "fp", "pinned_at", "how"}` | From the hub (`GET /v1/keys`, then the link's `welcome`) the first time one is active: trust on first use, printed by `sy agent status`; or out of band by `sy machine add` (`how = ssh`) or `sy keys trust-owner <fp>` |
+| `<state>/keys/owner.pub` | `{"pub", "fp", "pinned_at", "how"}` | Out of band when possible: by `sy keys init` on the owner machine (`how = local`), by `sy machine add` over your SSH session (`how = ssh`), or by `sy keys trust-owner <fp>`. Otherwise from the hub the first time one is active (the claim reply, `GET /v1/keys` or the link's `welcome`), only with the owner's self-signature and the hub's confirmation signature (3.3): trust on first use, `how = tofu`, printed by `sy agent status` with the fingerprint to compare |
 
-A pin changes only by:
+A pin changes only by `sy keys trust-owner <fp>` / `sy agent enable --repin-hub` typed on that
+machine, which print the old and the new fingerprint and ask for confirmation (TTY only,
+signing guard 8). Nothing received over the network replaces a pin.
 
-- an `owner_rotate` document signed by the **currently pinned** owner key and naming the new
-  one (`sy keys rotate`, owner machine, passphrase). The agent replaces the pin and logs it;
-- `sy keys trust-owner <fp>` / `sy agent enable --repin-hub` typed on that machine, which
-  print the old and the new fingerprint and ask for confirmation (TTY only, signing guard 8).
+**What TOFU trusts.** A machine that pins the owner key from the hub trusts the hub at that
+moment. Edited rows cannot exploit that (3.3 step 3). Anyone who can confirm a key of their own
+(an owner session, so also a database writer or code running as the hub, 5.4) can make a
+machine **that pins afterwards** trust it; machines already pinned keep the real key, and
+their checks (peers.md 8.4) are the ones that count. `sy agent status` and the board show both
+fingerprints so a wrong pin is visible; `sy machine add` pins over SSH and avoids the window
+entirely, and `sy keys trust-owner <fp>` fixes a wrong pin.
 
 The phone pins the hub key only (`h=` in the QR). It does not check owner signatures: nothing
 it receives depends on them.
@@ -183,19 +203,30 @@ Every signed object has one shape, whatever its type:
 
 - Each signature is Ed25519 over `"sy-doc-v1\n" ‖ type ‖ "\n" ‖ body bytes`. The body bytes are
   signed **as they are** (no canonical JSON): a verifier checks the signature first, then
-  decodes the body. Bodies are compact JSON written by `encoding/json`.
+  decodes the body. Bodies are compact JSON written by `encoding/json`. `type` must be one of
+  the table below before anything is verified. The prefix keeps documents apart from link
+  frames (`"sy-link-v1…"`, link.md 3, 4.3), and `type` keeps the document kinds apart, so no
+  signature made for one can be read as another.
+- A verifier requires **exactly** the signatures the table names for that type, each by a
+  distinct `by`, and ignores none: an unexpected extra signature is a reject, not a pass.
 - `by` is `hub`, `owner` or `device`. A verifier looks up the key by `by` (its pin; for
   `device`, the key in the sender's certificate) and ignores `fp` except for messages ("signed by owner key k7q2-…, but this machine pins 3abc-…").
-- Unknown body fields are ignored (new fields need no version bump); a body with `v` other
-  than 1 is rejected.
+- Unknown body fields are ignored (new fields need no version bump, and none may grant
+  anything: an old verifier must be safe ignoring it); a body with `v` other than 1 is
+  rejected.
+- The hub re-verifies every stored document (`owner_key`, `device_key`, `matrix_doc`,
+  `revocation_doc`) when it loads it, not only when it accepts it; a row that fails is ignored
+  and logged, so editing the database changes nothing the hub enforces.
 
 | `type` | Body | Required signatures |
 | --- | --- | --- |
-| `owner_key` | `{"v":1,"pub","created_at"}` | Self-signed with that key (`by: owner`); proves possession at proposal |
-| `owner_rotate` | `{"v":1,"old","new","at"}` (fingerprints; plus `new_pub`) | The old owner key **and** the new one |
+| `owner_key` | `{"v":1,"pub","hub","created_at"}` (`hub`: the hub key fp) | Self-signed with that key (`by: owner`), proving possession at proposal; plus `by: hub` once confirmed (3.3) |
 | `device_cert` | 4.2 | `hub` always; `owner` for machines and desktops before they may send or receive peer messages |
 | `matrix` | peers.md 5.1 | One: `owner`, or `hub` under the rules of 5.4 |
 | `revocations` | 6 | One: `owner` or `hub` |
+
+`matrix` and `revocations` bodies carry `"hub": "<hub fp>"` as certificates do, so a document
+made for a test hub with the same owner key is refused by machines of another hub.
 | `peer_envelope` | peers.md 8.2 | `device`: the sending machine's key, checked against its certificate |
 
 ### 4.2 Device certificates
@@ -240,7 +271,10 @@ Lifecycle:
    tofu` devices, `sy keys certify` shows the fingerprint `sy agent status` prints on that
    machine and asks you to compare.
 3. A certificate never changes. New keys = new certificate (the old row is replaced, and
-   the old keys are listed in the next revocation document, 6).
+   the old keys are listed in the next revocation document, 6). `PUT /v1/devices/{id}/keys`
+   (bearer only) may replace keys of a `tofu` device that has no owner signature; for a
+   `qr`, `ssh` or owner-certified device it is refused (409 "re-pair this device"), so a stolen
+   bearer cannot downgrade a verified device to keys of its own.
 
 Phones are certified by the hub signature only: the hub learned their keys under the QR seal
 (`reg = qr`) or, for a typed code, over TLS (`reg = tofu`, shown as "Not verified" with a
@@ -287,13 +321,27 @@ The hub signs a matrix or revocation document itself (`by: hub`) when the change
 `matrix_doc.made_by` records the device that asked; `widens` records the 5.2 result.
 
 Each agent decides whether it trusts a hub-signed **widening**: `config.toml` `[peers]
-hub_may_widen = true` (default, matching H4). With `false`, a machine accepts hub-signed
-documents only when they narrow its current one, so even a compromised hub process (which
-holds the hub key) cannot widen what that machine delivers; widening then needs the owner
-key. Narrowing documents are always accepted from either signer. This is the one place the
-H4 default ("board sign-in is enough") trades against the addendum's "the hub can only
-narrow": with the default, a database or backup thief still cannot widen, but an attacker
-running code as the hub can.
+hub_may_widen = true` (default, matching H4). With `false`, a machine accepts a hub-signed
+document only when `Widens(current, new)` is false for **its own** current document (an agent
+with none starts from peers.md 5.1's version-1 baseline), so nothing that holds the hub key can
+widen what that machine delivers; widening then needs the owner key. Narrowing documents are
+always accepted from either signer.
+
+This is the one place the H4 default ("board sign-in is enough") trades against the
+addendum's "the hub can only narrow". Who can widen, per setting:
+
+| Attacker | `hub_may_widen = true` (default) | `false` |
+| --- | --- | --- |
+| A copy of `hub.db` or a backup (read only) | No | No |
+| Write access to `hub.db` only | **Yes**: it can mint an owner session (token hashes are unpeppered, tokens.md 2) and ask the hub to sign | No |
+| Code running as the hub's OS user (reads `hub_sign.key`) | **Yes** | No |
+| A Claude Code session on the **hub machine**, as the same OS user | **Yes**, the same way | No |
+| A session on another machine | No (no owner session, no hub key) | No |
+
+So with the default, "sessions cannot widen" holds only for sessions that do not run on the
+hub machine as the hub's user. When sessions run there (the worker as hub, or the laptop in
+merged mode), set `hub_may_widen = false` on every machine, or run the hub as its own OS user;
+`sy doctor` warns when a slot's sessions run as the hub's user while it is `true`.
 
 ## 6. Revocations
 
@@ -303,6 +351,7 @@ Body:
 {
   "v": 1,
   "version": 4,
+  "hub": "<hub fp>",
   "issued_at": "2026-10-15T09:10:00.000Z",
   "devices": [
     {"device": "dev_01JA…", "keys": ["<sign fp>", "<box fp>"], "at": "2026-10-15T09:10:00.000Z", "reason": "lost"}
@@ -311,7 +360,8 @@ Body:
 ```
 
 - Cumulative: version N+1 must contain every entry of version N (a verifier rejects a list
-  that drops one). Entries are never removed; a re-paired device has new keys and a new
+  that drops one). A version not above the verifier's current one is ignored (no replay of an
+  older list). Entries are never removed; a re-paired device has new keys and a new
   certificate.
 - Made by `sy keys revoke <device>` (owner key) or by the hub on any device revocation
   (`DELETE /v1/devices/{id}`, `sy hub token revoke`): the hub then sets `device.revoked_at`
@@ -347,16 +397,22 @@ Older web pages ignore the two parameters. The web app (pwa.md) does not use the
 - `keys_sealed`: the same JSON sealed with the QR's `k` (phones scanning the QR):
 
 ```
-regkey      = HKDF-SHA256(secret = k (16 bytes), salt = "sy-reg-v1", info = <secret string bytes>, length = 16)
+k           = HMAC-SHA256(pair_pepper, "seal:" ‖ secret)[0:16]     (the 16 bytes behind the QR's k=)
 nonce       = 12 random bytes
-keys_sealed = b64u(nonce ‖ AES-128-GCM(regkey, nonce, keys JSON, aad = "sy-reg-v1"))
+keys_sealed = b64u(nonce ‖ AES-128-GCM(key = k, nonce, plaintext = keys JSON, aad = "sy-reg-v1\n" ‖ secret))
 ```
+
+`k` is already a fresh pseudo-random key per code, so it is used directly (no extra KDF); the
+AAD ties the seal to this code's secret.
 
 Hub steps, inside the claim transaction after pairing.md 3 step 3:
 
 1. Recompute `k`, open `keys_sealed`. Failure → **400** `bad_request` "key registration
    invalid", and the code is **not** consumed, so a tampered request cannot burn the real
    phone's code.
+   **No downgrade:** a `secret` claim (the QR path) that carries `keys` in the clear is
+   refused the same way: clear keys are for typed codes only. A proxy can still strip the keys
+   altogether; the app then sees a reply without `cert` / `reg = qr` and refuses (7.3).
 2. Check the keys: P-256 points on the curve (`ecdh.P256().NewPublicKey`, `ecdsa` parse),
    Ed25519/X25519 32 bytes, `auth` 16 bytes, algorithms matching the code's kind.
 3. Create the device (step 4), then `device_key` with `reg = qr | tofu` and the hub-signed
@@ -379,20 +435,26 @@ cannot decrypt frames (no private key, no auth secret) and cannot forge them (no
 
 ```json
 "hub_key": {"alg": "ed25519", "pub": "<b64u>", "fp": "<24 chars>"},
-"owner_key": {"pub": "<b64u>", "fp": "…"},
+"owner_key": {"type": "owner_key", "body": "…", "sigs": [ … ]},
 "cert": {"type": "device_cert", "body": "…", "sigs": [ … ]},
 "link": {"urls": ["wss://hub.example.ts.net/v1/link"], "ping_s": 180},
 "reg": "qr"
 ```
 
-`owner_key` is null until one is active. `link.urls` comes from the link channel settings
-(push.md 13.6); a device tries them in order.
+`owner_key` is the active owner key document (both signatures, 3.3), null until one is active.
+`link.urls` comes from the link channel settings (push.md 13.6); a device tries them in order.
+
+The device checks the reply before it keeps anything: the certificate's hub signature with
+`hub_key` (and `hub_key.fp` against `h=` when the QR had one), that the certificate holds
+**its own** public keys, and, when it sent `keys_sealed`, that `reg` is `qr`. Any mismatch →
+it deletes the new device with its token (`DELETE /v1/devices/self`), forgets the token and
+shows "Pairing was tampered with; try again on your home network".
 
 ## 8. The signing guard
 
 Every command that unseals the owner key or replaces a pin (`sy keys init | certify | revoke |
-passwd | recover | rotate | trust-owner`, `sy agent enable --repin-hub`, and the widening
-`sy peers` commands) first runs `keys.CheckNotUnderClaude()`, and refuses with exit 4 and:
+passwd | recover | trust-owner`, `sy agent enable --repin-hub`, and the widening `sy peers`
+commands) first runs `keys.CheckNotUnderClaude()`, and refuses with exit 4 and:
 
 ```
 sy: refusing to sign: this command runs inside a Claude Code session (pid 4242, claude).
@@ -403,6 +465,9 @@ The check, in order; the first hit refuses:
 
 1. **Own environment.** `CLAUDECODE` is set (Claude Code sets `CLAUDECODE=1` for the Bash tool
    and hooks), or `CLAUDE_CODE_ENTRYPOINT` is set, or `CLAUDE_CODE_MESSAGING_SOCKET` is set.
+   Only the **names** are tested. No value is read, kept or logged, here or in step 2: the
+   environment of a session holds `CLAUDE_CODE_MESSAGING_TOKEN`, a credential Switchyard
+   treats like `sessions/*.key`.
 2. **Ancestors.** Walk from `os.Getppid()` towards pid 1, at most 64 steps, stopping at pid 1
    or a pid that cannot be read. For each process:
    - **Linux:** ppid from `/proc/<pid>/stat` (the field after the last `)`), the executable from
@@ -417,16 +482,41 @@ The check, in order; the first hit refuses:
      or of `comm` is `claude` (or `claude.exe`); the executable path contains
      `/claude/versions/` (the native installer's layout, where the file is named after the
      version) or `/@anthropic-ai/claude-code/`; `argv[0]` or `args` ends in `claude` with any
-     directory; the environment holds `CLAUDECODE=1`.
+     directory; the environment holds `CLAUDECODE` (by name).
 3. **A terminal.** `/dev/tty` must open; otherwise refuse ("needs a terminal").
 
+Claude Code 2.1.300 (read from the installed program, not documented) starts Bash tool
+commands and hooks **detached** (`setsid`: a new session with no controlling terminal) and
+with `CLAUDECODE=1`, so steps 1 and 3 each refuse an ordinary session command on their own.
+
+### 8.1 What the guard can and cannot do
+
+The guard stops a session from signing **by accident or because a message told it to**. It is
+not a sandbox, and each step can be evaded on purpose by a process running as your user:
+
+| Step | Evaded by |
+| --- | --- |
+| 1 Environment | `env -u CLAUDECODE …`, `env -i …` |
+| 2 Ancestry | Re-parenting: `setsid -f`, `nohup … &` then exit, a double fork, `systemd-run --user`, `at`, cron. The walk then ends at pid 1 or the user's systemd, never at `claude` |
+| 3 Terminal | `script -qc …`, a Python `pty`, `systemd-run --user --pty`: a pseudo-terminal the session itself drives |
+
+What none of these gives a session is the **passphrase** (3.1): it is typed by you, it is
+never stored, and a session cannot type into your terminal (it has no controlling terminal,
+and Linux 6.2+ refuses `TIOCSTI` injection by default). So owner-key signatures, and with
+`hub_may_widen = false` every widening, need you. Limits that remain, by design of the OS user
+as the trust boundary (as for Claude Code itself):
+
+- A session can read `owner.sealed` and guess passphrases offline; 600 000 PBKDF2 iterations
+  and the 12-character minimum make that slow, a four-random-word passphrase makes it hopeless.
+- A session can ask you, in its own words, to run a widening command. `sy` prints exactly what
+  it will sign before it asks for the passphrase; read it.
+- On the hub machine a session can read `hub_sign.key` (5.4's table).
+- On its own machine a session can bypass Switchyard entirely: write to another session's
+  inbox socket directly, or edit Switchyard's state files (peers.md 5.5).
+
 **Uncertain:** the exact executable and `comm` names of every Claude Code install (native
-installer, npm, Homebrew, the desktop app's bundled CLI). The fallbacks above overlap on
-purpose: the environment marker catches a renamed binary, the ancestry catches a cleared
-environment, and the terminal and passphrase requirement (3.1) holds even if both are
-evaded, because a session has neither. The check is a guard against a session widening its
-own reach by accident or by injection, not a sandbox: the OS user remains the trust
-boundary, as for Claude Code itself.
+installer, npm, Homebrew, the desktop app's bundled CLI). The environment marker catches a
+renamed binary, the ancestry catches a cleared environment; neither is relied on alone.
 
 The same check (steps 1 and 2 only) is how `sy peers send` finds its calling session
 (peers.md 4.1): there a hit is required instead of refused.
@@ -438,7 +528,7 @@ link.md 5):
 
 | Table | Holds |
 | --- | --- |
-| `owner_key` | Owner public keys: `pending` proposals, the one `active` key, `retired` ones after a rotation. |
+| `owner_key` | Owner public keys: `pending` proposals, the one `active` key, `retired` ones after a replacement; each with its self-signed document body and, once confirmed, the hub's signature (3.3). |
 | `device_key` | One row per device that has link keys: algorithms, public keys, `reg`, the certificate body bytes, `hub_sig`, and `owner_fp`/`owner_sig` once certified. |
 | `revocation_doc` | Every version of the revocation list with its signer and signature. |
 | `link_state`, `link_queue` | link.md 5. |
@@ -467,13 +557,12 @@ owner key; you need the recovery code to sign again").
 ## 11. CLI
 
 ```
-sy keys init                     owner machine: make the owner key, print fp + recovery code, propose it to the hub
+sy keys init [--replace]         owner machine: make the owner key, print fp + recovery code, propose it to the hub (3.3)
 sy keys status [--json]          pins (hub, owner), this device's keys and certificate state, pending proposals
 sy keys certify [<device>…|--all] [--yes]   owner-sign machine/desktop certificates (passphrase once)
 sy keys revoke <device> [--reason R] [--yes]  owner-signed revocation, uploaded; the hub revokes the device
 sy keys passwd                   new passphrase (and iteration count) for owner.sealed
 sy keys recover                  rebuild owner.sealed from the recovery code
-sy keys rotate                   new owner key, owner_rotate document signed by both (rare; re-certifies all machines)
 sy keys trust-owner <fp>         replace this machine's owner pin by hand (prints old and new)
 sy keys show-owner               print the owner public key and fp (used by sy machine add)
 
@@ -487,17 +576,23 @@ passphrase.
 
 ## 12. Tests (F1)
 
-- Fingerprint, base32 and recovery-code goldens; recovery round trip (code → seed → same
-  public key); typo handling and the check group.
+- Fingerprint, base32 and recovery-code goldens (`internal/keys/testdata/`, fixed `R`);
+  recovery round trip (code → seed → same public key); typo handling and the check group;
+  document signature goldens per type with the hub seed of link.md 10.
 - Sealed file: wrong passphrase fails, changed `fp` or `pub` fails (AAD), `iter` honoured.
 - Document signing and verification for every type; each field of a body changed → reject;
-  `by` swapped → reject; a hub signature over a `device_cert` checked on link login, with a
-  `device_key.sign_pub` edited in the database → login refused.
+  `by` swapped → reject; a missing or an extra signature → reject; a document signature
+  presented as a link frame signature (and the reverse) → reject; a hub signature over a
+  `device_cert` checked on link login, with a `device_key.sign_pub` edited in the database →
+  login refused; an `owner_key` row inserted as `active` without `hub_sig` → ignored by the hub
+  and not pinned by machines; `matrix` / `revocations` with another hub's fp → reject.
 - `Widens` table tests (each widening case, each narrowing case, neutral).
 - Revocation list that drops an entry → reject; lower version → ignored.
 - Signing guard with a fake `/proc` tree: claude parent, grandparent, `versions/2.1.299`
-  executable, `CLAUDECODE` in an ancestor's environ, reparented process (ppid 1, no hit),
-  64-step cap, unreadable entries, no TTY. macOS path with a fake `ps`.
-- QR seal: open with the right `k`; wrong `k` → 400 and the code stays live; typed claim with
-  `keys` → `reg = tofu`; algorithm/kind mismatch → 400.
+  executable, `CLAUDECODE` in an ancestor's environ, reparented process (ppid 1, no hit: the
+  TTY step must then refuse), 64-step cap, unreadable entries, no TTY; environment values never
+  read (a recording reader sees names only). macOS path with a fake `ps`.
+- QR seal: open with the right `k`; wrong `k` → 400 and the code stays live; a `secret` claim
+  with clear `keys` → 400 and the code stays live; typed claim with `keys` → `reg = tofu`;
+  algorithm/kind mismatch → 400; `PUT /v1/devices/{id}/keys` on a `qr` device → 409.
 - Export/import carries `hub_sign.key`; export without it fails.
