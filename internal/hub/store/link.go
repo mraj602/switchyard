@@ -242,6 +242,17 @@ func (tx *Tx) LinkExpire(nowSec int64) ([]LinkRow, error) {
 	return scanLinkRows(rows)
 }
 
+// LinkExpireUpTo deletes the device's rows up to upTo that expired by nowSec: the pump
+// skipped them, so a cumulative ack past them must not count them delivered.
+func (tx *Tx) LinkExpireUpTo(device string, upTo, nowSec int64) ([]LinkRow, error) {
+	rows, err := tx.QueryContext(tx.ctx, `DELETE FROM link_queue WHERE device_id = ? AND seq <= ? AND exp <= ? RETURNING `+linkRowCols,
+		device, upTo, nowSec)
+	if err != nil {
+		return nil, err
+	}
+	return scanLinkRows(rows)
+}
+
 // LinkDevice is a device that may receive frames: not revoked, with a device_key row.
 type LinkDevice struct {
 	ID, Kind string

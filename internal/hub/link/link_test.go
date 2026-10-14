@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -629,5 +630,39 @@ func TestChallengeFloodCapped(t *testing.T) {
 	f.clk.Add(ChallengeTTL + time.Second)
 	if code := post(); code != http.StatusOK {
 		t.Fatalf("after expiry: %d", code)
+	}
+}
+
+// A row that expired before the sweeper ran is skipped by the pump; a cumulative ack past it
+// expires it (the peer relay hears so) instead of counting it delivered.
+func TestAckPastExpiredRow(t *testing.T) {
+	var mu sync.Mutex
+	var expired []string
+	f := newFix(t, func(c *Config) {
+		c.PeerExpired = func(_ *store.Tx, id string) error {
+			mu.Lock()
+			expired = append(expired, id)
+			mu.Unlock()
+			return nil
+		}
+	})
+	p := f.phone(23)
+	if _, err := f.h.Enqueue(f.ctx, p.ID, link.TypeAlert, "", time.Minute, []byte(`{"v":1,"n":1}`), "pm:msg_1"); err != nil {
+		t.Fatal(err)
+	}
+	f.enqueue(p, link.TypeAlert, "b", `{"v":1,"n":2}`)
+	f.clk.Add(2 * time.Minute)
+	c := f.dial(p)
+	if m := recv(t, c); m.Frame.Seq != 2 {
+		t.Fatalf("got seq %d", m.Frame.Seq)
+	}
+	c.Ack(f.ctx)
+	waitFor(t, "the expiry", func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(expired) == 1 && expired[0] == "msg_1"
+	})
+	if q := f.queued(p); len(q) != 0 {
+		t.Fatalf("queue %v", q)
 	}
 }

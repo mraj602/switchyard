@@ -363,13 +363,38 @@ func withMissed(plaintext []byte, n int) []byte {
 }
 
 // ackTx is a cumulative ack: delete rows up to seq and set delivered_at on the deliveries
-// they carried (link.md 5.6, push.md 13.4).
-func ackTx(tx *store.Tx, device string, seq int64) error {
+// they carried (link.md 5.6, push.md 13.4). Rows that expired before the ack were never
+// sent (the pump skips them): they expire as in the sweeper, not count as delivered.
+func (h *Hub) ackTx(tx *store.Tx, device string, seq int64) error {
+	if err := h.expireTx(tx, device, seq); err != nil {
+		return err
+	}
 	refs, err := tx.LinkAck(device, seq)
 	if err != nil {
 		return err
 	}
 	return tx.DeliveriesDelivered(refs, tx.NowMS())
+}
+
+// expireTx expires the device's rows up to seq that are past exp.
+func (h *Hub) expireTx(tx *store.Tx, device string, seq int64) error {
+	rows, err := tx.LinkExpireUpTo(device, seq, h.now().Unix())
+	if err != nil {
+		return err
+	}
+	return h.peerExpiredTx(tx, rows)
+}
+
+// peerExpiredTx tells the peer relay about expired peer_msg rows.
+func (h *Hub) peerExpiredTx(tx *store.Tx, rows []store.LinkRow) error {
+	for _, r := range rows {
+		if id, ok := cutPrefix(r.Ref, "pm:"); ok && h.cfg.PeerExpired != nil {
+			if err := h.cfg.PeerExpired(tx, id); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // reject deletes one row the device refused (link.md 5.6); it never moves acked_seq.
@@ -589,14 +614,7 @@ func (h *Hub) Sweep(ctx context.Context) {
 			return err
 		}
 		expired = len(rows)
-		for _, r := range rows {
-			if id, ok := cutPrefix(r.Ref, "pm:"); ok && h.cfg.PeerExpired != nil {
-				if err := h.cfg.PeerExpired(tx, id); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
+		return h.peerExpiredTx(tx, rows)
 	})
 	if err != nil {
 		h.log.Printf("link sweep: %v", err)
