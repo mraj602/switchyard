@@ -154,12 +154,25 @@ one folder.
   board/token.json             read-only board token for sy board and the pane, mode 0600 (terminal.md T3; phase 7)
   board/last-view.json         last board view shown, mode 0600 (terminal.md T3)
   term/title-<session>.json    last tab title per session, pruned after 7 days by sy tick (terminal.md T6)
+  keys/                        mode 0700: device.json, owner.sealed (owner machine), owner.pub, hub.pub,
+                               certs.json, matrix.json, revocations.json (keys.md 10; F1)
+  hub_sign.key                 hub machine only: the hub signing key, mode 0600, exported with the hub (keys.md 3.4)
+  agent/                       sy agent: link.json (last seq), audit-out.jsonl, agent.sock on macOS (peers.md 2)
+  peers/sessions/<session>.json  written by sy hook when peers are on: mode, human_at (peers.md 2.4)
+  peers/delivered/<session>    time of the agent's last delivery into that session
+  peers/threads.json, peers/seen.json, peers/audit.jsonl, peers/off   (peers.md 6.2, 8.4, 10, 11)
+  logs/agent.log               rotated like sy.log
 
 <data>/                        mode 0700, hub only
   hub.db, hub.db-wal, hub.db-shm
   backups/hub-<UTC time>.db    sy hub backup
   exports/hub-<UTC time>.syx   sy hub export, mode 0600 (machines.md 8.1)
+  app/android/                 mirrored phone release: current and previous APK + manifest (phone.md P16.2)
 ```
+
+Runtime sockets (Linux, `$XDG_RUNTIME_DIR`): `sy/agent.sock` and `sy/r/<16 hex>.sock`, folders
+0700, sockets 0600 (peers.md 2.3, 8.6). `sy` reads, never writes, each slot's
+`<config>/sessions/<pid>.json` and never opens `sessions/*.key` (identity.md 4).
 
 Outside these folders, phase 5 writes only `~/.ssh/switchyard.conf` and one `Include` line in
 `~/.ssh/config` on the operator (forward mode), and one line in `~/.ssh/authorized_keys` on a

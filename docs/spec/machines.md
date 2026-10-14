@@ -843,7 +843,9 @@ sy hub export [--out <file>] [--moved-to <url>] [--no-freeze] [--encrypt] [--pas
    `<pull dir>/id_ed25519` and `.pub`, where the pull dir is `--pull-dir` (the one `sy hub
    serve --pull-dir` runs with), default `<state>/pull`. The state folder does not depend on
    `--db`: serve and `sy hub pair` read the pepper from `<state>` whatever database they open. (VAPID keys and the action key are in `hub_secret`, inside the database; the pinned
-   pull host keys are in `pull_target`.)
+   pull host keys are in `pull_target`.) From F1, `<state>/hub_sign.key` is required in the
+   same way (keys.md 3.4: without it every device must pair again); it goes into the archive
+   as `state/hub_sign.key` and step 5 of the import writes it back like the pepper.
 4. **Archive** (`.syx`, mode 0600, folder 0700; default `<data>/exports/hub-<UTC time>.syx`):
    a gzip-compressed tar with `manifest.json`, `hub.db`, `state/pair_pepper`,
    `state/pull/id_ed25519`, `state/pull/id_ed25519.pub`. Manifest:
