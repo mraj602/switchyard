@@ -24,6 +24,9 @@
 #   make phone-prebuild  only the two prebuild checks (phone.md P14)
 #   make phone-android-debug  optional: expo prebuild into phone/android (gitignored) and an
 #                    unsigned debug compile (needs ANDROID_HOME and JDK 17+; never distributed)
+#   make phone-apk-release  YOU run it, not an agent: expo prebuild + Gradle assembleRelease signed with
+#                    your own keystore (SY_ANDROID_KEYSTORE, SY_ANDROID_KEY_ALIAS, SY_ANDROID_KEYSTORE_PASSWORD
+#                    or SY_ANDROID_SIGNING_PROPERTIES; refuses without them) -> phone/dist/{apk,SHA256SUMS,manifest.json}
 
 GO       ?= go
 PYTHON   ?= python3
@@ -37,7 +40,7 @@ GOFILES   = $(shell git ls-files --cached --others --exclude-standard -- '*.go')
 
 .PHONY: all build test lint fmt spec-check fixtures check clean e2e-setup e2e-setup-fedora e2e-setup-ubuntu e2e-machines \
 	e2e-terminal pane-check release-check app-deps app-test app-smoke app-dist app-e2e \
-	phone-deps phone-check phone-prebuild phone-android-debug
+	phone-deps phone-check phone-prebuild phone-android-debug phone-apk-release
 
 all: check build
 
@@ -125,6 +128,12 @@ phone-android-debug: phone-deps
 	cd phone && SY_APP_VARIANT=development npx expo prebuild --platform android --no-install --clean
 	cd phone/android && ./gradlew :app:assembleDebug
 	@echo "unsigned debug APK: phone/android/app/build/outputs/apk/debug/ (never distribute it)"
+
+# The signed release build (phone.md P16.1). Never run by CI or an agent; see phone/README.md.
+phone-apk-release:
+	cd phone && ./scripts/release-apk.sh --preflight
+	$(MAKE) phone-deps
+	cd phone && ./scripts/release-apk.sh
 
 app-smoke: app-deps
 	CGO_ENABLED=0 $(GO) build -o app/node_modules/.cache/sy-smoke/sy ./cmd/sy
