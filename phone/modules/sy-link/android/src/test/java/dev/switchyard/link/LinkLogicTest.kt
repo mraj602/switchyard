@@ -3,6 +3,7 @@ package dev.switchyard.link
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -265,5 +266,33 @@ class PairingTest {
     assertEquals("p256", opened.getJSONObject("box").getString("alg"))
     assertEquals(Codec.b64u(box), opened.getJSONObject("box").getString("pub"))
     assertFalse(opened.has("priv"))
+  }
+}
+
+class SharedHttpTest {
+  @Test fun reconnectsPollsAndActionsShareTheOnePoolAndDispatcher() {
+    val p = TestPhone()
+    val events = object : LinkEvents {
+      override fun state() = Unit
+      override fun stopped(status: String, why: String) = Unit
+      override fun longTimer(atMs: Long) = Unit
+    }
+    val c = LinkClient(p.store, SoftwareSigner(), p.processor(), events, { JSONObject() }, { it() })
+    try {
+      val clients = listOf(
+        c.wsHttp(180), c.wsHttp(600), // two reconnects, the second after a ping change
+        LinkClient.Poller(p.store, SoftwareSigner(), p.processor(), { JSONObject() }, { it() }).http,
+        LinkClient.timed(1500),
+      )
+      for (x in clients) {
+        assertSame(LinkClient.HTTP.dispatcher, x.dispatcher)
+        assertSame(LinkClient.HTTP.connectionPool, x.connectionPool)
+        assertFalse(x.followRedirects)
+      }
+      assertEquals(600_000, clients[1].pingIntervalMillis)
+      assertEquals(0, clients[0].readTimeoutMillis)
+    } finally {
+      c.shutdown()
+    }
   }
 }
