@@ -276,6 +276,7 @@ func (m *matrixRun) signAndPut(next keys.MatrixBody, summary string, yes bool) e
 	if err != nil {
 		return err
 	}
+	defer clear(priv)
 	next.Accounts = map[string]string{}
 	for _, a := range m.accounts() {
 		next.Accounts[a.UUID] = a.Label
