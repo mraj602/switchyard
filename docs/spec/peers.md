@@ -87,7 +87,7 @@ sizes and statuses, never text.
 
 ### 2.3 Control socket
 
-`$XDG_RUNTIME_DIR/sy/agent.sock` (Linux; folder `sy/` 0700, socket 0600), and
+`<state>/agent/agent.sock` on macOS. A unix socket path binds only up to 103 bytes on macOS (107 on Linux), so when that path is longer, both the agent and its clients use `$TMPDIR/sy-<uid>/agent.sock` instead (`/tmp/sy-<uid>/agent.sock` when that is still too long; folder 0700, checked by the agent). JSON lines, one request and one reply per connection:
 `<state>/agent/agent.sock` on macOS. JSON lines, one request and one reply per connection:
 
 | `op` | Request | Reply |
