@@ -93,9 +93,10 @@ Hash routes (phase 2 had `#/`, `#/sessions`, `#/sessions/<id>`, `#/accounts`, `#
 | `#/sessions/<id>?alert=<al>` | Session (`PhoneSession`) | **Open in Claude** (`remote_url`, with the wrong-account note), **Copy resume command**, **Snooze 15 min** (alert), state history |
 | `#/accounts?seat=<id>` | Accounts (`PhoneAccounts`) | "Most room right now" line; `seat` scrolls to and highlights a card |
 | `#/machines?machine=<id>` | Machines | Under More on phones; stays in the desktop sidebar |
-| `#/more` | More (new) | Links: Alerts, Machines, Settings; owner only: Devices, Add phone; Analytics listed as "coming" (its API is still reserved) |
+| `#/more` | More (new) | Links: Alerts, Machines, Peers, Settings; owner only: Devices, Add phone; Analytics listed as "coming" (its API is still reserved) |
 | `#/more/alerts` | Alerts and rules (`PhoneAlerts`) | Rule list (5 below), quiet hours, recent pushes from `GET /v1/alerts` with outcome (open, seen, snoozed, cancelled + the "cancelled means you answered first" note) |
 | `#/more/settings` | Settings | Hub address, version, live status; notifications (6); private pushes, tap behaviour, own quiet hours (device prefs); ntfy topic (push.md 7); install status; app version + "Check for update"; **Unpair this phone** |
+| `#/more/peers` | Settings → Peers (PE3) | The account matrix, **Pause all peers**, the audit list (3.1); under More on phones and a Peers entry in the desktop sidebar; linked from Settings |
 | `#/more/devices` | Devices (owner; `DeskAlerts` "Paired phones") | `GET /v1/devices`, rename, revoke, test push per target, Add phone / Add machine (QR dialog, pairing.md 2.4) |
 | `#/pair?s=…&c=…` | Pairing (`PhonePair`) | pairing.md 5 |
 | `#/owner?s=…` | Owner sign-in | Posts `/v1/session/owner`, then `#/more/settings` |
@@ -103,7 +104,7 @@ Hash routes (phase 2 had `#/`, `#/sessions`, `#/sessions/<id>`, `#/accounts`, `#
 | `#/login` | Sign in | Unchanged token login; adds "Pair with a code instead" |
 
 Navigation: phone bottom tabs **Now, Sessions, Accounts, More** (plan section 12); desktop
-sidebar Now, Sessions, Accounts, Machines, Alerts, Settings. `nav.js` gets a `phone`/`desk`
+sidebar Now, Sessions, Accounts, Machines, Alerts, Settings, Peers (+ Devices for the owner). `nav.js` gets a `phone`/`desk`
 flag per item; CSS decides as today.
 
 Start-up: `GET /v1/me`. 401 → pair screen when running installed (`display-mode:
@@ -116,6 +117,36 @@ Rules on the phone (`PhoneAlerts`): one row per base trigger with its global del
 (`PATCH /v1/devices/self`); for an owner session it edits the global rule (`PUT
 /v1/rules/{id}`), and the delay is editable. Overrides are listed (owner: add/remove with a
 seat/project picker and on/off + delay).
+
+### 3.1 Peers (`#/more/peers`, PE3)
+
+`views/peers.js`, with its pure arithmetic and sentences in `components/peers-fmt.js`. It reads
+`GET /v1/peers/matrix`, `GET /v1/peers/audit` and, when the hub serves it,
+`GET /v1/peers/messages` (peers.md 5, 10, 11).
+
+- **Pause all peers** comes first and is prominent: a status line ("Peers are on" / "All peers
+  are paused") and one large danger button, `POST /v1/peers/pause`. Resume widens (peers.md 5.4),
+  so it is offered only to an owner session.
+- **Accounts**: a grid with one row per sender and one column per receiver (the board's visible
+  seats, plus any account the matrix names). A cell is none `·`, one way `→` (the row may start a
+  thread), back `←` (only the column may), or both `⇄`; the diagonal is `=`, the same-account
+  switch of the matrix (`same_account`). The matrix version, its signer and `max_turns` are
+  shown above the grid. A cell opens an editor under the grid: None, row to column, column to
+  row, Both ways. Each choice is a `PUT /v1/peers/matrix` `edit` with `base_version` (a stale one
+  is 409: the page reloads the matrix and says so): added pairs go in `allow`, removed pairs in
+  `deny`.
+- **Who may do what** (api.yaml, keys.md 5.2): a choice that adds a pair, and the same-account
+  switch turned on, widen, so they are enabled only for an owner session (`/v1/me` `owner`). A
+  choice that only removes pairs, and the pause button, need an owner session or a device with
+  the `push` scope; a read-only sign-in sees the grid with every control off. A control that is
+  off says why, in place ("Widening needs an owner sign-in: run `sy hub owner-link` on the hub").
+  The hub refuses anything the page lets through wrongly; the page never signs.
+- **Audit**: newest first, one row per entry: what happened ("Matrix changed", "All peers
+  paused"), who (or who to whom when the detail names both accounts), the plain metadata of its
+  detail (version, widened, pairs, size, status) and the age. **Messages** (when served): who to
+  whom by account, kind, size and outcome. Never message text: the page shows only the keys it
+  knows and ignores the rest.
+- Desktop: the app's Hub view (desktop.md C7) is this page; the app adds nothing of its own.
 
 ## 4. Service worker and offline
 
@@ -247,7 +278,9 @@ standalone)')` and `navigator.standalone` for "already installed").
   file list; icon sizes; `sw.js` is served with the build hash and no-cache; the devserver's
   new fixtures validate against `api.yaml`.
 - `node --test webui/static/*.test.cjs` (Node 20+, no packages): `chooseTarget`, payload
-  parsing fallbacks, the data-cache URL matcher.
+  parsing fallbacks, the data-cache URL matcher; the Peers cells, edits (only an added pair
+  widens), "why not" sentences and audit text (`peers-fmt.test.cjs`). The devserver serves the
+  matrix, pause and audit endpoints with the hub's who-may-do-what (`devserver/peers_test.go`).
 - Headless Chrome (extends `webui/smoke`, `SY_WEBUI_BROWSER=1`, puppeteer-core), against the
   devserver at `http://127.0.0.1` (a secure context):
   - manifest: CDP `Page.getAppManifest` has no errors; `Page.getInstallabilityErrors` is

@@ -207,14 +207,27 @@ Accounts, More**:
 | `/sessions?filter=&by=` | `#/sessions` | Grouped list with filter chips |
 | `/sessions/[id]?alert=` | `#/sessions/<id>` | State history, last message, **Open in Claude** (`remote_url` with the wrong-account note), **Copy resume command**, Snooze |
 | `/accounts?seat=` | `#/accounts` | Cards, "most room", **Count down on Lock Screen** (iOS, P12) |
-| `/more` | `#/more` | Alerts, Machines, Settings |
+| `/more` | `#/more` | Alerts, Machines, Peers, Settings |
 | `/more/alerts` | `#/more/alerts` | Rule switches as `prefs.mute` (`PATCH /v1/devices/self`), recent pushes (`GET /v1/alerts`) |
 | `/more/machines?machine=` | `#/machines` | Machines list |
 | `/more/settings` | `#/more/settings` | Hub and status, notifications state and **Send test push**, private pushes, tap behaviour, own quiet hours, widgets refresh switch (`prefs.widgets`), app version and **Check for update** (P16), **Unpair** |
 | `/more/settings/notifications` | — | P6.7 (N1) |
-| `/more/peers` | `#/more/peers` | PE3: the peers audit list, the matrix (view; narrowing only) and **Pause all peers** (peers.md 10, 11) |
+| `/more/peers` | `#/more/peers` | PE3: **Pause all peers**, the matrix (view; a tapped cell can only narrow) and the audit list (peers.md 5, 10, 11); see below |
 | `/alerts/[id]` | `#/alerts/<id>` | Loads the alert and replaces itself with its deep link (push.md 5.8) |
 | `/pair` | `#/pair` | P2 |
+
+**Peers** (`PeersScreen`, PE3) reads `GET /v1/peers/matrix`, `/v1/peers/audit` and, when the hub
+serves it, `/v1/peers/messages` through the hub client (`matrix`, `editMatrix`, `pausePeers`,
+`peerAudit`, `peerMessages`). Top to bottom: the **Pause all peers** switch (`POST
+/v1/peers/pause`; one tap pauses; turning it off is disabled with a note, because resuming widens
+and a phone is never an owner session); the matrix as a grid of senders (rows) and receivers
+(columns) with the version, signer and `max_turns` in the header; the audit list (what, who, a
+metadata line, age) and the message list when served. **A tapped cell can only narrow**: both
+ways offers one way either way or none, one way offers none, none offers nothing; each is a
+`PUT /v1/peers/matrix` `edit` with `base_version` and `deny` entries only, never `allow`
+(`narrowings` in `src/lib/format/peers.ts`). Allowing a pair, same account on and resume are on
+the board or at a terminal (peers.md 5.4). A 409 reloads the matrix, a 403 says the change needs
+the owner. Everything is disabled while offline.
 
 Owner-only PWA screens (Devices, Add phone, rule editing, Analytics) are not in the app.
 Wording, ages and state words come from `src/lib/format` and match `webui/static/format.js`
@@ -563,6 +576,10 @@ needs an Expo, Google or store account.
   paired as a phone with `cookie: false`), with `_meta.json` giving the time they were taken.
   The devserver's data is relative to its start, so tests that format times use
   `_meta.json`'s `now_ms`. `test/fixtures/widget-snapshot.v1.json` is the P11 example.
+- `peers-matrix.json` and `peers-audit.json` in the same folder are the devserver's fresh matrix
+  (version 1, nothing allowed) and audit (`GET /v1/peers/matrix`, `/v1/peers/audit`);
+  `validateMatrixInfo` and `validatePeerAudit` check them, and the Peers screen tests start from
+  them (`test/screens.test.tsx`, `test/peers-format.test.ts`).
 - `test/contract.test.ts` checks the Go Expo message goldens
   (`internal/hub/push/expo/testdata/*.json`) with `validateExpoMessage` and, for alerts,
   `validatePayload(…, exact)` (Go key order, no unknown keys), and every fixture with its

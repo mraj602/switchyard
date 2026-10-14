@@ -330,6 +330,10 @@ account in a hidden or background start until the window is shown.
 - Owner sign-in: `sy desktop owner-link --json` → `loadURL(<link>)`. The board's `#/owner`
   route does the rest. When the 30-day owner session expires, the board drops back to its
   read cookie on the next login, and Settings shows "Sign in as owner".
+- Peers: Settings → Peers (peers.md 5, 11) is the board's `#/more/peers` page (pwa.md 3.1), shown
+  in this view; the app has no peers screen of its own. The desktop token is read-only, so the
+  page enables its controls (matrix edits, Pause all peers, resume) only after the owner
+  sign-in above; until then it shows the matrix and the audit and says why.
 - `hub:route` loads `<hub>/<route>` (for example `#/sessions/<id>`). Notification clicks and
   tray items use it.
 - Account-tab handoff: a `https://claude.ai/code/session_[A-Za-z0-9]+` link from the board goes
