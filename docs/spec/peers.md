@@ -245,6 +245,13 @@ queued for api-worker@work.worker: its machine is offline; expires 10:42 (msg 5f
 not delivered: the matrix does not allow work → personal. Ask the owner to change it; do not retry.
 ```
 
+If the envelope was written to the hub link but the hub's `peer_ack` does not come within 10 s,
+the message may still be queued and delivered, so it is not reported `not delivered` or
+`hub_unreachable`: the line is `queued for <handle>: the hub has not confirmed it, so it may
+still be delivered; do not resend (msg …)`, the exit code is 8 (7.2, no new code), the turn
+counts in the sender's thread, and a later `peer_status` still answers `--wait` and
+`sy peers status`.
+
 No notice is ever injected into the sender's session later. `sy peers status [<msg>]` shows
 what became of earlier messages.
 

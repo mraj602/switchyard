@@ -264,11 +264,15 @@ func (r *Remote) Send(o peers.Outgoing) (*peers.Pending, *peers.Refusal) {
 		wait = AckWait
 	}
 	var ack peers.PeerAck
+	unconfirmed := false
 	select {
 	case ack = <-ackCh:
 	case <-time.After(wait):
-		dropFinal()
-		return nil, peers.Refuse(peers.CodeHubUnreachable, "the hub did not answer within %s", wait)
+		// The envelope was written to the link; the hub may still queue and deliver it, so
+		// this is not "not delivered": report it queued, unconfirmed (peers.md 4.3). A late
+		// final status (peer_status) can still answer a --wait.
+		unconfirmed = true
+		ack = peers.PeerAck{Status: "queued"}
 	}
 	if ack.Status != "queued" {
 		dropFinal()
@@ -278,7 +282,7 @@ func (r *Remote) Send(o peers.Outgoing) (*peers.Pending, *peers.Refusal) {
 	if ack.Exp != 0 {
 		exp = time.Unix(ack.Exp, 0)
 	}
-	return &peers.Pending{Expires: exp, Offline: ack.Detail == "offline", Wait: func(d time.Duration) (peers.Final, bool) {
+	return &peers.Pending{Expires: exp, Offline: ack.Detail == "offline", Unconfirmed: unconfirmed, Wait: func(d time.Duration) (peers.Final, bool) {
 		defer dropFinal()
 		select {
 		case f := <-finCh:

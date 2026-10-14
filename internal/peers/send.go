@@ -28,15 +28,21 @@ type SendResult struct {
 	// Expires and Offline describe a queued message; Pending waits for its final status.
 	Expires time.Time
 	Offline bool
-	Pending *Pending
+	// Unconfirmed: the hub did not answer in time; the message is queued as far as the sender
+	// can tell (it may still be delivered, and counts in the thread).
+	Unconfirmed bool
+	Pending     *Pending
 }
 
 // Line is the one status line `sy peers send` prints on success.
 func (r SendResult) Line() string {
 	if r.Status == "queued" {
 		why := "not delivered yet"
-		if r.Offline {
+		switch {
+		case r.Offline:
 			why = "its machine is offline"
+		case r.Unconfirmed:
+			why = "the hub has not confirmed it, so it may still be delivered; do not resend"
 		}
 		return fmt.Sprintf("queued for %s: %s; expires %s (msg %s)", r.Target.Handle, why, r.Expires.Local().Format("15:04"), r.Msg)
 	}
@@ -249,7 +255,7 @@ func (e Env) sendRemote(unlock *func(), out Outgoing, thread Thread) (SendResult
 	line.Status = "queued"
 	e.audit(line, out.Now)
 	return SendResult{Msg: out.Msg, Thread: thread.ID, Target: out.To, Sender: out.From, Status: "queued", Expires: p.Expires,
-		Offline: p.Offline, Pending: p}, nil
+		Offline: p.Offline, Unconfirmed: p.Unconfirmed, Pending: p}, nil
 }
 
 func newestHuman(a, b *Session) time.Time {
