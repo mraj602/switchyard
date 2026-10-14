@@ -345,6 +345,135 @@ export async function runTask(name: string, body: unknown): Promise<unknown> {
   return fn(body);
 }
 
+// ---------------------------------------------------------------- sy-link (push.md 14.8)
+
+type LinkStateT = import('../modules/sy-link').LinkState;
+type LinkConfigT = import('../modules/sy-link').LinkConfig;
+
+const linkInitial = (): LinkStateT => ({
+  enabled: false,
+  status: 'off',
+  transport: null,
+  connectedSince: null,
+  nextRetryAt: null,
+  lastError: null,
+  lastSeq: 0,
+  received: 0,
+  rejected: 0,
+  batteryExempt: false,
+  notificationsAllowed: true,
+  verified: 'qr',
+  pingS: 180,
+  checkCode: null,
+});
+
+/** Scriptable state of the sy-link fake; `emitLink` plays the native side's events. */
+export const linkState = {
+  available: true,
+  state: linkInitial(),
+  keys: {
+    sign: { alg: 'p256' as const, pub: 'BFAKESIGNPUBLICKEY' },
+    box: { alg: 'p256' as const, pub: 'BFAKEBOXPUBLICKEY' },
+    auth: 'FAKEAUTHSECRET0000000A',
+  },
+  sealed: 'SEALEDKEYSFAKE',
+  config: null as LinkConfigT | null,
+  /** A code configure() rejects with (ERR_SY_HUB_KEY, ERR_SY_TAMPERED, ...), or null. */
+  configureError: null as string | null,
+  prepareError: false,
+  /** What requestBatteryExemption() turns batteryExempt into. */
+  exemptAfterRequest: true,
+  refresh: null as import('../modules/sy-link').LinkRefresh | null,
+  listeners: new Map<string, Set<(p: unknown) => void>>(),
+};
+
+export function emitLink(event: 'state' | 'refresh' | 'revoked' | 'upgrade', payload?: unknown): void {
+  if (event === 'state' && payload) linkState.state = { ...linkState.state, ...(payload as Partial<LinkStateT>) };
+  linkState.listeners.get(event)?.forEach((l) => l(event === 'state' ? linkState.state : payload));
+}
+
+const codedError = (code: string, message: string) => Object.assign(new Error(message), { code });
+
+export const syLink = {
+  __esModule: true,
+  get available() {
+    return linkState.available;
+  },
+  CONFIGURE_ERRORS: { hubKey: 'ERR_SY_HUB_KEY', tampered: 'ERR_SY_TAMPERED' },
+  async prepareKeys() {
+    rec('link.prepareKeys', []);
+    if (linkState.prepareError) throw codedError('ERR_SY_KEYS', 'sy-link: keystore');
+    return linkState.keys;
+  },
+  async sealKeys(k: string, secret: string) {
+    rec('link.sealKeys', [k, secret.length]); // never the secret itself
+    return linkState.sealed;
+  },
+  async configure(cfg: LinkConfigT) {
+    rec('link.configure', [cfg]);
+    if (linkState.configureError) throw codedError(linkState.configureError, 'sy-link: refused');
+    linkState.config = cfg;
+    linkState.state = { ...linkState.state, verified: cfg.reg, pingS: cfg.pingS, checkCode: 'k7q2-m4xa' };
+  },
+  async start() {
+    rec('link.start', []);
+    if (!linkState.config) throw codedError('ERR_SY_NOT_CONFIGURED', 'sy-link: configure first');
+    linkState.state = { ...linkState.state, enabled: true, status: 'connecting' };
+  },
+  async stop() {
+    rec('link.stop', []);
+    linkState.state = { ...linkState.state, enabled: false, status: 'off', transport: null, connectedSince: null };
+  },
+  async reconnect() {
+    rec('link.reconnect', []);
+  },
+  async getState() {
+    rec('link.getState', []);
+    return { ...linkState.state };
+  },
+  async setPingInterval(seconds: number) {
+    rec('link.setPingInterval', [seconds]);
+    if (seconds < 60 || seconds > 900) throw codedError('ERR_SY_RANGE', 'sy-link: range');
+    linkState.state = { ...linkState.state, pingS: seconds };
+  },
+  async setSnoozeMinutes(minutes: number) {
+    rec('link.setSnoozeMinutes', [minutes]);
+  },
+  async requestBatteryExemption() {
+    rec('link.requestBatteryExemption', []);
+    linkState.state = { ...linkState.state, batteryExempt: linkState.exemptAfterRequest };
+    return linkState.exemptAfterRequest;
+  },
+  async openBatterySettings() {
+    rec('link.openBatterySettings', []);
+  },
+  async sendLocalTest() {
+    rec('link.sendLocalTest', []);
+  },
+  async getRefresh() {
+    rec('link.getRefresh', []);
+    return linkState.refresh;
+  },
+  async reset() {
+    rec('link.reset', []);
+    linkState.config = null;
+    linkState.state = linkInitial();
+  },
+  addListener(event: string, cb: (p: unknown) => void) {
+    rec('link.addListener', [event]);
+    const set = linkState.listeners.get(event) ?? new Set();
+    set.add(cb);
+    linkState.listeners.set(event, set);
+    return { remove: () => set.delete(cb) };
+  },
+  async checkUpdate() {
+    throw codedError('ERR_SY_UPDATE', 'sy-link: the updater is not built yet (N2)');
+  },
+  async installUpdate() {
+    throw codedError('ERR_SY_UPDATE', 'sy-link: the updater is not built yet (N2)');
+  },
+};
+
 // ---------------------------------------------------------------- reset
 
 /** Clears every fake (test/setup.ts runs it before each test). */
@@ -368,4 +497,12 @@ export function resetFakes(): void {
   widgetsState.activities = [];
   androidWidgetState.taskHandler = null;
   taskState.tasks.clear();
+  linkState.available = true;
+  linkState.state = linkInitial();
+  linkState.config = null;
+  linkState.configureError = null;
+  linkState.prepareError = false;
+  linkState.exemptAfterRequest = true;
+  linkState.refresh = null;
+  linkState.listeners.clear();
 }
