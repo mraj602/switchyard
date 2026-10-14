@@ -182,7 +182,7 @@ export default function NotifySettingsScreen() {
         <Section title="This phone">
           <Card>
             <KV k="Notifications" v={s.notificationsAllowed ? 'Allowed' : 'Blocked in system settings'} />
-            {!s.notificationsAllowed ? <Btn label="Open settings" testID="link-perm-settings" onPress={() => void Linking.openSettings()} /> : null}
+            {!s.notificationsAllowed ? <Btn label="Open settings" testID="link-perm-settings" onPress={() => void act('Could not open settings', () => Linking.openSettings())} /> : null}
             <Text testID="link-verified" style={{ color: s.verified === 'changed' ? t.bad : t.text, marginTop: 8 }}>
               {verifiedWords(s)}
             </Text>
@@ -213,7 +213,7 @@ export default function NotifySettingsScreen() {
       <Section title="Backup: Web Push">
         <Card>
           <Muted>{"Also get alerts in the installed web app (uses Google's push service, encrypted, no account)."}</Muted>
-          <Btn label="Open the web app" testID="link-webpush" disabled={!origin} onPress={() => origin && void Linking.openURL(`${origin}/#/pair`)} />
+          <Btn label="Open the web app" testID="link-webpush" disabled={!origin} onPress={() => origin && void act('Could not open the web app', () => Linking.openURL(`${origin}/#/pair`))} />
         </Card>
       </Section>
     </Page>
