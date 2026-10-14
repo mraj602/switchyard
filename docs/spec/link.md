@@ -23,9 +23,24 @@ hub ── link_queue(device) ── /v1/link (WebSocket, or /v1/link/poll) ─�
 | --- | --- |
 | No reusable credential on the wire | Login is a challenge signed by the device key (3). The bearer is never sent on `/v1/link`, so a Funnel node or proxy that sees the traffic cannot replay anything. |
 | Nothing lost | Every queued frame stays in `link_queue` until the device acks its `seq` (5). Reconnect replays from the last ack. |
-| Nothing forged | Every frame is signed by the hub key the device pinned (keys.md 3.5), over the device id, type, `seq`, expiry, tag and body (4.3). A database-only attacker can neither add a frame nor ack one for the device. |
+| Nothing forged | Every frame is signed by the hub key the device pinned (keys.md 3.5), over the device id, type, `seq`, expiry, tag and body (4.3). A database-only attacker cannot add a frame a device accepts, and cannot ack for the device: the hub takes acks only on a connection that logged in with the device key (3). |
 | Nothing readable at rest or in transit | Queued bodies are sealed to the device's key (4.2) before they are stored. |
 | Small | Latest state wins: frames with the same tag collapse (5.3); old frames expire (5.4); each queue is capped (5.5). |
+
+**Honest limits.** Someone who can **write** the database can still delete queued rows or set
+`delivery.delivered_at` (loss and a false delivery log, never a forged frame), and can mint
+tokens (tokens.md stores unpeppered hashes), which matters for keys.md 5.4. TLS is the only
+channel binding: a party that terminates TLS between the device and the hub can relay a live
+login, then drop frames, inject device→hub frames (acks, actions, `peer_result`) and read the
+inline fields of ephemeral frames while that connection lasts. It still cannot read a sealed
+body, forge a hub frame or log in again later. Every supported path terminates TLS on the hub
+machine (`tailscale serve`, and Funnel, whose TLS ends in the hub's own `tailscaled`).
+
+**Byte strings.** In every signed or sealed input below, `‖` is byte concatenation, text is
+UTF-8, `"\n"` is the byte 0x0A, `decimal(n)` is base-10 ASCII with no sign, padding or leading
+zeros, and nonces, fingerprints and ids appear as the text that travels in the JSON (b64u for
+the nonce). No field placed before the last one may contain `\n`: ids, types and fingerprints
+cannot, and tags are limited to `[A-Za-z0-9_:.-]{0,64}` (5.3).
 
 ## 2. Transport
 
@@ -46,8 +61,9 @@ hub ── link_queue(device) ── /v1/link (WebSocket, or /v1/link/poll) ─�
   the device owns the radio.
 - **One connection per device.** A new authenticated connection closes the old one with 4409
   `superseded`.
-- **Load.** At most 32 concurrent connections in the challenge phase per client IP; a
-  connection that has not sent a valid `hello` within 10 s is closed with 4401.
+- **Load.** At most 64 connections in the challenge phase hub-wide (behind `tailscale serve`
+  every client has the proxy's address, so a per-IP cap means nothing); more are refused with
+  HTTP 503. A connection that has not sent a valid `hello` within 10 s is closed with 4401.
 
 ### 2.1 Long-poll fallback
 
@@ -57,12 +73,14 @@ frames go over plain HTTPS: `POST /v1/link/poll`, JSON in and out, no bearer.
 | Request `op` | Body | Reply |
 | --- | --- | --- |
 | `challenge` | `{"op":"challenge"}` | the `challenge` frame (3.1) |
-| `poll` | a `hello` frame (3.2), plus `"acks": <seq>` and optional `"up": [frames]` (device→hub frames, 6.2) | `{"welcome"?, "frames": [ … ], "results": [ … ], "next": <challenge frame>}` |
+| `poll` | `{"op":"poll","hello": <hello frame, 3.2>,"up"?: [frames]}`: `hello.last` is the cumulative ack (it is signed); `up` holds device→hub frames other than `ack` (6.2), at most 64 | `{"welcome", "frames": [ … ], "results": [ … ], "next": <challenge frame>}` |
 
 - The hub holds a `poll` open up to 25 s while the queue has nothing past the device's ack, and
   answers as soon as something is queued. Each reply carries the next challenge (`next`), so
   each request is a fresh login with a single-use nonce.
-- Ephemeral frames (6.3) are returned in the reply (`results`) of the request that caused them.
+- Ephemeral frames (6.3) are returned in the reply (`results`) of the request that caused them;
+  they and `welcome` are signed with that request's nonce as context (4.3).
+- Poll logins count against their own limit (120 a minute per device), not 3.2 step 5's.
 - `link_state.transport` is `poll`. The app uses it after 3 failed WebSocket handshakes in a
   row where plain HTTPS to the hub works, and tries the WebSocket again every 30 minutes.
 
@@ -79,13 +97,15 @@ challenge login is what protects the link.
 ### 3.1 Challenge (hub → device, first message)
 
 ```json
-{"t": "challenge", "v": 1, "hub": "<hub fp>", "nonce": "<b64u, 32 bytes>", "ts": "2026-10-15T09:00:00.000Z", "sig": "<b64u>"}
+{"t": "challenge", "v": 1, "hub": "<hub fp>", "nonce": "<b64u, 32 bytes>", "exp": 1760518860, "sig": "<b64u>"}
 ```
 
-`sig` = hub Ed25519 over `"sy-link-v1 challenge\n" ‖ nonce ‖ "\n" ‖ ts`. The device checks the
-signature against its pinned hub key (keys.md 3.5) and the fingerprint, and closes the
+`sig` = hub Ed25519 over `"sy-link-v1 challenge\n" ‖ hub fp ‖ "\n" ‖ nonce ‖ "\n" ‖
+decimal(exp)`. `exp` is the hub's clock + 60 s. The device checks the signature against its
+pinned hub key (keys.md 3.5) and `hub` against the pinned fingerprint, and closes the
 connection (no `hello`) if either fails: it never signs a nonce for a hub it does not trust.
-Nonces live in memory for 60 s and are single-use.
+It does not compare `exp` with its own clock (phones' clocks drift); the hub enforces it.
+Nonces live in hub memory until `exp` and are single-use.
 
 ### 3.2 Hello (device → hub)
 
@@ -94,6 +114,7 @@ Nonces live in memory for 60 s and are single-use.
   "t": "hello", "v": 1,
   "device": "dev_01JA4…",
   "nonce": "<the challenge nonce>",
+  "exp": 1760518860,
   "last": 41,
   "client": {"kind": "android", "app": "0.9.0", "build": "14", "sdk": 35},
   "known": {"matrix": 3, "revocations": 2},
@@ -101,50 +122,67 @@ Nonces live in memory for 60 s and are single-use.
 }
 ```
 
+- `"exp"`: copied from the challenge.
 - `sig` = the device's sign key over
-  `"sy-link-v1 hello\n" ‖ hub fp ‖ "\n" ‖ nonce ‖ "\n" ‖ device ‖ "\n" ‖ decimal(last)`:
-  Ed25519 (machines) or ECDSA P-256 SHA-256, DER (phones; keys.md 2).
+  `"sy-link-v1 hello\n" ‖ hub fp ‖ "\n" ‖ nonce ‖ "\n" ‖ decimal(exp) ‖ "\n" ‖ device ‖ "\n" ‖ decimal(last)`:
+  Ed25519 (machines) or ECDSA P-256 SHA-256, DER (phones; keys.md 2). The signature binds the
+  login to this hub's key, this device, this single-use nonce and its expiry; it carries no
+  reusable secret.
 - `last`: the highest `seq` the device has processed (its own durable copy, 6.1).
 - `client.kind`: `android` or `agent`; `sy` sends `{"kind":"agent","sy":"0.9.0","os":"linux"}`.
 - `known`: the newest matrix and revocation versions the device holds (machines only).
 
 The hub, in order:
 
-1. Nonce known and unused → else 4401.
+1. Nonce known, unused and not past `exp`; `exp` equals the challenge's → else 4401. The nonce
+   is marked used here, before any other check.
 2. Device exists, not revoked → else 4403. Has a `device_key` row → else 4401 with reason
    `no_keys` (the device must `PUT /v1/devices/{id}/keys` first).
 3. The certificate's hub signature (`device_key.hub_sig` over `cert`) verifies with the hub key,
-   and `sign_pub` in the row equals the one in the certificate body → else 4401 `bad_cert` and a
-   warning in the hub log ("device_key row for dev_… does not match its certificate").
-4. `sig` verifies with that key → else 4401.
+   and the body's `device` and `hub` are this device and this hub → else 4401 `bad_cert` and a
+   warning in the hub log ("device_key row for dev_… does not match its certificate"). From
+   here on the hub uses the keys **from the verified certificate body** (to check `sig` and to
+   seal, 4.2), never the `sign_pub` / `box_pub` columns, which are copies for queries.
+4. `sig` verifies with the certificate's sign key → else 4401.
 5. Rate: at most 10 logins a minute per device (4429).
 6. Any open connection of the device is closed with 4409.
-7. `last` > `link_state.next_seq − 1` → 4400 `bad_seq` (the device claims frames the hub never
-   sent: the device's state is from another hub; it must re-pair). Otherwise `acked_seq =
-   max(acked_seq, last)`, and rows with `seq ≤ last` are deleted (an implicit ack: the device
-   processed them before the connection dropped).
+7. **Resync.** When `last ≥ link_state.next_seq` the device is ahead of the hub, which happens
+   after the hub was restored from a backup (machines.md). The device is not wrong (it signed
+   `last`), so the hub does not refuse it: in one transaction it renumbers the device's
+   queued rows to `last + 1, last + 2, …` in their order, re-signs them (4.3; the sealed
+   bodies do not change), sets `next_seq` past them and `acked_seq = last`, and logs a warning
+   ("link resync for dev_…: device at 41, hub at 12"). Nothing queued is lost.
+8. Otherwise `last` is a signed, cumulative ack: `acked_seq = max(acked_seq, last)`, and rows
+   with `seq ≤ last` are deleted exactly as for an `ack` (5.6; an implicit ack of frames
+   processed before the connection dropped).
 
 ### 3.3 Welcome (hub → device)
 
 ```json
+{"t": "welcome", "seq": 0, "exp": 1760518920, "tag": "", "body": "<b64u of the JSON below>", "sig": "<b64u>"}
+```
+
+```json
 {
-  "t": "welcome", "v": 1,
+  "v": 1,
   "device": "dev_01JA4…",
   "next": 57,
   "ping_s": 180,
   "urls": ["wss://hub.example.ts.net/v1/link"],
-  "owner": {"pub": "<b64u>", "fp": "…"},
-  "server_time": "2026-10-15T09:00:01.000Z",
-  "seq": 0, "sig": "<b64u>"
+  "owner": {"type": "owner_key", "body": "…", "sigs": [ … ]},
+  "server_time": "2026-10-15T09:00:01.000Z"
 }
 ```
 
-An ephemeral frame (6.3): signed with the nonce as context, so it cannot be replayed into
-another login. `next` is the hub's `next_seq` (informational). `owner` is the active owner key
-(or null); a machine pins it on first sight (keys.md 3.5) and compares it afterwards (a
-difference is logged and shown by `sy agent status`, never acted on without an
-`owner_rotate`). Then the hub replays: every row with `seq > acked_seq`, in order, within the
-in-flight window (5.6). When `known` is behind, the hub queues the current `matrix` and
+An ephemeral frame (4.1, 6.3): signed with the nonce as context, so it cannot be replayed into
+another login. `next` is the hub's `next_seq` (informational). `server_time` lets the device
+judge `exp` with the hub's clock: it keeps `offset = server_time − its clock` and drops a frame
+only when its clock + `offset` is past `exp`. `owner` is the active owner key document with the
+owner's self-signature and the hub's confirmation signature (keys.md 3.3), or null; a machine
+checks both and pins it on first sight (keys.md 3.5), and compares it afterwards (a difference
+is logged and shown by `sy agent status`, never acted on: only `sy keys trust-owner` at a
+terminal changes the pin). Then the hub replays: every row with `seq > acked_seq`, in order,
+within the in-flight window (5.6). When `known` is behind, the hub queues the current `matrix` and
 `revocations` documents for that device (if not already queued).
 
 ## 4. Frames
@@ -157,14 +195,18 @@ Every frame after login is one JSON object:
 {"t": "alert", "seq": 57, "exp": 1760540400, "tag": "sy-s-c41e…", "body": "<b64u>", "sig": "<b64u>"}
 ```
 
+Hub→device frames always have these six fields (`tag` may be `""`), and their content is
+always in `body`; `challenge` (3.1) is the one exception. Device→hub frames are plain JSON
+objects with their fields inline and no `sig` (6.2).
+
 | Field | Rule |
 | --- | --- |
 | `t` | Frame type (6). |
 | `seq` | Queued frames: the queue position, > 0, increasing per device (gaps allowed, 5.3). Ephemeral frames: 0. |
-| `exp` | Unix seconds after which the device drops the frame unprocessed (and still acks it). |
+| `exp` | Unix seconds after which the device drops the frame unprocessed (and still acks it). Ephemeral frames: the hub's clock + 60 s. |
 | `tag` | Collapse key (5.3); `""` for none. |
-| `body` | Queued frames: the sealed body (4.2), b64u. Ephemeral frames and device→hub frames: absent, and the JSON fields are inline instead. |
-| `sig` | Hub frames only (4.3). Device→hub frames are not signed: the login (3.2) authenticated the connection, and TLS protects it. |
+| `body` | b64u. Queued frames: the sealed body (4.2). Ephemeral frames: the frame's JSON object, **not** sealed (6.3 says why), as the exact bytes that were signed; the device verifies before it parses. |
+| `sig` | The hub signature (4.3). |
 
 ### 4.2 Sealing
 
@@ -207,13 +249,21 @@ sig = Ed25519(hub key,
 - Queued frames: `ctx = "queue"`, `payload` = the sealed body bytes. Made at enqueue and stored
   in `link_queue.sig`, so the hub key is not needed again to replay.
 - Ephemeral frames (seq 0): `ctx` = the login nonce (b64u) of this connection (for long-poll:
-  of the request), `payload` = the frame's JSON with the `sig` field removed, as sent (the
-  device verifies over the exact bytes of the message minus `,"sig":"…"`, which the hub always
-  writes last). This makes an ephemeral frame valid for one connection only.
-- The device verifies, then checks `device` is itself, then `seq` > its `last` (else it acks
-  and drops it: a duplicate), then `exp`, then opens the body. Any failure: drop, log, ack (so a
-  poisoned row cannot block the queue), and count it (`sy agent status` / the app's
-  Settings → Notifications show "rejected frames: n").
+  of the request), `payload` = the decoded `body` bytes. This makes an ephemeral frame valid
+  for one connection only.
+- `t` is one of 6.3 / 6.4's hub frame types, so each signed input has exactly one parse.
+- The device checks, in order:
+  1. `sig` over its own device id → else **reject** (below);
+  2. `seq` = 0 for an ephemeral type and > 0 for a queued type → else reject;
+  3. queued: `seq` > its `last` → else ack and drop (a duplicate);
+  4. `exp` (with the welcome's clock offset; `welcome` itself uses the offset it carries) → past:
+     ack and drop;
+  5. open the body (4.2) and parse it → else reject.
+- **Reject** means: drop, log, count it (`sy agent status` / the app's Settings → Notifications
+  show "rejected frames: n") and, for a queued frame, send `{"t":"reject","seq":N}` (6.2). The
+  device never acks a frame whose signature failed, because its `seq` is not trustworthy: an
+  inserted row with seq 10^9 must not move `last`. The hub deletes that one row and sends on,
+  so a poisoned row cannot block the queue either.
 
 ## 5. The queue
 
@@ -239,7 +289,8 @@ sig = Ed25519(hub key,
 ### 5.3 Collapse
 
 When `tag ≠ ""`, the hub deletes the device's unacked rows with the same `type` and `tag` before
-inserting the new one. The device sees a gap in `seq`, which is normal. Tags:
+inserting the new one. The device sees a gap in `seq`, which is normal. Tags match
+`[A-Za-z0-9_:.-]{0,64}` (a schema CHECK); `Enqueue` refuses others. Tags:
 
 | Type | Tag |
 | --- | --- |
@@ -281,6 +332,9 @@ and the hub doctor shows it.
   N)` (N above the last sent → 4400 `bad_seq`), deletes rows with `seq ≤ N`, and for each
   deleted row with `ref = d:<id>` sets `delivery.delivered_at` (push.md 13.4); `pm:<id>`
   updates are driven by `peer_result`, not by the ack (peers.md 8.4).
+- `{"t":"reject","seq":N}` deletes the one row `(device, N)` if it exists and was sent on this
+  connection, counts it on the device's link status, and logs a warning; it never changes
+  `acked_seq`.
 - A device acks a frame only **after** it has processed it durably: the phone after posting
   the notification and storing `last`; the agent after the inbox write or its refusal is
   recorded. A crash between processing and ack means a replay, which the device drops by
@@ -301,8 +355,9 @@ re-pairing.
 | --- | --- | --- |
 | `hello` | 3.2 | Login. |
 | `ack` | `seq` | Cumulative ack (5.6). |
+| `reject` | `seq` | A queued frame that failed its checks (4.3); the hub deletes that row only. |
 | `action` | `id`, `token` | A notification action tapped on the phone: `token` is the action token from the alert (push.md 8). The hub applies it exactly as `POST /v1/actions/{token}` (same checks, same rate limit) and answers `action_result` with the same `id`. |
-| `peer_msg` | `doc`, `cert` (peers.md 8.2) | A signed envelope, body sealed to the target machine, from a session on this machine to a session on another machine; the hub answers `peer_ack`. |
+| `peer_msg` | `doc` (peers.md 8.2) | A signed envelope, body sealed to the target machine, from a session on this machine to a session on another machine; the hub answers `peer_ack`. |
 | `peer_result` | `msg`, `status`, `detail?`, `human_at?` | The receiving agent's verdict on a `peer_msg` it got (peers.md 8.4). |
 | `peer_log` | `msg`, `thread`, `to_session`, `status`, `detail?`, `size`, `at` | Metadata of a same-machine delivery, for the audit (peers.md 10). |
 | `peers_list` | `id` | Ask for the session directory (peers.md 3); the hub answers `peers` with the same `id`. |
@@ -313,17 +368,19 @@ refused (`notice` `forbidden`).
 
 ### 6.3 Hub → device, ephemeral (seq 0, not queued)
 
+The fields below are the JSON object inside `body` (4.1), each with `"v":1`.
+
 | `t` | Fields |
 | --- | --- |
-| `challenge` | 3.1 |
+| `challenge` | 3.1 (the one frame not in the 4.1 shape: it comes before the device is known) |
 | `welcome` | 3.3 |
 | `action_result` | `id`, `status` (HTTP-like: 200, 400, 401, 404, 410, 429), `applied`, `alert` (AlertBrief) |
-| `peers` | `id`, `sessions` (peers.md 3.2) |
+| `peers` | `id`, `sessions` (peers.md 3.2), `certs` (device id → `device_cert` document of each machine's agent that a listed session runs on; peers.md 8.2) |
 | `peer_ack` | `msg`, `status` (`queued` or `refused`), `detail?` (peers.md 8.3) |
 | `notice` | `code`, `message`: `unknown_type`, `forbidden`, `rate_limited`, `queue_full`, `draining` (hub shutting down; reconnect in 5–15 s) |
 
-Ephemeral frames are signed (4.3) like queued ones; their fields are inline, not sealed (they
-answer the device that asked, on a TLS connection, and hold nothing a session record does not).
+Ephemeral frames are signed (4.3) like queued ones; their body is not sealed (they answer the
+device that asked, on its TLS connection, at once, and hold nothing a session record does not).
 
 ### 6.4 Hub → device, queued (sealed body)
 
@@ -331,7 +388,7 @@ answer the device that asked, on a TLS connection, and hold nothing a session re
 | --- | --- | --- |
 | `alert` | phones | The push.md 6.5 payload, as built for the device's `link` target (push.md 13.2). `type` inside is `alert`, `summary`, `test` or `dismiss` (`{"v":1,"type":"dismiss","tag","alerts":[…]}`: clear the notification; sent when an alert is seen or resolved, push.md 13.3). |
 | `refresh` | phones with widgets | `{"v":1,"needs_you","seats":[{"seat","window","used_pct","resets_at"}],"ts"}`: the widget snapshot (push.md 13.5). |
-| `peer_msg` | machines | peers.md 8.3: the sender's envelope, as the sender signed it (its own seal to this machine inside). |
+| `peer_msg` | machines | `{"v":1,"doc","cert"}` (peers.md 8.3): the sender's envelope, as the sender signed it (its own seal to this machine inside), and the sender's certificate. |
 | `peer_status` | machines | `{"v":1,"msg","status","detail","at"}`: the final state of a message this machine sent. |
 | `matrix` | machines (phones in PE3) | The newest matrix document, wire form (keys.md 4.1). |
 | `revoke` | machines | The newest revocation document, wire form (keys.md 6). |
@@ -359,7 +416,7 @@ accepted only under `hub_may_widen` (keys.md 5.4).
 | --- | --- | --- | --- |
 | 1000 | normal | The device closed (app stopped, agent stopping). | — |
 | 1001 | going_away | Hub shutting down. | Reconnect with backoff. |
-| 4400 | bad_frame | Malformed JSON, binary message, `bad_seq`. | Reconnect with backoff; repeated → stop and report. |
+| 4400 | bad_frame | Malformed JSON, binary message, `bad_seq` (an `ack` above the last sent). | Reconnect with backoff; repeated → stop and report. |
 | 4401 | unauthorized | Bad or missing `hello`, unknown nonce, signature, `no_keys`, `bad_cert`, 10 s login timeout. | Reconnect with backoff; three in a row → stop, show "Hub does not recognise this device's key". |
 | 4403 | revoked | The device is revoked. | Stop; do not reconnect. |
 | 4408 | idle | Nothing from the device for `2 × ping_s + 30` s. | Reconnect. |
@@ -386,19 +443,33 @@ after a connection that lasted 60 s. A network change resets it to zero (push.md
 
 ## 10. Tests (F1)
 
-- Frame goldens (challenge, hello, welcome, each type) with fixed keys; signature inputs.
+- **Goldens** in `internal/link/testdata/` (shared with the Kotlin tests, push.md 14.10), made
+  by `go test ./internal/link -update` from fixed seeds: the hub Ed25519 seed `0x01…01`, a
+  machine's Ed25519/X25519 seeds `0x02…`/`0x03…`, a phone's P-256 key from RFC 8291 appendix A
+  (`ua_private`) and its auth secret. One JSON file per case,
+  `{"name", "keys": {…public keys…}, "fields": {…}, "signed_hex", "frame"}`:
+  `challenge`, `hello-machine`, `hello-phone` (ECDSA is randomised: the file holds one valid
+  signature to verify, not to reproduce), `welcome`, `alert-phone` (RFC 8291 with the
+  appendix's fixed salt and `as_private`, so byte-exact), `matrix-machine` (HPKE is
+  randomised: a ciphertext to open), `action-result`, plus `bad-*` variants (one changed byte in
+  each signed field, a wrong device id, `seq` 0 on a queued type) that must be rejected.
+- Signature inputs: every `signed_hex` rebuilt from `fields` byte for byte.
 - HPKE seal/open round trip, wrong device → fail; RFC 8291 path reuses webpush's vectors.
 - Queue: seq monotonic; collapse by tag (gap visible); expiry sweeper; caps (alert eviction
   with `missed`, `peer_msg` refused); cumulative ack; replay after reconnect from `last`;
-  implicit ack via `hello.last`; `bad_seq`.
+  implicit ack via `hello.last`; `bad_seq` on an ack above the last sent; resync after a
+  restored backup (renumbered, re-signed, nothing lost); `reject` deletes one row only.
 - Tamper: a `link_queue` row with a changed body, tag, seq or exp → the test client rejects
-  it; a `device_key.sign_pub` changed in the database → login refused (`bad_cert`); an ack
-  cannot be made without the device key.
+  it, sends `reject`, and its `last` does not move; a row inserted with seq 10^9 and a bad
+  signature does not block later frames; a `device_key.sign_pub` or `box_pub` changed in the
+  database → login refused (`bad_cert`) or ignored (the certificate's key is used); a
+  challenge replayed after `exp`, or a hello replayed with a used nonce → 4401; no ack is
+  accepted on a connection that has not logged in.
 - Revocation: the open link closes with 4403 within the test's clock step; the queue is gone;
   machines receive `revoke`.
 - Long-poll parity: the same scripted session over WebSocket and over poll gives the same
   frames and the same final state.
 - Hub restart mid-stream: the client replays from its `last` with no loss and no duplicate
   processing.
-- Exactly one route under `/v1/link` answers without a bearer (`/v1/link`, `/v1/link/poll`),
-  checked against the route table.
+- Only the two link routes (`/v1/link`, `/v1/link/poll`) answer without a bearer, checked
+  against the route table.

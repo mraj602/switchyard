@@ -1331,7 +1331,8 @@ phone/modules/sy-link/
   expo-module.config.json      {"platforms":["android"],"android":{"modules":["dev.switchyard.link.SyLinkModule"]}}
   index.ts                     the JS API (14.8); every function rejects "sy-link: Android only" elsewhere
   src/SyLink.types.ts
-  android/build.gradle         okhttp (the version React Native already ships), androidx.work, androidx.core
+  android/build.gradle         okhttp (the version React Native already ships), androidx.work, androidx.core,
+                               com.google.crypto.tink:tink-android (Ed25519 verification only)
   android/src/main/AndroidManifest.xml
   android/src/main/java/dev/switchyard/link/
     SyLinkModule.kt            Expo module: functions and events
@@ -1343,14 +1344,15 @@ phone/modules/sy-link/
     ActionReceiver.kt          BroadcastReceiver for Snooze and Seen
     BootReceiver.kt            BOOT_COMPLETED, MY_PACKAGE_REPLACED
     Watchdog.kt                WorkManager periodic worker
-    Store.kt                   SharedPreferences in device-protected storage
+    Store.kt                   the module's private SharedPreferences
     SyUpdate.kt                the updater (phone.md P16)
   android/src/test/…           JVM tests (14.10)
 ```
 
-Hub signatures (Ed25519) are verified with `Signature.getInstance("Ed25519")` on API 33+ and,
-below that, with a vendored pure-Kotlin RFC 8032 verifier (one file, tested against RFC 8032's
-vectors). No other native dependency.
+Hub signatures (Ed25519) are verified with Tink's `Ed25519Verify` (pure Java, maintained by
+Google, no native code) on every API level: the platform's `Signature("Ed25519")` exists only
+from API 33, and one code path is simpler than two. No hand-written crypto and no other new
+dependency; ECDH, HKDF and AES-GCM come from the platform.
 
 ### 14.2 Manifest
 
@@ -1363,6 +1365,8 @@ vectors). No other native dependency.
 <uses-permission android:name="android.permission.WAKE_LOCK"/>
 <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
 <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32"/>
+<uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
 <application>
   <service android:name=".SyLinkService" android:exported="false"
            android:foregroundServiceType="specialUse">
@@ -1383,8 +1387,26 @@ vectors). No other native dependency.
   may not start from `BOOT_COMPLETED`; ntfy's Android app uses `specialUse` for the same need.
   The app is never in the Play Store (plan addendum C), so Play's review of the subtype text
   does not apply.
-- `minSdkVersion` becomes **31** (phone.md P13): Keystore key agreement (`PURPOSE_AGREE_KEY`)
-  needs API 31.
+- **`minSdkVersion` 31** (phone.md P13), and only for one reason: a **non-exportable** key
+  agreement key (`KeyProperties.PURPOSE_AGREE_KEY`, `KeyAgreement("ECDH", "AndroidKeyStore")`)
+  exists from API 31; below it the RFC 8291 private key would have to live in app memory, which
+  the plan rules out. The foreground service type is **not** a reason: `specialUse` is an API
+  34 type, and on 31–33 the service simply runs without one (next point), as ntfy does with a
+  far lower minSdk.
+- **Starting in the foreground, per API level.** API 34+: `startForeground(id, n,
+  FOREGROUND_SERVICE_TYPE_SPECIAL_USE)`. API 31–33: the two-argument `startForeground(id, n)`
+  (those releases do not know `specialUse`, and have no `dataSync` cap either). One helper,
+  `SyLinkService.goForeground()`, with a test per branch.
+- **Background starts (API 31+).** Android 12 forbids starting a foreground service from the
+  background except in listed cases. The ones this design uses: `BOOT_COMPLETED` and
+  `MY_PACKAGE_REPLACED`; the app being exempt from battery optimisation; an exact alarm
+  firing. So the watchdog and `onTaskRemoved` restarts work only with the battery exemption or
+  through an exact alarm; without either, `ForegroundServiceStartNotAllowedException` is caught,
+  the 15-minute check of 14.9 runs instead, and Settings → Notifications says "Instant delivery
+  is paused until you open the app (battery optimisation is on)".
+- **Exact alarms.** `USE_EXACT_ALARM` (granted at install on API 33+; Play restricts it to alarm
+  apps, which does not matter outside the Play Store) and `SCHEDULE_EXACT_ALARM` for 31–32 (on
+  by default there). `canScheduleExactAlarms()` false → inexact `setAndAllowWhileIdle`.
 - `REQUEST_INSTALL_PACKAGES` is for the updater (phone.md P16).
 
 ### 14.3 Keys (Android Keystore)
@@ -1395,7 +1417,6 @@ Made by `prepareKeys()` before the claim (phone.md P2):
 | --- | --- | --- |
 | `sy_link_sign` | EC P-256, `PURPOSE_SIGN`, SHA-256, not exportable | The login signature (link.md 3.2), ECDSA DER |
 | `sy_link_agree` | EC P-256, `PURPOSE_AGREE_KEY`, not exportable | RFC 8291's ECDH with the frame's `as_public` (`KeyAgreement.getInstance("ECDH", "AndroidKeyStore")`) |
-| `sy_link_wrap` | AES-256-GCM, encrypt and decrypt, not exportable | Wraps the 16-byte RFC 8291 auth secret kept in `Store` |
 
 - StrongBox when present (`setIsStrongBoxBacked(true)`, retried without it), no user
   authentication: the service must work while the phone is locked after its first unlock.
@@ -1403,33 +1424,36 @@ Made by `prepareKeys()` before the claim (phone.md P2):
   is in app memory for one frame only.
 - `prepareKeys()` returns `{sign: {alg: "p256", pub}, box: {alg: "p256", pub}, auth}` (b64u) for
   the claim. The auth secret leaves the phone only in that claim (sealed by the QR, keys.md 7.1)
-  and is never shown.
-- Unpair (phone.md P3) calls `reset()`: the three aliases, the pins and the module's storage are
+  and is never shown. It is kept in `Store` as it is, not wrapped by another Keystore key: on
+  its own it opens nothing (RFC 8291 also needs the non-exportable `sy_link_agree`), so a
+  wrapping key would add an alias and no protection.
+- Unpair (phone.md P3) calls `reset()`: the two aliases, the pins and the module's storage are
   deleted.
 
 ### 14.4 Service and connection
 
 | Concern | Design |
 | --- | --- |
-| Start | `start()` from JS after pairing and on each app start while instant delivery is on; `BootReceiver` (boot, app update); the watchdog. `startForegroundService`, then `startForeground` within 5 s with `FOREGROUND_SERVICE_TYPE_SPECIAL_USE`. |
+| Start | `start()` from JS after pairing and on each app start while instant delivery is on; `BootReceiver` (boot, app update); the watchdog. `startForegroundService`, then `goForeground()` (14.2) within 5 s. |
 | Persistent notification | Channel `sy_connection` (importance MIN, no badge, no sound): "Connected to hub · 2 min", "Reconnecting… (next try in 20 s)", "Not connected: <reason>". Tapping it opens Settings → Notifications. It can be hidden in Android's settings. |
 | Connection | OkHttp `WebSocket` to the first working `urls` entry, subprotocol `sy-link.1`, `pingInterval` = `ping_s` (default 180; Settings allows 300–600 on the tailnet), read timeout 0, connect timeout 15 s. Long-poll (link.md 2.1) after 3 failed handshakes while `GET /health` answers. |
 | Login | link.md 3: the challenge's hub signature and fingerprint are checked against the pin from pairing (`h=`); `hello` is signed with `sy_link_sign`. |
 | Reconnect | 1, 2, 5, 10, 20, 30, 60 s, then 120 s, each ±20 % jitter; reset after a connection that lasted 60 s. `registerDefaultNetworkCallback`: a new default network (Wi-Fi ↔ mobile, a VPN such as Tailscale coming up) reconnects at once with the backoff reset. |
 | Close codes | link.md 8. **4403**: stop the service and the watchdog, post "This phone was removed from the hub", emit `revoked` (JS shows Pair). **4426**: stop, emit `upgrade` (the updater checks). **4409**: this connection only. |
-| Doze | The app asks once for the battery-optimisation exemption (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`), with the maker guide (phone.md P6.7). Reconnect timers use `AlarmManager.setExactAndAllowWhileIdle` when exempt, a coroutine delay otherwise. |
+| Doze | The app asks once for the battery-optimisation exemption (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`), with the maker guide (phone.md P6.7). Reconnect timers longer than 10 s use `AlarmManager.setExactAndAllowWhileIdle` when exempt and `canScheduleExactAlarms()` (14.2), a coroutine delay otherwise. |
 | Wake lock | `PARTIAL_WAKE_LOCK` only while one frame is verified, decrypted and posted, 10 s cap; never across the connection. |
-| Task removed | `onTaskRemoved` schedules a restart in 1 s. |
-| Watchdog | WorkManager `PeriodicWorkRequest` every 15 min, `KEEP`: with instant delivery on, start the service if it is not running; with it off, do the 15-minute check (14.9). |
-| Storage | `Store` in device-protected storage, so the service runs after a reboot before the first unlock: origin, device id, urls, the hub key pin, `last`, the wrapped auth secret, pending actions, counters. The bearer token stays in SecureStore (phone.md P3); the service does not need it. |
+| Task removed | `onTaskRemoved` sets an exact alarm 1 s ahead that restarts the service (an alarm is one of the allowed background starts, 14.2). |
+| Watchdog | WorkManager `PeriodicWorkRequest` every 15 min, `KEEP`: with instant delivery on, start the service if it is not running (allowed only when battery-exempt, 14.2; otherwise it does the 15-minute check); with it off, do the 15-minute check (14.9). |
+| Storage | `Store`, the module's own SharedPreferences (credential-protected; the service starts at `BOOT_COMPLETED`, which comes after the first unlock): origin, device id, urls, the hub key pin, `last`, the clock offset, the auth secret, pending actions, counters. The bearer token stays in SecureStore (phone.md P3); the service does not need it. |
 
 ### 14.5 Frames and notifications
 
 Per frame, under the wake lock:
 
-1. Verify (link.md 4.3) with the pinned hub key; `seq > last`; `exp` not passed. Failure →
-   count it as rejected, ack, drop.
-2. Decrypt (RFC 8291) and parse.
+1. Check it in link.md 4.3's order with the pinned hub key: signature, `seq`, duplicate
+   (`seq ≤ last`: ack, drop), `exp` with the welcome's clock offset (past: ack, drop).
+   A bad signature → `reject` (link.md 6.2), count it, drop; `last` does not move.
+2. Decrypt (RFC 8291) and parse; failure → `reject` as in step 1.
 3. Act:
    - `alert` with `type` `alert`, `summary` or `test`: post on the channel of phone.md P6.1 for
      the trigger (`sy_test` for tests). **Notification id** = the first 4 bytes of SHA-256(tag)
@@ -1523,12 +1547,14 @@ notification.
 ### 14.10 Tests
 
 - **JVM** (Robolectric where Android classes are needed): RFC 8291 decryption against RFC 8291
-  appendix A and the hub's goldens (`internal/hub/push/webpush/testdata`, and new
-  `internal/hub/link/testdata/frame-*.json` made with fixed keys); Ed25519 against RFC 8032;
-  frame signature checks (each field changed → reject); seq dedupe across a simulated restart;
-  backoff bounds; the notification id from a tag; the action fallback order with a fake clock;
-  close-code handling.
-- **Emulator** (API 34–36): Doze (`adb shell dumpsys deviceidle force-idle`), standby buckets,
+  appendix A and the hub's goldens (`internal/hub/push/webpush/testdata`, and
+  `internal/link/testdata/*.json`, link.md 10, copied into the module's test resources by a
+  Gradle task); Ed25519 against RFC 8032's vectors through Tink; the login signature verified by
+  the Go side's golden check (`hello-phone`); frame signature checks (each field changed →
+  `reject`, `last` unchanged); seq dedupe across a simulated restart; the clock offset; backoff
+  bounds; the notification id from a tag; the action fallback order with a fake clock;
+  close-code handling; `goForeground()` on API 31 and 34 (Robolectric SDK config).
+- **Emulator** (API 31, 34–36): Doze (`adb shell dumpsys deviceidle force-idle`), standby buckets,
   network switch, reboot, app update, task removed, revocation (4403).
 - **On the phone** (N1, plan addendum C): overnight Doze, reboot, Wi-Fi ↔ mobile, Tailscale off
   and on, hub restart, Snooze and Seen from the lock screen with the app killed, dismiss on two

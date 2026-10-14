@@ -1240,11 +1240,13 @@ paths:
     post:
       tags: [keys]
       operationId: proposeOwnerKey
-      summary: Propose an owner key (self-signed `owner_key`) or rotate it (`owner_rotate`)
+      summary: Propose an owner key (self-signed `owner_key` document)
       description: |
-        keys.md 3.3. A proposal is `pending` until an owner session confirms it. While a key
-        is active, only an `owner_rotate` document signed by the active key and the new one
-        is accepted (`409` otherwise).
+        keys.md 3.3. A proposal is `pending` until an owner session (or `sy hub keys
+        confirm-owner`) confirms it; the hub then adds its own signature. Confirming a
+        proposal while a key is active retires that key (a replacement, keys.md 3.3 step 5):
+        machines keep their pin until `sy keys trust-owner` is run on each. `409` while
+        another proposal is pending.
       x-reserved: "F1"
       x-scopes: [owner, write]
       requestBody:
@@ -1348,7 +1350,9 @@ paths:
       description: |
         keys.md 4.2, push.md 13.7. `self` for machines (`write`) and phones (`push`); the hub
         signs the certificate (`reg: tofu`) and, for a phone, makes its `link` target. New keys
-        replace the old certificate and are added to the next revocation list.
+        replace the old certificate and are added to the next revocation list; `409` for a
+        device whose keys came under the QR seal or SSH, or that the owner key certified
+        (re-pair it instead).
       x-reserved: "F1"
       x-scopes: [write, push]
       parameters:
@@ -1371,6 +1375,7 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
+        "409": {$ref: "#/components/responses/Conflict"}
         "501": {$ref: "#/components/responses/NotImplemented"}
 
   /v1/devices/{id}/cert:
@@ -2243,7 +2248,7 @@ components:
           type: string
           pattern: "^[A-Za-z0-9_-]+$"
           maxLength: 2048
-          description: "keys.md 7.1: the `keys` object sealed with the QR's `k` (AES-128-GCM, base64url). Wrong seal: 400 and the code stays live."
+          description: "keys.md 7.1: the `keys` object sealed with the QR's `k` (AES-128-GCM, base64url). Wrong seal: 400 and the code stays live. A `secret` claim must use this, not clear `keys` (400 otherwise)."
       oneOf:
         - {required: [code]}
         - {required: [secret]}
@@ -2267,8 +2272,9 @@ components:
             version: {type: string}
         hub_key: {$ref: "#/components/schemas/PublicKey"}
         owner_key:
+          description: "keys.md 7.3: the active owner key document, self-signed and hub-confirmed; null until one is active."
           oneOf:
-            - {$ref: "#/components/schemas/PublicKey"}
+            - {$ref: "#/components/schemas/SignedDoc"}
             - {type: "null"}
         cert: {$ref: "#/components/schemas/SignedDoc"}
         link:
@@ -2564,10 +2570,10 @@ components:
 
     SignedDoc:
       type: object
-      description: "keys.md 4.1. Each signature is Ed25519 over \"sy-doc-v1\\n\" + type + \"\\n\" + body bytes."
+      description: "keys.md 4.1. Each signature is Ed25519 over \"sy-doc-v1\\n\" + type + \"\\n\" + body bytes. A verifier requires exactly the signers keys.md 4.1 names for the type, each `by` once."
       required: [type, body, sigs]
       properties:
-        type: {type: string, enum: [owner_key, owner_rotate, device_cert, matrix, revocations, peer_envelope]}
+        type: {type: string, enum: [owner_key, device_cert, matrix, revocations, peer_envelope]}
         body: {type: string, description: The signed body bytes, base64url.}
         sigs:
           type: array
@@ -2620,6 +2626,7 @@ components:
         proposed_by: {type: string}
         created_at: {type: string, format: date-time}
         confirmed_at: {type: [string, "null"], format: date-time}
+        doc: {$ref: "#/components/schemas/SignedDoc", description: "The owner_key document: the self-signature, plus the hub's once confirmed (keys.md 3.3)."}
 
     KeysInfo:
       type: object
@@ -2650,7 +2657,7 @@ components:
 
     LinkFrame:
       type: object
-      description: "link.md 4-6. Hub frames carry `sig`; queued ones carry a sealed `body`."
+      description: "link.md 4-6. Hub frames have `t`, `seq`, `exp`, `tag`, `body` and `sig`; `body` is sealed for queued frames and the plain signed JSON for ephemeral ones (seq 0). `challenge` has its own fields (link.md 3.1). Device frames have their fields inline and no `sig`."
       required: [t]
       properties:
         t: {type: string}
@@ -2666,8 +2673,7 @@ components:
       required: [op]
       properties:
         op: {type: string, enum: [challenge, poll]}
-        hello: {$ref: "#/components/schemas/LinkFrame"}
-        acks: {type: integer, minimum: 0}
+        hello: {$ref: "#/components/schemas/LinkFrame", description: "Required for poll. Its signed `last` is the cumulative ack (link.md 2.1)."}
         up:
           type: array
           maxItems: 64
