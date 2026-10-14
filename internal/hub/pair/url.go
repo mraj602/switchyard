@@ -86,6 +86,12 @@ func PairURL(origin, secret, digits string) string {
 	return origin + "/#/pair?s=" + url.QueryEscape(secret) + "&c=" + digits
 }
 
+// PairURLKeys is PairURL with keys.md 7's two fields: h=<hub key fingerprint> and
+// k=<b64u seal key>.
+func PairURLKeys(origin, secret, digits, hubFP, sealKey string) string {
+	return PairURL(origin, secret, digits) + "&h=" + hubFP + "&k=" + sealKey
+}
+
 // OwnerURL is the owner sign-in link: <origin>/#/owner?s=<secret>.
 func OwnerURL(origin, secret string) string {
 	return origin + "/#/owner?s=" + url.QueryEscape(secret)

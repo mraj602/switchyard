@@ -135,7 +135,9 @@ func (k *HubKey) SignLink(input []byte) ([]byte, error) {
 }
 
 // Public is the key's JSON form.
-func (k *HubKey) Public() PublicKey { return PublicKey{Alg: keys.AlgEd25519, Pub: keys.B64(k.Pub), FP: k.FP} }
+func (k *HubKey) Public() PublicKey {
+	return PublicKey{Alg: keys.AlgEd25519, Pub: keys.B64(k.Pub), FP: k.FP}
+}
 
 // Trust is a verifier holding only the hub key.
 func (k *HubKey) Trust() keys.Trust { return keys.Trust{Hub: k.Pub} }

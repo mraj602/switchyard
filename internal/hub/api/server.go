@@ -13,6 +13,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/auth"
 	"github.com/mraj602/switchyard/internal/hub/events"
 	"github.com/mraj602/switchyard/internal/hub/ingest"
+	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
 	"github.com/mraj602/switchyard/internal/hub/push/model"
 	"github.com/mraj602/switchyard/internal/hub/store"
 	"github.com/mraj602/switchyard/internal/record"
@@ -46,6 +47,9 @@ type Config struct {
 	// Puller runs a pull-mode machine's pull now (phase 5). Nil (tests, --no-pull) is fine:
 	// POST /v1/machines/{id}/pull then answers 503.
 	Puller Puller
+	// Keys is the hub's signing key and the key documents (F1, keys.md). Nil: the key
+	// endpoints answer 503 and pairing registers no keys.
+	Keys *hubkeys.Service
 }
 
 // Engine is what the server needs from the alert engine. Notify must not block (changes

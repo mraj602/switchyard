@@ -410,8 +410,13 @@ Hub steps, inside the claim transaction after pairing.md 3 step 3:
 1. Recompute `k`, open `keys_sealed`. Failure → **400** `bad_request` "key registration
    invalid", and the code is **not** consumed, so a tampered request cannot burn the real
    phone's code.
+   The seal is opened only after the secret matched a live code, so an unknown secret is
+   still 401 and counts against the limiter like any other wrong secret; a typed code with
+   `keys_sealed`, or both fields at once, is 400.
    **No downgrade:** a `secret` claim (the QR path) that carries `keys` in the clear is
-   refused the same way: clear keys are for typed codes only. A proxy can still strip the keys
+   refused the same way: clear keys are for typed codes only. A `secret` claim made without
+   the QR (`sy machine add` passing a code on stdin) therefore sends no keys and registers
+   them afterwards with `PUT /v1/devices/self/keys` (`reg = tofu`). A proxy can still strip the keys
    altogether; the app then sees a reply without `cert` / `reg = qr` and refuses (7.3).
 2. Check the keys: P-256 points on the curve (`ecdh.P256().NewPublicKey`, `ecdsa` parse),
    Ed25519/X25519 32 bytes, `auth` 16 bytes, algorithms matching the code's kind.

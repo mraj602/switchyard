@@ -300,8 +300,13 @@ func (s *Server) devDelete(w http.ResponseWriter, r *http.Request) {
 		auth.WriteError(w, http.StatusServiceUnavailable, "unavailable", "database unavailable")
 		return
 	}
-	// Already revoked counts as done (ErrNotFound from the cascade).
-	if err := auth.Revoke(r.Context(), s.Store(), id); err != nil && !errors.Is(err, store.ErrNotFound) {
+	// Already revoked counts as done (ErrNotFound from the cascade). With a hub key the
+	// device's keys also go on the next revocation list (keys.md 6).
+	revoke := func() error { return auth.Revoke(r.Context(), s.Store(), id) }
+	if s.cfg.Keys != nil {
+		revoke = func() error { return s.cfg.Keys.RevokeDevice(r.Context(), id, caller.ID, "revoked") }
+	}
+	if err := revoke(); err != nil && !errors.Is(err, store.ErrNotFound) {
 		auth.WriteError(w, http.StatusServiceUnavailable, "unavailable", "database unavailable")
 		return
 	}
