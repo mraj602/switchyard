@@ -264,11 +264,15 @@ func (r *Remote) Send(o peers.Outgoing) (*peers.Pending, *peers.Refusal) {
 		wait = AckWait
 	}
 	var ack peers.PeerAck
+	unconfirmed := false
 	select {
 	case ack = <-ackCh:
 	case <-time.After(wait):
-		dropFinal()
-		return nil, peers.Refuse(peers.CodeHubUnreachable, "the hub did not answer within %s", wait)
+		// The envelope was written to the link; the hub may still queue and deliver it, so
+		// this is not "not delivered": report it queued, unconfirmed (peers.md 4.3). A late
+		// final status (peer_status) can still answer a --wait.
+		unconfirmed = true
+		ack = peers.PeerAck{Status: "queued"}
 	}
 	if ack.Status != "queued" {
 		dropFinal()
@@ -278,7 +282,7 @@ func (r *Remote) Send(o peers.Outgoing) (*peers.Pending, *peers.Refusal) {
 	if ack.Exp != 0 {
 		exp = time.Unix(ack.Exp, 0)
 	}
-	return &peers.Pending{Expires: exp, Offline: ack.Detail == "offline", Wait: func(d time.Duration) (peers.Final, bool) {
+	return &peers.Pending{Expires: exp, Offline: ack.Detail == "offline", Unconfirmed: unconfirmed, Wait: func(d time.Duration) (peers.Final, bool) {
 		defer dropFinal()
 		select {
 		case f := <-finCh:
@@ -511,7 +515,14 @@ func (r *Remote) incoming(body []byte) error {
 	if claimed.Msg != "" {
 		sn.Msgs[claimed.Msg] = seenEntry{At: now, Result: res}
 		if err := r.saveSeen(sn); err != nil {
-			return fmt.Errorf("writing %s: %w", r.seenPath(), err)
+			if res.Status != "delivered" {
+				// Nothing was delivered, so a replay cannot duplicate it: leave it unacked.
+				return fmt.Errorf("writing %s: %w", r.seenPath(), err)
+			}
+			// Delivered already: leaving the frame unacked would make the hub replay it and
+			// deliver it twice. Log, report and ack; the cost is that a replay after a lost
+			// ack goes undetected.
+			r.Logger.Printf("peers: message %s delivered, but %s could not be written (%v); acking anyway", claimed.Msg, r.seenPath(), err)
 		}
 	}
 	if res.Status != "delivered" {

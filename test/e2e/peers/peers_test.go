@@ -403,6 +403,7 @@ func TestLoopGuardAcrossMachines(t *testing.T) {
 // The rates bind at the sender and, for a sender that forgot its limits, at the hub.
 func TestRateLimits(t *testing.T) {
 	w := newWorld(t, 500)
+	w.h.clk.Freeze()
 	for i := 0; i < peers.SessionBurst; i++ {
 		rep := w.laptop.send("api", toWorker, "message", 0, 0)
 		delivered(t, rep, rep.Status)
@@ -412,10 +413,61 @@ func TestRateLimits(t *testing.T) {
 		t.Fatal(err)
 	}
 	refusedWith(t, w.laptop.send("api", toWorker, "one too many, again", 0, 0).Refusal(), peers.CodeRateLimited)
-	if r := w.h.rows()[0]; r.Status != "refused" || r.Detail != peers.CodeRateLimited {
-		t.Fatalf("hub row %+v", r)
+	limited := 0 // the clock is frozen, so rows share one timestamp: count, don't rely on order
+	for _, r := range w.h.rows() {
+		if r.Status == "refused" && r.Detail == peers.CodeRateLimited {
+			limited++
+		}
+	}
+	if limited != 1 {
+		t.Fatalf("hub rows refused as rate_limited: %d, want 1", limited)
 	}
 	onlyContent(t, w.worker.session("worker").inbox, peers.SessionBurst)
+}
+
+// A sender that forgot its limits and threads and keeps sending envelopes the hub refuses
+// (here the loop guard) is rate-limited at the hub like any other sender.
+func TestHubRateLimitsRefusedEnvelopes(t *testing.T) {
+	w := newWorld(t, 2)
+	rep := w.laptop.send("api", toWorker, "turn one", 0, 0)
+	delivered(t, rep, rep.Status)
+	back := w.worker.send("worker", toAPI, "turn two", 0, 0)
+	delivered(t, back, back.Status)
+	var last *peers.Refusal
+	for i := 0; i < peers.SessionBurst+3; i++ {
+		_ = os.Remove(filepath.Join(w.laptop.state, "peers", "threads.json"))
+		_ = os.Remove(filepath.Join(w.laptop.state, "peers", "limits.json"))
+		last = w.laptop.send("api", toWorker, "again", 0, 0).Refusal()
+		if last == nil {
+			t.Fatalf("send %d was delivered", i)
+		}
+	}
+	refusedWith(t, last, peers.CodeRateLimited)
+}
+
+// A hub that takes the envelope but does not answer in time is not "not delivered": the send
+// is reported queued (unconfirmed) and counts in the sender's thread (peers.md 4.3).
+func TestAckTimeoutIsQueuedUnconfirmed(t *testing.T) {
+	w := newWorld(t, 30)
+	w.laptop.remote.AckWait = 300 * time.Millisecond
+	w.h.setRogue(func(ctx context.Context, device string, u link.Up) (bool, string, any, error) {
+		return u.T == link.TypePeerMsg, "", nil, nil // swallowed: no peer_ack
+	})
+	rep := w.laptop.send("api", toWorker, "no answer", 0, 0)
+	if rf := rep.Refusal(); rf != nil {
+		t.Fatalf("refused: %v", rf)
+	}
+	if rep.Status != "queued" || rep.Detail != "unconfirmed" {
+		t.Fatalf("reply %+v", rep)
+	}
+	ts := peers.LoadThreads(w.laptop.env().ThreadsPath())
+	if len(ts.Threads) != 1 || ts.Threads[0].Turns != 1 {
+		t.Errorf("threads %+v", ts.Threads)
+	}
+	res := peers.SendResult{Status: "queued", Unconfirmed: true, Target: peers.Session{Handle: "worker"}, Msg: rep.Msg}
+	if !strings.Contains(res.Line(), "queued for worker") || !strings.Contains(res.Line(), "not confirmed") {
+		t.Errorf("line %q", res.Line())
+	}
 }
 
 // A revoked machine is not reachable: the hub no longer lists an agent for it, and an
@@ -442,6 +494,22 @@ func TestRevokedTarget(t *testing.T) {
 			t.Errorf("row %+v", r)
 		}
 	}
+}
+
+// When seen.json cannot be written after a delivery, the result is still reported and the
+// frame acked: an unacked frame would be replayed and delivered twice (peers.md 8.4).
+func TestSeenWriteFailureStillAcks(t *testing.T) {
+	w := newWorld(t, 30)
+	blocker := filepath.Join(w.worker.state, "peers", "seen.json") // a directory: the rename onto it fails
+	if err := os.MkdirAll(filepath.Join(blocker, "x"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	rep := w.laptop.send("api", toWorker, "once despite the failure", 0, 0)
+	delivered(t, rep, rep.Status)
+	in := w.worker.session("worker").inbox
+	onlyContent(t, in, 1)
+	w.h.waitRow(rep.Msg, "delivered")
+	noMore(t, in, 1)
 }
 
 // A replayed peer_msg (the agent crashed before its ack) is reported again but not

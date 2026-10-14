@@ -256,6 +256,13 @@ queued for api-worker@work.worker: its machine is offline; expires 10:42 (msg 5f
 not delivered: the matrix does not allow work → personal. Ask the owner to change it; do not retry.
 ```
 
+If the envelope was written to the hub link but the hub's `peer_ack` does not come within 10 s,
+the message may still be queued and delivered, so it is not reported `not delivered` or
+`hub_unreachable`: the line is `queued for <handle>: the hub has not confirmed it, so it may
+still be delivered; do not resend (msg …)`, the exit code is 8 (7.2, no new code), the turn
+counts in the sender's thread, and a later `peer_status` still answers `--wait` and
+`sy peers status`.
+
 No notice is ever injected into the sender's session later. `sy peers status [<msg>]` shows
 what became of earlier messages.
 
@@ -531,6 +538,8 @@ On `peer_msg` the hub:
 1. checks the envelope signature against the sending device's certificate (hub row) and that
    `from.device` is the link's device, `from.machine` its machine, and `from.session` a
    session the hub has seen on that machine → else `refused` `forbidden`;
+   Once the sender is verified, the hub takes the 9.2 rate token (a repeated `msg` takes none)
+   before the checks below, so refused envelopes are limited like good ones; no later step takes one;
 2. looks up `to.session` (live, on `to.machine`, whose agent device is `to.device`) → else
    `refused` `unknown_target` or `target_gone`;
 3. runs 5.3 (matrix, with the accounts it knows for both sessions: the hub's own view wins
@@ -551,7 +560,8 @@ On a `peer_msg` frame:
    owner signature is rejected, `uncertified`); the certificate's `kind` is `machine`, its
    `device` and `machine` equal `from.device` and `from.machine`, its `hub` is the pinned hub;
    the envelope signature by the certificate's sign key; neither key in the revocation list;
-   `to.device` is this device; `exp` not passed → else `rejected` with `bad_signature` /
+   `to.device` is this device; `exp` not passed and at most `created_at` + 24 h (8.2; a longer
+   one is `bad_signature`, a malformed envelope) → else `rejected` with `bad_signature` /
    `uncertified` / `revoked` / `wrong_device` / `expired`.
 2. 5.3 and 6.3 with its own matrix and threads, using the receiving session's account from its
    slot → `rejected` `not_allowed` / `paused` / `loop_guard`; `off` when `sy peers off`.
@@ -564,8 +574,11 @@ On a `peer_msg` frame:
 
 A replayed frame (same `msg` already final in `<state>/peers/seen.json`, kept 48 h) is acked and
 not delivered twice; its stored result is sent again (the first one may not have reached the
-hub). The frame is left unacked (the hub replays it) only when the result could not be sent
-or `seen.json` not written; every other outcome is final.
+hub). The frame is left unacked (the hub replays it) only when the result could not be sent,
+or when `seen.json` could not be written for a message that was **not** delivered (a replay
+cannot duplicate it). If the message was delivered and `seen.json` cannot be written, the agent
+logs it, reports the result and acks anyway: a replay would deliver it twice, and the only cost
+of acking is that a replay after a lost ack goes undetected. Every other outcome is final.
 
 ### 8.5 Writing to the inbox
 

@@ -38,6 +38,9 @@ type Pending struct {
 	Expires time.Time
 	// Offline: the target machine's link is not connected (peers.md 4.3's "queued" line).
 	Offline bool
+	// Unconfirmed: the envelope was written to the link but the hub's peer_ack did not come
+	// in time, so the hub may still queue and deliver it (peers.md 4.3).
+	Unconfirmed bool
 	// Wait blocks up to d for the final status (peer_status); ok is false when none came.
 	Wait func(d time.Duration) (f Final, ok bool)
 }

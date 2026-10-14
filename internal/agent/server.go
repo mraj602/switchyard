@@ -302,8 +302,11 @@ func (s *server) waitFinal(req Request, res peers.SendResult) Reply {
 	s.logf("send msg=%s thread=%s from=%s to=%s status=queued", res.Msg, res.Thread, from, to)
 	r := Reply{Msg: res.Msg, Thread: res.Thread, Status: "queued", To: res.Target.Handle,
 		Expires: res.Expires.UTC().Format(time.RFC3339)}
-	if res.Offline {
+	switch {
+	case res.Offline:
 		r.Detail = "offline"
+	case res.Unconfirmed:
+		r.Detail = "unconfirmed"
 	}
 	return r
 }
