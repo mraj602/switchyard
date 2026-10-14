@@ -586,6 +586,33 @@ func (s *Service) RevokeDevice(ctx context.Context, id, madeBy, reason string) e
 	})
 }
 
+// RevokedTx finishes, inside tx, devices another cascade just revoked (a machine's removal):
+// their link queues go, and their keys go on the next revocation list (keys.md 6).
+func (s *Service) RevokedTx(tx *store.Tx, ids []string, madeBy, reason string) error {
+	var entries []keys.RevokedDevice
+	for _, id := range ids {
+		if err := tx.DropLink(id); err != nil {
+			return err
+		}
+		r, err := tx.DeviceKey(id)
+		if errors.Is(err, store.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		_, owner, err := s.trustTx(tx)
+		if err != nil {
+			return err
+		}
+		entries = append(entries, s.entryFor(r, owner, reason, tx.NowMS()))
+	}
+	if len(entries) == 0 {
+		return nil
+	}
+	return s.appendRevocationTx(tx, entries, madeBy)
+}
+
 // AcceptOwnerRevocations takes an owner-signed revocation list (POST /v1/keys/revocations):
 // it must verify with the active owner key, be newer than the hub's and keep every entry.
 // The hub then revokes every device the list adds. It returns their ids.
