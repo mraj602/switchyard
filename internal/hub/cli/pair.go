@@ -91,6 +91,11 @@ func pairCmd(name, kind string, wait bool, args []string, stdout, stderr io.Writ
 		return err
 	}
 	svc := pair.NewService(st, "")
+	// The QR carries the hub key's fingerprint and the seal key (keys.md 7); the first
+	// `sy hub pair` makes the hub key if serve has not yet.
+	if svc.Keys, err = keysService(st, nil); err != nil {
+		return err
+	}
 	c, err := svc.Create(ctx, pair.CreateRequest{Kind: kind, Name: *pname, Machine: *machine, URL: hub, TTL: *ttl,
 		CreatedBy: "cli", Insecure: *insecure})
 	if err != nil {
