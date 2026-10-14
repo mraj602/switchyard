@@ -88,8 +88,6 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
 
   override fun dismiss(tag: String) = nm.cancel(NotifyIds.forTag(tag))
 
-  fun cancel(id: Int) = nm.cancel(id)
-
   override fun missed() = SyLinkModule.emit("refresh", null)
 
   /**
