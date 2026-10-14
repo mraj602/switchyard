@@ -211,19 +211,32 @@ func TestPeersSendExitCodes(t *testing.T) {
 
 func TestPeersOffOn(t *testing.T) {
 	w := newPeersWorld(t)
+	w.startPID = 700 // a terminal
 	if code, _, _ := runPeersSy("peers", "off"); code != 0 {
 		t.Fatal(code)
 	}
+	w.startPID = 501
 	if code, out, _ := runPeersSy("peers", "send", "worker", "hi"); code != 5 || !strings.Contains(out, "off on this machine") {
 		t.Errorf("off: %d %q", code, out)
 	}
+	// Inside a session neither switch works (peers.md 2.3: terminal only); in particular a
+	// session cannot turn the machine's messaging back on.
+	for _, sub := range []string{"on", "off"} {
+		if code, _, errs := runPeersSy("peers", sub); code != 4 || !strings.Contains(errs, "at a terminal") {
+			t.Errorf("%s inside a session: %d %q", sub, code, errs)
+		}
+	}
+	if code, _, _ := runPeersSy("peers", "send", "worker", "hi"); code != 5 {
+		t.Errorf("still off after a session's on: %d", code)
+	}
+	w.startPID = 700
 	if code, _, _ := runPeersSy("peers", "on"); code != 0 {
 		t.Fatal(code)
 	}
+	w.startPID = 501
 	if code, _, _ := runPeersSy("peers", "send", "worker", "hi"); code != 0 {
 		t.Errorf("after on: %d", code)
 	}
-	_ = w
 }
 
 func TestPeersListCLI(t *testing.T) {

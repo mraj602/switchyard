@@ -231,7 +231,9 @@ func peersSend(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	return nil
 }
 
-// peersOffOn is `sy peers off|on`: this machine only, works with no hub (peers.md 11).
+// peersOffOn is `sy peers off|on`: this machine only, works with no hub (peers.md 11). Like
+// the agent's off and on ops it runs at a terminal only (peers.md 2.3): a session must not
+// switch the machine's messaging back on.
 func peersOffOn(off bool, args []string, stdout, stderr io.Writer) error {
 	if len(args) > 0 {
 		fmt.Fprintf(stderr, "sy peers: unexpected argument %q\n", args[0])
@@ -240,6 +242,9 @@ func peersOffOn(off bool, args []string, stdout, stderr io.Writer) error {
 	pe, err := peersEnv()
 	if err != nil {
 		return err
+	}
+	if _, rf := pe.Env.Whoami(); rf == nil || rf.Code != peerspkg.CodeNotASession {
+		return peersExit(peerspkg.ExitGuard, fmt.Errorf("sy peers %s runs at a terminal, not inside a session", map[bool]string{true: "off", false: "on"}[off]))
 	}
 	if err := pe.Env.SetOff(off); err != nil {
 		return err
