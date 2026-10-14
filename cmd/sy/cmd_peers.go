@@ -22,6 +22,8 @@ import (
 const peersUsage = `usage: sy peers list [--all] [--json]
        sy peers send <to> <text> [--ttl 1h] [--wait 10] [--stdin]
        sy peers off | on
+       sy peers enable | disable | status | audit
+       sy peers matrix | allow | deny | same-account | max-turns | pause | resume
 
 Message Claude Code sessions in other accounts through Switchyard (docs/spec/peers.md).
 send and list work inside a Claude Code session (list --all also at a terminal).
@@ -53,7 +55,7 @@ var peersEnv = func() (peerEnv, error) {
 			SlotExtra: cfg.Slots.Extra, SlotLabels: cfg.Slots.Labels, MaxTurns: peerspkg.DefaultMaxTurns,
 			Proc: peerspkg.NewProc(), StartPID: os.Getppid(), FS: identity.OSFS{},
 		},
-		Enabled: cfg.Peers.Enabled,
+		Enabled: cfg.Peers.Enabled, NoHubWiden: !cfg.Peers.HubMayWiden,
 	}, nil
 }
 
@@ -61,6 +63,9 @@ var peersEnv = func() (peerEnv, error) {
 type peerEnv struct {
 	peerspkg.Env
 	Enabled bool
+	// NoHubWiden is peers.hub_may_widen = false: this machine refuses a hub-signed matrix that
+	// widens (keys.md 5.4). The zero value keeps the default, true.
+	NoHubWiden bool
 }
 
 func peersExit(code int, err error) error { return &exitError{code: code, err: err} }
@@ -87,8 +92,9 @@ func runPeers(args []string, stdout, stderr io.Writer) error {
 		return peersSend(rest, os.Stdin, stdout, stderr)
 	case "off", "on":
 		return peersOffOn(sub == "off", rest, stdout, stderr)
-	case "enable", "disable", "status", "matrix", "allow", "deny", "same-account", "max-turns", "pause", "resume", "audit":
-		return peersExit(peerspkg.ExitUnsupported, fmt.Errorf("peers %s is not built yet: it needs the keys and matrix (peers.md PE2-PE3); sy agent enable installs the agent", sub))
+	}
+	if handled, err := peersMatrixCmd(sub, rest, stdout, stderr); handled {
+		return err
 	}
 	fmt.Fprintf(stderr, "sy peers: unknown subcommand %q\n\n%s", sub, peersUsage)
 	return errUsage

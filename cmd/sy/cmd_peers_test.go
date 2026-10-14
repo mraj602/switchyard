@@ -25,7 +25,8 @@ type peersWorld struct {
 	home, state string
 	runtime     string
 	procRoot    string
-	b           *fakeinbox.Server
+	a, b        *fakeinbox.Server
+	noHubWiden  bool
 	startPID    int
 	enabled     bool
 }
@@ -53,13 +54,22 @@ func (w *peersWorld) proc(pid, ppid int, comm, exe, env string, start int) {
 	}
 }
 
-func newPeersWorld(t *testing.T) *peersWorld {
+func newPeersWorld(t *testing.T) *peersWorld { return newPeersWorldAt(t, "") }
+
+// newPeersWorldAt is newPeersWorld with the state folder of another fixture (the signed
+// matrix tests share it with the keys rig); with a state folder the unsigned test allow file
+// is not used and the matrix is the signed document in <state>/keys/matrix.json.
+func newPeersWorldAt(t *testing.T, state string) *peersWorld {
 	base, err := os.MkdirTemp("", "sypc")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.RemoveAll(base) })
-	w := &peersWorld{t: t, base: base, home: filepath.Join(base, "h"), state: filepath.Join(base, "s"),
+	signed := state != ""
+	if state == "" {
+		state = filepath.Join(base, "s")
+	}
+	w := &peersWorld{t: t, base: base, home: filepath.Join(base, "h"), state: state,
 		runtime: filepath.Join(base, "r"), procRoot: filepath.Join(base, "p"), enabled: true, startPID: 501}
 	os.MkdirAll(filepath.Join(w.runtime, "cc-socks"), 0o700)
 	slotA, slotB := filepath.Join(w.home, ".claude-2"), filepath.Join(w.home, ".claude-5")
@@ -91,15 +101,20 @@ func newPeersWorld(t *testing.T) *peersWorld {
 	if err != nil {
 		t.Fatal(err)
 	}
+	w.a = srvA
 	t.Cleanup(func() { srvA.Close(); w.b.Close() })
 	allow := filepath.Join(base, "allow.json")
-	peersWriteFile(t, allow, `{"same_account":true,"max_turns":30,"allow":[["acc-work","acc-personal"]]}`)
+	if signed {
+		allow = ""
+	} else {
+		peersWriteFile(t, allow, `{"same_account":true,"max_turns":30,"allow":[["acc-work","acc-personal"]]}`)
+	}
 	t.Setenv(peerspkg.TestAllowEnv, allow)
 
 	old := peersEnv
 	t.Cleanup(func() { peersEnv = old })
 	peersEnv = func() (peerEnv, error) {
-		return peerEnv{Enabled: w.enabled, Env: peerspkg.Env{
+		return peerEnv{Enabled: w.enabled, NoHubWiden: w.noHubWiden, Env: peerspkg.Env{
 			Home: w.home, State: w.state, Runtime: w.runtime,
 			Machine:    identity.Machine{ID: "m_T", Name: "laptop"},
 			SlotLabels: map[string]string{"~/.claude-2": "work", "~/.claude-5": "personal"},
@@ -245,14 +260,5 @@ func TestPeersListCLI(t *testing.T) {
 	code, out, _ = runPeersSy("peers", "list", "--json")
 	if strings.TrimSpace(out) != "[]" {
 		t.Errorf("empty json: %q", out)
-	}
-}
-
-func TestPeersUnbuiltSubcommands(t *testing.T) {
-	newPeersWorld(t)
-	for _, sub := range []string{"enable", "matrix", "allow", "deny", "pause", "resume", "audit", "status"} {
-		if code, _, errs := runPeersSy("peers", sub); code != 3 || !strings.Contains(errs, "not built yet") {
-			t.Errorf("%s: %d %q", sub, code, errs)
-		}
 	}
 }

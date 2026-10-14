@@ -108,6 +108,8 @@ type Config struct {
 	Peers struct {
 		Enabled  bool   `toml:"enabled"`
 		Delivery string `toml:"delivery"`
+		// HubMayWiden: accept a hub-signed matrix that widens (keys.md 5.4). Default true.
+		HubMayWiden bool `toml:"hub_may_widen"`
 	} `toml:"peers"`
 }
 
@@ -145,6 +147,7 @@ func Defaults() Config {
 	c.Terminal.PaneAutoOpen = true
 	c.Terminal.Source = TerminalSourceAuto
 	c.Peers.Delivery = "honest"
+	c.Peers.HubMayWiden = true
 	return c
 }
 
@@ -198,6 +201,7 @@ var known = map[string]spec{
 	"terminal.ascii":            {kind: kBool, def: false},
 	"peers.enabled":             {kind: kBool, def: false},
 	"peers.delivery":            {kind: kString, def: "honest"},
+	"peers.hub_may_widen":       {kind: kBool, def: true},
 }
 
 // labelsPrefix: "slots.labels.<slot>" is a free-form key; the slot (e.g. "~/.claude-2")
