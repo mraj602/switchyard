@@ -457,6 +457,22 @@ func TestRevokedTarget(t *testing.T) {
 	}
 }
 
+// When seen.json cannot be written after a delivery, the result is still reported and the
+// frame acked: an unacked frame would be replayed and delivered twice (peers.md 8.4).
+func TestSeenWriteFailureStillAcks(t *testing.T) {
+	w := newWorld(t, 30)
+	blocker := filepath.Join(w.worker.state, "peers", "seen.json") // a directory: the rename onto it fails
+	if err := os.MkdirAll(filepath.Join(blocker, "x"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	rep := w.laptop.send("api", toWorker, "once despite the failure", 0, 0)
+	delivered(t, rep, rep.Status)
+	in := w.worker.session("worker").inbox
+	onlyContent(t, in, 1)
+	w.h.waitRow(rep.Msg, "delivered")
+	noMore(t, in, 1)
+}
+
 // A replayed peer_msg (the agent crashed before its ack) is reported again but not
 // delivered twice.
 func TestReplayDeliveredOnce(t *testing.T) {

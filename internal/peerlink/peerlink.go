@@ -515,7 +515,14 @@ func (r *Remote) incoming(body []byte) error {
 	if claimed.Msg != "" {
 		sn.Msgs[claimed.Msg] = seenEntry{At: now, Result: res}
 		if err := r.saveSeen(sn); err != nil {
-			return fmt.Errorf("writing %s: %w", r.seenPath(), err)
+			if res.Status != "delivered" {
+				// Nothing was delivered, so a replay cannot duplicate it: leave it unacked.
+				return fmt.Errorf("writing %s: %w", r.seenPath(), err)
+			}
+			// Delivered already: leaving the frame unacked would make the hub replay it and
+			// deliver it twice. Log, report and ack; the cost is that a replay after a lost
+			// ack goes undetected.
+			r.Logger.Printf("peers: message %s delivered, but %s could not be written (%v); acking anyway", claimed.Msg, r.seenPath(), err)
 		}
 	}
 	if res.Status != "delivered" {
