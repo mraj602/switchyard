@@ -1,6 +1,7 @@
 # Alerts and pushes
 
-Status: spec v1, phase 4; section 12 (the Expo channel) phase 8. Implemented in `internal/hub/push/...` (rules, engine, channels),
+Status: spec v1, phase 4; section 12 (the Expo channel) phase 8; sections 13 (the link
+channel) and 14 (the Android `sy-link` module) N0, built in N1. Implemented in `internal/hub/push/...` (rules, engine, channels),
 `internal/hub/store` (alerts, rules, targets), `internal/hub/api` (handlers). The web app
 side (service worker, permission, subscription) is in [pwa.md](pwa.md); pairing and devices
 in [pairing.md](pairing.md). Plan sections 7 (S6, S7), 9, 11, 12, 13 and 15; screens
@@ -17,8 +18,8 @@ do anything: snooze and seen change only the hub's own alert rows.
 | **Rule** | Whether, and after how long, a trigger notifies, for which seats/projects/machines/windows. Global, owned by the owner (section 3). |
 | **Episode** | One continuous occurrence of a condition: one session sitting in one needs-you state, one window instance crossing 80%, one silence of one machine. Identified by its **episode key** (3.2). |
 | **Alert** | The hub's row for one episode (`alert` table): due time, status, snooze, seen. At most one per episode (unique key): this is the dedupe. |
-| **Target** | One place a push goes: one browser's Web Push subscription, one ntfy topic, or one phone app's Expo push token (`push_target`). |
-| **Channel** | A kind of target, `webpush`, `ntfy` or `expo` (the phone app, section 12; phase 8), with a hub-wide on/off switch (`channel`). |
+| **Target** | One place a push goes: one browser's Web Push subscription, one ntfy topic, one phone app's Expo push token, or one phone's link (`push_target`). |
+| **Channel** | A kind of target, `webpush`, `ntfy`, `expo` (the phone app, section 12; phase 8) or `link` (the Android app's own connection, section 13; N1), with a hub-wide on/off switch (`channel`). |
 | **Delivery** | One attempt to bring one alert to one target (`delivery`): pending, held, sent, failed, skipped, gone. |
 | **Device prefs** | Per-device choices: muted triggers, own quiet hours, private, tap behaviour (5.4). They decide whether *this device* receives an alert, never whether the alert exists. |
 
@@ -1204,3 +1205,331 @@ The store still refuses `expo` targets (`UpsertTarget`) and the API refuses `PUT
 - It sends nothing while the hub is frozen (`hub.frozen`); a skipped pass looks again
   10 s later.
 - It logs one line per refresh pass with the count, never the digest.
+
+## 13. The link channel (N1)
+
+Status: spec v1, N0. The Android app's native notifications without Google, Expo or any
+account: the hub queues each push on the device's **link** ([link.md](link.md)) and the app's
+own service (14) posts it. Web Push and ntfy do not change; the `expo` channel stays in the
+code and is turned off in the self-hosted profile (13.6). Code: `internal/hub/push/link` (the
+sender), `internal/hub/link` (queue and transport). Schema v8.
+
+### 13.1 Choice
+
+| | Link (chosen) | Expo push (section 12) | Web Push from the installed web app |
+| --- | --- | --- | --- |
+| Third parties | None: hub → phone over Tailscale (optionally Funnel) | Expo, Google (FCM) | Google's push service carries ciphertext; no account |
+| Account needed | No | Expo account, Firebase project, EAS | No |
+| Offline phone | Durable queue, replayed in order from the last ack (link.md 5) | FCM store-and-forward | Push service TTL |
+| Encryption | RFC 8291 to a Keystore key, hub-signed | TLS to Expo only; Expo and Google can read `data` | RFC 8291 |
+| Cost on the phone | A foreground service and one idle socket (battery measured in N1) | None beyond FCM | None beyond FCM |
+
+Web Push in the installed web app stays the backup (plan addendum H1); a phone can have both.
+
+### 13.2 Sender
+
+`internal/hub/push/link` implements the same sender interface as `webpush`, `ntfy` and `expo`.
+
+- The payload is 6.5's object built for the target exactly as for Web Push (the same `private`
+  handling; `remote_url` is kept, since the body is sealed end to end), plus one field `origin`
+  (the hub's `hub.public_url`) so the app can drop an action meant for another hub
+  (phone.md P6.4).
+- It calls `link.Enqueue(target.device_id, "alert", payload.tag, ttl, payload, "d:" +
+  delivery.id)` (link.md 5.2) with 6.4's TTL. Sealing is RFC 8291 with the target's `keys`
+  (`p256dh` = the phone's `box_pub`, `auth`) through `webpush.Encrypt`, the function of 6.3,
+  `padMultiple` 128.
+- Results: enqueued → `sent` (`Ref` = `"seq:<n>"`); no `device_key`, or the device revoked →
+  `gone` (target disabled, as for Web Push 410); `ErrQueueFull` → `retry` (5.6's backoff).
+- `sent` means queued for the phone, not on it: `delivery.delivered_at` (13.4) says that.
+
+### 13.3 Dismissals and summaries
+
+- When an alert becomes `seen` or `resolved` (section 4), the hub enqueues on every link target
+  that received it a `dismiss` body (`{"v":1,"type":"dismiss","tag","alerts"}`) with the **same
+  tag**, so it collapses an undelivered alert (link.md 5.3): a phone never shows an alert that
+  was already handled, and Seen on one phone clears the others.
+- Summaries (5.3) and tests are `alert` frames with `type` `summary` / `test`.
+- Quiet hours, batching, the flood cap and device prefs apply unchanged (5.1–5.4): the link is
+  only a transport.
+
+### 13.4 Delivered
+
+`delivery.delivered_at` (schema v8) is set when the phone acks the frame (link.md 5.6). The
+board's delivery log shows "on phone 09:00:03" for link deliveries. N1's "zero missed alerts
+in 7 days" is measured from it: a link delivery with `status = 'sent'`, older than its TTL,
+with `delivered_at IS NULL` and `last_error` not `collapsed`, is a miss.
+
+### 13.5 Widget refresh
+
+`refresh` frames replace 12.9's silent Expo pushes for link targets: the same `Refresher`
+(digest, debounce, minimum interval `expo_refresh_min`), but it calls `link.Enqueue(device,
+"refresh", "refresh", 900 s, snapshot)` for link targets whose device has `prefs.widgets =
+true`. The tag keeps only the newest. The body (link.md 6.4) is enough to redraw the widgets
+with no network call (phone.md P11).
+
+### 13.6 Settings and the self-hosted profile
+
+- `PUT /v1/push/channels/link` (owner) takes `settings: {urls?: [string], ping_s?: integer}`:
+  the URLs devices try (default `[wss://<hub.public_url host>/v1/link]`) and the default ping
+  (180, range 60–900). They reach devices in the claim reply and in `welcome` (link.md 3.3).
+- **Self-hosted profile** (plan addendum A): at the first `sy hub serve` of N1 the hub turns the
+  `expo` channel off once (`channel.enabled = 0`) and records setting
+  `push.self_hosted_applied = true`, so turning it on again by hand sticks. `ntfy` is left as it
+  is (with no targets nothing is sent). Migration 0008 changes no switch, so a v6 test hub keeps
+  its behaviour.
+
+### 13.7 Registration
+
+A phone's `link` target is made by the hub, never posted by the app:
+
+- At a claim with keys (keys.md 7.1) by a phone: `push_target {kind: "link", device_id,
+  endpoint: "link:" + device id, keys: {"p256dh": b64u(box_pub), "auth": b64u(auth)}, name:
+  "<model> · app", meta: {"platform": "android", "app_version", "app_build"}}`, in the claim's
+  transaction.
+- A phone paired before N1 sends `PUT /v1/devices/self/keys` with the claim's `keys` object
+  (`reg = tofu`), which makes the certificate and the target.
+- New keys replace the old target (same `endpoint`) and certificate. The cap of 10 targets per
+  device counts it.
+- `POST /v1/push/targets` with `kind: "link"` is refused (400 "link targets are made by
+  pairing"). `PATCH` and `DELETE /v1/push/targets/{id}` work as for other kinds; the app's
+  "Instant delivery" switch is the target's `enabled`.
+- `PushTarget` for `link` adds `link: {connected, last_seen_at, queued}` (link.md 9).
+
+### 13.8 API and schema (v8)
+
+**api.yaml:** `Channel.kind`, the `/v1/push/channels/{kind}` enum, `PushTarget.kind` and
+`Delivery.kind` gain `link`; `Delivery` gains `delivered_at`; `PushTarget` gains `link`;
+`PairClaim` gains `keys` and `keys_sealed`; `PairClaimReply` gains `hub_key`, `owner_key`,
+`cert`, `link` and `reg` (keys.md 7). `PushTargetNew.kind` does not gain `link` (13.7).
+
+**Migration** `0008_link_channel.sql`: `channel` and `push_target` are rebuilt with their rows
+(SQLite cannot change a CHECK) so `kind` may be `link`; the `link` channel row is seeded,
+enabled; `delivery.delivered_at INTEGER` is added.
+
+**Go model:** `KindLink = "link"`, `TypeDismiss = "dismiss"`, `Payload.Origin`.
+
+### 13.9 Tests
+
+- Sender: the payload equals the Web Push payload for the same target plus `origin`; RFC 8291
+  vectors through the link path; `gone` without keys; `retry` on a full queue.
+- A dismiss collapses an unacked alert with the same tag (the test phone client sees only the
+  dismiss); Seen on one device enqueues dismisses for the other link devices.
+- `delivered_at` is set on ack, not on enqueue; the N1 miss query.
+- The self-hosted switch is applied once; a hand-enabled `expo` channel survives a restart.
+
+## 14. The Android `sy-link` module (N1)
+
+A local Expo module in `phone/modules/sy-link` (Kotlin, `expo-modules-core`), autolinked by the
+app. It owns everything that must run without the React Native runtime: the foreground service,
+the link client, the Keystore keys, notifications and their actions, the watchdog and the
+updater (phone.md P16). JavaScript only configures it and reads its state.
+
+### 14.1 Layout
+
+```
+phone/modules/sy-link/
+  expo-module.config.json      {"platforms":["android"],"android":{"modules":["dev.switchyard.link.SyLinkModule"]}}
+  index.ts                     the JS API (14.8); every function rejects "sy-link: Android only" elsewhere
+  src/SyLink.types.ts
+  android/build.gradle         okhttp (the version React Native already ships), androidx.work, androidx.core
+  android/src/main/AndroidManifest.xml
+  android/src/main/java/dev/switchyard/link/
+    SyLinkModule.kt            Expo module: functions and events
+    SyLinkService.kt           foreground service (specialUse)
+    LinkClient.kt              OkHttp WebSocket and long-poll, login, acks, backoff
+    Frames.kt                  parsing, hub signature checks, seq bookkeeping
+    Crypto.kt                  Keystore keys, RFC 8291 decryption, login signature
+    Notifier.kt                channels, posting, ids, dismissals, actions
+    ActionReceiver.kt          BroadcastReceiver for Snooze and Seen
+    BootReceiver.kt            BOOT_COMPLETED, MY_PACKAGE_REPLACED
+    Watchdog.kt                WorkManager periodic worker
+    Store.kt                   SharedPreferences in device-protected storage
+    SyUpdate.kt                the updater (phone.md P16)
+  android/src/test/…           JVM tests (14.10)
+```
+
+Hub signatures (Ed25519) are verified with `Signature.getInstance("Ed25519")` on API 33+ and,
+below that, with a vendored pure-Kotlin RFC 8032 verifier (one file, tested against RFC 8032's
+vectors). No other native dependency.
+
+### 14.2 Manifest
+
+```xml
+<uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+<uses-permission android:name="android.permission.WAKE_LOCK"/>
+<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+<application>
+  <service android:name=".SyLinkService" android:exported="false"
+           android:foregroundServiceType="specialUse">
+    <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+              android:value="Keeps an encrypted connection to the user's own self-hosted server to receive its notifications; no push service is used."/>
+  </service>
+  <receiver android:name=".BootReceiver" android:exported="true">
+    <intent-filter>
+      <action android:name="android.intent.action.BOOT_COMPLETED"/>
+      <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+    </intent-filter>
+  </receiver>
+  <receiver android:name=".ActionReceiver" android:exported="false"/>
+</application>
+```
+
+- **`specialUse`, not `dataSync`:** `dataSync` is capped at 6 hours a day from Android 15 and
+  may not start from `BOOT_COMPLETED`; ntfy's Android app uses `specialUse` for the same need.
+  The app is never in the Play Store (plan addendum C), so Play's review of the subtype text
+  does not apply.
+- `minSdkVersion` becomes **31** (phone.md P13): Keystore key agreement (`PURPOSE_AGREE_KEY`)
+  needs API 31.
+- `REQUEST_INSTALL_PACKAGES` is for the updater (phone.md P16).
+
+### 14.3 Keys (Android Keystore)
+
+Made by `prepareKeys()` before the claim (phone.md P2):
+
+| Alias | Spec | Use |
+| --- | --- | --- |
+| `sy_link_sign` | EC P-256, `PURPOSE_SIGN`, SHA-256, not exportable | The login signature (link.md 3.2), ECDSA DER |
+| `sy_link_agree` | EC P-256, `PURPOSE_AGREE_KEY`, not exportable | RFC 8291's ECDH with the frame's `as_public` (`KeyAgreement.getInstance("ECDH", "AndroidKeyStore")`) |
+| `sy_link_wrap` | AES-256-GCM, encrypt and decrypt, not exportable | Wraps the 16-byte RFC 8291 auth secret kept in `Store` |
+
+- StrongBox when present (`setIsStrongBoxBacked(true)`, retried without it), no user
+  authentication: the service must work while the phone is locked after its first unlock.
+- The rest of RFC 8291 (HKDF, AES-128-GCM) runs in Kotlin on the ECDH output; the shared secret
+  is in app memory for one frame only.
+- `prepareKeys()` returns `{sign: {alg: "p256", pub}, box: {alg: "p256", pub}, auth}` (b64u) for
+  the claim. The auth secret leaves the phone only in that claim (sealed by the QR, keys.md 7.1)
+  and is never shown.
+- Unpair (phone.md P3) calls `reset()`: the three aliases, the pins and the module's storage are
+  deleted.
+
+### 14.4 Service and connection
+
+| Concern | Design |
+| --- | --- |
+| Start | `start()` from JS after pairing and on each app start while instant delivery is on; `BootReceiver` (boot, app update); the watchdog. `startForegroundService`, then `startForeground` within 5 s with `FOREGROUND_SERVICE_TYPE_SPECIAL_USE`. |
+| Persistent notification | Channel `sy_connection` (importance MIN, no badge, no sound): "Connected to hub · 2 min", "Reconnecting… (next try in 20 s)", "Not connected: <reason>". Tapping it opens Settings → Notifications. It can be hidden in Android's settings. |
+| Connection | OkHttp `WebSocket` to the first working `urls` entry, subprotocol `sy-link.1`, `pingInterval` = `ping_s` (default 180; Settings allows 300–600 on the tailnet), read timeout 0, connect timeout 15 s. Long-poll (link.md 2.1) after 3 failed handshakes while `GET /health` answers. |
+| Login | link.md 3: the challenge's hub signature and fingerprint are checked against the pin from pairing (`h=`); `hello` is signed with `sy_link_sign`. |
+| Reconnect | 1, 2, 5, 10, 20, 30, 60 s, then 120 s, each ±20 % jitter; reset after a connection that lasted 60 s. `registerDefaultNetworkCallback`: a new default network (Wi-Fi ↔ mobile, a VPN such as Tailscale coming up) reconnects at once with the backoff reset. |
+| Close codes | link.md 8. **4403**: stop the service and the watchdog, post "This phone was removed from the hub", emit `revoked` (JS shows Pair). **4426**: stop, emit `upgrade` (the updater checks). **4409**: this connection only. |
+| Doze | The app asks once for the battery-optimisation exemption (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`), with the maker guide (phone.md P6.7). Reconnect timers use `AlarmManager.setExactAndAllowWhileIdle` when exempt, a coroutine delay otherwise. |
+| Wake lock | `PARTIAL_WAKE_LOCK` only while one frame is verified, decrypted and posted, 10 s cap; never across the connection. |
+| Task removed | `onTaskRemoved` schedules a restart in 1 s. |
+| Watchdog | WorkManager `PeriodicWorkRequest` every 15 min, `KEEP`: with instant delivery on, start the service if it is not running; with it off, do the 15-minute check (14.9). |
+| Storage | `Store` in device-protected storage, so the service runs after a reboot before the first unlock: origin, device id, urls, the hub key pin, `last`, the wrapped auth secret, pending actions, counters. The bearer token stays in SecureStore (phone.md P3); the service does not need it. |
+
+### 14.5 Frames and notifications
+
+Per frame, under the wake lock:
+
+1. Verify (link.md 4.3) with the pinned hub key; `seq > last`; `exp` not passed. Failure →
+   count it as rejected, ack, drop.
+2. Decrypt (RFC 8291) and parse.
+3. Act:
+   - `alert` with `type` `alert`, `summary` or `test`: post on the channel of phone.md P6.1 for
+     the trigger (`sy_test` for tests). **Notification id** = the first 4 bytes of SHA-256(tag)
+     as a signed int, so a new alert with the same tag replaces the old one and the tag's
+     `dismiss` cancels it. Group `sy`. Buttons when `actions` is present: Open (the app at
+     `url`), "Snooze <n> min", "Seen" (14.6). Private payloads carry the hub's private text
+     (5.5). `when` = the payload's `ts`. A `missed` count emits `refresh` to JS.
+   - `alert` with `type: "dismiss"`: cancel the tag's notification.
+   - `refresh`: store the snapshot and ask the widgets to redraw through a headless JS task
+     (phone.md P11), with no network call.
+   - Unknown `t` or `type`: ignore.
+4. Store `last = seq`, then ack (batched, link.md 5.6).
+
+A crash between posting and storing `last` replays the frame; the tag-derived id makes the
+replay replace the notification, not stack it.
+
+### 14.6 Actions
+
+Snooze and Seen work with the app killed. `ActionReceiver` gets the alert id, action and token,
+cancels the notification at once, then:
+
+1. Link connected: send `{"t":"action","id","token"}`, wait up to 5 s for `action_result`.
+2. Otherwise, or on timeout: `POST <origin>/v1/actions/<token>` (no bearer, body `{}`, 10 s;
+   section 8).
+3. Otherwise: keep `{token, action, alert, at}` in `Store` (at most 50; dropped after 24 h,
+   when the token expires) and send them over the link at the next connection.
+
+A 401, 404 or 410 answer is final. A re-fired alert comes with fresh tokens. The JS response
+handler of phone.md P6.4 is not involved for link notifications.
+
+### 14.7 Verification state
+
+| State | When |
+| --- | --- |
+| "Verified by QR" | `reg = qr`: the keys went in sealed by the QR and the hub key matched `h=`. |
+| "Not verified: compare check code" | `reg = tofu` (typed code, or keys added after pairing). The check code is the first 8 characters of the device's sign key fingerprint (keys.md 2), also shown on the board's Devices list. |
+| "Hub key changed" | A challenge signed by another key: the service stops and asks to pair again. |
+
+### 14.8 JS API
+
+```ts
+// phone/modules/sy-link/index.ts
+export type LinkConfig = {
+  origin: string; device: string; urls: string[]; pingS: number;
+  hubKey: { pub: string; fp: string }; reg: "qr" | "tofu";
+};
+export type LinkState = {
+  enabled: boolean;                       // the "Instant delivery" switch
+  status: "off" | "connecting" | "connected" | "backoff" | "revoked" | "upgrade" | "error";
+  transport: "ws" | "poll" | null;
+  connectedSince: number | null;          // ms since epoch
+  nextRetryAt: number | null;
+  lastError: string | null;               // close code and word, or a network error class; never a body
+  lastSeq: number;
+  received: number; rejected: number;     // since install
+  batteryExempt: boolean;
+  notificationsAllowed: boolean;
+  verified: "qr" | "tofu" | "changed";
+  pingS: number;
+};
+export type PublicKeys = { sign: { alg: "p256"; pub: string }; box: { alg: "p256"; pub: string }; auth: string };
+
+export function prepareKeys(): Promise<PublicKeys>;           // make keys for a claim (reused until configure)
+export function configure(cfg: LinkConfig): Promise<void>;    // after a claim: pins and urls
+export function start(): Promise<void>;                       // instant delivery on, service started
+export function stop(): Promise<void>;                        // off: the watchdog does 15-minute checks
+export function getState(): Promise<LinkState>;
+export function setPingInterval(seconds: number): Promise<void>;   // 60–900
+export function requestBatteryExemption(): Promise<boolean>;  // system dialog; resolves with the new state
+export function openBatterySettings(): Promise<void>;         // the maker's screen when known, else Android's
+export function sendLocalTest(): Promise<void>;               // a local notification on sy_test, no hub
+export function reset(): Promise<void>;                       // unpair: keys, pins and storage deleted
+export function addListener(event: "state", cb: (s: LinkState) => void): Subscription;
+export function addListener(event: "refresh" | "revoked" | "upgrade", cb: () => void): Subscription;
+
+// The updater (phone.md P16), same module.
+export type UpdateInfo = { version: string; build: number; url: string; sha256: string; certSha256: string; size: number; notes: string; source: "hub" | "github" };
+export function checkUpdate(origin: string, token: string): Promise<UpdateInfo | null>;
+export function installUpdate(info: UpdateInfo): Promise<"started" | "refused">;
+```
+
+The jest fake (`test/fakes.ts`) gains a recording `sy-link` fake with scriptable state.
+
+### 14.9 Instant delivery off
+
+`stop()` stops the service and its persistent notification. The watchdog then logs in once
+every 15 minutes over long-poll (link.md 2.1), processes what is queued (14.5), acks and
+disconnects. Notifications are up to 15 minutes late (more under Doze), with no persistent
+notification.
+
+### 14.10 Tests
+
+- **JVM** (Robolectric where Android classes are needed): RFC 8291 decryption against RFC 8291
+  appendix A and the hub's goldens (`internal/hub/push/webpush/testdata`, and new
+  `internal/hub/link/testdata/frame-*.json` made with fixed keys); Ed25519 against RFC 8032;
+  frame signature checks (each field changed → reject); seq dedupe across a simulated restart;
+  backoff bounds; the notification id from a tag; the action fallback order with a fake clock;
+  close-code handling.
+- **Emulator** (API 34–36): Doze (`adb shell dumpsys deviceidle force-idle`), standby buckets,
+  network switch, reboot, app update, task removed, revocation (4403).
+- **On the phone** (N1, plan addendum C): overnight Doze, reboot, Wi-Fi ↔ mobile, Tailscale off
+  and on, hub restart, Snooze and Seen from the lock screen with the app killed, dismiss on two
+  phones, revoke, and a battery week passing at 2 % a day or less attributed to the app.

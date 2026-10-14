@@ -19,6 +19,13 @@ schema.sql v6.
 
 Section numbers follow phases/8.md's contract: P8 to P10 (the hub side) are push.md 12.
 
+**Self-hosted profile (N0, built in N1/N2; plan addendum C).** Android only. Native
+notifications come over the app's own link to the hub (push.md 13, the `sy-link` module of
+push.md 14), not through Expo or Firebase. P2 adds keys to the claim, P6.3 does not register
+an Expo token, P6.7 is the new Settings → Notifications screen, P13 drops EAS and the Firebase
+config and raises `minSdkVersion` to 31, and P16 is the in-app updater. iOS sections (P6.6's
+iOS badge, P12, the iOS widgets of P11) stay in the code and are not worked on.
+
 Code map (wave 0): `phone/src/contract/` is the TypeScript side of this spec:
 
 | File | Holds |
@@ -117,7 +124,8 @@ optional React 19.3 peers); they are expected and do not fail the install.
 - **Scan.** The Pair screen opens `CameraView` with `barcodeScannerSettings: {barcodeTypes:
   ["qr"]}` and stops at the first string `parsePairInput` accepts.
 - **`parsePairInput(text)`** (pure) accepts:
-  - `https://<host>[:port]/#/pair?s=<22 base64url>&c=<6 digits>`, the QR of pairing.md 2.2;
+  - `https://<host>[:port]/#/pair?s=<22 base64url>&c=<6 digits>[&h=<24 base32>&k=<22 base64url>]`,
+    the QR of pairing.md 2.2 with keys.md 7's hub fingerprint and registration seal;
   - `switchyard://pair?u=<https origin>&s=…&c=…`, the "Open in app" link the web pair page
     gains in wave 2;
   - typed input: an address plus `482-913`, `482913` or `482 913`.
@@ -131,6 +139,12 @@ optional React 19.3 peers); they are expected and do not fail the install.
   `{origin, token, device, name}` (P3). The error mapping follows pairing.md 3: 401 →
   "Invalid or expired code", 409 → "That code is for a <kind>, not a phone", 429 → "Too many
   tries, wait 10 minutes", network → "Can't reach <host>. Is Tailscale on?"
+- **Keys in the claim (N1).** Before claiming, the app calls `SyLink.prepareKeys()` (push.md
+  14.3). With `k` from the QR it sends `keys_sealed` (keys.md 7.1); with a typed code, `keys`
+  in the clear. The reply's `hub_key.fp` must equal `h` when the QR had one, else the app
+  refuses: "This hub's key does not match the QR code". On success it calls
+  `SyLink.configure({origin, device, urls: link.urls, pingS: link.ping_s, hubKey, reg})`, then
+  `SyLink.start()`.
 - After pairing: `GET /v1/me` (to check it), then the notifications screen (P6), then Now.
 - A second pairing replaces the first, after confirming "Unpair from <host>?". There is one
   hub per app install.
@@ -185,7 +199,9 @@ Accounts, More**:
 | `/more` | `#/more` | Alerts, Machines, Settings |
 | `/more/alerts` | `#/more/alerts` | Rule switches as `prefs.mute` (`PATCH /v1/devices/self`), recent pushes (`GET /v1/alerts`) |
 | `/more/machines?machine=` | `#/machines` | Machines list |
-| `/more/settings` | `#/more/settings` | Hub and status, notifications state and **Send test push**, private pushes, tap behaviour, own quiet hours, widgets refresh switch (`prefs.widgets`), app version, **Unpair** |
+| `/more/settings` | `#/more/settings` | Hub and status, notifications state and **Send test push**, private pushes, tap behaviour, own quiet hours, widgets refresh switch (`prefs.widgets`), app version and **Check for update** (P16), **Unpair** |
+| `/more/settings/notifications` | — | P6.7 (N1) |
+| `/more/peers` | `#/more/peers` | PE3: the peers audit list, the matrix (view; narrowing only) and **Pause all peers** (peers.md 10, 11) |
 | `/alerts/[id]` | `#/alerts/<id>` | Loads the alert and replaces itself with its deep link (push.md 5.8) |
 | `/pair` | `#/pair` | P2 |
 
@@ -219,6 +235,10 @@ the permission prompt only once a channel exists):
 | `sy_limits` | Limits | DEFAULT | `limit_80`, `limit_95`, `reset` |
 | `sy_machines` | Machines | LOW | `machine_silent` |
 | `sy_test` | Test | DEFAULT | test pushes |
+| `sy_connection` | Connection | MIN | N1: the link service's persistent notification (push.md 14.4) |
+
+The `sy-link` module creates the same channels natively (it posts link notifications itself),
+with the same ids, so either side may create them first.
 
 **P6.2 Categories:**
 
@@ -234,7 +254,11 @@ on iOS while the app is killed is **unverified** (risk 3). If it does not, one c
 `BACKGROUND_ACTIONS_IOS`, flips Snooze and Seen to `opensAppToForeground: true`: the app
 opens briefly, acts and shows a toast.
 
-**P6.3 Registration** (`registerForPush(deps)`, pure with injected `Notifications`):
+**P6.3 Registration** (`registerForPush(deps)`, pure with injected `Notifications`).
+**Self-hosted profile:** only step 1 (channels and the permission prompt; `expo-notifications`
+stays for that) and the `PATCH /v1/devices/self {prefs}` of step 3 run; steps 2 and 4's Expo
+parts are skipped (`SY_PUSH=link`, P13) and the link target comes from pairing (push.md 13.7).
+The steps below are the Expo profile:
 
 1. Android: create the channels. Then `requestPermissionsAsync({ios: {allowAlert,
    allowBadge, allowSound}})`. Anything but granted → Settings shows "Blocked in system
@@ -284,6 +308,38 @@ adapters).
 
 **P6.6 Badge:** iOS from the push's `badge` (P8.2), corrected after each refresh with
 `setBadgeCountAsync(needs_you)`.
+
+In the self-hosted profile the background task of P6.5 does not exist (no silent pushes): the
+`sy-link` module handles link frames, refreshes and actions natively (push.md 14.5, 14.6) and
+emits `refresh` to JS when the app is running.
+
+**P6.7 Settings → Notifications** (N1, route `/more/settings/notifications`, screen
+`PhoneNotifySettings` to be drawn in `docs/design/screens/`):
+
+| Row | Content | Action |
+| --- | --- | --- |
+| **Instant delivery** | Switch, on by default after pairing. Below it: "Keeps a connection to your hub. Uses a small, constant notification." | On: `SyLink.start()` and `PATCH /v1/push/targets/{link id} {enabled: true}`. Off: `SyLink.stop()` (15-minute checks, push.md 14.9) and the target stays enabled. |
+| Connection | `LinkState.status` in words: "Connected · 2 h 14 min · WebSocket", "Reconnecting · next try in 20 s", "Not connected: hub unreachable", "Removed from hub". The last error (close code word or network class). Received / rejected counts. | **Reconnect now** |
+| Battery | "Battery optimisation: off (good)" or "on: notifications may be late". | **Fix**: `requestBatteryExemption()`; then the maker guide |
+| Phone-maker guide | Shown when the exemption is on or `Build.MANUFACTURER` is in the table below. One short paragraph per maker. | **Open settings**: `openBatterySettings()` |
+| Notifications permission | "Allowed" or "Blocked in system settings". | **Open settings** |
+| Encryption | push.md 14.7: "Verified by QR", or "Not verified: compare check code k7q2-m4xa with the board", or "Hub key changed". | — |
+| Ping interval | "Every 3 min" (180 s). Choices 3, 5, 10 min; 5 and 10 only advised on the tailnet. | `setPingInterval` |
+| **Send test notification** | — | `POST /v1/push/targets/{link id}/test`; the result arrives over the link. Long press: `sendLocalTest()` (no hub) |
+| Backup: Web Push | "Also get alerts in the installed web app (uses Google's push service, encrypted, no account)." | Opens the hub's web app pairing page |
+
+Maker guides (text in `src/lib/notify/makers.ts`, matched on lower-case manufacturer):
+
+| Maker | Guide |
+| --- | --- |
+| samsung | Settings → Battery → Background usage limits → Never sleeping apps → add Switchyard |
+| xiaomi, redmi, poco | Settings → Apps → Switchyard → Autostart on; Battery saver → No restrictions |
+| oneplus, oppo, realme | Settings → Battery → Switchyard → Don't optimize; allow background activity |
+| huawei, honor | Settings → Battery → App launch → Switchyard → Manage manually, all three on |
+| others | Settings → Apps → Switchyard → Battery → Unrestricted |
+
+Doctor rows (plan addendum C) come from the same state: connection age, battery exemption and
+verification.
 
 ## P7. Deep links
 
@@ -393,7 +449,7 @@ adapters).
 - `scheme: "switchyard"`; iOS `ios.deploymentTarget` 16.4 (the app config field: the
   `expo-build-properties` iOS option is deprecated since SDK 56, and `expo-widgets` reads
   the same field for its extension), Android `minSdkVersion` 24 (through
-  `expo-build-properties`).
+  `expo-build-properties`; 31 in the self-hosted profile below).
 - Android `permissions: [POST_NOTIFICATIONS, CAMERA]` and `blockedPermissions:
   [RECORD_AUDIO, SYSTEM_ALERT_WINDOW, READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE]`.
   POST_NOTIFICATIONS is listed so the prebuilt manifest shows it (expo-notifications would
@@ -413,6 +469,34 @@ adapters).
   - `development`: `developmentClient`, internal distribution;
   - `preview`: Android `buildType: "apk"`, iOS internal;
   - `production`: store builds, autoIncrement.
+
+**Self-hosted profile (N1, N2).** This replaces the EAS and Firebase parts above; nothing in it
+needs an Expo, Google or store account.
+
+- `SY_PUSH`: `link` (default from N1) or `expo`. With `link`, `app.config.ts` sets no
+  `extra.eas.projectId` and no `googleServicesFile` (it throws if `SY_GOOGLE_SERVICES_JSON` is
+  set), and the app never calls `getExpoPushTokenAsync`. `eas.json` is deleted in N1;
+  `EAS_PROJECT_ID` is ignored.
+- Android `minSdkVersion` **31** (push.md 14.2: Keystore key agreement), `targetSdkVersion`
+  the SDK 57 default.
+- The `sy-link` module adds its permissions and components through its own
+  `AndroidManifest.xml` (push.md 14.2); P13's `permissions` list stays as it is.
+  `prebuild-check.mjs android` also asserts the `specialUse` service, its subtype property,
+  `RECEIVE_BOOT_COMPLETED`, `REQUEST_INSTALL_PACKAGES`, and that no
+  `com.google.firebase` / `google-services` entry is present.
+- **Build:** `make phone-apk-release` (you run it, not an agent): `expo prebuild --platform
+  android --clean` with `SY_APP_VARIANT=production SY_PUSH=link`, then `./gradlew
+  assembleRelease` in `phone/android`. Output `phone/dist/switchyard-<version>.apk`, its
+  `SHA256SUMS` and `manifest.json` (P16.1). A development build for the phase 8 manual check is
+  `expo prebuild` + `./gradlew assembleDebug`, without push.
+- **Signing:** your own release keystore, outside the repo (`SY_ANDROID_KEYSTORE`,
+  `SY_ANDROID_KEY_ALIAS`; passwords read from the environment of your shell or prompted by
+  Gradle, never written into `phone/`). `check-no-secrets.mjs` already refuses keystores in the
+  tree. Keep two offline copies: losing it means every phone uninstalls and reinstalls. The
+  certificate's SHA-256 fingerprint is printed by the make target and published with each
+  release.
+- **Release:** a GitHub release tagged `phone-vX.Y.Z` with the APK, `SHA256SUMS` and
+  `manifest.json`, made by you.
 
 ## P14. Tests and fixtures
 
@@ -472,3 +556,51 @@ Notes for wave 1 from the same checks:
   state).
 - `expo-widgets` warns about `userInterfaceStyle` on Android without `expo-system-ui`. That is
   harmless; WP-S may ask for `expo-system-ui` if it wants the Android dark-mode setting.
+
+## P16. Updater (N2)
+
+The app is sideloaded (no store), so it updates itself, with your confirmation each time.
+
+### P16.1 Release manifest
+
+`manifest.json`, published with each `phone-vX.Y.Z` release and mirrored by the hub:
+
+```json
+{"v":1,"version":"0.9.0","build":14,"min_sdk":31,"apk":"switchyard-0.9.0.apk","size":48213004,
+ "sha256":"<64 hex>","cert_sha256":"<64 hex, signing certificate>","notes":"…","published_at":"…"}
+```
+
+### P16.2 Hub mirror
+
+- Once a day (and at `sy hub serve` start), the hub asks GitHub for the project's releases
+  (`GET https://api.github.com/repos/<owner>/<repo>/releases?per_page=20`, no token,
+  `netguard` client), takes the newest non-draft, non-prerelease release whose tag matches
+  `^phone-v\d+\.\d+\.\d+$`, downloads `manifest.json`, `SHA256SUMS` and the APK, checks the
+  APK's SHA-256 against both, and keeps it in `<data>/app/android/` (the current and the
+  previous version only). The repository comes from the build (`version.Repo`); setting
+  `app.android_mirror = false` turns the mirror off.
+- `GET /v1/app/android` (any device token with `read`) → the manifest plus `"url":
+  "/v1/app/android/apk"`, or 404 when nothing is mirrored. `GET /v1/app/android/apk` streams
+  the APK (`Content-Type: application/vnd.android.package-archive`, `ETag` = sha256).
+- The hub never re-signs or changes the APK; it only serves what the release holds.
+
+### P16.3 In the app
+
+- `SyLink.checkUpdate(origin, token)` at most once a day (and from **Check for update**):
+  first the hub (`GET /v1/app/android`), then, if the hub has none or is unreachable, GitHub
+  directly (the same release filter as P16.2). An update is offered when `build` is higher
+  than the installed `versionCode` and `min_sdk` fits.
+- Settings shows "Update 0.9.0 available" with the notes. **Install**: download to the app's
+  cache, check the SHA-256 against the manifest, read the APK's signing certificate
+  (`PackageManager.getPackageArchiveInfo(…, GET_SIGNING_CERTIFICATES)`) and require it to
+  equal **both** the manifest's `cert_sha256` and the installed app's own certificate, then
+  hand it to `PackageInstaller` (session install). Android asks you to confirm; the first time
+  it also asks to allow installs from this app.
+- A wrong checksum or a different signing certificate is refused ("This update is not signed
+  by your key") and the file is deleted. Android itself also refuses an update signed by
+  another key.
+- Data is kept across updates (same package, same key). After `MY_PACKAGE_REPLACED` the link
+  service restarts (push.md 14.4).
+- Google's developer verification for sideloaded apps (from 2027) does not change this flow;
+  if a phone requires it, install once with Android's "advanced flow" or `adb install` (plan
+  addendum C, H7).
