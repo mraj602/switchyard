@@ -47,7 +47,9 @@ cannot, and tags are limited to `[A-Za-z0-9_:.-]{0,64}` (5.3).
 
 - **URL.** `wss://<hub host>[:port]/v1/link`, the hub's own listener (TLS from `tailscale serve`
   or the hub's certificate, as for the rest of the API). A device gets the list of URLs in the
-  claim reply (`link.urls`, keys.md 7.3) and in `welcome`; it tries them in order.
+  claim reply (`link.urls`, keys.md 7.3) and in `welcome`; it tries them in order. A machine
+  (`sy agent run`) instead uses its configured `hub.url` (`http`→`ws`, `https`→`wss`, plus
+  `/v1/link`) through `hub.dial` like every other `sy` call, and ignores `urls`.
 - **Subprotocol** `sy-link.1` (`Sec-WebSocket-Protocol`). The hub refuses others with HTTP 426.
 - **Messages** are WebSocket text messages, one JSON object each, at most 1 MiB (the library's
   read limit; larger → close 4413). Binary messages → close 4400.
