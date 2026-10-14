@@ -564,3 +564,31 @@ func TestDeliveredAtOnAck(t *testing.T) {
 		return at != nil && *at > 0
 	})
 }
+
+// A revocation that lands between login's check and the connection's registration finds
+// nothing to close; the link must not stay up (or apply a poll's frames) until the sweeper.
+func TestRevokedDuringLogin(t *testing.T) {
+	f := newFix(t)
+	p := f.phone(20)
+	q := f.phone(21)
+	f.h.afterLogin = func(device string) {
+		if err := f.ks.RevokeDevice(f.ctx, device, "test", "revoked"); err != nil {
+			t.Error(err)
+		}
+		f.h.Revoked(f.ctx, device)
+	}
+	ctx, cancel := context.WithTimeout(f.ctx, 5*time.Second)
+	defer cancel()
+	c, err := linktest.Dial(ctx, f.wsURL(), p)
+	if err == nil {
+		defer c.Close()
+		_, err = c.Next(ctx)
+	}
+	if code := linktest.CloseCode(err); code != link.CloseRevoked {
+		t.Fatalf("ws: close %d (%v)", code, err)
+	}
+	pl := &linktest.Poller{D: q, URL: f.pollURL()}
+	if r, _ := pl.Poll(f.ctx); r.Status != http.StatusForbidden {
+		t.Fatalf("poll %d", r.Status)
+	}
+}

@@ -100,6 +100,9 @@ func (h *Hub) ServePoll(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	if h.afterLogin != nil {
+		h.afterLogin(s.device)
+	}
 	// 6. one connection per device: a poll replaces a WebSocket and an older poll
 	cancel := make(chan struct{})
 	h.mu.Lock()
@@ -121,6 +124,14 @@ func (h *Hub) ServePoll(w http.ResponseWriter, r *http.Request) {
 		}
 		h.mu.Unlock()
 	}()
+	if live, err := h.stillLive(ctx, s.device); err != nil {
+		h.log.Printf("link poll %s: %v", s.device, err)
+		auth.WriteError(w, http.StatusInternalServerError, "internal", "login")
+		return
+	} else if !live {
+		auth.WriteError(w, pollStatus(link.CloseRevoked), "revoked", link.CloseWord(link.CloseRevoked))
+		return
+	}
 
 	reply := PollReply{Frames: []link.Frame{}, Results: []link.Frame{}}
 	if reply.Welcome, err = h.welcome(ctx, s); err != nil {

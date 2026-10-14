@@ -109,6 +109,9 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		_ = ws.Close(websocket.StatusCode(code), reason)
 		return
 	}
+	if h.afterLogin != nil {
+		h.afterLogin(s.device)
+	}
 	c = &conn{h: h, ws: ws, s: s, ctx: ctx, stop: cancel, lastSent: s.acked, sent: map[int64]bool{}, gone: map[int64]bool{}, acked: s.acked, seenAt: h.now(),
 		kick: make(chan struct{}, 1), closed: make(chan struct{})}
 	idle := h.cfg.Idle
@@ -147,6 +150,15 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		go old.close(link.CloseSuperseded, "superseded") // the close handshake waits for the old peer
 	}
 	defer c.finish()
+	if live, err := h.stillLive(ctx, s.device); err != nil || !live {
+		if err != nil {
+			h.log.Printf("link %s: %v", s.device, err)
+			c.close(link.CloseInternal, "internal")
+		} else {
+			c.close(link.CloseRevoked, "revoked")
+		}
+		return
+	}
 
 	wf, err := h.welcome(ctx, s)
 	if err == nil {

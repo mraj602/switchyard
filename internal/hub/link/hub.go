@@ -128,6 +128,8 @@ type Hub struct {
 
 	stop chan struct{}
 	done chan struct{}
+
+	afterLogin func(device string) // tests: runs between a login's checks and registering it
 }
 
 // New builds a hub link. Start runs its sweeper.
@@ -518,6 +520,20 @@ func (h *Hub) Revoked(ctx context.Context, device string) {
 	if err := h.PublishDocs(ctx); err != nil {
 		h.log.Printf("link: publishing the revocation list: %v", err)
 	}
+}
+
+// stillLive re-reads the device after its connection or poll is registered: a revocation
+// committed between login's check and the registration ran Revoked before there was
+// anything to close, so the new link would stay up until the sweeper.
+func (h *Hub) stillLive(ctx context.Context, device string) (bool, error) {
+	d, err := h.cfg.Store.DeviceDetailByID(ctx, device)
+	if errors.Is(err, store.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return d.RevokedAt == 0, nil
 }
 
 // Connected reports whether the device is logged in now: a WebSocket, or a long poll
