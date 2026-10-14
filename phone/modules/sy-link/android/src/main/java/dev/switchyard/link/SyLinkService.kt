@@ -153,16 +153,20 @@ class SyLinkService : Service(), LinkEvents {
   }
 
   /** 14.2: within 5 s of startForegroundService, per API level. */
-  private fun goForeground() {
-    Foreground.go(
-      Build.VERSION.SDK_INT, notifier.connection(),
-      plain = { n -> startForeground(NotifyIds.CONNECTION, n) },
-      typed = { n, type -> startForeground(NotifyIds.CONNECTION, n, type) },
-    )
-  }
+  private fun goForeground(): Boolean = Foreground.go(
+    Build.VERSION.SDK_INT, notifier.connection(),
+    plain = { n -> startForeground(NotifyIds.CONNECTION, n) },
+    typed = { n, type -> startForeground(NotifyIds.CONNECTION, n, type) },
+  )
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    goForeground()
+    if (!goForeground()) {
+      // Refused from the background (14.2): Settings says delivery is paused; the watchdog checks.
+      store.setError(BACKGROUND_BLOCKED)
+      SyLinkModule.emit("state", Link.state(this, store))
+      stopSelf()
+      return START_NOT_STICKY
+    }
     when (intent?.action) {
       ACTION_STOP -> {
         client?.stop()

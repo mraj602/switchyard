@@ -198,6 +198,14 @@ class ForegroundTest {
       assertEquals(listOf("typed:n:1073741824"), calls) // ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
     }
   }
+
+  @Test fun aRefusedStartReturnsFalseInsteadOfCrashing() {
+    // ForegroundServiceStartNotAllowedException is an IllegalStateException (a START_STICKY
+    // restart from the background on API 31+); 34+ may also throw SecurityException for the type.
+    assertFalse(Foreground.go(31, "n", { throw IllegalStateException("not allowed") }, { _, _ -> }))
+    assertFalse(Foreground.go(34, "n", { }, { _, _ -> throw SecurityException("type") }))
+    assertTrue(Foreground.go(34, "n", { }, { _, _ -> }))
+  }
 }
 
 class PairingTest {
