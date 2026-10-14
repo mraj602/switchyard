@@ -2644,6 +2644,17 @@ components:
           description: Owner only.
           items: {$ref: "#/components/schemas/OwnerKey"}
         revocations_version: {type: integer}
+        devices:
+          type: array
+          description: "Owner and write callers only (`sy keys certify` on the owner machine, keys.md 4.2 step 2): live devices with a verified certificate."
+          items:
+            type: object
+            required: [id, kind, name, keys]
+            properties:
+              id: {type: string}
+              kind: {type: string}
+              name: {type: string}
+              keys: {$ref: "#/components/schemas/DeviceKeyInfo"}
 
     LinkStatus:
       type: [object, "null"]
