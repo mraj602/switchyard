@@ -27,6 +27,8 @@
         <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
       </intent-filter>
     </receiver>
+    <!-- The installer's answer for an in-app update (phone.md P16.3): opens Android's confirmation. -->
+    <receiver android:name="dev.switchyard.link.InstallResultReceiver" android:exported="false"/>
     <receiver android:name="dev.switchyard.link.ActionReceiver" android:exported="false"/>
     <!-- The exact alarms of 14.4 (task removed, long reconnect timers): an explicit, private receiver. -->
     <receiver android:name="dev.switchyard.link.AlarmReceiver" android:exported="false"/>
