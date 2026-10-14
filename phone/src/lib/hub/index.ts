@@ -10,8 +10,12 @@ import type {
   DevicePrefs,
   ExpoTargetNew,
   MachinesReply,
+  MatrixEdit,
+  MatrixInfo,
   Me,
   Overview,
+  PeerAuditEntry,
+  PeerMessage,
   PushTarget,
   PushTestResult,
   RulesReply,
@@ -71,6 +75,16 @@ export interface HubClient {
   testTarget(id: string): Promise<PushTestResult>;
   /** PATCH /v1/push/targets/{id}: the "Instant delivery" switch is the link target's `enabled` (push.md 13.7). */
   patchTarget(id: string, patch: { enabled?: boolean }): Promise<PushTarget>;
+  /** GET /v1/peers/matrix (peers.md 5): the newest account matrix. */
+  matrix(): Promise<MatrixInfo>;
+  /** PUT /v1/peers/matrix with an `edit`; the hub signs it. A widening edit is 403 for a phone. */
+  editMatrix(edit: MatrixEdit): Promise<MatrixInfo>;
+  /** POST /v1/peers/pause (peers.md 11): pausing works from any device; resuming needs an owner session. */
+  pausePeers(paused: boolean): Promise<MatrixInfo>;
+  /** GET /v1/peers/audit: matrix changes, pauses, stops and refusals, newest first; metadata only. */
+  peerAudit(q?: { limit?: number }): Promise<{ entries: PeerAuditEntry[] }>;
+  /** GET /v1/peers/messages: who messaged whom, size and outcome; the hub may not serve it yet (404, 501). */
+  peerMessages(q?: { limit?: number }): Promise<{ messages: PeerMessage[] }>;
 }
 
 interface Call {
@@ -235,6 +249,11 @@ export function createHubClient(deps: HubClientDeps): HubClient {
     addTarget: (body) => call<PushTarget>('POST', '/v1/push/targets', body),
     testTarget: (id) => call<PushTestResult>('POST', `/v1/push/targets/${seg(id)}/test`),
     patchTarget: (id, patch) => call<PushTarget>('PATCH', `/v1/push/targets/${seg(id)}`, patch),
+    matrix: () => call<MatrixInfo>('GET', '/v1/peers/matrix'),
+    editMatrix: (edit) => call<MatrixInfo>('PUT', '/v1/peers/matrix', { edit }),
+    pausePeers: (paused) => call<MatrixInfo>('POST', '/v1/peers/pause', { paused }),
+    peerAudit: (q = {}) => call<{ entries: PeerAuditEntry[] }>('GET', `/v1/peers/audit${query({ limit: q.limit })}`),
+    peerMessages: (q = {}) => call<{ messages: PeerMessage[] }>('GET', `/v1/peers/messages${query({ limit: q.limit })}`),
   };
 }
 

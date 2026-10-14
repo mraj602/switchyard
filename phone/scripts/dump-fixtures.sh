@@ -50,6 +50,8 @@ get /v1/machines machines.json
 get '/v1/alerts?limit=50' alerts.json
 get /v1/rules rules.json
 get /v1/push/config push-config.json
+get /v1/peers/matrix peers-matrix.json
+get '/v1/peers/audit?limit=50' peers-audit.json
 
 session="$(node -e 'const s=require(process.argv[1]).sessions||[];process.stdout.write(s.length?s[0].id:"")' "$out/sessions.json")"
 [[ -n "$session" ]] && get "/v1/sessions/$session" session.json

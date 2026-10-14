@@ -1,0 +1,31 @@
+{
+  "created_at": "2026-10-11T06:27:12.846Z",
+  "doc": {
+    "body": "e30",
+    "sigs": [
+      {
+        "by": "hub",
+        "fp": "mmmmmmmmmmmmmmmmmmmmmmmm",
+        "sig": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    ],
+    "type": "matrix"
+  },
+  "made_by": "hub",
+  "matrix": {
+    "accounts": {
+      "3f1c6a2e-0000-4000-8000-000000000001": "personal",
+      "3f1c6a2e-0000-4000-8000-000000000011": "work",
+      "3f1c6a2e-0000-4000-8000-000000000021": "client",
+      "3f1c6a2e-0000-4000-8000-000000000031": "research"
+    },
+    "allow": [],
+    "max_turns": 30,
+    "paused": false,
+    "same_account": true,
+    "v": 1,
+    "version": 1
+  },
+  "signer": "hub",
+  "widens": false
+}

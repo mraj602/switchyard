@@ -17,6 +17,8 @@ export type AppRoute =
   | { name: 'alerts-settings' }
   | { name: 'machines'; machine?: string }
   | { name: 'settings' }
+  /** PE3: the peers audit list, the matrix (narrowing only) and Pause all peers (peers.md 10, 11). */
+  | { name: 'peers' }
   /** P6.7 (N1): Settings → Notifications; the link's persistent notification opens it. */
   | { name: 'notify-settings' }
   | { name: 'alert'; id: string }
@@ -32,6 +34,7 @@ export const ROUTE_PATHS = {
   'alerts-settings': '/more/alerts',
   machines: '/more/machines',
   settings: '/more/settings',
+  peers: '/more/peers',
   'notify-settings': '/more/settings/notifications',
   alert: '/alerts/[id]',
   pair: '/pair',
@@ -47,6 +50,7 @@ export const HASH_ROUTES = {
   'alerts-settings': '#/more/alerts',
   machines: '#/machines',
   settings: '#/more/settings',
+  peers: '#/more/peers',
   'notify-settings': '#/more/settings', // no PWA screen of its own
   alert: '#/alerts/<id>',
   pair: '#/pair',

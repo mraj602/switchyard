@@ -381,3 +381,60 @@ export interface ActionReply {
   applied: boolean;
   alert?: AlertBrief;
 }
+
+/** api.yaml Matrix (peers.md 5.1): the account matrix. `allow` holds directed [from, to] account pairs. */
+export interface PeerMatrix {
+  v: number;
+  version: number;
+  paused: boolean;
+  same_account: boolean;
+  max_turns: number;
+  issued_at?: Iso;
+  accounts?: Record<string, string>;
+  allow: [string, string][];
+}
+
+/** GET /v1/peers/matrix and what PUT /v1/peers/matrix and POST /v1/peers/pause answer (api.yaml MatrixInfo). */
+export interface MatrixInfo {
+  matrix: PeerMatrix;
+  signer: 'owner' | 'hub';
+  widens?: boolean;
+  made_by?: string;
+  created_at?: Iso;
+}
+
+/** PUT /v1/peers/matrix body for a phone: `edit` (the hub signs it; a widening edit is 403 for a phone). */
+export interface MatrixEdit {
+  base_version?: number;
+  allow?: [string, string][];
+  deny?: [string, string][];
+  paused?: boolean;
+  same_account?: boolean;
+  max_turns?: number;
+}
+
+/** api.yaml PeerAuditEntry: metadata only. */
+export interface PeerAuditEntry {
+  id: number;
+  at: Iso;
+  actor: string;
+  event: string;
+  thread?: string | null;
+  msg?: string | null;
+  detail?: Record<string, unknown>;
+}
+
+/** api.yaml PeerMessage: who, when, size and outcome; never text. */
+export interface PeerMessage {
+  id: string;
+  thread: string;
+  from: { session?: string; device?: string; account?: string };
+  to: { session?: string; device?: string; account?: string };
+  kind: 'start' | 'reply';
+  size: number;
+  local?: boolean;
+  status: 'queued' | 'delivered' | 'refused' | 'rejected' | 'expired' | 'target_gone' | 'failed';
+  detail?: string | null;
+  created_at: Iso;
+  final_at?: Iso | null;
+}

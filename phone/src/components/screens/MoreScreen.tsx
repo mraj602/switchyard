@@ -32,6 +32,7 @@ export default function MoreScreen() {
     <Page title="More">
       <Item testID="more-alerts" label="Alerts" sub="Which pushes you get, and the recent ones" onPress={go.alerts} />
       <Item testID="more-machines" label="Machines" sub={`${plural(machines, 'machine')} reporting to this hub`} onPress={() => go.machines()} />
+      <Item testID="more-peers" label="Peers" sub="Which accounts may message each other, and Pause all peers" onPress={go.peers} />
       <Item testID="more-settings" label="Settings" sub="Notifications, this phone, app version" onPress={go.settings} />
       <Card>
         <Text style={{ fontWeight: '600', fontSize: 16, color: t.muted }}>Analytics</Text>

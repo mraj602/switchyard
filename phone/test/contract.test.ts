@@ -12,10 +12,12 @@ import {
   validateAlert,
   validateExpoMessage,
   validateLiveProps,
+  validateMatrixInfo,
   validateMe,
   validateOverview,
   validatePairClaimReply,
   validatePayload,
+  validatePeerAudit,
   validateSeat,
   validateSession,
   validateWidgetSnapshot,
@@ -103,6 +105,12 @@ describe('devserver fixtures', () => {
     list.forEach((a, i) => expect(validateAlert(a, `alerts[${i}]`)).toEqual([]));
   });
   it('alert', () => expect(validateAlert(hub('alert.json'))).toEqual([]));
+  it('peers matrix', () => expect(validateMatrixInfo(hub('peers-matrix.json'))).toEqual([]));
+  it('peers audit', () => {
+    const list = hub('peers-audit.json').entries as unknown[];
+    expect(list.length).toBeGreaterThan(0);
+    list.forEach((e, i) => expect(validatePeerAudit(e, `entries[${i}]`)).toEqual([]));
+  });
   it('snooze_min is in GET /v1/rules settings', () => {
     const settings = hub('rules.json').settings as Record<string, unknown>;
     expect(typeof settings.snooze_min).toBe('number');
