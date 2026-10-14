@@ -9,6 +9,11 @@ import (
 // Version is the release version. Overridden at link time; "dev" for local builds.
 var Version = "dev"
 
+// Repo is the GitHub repository (owner/name) releases are published to; the hub's phone-app
+// mirror and the app's updater read releases from it (phone.md P16.2). Overridden at link
+// time like Version.
+var Repo = "mraj602/switchyard"
+
 // Commit is the git commit, set at link time. When empty, the VCS info embedded by the
 // Go toolchain is used, if any.
 var Commit = ""
