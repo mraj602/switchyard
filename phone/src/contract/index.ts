@@ -8,3 +8,4 @@ export * from './routes';
 export * from './constants';
 export * from './platform';
 export * from './validate';
+export * from './link';

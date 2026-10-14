@@ -76,8 +76,11 @@ describe('incomingToRoute (switchyard:// allow-list)', () => {
       { name: 'pair', origin: 'https://hub.ts.net', secret, code: '482913' },
     ],
     ['switchyard://pair', { name: 'pair' }],
+    ['switchyard://settings/notifications', { name: 'notify-settings' }],
+    ['switchyard://settings/notifications?x=1', { name: 'notify-settings' }],
     // not on the list: everything opens Now
     ['switchyard://settings', NOW],
+    ['switchyard://settings/other', NOW],
     ['switchyard://more', NOW],
     ['switchyard://evil', NOW],
     ['switchyard:///sessions/s1', NOW],

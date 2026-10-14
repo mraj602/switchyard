@@ -8,7 +8,9 @@ import { registerWidgetTaskHandler, requestWidgetUpdate, type WidgetTaskHandlerP
 
 import type { KVStore } from '../../src/contract/platform';
 import type { WidgetSnapshot } from '../../src/contract/snapshot';
-import { androidProps, clearSnapshot, readSnapshot, writeSnapshot } from '../../src/lib/widget';
+import type { LinkRefresh } from '../../src/contract/link';
+import { androidProps, applyLinkRefresh, clearSnapshot, readSnapshot, writeSnapshot } from '../../src/lib/widget';
+import { getAppInfo, systemLink } from '../../src/state/platform';
 import { SyAccounts } from './SyAccounts';
 import { SyNeedsYou } from './SyNeedsYou';
 
@@ -19,9 +21,25 @@ export interface HandlerDeps {
   store: KVStore;
   now: () => number;
   tz?: string;
+  /** The link's newest `refresh` frame (push.md 13.5), when the sy-link module is there. */
+  linkRefresh?: () => Promise<LinkRefresh | null>;
 }
 
-const defaults = (): HandlerDeps => ({ store: AsyncStorage, now: Date.now });
+const defaults = (): HandlerDeps => {
+  const link = systemLink(getAppInfo());
+  return { store: AsyncStorage, now: Date.now, ...(link ? { linkRefresh: () => link.getRefresh() } : {}) };
+};
+
+/** The stored snapshot with the link's newest refresh on top (the redraw the service asks for). */
+async function current(d: HandlerDeps): Promise<WidgetSnapshot | null> {
+  const snap = await readSnapshot(d.store);
+  if (!snap || !d.linkRefresh) return snap;
+  try {
+    return applyLinkRefresh(snap, await d.linkRefresh());
+  } catch {
+    return snap;
+  }
+}
 
 function tree(name: string, snapshot: WidgetSnapshot | null, d: HandlerDeps) {
   const props = androidProps(snapshot, d.now(), d.tz);
@@ -37,7 +55,7 @@ export function createTaskHandler(deps: Partial<HandlerDeps> = {}) {
       case 'WIDGET_ADDED':
       case 'WIDGET_UPDATE':
       case 'WIDGET_RESIZED':
-        props.renderWidget(tree(name, await readSnapshot(d.store), d));
+        props.renderWidget(tree(name, await current(d), d));
         return;
       default:
         // WIDGET_CLICK opens switchyard:// links natively (OPEN_URI); WIDGET_DELETED needs nothing.

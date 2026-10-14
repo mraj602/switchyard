@@ -46,7 +46,7 @@ Each `src/lib/<module>/index.ts` holds the exported signatures of its wave 1 own
 
 ```
 phone/
-  package.json  package-lock.json  app.config.ts  eas.json  tsconfig.json
+  package.json  package-lock.json  app.config.ts  tsconfig.json   (eas.json until N1)
   babel.config.js  jest.config.js  eslint.config.js  .gitignore  README.md
   app/                      expo-router routes (P4); thin screens only
   src/contract/             TypeScript mirrors of hub JSON (api.ts, payload.ts), WidgetSnapshot,
@@ -146,8 +146,16 @@ optional React 19.3 peers); they are expected and do not fail the install.
   code". It then makes keys.md 7.3's checks (certificate signed by `hub_key`, holding its own
   keys, `reg = qr` after a sealed claim) and on any mismatch deletes the new device and
   refuses. On success it calls
-  `SyLink.configure({origin, device, urls: link.urls, pingS: link.ping_s, hubKey, reg})`, then
-  `SyLink.start()`.
+  `SyLink.configure({origin, device, urls: link.urls, pingS: link.ping_s, hubKey, reg, cert,
+  qrFp: h})`, which makes the certificate checks natively and rejects `ERR_SY_HUB_KEY` /
+  `ERR_SY_TAMPERED` (push.md 14.8), then `SyLink.start()` (from the glue's `onPaired`).
+  As built: the QR's `k` is sealed by `SyLink.sealKeys(k, secret)`; a QR with a secret but no
+  `k` (a hub before F1) sends no keys at all; a damaged `h` or `k` is refused like a damaged
+  secret. A sealed claim whose reply has no `hub_key` or `cert` is refused as tampered; a
+  typed-code claim to a hub before F1 (no `hub_key`) pairs without instant delivery. A
+  `configure` failure other than the two refusals pairs without the link (Settings →
+  Notifications shows it). The refusal deletes the device with `DELETE /v1/devices/self` and
+  the new token, then shows the message; nothing is kept.
 - After pairing: `GET /v1/me` (to check it), then the notifications screen (P6), then Now.
 - A second pairing replaces the first, after confirming "Unpair from <host>?". There is one
   hub per app install.
@@ -317,7 +325,10 @@ In the self-hosted profile the background task of P6.5 does not exist (no silent
 emits `refresh` to JS when the app is running.
 
 **P6.7 Settings → Notifications** (N1, route `/more/settings/notifications`, screen
-`PhoneNotifySettings` to be drawn in `docs/design/screens/`):
+`PhoneNotifySettings` to be drawn in `docs/design/screens/`; built as
+`src/components/screens/NotifySettingsScreen.tsx`, reached from a "Notification settings"
+button in Settings' Notifications card, which in the self-hosted profile replaces the Expo
+"Send test push"):
 
 | Row | Content | Action |
 | --- | --- | --- |
@@ -344,6 +355,14 @@ Maker guides (text in `src/lib/notify/makers.ts`, matched on lower-case manufact
 Doctor rows (plan addendum C) come from the same state: connection age, battery exemption and
 verification.
 
+As built (N1): the words are in `src/lib/notify/link.ts` (`linkStatusWords`, `linkErrorWords`,
+`verifiedWords`, `batteryWords`); the maker comes from `expo-device`'s `manufacturer`
+(`AppInfo.maker`). A paired device with no `link` target (paired before N1, or by a hub before
+F1) shows "This phone has no link on the hub yet" and asks to pair again: the app does not call
+`PUT /v1/devices/self/keys`, whose reply carries only `cert`, not the `hub_key` and `link.urls`
+`configure` needs. The `revoked` and `refresh` events refresh the data at once (a revoked phone
+then gets the 401 that shows Pair, P3).
+
 ## P7. Deep links
 
 - Scheme `switchyard`. Accepted incoming URLs (an allow-list in `src/lib/links`; everything
@@ -354,6 +373,8 @@ verification.
   - `switchyard://machines[?machine=<id>]`
   - `switchyard://alerts/<al_…>`
   - `switchyard://pair?u=…&s=…&c=…`
+  - `switchyard://settings/notifications` (N1: the link's persistent notification, push.md
+    14.4; `switchyard://settings` alone stays off the list)
 
   Ids must match `^[A-Za-z0-9_.:-]{1,80}$`.
 - `hashToRoute(url)` maps a payload `url` (push.md 5.8: `/#/sessions/<id>?alert=…`,
@@ -492,7 +513,21 @@ needs an Expo, Google or store account.
   `AndroidManifest.xml` (push.md 14.2); P13's `permissions` list stays as it is.
   `prebuild-check.mjs android` also asserts the `specialUse` service, its subtype property,
   `RECEIVE_BOOT_COMPLETED`, `REQUEST_INSTALL_PACKAGES`, and that no
-  `com.google.firebase` / `google-services` entry is present.
+  `com.google.firebase` / `google-services` entry is present. The module's manifest is merged
+  by Gradle, not by prebuild, so the check reads it from `modules/sy-link` (and copies the
+  local modules' `android/` sources into its temporary tree).
+- **No FCM entry point.** `expo-notifications` stays (channels and the permission prompt), but
+  its config plugin writes `com.google.firebase.messaging.*` meta-data and its library manifest
+  declares `ExpoFirebaseMessagingService`. In the self-hosted profile
+  `plugins/with-sy-no-firebase.js` drops the meta-data and removes the service from the merged
+  manifest (`tools:node="remove"`); it is listed **before** `expo-notifications`, because
+  manifest mods run in reverse order of the plugins list. The `firebase-messaging` library
+  stays on the classpath (expo-notifications' Kotlin links it) but is never initialised: there
+  is no `google-services.json`, no Google Services Gradle plugin and no token call.
+- The background notification task of P6.5 is neither defined nor registered in this profile
+  (`app/_layout.tsx`, `src/lib/integrate`): there are no silent pushes.
+- `getAppInfo()` reads `extra.push` (default `link`) into `AppInfo.push`; the glue uses the
+  module only when it is `link`, on Android, and the module is present (`systemLink`).
 - **Build:** `make phone-apk-release` (you run it, not an agent): `expo prebuild --platform
   android --clean` with `SY_APP_VARIANT=production SY_PUSH=link`, then `./gradlew
   assembleRelease` in `phone/android`. Output `phone/dist/switchyard-<version>.apk`, its

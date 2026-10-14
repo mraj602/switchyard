@@ -80,6 +80,7 @@ export function fakeClient(over: Partial<Record<keyof HubClient, unknown>> = {})
     unpairSelf: jest.fn(async () => undefined),
     addTarget: jest.fn(),
     testTarget: jest.fn(async () => ({ outcome: 'sent' })),
+    patchTarget: jest.fn(async (id: string, patch: object) => ({ id, kind: 'link', status: 'ok', enabled: true, ...patch })),
   };
   return { ...base, ...over } as unknown as FakeClient;
 }

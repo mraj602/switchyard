@@ -127,8 +127,8 @@ export function Chip({ label, on, onPress, count, testID }: { label: string; on:
   );
 }
 
-export function Btn({ label, onPress, kind = 'plain', disabled, testID }: {
-  label: string; onPress: () => void; kind?: 'plain' | 'primary' | 'danger'; disabled?: boolean; testID?: string;
+export function Btn({ label, onPress, onLongPress, kind = 'plain', disabled, testID }: {
+  label: string; onPress: () => void; onLongPress?: () => void; kind?: 'plain' | 'primary' | 'danger'; disabled?: boolean; testID?: string;
 }) {
   const t = useTheme();
   const bg = kind === 'primary' ? t.accent : 'transparent';
@@ -140,6 +140,7 @@ export function Btn({ label, onPress, kind = 'plain', disabled, testID }: {
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
+      {...(onLongPress ? { onLongPress } : {})}
       testID={testID}
       style={[s.btn, { backgroundColor: bg, borderColor: kind === 'danger' ? t.bad : kind === 'primary' ? t.accent : t.line, opacity: disabled ? 0.45 : 1 }]}
     >

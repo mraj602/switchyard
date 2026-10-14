@@ -20,7 +20,13 @@ if (platform !== 'android' && platform !== 'ios') {
 const SKIP = new Set(['node_modules', 'android', 'ios', '.expo', '.git', 'coverage', 'dist']);
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-prebuild-'));
 const app = path.join(work, 'phone');
-fs.cpSync(phone, app, { recursive: true, filter: (src) => !SKIP.has(path.basename(src)) || src === phone });
+// Top-level only: the local modules keep their own android/ sources (modules/sy-link/android),
+// minus their build outputs.
+const MODULE_SKIP = new Set(['build', '.cxx', '.gradle']);
+fs.cpSync(phone, app, {
+  recursive: true,
+  filter: (src) => src === phone || (path.dirname(src) === phone ? !SKIP.has(path.basename(src)) : !MODULE_SKIP.has(path.basename(src)) && path.basename(src) !== 'node_modules'),
+});
 fs.symlinkSync(path.join(phone, 'node_modules'), path.join(app, 'node_modules'), 'dir');
 
 const failures = [];
@@ -62,6 +68,23 @@ try {
     const infos = xml.filter((f) => fs.readFileSync(f, 'utf8').includes('<appwidget-provider'));
     check(infos.length === 2, `two appwidget-provider infos (found ${infos.length})`);
     check(!fs.existsSync(path.join(app, 'android', 'android')), 'no doubled android/android path');
+    // The self-hosted profile (P13, push.md 14.2). The sy-link module's own manifest is merged
+    // by Gradle, so its entries are read there; the app's must carry no FCM entry.
+    const link = fs.readFileSync(path.join(app, 'modules', 'sy-link', 'android', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
+    const both = manifest + link;
+    check(/<service[^>]*SyLinkService[^>]*android:foregroundServiceType="specialUse"/.test(link), 'sy-link service with foregroundServiceType specialUse');
+    check(/android\.app\.PROPERTY_SPECIAL_USE_FGS_SUBTYPE/.test(link), 'specialUse subtype property');
+    check(both.includes('android.permission.FOREGROUND_SERVICE_SPECIAL_USE'), 'FOREGROUND_SERVICE_SPECIAL_USE permission');
+    check(both.includes('android.permission.RECEIVE_BOOT_COMPLETED'), 'RECEIVE_BOOT_COMPLETED permission');
+    check(both.includes('android.permission.REQUEST_INSTALL_PACKAGES'), 'REQUEST_INSTALL_PACKAGES permission');
+    check(!manifest.includes('com.google.firebase'), 'no com.google.firebase entry in the app manifest');
+    check(new RegExp('ExpoFirebaseMessagingService"[^>]*tools:node="remove"').test(manifest), 'FCM service removed from the merged manifest');
+    const gradle = ['build.gradle', path.join('app', 'build.gradle')].map((f) => read('android', f)).join('\n');
+    check(!/google-services|com\.google\.gms/.test(gradle), 'no google-services Gradle plugin');
+    check(!fs.existsSync(path.join(app, 'android', 'app', 'google-services.json')), 'no google-services.json');
+    const props = read('android', 'gradle.properties');
+    const minSdk = /android\.minSdkVersion=(\d+)/.exec(props);
+    check(!!minSdk && Number(minSdk[1]) >= 31, `minSdkVersion 31 (found ${minSdk ? minSdk[1] : 'none'})`);
   } else {
     const plists = findFiles(path.join(app, 'ios'), /^Info\.plist$/);
     const mainPlist = plists.find((f) => !/Widget|Extension|ExpoWidgetsTarget/i.test(path.relative(path.join(app, 'ios'), f)));

@@ -233,3 +233,145 @@ describe('claim', () => {
     expect(hostOf('https://a.b:1')).toBe('a.b:1');
   });
 });
+
+describe('claim with link keys (keys.md 7, P2 "Keys in the claim")', () => {
+  const H = 'abcdefghijklmnopqrstuvwx';
+  const K = 'S2V5U2VhbEtleVNlYWxLZQ';
+  const keys = { sign: { alg: 'p256' as const, pub: 'BSIGN' }, box: { alg: 'p256' as const, pub: 'BBOX' }, auth: 'AUTH' };
+  const cert = { type: 'device_cert', body: 'Ym9keQ', sigs: [{ by: 'hub', fp: H, sig: 'c2ln' }] };
+  const reply = (over: Record<string, unknown> = {}) => ({
+    device: 'dev_phone',
+    kind: 'phone',
+    name: 'Pixel 9 · app',
+    scopes: ['read', 'push'],
+    token: 'sy_p_TOKENVALUE',
+    hub: {},
+    hub_key: { alg: 'ed25519', pub: 'SFVCUFVC', fp: H },
+    owner_key: null,
+    cert,
+    link: { urls: ['wss://hub.test.ts.net/v1/link'], ping_s: 180 },
+    reg: 'qr',
+    ...over,
+  });
+  const fakeLink = (configureCode: string | null = null) => {
+    const log: { fn: string; args: unknown[] }[] = [];
+    return {
+      log,
+      prepareKeys: async () => {
+        log.push({ fn: 'prepareKeys', args: [] });
+        return keys;
+      },
+      sealKeys: async (k: string, secret: string) => {
+        log.push({ fn: 'sealKeys', args: [k, secret] });
+        return 'SEALED';
+      },
+      configure: async (cfg: unknown) => {
+        log.push({ fn: 'configure', args: [cfg] });
+        if (configureCode) throw Object.assign(new Error('refused'), { code: configureCode });
+      },
+    };
+  };
+  const route = (r: unknown) => (url: string) => (url.endsWith('/v1/pair/claim') ? response(200, r) : response(200, {}));
+  const old = { device: 'dev_phone', kind: 'phone', name: 'n', scopes: [], token: 'sy_p_T', hub: {} };
+
+  it('parses h and k from the QR and refuses damaged ones', () => {
+    expect(parsePairInput(`https://hub.test.ts.net/#/pair?s=${S}&c=482913&h=${H.toUpperCase()}&k=${K}`, prod)).toEqual({
+      ok: true,
+      input: { origin: 'https://hub.test.ts.net', secret: S, code: '482913', hubFp: H, sealKey: K },
+    });
+    expect(parsePairInput(`https://hub.test.ts.net/#/pair?s=${S}&h=short`, prod)).toEqual({ ok: false, reason: 'bad_secret' });
+    expect(parsePairInput(`https://hub.test.ts.net/#/pair?s=${S}&k=bad`, prod)).toEqual({ ok: false, reason: 'bad_secret' });
+    expect(parsePairInput(`https://hub.test.ts.net/#/pair?c=482913&k=${K}`, prod)).toEqual({ ok: false, reason: 'bad_secret' });
+  });
+
+  it('seals the keys with k for a QR secret, then configures the link with the pins', async () => {
+    const link = fakeLink();
+    const f = fakeFetch(route(reply()));
+    const hub = await claim({ fetch: f, clock: manualClock(), app, link }, { origin: 'https://hub.test.ts.net', secret: S, hubFp: H, sealKey: K });
+    const body = JSON.parse(claims(f)[0]!.init.body!);
+    expect(body.keys_sealed).toBe('SEALED');
+    expect(body.keys).toBeUndefined();
+    expect(link.log.map((c) => c.fn)).toEqual(['prepareKeys', 'sealKeys', 'configure']);
+    expect(link.log[1]!.args).toEqual([K, S]);
+    expect(link.log[2]!.args[0]).toEqual({
+      origin: 'https://hub.test.ts.net',
+      device: 'dev_phone',
+      urls: ['wss://hub.test.ts.net/v1/link'],
+      pingS: 180,
+      hubKey: { pub: 'SFVCUFVC', fp: H },
+      reg: 'qr',
+      cert,
+      qrFp: H,
+    });
+    expect(hub.token).toBe('sy_p_TOKENVALUE');
+  });
+
+  it('sends the keys in the clear with a typed code (reg tofu)', async () => {
+    const link = fakeLink();
+    const f = fakeFetch(route(reply({ reg: 'tofu' })));
+    await claim({ fetch: f, clock: manualClock(), app, link }, { origin: 'https://hub.test.ts.net', code: '482913' });
+    const body = JSON.parse(claims(f)[0]!.init.body!);
+    expect(body.keys).toEqual(keys);
+    expect(body.keys_sealed).toBeUndefined();
+    const cfg = link.log[1]!.args[0] as { reg: string; qrFp: unknown };
+    expect(cfg.reg).toBe('tofu');
+    expect(cfg.qrFp).toBeNull();
+  });
+
+  it('sends no keys with a QR secret but no k (a hub before F1)', async () => {
+    const link = fakeLink();
+    const f = fakeFetch(route(old));
+    await claim({ fetch: f, clock: manualClock(), app, link }, { origin: 'https://hub.test.ts.net', secret: S });
+    const body = JSON.parse(claims(f)[0]!.init.body!);
+    expect('keys' in body || 'keys_sealed' in body).toBe(false);
+    expect(link.log).toEqual([]);
+  });
+
+  const deletes = (f: ReturnType<typeof fakeFetch>) => f.calls.filter((c) => c.url.endsWith('/v1/devices/self') && c.init.method === 'DELETE');
+  const TAMPERED = 'Pairing was tampered with; try again on your home network';
+  const HUB_KEY = "This hub's key does not match the QR code";
+
+  it.each([
+    ['a hub key that is not the QR h', reply({ hub_key: { alg: 'ed25519', pub: 'X', fp: 'zzzzzzzzzzzzzzzzzzzzzzzz' } }), null, 'hub_key', HUB_KEY],
+    ['reg tofu after a sealed claim', reply({ reg: 'tofu' }), null, 'tampered', TAMPERED],
+    ['a reply with the keys stripped', reply({ hub_key: undefined, cert: undefined, reg: undefined }), null, 'tampered', TAMPERED],
+    ['no certificate', reply({ cert: undefined }), null, 'tampered', TAMPERED],
+    ['a certificate configure() refuses', reply(), 'ERR_SY_TAMPERED', 'tampered', TAMPERED],
+    ['a hub key configure() refuses', reply(), 'ERR_SY_HUB_KEY', 'hub_key', HUB_KEY],
+  ])('refuses %s and deletes the new device with its token', async (_n, r, code, reason, message) => {
+    const link = fakeLink(code);
+    const f = fakeFetch(route(r));
+    const err = await claim({ fetch: f, clock: manualClock(), app, link }, { origin: 'https://hub.test.ts.net', secret: S, hubFp: H, sealKey: K }).catch((e) => e);
+    expect(err).toBeInstanceOf(ClaimError);
+    expect(err.reason).toBe(reason);
+    expect(err.message).toBe(message);
+    expect(err.message).not.toContain('sy_p_TOKENVALUE');
+    const d = deletes(f);
+    expect(d).toHaveLength(1);
+    expect(d[0]!.init.headers?.Authorization).toBe('Bearer sy_p_TOKENVALUE');
+    expect(d[0]!.init.redirect).toBe('error');
+  });
+
+  it('pairs without a link when configure fails for another reason', async () => {
+    const link = fakeLink('ERR_SY_CONFIG');
+    const f = fakeFetch(route(reply({ reg: 'tofu' })));
+    await expect(claim({ fetch: f, clock: manualClock(), app, link }, { origin: 'https://hub.test.ts.net', code: '482913' })).resolves.toMatchObject({ device: 'dev_phone' });
+    expect(deletes(f)).toHaveLength(0);
+  });
+
+  it('pairs without a link when a hub before F1 ignores typed-code keys', async () => {
+    const link = fakeLink();
+    const f = fakeFetch(route(old));
+    await claim({ fetch: f, clock: manualClock(), app, link }, { origin: 'https://hub.test.ts.net', code: '482913' });
+    expect(link.log.map((c) => c.fn)).toEqual(['prepareKeys']);
+    expect(deletes(f)).toHaveLength(0);
+  });
+
+  it('fails before the claim when the keys cannot be made', async () => {
+    const link = { ...fakeLink(), prepareKeys: () => Promise.reject(new Error('keystore')) };
+    const f = fakeFetch(route(reply()));
+    const err = await claim({ fetch: f, clock: manualClock(), app, link }, { origin: 'https://hub.test.ts.net', code: '482913' }).catch((e) => e);
+    expect(err.reason).toBe('keys');
+    expect(claims(f)).toHaveLength(0);
+  });
+});

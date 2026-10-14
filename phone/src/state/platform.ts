@@ -6,12 +6,14 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as SecureStore from 'expo-secure-store';
 import { AppState, Platform } from 'react-native';
+import * as SyLink from '../../modules/sy-link';
+import type { LinkLike } from '../contract/link';
 import type { AppInfo, AppStateSource, Clock, FetchLike, KVStore } from '../contract/platform';
 import { createSecureHub, secureOptions } from '../lib/secure';
 import type { SecureHub } from '../lib/secure';
 
 export function getAppInfo(): AppInfo {
-  const extra = Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined;
+  const extra = Constants.expoConfig?.extra as { eas?: { projectId?: string }; push?: string } | undefined;
   return {
     version: Application.nativeApplicationVersion ?? Constants.expoConfig?.version ?? '0.0.0',
     build: Application.nativeBuildVersion ?? '0',
@@ -19,6 +21,9 @@ export function getAppInfo(): AppInfo {
     platform: Platform.OS === 'ios' ? 'ios' : 'android',
     projectId: extra?.eas?.projectId ?? null,
     dev: __DEV__,
+    // app.config.ts sets extra.push; a build without it is the self-hosted default (P13).
+    push: extra?.push === 'expo' ? 'expo' : 'link',
+    ...(Device.manufacturer ? { maker: Device.manufacturer } : {}),
   };
 }
 
@@ -42,5 +47,13 @@ export function systemSecureHub(): SecureHub {
 }
 
 export const systemCache: KVStore = AsyncStorage;
+
+/**
+ * The sy-link module (push.md 14.8) in the self-hosted profile on Android; null otherwise (iOS,
+ * Expo Go, an `SY_PUSH=expo` build), and the app then works as in phase 8.
+ */
+export function systemLink(app: AppInfo): LinkLike | null {
+  return app.push === 'link' && app.platform === 'android' && SyLink.available ? SyLink : null;
+}
 
 export const systemFetch: FetchLike = (url, init) => fetch(url, init as RequestInit) as unknown as ReturnType<FetchLike>;
