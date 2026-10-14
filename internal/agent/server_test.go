@@ -318,3 +318,37 @@ func TestHookDoesNotImportAgent(t *testing.T) {
 		}
 	}
 }
+
+// brokenListener fails every Accept with an error that is not a timeout (EMFILE, say).
+type brokenListener struct{ net.Listener }
+
+func (b brokenListener) Accept() (net.Conn, error) {
+	return nil, errors.New("accept: too many open files")
+}
+
+func TestAcceptErrorEndsRun(t *testing.T) {
+	old := listenSocket
+	t.Cleanup(func() { listenSocket = old })
+	listenSocket = func(p string) (net.Listener, error) {
+		ln, err := listen(p)
+		return brokenListener{ln}, err
+	}
+	base, err := os.MkdirTemp("", "sya")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(base) })
+	done := make(chan error, 1)
+	go func() {
+		done <- Run(context.Background(), Config{Socket: filepath.Join(base, "sy", "agent.sock"), Tick: time.Hour,
+			Load: func() (peers.Env, bool, error) { return peers.Env{State: base}, true, nil }})
+	}()
+	select {
+	case err := <-done:
+		if err == nil || !strings.Contains(err.Error(), "too many open files") {
+			t.Errorf("Run: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("Run hung after an accept error (its goroutines were never told to stop)")
+	}
+}
