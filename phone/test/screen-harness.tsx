@@ -14,12 +14,14 @@ import machines from './fixtures/hub/machines.json';
 import me from './fixtures/hub/me.json';
 import meta from './fixtures/hub/_meta.json';
 import overview from './fixtures/hub/overview.json';
+import peersAudit from './fixtures/hub/peers-audit.json';
+import peersMatrix from './fixtures/hub/peers-matrix.json';
 import rules from './fixtures/hub/rules.json';
 import session from './fixtures/hub/session.json';
 import sessions from './fixtures/hub/sessions.json';
 
 export const NOW = meta.now_ms;
-export const fx = { accounts, alert, alerts, machines, me, overview, rules, session, sessions };
+export const fx = { accounts, alert, alerts, machines, me, overview, peersAudit, peersMatrix, rules, session, sessions };
 
 export const APP: AppInfo = { version: '0.8.0', build: '12', model: 'Pixel 9', platform: 'android', projectId: 'proj', dev: false };
 
@@ -81,6 +83,13 @@ export function fakeClient(over: Partial<Record<keyof HubClient, unknown>> = {})
     addTarget: jest.fn(),
     testTarget: jest.fn(async () => ({ outcome: 'sent' })),
     patchTarget: jest.fn(async (id: string, patch: object) => ({ id, kind: 'link', status: 'ok', enabled: true, ...patch })),
+    matrix: jest.fn(async () => structuredClone(peersMatrix)),
+    editMatrix: jest.fn(async () => structuredClone(peersMatrix)),
+    pausePeers: jest.fn(async () => structuredClone(peersMatrix)),
+    peerAudit: jest.fn(async () => structuredClone(peersAudit)),
+    peerMessages: jest.fn(async () => {
+      throw new Error('GET /v1/peers/messages: 501');
+    }),
   };
   return { ...base, ...over } as unknown as FakeClient;
 }

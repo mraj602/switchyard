@@ -8,11 +8,13 @@ import AlertsScreen from '../src/components/screens/AlertsScreen';
 import MachinesScreen from '../src/components/screens/MachinesScreen';
 import MoreScreen from '../src/components/screens/MoreScreen';
 import NowScreen from '../src/components/screens/NowScreen';
+import PeersScreen from '../src/components/screens/PeersScreen';
 import SessionScreen from '../src/components/screens/SessionScreen';
 import { swipeAction } from '../src/components/needs-card';
 import SessionsScreen from '../src/components/screens/SessionsScreen';
 import SettingsScreen from '../src/components/screens/SettingsScreen';
 import { clock, mostRoom } from '../src/lib/format';
+import { HubError } from '../src/lib/hub';
 import type { Device } from '../src/contract/api';
 import { NOW, fakeClient, freshData, fx, makeHarness, routerMock } from './screen-harness';
 
@@ -222,12 +224,13 @@ describe('Accounts', () => {
 });
 
 describe('More, Machines', () => {
-  it('More links to Alerts, Machines and Settings', async () => {
+  it('More links to Alerts, Machines, Peers and Settings', async () => {
     await show(<MoreScreen />);
     await fireEvent.press(screen.getByTestId('more-alerts'));
     await fireEvent.press(screen.getByTestId('more-machines'));
+    await fireEvent.press(screen.getByTestId('more-peers'));
     await fireEvent.press(screen.getByTestId('more-settings'));
-    expect(routerMock.router.push.mock.calls.map((c) => c[0])).toEqual(['/more/alerts', '/more/machines', '/more/settings']);
+    expect(routerMock.router.push.mock.calls.map((c) => c[0])).toEqual(['/more/alerts', '/more/machines', '/more/peers', '/more/settings']);
     expect(screen.getByText('Coming later')).toBeTruthy();
   });
 
@@ -384,5 +387,107 @@ describe('Alert redirect', () => {
     expect(await screen.findByText('That alert no longer exists.')).toBeTruthy();
     await fireEvent.press(screen.getByText('Go to Now'));
     expect(routerMock.router.replace).toHaveBeenCalledWith('/');
+  });
+});
+
+describe('Peers', () => {
+  const P = '3f1c6a2e-0000-4000-8000-000000000001'; // personal
+  const W = '3f1c6a2e-0000-4000-8000-000000000011'; // work
+  const C = '3f1c6a2e-0000-4000-8000-000000000021'; // client
+  const withMatrix = (patch: Record<string, unknown>) => ({
+    ...fx.peersMatrix,
+    matrix: { ...fx.peersMatrix.matrix, version: 4, ...patch },
+  });
+  const clientWith = (m: object) => fakeClient({ matrix: jest.fn(async () => structuredClone(m)) });
+
+  it('shows the version, the grid and the audit list', async () => {
+    await show(<PeersScreen />);
+    expect(await screen.findByText(/Matrix version 1 · signed by hub · max 30 turns/)).toBeTruthy();
+    expect(screen.getByTestId('peers-state')).toHaveTextContent('Peers are on');
+    // Four accounts: 12 off-diagonal cells, all empty by default.
+    expect(screen.getAllByTestId(/^cell-/).length).toBe(12);
+    expect(screen.getByText('Matrix changed')).toBeTruthy();
+    expect(screen.queryByText('Messages')).toBeNull(); // the fake hub does not serve them
+  });
+
+  it('a cell with no pair has nothing to narrow', async () => {
+    await show(<PeersScreen />);
+    await fireEvent.press(await screen.findByTestId(`cell-${P}-${W}`));
+    expect(screen.getByText(/Nothing to narrow here/)).toBeTruthy();
+    expect(screen.queryByTestId('narrow-none')).toBeNull();
+  });
+
+  it('a tapped cell can only narrow, with the base version', async () => {
+    const m = withMatrix({ allow: [[P, W], [W, P], [P, C]] });
+    const client = clientWith(m);
+    await show(<PeersScreen />, { client });
+    await fireEvent.press(await screen.findByTestId(`cell-${P}-${W}`));
+    // Both ways can become either one way, or none; never anything wider.
+    expect(screen.getAllByTestId(/^narrow-/).map((n) => n.props.testID)).toEqual(['narrow-out', 'narrow-in', 'narrow-none']);
+    await fireEvent.press(screen.getByTestId('narrow-none'));
+    await waitFor(() => expect(client.editMatrix).toHaveBeenCalledWith({ base_version: 4, deny: [[P, W], [W, P]] }));
+    // Only deny entries are ever sent.
+    expect(client.editMatrix.mock.calls.every(([e]) => !('allow' in e))).toBe(true);
+  });
+
+  it('one way can only be removed', async () => {
+    const client = clientWith(withMatrix({ allow: [[P, C]] }));
+    await show(<PeersScreen />, { client });
+    await fireEvent.press(await screen.findByTestId(`cell-${C}-${P}`)); // the other side of the same pair
+    expect(screen.getAllByTestId(/^narrow-/).length).toBe(1);
+    await fireEvent.press(screen.getByTestId('narrow-none'));
+    await waitFor(() => expect(client.editMatrix).toHaveBeenCalledWith({ base_version: 4, deny: [[P, C]] }));
+  });
+
+  it('a stale version reloads the matrix and says so', async () => {
+    const client = fakeClient({
+      matrix: jest.fn(async () => structuredClone(withMatrix({ allow: [[P, W]] }))),
+      editMatrix: jest.fn(async () => { throw new HubError('/v1/peers/matrix', 409, 'conflict', 'PUT /v1/peers/matrix: 409 conflict'); }),
+    });
+    await show(<PeersScreen />, { client });
+    await fireEvent.press(await screen.findByTestId(`cell-${P}-${W}`));
+    await fireEvent.press(screen.getByTestId('narrow-none'));
+    expect(await screen.findByText(/changed meanwhile/)).toBeTruthy();
+    expect(client.matrix.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('the pause switch pauses with one tap', async () => {
+    let paused = false;
+    const client = fakeClient({
+      matrix: jest.fn(async () => structuredClone(withMatrix({ paused }))),
+      pausePeers: jest.fn(async (on: boolean) => {
+        paused = on;
+        return structuredClone(withMatrix({ paused }));
+      }),
+    });
+    await show(<PeersScreen />, { client });
+    await fireEvent(await screen.findByTestId('peers-pause'), 'valueChange', true);
+    await waitFor(() => expect(client.pausePeers).toHaveBeenCalledWith(true));
+    expect(await screen.findByText('All peers are paused')).toBeTruthy();
+  });
+
+  it('resuming is not offered to a phone', async () => {
+    const client = clientWith(withMatrix({ paused: true }));
+    await show(<PeersScreen />, { client });
+    expect(await screen.findByText('All peers are paused')).toBeTruthy();
+    expect(screen.getByTestId('peers-pause').props.disabled).toBe(true);
+    expect(screen.getByText(/Resuming needs the owner/)).toBeTruthy();
+    expect(client.pausePeers).not.toHaveBeenCalled();
+  });
+
+  it('is read-only while offline', async () => {
+    await show(<PeersScreen />, { data: { offline: true } });
+    expect((await screen.findByTestId('peers-pause')).props.disabled).toBe(true);
+  });
+
+  it('lists messages (who to whom, size, outcome) when the hub serves them', async () => {
+    const client = fakeClient({
+      peerMessages: jest.fn(async () => ({
+        messages: [{ id: 'pm_1', thread: 't_0', from: { account: P }, to: { account: W }, kind: 'start', size: 2400, status: 'delivered', created_at: '2026-10-13T06:20:00.000Z' }],
+      })),
+    });
+    await show(<PeersScreen />, { client });
+    expect(await screen.findByText('personal → work')).toBeTruthy();
+    expect(screen.getByText('start · 2.4 KB · delivered')).toBeTruthy();
   });
 });

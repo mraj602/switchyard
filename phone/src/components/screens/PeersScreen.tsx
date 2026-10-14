@@ -1,0 +1,234 @@
+// Peers (PE3; peers.md 5, 10, 11): the matrix, Pause all peers and the audit list. Read-only
+// except narrowing: a tapped cell can only lose pairs, and the pause switch only pauses.
+// Allowing, and resuming after a pause, need the owner on the board or at a terminal.
+import { useEffect, useState } from 'react';
+import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import type { MatrixInfo, PeerAuditEntry, PeerMessage } from '../../contract/api';
+import {
+  agoLabel, auditWho, cellLabel, cellState, CELL_GLYPH, CELL_WORD, detailText, eventLabel, messageWho, narrowings,
+  outcomeLabel, peerAccounts, sizeLabel,
+} from '../../lib/format';
+import { HubError } from '../../lib/hub';
+import { useHubApi } from '../hub-api';
+import { useTheme } from '../theme';
+import { Btn, Calm, Card, Muted, Page, Section, useToast } from '../ui';
+
+const CELL = 44;
+
+export default function PeersScreen() {
+  const api = useHubApi();
+  const t = useTheme();
+  const toast = useToast();
+  const client = api.client;
+  const [info, setInfo] = useState<MatrixInfo | null>(null);
+  const [audit, setAudit] = useState<PeerAuditEntry[] | null>(null);
+  const [messages, setMessages] = useState<PeerMessage[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pick, setPick] = useState<{ from: string; to: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const offline = api.data.offline;
+
+  const [tick, setTick] = useState(0); // bumped to load again
+  const load = () => setTick((n) => n + 1);
+
+  useEffect(() => {
+    if (!client) return;
+    let live = true;
+    void Promise.allSettled([client.matrix(), client.peerAudit({ limit: 50 }), client.peerMessages({ limit: 50 })]).then(([m, a, msg]) => {
+      if (!live) return;
+      if (m.status === 'fulfilled') {
+        setInfo(m.value);
+        setError(null);
+      } else {
+        setError(m.reason instanceof Error ? m.reason.message : 'Could not load the matrix');
+      }
+      if (a.status === 'fulfilled') setAudit(a.value.entries ?? []);
+      // Optional: a hub that does not serve it answers 404 or 501.
+      setMessages(msg.status === 'fulfilled' ? msg.value.messages ?? [] : null);
+    });
+    return () => {
+      live = false;
+    };
+  }, [client, tick]);
+
+  const run = async (send: () => Promise<MatrixInfo>) => {
+    setBusy(true);
+    try {
+      setInfo(await send());
+      setPick(null);
+      load();
+    } catch (e) {
+      if (e instanceof HubError && e.status === 409) {
+        toast.show('The matrix changed meanwhile. Check it and try again.');
+        load();
+      } else if (e instanceof HubError && e.status === 403) {
+        toast.show('Widening needs the owner: use the board or sy at a terminal.');
+      } else {
+        toast.show(e instanceof Error ? e.message : 'Could not change the matrix');
+      }
+    }
+    setBusy(false);
+  };
+
+  if (!info) {
+    return (
+      <Page title="Peers" toast={toast.node}>
+        <Calm>{error ?? (offline ? 'Offline.' : 'Loading…')}</Calm>
+      </Page>
+    );
+  }
+
+  const m = info.matrix;
+  const accounts = peerAccounts(api.data.overview?.seats ?? [], m);
+  const names = new Map(accounts.map((a) => [a.account, a.label]));
+  const label = (id: string) => names.get(id) ?? id.slice(0, 8);
+  const off = busy || offline || !client;
+  const owner = api.me?.owner === true;
+  const picked = pick ? { from: accounts.find((a) => a.account === pick.from), to: accounts.find((a) => a.account === pick.to) } : null;
+  const options = pick ? narrowings(m.allow, pick.from, pick.to, m.version) : [];
+  const word = (target: 'none' | 'out' | 'in' | 'both', from: string, to: string) =>
+    target === 'none' ? 'None' : target === 'out' ? `${from} → ${to}` : target === 'in' ? `${to} → ${from}` : 'Both ways';
+
+  return (
+    <Page title="Peers" meta={`Matrix version ${m.version} · signed by ${info.signer} · max ${m.max_turns} turns`} toast={toast.node}>
+      <Section title="Pause all peers">
+        <Card accent={m.paused ? t.bad : undefined}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexShrink: 1, paddingRight: 8 }}>
+              <Text testID="peers-state" style={{ color: m.paused ? t.bad : t.text, fontWeight: '700', fontSize: 16 }}>
+                {m.paused ? 'All peers are paused' : 'Peers are on'}
+              </Text>
+              <Muted>
+                {m.paused
+                  ? 'No message passes between sessions on any machine until the owner resumes.'
+                  : 'Pausing stops every machine at once: new messages are refused and queued ones dropped.'}
+              </Muted>
+            </View>
+            <Switch
+              accessibilityLabel="Pause all peers"
+              testID="peers-pause"
+              value={m.paused}
+              disabled={off || (m.paused && !owner)}
+              onValueChange={(on) => void run(() => client!.pausePeers(on))}
+            />
+          </View>
+          {m.paused && !owner ? <Muted>Resuming needs the owner: sign in on the board, or run sy peers resume.</Muted> : null}
+        </Card>
+      </Section>
+
+      <Section title="Accounts">
+        <Card>
+          {accounts.length < 2 ? (
+            <Muted>Peers between accounts need at least two accounts on this hub.</Muted>
+          ) : (
+            <ScrollView horizontal>
+              <View testID="matrix">
+                <View style={{ flexDirection: 'row' }}>
+                  <View style={{ width: 84 }} />
+                  {accounts.map((c) => (
+                    <Text key={c.account} numberOfLines={1} style={{ width: CELL, color: t.muted, fontSize: 11, textAlign: 'center' }}>{c.label}</Text>
+                  ))}
+                </View>
+                {accounts.map((r) => (
+                  <View key={r.account} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text numberOfLines={1} style={{ width: 84, color: t.text, fontSize: 13 }}>{r.label}</Text>
+                    {accounts.map((c) => {
+                      if (r.account === c.account) {
+                        return (
+                          <Text key={c.account} accessibilityLabel={`${r.label} to itself: same account ${m.same_account ? 'on' : 'off'}`} style={{ width: CELL, textAlign: 'center', color: t.muted }}>
+                            =
+                          </Text>
+                        );
+                      }
+                      const st = cellState(m.allow, r.account, c.account);
+                      const on = pick?.from === r.account && pick?.to === c.account;
+                      return (
+                        <Pressable
+                          key={c.account}
+                          accessibilityRole="button"
+                          accessibilityLabel={cellLabel(st, r.label, c.label)}
+                          accessibilityState={{ selected: on }}
+                          testID={`cell-${r.account}-${c.account}`}
+                          onPress={() => setPick(on ? null : { from: r.account, to: c.account })}
+                          style={{
+                            width: CELL - 4, height: CELL - 4, margin: 2, borderRadius: 8, borderWidth: on ? 2 : 1,
+                            borderColor: on ? t.accent : t.line, alignItems: 'center', justifyContent: 'center',
+                          }}
+                        >
+                          <Text style={{ color: st === 'none' ? t.muted : t.ok, fontSize: 18 }}>{CELL_GLYPH[st]}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          )}
+          <Muted>⇄ both ways · → may start a thread · ← only the other may start one · · none · = same account{m.same_account ? '' : ' (off)'}. Replies inside a thread are always allowed.</Muted>
+          {picked?.from && picked.to ? (
+            <View testID="cell-editor" style={{ gap: 6, marginTop: 4 }}>
+              <Text style={{ color: t.text, fontWeight: '600' }}>{`${picked.from.label} and ${picked.to.label}: ${CELL_WORD[cellState(m.allow, pick!.from, pick!.to)]}`}</Text>
+              {options.length === 0 ? (
+                <Muted>Nothing to narrow here. Allowing a pair needs the owner on the board or at a terminal.</Muted>
+              ) : (
+                options.map((o) => (
+                  <Btn
+                    key={o.target}
+                    testID={`narrow-${o.target}`}
+                    label={word(o.target, picked.from!.label, picked.to!.label)}
+                    disabled={off}
+                    onPress={() => void run(() => client!.editMatrix(o.edit))}
+                  />
+                ))
+              )}
+            </View>
+          ) : (
+            <Muted>Tap a cell to narrow it. Allowing a pair is done on the board.</Muted>
+          )}
+        </Card>
+      </Section>
+
+      <Section title="Audit">
+        <Muted>Who changed what, and when. Metadata only: no message text is ever stored or shown.</Muted>
+        {!audit ? (
+          <Calm>Loading…</Calm>
+        ) : audit.length === 0 ? (
+          <Calm>Nothing yet.</Calm>
+        ) : (
+          <Card>
+            {audit.map((e) => (
+              <View key={e.id} testID={`audit-${e.id}`} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                <View style={{ flexShrink: 1, paddingRight: 8 }}>
+                  <Text style={{ color: t.text }}>{eventLabel(e.event)}</Text>
+                  <Muted>{[auditWho(e, label), detailText(e.detail)].filter(Boolean).join(' · ')}</Muted>
+                </View>
+                <Muted>{agoLabel(e.at, api.now)}</Muted>
+              </View>
+            ))}
+          </Card>
+        )}
+      </Section>
+
+      {messages ? (
+        <Section title="Messages">
+          <Muted>Who messaged whom: when, size and outcome. Never the text.</Muted>
+          {messages.length === 0 ? (
+            <Calm>No messages yet.</Calm>
+          ) : (
+            <Card>
+              {messages.map((x) => (
+                <View key={x.id} testID={`msg-${x.id}`} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                  <View style={{ flexShrink: 1, paddingRight: 8 }}>
+                    <Text style={{ color: t.text }}>{messageWho(x, label)}</Text>
+                    <Muted>{[x.kind, sizeLabel(x.size), outcomeLabel(x.status)].filter(Boolean).join(' · ')}</Muted>
+                  </View>
+                  <Muted>{agoLabel(x.created_at, api.now)}</Muted>
+                </View>
+              ))}
+            </Card>
+          )}
+        </Section>
+      ) : null}
+    </Page>
+  );
+}

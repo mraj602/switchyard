@@ -327,3 +327,44 @@ export function validatePairClaimReply(x: unknown, path = 'claim'): Problems {
   field(p, o, 'hub', 'object', path);
   return p;
 }
+
+/** api.yaml MatrixInfo (GET /v1/peers/matrix, peers.md 5). */
+export function validateMatrixInfo(x: unknown, path = 'matrix'): Problems {
+  const p: Problems = [];
+  const o = root(x, path, p);
+  if (!o) return p;
+  oneOf(p, field(p, o, 'signer', 'string', path), ['owner', 'hub'], `${path}.signer`);
+  field(p, o, 'widens', 'boolean', path, true);
+  field(p, o, 'created_at', 'iso', path, true);
+  field(p, o, 'doc', 'object', path);
+  const m = field(p, o, 'matrix', 'object', path);
+  if (isObj(m)) {
+    const at = `${path}.matrix`;
+    field(p, m, 'version', 'int', at);
+    field(p, m, 'paused', 'boolean', at);
+    field(p, m, 'same_account', 'boolean', at);
+    field(p, m, 'max_turns', 'int', at);
+    const allow = field(p, m, 'allow', 'array', at);
+    if (Array.isArray(allow)) {
+      allow.forEach((pair, i) => {
+        if (!Array.isArray(pair) || pair.length !== 2 || pair.some((a) => typeof a !== 'string')) p.push(`${at}.allow[${i}]: want [from, to]`);
+      });
+    }
+  }
+  return p;
+}
+
+/** api.yaml PeerAuditEntry: metadata only. */
+export function validatePeerAudit(x: unknown, path = 'audit'): Problems {
+  const p: Problems = [];
+  const o = root(x, path, p);
+  if (!o) return p;
+  field(p, o, 'id', 'int', path);
+  field(p, o, 'at', 'iso', path);
+  field(p, o, 'actor', 'string', path);
+  field(p, o, 'event', 'string', path);
+  field(p, o, 'thread', 'string?', path, true);
+  field(p, o, 'msg', 'string?', path, true);
+  field(p, o, 'detail', 'object', path, true);
+  return p;
+}

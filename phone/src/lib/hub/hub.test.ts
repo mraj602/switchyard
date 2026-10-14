@@ -26,6 +26,11 @@ const ENDPOINTS: [string, (c: HubClient) => Promise<unknown>][] = [
   ['patchSelf', (c) => c.patchSelf({ private: true })],
   ['addTarget', (c) => c.addTarget({ kind: 'expo', expo_token: 'ExponentPushToken[abcdefgh12345678]', platform: 'ios' })],
   ['testTarget', (c) => c.testTarget('pt_1')],
+  ['matrix', (c) => c.matrix()],
+  ['editMatrix', (c) => c.editMatrix({ base_version: 2, deny: [['a', 'b']] })],
+  ['pausePeers', (c) => c.pausePeers(true)],
+  ['peerAudit', (c) => c.peerAudit({ limit: 20 })],
+  ['peerMessages', (c) => c.peerMessages()],
 ];
 
 describe('HubClient requests', () => {
@@ -46,6 +51,12 @@ describe('HubClient requests', () => {
     ['patchSelf', (c) => c.patchSelf({ tap: 'claude' }), 'PATCH', '/v1/devices/self'],
     ['unpairSelf', (c) => c.unpairSelf(), 'DELETE', '/v1/devices/self'],
     ['testTarget', (c) => c.testTarget('pt_1'), 'POST', '/v1/push/targets/pt_1/test'],
+    ['matrix', (c) => c.matrix(), 'GET', '/v1/peers/matrix'],
+    ['editMatrix', (c) => c.editMatrix({ deny: [['a', 'b']] }), 'PUT', '/v1/peers/matrix'],
+    ['pausePeers', (c) => c.pausePeers(true), 'POST', '/v1/peers/pause'],
+    ['peerAudit', (c) => c.peerAudit({ limit: 20 }), 'GET', '/v1/peers/audit?limit=20'],
+    ['peerAudit bare', (c) => c.peerAudit(), 'GET', '/v1/peers/audit'],
+    ['peerMessages', (c) => c.peerMessages({ limit: 5 }), 'GET', '/v1/peers/messages?limit=5'],
   ])('%s sends the bearer to the right path', async (_n, run, method, path) => {
     const f = fakeFetch(() => response(200, {}));
     await run(client(f));
@@ -59,10 +70,14 @@ describe('HubClient requests', () => {
   it('sends JSON bodies', async () => {
     const f = fakeFetch(() => response(200, {}));
     const c = client(f);
+    await c.editMatrix({ base_version: 2, deny: [['a', 'b']] });
+    await c.pausePeers(true);
     await c.snooze('al_1', 30);
     await c.patchSelf({ private: true, widgets: true });
     await c.addTarget({ kind: 'expo', expo_token: 'ExponentPushToken[abcdefgh12345678]', platform: 'android', name: 'Pixel · app', app: { version: '1', build: '2' } });
     expect(f.calls.map((x) => JSON.parse(x.init.body!))).toEqual([
+      { edit: { base_version: 2, deny: [['a', 'b']] } },
+      { paused: true },
       { minutes: 30 },
       { prefs: { private: true, widgets: true } },
       { kind: 'expo', expo_token: 'ExponentPushToken[abcdefgh12345678]', platform: 'android', name: 'Pixel · app', app: { version: '1', build: '2' } },

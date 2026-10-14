@@ -1,0 +1,21 @@
+{
+  "entries": [
+    {
+      "actor": "hub",
+      "at": "2026-10-11T06:27:12.846Z",
+      "detail": {
+        "max_turns": 30,
+        "pairs": 0,
+        "paused": false,
+        "same_account": true,
+        "signer": "hub",
+        "version": 1,
+        "widens": false
+      },
+      "event": "matrix",
+      "id": 1,
+      "msg": null,
+      "thread": null
+    }
+  ]
+}
