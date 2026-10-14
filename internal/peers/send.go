@@ -87,12 +87,15 @@ func (e Env) Send(c Caller, to, text string) (SendResult, *Refusal) {
 // *Refusal is final: nothing is retried. The caller has been identified by Whoami; the
 // directory is re-read here so a session that just ended is `target_gone`.
 //
-// Order: off; target resolves and is live; content; rate limits; matrix; loop guard;
+// Order: off; paused; target resolves and is live; content; rate limits; matrix; loop guard;
 // delivery. The thread file is updated only on delivery (or once the hub queued the
 // message), except that a rate token is taken when the rate check passes.
 func (e Env) SendWith(c Caller, to, text string, o SendOpts) (SendResult, *Refusal) {
 	if e.Off() {
 		return SendResult{}, Refuse(CodeOff, "peers are off on this machine (sy peers on turns them back on)")
+	}
+	if p, ok := e.matrix().(pauser); ok && p.Paused() {
+		return SendResult{}, &Refusal{Code: CodePaused, Detail: "peers are paused"}
 	}
 	dir := e.Directory()
 	var sender *Session

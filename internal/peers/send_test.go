@@ -307,6 +307,25 @@ func TestSendLoopGuard(t *testing.T) {
 	}
 }
 
+// Paused is checked first (peers.md 4.2 step 1): before target and content, and no rate token
+// is taken for the refused send.
+func TestSendPausedBeforeRateToken(t *testing.T) {
+	w := newWorld(t, peers.ModeBypass, peers.ModeBypass)
+	w.allow([][]string{{"acc-work", "acc-personal"}}, map[string]any{"paused": true})
+	e, c := w.asA()
+	if _, rf := e.Send(c, "nobody", "hi"); rf == nil || rf.Code != peers.CodePaused {
+		t.Fatalf("unknown target while paused: %v", rf)
+	}
+	for i := 0; i < peers.SessionBurst+5; i++ {
+		if _, rf := e.Send(c, "worker", "hi"); rf == nil || rf.Code != peers.CodePaused {
+			t.Fatalf("send %d: %v", i, rf)
+		}
+	}
+	if st := peers.LoadRates(e.RatesPath()); len(st.Sessions) != 0 || len(st.Pairs) != 0 {
+		t.Errorf("rate state after paused sends: %+v", st)
+	}
+}
+
 func TestSendRateLimit(t *testing.T) {
 	w := newWorld(t, peers.ModeBypass, peers.ModeBypass)
 	w.allow([][]string{{"acc-work", "acc-personal"}}, map[string]any{"max_turns": 500})

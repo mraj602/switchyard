@@ -31,6 +31,9 @@ func (m DocMatrix) label(p Party) string {
 	return "unknown"
 }
 
+// Paused reports the document's `paused` flag.
+func (m DocMatrix) Paused() bool { return m.B.Paused }
+
 // Allowed is peers.Allowed of 5.3, in order: paused; the diagonal (same_account); an allowed
 // pair; a reply (an open thread the target opened, while [to, from] is still allowed); else
 // no. An unknown account (empty uuid) matches no pair and is never "the same account".
