@@ -33,6 +33,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/api"
 	"github.com/mraj602/switchyard/internal/hub/auth"
 	"github.com/mraj602/switchyard/internal/hub/hublock"
+	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
 	"github.com/mraj602/switchyard/internal/hub/pair"
 	"github.com/mraj602/switchyard/internal/hub/pull"
 	"github.com/mraj602/switchyard/internal/hub/push/clock"
@@ -43,6 +44,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/push/webpush"
 	"github.com/mraj602/switchyard/internal/hub/store"
 	"github.com/mraj602/switchyard/internal/hub/store/importproto"
+	"github.com/mraj602/switchyard/internal/keys"
 	"github.com/mraj602/switchyard/internal/paths"
 	"github.com/mraj602/switchyard/internal/version"
 	"github.com/mraj602/switchyard/webui"
@@ -68,6 +70,8 @@ Commands:
   export / import    Move the hub: freeze and pack it / unpack it into an empty hub (phase 5)
   unfreeze           Call off a move: the hub accepts records again (phase 5)
   machine show ID    One machine's hub-side state, for sy machine add (phase 5)
+  keys show          The hub key, the owner key and pending proposals (F1)
+  keys confirm-owner FP  Activate a pending owner key proposal (F1)
 
 Every command takes --db <file> (default <data>/hub.db, see sy paths).
 sy hub pair --help and sy hub owner-link --help show their flags.
@@ -118,6 +122,8 @@ func Run(args []string, stdout, stderr io.Writer) error {
 		return Unfreeze(args[1:], stdout, stderr)
 	case "machine":
 		return Machine(args[1:], stdout, stderr)
+	case "keys":
+		return Keys(args[1:], stdout, stderr)
 	}
 	fmt.Fprintf(stderr, "sy hub: unknown command %q\n\n%s", strings.Join(args, " "), usage)
 	return ErrUsage
@@ -256,6 +262,19 @@ func serve(args []string, stdout, stderr io.Writer) error {
 	if !*quiet {
 		cfg.Log = logger
 	}
+	// The hub signing key (keys.md 3.4), made at the first serve; then every stored key
+	// document is checked again, and rows that do not verify are logged and ignored.
+	ks, err := keysService(st, logger)
+	if err != nil {
+		return err
+	}
+	if n, err := ks.VerifyStored(ctx); err != nil {
+		return fmt.Errorf("checking stored key documents: %w", err)
+	} else if n > 0 {
+		logger.Printf("keys: %d stored key documents do not verify and are ignored (see above)", n)
+	}
+	logger.Printf("hub key %s", keys.GroupFP(ks.Key.FP))
+	cfg.Keys = ks
 	var eng *engine.Engine
 	var expoSender *expo.Sender
 	if !*noPush {
@@ -610,7 +629,17 @@ func tokenRevoke(args []string, stdin io.Reader, stdout, stderr io.Writer) error
 			return errors.New("not revoked")
 		}
 	}
-	if err := auth.Revoke(ctx, st, d.ID); err != nil {
+	// With a hub key, the device's link keys also go on the next revocation list (keys.md 6).
+	hk, err := existingHubKey()
+	if err != nil {
+		return err
+	}
+	if hk != nil {
+		err = hubkeys.New(st, hk).RevokeDevice(ctx, d.ID, "cli", "revoked")
+	} else {
+		err = auth.Revoke(ctx, st, d.ID)
+	}
+	if err != nil {
 		return err
 	}
 	fmt.Fprintf(stdout, "revoked %s; it gets 401 from its next request\n", d.ID)

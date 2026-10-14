@@ -56,6 +56,7 @@ func state(t *testing.T) string {
 	d := t.TempDir()
 	os.MkdirAll(filepath.Join(d, "pull"), 0o700)
 	os.WriteFile(filepath.Join(d, "pair_pepper"), []byte("pepper-bytes"), 0o600)
+	os.WriteFile(filepath.Join(d, "hub_sign.key"), []byte("hub-key-bytes"), 0o600)
 	os.WriteFile(filepath.Join(d, "pull", "id_ed25519"), []byte("PRIVATE KEY"), 0o600)
 	os.WriteFile(filepath.Join(d, "pull", "id_ed25519.pub"), []byte("ssh-ed25519 AAAA"), 0o644)
 	return d
