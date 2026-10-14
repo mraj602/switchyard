@@ -410,13 +410,19 @@ func (s *Service) RegisterKeys(ctx context.Context, deviceID string, k keys.Devi
 		case err != nil:
 			return err
 		default:
-			if old.Reg != keys.RegTOFU || old.OwnerSig != nil {
-				return conflict("this device's keys were verified (%s%s); re-pair this device to change them", old.Reg,
-					map[bool]string{true: ", owner-certified", false: ""}[old.OwnerSig != nil])
-			}
 			_, owner, err := s.trustTx(tx)
 			if err != nil {
 				return err
+			}
+			// reg from the hub-signed certificate, not the row's column: a database writer
+			// must not turn qr/ssh keys into replaceable tofu ones (keys.md 4.2)
+			c, err := s.certFromRow(old, owner)
+			if err != nil {
+				return conflict("this device's certificate does not verify; re-pair this device")
+			}
+			if c.Body.Reg != keys.RegTOFU || c.OwnerSigned || old.OwnerSig != nil {
+				return conflict("this device's keys were verified (%s%s); re-pair this device to change them", c.Body.Reg,
+					map[bool]string{true: ", owner-certified", false: ""}[c.OwnerSigned || old.OwnerSig != nil])
 			}
 			if err := s.appendRevocationTx(tx, []keys.RevokedDevice{s.entryFor(old, owner, "replaced", tx.NowMS())}, deviceID); err != nil {
 				return err

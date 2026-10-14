@@ -337,6 +337,12 @@ func TestCertifyAndReplaceRules(t *testing.T) {
 	if _, err := f.svc.RegisterKeys(f.ctx, plain, keys.DeviceKeysNew{Sign: keys.KeySpec{Alg: "p256", Pub: "x"}}); status(err) != 400 {
 		t.Fatalf("bad keys: %v", err)
 	}
+	// A database writer flipping the reg column does not make qr keys replaceable: the
+	// rule reads the signed certificate.
+	f.exec(`UPDATE device_key SET reg = 'tofu' WHERE device_id = ?`, qr)
+	if _, err := f.svc.RegisterKeys(f.ctx, qr, machineKeysNew(9)); status(err) != 409 {
+		t.Fatalf("reg column flipped to tofu: %v", err)
+	}
 }
 
 func TestRevocations(t *testing.T) {
