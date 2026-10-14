@@ -47,7 +47,9 @@ cannot, and tags are limited to `[A-Za-z0-9_:.-]{0,64}` (5.3).
 
 - **URL.** `wss://<hub host>[:port]/v1/link`, the hub's own listener (TLS from `tailscale serve`
   or the hub's certificate, as for the rest of the API). A device gets the list of URLs in the
-  claim reply (`link.urls`, keys.md 7.3) and in `welcome`; it tries them in order.
+  claim reply (`link.urls`, keys.md 7.3) and in `welcome`; it tries them in order. A machine
+  (`sy agent run`) instead uses its configured `hub.url` (`http`→`ws`, `https`→`wss`, plus
+  `/v1/link`) through `hub.dial` like every other `sy` call, and ignores `urls`.
 - **Subprotocol** `sy-link.1` (`Sec-WebSocket-Protocol`). The hub refuses others with HTTP 426.
 - **Messages** are WebSocket text messages, one JSON object each, at most 1 MiB (the library's
   read limit; larger → close 4413). Binary messages → close 4400.
@@ -58,7 +60,9 @@ cannot, and tags are limited to `[A-Za-z0-9_:.-]{0,64}` (5.3).
 - **Pings.** The device sends a WebSocket ping every `ping_s` seconds (default **180**, from
   `welcome`; the app may raise it to 300–600 on the tailnet, push.md 14.4); the hub answers
   with pong (the library does this). The hub closes a connection that has sent nothing, not
-  even a ping, for `2 × ping_s + 30` seconds (close 4408). The hub sends no pings of its own:
+  even a ping, for `2 × ping_s + 30` seconds (close 4408), where `ping_s` is the larger of the
+  channel's and the device's own `hello.client.ping_s` (60–900, when sent), so a phone that
+  raised its interval is not cut off. The hub sends no pings of its own:
   the device owns the radio.
 - **One connection per device.** A new authenticated connection closes the old one with 4409
   `superseded`.
@@ -117,7 +121,7 @@ Nonces live in hub memory until `exp` and are single-use.
   "nonce": "<the challenge nonce>",
   "exp": 1760518860,
   "last": 41,
-  "client": {"kind": "android", "app": "0.9.0", "build": "14", "sdk": 35},
+  "client": {"kind": "android", "app": "0.9.0", "build": "14", "sdk": 35, "ping_s": 300},
   "known": {"matrix": 3, "revocations": 2},
   "sig": "<b64u>"
 }
@@ -130,7 +134,7 @@ Nonces live in hub memory until `exp` and are single-use.
   login to this hub's key, this device, this single-use nonce and its expiry; it carries no
   reusable secret.
 - `last`: the highest `seq` the device has processed (its own durable copy, 6.1).
-- `client.kind`: `android` or `agent`; `sy` sends `{"kind":"agent","sy":"0.9.0","os":"linux"}`.
+- `client.kind`: `android` or `agent`; `sy` sends `{"kind":"agent","sy":"0.9.0","os":"linux"}`. `client.ping_s` (optional): the device's own ping interval (2).
 - `known`: the newest matrix and revocation versions the device holds (machines only).
 
 The hub, in order:
@@ -331,7 +335,7 @@ and the hub doctor shows it.
   sends more as acks arrive.
 - `{"t":"ack","seq":N}` from the device is cumulative: the hub sets `acked_seq = max(acked_seq,
   N)` (N above the last sent → 4400 `bad_seq`), deletes rows with `seq ≤ N`, and for each
-  deleted row with `ref = d:<id>` sets `delivery.delivered_at` (push.md 13.4); `pm:<id>`
+  deleted row with `ref = d:<id>[,<id>…]` sets `delivery.delivered_at` on each (push.md 13.4); `pm:<id>`
   updates are driven by `peer_result`, not by the ack (peers.md 8.4).
 - `{"t":"reject","seq":N}` deletes the one row `(device, N)` if it exists and was sent on this
   connection, counts it on the device's link status, and logs a warning; it never changes

@@ -336,6 +336,20 @@ func (s *Service) Cert(ctx context.Context, deviceID string) (keys.Cert, error) 
 	return s.certFromRow(r, owner)
 }
 
+// CertTx is Cert inside a transaction (the link queue seals to the certificate's keys in the
+// enqueueing transaction).
+func (s *Service) CertTx(tx *store.Tx, deviceID string) (keys.Cert, error) {
+	r, err := tx.DeviceKey(deviceID)
+	if err != nil {
+		return keys.Cert{}, err
+	}
+	owner, err := s.activeOwnerTx(tx)
+	if err != nil {
+		return keys.Cert{}, err
+	}
+	return s.certFromRow(r, owner)
+}
+
 // DeviceKeyInfo is what the Devices list shows of a device's keys (api.yaml DeviceKeyInfo).
 type DeviceKeyInfo struct {
 	SignFP, BoxFP, Reg string

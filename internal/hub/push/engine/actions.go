@@ -87,6 +87,9 @@ func (w *work) seen(a model.Alert, by string) (model.AlertBrief, bool, error) {
 	if err := w.tx.DeliveriesSkipUnsent(a.ID, rSeen, w.nowMS); err != nil {
 		return a.AlertBrief, false, err
 	}
+	if err := w.dismiss(a); err != nil {
+		return a.AlertBrief, false, err
+	}
 	w.event("seen", a)
 	return a.AlertBrief, true, nil
 }

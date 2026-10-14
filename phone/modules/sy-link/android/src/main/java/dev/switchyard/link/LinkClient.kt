@@ -454,6 +454,7 @@ class LinkClient(
       val verifier = TinkHubVerifier(store.hubPub ?: throw Stop("error", "not configured"))
       var challenge = call(url, JSONObject().put("op", "challenge"))
       var n = 0
+      val rejects = mutableListOf<Long>() // frames that failed their checks: sent in the next `up` (link.md 2.1)
       while (alive() && n < rounds && System.currentTimeMillis() < until) {
         n++
         val c = Login.checkChallenge(challenge, pin, verifier)
@@ -461,16 +462,20 @@ class LinkClient(
         val device = store.device ?: throw Stop("error", "not configured")
         val pending = store.pending(System.currentTimeMillis()).take(64)
         val up = JSONArray()
-        pending.forEach { up.put(JSONObject().put("t", "action").put("id", it.id).put("token", it.token)) }
+        rejects.take(64).forEach { up.put(JSONObject().put("t", "reject").put("seq", it)) }
+        pending.take(64 - up.length()).forEach { up.put(JSONObject().put("t", "action").put("id", it.id).put("token", it.token)) }
         val req = JSONObject().put("op", "poll").put("hello", Login.hello(c, device, store.last, client(), signer))
         if (up.length() > 0) req.put("up", up)
         val reply = call(url, req)
         reply.optJSONObject("welcome")?.let { w -> wake { processor.onText(w.toString(), c.nonce) } }
         onUp()
+        rejects.clear()
         val frames = reply.optJSONArray("frames") ?: JSONArray()
         for (i in 0 until frames.length()) {
           val f = frames.optJSONObject(i) ?: continue
-          wake { processor.onText(f.toString(), Frames.QUEUE_CTX) } // acks travel as the next hello's `last`
+          var out: Outcome? = null
+          wake { out = processor.onText(f.toString(), Frames.QUEUE_CTX) } // acks travel as the next hello's `last`
+          out?.reject?.let { rejects.add(it) }
         }
         val results = reply.optJSONArray("results") ?: JSONArray()
         for (i in 0 until results.length()) {

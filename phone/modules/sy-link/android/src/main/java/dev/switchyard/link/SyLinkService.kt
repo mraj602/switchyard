@@ -54,7 +54,7 @@ object Link {
       null
     }
     return JSONObject().put("kind", "android").put("app", pi?.versionName ?: "0").put("build", (pi?.longVersionCode ?: 0).toString())
-      .put("sdk", Build.VERSION.SDK_INT)
+      .put("sdk", Build.VERSION.SDK_INT).put("ping_s", store(ctx).pingS)
   }
 
   /** PARTIAL_WAKE_LOCK only around one frame, 10 s cap (push.md 14.4). */
