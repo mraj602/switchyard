@@ -119,7 +119,8 @@ type HookContext struct {
 	ConfigDir string // the slot name, e.g. "~/.claude-2"
 	Now       time.Time
 	// FindPID returns the claude pid above this hook (0 when not found). It is called only
-	// when the file has no pid yet or on SessionStart, never on every event.
+	// on SessionStart and when the file is new, never on every event: on macOS each step of
+	// the walk runs ps, and a pid that was not found once is not found the next time either.
 	FindPID func() int
 }
 
@@ -152,10 +153,8 @@ func UpdateSessionFile(c HookContext, e HookEvent) (wrote bool, err error) {
 		if f.EndedAt != nil {
 			f.EndedAt, changed = nil, true
 		}
-		if f.PID == 0 || c.FindPID != nil {
-			if pid := c.findPID(); pid > 0 && pid != f.PID {
-				f.PID, changed = pid, true
-			}
+		if pid := c.findPID(); pid > 0 && pid != f.PID {
+			f.PID, changed = pid, true
 		}
 	case "UserPromptSubmit":
 		if IsHumanPrompt(e.Prompt, c.Now, LastDelivery(c.State, e.SessionID)) {
@@ -170,7 +169,7 @@ func UpdateSessionFile(c HookContext, e HookEvent) (wrote bool, err error) {
 			return false, nil // nothing worth a file yet
 		}
 	}
-	if f.PID == 0 && e.Name != "SessionStart" {
+	if !had && e.Name != "SessionStart" {
 		if pid := c.findPID(); pid > 0 {
 			f.PID, changed = pid, true
 		}
