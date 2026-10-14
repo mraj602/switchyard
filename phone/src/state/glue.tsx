@@ -11,6 +11,7 @@ import type { AppInfo, Clock } from '../contract/platform';
 import { backgroundRefresh, type Glue, type GluePlatform } from '../lib/integrate';
 import type { NotificationsLike, TaskHub } from '../lib/notify';
 import { hostOf } from '../lib/pair';
+import { createUpdater } from '../lib/update';
 import { registerNotifyTask } from '../tasks/notify-task';
 import { clearAndroidWidgets, updateAndroidWidgets } from '../../widgets/android/task-handler';
 import { clearIos, startCountdown, syncCountdown, updateTimelines } from '../../widgets/ios/adapter';
@@ -108,6 +109,29 @@ export function HubGlue({ glue, clock = systemClock, children }: { glue: Glue; c
     glue.setContext({ me, origin, client, kick: () => void refresh(), reloadMe: () => void reloadMe() });
   }, [glue, me, origin, client, refresh, reloadMe]);
 
+  // The updater (phone.md P16.3): only where the sy-link module is (Android, self-hosted profile).
+  const appBuild = Number(hub.claimDeps.app.build) || 0;
+  const updater = useMemo(
+    () =>
+      glue.link
+        ? createUpdater({
+            link: glue.link,
+            loadHub: async () => {
+              const h = await loadTaskHub();
+              return h ? { origin: h.origin, token: h.token } : null;
+            },
+            kv: AsyncStorage,
+            clock,
+            installedBuild: appBuild,
+          })
+        : undefined,
+    [glue, clock, appBuild],
+  );
+  // Once a day while the app is used: on start when paired.
+  useEffect(() => {
+    if (updater && status === 'paired') void updater.load().then(() => updater.checkIfDue());
+  }, [updater, status]);
+
   // On start when paired (once per client; a fresh pairing runs onPaired instead).
   useEffect(() => {
     if (status === 'paired' && client) void glue.startUp(client);
@@ -148,6 +172,7 @@ export function HubGlue({ glue, clock = systemClock, children }: { glue: Glue; c
     enablePush,
     snoozeMin: view.snoozeMin,
     ...(glue.link ? { link: glue.link } : {}),
+    ...(updater ? { updater } : {}),
     ...(countdown ? { countdown } : {}),
     ...(autoCountdown ? { autoCountdown } : {}),
     unpair: hub.unpair,

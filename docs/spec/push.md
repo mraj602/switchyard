@@ -1348,7 +1348,11 @@ phone/modules/sy-link/
                                (the exact-alarm restarts and retries, 14.4), ActionReceiver (Snooze, Seen)
     Watchdog.kt                WorkManager periodic worker
     Store.kt                   the module's private SharedPreferences
-    SyUpdate.kt                the updater (phone.md P16; N2)
+    Updates.kt                 the updater's pure half (N2): manifest parsing, version and build compare,
+                               the GitHub release filter, the signing-certificate decision (SigningSource)
+    UpdateClient.kt            checkUpdate: the hub first, then GitHub (Fetcher: OkHttp, faked in tests)
+    UpdateInstaller.kt         installUpdate: download, SHA-256, certificate check through PackageManager,
+                               PackageInstaller session; InstallResultReceiver opens Android's confirmation
   android/src/test/…           JVM tests (14.10)
 ```
 
@@ -1577,7 +1581,22 @@ code. `configure` makes keys.md 7.3's certificate check natively (the app's JS h
 the hub signature with `hubKey`, the device and hub in the body, the phone's own keys, `reg =
 qr` and `hubKey.fp = qrFp` when `qrFp` is given. It rejects with code `ERR_SY_HUB_KEY` (the key
 is not the QR's) or `ERR_SY_TAMPERED` (anything else), and other codes (`ERR_SY_CONFIG`) for a
-bad argument. `checkUpdate` and `installUpdate` reject with `ERR_SY_UPDATE` until N2.
+bad argument.
+
+`checkUpdate(origin, token)` (N2, phone.md P16.3) asks the hub (`GET <origin>/v1/app/android`
+with the device token), then GitHub when the hub has no release or cannot be reached; it
+resolves `null` when nothing newer fits this phone and rejects with `ERR_SY_UPDATE` (message
+without any token) when neither is reachable. It does not throttle: the once-a-day rule lives
+in the app (`src/lib/update`). `installUpdate(info)` downloads, requires the file's SHA-256 to
+equal `info.sha256`, requires the APK's signing certificate (`GET_SIGNING_CERTIFICATES` on the
+archive) to equal both `info.certSha256` and the installed app's, and that it is this package
+at a higher versionCode, then commits a `PackageInstaller` session; it resolves `"started"`
+(Android asks the user to confirm) or `"refused"` (the file is deleted). A hub download needs
+the device token, which `installUpdate` does not receive: the module keeps the `(origin,
+token)` of the last `checkUpdate` that found a hub release in memory only, sends the token
+solely to that origin, and rejects with `ERR_SY_UPDATE` ("check for updates first") when
+there is none (after a process restart). `REQUEST_INSTALL_PACKAGES` is declared in the module
+manifest (14.2).
 
 The jest fake (`test/fakes.ts`) gains a recording `sy-link` fake with scriptable state
 (`linkState`, `emitLink`); `test/setup.ts` mocks `modules/sy-link` with it, and

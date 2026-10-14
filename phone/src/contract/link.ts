@@ -54,8 +54,26 @@ export interface ClaimLink {
   configure(cfg: LinkConfig): Promise<void>;
 }
 
+/** The updater's offer (phone.md P16; push.md 14.8). */
+export type UpdateInfo = {
+  version: string;
+  build: number;
+  url: string;
+  sha256: string;
+  certSha256: string;
+  size: number;
+  notes: string;
+  source: 'hub' | 'github';
+};
+
+/** What the updater (src/lib/update) needs of the module. */
+export interface UpdateLink {
+  checkUpdate(origin: string, token: string): Promise<UpdateInfo | null>;
+  installUpdate(info: UpdateInfo): Promise<'started' | 'refused'>;
+}
+
 /** What the app integration and Settings → Notifications need of the module. */
-export interface LinkLike extends ClaimLink {
+export interface LinkLike extends ClaimLink, UpdateLink {
   start(): Promise<void>;
   stop(): Promise<void>;
   reconnect(): Promise<void>;

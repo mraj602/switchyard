@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Alert as RNAlert, Switch, Text, TextInput, View } from 'react-native';
 import type { PushTestResult, QuietHours, TapMode } from '../../contract/api';
 import { clock } from '../../lib/format';
+import { updateText, type Updater } from '../../lib/update';
+import { useUpdate } from '../use-update';
 import { useHubApi } from '../hub-api';
 import { go } from '../nav';
 import { useTheme } from '../theme';
@@ -174,6 +176,7 @@ export default function SettingsScreen() {
         <Card>
           <KV k="Version" v={`${api.app.version} (${api.app.build})`} />
           <KV k="Device" v={`${api.app.model} · ${api.app.platform}`} />
+          {api.updater ? <UpdateRow updater={api.updater} /> : null}
         </Card>
       </Section>
 
@@ -184,6 +187,31 @@ export default function SettingsScreen() {
         </Card>
       </Section>
     </Page>
+  );
+}
+
+/** The Updates row (phone.md P16.3): state, Check for update, and Install when one is offered. */
+function UpdateRow({ updater }: { updater: Updater }) {
+  const t = useTheme();
+  const v = useUpdate(updater);
+  const busy = v.phase === 'checking' || v.phase === 'installing';
+  return (
+    <View style={{ marginTop: 8, gap: 6 }}>
+      <Text style={{ color: t.text, fontWeight: '600' }}>Updates</Text>
+      <Text testID="update-state" style={{ color: v.phase === 'error' || v.phase === 'refused' ? t.text : t.muted }}>
+        {updateText(v)}
+      </Text>
+      {v.info && v.phase !== 'refused' ? (
+        <>
+          {v.info.notes ? <Muted>{v.info.notes}</Muted> : null}
+          <Muted>{`From ${v.info.source === 'hub' ? 'your hub' : 'GitHub'}. Android asks you to confirm before it installs.`}</Muted>
+          {v.phase !== 'started' ? (
+            <Btn kind="primary" label={`Install ${v.info.version}`} testID="update-install" disabled={busy} onPress={() => void updater.install()} />
+          ) : null}
+        </>
+      ) : null}
+      <Btn label="Check for update" testID="update-check" disabled={busy} onPress={() => void updater.check()} />
+    </View>
   );
 }
 
