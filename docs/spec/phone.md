@@ -544,14 +544,23 @@ needs an Expo, Google or store account.
 - **Build:** `make phone-apk-release` (you run it, not an agent): `expo prebuild --platform
   android --clean` with `SY_APP_VARIANT=production SY_PUSH=link`, then `./gradlew
   assembleRelease` in `phone/android`. Output `phone/dist/switchyard-<version>.apk`, its
-  `SHA256SUMS` and `manifest.json` (P16.1). A development build for the phase 8 manual check is
+  `SHA256SUMS` (the APK's line) and `manifest.json` (P16.1). A development build for the phase 8 manual check is
   `expo prebuild` + `./gradlew assembleDebug`, without push.
-- **Signing:** your own release keystore, outside the repo (`SY_ANDROID_KEYSTORE`,
-  `SY_ANDROID_KEY_ALIAS`; passwords read from the environment of your shell or prompted by
-  Gradle, never written into `phone/`). `check-no-secrets.mjs` already refuses keystores in the
-  tree. Keep two offline copies: losing it means every phone uninstalls and reinstalls. The
-  certificate's SHA-256 fingerprint is printed by the make target and published with each
-  release.
+- **Signing:** your own release keystore, outside the repo. The make target refuses to start
+  without it: `SY_ANDROID_KEYSTORE` (path), `SY_ANDROID_KEY_ALIAS` and
+  `SY_ANDROID_KEYSTORE_PASSWORD` (and `SY_ANDROID_KEY_PASSWORD` when it differs), or the same
+  four values as `storeFile`, `keyAlias`, `storePassword`, `keyPassword` in a properties file
+  named by `SY_ANDROID_SIGNING_PROPERTIES` (also outside the repo; an environment variable
+  wins). The passwords reach Gradle (`scripts/sy-release-signing.init.gradle`, an init script,
+  because `expo prebuild --clean` regenerates `android/`) and keytool only through the
+  environment, are never printed and never written into `phone/`. `check-no-secrets.mjs`
+  already refuses keystores in the tree. Keep two offline copies: losing it means every phone
+  uninstalls and reinstalls. The certificate's SHA-256 fingerprint (read from the keystore and
+  checked against the built APK with `apksigner verify --print-certs`) is printed by the make
+  target and goes into `manifest.json` as `cert_sha256`. No `make` target creates a keystore;
+  `phone/README.md` documents the `keytool` command.
+- **Version:** `app.config.ts` sets Android's `versionCode` (the manifest's `build`) to
+  `MAJOR*10000 + MINOR*100 + PATCH` of `version`, so it only rises with the version.
 - **Release:** a GitHub release tagged `phone-vX.Y.Z` with the APK, `SHA256SUMS` and
   `manifest.json`, made by you.
 
@@ -642,6 +651,11 @@ The app is sideloaded (no store), so it updates itself, with your confirmation e
   APK's SHA-256 against both, and keeps it in `<data>/app/android/` (the current and the
   previous version only). The repository comes from the build (`version.Repo`); setting
   `app.android_mirror = false` turns the mirror off.
+- The off switch and the repository also exist as `sy hub serve` flags (`--no-app-mirror`,
+  `--app-repo owner/name`) and as the settings `app.android_mirror` (JSON bool) and
+  `app.android_repo`; a flag wins. Downloads follow at most 5 https redirects (GitHub's assets
+  redirect to a CDN) and still refuse non-public addresses (`netguard`). A release that does
+  not verify is never published, and what is already mirrored stays.
 - `GET /v1/app/android` (any device token with `read`) → the manifest plus `"url":
   "/v1/app/android/apk"`, or 404 when nothing is mirrored. `GET /v1/app/android/apk` streams
   the APK (`Content-Type: application/vnd.android.package-archive`, `ETag` = sha256).
@@ -653,6 +667,11 @@ The app is sideloaded (no store), so it updates itself, with your confirmation e
   first the hub (`GET /v1/app/android`), then, if the hub has none or is unreachable, GitHub
   directly (the same release filter as P16.2). An update is offered when `build` is higher
   than the installed `versionCode` and `min_sdk` fits.
+- The app (`src/lib/update`) calls it on start when paired and at most every 24 hours, and the
+  offer is remembered until installed. A failed check does not count as a check.
+- Settings → App version has an **Updates** row (Android, self-hosted profile): the state ("Not
+  checked yet", "Checking…", "Up to date", the error), **Check for update** (never throttled)
+  and, when one is offered, the notes, the source ("your hub" or "GitHub") and **Install**.
 - Settings shows "Update 0.9.0 available" with the notes. **Install**: download to the app's
   cache, check the SHA-256 against the manifest, read the APK's signing certificate
   (`PackageManager.getPackageArchiveInfo(…, GET_SIGNING_CERTIFICATES)`) and require it to

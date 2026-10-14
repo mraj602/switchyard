@@ -9,6 +9,7 @@ import type { AppInfo } from '../contract/platform';
 import type { DataAction, HubData } from '../lib/data';
 import type { HubClient } from '../lib/hub';
 import type { RegisterState } from '../lib/notify';
+import type { Updater } from '../lib/update';
 
 export interface HubApi {
   /** The reducer state: last good replies, `offline`, `fetchedAt`. */
@@ -45,6 +46,11 @@ export interface HubApi {
    * (P6.7). Absent: the Expo profile, iOS or a build without the module.
    */
   link?: LinkLike;
+  /**
+   * The in-app updater (phone.md P16.3), Android in the self-hosted profile: Settings → App
+   * version shows it. Absent elsewhere (iOS, the Expo profile, no module): no Updates row.
+   */
+  updater?: Updater;
   /** DELETE /v1/devices/self (best effort), then clear the keychain, cache and widget data. */
   unpair(): Promise<void>;
 }

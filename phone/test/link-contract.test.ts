@@ -12,7 +12,8 @@ const same: [
   Eq<C.PublicKeys, SyLink.PublicKeys>,
   Eq<C.LinkRefresh, SyLink.LinkRefresh>,
   Eq<C.LinkStatus, SyLink.LinkStatus>,
-] = [true, true, true, true, true];
+  Eq<C.UpdateInfo, SyLink.UpdateInfo>,
+] = [true, true, true, true, true, true];
 
 // Compile-time: the module's exports are a LinkLike.
 const asLink: C.LinkLike = SyLink;
