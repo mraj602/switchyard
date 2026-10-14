@@ -137,7 +137,7 @@ func TestFakeInboxLimitsAndDuplicates(t *testing.T) {
 	post(t, srv2, srv2sock, "s", wrap(peers.ModeBypass, "same"), "m1")
 	post(t, srv2, srv2sock, "s", wrap(peers.ModeBypass, "same"), "m2")
 	srv2.Wait(2, 2*time.Second)
-	if r := srv2.All(); len(r) != 2 || r[1].Reason != "duplicate" {
+	if r := srv2.All(); len(r) != 2 || len(srv2.By(fakeinbox.Deliver)) != 1 || len(srv2.By(fakeinbox.Drop)) != 1 || srv2.By(fakeinbox.Drop)[0].Reason != "duplicate" {
 		t.Errorf("duplicate not dropped: %+v", r)
 	}
 }
