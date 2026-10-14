@@ -5,12 +5,43 @@
 //          NSSupportsLiveActivities = true (P12).
 // Android: application android:allowBackup="false" (the keychain token never leaves the
 //          phone, P3); RECORD_AUDIO and SYSTEM_ALERT_WINDOW removed if a library adds them;
-//          android:usesCleartextTraffic only in development builds.
+//          android:usesCleartextTraffic only in development builds;
+//          every androidx.work artifact is forced to one version (WORK_VERSION) in
+//          app/build.gradle. react-native-android-widget declares work-runtime 2.8.1 while
+//          expo-widgets' androidx.glance 1.2.0-rc01 pulls work-runtime-ktx 2.7.1; work 2.8
+//          merged the ktx classes into work-runtime, so both on the classpath fail
+//          :app:checkDebugDuplicateClasses (OneTimeWorkRequestKt, PeriodicWorkRequestKt).
+//          Forcing the group to 2.8.1 turns ktx into an empty artifact.
 //
 // Wave 0 skeleton; owned by WP-W from wave 1 on (phases/8.md).
-const { AndroidConfig, withAndroidManifest, withInfoPlist } = require('expo/config-plugins');
+const { AndroidConfig, withAndroidManifest, withAppBuildGradle, withInfoPlist } = require('expo/config-plugins');
 
 const REMOVED_PERMISSIONS = ['android.permission.RECORD_AUDIO', 'android.permission.SYSTEM_ALERT_WINDOW'];
+
+const WORK_VERSION = '2.8.1';
+const WORK_MARKER = '// sy: align androidx.work';
+const WORK_GRADLE = `
+${WORK_MARKER}
+configurations.all {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == 'androidx.work') {
+            details.useVersion '${WORK_VERSION}'
+        }
+    }
+}
+`;
+
+// Idempotent: prebuild regenerates build.gradle, but a plugin may still run over one twice.
+function alignWorkVersions(gradle) {
+  return gradle.includes(WORK_MARKER) ? gradle : gradle + WORK_GRADLE;
+}
+
+function withSyWorkAlignment(config) {
+  return withAppBuildGradle(config, (c) => {
+    c.modResults.contents = alignWorkVersions(c.modResults.contents);
+    return c;
+  });
+}
 
 function withSyIos(config) {
   return withInfoPlist(config, (c) => {
@@ -50,6 +81,9 @@ module.exports = function withSyNative(config, props = {}) {
   const development = props.development === true;
   config = withSyIos(config);
   config = withSyAndroid(config, { development });
+  config = withSyWorkAlignment(config);
   return config;
 };
 module.exports.REMOVED_PERMISSIONS = REMOVED_PERMISSIONS;
+module.exports.WORK_VERSION = WORK_VERSION;
+module.exports.alignWorkVersions = alignWorkVersions;
