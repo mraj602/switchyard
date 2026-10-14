@@ -259,7 +259,7 @@ A signed document (keys.md 4.1) of type `matrix`:
 
 | Field | Rule |
 | --- | --- |
-| `version` | Previous + 1 at the hub; a machine accepts any version above its own (it may have missed some) and ignores lower ones. Version 1 is made by the hub at first start of PE1: nothing allowed, `same_account: true`, `paused: false`, `max_turns: 30`, hub-signed. That content is also the **baseline** a machine with no document compares against (keys.md 5.4), so version 1 is neutral and a first document that allows more is a widening. |
+| `version` | Previous + 1 at the hub; a machine accepts any version above its own (it may have missed some) and ignores lower ones. Version 1 is made by the hub the first time anything asks for the matrix (`GET /v1/peers/matrix`, which `sy peers enable` and `sy peers matrix` do): nothing allowed, `same_account: true`, `paused: false`, `max_turns: 30`, hub-signed. That content is also the **baseline** a machine with no document compares against (keys.md 5.4), so version 1 is neutral and a first document that allows more is a widening. |
 | `hub` | The hub key's fingerprint (keys.md 4.1); another hub's document is refused. |
 | `paused` | The kill switch (11). |
 | `same_account` | Whether sessions of one account may message each other across machines and through Switchyard on one machine (the diagonal). Default true: it is what native `/peers` already allows. |
@@ -396,6 +396,26 @@ sy peers audit [--since 24h] [--json]  metadata from the hub (owner) or this mac
   on this machine they print "Open Settings → Peers on the board" with the hub URL, and exit 4.
 - Narrowing commands work anywhere, including inside a session: a session may narrow (deny,
   pause) but never widen.
+- Account names (`<from>`, `<to>`): a label, a number or a uuid, tried in that order. Labels
+  match without case; one that names two accounts is refused (use the number). The number is
+  the account's place in the matrix print, which sorts by label, then uuid. The accounts `sy`
+  knows are this machine's slots (label = `slots.labels`, else the folder name) and those the
+  newest matrix document lists (`accounts`); a document the owner key signs refreshes that list.
+- Narrowing never asks and never needs the passphrase: `deny`, `same-account off`, `max-turns`
+  down and `pause` are edits the hub signs (`PUT /v1/peers/matrix {"edit"}`, `POST
+  /v1/peers/pause`). Widening commands run the signing guard before anything else and exit 4
+  under Claude Code; `--yes` skips the confirmation, never the passphrase.
+- Until the link delivers `matrix` frames (link.md 6.4), `sy peers matrix`, `enable` and every
+  change fetch the matrix from the hub with `GET /v1/peers/matrix`, verify it with this
+  machine's pins and store it with `keys.SaveAcceptedMatrix` (the function the link client
+  calls too). Without a hub they use the stored one; with none, nothing is allowed (`no_matrix`).
+  A hub-signed widening is refused here under `peers.hub_may_widen = false` (keys.md 5.4).
+- Matrix print (7.3): rows are the sender. `→` means the row's account may start a thread with
+  the column's, `⇄` both ways, `·` neither (or only the reverse, which the other cell shows),
+  `=` the same account. `--json` prints the same facts with the numbered accounts.
+- `status` reads this machine's `audit.jsonl` (inside a session, only that session's
+  messages). `audit` shows the hub's log when the token may read it (`owner` or `read` scope)
+  and always this machine's; both are metadata only.
 
 ### 7.2 Exit codes
 

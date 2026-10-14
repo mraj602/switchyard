@@ -563,7 +563,7 @@ tables: the store binds `[]byte`, never a string.
   owner.pub                    pinned owner key (3.5)
   hub.pub                      pinned hub key (3.5)
   certs.json                   certificates of other devices seen in peer envelopes, by device id (cache)
-  matrix.json                  newest accepted matrix document, as received (wire form)
+  matrix.json                  newest accepted matrix document, as received (wire form); read with keys.LoadAcceptedMatrix (verifies it with the pins), written with keys.SaveAcceptedMatrix (verifies, applies 5.4, atomic, 0600)
   revocations.json             newest accepted revocation document
 <state>/hub_sign.key           hub machine only (3.4), mode 0600
 ```
