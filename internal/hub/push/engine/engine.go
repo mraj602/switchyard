@@ -85,6 +85,14 @@ type Config struct {
 	// most pushes it sends (200); what does not fit stays pending for the next pass.
 	PassBudget       time.Duration
 	MaxPushesPerPass int
+	// Link queues dismissals on the link targets that got an alert when it is seen or
+	// resolved (push.md 13.3), in the engine's transaction. Nil: none (no link channel).
+	Link LinkQueue
+}
+
+// LinkQueue is the link's enqueue inside a transaction (hublink.Hub.EnqueueTx).
+type LinkQueue interface {
+	EnqueueTx(tx *store.Tx, device, t, tag string, ttl time.Duration, plaintext []byte, ref string) (int64, error)
 }
 
 // Engine is the alert engine. It implements api.Engine (Notify) and model.AlertService.

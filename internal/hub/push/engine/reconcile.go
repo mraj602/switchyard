@@ -334,6 +334,9 @@ func (w *work) end(a model.Alert, status model.Status, reason string) error {
 	if err := w.tx.DeliveriesSkipUnsent(a.ID, "resolved", w.nowMS); err != nil {
 		return err
 	}
+	if err := w.dismiss(a); err != nil {
+		return err
+	}
 	w.event(string(status), a)
 	if reason == model.ReasonRuleOff || reason == model.ReasonStale {
 		w.e.log.Printf("alert %s %s trigger=%s %s reason=%s", status, a.ID, a.Trigger, subjectLog(a), reason)

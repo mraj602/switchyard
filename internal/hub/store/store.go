@@ -132,9 +132,15 @@ func (s *Store) Now() time.Time { return s.now() }
 // Tx is one write transaction. Repository methods hang off it.
 type Tx struct {
 	*sql.Tx
-	ctx context.Context
-	now time.Time
+	ctx   context.Context
+	now   time.Time
+	after []func()
 }
+
+// AfterCommit runs fn once the transaction has committed (never when it rolls back), on
+// the goroutine that called Write. Wake-ups of waiting readers belong here: before the
+// commit they would read the old state.
+func (tx *Tx) AfterCommit(fn func()) { tx.after = append(tx.after, fn) }
 
 // Ctx is the context of the transaction.
 func (tx *Tx) Ctx() context.Context { return tx.ctx }
@@ -183,6 +189,9 @@ func (s *Store) Write(ctx context.Context, fn func(tx *Tx) error) error {
 	}
 	if err := t.Commit(); err != nil {
 		return fmt.Errorf("store: commit: %w", err)
+	}
+	for _, fn := range tx.after {
+		fn()
 	}
 	return nil
 }

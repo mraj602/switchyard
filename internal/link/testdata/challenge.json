@@ -1,0 +1,21 @@
+{
+  "name": "challenge",
+  "keys": {
+    "hub": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w",
+    "hub_fp": "gr2q7gf5lh6pzfdnurnkvput"
+  },
+  "fields": {
+    "exp": 1760518860,
+    "hub": "gr2q7gf5lh6pzfdnurnkvput",
+    "nonce": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA"
+  },
+  "signed_hex": "73792d6c696e6b2d7631206368616c6c656e67650a67723271376766356c6836707a66646e75726e6b767075740a41514944424155474277674a4367734d4451345045424553457851564668635947526f62484230654879410a31373630353138383630",
+  "frame": {
+    "t": "challenge",
+    "v": 1,
+    "hub": "gr2q7gf5lh6pzfdnurnkvput",
+    "nonce": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA",
+    "exp": 1760518860,
+    "sig": "sHZZLGuG1i_W-fLItc7L2DkD3C9M7r1t-p1R4x7QN4CSuL0PYMK9l1qmoUkvlX57UO4SLX0qsDo33xCbj2u0BQ"
+  }
+}

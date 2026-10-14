@@ -234,6 +234,7 @@ func (s *Server) keysRevocationsPost(w http.ResponseWriter, r *http.Request) {
 	if ids == nil {
 		ids = []string{}
 	}
+	s.linkRevoked(r.Context(), ids...)
 	writeJSON(w, http.StatusOK, map[string]any{"revoked": ids})
 }
 

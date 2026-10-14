@@ -1234,11 +1234,14 @@ Web Push in the installed web app stays the backup (plan addendum H1); a phone c
   handling; `remote_url` is kept, since the body is sealed end to end), plus one field `origin`
   (the hub's `hub.public_url`) so the app can drop an action meant for another hub
   (phone.md P6.4).
-- It calls `link.Enqueue(target.device_id, "alert", payload.tag, ttl, payload, "d:" +
-  delivery.id)` (link.md 5.2) with 6.4's TTL. Sealing is RFC 8291 with the target's `keys`
-  (`p256dh` = the phone's `box_pub`, `auth`) through `webpush.Encrypt`, the function of 6.3,
-  `padMultiple` 128.
-- Results: enqueued → `sent` (`Ref` = `"seq:<n>"`); no `device_key`, or the device revoked →
+- It calls `link.Enqueue(target.device_id, "alert", tag, ttl, payload, "d:" + the ids of the
+  deliveries the push carries, comma-separated)` (link.md 5.2) with 6.4's TTL; a summary
+  carries several. `tag` is `payload.tag` when it fits link.md 5.3's rule, else its Web Push
+  `Topic` (6.3), and dismissals (13.3) use the same mapping. Sealing is RFC 8291 with the
+  certificate's box key (`p256dh` = the phone's `box_pub`) and the target's `auth` through
+  `webpush.Encrypt`, the function of 6.3, `padMultiple` 128.
+- Results: enqueued → `sent` (`Ref` empty: `delivery.ticket` is Expo's receipt id and stays
+  NULL for link deliveries); no `device_key`, or the device revoked →
   `gone` (target disabled, as for Web Push 410); `ErrQueueFull` → `retry` (5.6's backoff).
 - `sent` means queued for the phone, not on it: `delivery.delivered_at` (13.4) says that.
 

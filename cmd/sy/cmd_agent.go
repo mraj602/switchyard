@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"os/user"
@@ -15,7 +17,9 @@ import (
 	"time"
 
 	"github.com/mraj602/switchyard/internal/agent"
+	"github.com/mraj602/switchyard/internal/client"
 	"github.com/mraj602/switchyard/internal/config"
+	"github.com/mraj602/switchyard/internal/linkclient"
 	"github.com/mraj602/switchyard/internal/paths"
 	peerspkg "github.com/mraj602/switchyard/internal/peers"
 	"github.com/mraj602/switchyard/internal/service"
@@ -61,8 +65,8 @@ var (
 	}
 	// agentPeerCred overrides how the agent reads a caller's pid (tests; nil: the real one).
 	agentPeerCred func(*net.UnixConn) (int, int, error)
-	// agentLink is the link client (link.md), nil until that package exists. `sy agent run`
-	// passes it to agent.Run.
+	// agentLink overrides the link client (tests); nil: `sy agent run` builds the real one
+	// from hub.url (newAgentLink).
 	agentLink agent.LinkClient
 	// agentKeysStep is what `sy agent enable` does about device keys before installing the
 	// service (peers.md 2.1: make them, register them, print the fingerprints). Nil until
@@ -112,17 +116,52 @@ func agentRun(stderr io.Writer) error {
 	ctx, stop := agentContext()
 	defer stop()
 	fmt.Fprintf(stderr, "sy agent: listening on %s\n", agentSocket(pe.Env))
+	lc := agentLink
+	if lc == nil {
+		if lc, err = newAgentLink(pe.Env.State, stderr); err != nil {
+			fmt.Fprintf(stderr, "sy agent: no link to the hub: %v\n", err)
+		}
+	}
 	return agent.Run(ctx, agent.Config{
 		Socket: agentSocket(pe.Env),
 		Load: func() (peerspkg.Env, bool, error) {
 			p, err := peersEnv()
 			return p.Env, p.Enabled, err
 		},
-		Link:     agentLink,
+		Link:     lc,
 		LogPath:  filepath.Join(pe.Env.State, "logs", "agent.log"),
 		Version:  version.Version,
 		PeerCred: agentPeerCred,
 	})
+}
+
+// newAgentLink builds the machine link client from config hub.url and hub.dial (link.md:
+// machines always use their configured hub address, never the welcome's urls). (nil, nil)
+// when no hub is configured.
+func newAgentLink(state string, stderr io.Writer) (agent.LinkClient, error) {
+	d, err := paths.Resolve(paths.FromOS())
+	if err != nil {
+		return nil, err
+	}
+	cfg := config.Defaults()
+	if f, err := config.Load(d.Config.Path); err == nil {
+		cfg, _ = f.Typed()
+	}
+	if cfg.Hub.URL == "" {
+		return nil, nil
+	}
+	u, err := linkclient.HubURL(cfg.Hub.URL)
+	if err != nil {
+		return nil, err
+	}
+	var hc *http.Client
+	if cfg.Hub.Dial != "" {
+		if hc, err = client.HTTPClient(cfg.Hub.Dial, 0); err != nil {
+			return nil, err
+		}
+	}
+	return linkclient.New(linkclient.Config{State: state, URL: u, HTTP: hc, HubMayWiden: cfg.Peers.HubMayWiden,
+		Version: version.Version, Log: log.New(stderr, "sy agent: ", log.LstdFlags)}), nil
 }
 
 // setPeersEnabled changes `[peers] enabled` in config.toml.

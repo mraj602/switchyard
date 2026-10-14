@@ -50,6 +50,8 @@ type Config struct {
 	// Keys is the hub's signing key and the key documents (F1, keys.md). Nil: the key
 	// endpoints answer 503 and pairing registers no keys.
 	Keys *hubkeys.Service
+	// Link is the device link (F1, link.md). Nil: /v1/link and /v1/link/poll answer 503.
+	Link Link
 }
 
 // Engine is what the server needs from the alert engine. Notify must not block (changes

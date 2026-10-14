@@ -60,6 +60,7 @@ type devJSON struct {
 	Prefs        model.Prefs     `json:"prefs"`
 	Targets      []devTargetJSON `json:"targets"`
 	Keys         *devKeyJSON     `json:"keys"`
+	Link         *linkStatusJSON `json:"link"`
 }
 
 // devKeyJSON is api.yaml DeviceKeyInfo (keys.md 4).
@@ -161,9 +162,10 @@ func (s *Server) devList(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]devJSON, 0, len(ds))
 	ks := s.devKeys(r.Context())
+	ls := s.devLinks(r.Context(), ks)
 	for _, d := range ds {
 		v := devView(d, dev.ID, targets[d.ID])
-		v.Keys = ks[d.ID]
+		v.Keys, v.Link = ks[d.ID], ls[d.ID]
 		out = append(out, v)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"devices": out})
@@ -207,7 +209,8 @@ func (s *Server) devReply(w http.ResponseWriter, r *http.Request, id, current st
 		return
 	}
 	v := devView(d, current, targets[d.ID])
-	v.Keys = s.devKeys(r.Context())[d.ID]
+	ks := s.devKeys(r.Context())
+	v.Keys, v.Link = ks[d.ID], s.devLinks(r.Context(), ks)[d.ID]
 	writeJSON(w, status, v)
 }
 
@@ -343,6 +346,7 @@ func (s *Server) devDelete(w http.ResponseWriter, r *http.Request) {
 		auth.WriteError(w, http.StatusServiceUnavailable, "unavailable", "database unavailable")
 		return
 	}
+	s.linkRevoked(r.Context(), id)
 	if id == caller.ID {
 		w.Header().Del("Set-Cookie") // drop the daily refresh made by Require
 		auth.ClearCookie(w)

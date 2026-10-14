@@ -2,6 +2,7 @@ package expo
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -30,6 +31,9 @@ type RefresherOptions struct {
 	Store *store.Store
 	// Sender sends the refresh messages (the expo Sender; a fake in tests).
 	Sender model.Sender
+	// Link sends `refresh` frames to link targets (push.md 13.5) with the same digest,
+	// debounce and minimum interval. Nil: link targets get none.
+	Link model.Sender
 	// Broker is the hub's event broker; session and usage events start a pass.
 	Broker *events.Broker
 	// Clock is the time source; nil is clock.Real{}.
@@ -234,10 +238,18 @@ func (r *Refresher) pass(ctx context.Context, now time.Time) error {
 	if err != nil {
 		return err
 	}
+	if r.o.Link != nil {
+		lt, err := r.o.Store.LinkRefreshTargets(ctx, nowMS)
+		if err != nil {
+			return err
+		}
+		targets = append(targets, lt...)
+	}
 	state, err := r.o.Store.ExpoWidgetState(ctx, nowMS)
 	if err != nil {
 		return err
 	}
+	snapshot := LinkSnapshot(state, nowMS)
 	digest, nextReset := Digest(state)
 	wake := time.Time{}
 	later := func(t time.Time) {
@@ -263,8 +275,12 @@ func (r *Refresher) pass(ctx context.Context, now time.Time) error {
 		}
 		msg := model.Message{Payload: model.Payload{V: model.PayloadVersion, Type: model.TypeRefresh,
 			NeedsYou: state.NeedsYou, TS: model.Time(nowMS)}, TTL: RefreshTTL, Urgency: "normal"}
+		s := r.o.Sender
+		if t.Kind == model.KindLink {
+			s, msg.Data = r.o.Link, snapshot
+		}
 		sctx, cancel := context.WithTimeout(ctx, refreshSendTime)
-		res := r.o.Sender.Send(sctx, t, msg)
+		res := s.Send(sctx, t, msg)
 		cancel()
 		if err := r.o.Store.ApplyTargetResult(context.WithoutCancel(ctx), t.ID, res); err != nil {
 			r.o.Log.Printf("expo refresh: record result: %v", err)
@@ -305,6 +321,23 @@ func (r *Refresher) refreshMin(ctx context.Context) int {
 		}
 	}
 	return s.ExpoRefreshMin
+}
+
+// LinkSnapshot is a link `refresh` body (link.md 6.4): {"v":1,"needs_you","seats":[{"seat",
+// "window","used_pct","resets_at"}],"ts"}, enough to redraw the widgets offline.
+func LinkSnapshot(s store.ExpoWidgetState, nowMS int64) []byte {
+	type seat struct {
+		Seat     string     `json:"seat"`
+		Window   string     `json:"window"`
+		UsedPct  float64    `json:"used_pct"`
+		ResetsAt model.Time `json:"resets_at"`
+	}
+	seats := make([]seat, 0, len(s.Windows))
+	for _, w := range s.Windows {
+		seats = append(seats, seat{w.Seat, w.Key, w.Pct, model.Time(w.ResetsAt)})
+	}
+	b, _ := json.Marshal(map[string]any{"v": 1, "needs_you": s.NeedsYou, "seats": seats, "ts": model.Time(nowMS)})
+	return b
 }
 
 // Digest is what a widget shows, coarsened (push.md 12.9): the needs-you count, each seat ×
