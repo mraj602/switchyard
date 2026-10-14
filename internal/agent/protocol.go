@@ -163,11 +163,14 @@ func Call(sock string, req Request, timeout time.Duration) (Reply, error) {
 	if err != nil {
 		return Reply{}, err
 	}
-	if _, err := c.Write(append(b, '\n')); err != nil {
-		return Reply{}, err
-	}
+	// The agent may refuse before reading (another user) and close: a failed write still
+	// leaves its reply to read.
+	_, werr := c.Write(append(b, '\n'))
 	line, err := bufio.NewReaderSize(io.LimitReader(c, MaxLine), 64<<10).ReadBytes('\n')
 	if err != nil && len(line) == 0 {
+		if werr != nil {
+			return Reply{}, werr
+		}
 		return Reply{}, fmt.Errorf("the sy agent closed the connection: %w", err)
 	}
 	var rep Reply
