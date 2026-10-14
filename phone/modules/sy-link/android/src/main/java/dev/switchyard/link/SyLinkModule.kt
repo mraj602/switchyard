@@ -161,6 +161,7 @@ class SyLinkModule : Module() {
       Watchdog.cancel(ctx)
       Keystore.delete()
       store.clear()
+      updateAuth = null // the unpaired hub's token
       Unit
     }
 

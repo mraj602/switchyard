@@ -149,6 +149,35 @@ describe('updater', () => {
     expect(installed.view().phase).toBe('idle');
   });
 
+  it('an offer remembered across a restart still installs: the hub is asked again first', async () => {
+    // The module keeps the hub token only in memory from the last checkUpdate (push.md 14.8);
+    // after a restart within the day there is no new check, and Install must not fail.
+    linkState.update = INFO;
+    const a = make();
+    await a.u.check();
+    linkState.hubAuth = false; // the process restarted
+    const hub = { origin: 'https://hub.example.ts.net', token: 'sy_p_secrettoken' };
+    const again = createUpdater({ link: SyLink, loadHub: async () => hub, kv: a.kv, clock: a.clock, installedBuild: 800 });
+    await again.load();
+    await again.checkIfDue(); // checked less than a day ago: nothing
+    expect(callsOf('link.checkUpdate')).toHaveLength(1);
+    await again.install();
+    expect(again.view().phase).toBe('started');
+    expect(callsOf('link.checkUpdate')).toHaveLength(2);
+    expect(callsOf('link.installUpdate')).toHaveLength(1);
+  });
+
+  it('install drops a remembered offer the hub no longer has (unpaired and paired again)', async () => {
+    linkState.update = INFO;
+    const { u } = make();
+    await u.check();
+    linkState.update = null; // the new hub has nothing newer
+    await u.install();
+    expect(callsOf('link.installUpdate')).toHaveLength(0);
+    expect(u.view().phase).toBe('none');
+    expect(u.view().info).toBeNull();
+  });
+
   it('never stores or shows the token', async () => {
     linkState.update = INFO;
     const { u, kv } = make();
