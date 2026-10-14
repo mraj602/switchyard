@@ -217,3 +217,26 @@ func TestSenderRefusesUncertifiedTarget(t *testing.T) {
 		t.Fatal("sealed to an uncertified key")
 	}
 }
+
+// A tofu machine that replaced its keys is listed with the old ones ("replaced", keys.md 4.2
+// step 3): its new certificate is not revoked. A listing of its current keys is.
+func TestReplacedKeysAreNotARevocation(t *testing.T) {
+	f := newEnvFix(t)
+	d := f.seal(f.envelope(), "hello", f.laptop)
+	sender, err := peers.CheckMachineCert(f.laptopC, f.trust, nil, "dev_laptop")
+	if err != nil {
+		t.Fatal(err)
+	}
+	replaced := &keys.RevocationBody{Devices: []keys.RevokedDevice{{Device: "dev_laptop", Keys: []string{"old-sign-fp", "old-box-fp"}, Reason: "replaced"}}}
+	if got, err := f.open(d, f.laptopC, replaced); err != nil || got != "hello" {
+		t.Fatalf("after a key replacement: %q, %v", got, err)
+	}
+	workerReplaced := &keys.RevocationBody{Devices: []keys.RevokedDevice{{Device: "dev_worker", Keys: []string{"old-sign-fp"}, Reason: "replaced"}}}
+	if _, err := peers.CheckMachineCert(f.workerC, f.trust, workerReplaced, "dev_worker"); err != nil {
+		t.Fatalf("sealing to a machine that replaced its keys: %v", err)
+	}
+	lost := &keys.RevocationBody{Devices: []keys.RevokedDevice{replaced.Devices[0],
+		{Device: "dev_laptop", Keys: []string{sender.Body.SignFP(), sender.Body.BoxFP()}, Reason: "lost"}}}
+	_, err = f.open(d, f.laptopC, lost)
+	reasonIs(t, err, peers.ReasonRevoked)
+}

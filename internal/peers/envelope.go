@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -108,12 +109,19 @@ func certReason(err error) string {
 	return ReasonBadSignature
 }
 
-// revoked reports whether a certificate's device or either of its keys is listed.
+// revoked reports whether either of a certificate's keys is listed, or its device is listed
+// without keys. The device id alone is not enough: a live tofu device is listed with the keys
+// it replaced (keys.md 4.2 step 3, 6).
 func revoked(c keys.Cert, rev *keys.RevocationBody) bool {
 	if rev == nil {
 		return false
 	}
-	return rev.RevokedDevice(c.Body.Device) || rev.RevokedKey(c.Body.SignFP()) || rev.RevokedKey(c.Body.BoxFP())
+	if rev.RevokedKey(c.Body.SignFP()) || rev.RevokedKey(c.Body.BoxFP()) {
+		return true
+	}
+	return slices.ContainsFunc(rev.Devices, func(d keys.RevokedDevice) bool {
+		return d.Device == c.Body.Device && len(d.Keys) == 0
+	})
 }
 
 func machineKind(kind string) bool { return kind == "machine" || kind == "desktop" }
