@@ -313,6 +313,12 @@ func serve(args []string, stdout, stderr io.Writer) error {
 		Action: func(ctx context.Context, token string) (any, bool, int) { return srv.LinkAction(ctx, token) },
 	})
 	cfg.Link = lk
+	// A new matrix goes to every machine at once (link.md 7); the sweeper catches the rest.
+	ks.OnMatrix = func(keys.Doc) {
+		if err := lk.PublishDocs(context.Background()); err != nil {
+			logger.Printf("link: publishing the matrix: %v", err)
+		}
+	}
 	srv = api.New(cfg)
 	if err := lk.Start(ctx); err != nil {
 		return fmt.Errorf("link: %w", err)
