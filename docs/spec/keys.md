@@ -166,8 +166,8 @@ Each device keeps the keys it trusts in its state folder (paths.md 3):
 
 | File | Holds | Set |
 | --- | --- | --- |
-| `<state>/keys/hub.pub` | `{"pub", "fp", "pinned_at", "how"}` | At pairing from the claim reply, checked against the QR's `h=` when there was one; `how` = `qr`, `tofu` (typed code, or `sy connect --token`), `ssh` (`sy machine add`) |
-| `<state>/keys/owner.pub` | `{"pub", "fp", "pinned_at", "how"}` | Out of band when possible: by `sy keys init` on the owner machine (`how = local`), by `sy machine add` over your SSH session (`how = ssh`), or by `sy keys trust-owner <fp>`. Otherwise from the hub the first time one is active (the claim reply, `GET /v1/keys` or the link's `welcome`), only with the owner's self-signature and the hub's confirmation signature (3.3): trust on first use, `how = tofu`, printed by `sy agent status` with the fingerprint to compare |
+| `<state>/keys/hub.pub` | `{"pub", "fp", "pinned_at", "how"}` | At pairing from the claim reply, checked against the QR's `h=` when there was one; `how` = `qr`, `tofu` (typed code, or `sy connect --token`), `ssh` (`sy machine add`), `hand` (`sy agent enable --repin-hub`) |
+| `<state>/keys/owner.pub` | `{"pub", "fp", "pinned_at", "how"}` | Out of band when possible: by `sy keys init` on the owner machine (`how = local`), by `sy machine add` over your SSH session (`how = ssh`), or by `sy keys trust-owner <fp>` (`how = hand`). Otherwise from the hub the first time one is active (the claim reply, `GET /v1/keys` or the link's `welcome`), only with the owner's self-signature and the hub's confirmation signature (3.3): trust on first use, `how = tofu`, printed by `sy agent status` with the fingerprint to compare |
 
 A pin changes only by `sy keys trust-owner <fp>` / `sy agent enable --repin-hub` typed on that
 machine, which print the old and the new fingerprint and ask for confirmation (TTY only,
@@ -224,10 +224,16 @@ Every signed object has one shape, whatever its type:
 | `device_cert` | 4.2 | `hub` always; `owner` for machines and desktops before they may send or receive peer messages |
 | `matrix` | peers.md 5.1 | One: `owner`, or `hub` under the rules of 5.4 |
 | `revocations` | 6 | One: `owner` or `hub` |
+| `peer_envelope` | peers.md 8.2 | `device`: the sending machine's key, checked against its certificate |
 
 `matrix` and `revocations` bodies carry `"hub": "<hub fp>"` as certificates do, so a document
 made for a test hub with the same owner key is refused by machines of another hub.
-| `peer_envelope` | peers.md 8.2 | `device`: the sending machine's key, checked against its certificate |
+
+**`owner_key` is the one self-describing type.** Its `by: owner` key is not looked up in a pin:
+the verifier decodes `pub` from the body first (the only body read before a signature is
+checked), requires `fp` = fingerprint(`pub`), checks the self-signature with that key and then
+the `by: hub` signature with the pinned (or the hub's own) hub key. A device pins the key only
+when both verify (3.5); the hub uses a row only when both verify. Code: `keys.VerifyOwnerKey`.
 
 ### 4.2 Device certificates
 
@@ -297,7 +303,8 @@ requires it.
 A matrix document **widens** compared with the one before it when any of these is true:
 an allowed directed pair is added, `same_account` goes from false to true, `paused` goes
 from true to false, or `max_turns` grows. Anything else narrows or is neutral. The rule is
-computed by one function (`peers.Widens(old, new)`) used by the hub, the agent and the CLI.
+computed by one function (`keys.Widens(old, new)`, in `internal/keys` beside the matrix body so
+the hub, the agent and the CLI share it without importing `internal/peers`).
 
 ### 5.3 Owner-key documents
 
@@ -453,7 +460,11 @@ The device checks the reply before it keeps anything: the certificate's hub sign
 `hub_key` (and `hub_key.fp` against `h=` when the QR had one), that the certificate holds
 **its own** public keys, and, when it sent `keys_sealed`, that `reg` is `qr`. Any mismatch →
 it deletes the new device with its token (`DELETE /v1/devices/self`), forgets the token and
-shows "Pairing was tampered with; try again on your home network".
+shows "Pairing was tampered with; try again on your home network". A machine (`sy connect
+--code`, a `write` token) cannot call `DELETE /v1/devices/self` (owner and push scopes only):
+it tries, forgets the token whatever the answer, and tells you to revoke the device on the
+board if the hub still lists it. A machine that already pins another hub key refuses the
+reply the same way (`sy agent enable --repin-hub` after checking the new fingerprint).
 
 ## 8. The signing guard
 
