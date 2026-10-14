@@ -22,7 +22,7 @@ class AlarmReceiver : BroadcastReceiver() {
     if (!store.configured || !store.enabled || store.verified == "changed" || store.status == "revoked") return
     when (intent.action) {
       RESTART -> if (SyLinkService.instance == null) SyLinkService.start(ctx)
-      RETRY -> if (SyLinkService.instance == null) SyLinkService.start(ctx) else SyLinkService.start(ctx, SyLinkService.ACTION_RETRY)
+      RETRY -> SyLinkService.retry(ctx)
     }
   }
 
