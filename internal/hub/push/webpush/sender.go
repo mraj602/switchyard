@@ -259,6 +259,10 @@ func transportError(err error) string {
 	return s
 }
 
+// PayloadJSON is the plaintext a Web Push carries for p, shortened to MaxPayloadJSON; the
+// link channel sends the same bytes (push.md 13.2).
+func PayloadJSON(p model.Payload) ([]byte, error) { return payloadJSON(p) }
+
 // payloadJSON marshals the payload and, when it exceeds MaxPayloadJSON, shortens the alert
 // list, then cuts the body and
 // then the title at rune boundaries (with an ellipsis) until it fits.

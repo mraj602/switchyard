@@ -587,6 +587,9 @@ func (w *work) render(ps []*push) error {
 		pl.Title, pl.Body, pl.URL, pl.Tag = txt.Title, txt.Body, txt.URL, txt.Tag
 		p.msg = model.Message{Payload: pl, TTL: rules.TTL(trig, summary, resets, w.nowMS), Urgency: rules.Urgency(trig, summary),
 			Priority: rules.Priority(trig, summary), HubURL: w.hub}
+		for _, d := range p.ds {
+			p.msg.Deliveries = append(p.msg.Deliveries, d.ID)
+		}
 	}
 	return nil
 }

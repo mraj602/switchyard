@@ -220,6 +220,16 @@ func (h *Hub) EnqueueTx(tx *store.Tx, device, t, tag string, ttl time.Duration, 
 	return seq, nil
 }
 
+// TagFor is a notification tag (push.md 6.5) as a link tag: itself when it fits link.md
+// 5.3's rule, else its Web Push Topic (22 base64url characters, also a valid tag). The
+// alert sender and the dismissals use it, so a dismiss collapses its alert.
+func TagFor(tag string) string {
+	if link.ValidTag(tag) {
+		return tag
+	}
+	return webpush.Topic(tag)
+}
+
 // sealer seals a body to one device's certified keys.
 type sealer struct {
 	device string

@@ -40,6 +40,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/push/clock"
 	"github.com/mraj602/switchyard/internal/hub/push/engine"
 	"github.com/mraj602/switchyard/internal/hub/push/expo"
+	pushlink "github.com/mraj602/switchyard/internal/hub/push/link"
 	"github.com/mraj602/switchyard/internal/hub/push/model"
 	"github.com/mraj602/switchyard/internal/hub/push/ntfy"
 	"github.com/mraj602/switchyard/internal/hub/push/webpush"
@@ -276,34 +277,8 @@ func serve(args []string, stdout, stderr io.Writer) error {
 	}
 	logger.Printf("hub key %s", keys.GroupFP(ks.Key.FP))
 	cfg.Keys = ks
-	var eng *engine.Engine
-	var expoSender *expo.Sender
-	if !*noPush {
-		senders, err := pushSenders(ctx, st, pub, hooks)
-		if err != nil {
-			return err
-		}
-		// The third channel (push.md 12): the base URL and access token are read from the
-		// store and reloaded when the owner PUTs the channel (the API calls Reload).
-		expoSender = expo.New(expo.Options{Store: st, Log: logger, Client: hooks.ExpoClient, Now: clk.Now})
-		senders = append(senders, expoSender)
-		cfg.Senders = map[string]model.Sender{}
-		list := make([]model.Sender, 0, len(senders))
-		for _, s := range senders {
-			cfg.Senders[s.Kind()] = s
-			list = append(list, s)
-		}
-		eng = engine.New(engine.Config{Store: st, Clock: clk, Senders: list, TZ: os.Getenv("TZ"), PublicURL: pub, Log: logger})
-		cfg.Engine = eng // only when non-nil: a typed nil in the interface would be called
-	}
-	// The pull scheduler ingests through the API's ingester (one change feed for the stream
-	// and the engine), so it is made after the server; Config.Puller reaches it through ref.
-	ref := &pullerRef{}
-	if !*noPull {
-		cfg.Puller = ref
-	}
-	// The link (link.md): made before the server (the server routes it); it reaches the
-	// server's action and settings through srv, set just below.
+	// The link (link.md): made before the server (the server routes it) and the engine (it
+	// is a push channel); it reaches the server's action and settings through srv, set below.
 	var srv *api.Server
 	lk := hublink.New(hublink.Config{Store: st, Keys: ks, Now: now, Log: logger,
 		Settings: func(ctx context.Context) hublink.Settings {
@@ -318,6 +293,41 @@ func serve(args []string, stdout, stderr io.Writer) error {
 		if err := lk.PublishDocs(context.Background()); err != nil {
 			logger.Printf("link: publishing the matrix: %v", err)
 		}
+	}
+	// The self-hosted profile (push.md 13.6): the expo channel is turned off once.
+	if applied, err := st.ApplySelfHosted(ctx); err != nil {
+		return err
+	} else if applied {
+		logger.Printf("self-hosted profile: the expo channel is off (turn it on again with PUT /v1/push/channels/expo)")
+	}
+	var eng *engine.Engine
+	var expoSender *expo.Sender
+	var linkSender *pushlink.Sender
+	if !*noPush {
+		senders, err := pushSenders(ctx, st, pub, hooks)
+		if err != nil {
+			return err
+		}
+		// The third channel (push.md 12): the base URL and access token are read from the
+		// store and reloaded when the owner PUTs the channel (the API calls Reload).
+		expoSender = expo.New(expo.Options{Store: st, Log: logger, Client: hooks.ExpoClient, Now: clk.Now})
+		linkSender = pushlink.New(lk) // the Android app's channel (push.md 13)
+		senders = append(senders, expoSender, linkSender)
+		cfg.Senders = map[string]model.Sender{}
+		list := make([]model.Sender, 0, len(senders))
+		for _, s := range senders {
+			cfg.Senders[s.Kind()] = s
+			list = append(list, s)
+		}
+		eng = engine.New(engine.Config{Store: st, Clock: clk, Senders: list, TZ: os.Getenv("TZ"), PublicURL: pub, Log: logger,
+			Link: lk})
+		cfg.Engine = eng // only when non-nil: a typed nil in the interface would be called
+	}
+	// The pull scheduler ingests through the API's ingester (one change feed for the stream
+	// and the engine), so it is made after the server; Config.Puller reaches it through ref.
+	ref := &pullerRef{}
+	if !*noPull {
+		cfg.Puller = ref
 	}
 	srv = api.New(cfg)
 	if err := lk.Start(ctx); err != nil {
@@ -347,7 +357,8 @@ func serve(args []string, stdout, stderr io.Writer) error {
 		// After the engine (push.md 12.4, 12.9): Expo's receipts every 5 minutes, and
 		// silent widget refreshes on session and usage changes.
 		receipts = expo.NewReceipts(expo.ReceiptsOptions{Store: st, Sender: expoSender, Clock: clk, Log: logger})
-		refresh = expo.NewRefresher(expo.RefresherOptions{Store: st, Sender: expoSender, Broker: srv.Broker, Clock: clk, Log: logger})
+		refresh = expo.NewRefresher(expo.RefresherOptions{Store: st, Sender: expoSender, Link: linkSender, Broker: srv.Broker,
+			Clock: clk, Log: logger})
 		receipts.Start()
 		refresh.Start()
 		hooks.AttachExpo(receipts, refresh)

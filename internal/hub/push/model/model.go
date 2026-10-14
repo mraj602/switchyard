@@ -273,6 +273,7 @@ const (
 	KindWebPush = "webpush"
 	KindNtfy    = "ntfy"
 	KindExpo    = "expo" // the store app through Expo's push service (push.md 12)
+	KindLink    = "link" // the Android app over the hub's own link (push.md 13)
 )
 
 // Platforms of an expo target (TargetMeta.Platform).
@@ -327,6 +328,9 @@ const (
 	// TypeRefresh is the silent widget refresh of the expo channel (push.md 12.9): never
 	// shown, never an alert, no delivery row. Its data is {"v", "type", "needs_you", "ts"}.
 	TypeRefresh = "refresh"
+	// TypeDismiss clears a notification on link devices when its alert is seen or resolved
+	// (push.md 13.3): {"v":1,"type":"dismiss","tag","alerts"}.
+	TypeDismiss = "dismiss"
 )
 
 // Actions are the action tokens of a push (push.md 8); absent for tests and summaries.
@@ -358,6 +362,9 @@ type Payload struct {
 	Actions   *Actions `json:"actions,omitempty"`
 	Private   bool     `json:"private"`
 	TS        Time     `json:"ts"`
+	// Origin is the hub's public URL, link pushes only (push.md 13.2), so the app drops an
+	// action meant for another hub.
+	Origin string `json:"origin,omitempty"`
 }
 
 // PayloadVersion is Payload.V.
@@ -376,6 +383,11 @@ type Message struct {
 	Priority int
 	// HubURL is the hub's public origin; ntfy needs absolute URLs for click and actions.
 	HubURL string
+	// Deliveries are the delivery rows this push carries (the link channel acks them,
+	// push.md 13.4). Empty for tests and refreshes.
+	Deliveries []int64
+	// Data is a refresh's widget snapshot for link targets (link.md 6.4), as JSON.
+	Data []byte
 }
 
 // Outcome is the result class of one send (push.md 5.6, 10; api.yaml PushTestResult).
