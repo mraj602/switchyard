@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -17,7 +18,7 @@ import (
 
 // labelled gives the laptop's accounts the names the scenarios use: ~/.claude-2 is "work"
 // and ~/.claude-3 "personal", each with a launcher on PATH (stubs: the tab configs run them
-// by path and sy open lists them), and makes Warp's data folder exist (Linux layout).
+// by path and sy open lists them), and makes Warp's data folder exist (Linux layout, ~/.warp on macOS).
 func (l *laptop) labelled() {
 	l.t.Helper()
 	l.must("config", "set", "slots.labels.~/.claude-2", "work")
@@ -25,10 +26,10 @@ func (l *laptop) labelled() {
 	for _, n := range []string{"claude-2", "claude-3"} {
 		writeFile(l.t, l.h.Abs(".local/bin/"+n), "#!/bin/sh\necho \"launched $0 $*\"\n", 0o755)
 	}
-	mkdirs(l.t, l.h.Abs(".local/share/warp-terminal"))
+	mkdirs(l.t, l.h.Abs(warpDataRel()))
 }
 
-func (l *laptop) tabsDir() string { return l.h.Abs(".local/share/warp-terminal/tab_configs") }
+func (l *laptop) tabsDir() string { return l.h.Abs(warpDataRel() + "/tab_configs") }
 
 func (l *laptop) ledgerTerminal() map[string]any {
 	l.t.Helper()
@@ -190,7 +191,7 @@ func TestE8Titles(t *testing.T) {
 
 var colourLine = regexp.MustCompile(`(?m)^color = "([a-z]+)"$`)
 
-// E9: Warp tabs. With a Warp data folder (Linux layout) `sy term warp on --yes` writes three
+// E9: Warp tabs. With a Warp data folder (Linux layout, ~/.warp on macOS) `sy term warp on --yes` writes three
 // tab configs with the account colours and launchers; a second run changes nothing; `sy
 // open work` hands the opener warp://tab_config/switchyard-work; `off` removes what sy
 // wrote except a file edited by hand.
@@ -199,13 +200,13 @@ func TestE9WarpTabs(t *testing.T) {
 	l.setup()
 	l.labelled()
 	// Without Warp's folder sy refuses (the folder is made here, in labelled).
-	if err := os.RemoveAll(l.h.Abs(".local/share/warp-terminal")); err != nil {
+	if err := os.RemoveAll(l.h.Abs(warpDataRel())); err != nil {
 		t.Fatal(err)
 	}
 	if r := l.sy("term", "warp", "on", "--yes"); r.code != 4 || !strings.Contains(r.err, "Warp not found") {
 		t.Fatalf("no Warp: exit %d %s", r.code, r.err)
 	}
-	mkdirs(t, l.h.Abs(".local/share/warp-terminal"))
+	mkdirs(t, l.h.Abs(warpDataRel()))
 	tree0 := testtree.Take(t, l.home, snapOpts)
 
 	out := l.must("term", "warp", "on", "--yes")
@@ -357,4 +358,12 @@ func TestE10Uninstall(t *testing.T) {
 			t.Logf("note: <state>/%s remains after uninstall", p)
 		}
 	}
+}
+
+// warpDataRel is Warp data folder under the temp HOME for this OS (see warp.DataFolder).
+func warpDataRel() string {
+	if runtime.GOOS == "darwin" {
+		return ".warp"
+	}
+	return ".local/share/warp-terminal"
 }
