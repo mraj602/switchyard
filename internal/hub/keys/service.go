@@ -27,6 +27,9 @@ type Service struct {
 	Key   *HubKey
 	// Log receives one line per ignored row; never a key or a signature. Nil discards.
 	Log *log.Logger
+	// OnMatrix is called with every matrix document the hub stores, after the commit: the
+	// link queues it to the machines as a `matrix` frame. Nil: nobody listens.
+	OnMatrix func(keys.Doc)
 }
 
 // New returns a service over st signing with key.
@@ -655,17 +658,8 @@ func (s *Service) Matrix(ctx context.Context) (*keys.Signed[keys.MatrixBody], er
 	if err != nil {
 		return nil, err
 	}
-	for _, r := range rows {
-		d := keys.Doc{Type: keys.TypeMatrix, Body: keys.B64(r.Body), Sigs: []keys.Sig{{By: r.Signer, FP: r.KeyFP, Sig: keys.B64(r.Sig)}}}
-		sd, err := keys.VerifyMatrix(d, t)
-		if err == nil && sd.Body.Version != r.Version {
-			err = errors.New("version column differs from the body")
-		}
-		if err != nil {
-			s.logf("keys: matrix_doc version %d ignored: %v", r.Version, err)
-			continue
-		}
-		return &sd, nil
+	if rec := s.newestMatrix(rows, t); rec != nil {
+		return &rec.Signed, nil
 	}
 	return nil, nil
 }
