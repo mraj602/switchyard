@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -116,11 +117,19 @@ func (p *planner) expand(s string) string {
 	switch {
 	case s == "~":
 		return p.home
+	case strings.HasPrefix(s, "~/") && posixRooted(p.home):
+		return path.Join(p.home, s[2:])
 	case strings.HasPrefix(s, "~/"):
 		return filepath.Join(p.home, filepath.FromSlash(s[2:]))
+	case posixRooted(s):
+		return path.Clean(s)
 	}
 	return filepath.Clean(s)
 }
+
+// posixRooted reports whether s is a /-rooted path with no backslash: it keeps its own
+// separator even where the host's is `\` (a test pretending to be a POSIX machine).
+func posixRooted(s string) bool { return strings.HasPrefix(s, "/") && !strings.Contains(s, `\`) }
 
 func (p *planner) warn(format string, a ...any) {
 	s := fmt.Sprintf(format, a...)
