@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import path from 'node:path';
 
 import { create } from './tray.js';
 import { createBus } from './bus.js';
@@ -24,6 +25,7 @@ function setup(platform, { confirm = async () => true, throwTray = false } = {})
   return { fake, bus, calls, tray };
 }
 
+const icon = (name) => path.join('/assets', 'tray', name); // tray.js joins with the host separator
 const needs = (count, sessions = []) => ({ count, sessions });
 const labels = (menu) => menu.template.map((i) => i.label ?? '-');
 const imgs = (fake) => fake.callsOf('Tray.setImage').map(([p]) => p);
@@ -32,7 +34,7 @@ test('start() creates the tray with the empty image', () => {
   const { fake, tray } = setup('linux');
   assert.equal(tray.start(), true);
   assert.equal(tray.available(), true);
-  assert.deepEqual(fake.callsOf('Tray.new')[0][0], '/assets/tray/tray-0.png');
+  assert.deepEqual(fake.callsOf('Tray.new')[0][0], icon('tray-0.png'));
 });
 
 test('start() is false when the tray cannot be made', () => {
@@ -47,7 +49,7 @@ test('linux: badge count through app.setBadgeCount, image by key', () => {
   bus.emit('needs_you', needs(3));
   bus.emit('needs_you', needs(12));
   assert.deepEqual(fake.callsOf('app.setBadgeCount').map((a) => a[0]), [0, 3, 12]);
-  assert.deepEqual(imgs(fake).slice(-2), ['/assets/tray/tray-3.png', '/assets/tray/tray-9plus.png']);
+  assert.deepEqual(imgs(fake).slice(-2), [icon('tray-3.png'), icon('tray-9plus.png')]);
   assert.equal(fake.callsOf('Tray.setTitle').length, 0);
 });
 
@@ -67,7 +69,7 @@ test('win32: overlay icon, none at zero', () => {
   bus.emit('needs_you', needs(2));
   bus.emit('needs_you', needs(0));
   const overlays = calls.filter((c) => c[0] === 'overlay');
-  assert.equal(overlays[1][1].path, '/assets/tray/tray-2.png');
+  assert.equal(overlays[1][1].path, icon('tray-2.png'));
   assert.equal(overlays[2][1], null);
 });
 
@@ -111,5 +113,5 @@ test('start() takes the newest needs_you already on the bus', () => {
   const { fake, bus, tray } = setup('linux');
   bus.emit('needs_you', needs(5));
   tray.start();
-  assert.equal(fake.trays[0].image.path, '/assets/tray/tray-5.png');
+  assert.equal(fake.trays[0].image.path, icon('tray-5.png'));
 });
