@@ -16,14 +16,15 @@ import type { NotificationsLike } from '../src/lib/notify';
 import { routeToHref } from '../src/lib/links';
 import { bridge, HubGlue, HubProvider, installStateHooks, loadTaskHub, systemGluePlatform, taskRefresh, useHub } from '../src/state';
 import type { ProviderDeps } from '../src/state';
-import { getAppInfo, systemAppState, systemCache, systemClock, systemFetch, systemSecureHub } from '../src/state/platform';
+import { getAppInfo, systemAppState, systemCache, systemClock, systemFetch, systemLink, systemSecureHub } from '../src/state/platform';
 import { defineNotifyTask } from '../src/tasks/notify-task';
 import { registerAndroidWidgets } from '../widgets/android/task-handler';
 
 const g = globalThis as { __syNotifInit?: boolean; __syGlue?: Glue };
 if (!g.__syNotifInit || !g.__syGlue) {
   g.__syNotifInit = true; // Fast Refresh re-evaluates modules: register once
-  defineNotifyTask({ loadHub: loadTaskHub, refresh: taskRefresh, acted: systemCache });
+  // The silent-push task is the Expo profile's (P6.5); the self-hosted build has no silent pushes.
+  if (getAppInfo().push !== 'link') defineNotifyTask({ loadHub: loadTaskHub, refresh: taskRefresh, acted: systemCache });
   registerAndroidWidgets();
   const glue = createGlue(systemGluePlatform(getAppInfo()));
   g.__syGlue = glue;
@@ -61,6 +62,7 @@ export default function RootLayout() {
       appState: systemAppState,
       app: getAppInfo(),
       notifications: Notifications as unknown as NotificationsLike,
+      link: systemLink(getAppInfo()),
     }),
     [],
   );

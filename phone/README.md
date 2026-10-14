@@ -14,7 +14,20 @@ EAS builds, TestFlight and every check on a real phone are the manual steps belo
 you. No credential file ever goes into the repo (`scripts/check-no-secrets.mjs` fails the
 check if one appears).
 
-## What you need, in order
+## Self-hosted Android build (N1, the default)
+
+Since N1 the Android app delivers notifications over its own connection to your hub (the
+`sy-link` module in `modules/sy-link`, `docs/spec/push.md` sections 13 and 14): no Expo account,
+no EAS, no Firebase project and no Google push service. `SY_PUSH` defaults to `link`; in that
+profile `app.config.ts` sets no EAS project id, refuses `SY_GOOGLE_SERVICES_JSON`, sets
+`minSdkVersion` 31 and drops expo-notifications' FCM entry point. `eas.json` is gone. Pair the
+phone by scanning the hub's QR (its keys go in sealed), then check Settings → Notifications
+(battery optimisation, the maker guide, "Verified by QR"). Build the APK yourself with
+`expo prebuild` and Gradle (phone.md P13); nothing here signs or uploads it.
+
+The steps below are the phase 8 Expo profile (`SY_PUSH=expo`) and the iPhone.
+
+## What you need, in order (Expo profile)
 
 1. **An Expo account.** In `phone/`: `npx eas-cli@24.8.0 login`, then
    `npx eas-cli@24.8.0 init`, which creates the EAS project. Put its id in `EAS_PROJECT_ID`
@@ -41,9 +54,10 @@ check if one appears).
 
 | Variable | Default | Effect |
 | --- | --- | --- |
+| `SY_PUSH` | `link` | `link`: the self-hosted Android build (no Expo token, no Firebase, minSdk 31); `expo`: the phase 8 Expo/FCM path |
 | `SY_APP_ID` | `dev.switchyard.app.local` | Bundle id and Android package. Use your own reverse-DNS id; the App Group is `group.<SY_APP_ID>`, the widget extension `<SY_APP_ID>.widgets` |
-| `EAS_PROJECT_ID` | unset | `extra.eas.projectId`: the Expo push token is issued for this project |
-| `SY_GOOGLE_SERVICES_JSON` | unset | Path (outside `phone/`) to `google-services.json`; omitted when unset, so builds still compile without Android pushes |
+| `EAS_PROJECT_ID` | unset | `SY_PUSH=expo` only: `extra.eas.projectId`, the Expo push token is issued for this project |
+| `SY_GOOGLE_SERVICES_JSON` | unset | `SY_PUSH=expo` only (refused with `link`): path (outside `phone/`) to `google-services.json`; omitted when unset |
 | `SY_APP_VARIANT` | release | `development` allows cleartext `http://` to loopback and LAN hubs (`--insecure-lan` testing); anything else is a release config |
 
 ## Develop
