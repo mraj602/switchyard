@@ -364,7 +364,7 @@ re-pairing.
 | `action` | `id`, `token` | A notification action tapped on the phone: `token` is the action token from the alert (push.md 8). The hub applies it exactly as `POST /v1/actions/{token}` (same checks, same rate limit) and answers `action_result` with the same `id`. |
 | `peer_msg` | `doc` (peers.md 8.2) | A signed envelope, body sealed to the target machine, from a session on this machine to a session on another machine; the hub answers `peer_ack`. |
 | `peer_result` | `msg`, `status`, `detail?`, `human_at?` | The receiving agent's verdict on a `peer_msg` it got (peers.md 8.4). |
-| `peer_log` | `msg`, `thread`, `to_session`, `status`, `detail?`, `size`, `at` | Metadata of a same-machine delivery, for the audit (peers.md 10). |
+| `peer_log` | `msg`, `thread`, `from_session`, `to_session`, `kind`, `status`, `detail?`, `size`, `at` | Metadata of a same-machine delivery, for the audit (peers.md 10). |
 | `peers_list` | `id` | Ask for the session directory (peers.md 3); the hub answers `peers` with the same `id`. |
 
 Unknown `t` → the hub answers `notice` `{"code":"unknown_type"}` and carries on (forward
@@ -380,8 +380,8 @@ The fields below are the JSON object inside `body` (4.1), each with `"v":1`.
 | `challenge` | 3.1 (the one frame not in the 4.1 shape: it comes before the device is known) |
 | `welcome` | 3.3 |
 | `action_result` | `id`, `status` (HTTP-like: 200, 400, 401, 404, 410, 429), `applied`, `alert` (AlertBrief) |
-| `peers` | `id`, `sessions` (peers.md 3.2), `certs` (device id → `device_cert` document of each machine's agent that a listed session runs on; peers.md 8.2) |
-| `peer_ack` | `msg`, `status` (`queued` or `refused`), `detail?` (peers.md 8.3) |
+| `peers` | `id`, `sessions` (the other machines' sessions, peers.md 3.2 without `can`, with `machine_id`), `certs` (device id → `device_cert` document of each machine's agent that a listed session runs on; peers.md 8.2) |
+| `peer_ack` | `msg`, `status` (`queued` or `refused`), `detail?` (the reason word, or `offline`), `exp?` (peers.md 8.2, 8.3) |
 | `notice` | `code`, `message`: `unknown_type`, `forbidden`, `rate_limited`, `queue_full`, `draining` (hub shutting down; reconnect in 5–15 s) |
 
 Ephemeral frames are signed (4.3) like queued ones; their body is not sealed (they answer the

@@ -88,13 +88,12 @@ sizes and statuses, never text.
 ### 2.3 Control socket
 
 `<state>/agent/agent.sock` on macOS. A unix socket path binds only up to 103 bytes on macOS (107 on Linux), so when that path is longer, both the agent and its clients use `$TMPDIR/sy-<uid>/agent.sock` instead (`/tmp/sy-<uid>/agent.sock` when that is still too long; folder 0700, checked by the agent). JSON lines, one request and one reply per connection:
-`<state>/agent/agent.sock` on macOS. JSON lines, one request and one reply per connection:
 
 | `op` | Request | Reply |
 | --- | --- | --- |
 | `whoami` | `{"op":"whoami","claude_pid","config_dir"}` | the caller's session (4.1) or an error |
 | `list` | `{"op":"list","claude_pid","config_dir","all"?}` | 3.2 |
-| `send` | `{"op":"send","claude_pid","config_dir","to","text","ttl_s"?,"wait_s"?}` | `{"msg","thread","status","detail"?}` |
+| `send` | `{"op":"send","claude_pid","config_dir","to","text","ttl_s"?,"wait_s"?}` | `{"msg","thread","status","detail"?,"expires"?}` |
 | `status` | `{"op":"status","claude_pid","config_dir","msg"?}` | the caller's recent messages and their statuses |
 | `pause`, `resume`, `off`, `on` | from a terminal only (7) | `{"ok":true}` or an error |
 | `state` | — | for `sy agent status` |
@@ -104,8 +103,15 @@ and `state`; `status`, `pause` and `resume` answer `unsupported` until the hub e
 carries `{"error":{"code","detail"}}` for a refusal (the codes of 4.2). A `send` reply also
 carries `to` (the target's handle) and `held_likely`, which is what `sy peers send` prints
 from; `list` carries `entries` and `asked` (the list is from a session's point of view).
-The ops run `peers.Env.Send` and `peers.Env.List`, so the agent and the no-agent path share
-one implementation; sends are serialised.
+The ops run `peers.Env.SendWith` and `peers.Env.List`, so the agent and the no-agent path share
+one implementation. The read-change-write of `threads.json` and `limits.json` is serialised
+(one lock in the agent process), never held while the hub is asked.
+
+PE2: a send to another machine waits up to 10 s for the hub (`peer_ack`) and then up to
+`wait_s` (default 10, at most 60; `-1` for `--wait 0`: no wait) for the final status. The
+reply is then `delivered`, a refusal with the final status as its code (`rejected`, `expired`,
+`target_gone`, `failed`; exit 7), or `status: "queued"` with `expires` (RFC 3339) and
+`detail: "offline"` when the target's machine is not connected (exit 8).
 
 `sy peers send` and `list` use the socket when something answers there and otherwise fall back
 to the direct path of 8.5. A failure after the connection is made is reported, never retried
@@ -164,6 +170,11 @@ The hook does a single small atomic write and nothing else; it never connects to
 - `device`: the agent device of the session's machine (`null` when that machine runs no
   agent: not reachable). The `peers` frame carries each such device's certificate once
   (`certs`, link.md 6.3), which the sender checks before it seals to it (8.2).
+- The hub's `peers` frame lists the **other** machines' live sessions (session events in the
+  last 7 days, not ended or gone) with `machine` (the name), `machine_id`, `state` and
+  `device`, and no `can`: the asking agent works `can` out with its own matrix and threads,
+  like for its local sessions. The hub makes the handle the same way; an account with no seat
+  label is shown by the first 8 characters of its uuid.
 
 - Filtered for the asking session: only sessions it may start a thread with (`can: "start"`)
   or reply to in an open thread (`can: "reply"`). `--all` (terminal only) shows the rest with
@@ -467,7 +478,8 @@ device key** (`by: "device"`, Ed25519 over `"sy-doc-v1\npeer_envelope\n" ‖ bod
   "thread": "t_3a9e…",
   "kind": "start",
   "from": {"session": "c41e…", "device": "dev_…", "machine": "m_…", "account": "3f1c…",
-           "name": "api", "handle": "api@work.laptop", "mode": "bypass", "human_at": "…"},
+           "label": "work", "name": "api", "handle": "api@work.laptop", "mode": "bypass",
+           "human_at": "…"},
   "to": {"session": "9d22…", "device": "dev_…", "machine": "m_…", "account": "7a20…"},
   "hop": "9f0c1e…,a1b2c3…",
   "created_at": "2026-10-15T09:00:00.000Z",
@@ -485,13 +497,21 @@ device key** (`by: "device"`, Ed25519 over `"sy-doc-v1\npeer_envelope\n" ‖ bod
   signatures with its pins, `kind: machine`, not revoked, `device` = `to.device`): a hub that
   hands out a key of its own gets an envelope it cannot open, because the sender refuses an
   uncertified key.
-- `exp` is at most `created_at` + 24 h; `size` is the text's length in bytes.
+- `exp` is at most `created_at` + 24 h; `size` is the text's length in bytes. `from.label` is
+  the sender's account label, for the receiver's header line only (it decides nothing).
+- `hop` is the hop chain to carry (8.5); Switchyard has none of its own to add, so it is `""`
+  unless the sending session's frame carried one.
+- A `desktop` certificate counts as a machine's (the desktop app runs the agent, keys.md
+  4.2): both ends accept `kind` `machine` or `desktop`.
 - `mode`: `bypass` when the sender's session file (2.4) says `bypassPermissions`, otherwise
   `prompting` (`default`, `acceptEdits`, `plan`, `auto`, `dontAsk`, unknown, or no file).
   This is the sender's **real** class; Switchyard never claims more.
 - The sending agent sends `{"t":"peer_msg","doc": <envelope>}` on the link (the hub has its
   certificate; the hub attaches it to the frame it queues, 8.3). The hub answers with the ephemeral `peer_ack` `{"msg","status":"queued"|"refused",
-  "detail"?}` (link.md 6.3).
+  "detail"?,"exp"?}` (link.md 6.3): `detail` is the reason word of a refusal, or `offline`
+  for a message queued while the target machine is not connected; `exp` repeats the
+  envelope's. A message id the hub already has is answered with its row's status again
+  (an agent that resends after a reconnect gets no second copy).
 
 ### 8.3 Hub relay
 
@@ -504,6 +524,9 @@ On `peer_msg` the hub:
    `refused` `unknown_target` or `target_gone`;
 3. runs 5.3 (matrix, with the accounts it knows for both sessions: the hub's own view wins
    over the envelope's claim; a mismatch → `refused` `account_mismatch`), 6.3 and 9.2;
+   The hub counts the turn in `peer_thread` when it queues the message (it does not wait for
+   the result). `exp` already passed → `refused` `expired`; a refused message gets its
+   `peer_message` row too (status `refused`, the reason in `detail`);
 4. writes `peer_message` (status `queued`), updates `peer_thread`, and enqueues
    `peer_msg` to `to.device` (link.md 5.2, TTL from `exp`) with the body `{"v":1,"doc":
    <envelope, unchanged>,"cert": <the sender's device_cert>}`; answers `peer_ack`.
@@ -523,12 +546,15 @@ On a `peer_msg` frame:
    slot → `rejected` `not_allowed` / `paused` / `loop_guard`; `off` when `sy peers off`.
 3. The target session is live locally (3.1) → else `target_gone`.
 4. Open `sealed`, check 9.1 again, build the frame (8.5) and write it.
-5. Send `{"t":"peer_result","msg","status":"delivered"|…,"detail"?,"human_at"}` on the link,
+5. Send `{"t":"peer_result","msg","status":"delivered"|…,"detail"?,"human_at"}` on the link
+   (`detail: "held_likely"` on a delivery whose two permission classes differ, 8.5),
    then ack the frame. The hub updates `peer_message` (`final_at`) and queues `peer_status` to
    the sender's machine, which answers the waiting `sy peers send` (4.3).
 
 A replayed frame (same `msg` already final in `<state>/peers/seen.json`, kept 48 h) is acked and
-not delivered twice.
+not delivered twice; its stored result is sent again (the first one may not have reached the
+hub). The frame is left unacked (the hub replays it) only when the result could not be sent
+or `seen.json` not written; every other outcome is final.
 
 ### 8.5 Writing to the inbox
 
@@ -668,7 +694,7 @@ The hub stores **metadata only** (plan addendum H5):
 
 | Switch | Scope | Where | Effect |
 | --- | --- | --- | --- |
-| **Pause all peers** | Every machine | Board, desktop app, phone (one tap), `sy peers pause` | A hub-signed matrix version with `paused: true`. The hub refuses new messages at once and drops queued `peer_msg` rows (`expired`, `paused`); agents refuse on receipt of the frame. Resume widens (owner). |
+| **Pause all peers** | Every machine | Board, desktop app, phone (one tap), `sy peers pause` | A hub-signed matrix version with `paused: true`. The hub refuses new messages at once and drops queued `peer_msg` rows (`expired`, `paused`); agents refuse on receipt of the frame. Resume widens (owner): a resume the hub signs (`POST /v1/peers/pause` from an owner session) is refused by machines with `hub_may_widen = false` (keys.md 5.4), so they stay paused until the owner key signs the resume (`PUT /v1/peers/matrix` with `doc`). |
 | `sy peers off` | This machine | Terminal | Writes `<state>/peers/off`; the agent sends and delivers nothing and rejects incoming (`off`). Works with no hub. `sy peers on` removes it. |
 | `sy peers disable` | This machine | Terminal | Removes the agent service. |
 | Revoke a machine | That machine | Board → Devices | keys.md 6: its link closes, its envelopes are rejected everywhere. |
@@ -776,6 +802,7 @@ captured on reply sockets.
 | `UserPromptSubmit` for peer-started turns | 2.4 | E12 | 10 s window after a delivery |
 | Claude Code process names for the ancestry walk | 4.1, keys.md 8 | E1 setup | Environment markers + registry pid match |
 | Inbox location on macOS | 3.1 | E16 on a Mac | Registry's `messagingSocketPath` is used, never a guessed path |
+| Thread resume across machines (PE3) | 6.3 | — | `POST /v1/peers/threads/{id}/resume` clears the hub's pause only; both agents keep their own `turns` until a human prompt, so the endpoint stays reserved until it can tell them |
 
 ## 15. Tests
 
