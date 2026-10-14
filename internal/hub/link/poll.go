@@ -66,6 +66,10 @@ func (h *Hub) ServePoll(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case req.Op == "challenge":
 		ch, err := h.newChallenge()
+		if errors.Is(err, errBusy) {
+			auth.WriteError(w, http.StatusServiceUnavailable, "busy", "too many logins in progress")
+			return
+		}
 		if err != nil {
 			auth.WriteError(w, http.StatusInternalServerError, "internal", "challenge")
 			return
