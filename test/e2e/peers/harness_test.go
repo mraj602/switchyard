@@ -45,14 +45,25 @@ const (
 
 // clock is the one test clock: the hub, the store, both agents and both link clients.
 type clock struct {
-	mu  sync.Mutex
-	off time.Duration
+	mu     sync.Mutex
+	off    time.Duration
+	frozen time.Time // set: time stands still (Advance still moves it)
 }
 
 func (c *clock) Now() time.Time {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if !c.frozen.IsZero() {
+		return c.frozen.Add(c.off)
+	}
 	return time.Now().Add(c.off)
+}
+
+// Freeze stops the clock at the current time, so token buckets do not refill mid-test.
+func (c *clock) Freeze() {
+	c.mu.Lock()
+	c.frozen = time.Now()
+	c.mu.Unlock()
 }
 
 func (c *clock) Advance(d time.Duration) {

@@ -371,6 +371,7 @@ func TestLoopGuardAcrossMachines(t *testing.T) {
 // The rates bind at the sender and, for a sender that forgot its limits, at the hub.
 func TestRateLimits(t *testing.T) {
 	w := newWorld(t, 500)
+	w.h.clk.Freeze()
 	for i := 0; i < peers.SessionBurst; i++ {
 		rep := w.laptop.send("api", toWorker, "message", 0, 0)
 		delivered(t, rep, rep.Status)
@@ -380,8 +381,14 @@ func TestRateLimits(t *testing.T) {
 		t.Fatal(err)
 	}
 	refusedWith(t, w.laptop.send("api", toWorker, "one too many, again", 0, 0).Refusal(), peers.CodeRateLimited)
-	if r := w.h.rows()[0]; r.Status != "refused" || r.Detail != peers.CodeRateLimited {
-		t.Fatalf("hub row %+v", r)
+	limited := 0 // the clock is frozen, so rows share one timestamp: count, don't rely on order
+	for _, r := range w.h.rows() {
+		if r.Status == "refused" && r.Detail == peers.CodeRateLimited {
+			limited++
+		}
+	}
+	if limited != 1 {
+		t.Fatalf("hub rows refused as rate_limited: %d, want 1", limited)
 	}
 	onlyContent(t, w.worker.session("worker").inbox, peers.SessionBurst)
 }
