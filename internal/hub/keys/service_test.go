@@ -443,3 +443,33 @@ func TestMatrixRowsReverified(t *testing.T) {
 }
 
 func pubOf(k ed25519.PrivateKey) ed25519.PublicKey { return k.Public().(ed25519.PublicKey) }
+
+// An owner-signed revocation revokes a device whose replaced tofu keys are already on the
+// list: the earlier entry (reason "replaced") does not make the live device count as revoked.
+func TestOwnerRevocationAfterReplacedKeys(t *testing.T) {
+	f := newFix(t)
+	f.activeOwner()
+	d := f.device("echo", keys.RegTOFU, 2)
+	if _, err := f.svc.RegisterKeys(f.ctx, d, machineKeysNew(3)); err != nil {
+		t.Fatal(err)
+	}
+	cur, _ := f.svc.Revocations(f.ctx)
+	if cur == nil || !cur.Body.RevokedDevice(d) {
+		t.Fatal("replaced keys not listed")
+	}
+	c, _ := f.svc.Cert(f.ctx, d)
+	next := cur.Body
+	next.Version++
+	next.Devices = append(append([]keys.RevokedDevice(nil), cur.Body.Devices...), keys.RevokedDevice{Device: d,
+		Keys: []string{c.Body.SignFP(), c.Body.BoxFP()}, At: keys.FormatTime(t0), Reason: "stolen"})
+	raw, _ := json.Marshal(next)
+	doc := keys.NewDoc(keys.TypeRevocations, raw)
+	_ = doc.Sign(keys.ByOwner, f.owner)
+	revoked, err := f.svc.AcceptOwnerRevocations(f.ctx, doc, "dev_laptop")
+	if err != nil || len(revoked) != 1 || revoked[0] != d {
+		t.Fatalf("revoked %v, %v", revoked, err)
+	}
+	if dd, _ := f.st.DeviceDetailByID(f.ctx, d); dd.RevokedAt == 0 {
+		t.Fatal("device still live")
+	}
+}

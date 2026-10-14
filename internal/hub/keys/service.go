@@ -626,7 +626,12 @@ func (s *Service) AcceptOwnerRevocations(ctx context.Context, doc keys.Doc, made
 			return err
 		}
 		for _, e := range next.Body.Devices {
-			if curBody != nil && curBody.RevokedDevice(e.Device) {
+			// Skip only entries the hub's list already has. A device can be listed while
+			// still live (its replaced tofu keys, RegisterKeys), so the device id alone is
+			// not "already revoked".
+			if curBody != nil && slices.ContainsFunc(curBody.Devices, func(c keys.RevokedDevice) bool {
+				return c.Device == e.Device && slices.Equal(c.Keys, e.Keys)
+			}) {
 				continue
 			}
 			if err := tx.RevokeDeviceCascade(e.Device); err != nil && !errors.Is(err, store.ErrNotFound) {
