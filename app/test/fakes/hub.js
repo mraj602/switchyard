@@ -19,6 +19,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import childProcess from 'node:child_process';
 
 export async function startFakeHub(initial = {}) {
   const data = {
@@ -124,9 +125,19 @@ export async function startFakeHub(initial = {}) {
 }
 
 /** Write a fake `sy` into dir; returns {bin, calls(), script(map)}. */
+/**
+ * The execFile to give create() when it runs a fake sy. Windows cannot run a script through its
+ * shebang (and refuses to exec a .cmd without a shell), so there the fake is run as
+ * `node <fake> args`; elsewhere undefined, so the real execFile executes the shebang script.
+ */
+export const syExecFile = process.platform === 'win32'
+  ? (file, args, opts, cb) => childProcess.execFile(process.execPath, [file, ...args], opts, cb)
+  : undefined;
+
 export function writeFakeSy(dir, map = {}, name = 'sy') {
   fs.mkdirSync(dir, { recursive: true });
-  const bin = path.join(dir, name);
+  // A real sy is sy.exe on Windows, and resolution looks for that name.
+  const bin = path.join(dir, process.platform === 'win32' ? `${name}.exe` : name);
   const scriptFile = path.join(dir, `${name}.script.json`);
   const callsFile = path.join(dir, `${name}.calls.jsonl`);
   fs.writeFileSync(scriptFile, JSON.stringify(map));
