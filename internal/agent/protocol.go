@@ -134,8 +134,11 @@ func socketPath(goos, runtime, state, tmp string, uid int) string {
 // direct path (peers.md 8.5 "PE1 without the agent").
 var ErrNoAgent = errors.New("the sy agent is not running")
 
-// Call sends one request and reads the reply. ErrNoAgent when the socket is missing or
-// refuses; any other error happened after the connection was made, so the request may have
+// ownUID is the uid an agent must run as for Call to talk to it; tests replace it.
+var ownUID = os.Getuid
+
+// Call sends one request and reads the reply. ErrNoAgent when the socket is missing, refuses
+// or belongs to another user (nothing was sent); any other error happened after the connection was made, so the request may have
 // been handled and must not be repeated by another path.
 func Call(sock string, req Request, timeout time.Duration) (Reply, error) {
 	c, err := net.DialTimeout("unix", sock, 2*time.Second)
@@ -146,6 +149,15 @@ func Call(sock string, req Request, timeout time.Duration) (Reply, error) {
 		return Reply{}, err
 	}
 	defer c.Close()
+	// The socket may sit in a shared temp folder (SocketPath's fallback), where another user
+	// can listen first: never hand the request (a message's text) to anyone but ourselves.
+	uc, ok := c.(*net.UnixConn)
+	if !ok {
+		return Reply{}, ErrNoAgent
+	}
+	if _, uid, err := peers.PeerPID(uc); err != nil || uid != ownUID() {
+		return Reply{}, fmt.Errorf("%w: %s is served by another user", ErrNoAgent, sock)
+	}
 	_ = c.SetDeadline(time.Now().Add(timeout))
 	b, err := json.Marshal(req)
 	if err != nil {
