@@ -1,0 +1,112 @@
+# Tokens and devices
+
+Status: spec v1, phase 0. Implemented in `internal/hub/auth` (phase 2). Pairing is phase 4.
+
+Every device that talks to the hub has its own token. The hub stores only a hash. A token is
+revoked on its own, without touching any other device.
+
+## 1. Format
+
+```
+sy_<k>_<43 base62 characters>
+```
+
+| Part | Meaning |
+| --- | --- |
+| `sy_` | Fixed prefix, so secret scanners and `grep` can find leaked tokens. |
+| `<k>` | One letter for the device kind: `m` machine, `d` desktop, `p` phone, `b` browser, `o` owner session (phase 4). |
+| `_` | Separator. |
+| 43 base62 characters | 32 random bytes from the OS cryptographic source, encoded big-endian in base62 (`0-9A-Za-z`), left-padded with `0` to 43 characters. |
+
+Example shape: `sy_m_4fQx0Lr2…` (48 characters in total). Base62 has no `-` or `_`, so a
+double click selects the whole token and the kind letter can always be parsed.
+
+The kind letter is a hint for people and for `sy doctor`. The hub never trusts it: scopes
+come from the `device` row.
+
+## 2. Storage
+
+- The hub stores `device.token_hash` = SHA-256 of the full token string (including the
+  prefix), as 32 raw bytes, with a unique index. Lookup is one indexed read.
+- No salt or slow hash: the token has 256 bits of entropy, so a stolen hash cannot be
+  brute-forced. (A slow hash is used only for the owner password, phase 4.)
+- Comparison is done by looking up the hash, so no timing-sensitive string compare is
+  needed.
+- `device.token_hint` = kind prefix + `…` + last 4 characters (`sy_m_…k3Qz`), for lists.
+- The token is shown once, when created. It cannot be recovered; a lost token is replaced.
+
+On a client the token lives in `<state>/token`, mode `0600`, one line, no trailing data
+(see [paths.md](paths.md)). It is never put in `config.toml`, `settings.json`, hook
+commands, environment variables of Claude Code, or records.
+
+## 3. Scopes
+
+| Device kind | Token | Scopes | Can |
+| --- | --- | --- | --- |
+| machine | `sy_m_` | `write` | `POST /v1/ingest` for its own machine id only. |
+| desktop | `sy_d_` | `write`, `read` | Ingest for its own machine id (web usage); every read endpoint and `/v1/stream`. |
+| phone | `sy_p_` | `read`, `push` | Every read endpoint and `/v1/stream`; register push targets; snooze/seen alerts. |
+| browser | `sy_b_` | `read`, `push` | As phone; for the installed web app on a computer. |
+| owner session | `sy_o_` | `owner`, `read`, `push` | Everything, including devices, rules and pairing codes. Phase 4: a `browser` device from `sy hub owner-link`, 30 days, cookie only (pairing.md 4). |
+
+Scope checks per endpoint are in [api.yaml](api.yaml) (`x-scopes`). A request whose token is
+unknown or revoked gets `401`; a valid token without the scope gets `403`. Both bodies are
+`{"error": "...", "code": "unauthorized" | "forbidden"}` and never say whether a token
+exists.
+
+`machine` and `desktop` devices are bound to one machine id (`device.machine_id`). Ingest
+rejects records whose envelope `machine` differs (`machine_mismatch`).
+
+Pulling over SSH (plan section 8 option 3) needs **no `relay` scope** (phase 5 decision,
+[machines.md](machines.md) 3.4): the hub itself runs the pull and ingests in-process, as a
+**pull device** (`kind = machine`, bound to the pulled machine, `created_by = pull:<target>`)
+whose token is generated, hashed and discarded. No token can relay records for another
+machine, and the remote holds no token at all.
+
+`device.last_used_at` is updated at most once a minute per device, to avoid a write per
+request.
+
+## 4. CLI (phase 2)
+
+All run on the hub machine, against its database directly (no HTTP), so they work before
+any token exists.
+
+```
+sy hub token create --kind machine|desktop|phone|browser --name <name> [--machine <machine id>] [--json]
+    Creates a device and prints its token once.
+    --machine is required for machine and desktop (the machine row is created if missing,
+    named after --name).
+    --json prints {"device": "dev_…", "token": "sy_m_…", "scopes": [...]}.
+
+sy hub token list [--all] [--json]
+    Devices: id, kind, name, machine, hint, scopes, created, last used, revoked.
+    Revoked devices only with --all.
+
+sy hub token revoke <device id | token hint | name> [--yes]
+    Sets revoked_at. Takes effect on the next request (no cache). Asks unless --yes.
+    Ambiguous names are refused with the list of matches.
+```
+
+On a client:
+
+```
+sy connect <hub url> --token <token>     # phase 2: paste a token made by `sy hub token create`
+sy connect <hub url> --code 482-913      # phase 4: claim a pairing code instead
+sy connect <hub url> --code-stdin        # phase 5: code or pairing secret on stdin (machines.md 4.2)
+sy connect <new hub url> --keep-token    # phase 5: after a hub move, keep the token (machines.md 8.3)
+```
+
+`sy connect` checks the URL (HTTPS required unless the host is loopback, or
+`--insecure-lan`), calls `GET /health`, then sends one `slot_info` per slot to prove the
+token works, and writes `<state>/token` and `hub.url` in `config.toml`.
+
+In merged mode `sy setup` (phase 3) creates the local machine's device itself.
+
+## 5. Pairing codes and owner sessions (phase 4)
+
+Superseded by [pairing.md](pairing.md): codes are 6 digits plus a 128-bit QR secret, hashed
+with a pepper kept outside the database, valid 10 minutes, single use, at most 5 live;
+`POST /v1/pair/claim` with per-IP and hub-wide limits on typed codes; the QR is an `https://`
+URL (`<hub>/#/pair?s=…&c=…`), not JSON. Owner sessions (`sy_o_`) are `browser` devices with
+scopes `owner`, `read`, `push`, made from a one-time link (`sy hub owner-link`) and expiring
+after 30 days (`device.expires_at`, schema v3).

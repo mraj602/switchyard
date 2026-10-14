@@ -1,0 +1,11 @@
+{
+  "device": "dev_01JA",
+  "token": "sy_d_TOKEN",
+  "scopes": [
+    "write",
+    "read"
+  ],
+  "hub": {
+    "url": "https://hub.example.ts.net"
+  }
+}

@@ -1,0 +1,149 @@
+package pluginmkt
+
+import (
+	"bytes"
+	"encoding/json"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"strings"
+	"testing"
+
+	"github.com/mraj602/switchyard/internal/board"
+	"github.com/mraj602/switchyard/internal/claudecli"
+	"github.com/mraj602/switchyard/plugin"
+)
+
+func TestPaneFileRewritesOnlyRegister(t *testing.T) {
+	src := []byte("// c\nexport const SY = \"__SY_PATH__\"\nuse(SY)\n")
+	got, err := paneFile("hooks/register.tsx", src, "/home/u/.local/bin/sy")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "// c\nexport const SY = \"/home/u/.local/bin/sy\"\nuse(SY)\n"
+	if string(got) != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+	// Any other file is passed through untouched, placeholder or not.
+	for _, p := range []string{"hooks/model.ts", "hooks/register.test.ts", "types/index.d.ts", "hooks/hooks.json"} {
+		out, err := paneFile(p, src, "/bad\"path")
+		if err != nil || !bytes.Equal(out, src) {
+			t.Errorf("%s changed or failed: %v", p, err)
+		}
+	}
+}
+
+func TestPaneFileRefusesUnsafePaths(t *testing.T) {
+	src := []byte(`export const SY = "__SY_PATH__"`)
+	for _, p := range []string{"", `/a"b/sy`, "/a\nb/sy", "/a\rb/sy", `/a\b/sy`, `/a"; evil(); "/sy`} {
+		if runtime.GOOS == "windows" && p == `/a\b/sy` {
+			continue // on Windows a backslash is a separator and is written as "/"
+		}
+		if _, err := paneFile("hooks/register.tsx", src, p); err == nil {
+			t.Errorf("path %q accepted", p)
+		}
+	}
+	if _, err := paneFile("hooks/register.tsx", []byte("no placeholder"), "/x/sy"); err == nil {
+		t.Error("a register.tsx without the placeholder was accepted")
+	}
+}
+
+// The written mod has the absolute sy path and nothing else changed in it.
+func TestWrittenPaneHasAbsoluteSyPath(t *testing.T) {
+	state := t.TempDir()
+	sy := filepath.Join(state, "bin", "sy")
+	dir := filepath.Join(state, "marketplace")
+	if err := New(claudecli.NewFake()).WriteMarketplace(dir, sy, "0.7.0"); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(PaneDir(dir), "hooks", "register.tsx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	embedded, err := fs.ReadFile(plugin.PaneFS(), "hooks/register.tsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := bytes.Count(embedded, []byte(panePlaceholder)); n != 1 {
+		t.Fatalf("the embedded register.tsx has %d placeholders, want exactly 1", n)
+	}
+	lit := filepath.ToSlash(sy)
+	if runtime.GOOS != "windows" {
+		lit = sy
+	}
+	want := bytes.Replace(embedded, []byte(panePlaceholder), []byte(`"`+lit+`"`), 1)
+	if !bytes.Equal(got, want) {
+		t.Fatal("the written register.tsx differs from the embedded one by more than the sy path")
+	}
+	if !regexp.MustCompile(`export const SY = "[^"]+/bin/sy"`).Match(got) || bytes.Contains(got, []byte("__SY_PATH__")) {
+		t.Fatalf("SY not set to the absolute path:\n%s", grepLine(got, "export const SY"))
+	}
+	// A path the rewrite refuses stops the whole write, not just the file.
+	bad := filepath.Join(state, `has"quote`, "sy")
+	if runtime.GOOS != "windows" {
+		if err := New(claudecli.NewFake()).WriteMarketplace(filepath.Join(state, "m2"), bad, "0.7.0"); err == nil {
+			t.Error("WriteMarketplace accepted a sy path with a quote")
+		}
+	}
+}
+
+func grepLine(b []byte, sub string) string {
+	for _, l := range strings.Split(string(b), "\n") {
+		if strings.Contains(l, sub) {
+			return l
+		}
+	}
+	return ""
+}
+
+// The recorded stream the mod's tests read (testdata/view-stream.ndjson) is the same text as
+// hooks/fixtures.ts (tests cannot read files), its first line is wave 0's golden View, and the
+// lines the mod must drop do not decode while the rest do.
+func TestPaneViewStreamFixture(t *testing.T) {
+	paneFS := plugin.PaneFS()
+	nd, err := fs.ReadFile(paneFS, "testdata/view-stream.ndjson")
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSuffix(string(nd), "\n"), "\n")
+	if len(lines) != 5 {
+		t.Fatalf("view-stream.ndjson has %d lines, want 5", len(lines))
+	}
+
+	ts, err := fs.ReadFile(paneFS, "hooks/fixtures.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	i, j := bytes.Index(ts, []byte("= [")), bytes.LastIndex(ts, []byte("]"))
+	var fromTS []string
+	if i < 0 || j < i || json.Unmarshal(ts[i+2:j+1], &fromTS) != nil {
+		t.Fatal("hooks/fixtures.ts: cannot read the STREAM array")
+	}
+	if strings.Join(fromTS, "\n") != strings.Join(lines, "\n") {
+		t.Error("hooks/fixtures.ts STREAM differs from testdata/view-stream.ndjson")
+	}
+
+	golden, err := os.ReadFile(filepath.Join("..", "..", "board", "testdata", "view-v1.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var a, b any
+	if json.Unmarshal(golden, &a) != nil || json.Unmarshal([]byte(lines[0]), &b) != nil {
+		t.Fatal("bad JSON")
+	}
+	ga, _ := json.Marshal(a)
+	gb, _ := json.Marshal(b)
+	if !bytes.Equal(ga, gb) {
+		t.Error("line 1 is not wave 0's golden View")
+	}
+
+	wantOK := []bool{true, false, true, false, true}
+	for n, l := range lines {
+		_, err := board.Decode([]byte(l))
+		if (err == nil) != wantOK[n] {
+			t.Errorf("line %d: Decode error = %v, want ok = %v", n+1, err, wantOK[n])
+		}
+	}
+}

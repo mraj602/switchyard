@@ -1,0 +1,4 @@
+title: client · 5-hour at 82%
+body: Resets 17:00 · work has 59% left
+url: /#/accounts?seat=seat-client
+tag: sy-l-seat-client-five_hour

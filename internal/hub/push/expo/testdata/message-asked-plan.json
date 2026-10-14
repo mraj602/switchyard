@@ -1,0 +1,33 @@
+{
+  "to": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+  "title": "work · api · plan ready",
+  "body": "Waiting for your answer · gpu-box",
+  "data": {
+    "v": 1,
+    "type": "alert",
+    "alert": "al_01JA3B7Q0003",
+    "alerts": [
+      "al_01JA3B7Q0003"
+    ],
+    "trigger": "asked",
+    "title": "work · api · plan ready",
+    "body": "Waiting for your answer · gpu-box",
+    "tag": "sy-s-sess_01JA3B7Q",
+    "url": "/#/sessions/sess_01JA3B7Q?alert=al_01JA3B7Q0003",
+    "tap": "session",
+    "session": "sess_01JA3B7Q",
+    "needs_you": 1,
+    "actions": {
+      "snooze": "a1.YWxfMDFKQTNCN1EwMDAzAHNub296ZQAAAAABcHRfMDFKQTNCMDAwMDAwMDAwMDAwMDAwMDAwMAAAAAAAas-LWA.VEb_0q3C4Y9QerBjr2TXBA",
+      "seen": "a1.YWxfMDFKQTNCN1EwMDAzAHNlZW4AAAAAAXB0XzAxSkEzQjAwMDAwMDAwMDAwMDAwMDAwMDAAAAAAAGrPi1g.ubOBU4SXSDZKZk6vXUr0SQ"
+    },
+    "private": false,
+    "ts": "2026-10-13T14:02:00.000Z"
+  },
+  "categoryId": "sy_alert",
+  "channelId": "sy_needs_you",
+  "sound": "default",
+  "badge": 1,
+  "priority": "high",
+  "ttl": 21600
+}

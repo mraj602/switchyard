@@ -1,0 +1,540 @@
+-- Switchyard hub schema, version 6.
+--
+-- One SQLite file (WAL mode). Applied by the hub at start (phase 2) inside one transaction
+-- after `PRAGMA foreign_keys = ON`. Later versions add numbered migrations
+-- (internal/hub/store/migrations/NNNN_*.sql; 0001 is version 1 of this file). This file is
+-- always the full current schema, and a test checks that migrations from v1 produce it.
+--   v1  phase 0: the first schema.
+--   v2  phase 2: session_transition (every state change, not only hook-caused ones).
+--   v3  phase 4: pairing, owner sessions, push targets, rules, alerts, deliveries (hub_secret,
+--       device.expires_at/prefs; pair_code, channel, push_target, rule, alert, delivery recreated).
+--   v4  phase 5: machine reach/record_v/held/backlog_oldest/backlog_at/info/info_at; pull_target
+--       (machines.md 9).
+--   v5  phase 6: seat.look_src (desktop.md C10).
+--   v6  phase 8: the expo channel row, push_target.meta, delivery.ticket/receipt_at (push.md 12).
+--
+-- Conventions
+--   * Times are INTEGER milliseconds since the Unix epoch, UTC (`*_at`, `ts`).
+--   * Ids made by clients are TEXT (record ULIDs, Claude session uuids, machine ids).
+--     Ids made by the hub are TEXT with a prefix + ULID (`dev_…`, `seat_…`).
+--   * JSON is stored as TEXT and checked with json_valid().
+--   * Every table is STRICT. Booleans are INTEGER 0/1 with a CHECK.
+--   * `owner_id` is on the tables a future shared hub would partition (plan section 5).
+--     It is always 'owner' on a single-user hub.
+--   * Driver: modernc.org/sqlite (pure Go, no cgo). Needs SQLite >= 3.37 for STRICT.
+--
+-- Groups: meta, identity, access, activity, usage, alerts.
+
+PRAGMA foreign_keys = ON;
+
+---------------------------------------------------------------------------- meta
+
+CREATE TABLE schema_version (
+  version     INTEGER NOT NULL PRIMARY KEY,
+  applied_at  INTEGER NOT NULL,
+  sy_version  TEXT    NOT NULL                      -- hub binary version that applied it
+) STRICT;
+
+INSERT INTO schema_version (version, applied_at, sy_version)
+VALUES (6, CAST(unixepoch('subsec') * 1000 AS INTEGER), 'spec');
+
+-- Hub-wide settings that are not secrets (retention days, last-message policy, …).
+CREATE TABLE setting (
+  key         TEXT    NOT NULL PRIMARY KEY,
+  value       TEXT    NOT NULL CHECK (json_valid(value)),
+  updated_at  INTEGER NOT NULL
+) STRICT;
+
+---------------------------------------------------------------------------- identity
+
+-- The one owner of a single-user hub. Owner login (passkey / password) is phase 4.
+CREATE TABLE owner (
+  id             TEXT    NOT NULL PRIMARY KEY,      -- 'owner'
+  name           TEXT,
+  password_hash  TEXT,                               -- argon2id PHC string; NULL until set
+  created_at     INTEGER NOT NULL
+) STRICT;
+
+-- One Claude login.
+CREATE TABLE account (
+  uuid          TEXT    NOT NULL PRIMARY KEY,       -- oauthAccount.accountUuid / claude.ai account uuid
+  owner_id      TEXT    NOT NULL DEFAULT 'owner' REFERENCES owner(id),
+  email         TEXT,
+  display_name  TEXT,
+  first_seen    INTEGER NOT NULL,
+  last_seen     INTEGER NOT NULL
+) STRICT;
+CREATE INDEX account_email ON account(email);
+
+-- Who the limits belong to: a personal plan or a Team/Enterprise org.
+CREATE TABLE org (
+  uuid          TEXT    NOT NULL PRIMARY KEY,       -- oauthAccount.organizationUuid / claude.ai org uuid
+  name          TEXT,
+  plan          TEXT,                                -- normalised: free, pro, max_5x, max_20x, team, enterprise, unknown
+  rate_tier     TEXT,                                -- raw organizationRateLimitTier / rate_limit_tier
+  billing_type  TEXT,
+  first_seen    INTEGER NOT NULL,
+  last_seen     INTEGER NOT NULL
+) STRICT;
+
+-- One account inside one org. Every usage number, card, label and colour hangs off this.
+CREATE TABLE seat (
+  id            TEXT    NOT NULL PRIMARY KEY,       -- 'seat_' + ULID
+  owner_id      TEXT    NOT NULL DEFAULT 'owner' REFERENCES owner(id),
+  account_uuid  TEXT    NOT NULL REFERENCES account(uuid),
+  org_uuid      TEXT    NOT NULL REFERENCES org(uuid),
+  label         TEXT,                                -- "work"
+  colour        TEXT    CHECK (colour IS NULL OR colour GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'),
+  sort_order    INTEGER NOT NULL DEFAULT 0,
+  hidden        INTEGER NOT NULL DEFAULT 0 CHECK (hidden IN (0, 1)),
+  track_web     INTEGER NOT NULL DEFAULT 1 CHECK (track_web IN (0, 1)),
+  created_at    INTEGER NOT NULL, look_src TEXT CHECK (look_src IS NULL OR look_src IN ('ui', 'slot', 'import')),
+  UNIQUE (account_uuid, org_uuid)
+) STRICT;
+-- look_src: v5 (phase 6, desktop.md C10). Who set label and colour last: 'ui' (PATCH /v1/accounts/{seat}),
+-- 'slot' (slot_info; applies only while look_src is NULL or 'slot'), 'import' (prototype importer).
+
+-- A computer running sy. The id is made by sy on first run (identity.md).
+CREATE TABLE machine (
+  id            TEXT    NOT NULL PRIMARY KEY,       -- 'm_' + ULID
+  owner_id      TEXT    NOT NULL DEFAULT 'owner' REFERENCES owner(id),
+  name          TEXT    NOT NULL,                    -- defaults to the hostname
+  os            TEXT,                                -- linux, darwin, windows (GOOS)
+  arch          TEXT,
+  sy_version    TEXT,
+  first_seen    INTEGER NOT NULL,
+  last_seen     INTEGER,                             -- receive time of its newest record
+  last_record   INTEGER,                             -- client ts of its newest record
+  backlog       INTEGER,                             -- outbox records queued, as last reported
+  removed_at    INTEGER
+, reach TEXT CHECK (reach IS NULL OR reach IN ('direct', 'forward', 'pull')), record_v INTEGER, held INTEGER NOT NULL DEFAULT 0, backlog_oldest INTEGER, backlog_at INTEGER, info TEXT CHECK (info IS NULL OR json_valid(info)), info_at INTEGER) STRICT;
+-- reach .. info_at: v4 (phase 5, machines.md 9). reach: how its records reach the hub; record_v: highest record v it
+-- writes; held: records it holds back because the hub is too old; backlog_oldest: client ts of its oldest
+-- unanswered record; backlog_at: hub time the backlog was reported; info/info_at: last machine_info payload.
+
+-- One config folder on one machine.
+CREATE TABLE slot (
+  id            INTEGER NOT NULL PRIMARY KEY,
+  machine_id    TEXT    NOT NULL REFERENCES machine(id) ON DELETE CASCADE,
+  folder        TEXT    NOT NULL,                    -- '~/.claude-2'
+  real_path     TEXT,
+  is_default    INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
+  launcher      TEXT,                                -- 'claude-2'
+  claude_version TEXT,
+  sharing       TEXT    CHECK (sharing IS NULL OR json_valid(sharing)),
+  first_seen    INTEGER NOT NULL,
+  last_seen     INTEGER NOT NULL,
+  removed_at    INTEGER,
+  UNIQUE (machine_id, folder)
+) STRICT;
+
+-- Which seat a slot was logged in to, and when. Periods never overlap per slot;
+-- the open period has until_at NULL.
+CREATE TABLE slot_login (
+  slot_id       INTEGER NOT NULL REFERENCES slot(id) ON DELETE CASCADE,
+  since_at      INTEGER NOT NULL,                    -- ts of the first record that showed this login
+  seat_id       TEXT    REFERENCES seat(id),         -- NULL = logged out during this period
+  until_at      INTEGER,
+  source_record TEXT    NOT NULL,                    -- record id that opened the period
+  PRIMARY KEY (slot_id, since_at),
+  CHECK (until_at IS NULL OR until_at >= since_at)
+) STRICT;
+CREATE UNIQUE INDEX slot_login_open ON slot_login(slot_id) WHERE until_at IS NULL;
+CREATE INDEX slot_login_seat ON slot_login(seat_id);
+
+-- One account tab in the desktop app, joined to a seat once signed in.
+CREATE TABLE web_seat (
+  tab_id        TEXT    NOT NULL,
+  machine_id    TEXT    NOT NULL REFERENCES machine(id) ON DELETE CASCADE,
+  seat_id       TEXT    REFERENCES seat(id),
+  label         TEXT,
+  first_seen    INTEGER NOT NULL,
+  last_seen     INTEGER NOT NULL,
+  stopped_reason TEXT,                               -- 401/403/429 stop (decision 1)
+  PRIMARY KEY (machine_id, tab_id)
+) STRICT;
+
+---------------------------------------------------------------------------- access
+
+-- One device = one token. See tokens.md.
+CREATE TABLE device (
+  id            TEXT    NOT NULL PRIMARY KEY,       -- 'dev_' + ULID
+  owner_id      TEXT    NOT NULL DEFAULT 'owner' REFERENCES owner(id),
+  kind          TEXT    NOT NULL CHECK (kind IN ('machine', 'desktop', 'phone', 'browser')),
+  name          TEXT    NOT NULL,
+  machine_id    TEXT    REFERENCES machine(id),      -- required for machine and desktop
+  token_hash    BLOB    NOT NULL UNIQUE CHECK (length(token_hash) = 32),  -- SHA-256 of the full token string
+  token_hint    TEXT    NOT NULL,                    -- 'sy_m_…k3Qz' (prefix + last 4) for display
+  scopes        TEXT    NOT NULL CHECK (json_valid(scopes)),              -- '["write"]'
+  created_at    INTEGER NOT NULL,
+  created_by    TEXT    NOT NULL,                    -- 'cli', 'pair:<code id>', 'setup'
+  last_used_at  INTEGER,
+  last_used_ip  TEXT,
+  revoked_at    INTEGER, expires_at INTEGER, prefs TEXT CHECK (prefs IS NULL OR json_valid(prefs)),
+  CHECK (kind NOT IN ('machine', 'desktop') OR machine_id IS NOT NULL)
+) STRICT;
+CREATE INDEX device_machine ON device(machine_id);
+
+-- Secrets the hub makes for itself. Kept in the database so backups and moves keep push
+-- subscriptions valid. (The pairing pepper is deliberately not here: pairing.md 2.1.)
+CREATE TABLE hub_secret (
+  key           TEXT    NOT NULL PRIMARY KEY,      -- vapid_private, action_key
+  value         BLOB    NOT NULL,
+  created_at    INTEGER NOT NULL
+) STRICT;
+
+-- One-time pairing codes and owner sign-in links (pairing.md 2 and 4).
+CREATE TABLE pair_code (
+  id            TEXT    NOT NULL PRIMARY KEY,      -- 'pc_' + ULID
+  kind          TEXT    NOT NULL CHECK (kind IN ('machine', 'desktop', 'phone', 'browser', 'owner')),
+  code_hash     BLOB    CHECK (code_hash IS NULL OR length(code_hash) = 32),   -- HMAC of the digits; NULL for owner links
+  secret_hash   BLOB    NOT NULL UNIQUE CHECK (length(secret_hash) = 32),      -- HMAC of the QR/link secret
+  name          TEXT,                               -- suggested device name
+  machine_id    TEXT,                               -- optional, machine/desktop codes
+  url           TEXT    NOT NULL,                   -- hub URL put in the QR
+  created_at    INTEGER NOT NULL,
+  created_by    TEXT    NOT NULL,                   -- 'cli', 'owner:<device id>'
+  expires_at    INTEGER NOT NULL,
+  claimed_at    INTEGER,
+  cancelled_at  INTEGER,
+  device_id     TEXT    REFERENCES device(id),
+  claim_ip      TEXT
+) STRICT;
+CREATE INDEX pair_code_live ON pair_code(code_hash) WHERE claimed_at IS NULL AND cancelled_at IS NULL;
+
+-- Channel kinds with a hub-wide switch.
+CREATE TABLE channel (
+  kind          TEXT    NOT NULL PRIMARY KEY CHECK (kind IN ('webpush', 'ntfy', 'expo')),
+  enabled       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+  settings      TEXT    NOT NULL DEFAULT '{}' CHECK (json_valid(settings)),
+  updated_at    INTEGER NOT NULL
+) STRICT;
+INSERT INTO channel (kind, enabled, settings, updated_at) VALUES
+  ('webpush', 1, '{}', 0),
+  ('ntfy', 1, '{}', 0),
+  ('expo', 1, '{}', 0);
+-- expo: v6 (phase 8, push.md 12): the store app's native pushes through Expo's push service.
+
+-- One place a push goes: a browser subscription or an ntfy topic.
+CREATE TABLE push_target (
+  id            TEXT    NOT NULL PRIMARY KEY,      -- 'pt_' + ULID
+  kind          TEXT    NOT NULL REFERENCES channel(kind),
+  device_id     TEXT    REFERENCES device(id),     -- NULL: an ntfy topic added by the owner for the hub
+  name          TEXT,                               -- "iPhone · Safari", "ntfy.sh/sy-4fQx…"
+  endpoint      TEXT    NOT NULL,                   -- webpush: endpoint URL; ntfy: server URL + '/' + topic
+  keys          TEXT    CHECK (keys IS NULL OR json_valid(keys)),     -- webpush: {"p256dh": "…", "auth": "…"} base64url
+  secret        TEXT,                               -- ntfy access token; never returned by the API
+  prefs         TEXT    CHECK (prefs IS NULL OR json_valid(prefs)),   -- only for targets without a device
+  enabled       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL,
+  last_ok_at    INTEGER,
+  last_error    TEXT,
+  last_error_at INTEGER,
+  fail_count    INTEGER NOT NULL DEFAULT 0,
+  gone_at       INTEGER, meta TEXT CHECK (meta IS NULL OR json_valid(meta)),                            -- push service answered 404/410
+  UNIQUE (kind, endpoint)
+) STRICT;
+CREATE INDEX push_target_device ON push_target(device_id);
+-- meta: v6 (phase 8, push.md 12.7). Per-target facts that are not secrets, expo only:
+-- {"platform": "ios", "app_version": "0.8.0", "app_build": "12"}. For expo, endpoint is the Expo push token.
+
+---------------------------------------------------------------------------- activity
+
+-- Every upload, exactly as received. The typed tables below are rebuilt from this.
+CREATE TABLE record (
+  id            TEXT    NOT NULL PRIMARY KEY,       -- client-made ULID / uuid (record.md 3.1)
+  device_id     TEXT    NOT NULL REFERENCES device(id),
+  machine_id    TEXT    NOT NULL,                    -- envelope machine (not an FK: kept even if the machine is removed)
+  kind          TEXT    NOT NULL,
+  v             INTEGER NOT NULL,
+  ts            INTEGER NOT NULL,                    -- client time
+  received_at   INTEGER NOT NULL,                    -- hub time
+  slot          TEXT,                                -- envelope slot, as sent
+  body          TEXT    NOT NULL CHECK (json_valid(body)),  -- the whole record, every field
+  typed         INTEGER NOT NULL DEFAULT 0 CHECK (typed IN (0, 1)),  -- 1 once folded into typed tables
+  type_error    TEXT                                 -- why typing failed, retried on replay
+) STRICT;
+CREATE INDEX record_kind_ts ON record(kind, ts);
+CREATE INDEX record_machine_ts ON record(machine_id, ts);
+CREATE INDEX record_untyped ON record(received_at) WHERE typed = 0;
+
+-- One Claude Code conversation.
+CREATE TABLE session (
+  id              TEXT    NOT NULL PRIMARY KEY,     -- Claude's session_id
+  seat_id         TEXT    REFERENCES seat(id),       -- from the first record that named a seat; kept for life
+  slot_id         INTEGER REFERENCES slot(id),
+  machine_id      TEXT    REFERENCES machine(id),
+  cwd             TEXT,
+  project         TEXT,                              -- basename of cwd, for display
+  name            TEXT,                              -- session_name / agents "name"
+  title           TEXT,
+  kind            TEXT,                              -- interactive, background
+  transcript_path TEXT,
+  remote_url      TEXT,                              -- Remote Control link
+  term            TEXT    CHECK (term IS NULL OR json_valid(term)),  -- latest record.term
+  started_at      INTEGER,
+  ended_at        INTEGER,
+  end_reason      TEXT,                              -- SessionEnd reason, or 'gone'
+  last_event_at   INTEGER,
+  last_listed_at  INTEGER,                           -- last complete session_list that listed it
+  missed_lists    INTEGER NOT NULL DEFAULT 0,        -- complete lists since then that did not
+  context_pct     REAL,
+  model           TEXT
+) STRICT;
+CREATE INDEX session_seat ON session(seat_id, last_event_at);
+CREATE INDEX session_machine ON session(machine_id, last_event_at);
+CREATE INDEX session_slot ON session(slot_id);
+
+-- Current state only (states.md). History is in hook_event.
+CREATE TABLE session_state (
+  session_id    TEXT    NOT NULL PRIMARY KEY REFERENCES session(id) ON DELETE CASCADE,
+  state         TEXT    NOT NULL CHECK (state IN ('working', 'needs_permission', 'asked', 'done', 'failed', 'ended', 'gone')),
+  since_at      INTEGER NOT NULL,
+  detail        TEXT,                              -- notification type, failure reason, 'started', …
+  question      TEXT,                              -- question line, when state = asked and allowed
+  needs_you     INTEGER NOT NULL CHECK (needs_you IN (0, 1)),
+  last_event    TEXT,                              -- hook event name that set it
+  last_record   TEXT,                              -- record id that set it
+  detector      TEXT,                              -- question detector version, e.g. 'q1'
+  updated_at    INTEGER NOT NULL
+) STRICT;
+CREATE INDEX session_state_needs ON session_state(needs_you, since_at) WHERE needs_you = 1;
+
+CREATE TABLE hook_event (
+  record_id     TEXT    NOT NULL PRIMARY KEY REFERENCES record(id) ON DELETE CASCADE,
+  session_id    TEXT    NOT NULL REFERENCES session(id),
+  event         TEXT    NOT NULL,                    -- hook_event_name
+  subtype       TEXT,                                -- notification_type / SessionStart source / SessionEnd reason / StopFailure error
+  tool_name     TEXT,
+  ts            INTEGER NOT NULL,
+  last_message  TEXT,                                -- derived.last_message, if allowed
+  state_after   TEXT                                 -- state the engine set after this event
+) STRICT;
+CREATE INDEX hook_event_session_ts ON hook_event(session_id, ts);
+CREATE INDEX hook_event_ts ON hook_event(ts);
+
+-- Every (state, detail) change of a session, in fold order (v2). Rebuilt with the session's
+-- fold; session_state holds only the newest.
+CREATE TABLE session_transition (
+  session_id    TEXT    NOT NULL REFERENCES session(id) ON DELETE CASCADE,
+  seq           INTEGER NOT NULL,                    -- 0, 1, 2… in fold order
+  at            INTEGER NOT NULL,                    -- ts of the input that caused it
+  from_state    TEXT,                                -- NULL for the first one
+  to_state      TEXT    NOT NULL,
+  detail        TEXT,
+  cause         TEXT    NOT NULL,                    -- hook event name, 'session_list' or 'gone'
+  record_id     TEXT,                                -- record that caused it
+  PRIMARY KEY (session_id, seq)
+) STRICT;
+
+-- One API response from transcripts, merged by keeping the largest counts.
+CREATE TABLE token_row (
+  key           TEXT    NOT NULL PRIMARY KEY,       -- API message id
+  session_id    TEXT    NOT NULL,                    -- not an FK: rows can arrive before the session's hook events
+  seat_id       TEXT    REFERENCES seat(id),         -- resolved from the session; NULL = Unattributed
+  ts            INTEGER NOT NULL,
+  project       TEXT,
+  model         TEXT,
+  input         INTEGER NOT NULL DEFAULT 0,
+  output        INTEGER NOT NULL DEFAULT 0,
+  cache_5m      INTEGER NOT NULL DEFAULT 0,
+  cache_1h      INTEGER NOT NULL DEFAULT 0,
+  cache_read    INTEGER NOT NULL DEFAULT 0,
+  thinking      INTEGER NOT NULL DEFAULT 0,
+  sidechain     INTEGER NOT NULL DEFAULT 0 CHECK (sidechain IN (0, 1)),
+  record_id     TEXT    NOT NULL                     -- last record that raised a count
+) STRICT;
+CREATE INDEX token_row_ts ON token_row(ts);
+CREATE INDEX token_row_session ON token_row(session_id);
+CREATE INDEX token_row_seat_ts ON token_row(seat_id, ts);
+
+-- "You've hit your limit" replies found in transcripts.
+CREATE TABLE limit_hit (
+  session_id    TEXT    NOT NULL,
+  ts            INTEGER NOT NULL,
+  type          TEXT,
+  status        TEXT,
+  resets_at     INTEGER,
+  seat_id       TEXT    REFERENCES seat(id),
+  PRIMARY KEY (session_id, ts)
+) STRICT;
+
+-- Claude Code's own daily totals from before Switchyard (history_import).
+CREATE TABLE history_day (
+  slot_id       INTEGER NOT NULL REFERENCES slot(id) ON DELETE CASCADE,
+  day           TEXT    NOT NULL CHECK (day GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+  model         TEXT    NOT NULL,                    -- '' for activity-only rows
+  seat_id       TEXT    REFERENCES seat(id),
+  tokens        INTEGER,
+  messages      INTEGER,
+  sessions      INTEGER,
+  tool_calls    INTEGER,
+  record_id     TEXT    NOT NULL,
+  PRIMARY KEY (slot_id, day, model)
+) STRICT;
+
+---------------------------------------------------------------------------- usage
+
+-- One limit reading: from the status line (per session) or from claude.ai (per seat).
+CREATE TABLE limit_sample (
+  seat_id       TEXT    NOT NULL REFERENCES seat(id),
+  window_key    TEXT    NOT NULL,                    -- five_hour, seven_day, seven_day_opus, weekly_fable, iguana_necktie, …
+  ts            INTEGER NOT NULL,
+  source        TEXT    NOT NULL CHECK (source IN ('statusline', 'web')),
+  used_pct      REAL,
+  resets_at     INTEGER,
+  used_dollars  REAL,
+  limit_dollars REAL,
+  session_id    TEXT,                                -- statusline only
+  record_id     TEXT    NOT NULL,
+  PRIMARY KEY (seat_id, window_key, ts, source)
+) STRICT;
+CREATE INDEX limit_sample_ts ON limit_sample(ts);
+
+-- The full claude.ai usage response per seat per poll. Every field kept (iguana_necktie…).
+CREATE TABLE web_usage (
+  seat_id       TEXT    NOT NULL REFERENCES seat(id),
+  ts            INTEGER NOT NULL,
+  tab_id        TEXT,
+  raw           TEXT    NOT NULL CHECK (json_valid(raw)),  -- payload.usage, whole
+  record_id     TEXT    NOT NULL,
+  PRIMARY KEY (seat_id, ts)
+) STRICT;
+
+-- One limit window per seat: built from limit_sample by the usage model.
+CREATE TABLE usage_window (
+  seat_id       TEXT    NOT NULL REFERENCES seat(id),
+  window_key    TEXT    NOT NULL,
+  resets_at     INTEGER NOT NULL,
+  started_at    INTEGER,                             -- resets_at minus the window length, or first sample
+  peak_pct      REAL,
+  final_pct     REAL,                                -- last sample before reset
+  unused_pct    REAL,                                -- 100 - final_pct, once reset has passed
+  samples       INTEGER NOT NULL DEFAULT 0,
+  alerted_80    INTEGER NOT NULL DEFAULT 0 CHECK (alerted_80 IN (0, 1)),
+  alerted_95    INTEGER NOT NULL DEFAULT 0 CHECK (alerted_95 IN (0, 1)),
+  updated_at    INTEGER NOT NULL,
+  PRIMARY KEY (seat_id, window_key, resets_at)
+) STRICT;
+
+-- Rebuilt on demand from token_row (and history_day for older days).
+CREATE TABLE rollup_daily (
+  day           TEXT    NOT NULL,                    -- local day of the hub's configured time zone
+  seat_id       TEXT    NOT NULL DEFAULT '',         -- '' = Unattributed
+  model         TEXT    NOT NULL DEFAULT '',
+  project       TEXT    NOT NULL DEFAULT '',
+  input         INTEGER NOT NULL DEFAULT 0,
+  output        INTEGER NOT NULL DEFAULT 0,
+  cache_5m      INTEGER NOT NULL DEFAULT 0,
+  cache_1h      INTEGER NOT NULL DEFAULT 0,
+  cache_read    INTEGER NOT NULL DEFAULT 0,
+  replies       INTEGER NOT NULL DEFAULT 0,
+  api_usd       REAL    NOT NULL DEFAULT 0,          -- API list-price equivalent
+  built_at      INTEGER NOT NULL,
+  PRIMARY KEY (day, seat_id, model, project)
+) STRICT;
+
+---------------------------------------------------------------------------- alerts (phase 4)
+
+-- Global rules: one base rule per trigger plus scoped overrides (push.md 3).
+CREATE TABLE rule (
+  id            TEXT    NOT NULL PRIMARY KEY,      -- 'rule_<trigger>' for base rules, 'rule_' + ULID for overrides
+  owner_id      TEXT    NOT NULL DEFAULT 'owner' REFERENCES owner(id),
+  trigger       TEXT    NOT NULL,                   -- unknown triggers are ignored by older hubs
+  base          INTEGER NOT NULL DEFAULT 0 CHECK (base IN (0, 1)),
+  enabled       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+  delay_s       INTEGER NOT NULL DEFAULT 0 CHECK (delay_s BETWEEN 0 AND 86400),
+  bypass_quiet  INTEGER NOT NULL DEFAULT 0 CHECK (bypass_quiet IN (0, 1)),
+  scope         TEXT    NOT NULL DEFAULT '{}' CHECK (json_valid(scope)),   -- {"seats","projects","machines","windows"}
+  updated_at    INTEGER NOT NULL
+) STRICT;
+CREATE UNIQUE INDEX rule_base ON rule(trigger) WHERE base = 1;
+-- The owner row normally appears after the migrations; the seeded rules below need it now.
+INSERT OR IGNORE INTO owner (id, created_at) VALUES ('owner', 0);
+INSERT INTO rule (id, trigger, base, enabled, delay_s, bypass_quiet, scope, updated_at) VALUES
+  ('rule_needs_permission', 'needs_permission', 1, 1,   30, 0, '{}', 0),
+  ('rule_asked',            'asked',            1, 1,   60, 0, '{}', 0),
+  ('rule_failed',           'failed',           1, 1,    0, 1, '{}', 0),
+  ('rule_limit_80',         'limit_80',         1, 1,    0, 0, '{"windows":["five_hour","seven_day"]}', 0),
+  ('rule_limit_95',         'limit_95',         1, 1,    0, 0, '{"windows":["five_hour","seven_day"]}', 0),
+  ('rule_reset',            'reset',            1, 0,    0, 0, '{"windows":["five_hour","seven_day"]}', 0),
+  ('rule_machine_silent',   'machine_silent',   1, 1, 3600, 0, '{}', 0);
+
+-- One row per episode (push.md 3.2 and 4).
+CREATE TABLE alert (
+  id            TEXT    NOT NULL PRIMARY KEY,      -- 'al_' + ULID
+  episode       TEXT    NOT NULL UNIQUE,            -- dedupe key
+  trigger       TEXT    NOT NULL,
+  rule_id       TEXT,                               -- rule in force at creation (not an FK: overrides can be deleted)
+  session_id    TEXT    REFERENCES session(id),
+  seat_id       TEXT    REFERENCES seat(id),
+  machine_id    TEXT    REFERENCES machine(id),
+  window_key    TEXT,
+  status        TEXT    NOT NULL CHECK (status IN ('pending', 'fired', 'snoozed', 'seen', 'cancelled', 'closed', 'skipped')),
+  reason        TEXT,                               -- answered, ended, superseded, stale, rule_off, remote_control, baseline, recovered, reset_passed, direct
+  since_at      INTEGER,                            -- when the condition began (client ts for sessions)
+  created_at    INTEGER NOT NULL,
+  due_at        INTEGER,                            -- next scheduler action (pending, snoozed); NULL otherwise
+  fired_at      INTEGER,                            -- first push
+  fire_count    INTEGER NOT NULL DEFAULT 0,
+  snoozed_until INTEGER,
+  seen_at       INTEGER,
+  seen_by       TEXT,                               -- device id or 'ntfy:<target id>'
+  ended_at      INTEGER,                            -- when it became cancelled, closed or skipped
+  facts         TEXT    NOT NULL DEFAULT '{}' CHECK (json_valid(facts)),   -- text inputs at creation: labels, question, pct, resets_at, remote_url
+  updated_at    INTEGER NOT NULL
+) STRICT;
+CREATE INDEX alert_due ON alert(due_at) WHERE due_at IS NOT NULL;
+CREATE INDEX alert_open ON alert(session_id) WHERE status IN ('pending', 'fired', 'snoozed', 'seen');
+CREATE INDEX alert_created ON alert(created_at);
+
+-- One attempt to bring one alert (fire) to one target.
+CREATE TABLE delivery (
+  id            INTEGER NOT NULL PRIMARY KEY,
+  alert_id      TEXT    NOT NULL REFERENCES alert(id) ON DELETE CASCADE,
+  target_id     TEXT    NOT NULL,                   -- not an FK: the log outlives a removed target
+  target_kind   TEXT    NOT NULL,
+  fire          INTEGER NOT NULL,                   -- alert.fire_count this belongs to
+  batch         TEXT,                               -- 'pb_' + ULID; deliveries sent as one push share it
+  status        TEXT    NOT NULL CHECK (status IN ('pending', 'held', 'sent', 'failed', 'skipped', 'gone')),
+  reason        TEXT,                               -- muted, quiet, flood, resolved, seen, channel_off
+  tries         INTEGER NOT NULL DEFAULT 0,
+  next_at       INTEGER,                            -- pending: next try; held: release time
+  http_status   INTEGER,
+  last_error    TEXT,
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL, ticket TEXT, receipt_at INTEGER,
+  UNIQUE (alert_id, target_id, fire)
+) STRICT;
+CREATE INDEX delivery_next ON delivery(next_at) WHERE next_at IS NOT NULL;
+CREATE INDEX delivery_batch ON delivery(batch);
+-- ticket, receipt_at: v6 (phase 8, push.md 12.4). ticket: the Expo push ticket id of a sent expo delivery
+-- (NULL for other kinds); receipt_at: when its receipt was read (or given up after 24 h).
+CREATE INDEX delivery_ticket_open ON delivery(created_at) WHERE ticket IS NOT NULL AND receipt_at IS NULL;
+
+-- One remote the hub pulls over SSH (machines.md 3.4).
+CREATE TABLE pull_target (
+  id            TEXT    NOT NULL PRIMARY KEY,               -- 'pt_' + ULID
+  owner_id      TEXT    NOT NULL DEFAULT 'owner' REFERENCES owner(id),
+  name          TEXT    NOT NULL UNIQUE,                    -- machine name, used by the CLI
+  machine_id    TEXT    UNIQUE REFERENCES machine(id),      -- NULL until bound (first hello)
+  device_id     TEXT    REFERENCES device(id),              -- the pull device; NULL until bound
+  host          TEXT    NOT NULL,                           -- HostName
+  port          INTEGER NOT NULL DEFAULT 22 CHECK (port BETWEEN 1 AND 65535),
+  user          TEXT    NOT NULL,
+  jump          TEXT,                                       -- ProxyJump, as typed
+  remote_sy     TEXT    NOT NULL DEFAULT '.local/bin/sy',   -- used only without a forced command
+  host_keys     TEXT    NOT NULL CHECK (json_valid(host_keys)),  -- ["ssh-ed25519 AAAA…", …] pinned public keys
+  interval_s    INTEGER NOT NULL DEFAULT 60 CHECK (interval_s BETWEEN 15 AND 3600),
+  enabled       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+  state         TEXT    NOT NULL DEFAULT 'new'
+                CHECK (state IN ('new', 'ok', 'failing', 'host_key', 'auth', 'refused', 'disabled')),
+  created_at    INTEGER NOT NULL,
+  last_try_at   INTEGER,
+  last_ok_at    INTEGER,
+  last_error    TEXT,                                       -- one line, no secrets
+  fail_count    INTEGER NOT NULL DEFAULT 0,
+  next_at       INTEGER                                      -- scheduler: next run
+) STRICT;
+CREATE INDEX pull_target_next ON pull_target(enabled, next_at);

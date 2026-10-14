@@ -1,0 +1,224 @@
+package ingest
+
+import (
+	"encoding/json"
+	"fmt"
+	"sort"
+	"time"
+
+	"github.com/mraj602/switchyard/internal/hub/state"
+	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/switchyard/internal/record"
+)
+
+// The hub side of the state engine (states.md): the pure fold of internal/hub/state,
+// applied one input at a time and persisted per session in session_state, the session
+// row's fold columns and session_transition. session_state.updated_at is the ts of the
+// newest input folded in; an input at or before it (a late record) makes the engine refold
+// the session from its stored records, so the result never depends on arrival order.
+
+// hookInput adapts a hook_event record to a fold input.
+func hookInput(id string, ts time.Time, r *record.Record) (state.Input, error) {
+	var lm *string
+	if s, ok := derivedStr(r, "last_message"); ok {
+		lm = &s
+	}
+	in, err := state.HookInput(id, ts, r.Payload, lm)
+	if err != nil {
+		return in, err
+	}
+	if q, ok := derivedStr(r, "question"); ok {
+		in.Hook.Question = q
+	}
+	return in, nil
+}
+
+func listInput(id string, ts time.Time, complete, listed bool, status string) state.Input {
+	return state.Input{ID: id, TS: ts, List: &state.ListObs{Complete: complete, Listed: listed, Status: status}}
+}
+
+func ms(t time.Time) int64 {
+	if t.IsZero() {
+		return 0
+	}
+	return t.UnixMilli()
+}
+
+func tm(v int64) time.Time {
+	if v == 0 {
+		return time.Time{}
+	}
+	return time.UnixMilli(v).UTC()
+}
+
+func sessionFrom(f store.FoldRow) state.Session {
+	return state.Session{
+		State: state.State(f.State), Detail: f.Detail, Since: tm(f.Since), Question: f.Question, Detector: f.Detector,
+		LastEventAt: tm(f.LastEventAt), LastListedAt: tm(f.LastListedAt), MissedLists: f.MissedLists,
+		EndedAt: tm(f.EndedAt), EndReason: f.EndReason,
+	}
+}
+
+func foldRowOf(s *state.Session, updated int64, lastEvent, lastRecord string) store.FoldRow {
+	return store.FoldRow{
+		State: string(s.State), Detail: s.Detail, Question: s.Question, Detector: s.Detector,
+		LastEvent: lastEvent, LastRecord: lastRecord, Since: ms(s.Since), UpdatedAt: updated, NeedsYou: s.NeedsYou(),
+		LastEventAt: ms(s.LastEventAt), LastListedAt: ms(s.LastListedAt), EndedAt: ms(s.EndedAt), EndReason: s.EndReason,
+		MissedLists: s.MissedLists,
+	}
+}
+
+func transitionsOf(h []state.Transition, recordID string) []store.TransitionRow {
+	out := make([]store.TransitionRow, 0, len(h))
+	for _, x := range h {
+		out = append(out, store.TransitionRow{At: ms(x.At), From: string(x.From), To: string(x.To), Detail: x.Detail,
+			Cause: x.Cause, RecordID: recordID})
+	}
+	return out
+}
+
+// fold applies one input to a session: incrementally when it is newer than everything
+// folded so far, else by refolding the session.
+func (t *typer) fold(sessionID string, in state.Input) error {
+	f, ok, err := t.tx.GetFold(sessionID)
+	if err != nil {
+		return err
+	}
+	at := ms(in.TS)
+	if ok && at <= f.UpdatedAt {
+		return t.refold(sessionID)
+	}
+	var s state.Session
+	if ok {
+		s = sessionFrom(f)
+	}
+	s.Apply(in)
+	if s.State == "" {
+		return nil // nothing to persist yet (an unlisted session with no state)
+	}
+	lastEvent, lastRecord := f.LastEvent, f.LastRecord
+	if n := len(s.History); n > 0 {
+		lastEvent, lastRecord = s.History[n-1].Cause, in.ID
+	}
+	if err := t.tx.PutFold(sessionID, foldRowOf(&s, max(at, f.UpdatedAt), lastEvent, lastRecord)); err != nil {
+		return err
+	}
+	if err := t.tx.AppendTransitions(sessionID, transitionsOf(s.History, in.ID), false); err != nil {
+		return err
+	}
+	if in.Hook != nil {
+		return t.tx.SetStateAfter(in.ID, string(s.State))
+	}
+	return nil
+}
+
+// refold rebuilds a session's fold from its hook_event records and the session_list
+// records of its slot.
+func (t *typer) refold(sessionID string) error {
+	inputs, err := loadInputs(t.tx, sessionID)
+	if err != nil {
+		return err
+	}
+	return persistFold(t.tx, sessionID, inputs)
+}
+
+// loadInputs reads every fold input of a session from the record table.
+func loadInputs(tx *store.Tx, sessionID string) ([]state.Input, error) {
+	sess, ok, err := tx.GetSession(sessionID)
+	if err != nil || !ok {
+		return nil, err
+	}
+	hooks, err := tx.HookRecordsOf(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	var inputs []state.Input
+	from := sess.StartedAt
+	for _, h := range hooks {
+		var r record.Record
+		if err := json.Unmarshal(h.Body, &r); err != nil {
+			return nil, fmt.Errorf("refold %s: record %s: %w", sessionID, h.ID, err)
+		}
+		in, err := hookInput(r.ID, tm(h.TS), &r)
+		if err != nil {
+			return nil, err
+		}
+		inputs = append(inputs, in)
+		if from == 0 || h.TS < from {
+			from = h.TS
+		}
+	}
+	if sess.SlotID != 0 && sess.MachineID != "" {
+		folder, err := tx.SlotFolder(sess.SlotID)
+		if err != nil {
+			return nil, err
+		}
+		lists, err := tx.SessionListRecords(sess.MachineID, folder, from)
+		if err != nil {
+			return nil, err
+		}
+		for _, l := range lists {
+			var r struct {
+				Payload record.SessionListPayload `json:"payload"`
+			}
+			if json.Unmarshal(l.Body, &r) != nil {
+				continue
+			}
+			listed, status := false, ""
+			for _, raw := range r.Payload.Sessions {
+				var it listItem
+				if json.Unmarshal(raw, &it) == nil && it.SessionID == sessionID {
+					listed, status = true, it.Status
+					break
+				}
+			}
+			if !listed && !r.Payload.Complete {
+				continue
+			}
+			inputs = append(inputs, listInput(l.ID, tm(l.TS), r.Payload.Complete, listed, status))
+		}
+	}
+	return inputs, nil
+}
+
+// persistFold folds inputs from scratch and replaces the session's persisted fold.
+func persistFold(tx *store.Tx, sessionID string, inputs []state.Input) error {
+	sort.SliceStable(inputs, func(i, j int) bool {
+		if !inputs[i].TS.Equal(inputs[j].TS) {
+			return inputs[i].TS.Before(inputs[j].TS)
+		}
+		return inputs[i].ID < inputs[j].ID
+	})
+	var s state.Session
+	var trans []store.TransitionRow
+	var updated int64
+	var lastEvent, lastRecord string
+	after := map[string]string{}
+	for _, in := range inputs {
+		n := len(s.History)
+		s.Apply(in)
+		for _, x := range s.History[n:] {
+			trans = append(trans, transitionsOf([]state.Transition{x}, in.ID)...)
+			lastEvent, lastRecord = x.Cause, in.ID
+		}
+		updated = max(updated, ms(in.TS))
+		if in.Hook != nil {
+			after[in.ID] = string(s.State)
+		}
+	}
+	if s.State == "" {
+		return nil
+	}
+	if err := tx.PutFold(sessionID, foldRowOf(&s, updated, lastEvent, lastRecord)); err != nil {
+		return err
+	}
+	if err := tx.AppendTransitions(sessionID, trans, true); err != nil {
+		return err
+	}
+	for id, st := range after {
+		if err := tx.SetStateAfter(id, st); err != nil {
+			return err
+		}
+	}
+	return nil
+}

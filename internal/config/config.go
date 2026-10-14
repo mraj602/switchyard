@@ -1,0 +1,655 @@
+// Package config reads and writes config.toml (hub address, privacy, hooks, status line,
+// outbox and slot settings), keeping unknown keys on rewrite.
+//
+// Contract: docs/spec/paths.md section 4.
+//
+// The file is held as a generic TOML document so keys this version does not know are
+// carried through a rewrite untouched. Comments are not preserved (go-toml/v2 does not
+// keep them); see docs/phases/1.md for the library choice.
+//
+// Phase 1. Depends on: paths (the caller passes paths.Dirs.Config.Path).
+package config
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net"
+	"net/url"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+
+	toml "github.com/pelletier/go-toml/v2"
+
+	"github.com/mraj602/switchyard/internal/atomicfile"
+)
+
+// FileName is the only name sy owns inside the config folder (paths.md section 2).
+const FileName = "config.toml"
+
+// Version is the schema version written to new files.
+const Version = 1
+
+// ErrNotFound means a key is neither set nor a known key.
+var ErrNotFound = errors.New("key not found")
+
+// Config is the typed view of the known keys, with defaults filled in.
+type Config struct {
+	Version int `toml:"version"`
+	Hub     struct {
+		URL         string `toml:"url"`
+		InsecureLAN bool   `toml:"insecure_lan"`
+		// Reach is how this machine's records reach the hub: direct, forward or pull
+		// (machines.md 3; phase 5). Dial is the forward end ("127.0.0.1:47830" or
+		// "unix:<path>") the client connects to while keeping URL for TLS and Host.
+		Reach string `toml:"reach"`
+		Dial  string `toml:"dial"`
+	} `toml:"hub"`
+	// Push.Direct is direct ntfy from this machine (machines.md 5). The topic and token
+	// are never here: they live in <state>/push/direct.json.
+	Push struct {
+		Direct struct {
+			Enabled bool   `toml:"enabled"`
+			Server  string `toml:"server"`
+			Private bool   `toml:"private"`
+			AfterS  int    `toml:"after_s"`
+		} `toml:"direct"`
+	} `toml:"push"`
+	// Update is the [update] table of machines.md 7.3.
+	Update struct {
+		BaseURL           string `toml:"base_url"`
+		VerifyAttestation bool   `toml:"verify_attestation"`
+	} `toml:"update"`
+	// Machines is the operator's [machines] table (machines.md 4.4).
+	Machines struct {
+		HubAdmin string `toml:"hub_admin"`
+	} `toml:"machines"`
+	Privacy struct {
+		LastMessage bool `toml:"last_message"`
+	} `toml:"privacy"`
+	Hooks struct {
+		ToolEvents bool `toml:"tool_events"`
+	} `toml:"hooks"`
+	Statusline struct {
+		Wrap string `toml:"wrap"`
+	} `toml:"statusline"`
+	Outbox struct {
+		Fsync    bool `toml:"fsync"`
+		MaxMB    int  `toml:"max_mb"`
+		KeepDays int  `toml:"keep_days"`
+	} `toml:"outbox"`
+	Slots struct {
+		Extra   []string          `toml:"extra"`
+		Labels  map[string]string `toml:"labels"`
+		Colours map[string]string `toml:"colours"`
+	} `toml:"slots"`
+	// Share is the [share] table of setup.md 9.2.
+	Share struct {
+		Primary string `toml:"primary"`
+		// MCP is true, false or "external" (a hand-made script syncs it); read it with MCPMode.
+		MCP        any      `toml:"mcp"`
+		MCPExclude []string `toml:"mcp_exclude"`
+	} `toml:"share"`
+	// Terminal is the [terminal] table of docs/spec/terminal.md T12 (phase 7).
+	Terminal struct {
+		// Titles is written only by `sy term titles on|off` (a config_set in its plan).
+		Titles       bool   `toml:"titles"`
+		Band         bool   `toml:"band"`
+		PaneAutoOpen bool   `toml:"pane_auto_open"`
+		Source       string `toml:"source"` // auto | hub | local
+		ASCII        bool   `toml:"ascii"`
+	} `toml:"terminal"`
+}
+
+// MCPMode returns share.mcp as "true", "false" or "external" ("" when unset).
+func (c Config) MCPMode() string {
+	switch v := c.Share.MCP.(type) {
+	case bool:
+		if v {
+			return "true"
+		}
+		return "false"
+	case string:
+		return v
+	}
+	return ""
+}
+
+// Defaults returns the configuration of a machine with no config.toml.
+func Defaults() Config {
+	var c Config
+	c.Version = Version
+	c.Privacy.LastMessage = true
+	c.Hub.Reach = ReachDirect
+	c.Push.Direct.Server = DefaultDirectServer
+	c.Push.Direct.Private = true
+	c.Push.Direct.AfterS = DefaultDirectAfterS
+	c.Outbox.Fsync = true
+	c.Outbox.MaxMB = 50
+	c.Outbox.KeepDays = 7
+	c.Slots.Extra = []string{}
+	c.Slots.Labels = map[string]string{}
+	c.Slots.Colours = map[string]string{}
+	c.Share.MCPExclude = []string{}
+	c.Terminal.Band = true
+	c.Terminal.PaneAutoOpen = true
+	c.Terminal.Source = TerminalSourceAuto
+	return c
+}
+
+type kind int
+
+const (
+	kString kind = iota
+	kBool
+	kInt
+	kStrings
+	kMCP // true, false or "external" (share.mcp)
+)
+
+// spec describes one known key: its type, default and whether `sy config set` may change it.
+// A managed key is changed only through a plan (SetJSON, setup.md 6.1 config_set) by the
+// command that owns it; `sy config set` refuses it and names that command.
+type spec struct {
+	kind     kind
+	def      any
+	readOnly bool
+	managed  string // the command that owns the key, e.g. "sy term titles on|off"
+}
+
+var known = map[string]spec{
+	"version":                   {kind: kInt, def: int64(Version), readOnly: true},
+	"hub.url":                   {kind: kString, def: ""},
+	"hub.insecure_lan":          {kind: kBool, def: false},
+	"hub.reach":                 {kind: kString, def: ReachDirect},
+	"hub.dial":                  {kind: kString, def: ""},
+	"push.direct.enabled":       {kind: kBool, def: false},
+	"push.direct.server":        {kind: kString, def: DefaultDirectServer},
+	"push.direct.private":       {kind: kBool, def: true},
+	"push.direct.after_s":       {kind: kInt, def: int64(DefaultDirectAfterS)},
+	"update.base_url":           {kind: kString, def: ""},
+	"update.verify_attestation": {kind: kBool, def: false},
+	"machines.hub_admin":        {kind: kString, def: ""},
+	"privacy.last_message":      {kind: kBool, def: true},
+	"hooks.tool_events":         {kind: kBool, def: false},
+	"statusline.wrap":           {kind: kString, def: ""},
+	"outbox.fsync":              {kind: kBool, def: true},
+	"outbox.max_mb":             {kind: kInt, def: int64(50)},
+	"outbox.keep_days":          {kind: kInt, def: int64(7)},
+	"slots.extra":               {kind: kStrings, def: []any{}},
+	"share.primary":             {kind: kString, def: ""},
+	"share.mcp":                 {kind: kMCP, def: ""},
+	"share.mcp_exclude":         {kind: kStrings, def: []any{}},
+	"terminal.titles":           {kind: kBool, def: false, managed: "sy term titles on|off"},
+	"terminal.band":             {kind: kBool, def: true},
+	"terminal.pane_auto_open":   {kind: kBool, def: true},
+	"terminal.source":           {kind: kString, def: TerminalSourceAuto},
+	"terminal.ascii":            {kind: kBool, def: false},
+}
+
+// labelsPrefix: "slots.labels.<slot>" is a free-form key; the slot (e.g. "~/.claude-2")
+// may contain dots, so everything after the prefix is the map key. coloursPrefix is the same
+// for "slots.colours.<slot>" (setup.md 9.2), whose value must be "#rrggbb".
+const (
+	labelsPrefix  = "slots.labels."
+	coloursPrefix = "slots.colours."
+)
+
+// slotMaps are the free-form slot tables, by prefix.
+var slotMaps = map[string]string{labelsPrefix: "labels", coloursPrefix: "colours"}
+
+func slotMapKey(key string) (table, rest string, ok bool) {
+	for prefix, t := range slotMaps {
+		if r, found := strings.CutPrefix(key, prefix); found {
+			return t, r, true
+		}
+	}
+	return "", "", false
+}
+
+// Known lists the keys `sy config get/set` understands, sorted.
+func Known() []string {
+	out := make([]string, 0, len(known)+1)
+	for k := range known {
+		out = append(out, k)
+	}
+	out = append(out, labelsPrefix+"<slot>", coloursPrefix+"<slot>")
+	sort.Strings(out)
+	return out
+}
+
+// File is a loaded config.toml. The zero value is not usable; call Load.
+type File struct {
+	dir string
+	doc map[string]any
+}
+
+// Load reads <dir>/config.toml. A missing file is not an error: the result is empty and
+// behaves as the defaults. Load never creates anything.
+func Load(dir string) (*File, error) {
+	f := &File{dir: dir, doc: map[string]any{}}
+	data, err := os.ReadFile(filepath.Join(dir, FileName))
+	if errors.Is(err, os.ErrNotExist) {
+		return f, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := toml.Unmarshal(data, &f.doc); err != nil {
+		return nil, fmt.Errorf("%s: %w", filepath.Join(dir, FileName), err)
+	}
+	if f.doc == nil {
+		f.doc = map[string]any{}
+	}
+	return f, nil
+}
+
+// Path is where Save writes.
+func (f *File) Path() string { return filepath.Join(f.dir, FileName) }
+
+// MostPrivate is the configuration used when config.toml cannot be read at all: every
+// privacy switch at its most private setting, everything else at its default.
+func MostPrivate() Config {
+	c := Defaults()
+	c.Privacy.LastMessage = false
+	return c
+}
+
+// Typed decodes the known keys over the defaults. A known key with the wrong type is an
+// error (so a hand edit such as `max_mb = "lots"` is reported, not silently ignored).
+//
+// The error does not discard the rest: the Config returned with it holds every key that
+// did decode, with each key that did not at its default, except privacy keys, which fall
+// back to their most private value. A typo in an unrelated key therefore never re-enables
+// content capture.
+func (f *File) Typed() (Config, error) {
+	c := Defaults()
+	if data, err := toml.Marshal(f.doc); err == nil {
+		if err := toml.Unmarshal(data, &c); err == nil {
+			c.normalize()
+			return c, nil
+		}
+	}
+	c = Defaults()
+	var errs []error
+	keys := make([]string, 0, len(known)+1)
+	for k := range known {
+		keys = append(keys, k)
+	}
+	keys = append(keys, "slots.labels", "slots.colours")
+	sort.Strings(keys)
+	for _, k := range keys {
+		parts := strings.Split(k, ".")
+		v := lookupPath(f.doc, parts)
+		private := strings.HasPrefix(k, "privacy.")
+		if v == nil {
+			// "privacy = 3" replaces the whole table: nothing to decode, so be private.
+			if _, isTable := f.doc[parts[0]].(map[string]any); private && f.doc[parts[0]] != nil && !isTable {
+				c.Privacy.LastMessage = false
+			}
+			continue
+		}
+		var nested any = v
+		for i := len(parts) - 1; i >= 0; i-- {
+			nested = map[string]any{parts[i]: nested}
+		}
+		tmp := c
+		data, err := toml.Marshal(nested)
+		if err == nil {
+			err = toml.Unmarshal(data, &tmp)
+		}
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", k, err))
+			if private {
+				c.Privacy.LastMessage = false
+			}
+			continue
+		}
+		c = tmp
+	}
+	c.normalize()
+	if len(errs) == 0 {
+		errs = append(errs, errors.New("unreadable value"))
+	}
+	return c, fmt.Errorf("%s: %w", f.Path(), errors.Join(errs...))
+}
+
+func (c *Config) normalize() {
+	if c.Slots.Extra == nil {
+		c.Slots.Extra = []string{}
+	}
+	if c.Slots.Labels == nil {
+		c.Slots.Labels = map[string]string{}
+	}
+	if c.Slots.Colours == nil {
+		c.Slots.Colours = map[string]string{}
+	}
+	if c.Share.MCPExclude == nil {
+		c.Share.MCPExclude = []string{}
+	}
+}
+
+// Get returns the value of key: the stored value, else the default of a known key.
+// Tables come back as map[string]any, arrays as []any, integers as int64.
+func (f *File) Get(key string) (any, error) {
+	if v, ok := f.lookup(key); ok {
+		return v, nil
+	}
+	if sp, ok := known[key]; ok {
+		return sp.def, nil
+	}
+	if key == "slots.labels" || key == "slots.colours" {
+		return map[string]any{}, nil
+	}
+	return nil, fmt.Errorf("%w: %s", ErrNotFound, key)
+}
+
+func (f *File) lookup(key string) (any, bool) {
+	if table, rest, ok := slotMapKey(key); ok && rest != "" {
+		m, _ := lookupPath(f.doc, []string{"slots", table}).(map[string]any)
+		v, ok := m[rest]
+		return v, ok
+	}
+	v := lookupPath(f.doc, strings.Split(key, "."))
+	return v, v != nil
+}
+
+func lookupPath(m map[string]any, parts []string) any {
+	var cur any = m
+	for _, p := range parts {
+		t, ok := cur.(map[string]any)
+		if !ok {
+			return nil
+		}
+		cur, ok = t[p]
+		if !ok {
+			return nil
+		}
+	}
+	return cur
+}
+
+// Set parses args according to the type of key and stores it. Only known keys can be set;
+// unknown keys already in the file are left alone. Booleans take true/false, integers must
+// be positive, string lists take one argument per item (or a single JSON-style ["a","b"]).
+func (f *File) Set(key string, args []string) error { return f.set(key, args, false) }
+
+// set is Set; fromPlan allows managed keys (SetJSON, the path a setup plan takes).
+func (f *File) set(key string, args []string, fromPlan bool) error {
+	if table, rest, ok := slotMapKey(key); ok {
+		if rest == "" || len(args) != 1 {
+			return fmt.Errorf("usage: slots.%s.<slot> <value>", table)
+		}
+		if table == "colours" && !colourRe.MatchString(args[0]) {
+			return fmt.Errorf("%s: want a colour #rrggbb, got %q", key, args[0])
+		}
+		if table == "labels" && !ValidLabel(args[0]) {
+			return fmt.Errorf("%s: invalid label %q (use a-z, 0-9 and -, at most 24 characters, starting with a letter or digit)", key, args[0])
+		}
+		f.table("slots", table)[rest] = args[0]
+		return nil
+	}
+	sp, ok := known[key]
+	if !ok {
+		return fmt.Errorf("unknown key %q (known: %s)", key, strings.Join(Known(), ", "))
+	}
+	if sp.readOnly {
+		return fmt.Errorf("%s is managed by sy and cannot be set", key)
+	}
+	if sp.managed != "" && !fromPlan {
+		return fmt.Errorf("%s is changed by `%s` (it also edits files), not by sy config set", key, sp.managed)
+	}
+	val, err := parse(key, sp.kind, args)
+	if err != nil {
+		return err
+	}
+	parts := strings.Split(key, ".")
+	f.table(parts[:len(parts)-1]...)[parts[len(parts)-1]] = val
+	return nil
+}
+
+// table returns the nested table at path, creating (or replacing a non-table value with) it.
+func (f *File) table(path ...string) map[string]any {
+	cur := f.doc
+	for _, p := range path {
+		next, ok := cur[p].(map[string]any)
+		if !ok {
+			next = map[string]any{}
+			cur[p] = next
+		}
+		cur = next
+	}
+	return cur
+}
+
+func parse(key string, k kind, args []string) (any, error) {
+	if k == kStrings {
+		return parseList(args)
+	}
+	if len(args) != 1 {
+		return nil, fmt.Errorf("%s takes exactly one value", key)
+	}
+	v := args[0]
+	switch k {
+	case kBool:
+		switch strings.ToLower(v) {
+		case "true", "on", "yes", "1":
+			return true, nil
+		case "false", "off", "no", "0":
+			return false, nil
+		}
+		return nil, fmt.Errorf("%s: want true or false, got %q", key, v)
+	case kMCP:
+		switch strings.ToLower(v) {
+		case "true", "on", "yes":
+			return true, nil
+		case "false", "off", "no":
+			return false, nil
+		case "external":
+			return "external", nil
+		}
+		return nil, fmt.Errorf("%s: want true, false or external, got %q", key, v)
+	case kInt:
+		var n int64
+		if _, err := fmt.Sscanf(v, "%d", &n); err != nil || fmt.Sprint(n) != v || n <= 0 {
+			return nil, fmt.Errorf("%s: want a positive whole number, got %q", key, v)
+		}
+		return n, nil
+	}
+	switch key {
+	case "hub.reach":
+		switch v {
+		case ReachDirect, ReachForward, ReachPull:
+		default:
+			return nil, fmt.Errorf("hub.reach: want direct, forward or pull, got %q", v)
+		}
+	case "hub.dial":
+		if err := CheckDial(v); err != nil {
+			return nil, err
+		}
+	case "push.direct.server":
+		if err := CheckDirectServer(v); err != nil {
+			return nil, err
+		}
+	case "update.base_url":
+		if err := CheckUpdateBase(v); err != nil {
+			return nil, err
+		}
+	case "terminal.source":
+		if err := CheckTerminalSource(v); err != nil {
+			return nil, err
+		}
+	}
+	if key == "hub.url" && v != "" {
+		if !strings.HasPrefix(v, "http://") && !strings.HasPrefix(v, "https://") {
+			return nil, fmt.Errorf("hub.url: want an http(s) URL or empty, got %q", v)
+		}
+	}
+	return v, nil
+}
+
+func parseList(args []string) (any, error) {
+	if len(args) == 1 && strings.HasPrefix(strings.TrimSpace(args[0]), "[") {
+		var wrapper struct {
+			V []string `toml:"v"`
+		}
+		if err := toml.Unmarshal([]byte("v = "+args[0]), &wrapper); err != nil {
+			return nil, fmt.Errorf("not a list of strings: %w", err)
+		}
+		args = wrapper.V
+	}
+	out := make([]any, 0, len(args))
+	for _, a := range args {
+		if a != "" {
+			out = append(out, a)
+		}
+	}
+	return out, nil
+}
+
+// Unknown lists the dotted keys in the file that this version does not know, for `sy doctor`.
+func (f *File) Unknown() []string {
+	var out []string
+	var walk func(prefix string, m map[string]any)
+	walk = func(prefix string, m map[string]any) {
+		for k, v := range m {
+			full := prefix + k
+			if _, ok := known[full]; ok {
+				continue
+			}
+			if full == "slots.labels" || full == "slots.colours" {
+				continue
+			}
+			if sub, ok := v.(map[string]any); ok && isKnownTable(full) {
+				walk(full+".", sub)
+				continue
+			}
+			out = append(out, full)
+		}
+	}
+	walk("", f.doc)
+	sort.Strings(out)
+	return out
+}
+
+func isKnownTable(name string) bool {
+	for k := range known {
+		if strings.HasPrefix(k, name+".") {
+			return true
+		}
+	}
+	return false
+}
+
+// Save writes config.toml atomically (temp file in the same folder, fsync, rename), mode
+// 0600. It creates the folder (mode 0700) only if it does not exist, and creates no other
+// file in it: the folder is shared with the Electron prototype (paths.md section 2).
+func (f *File) Save() error {
+	if _, ok := f.doc["version"]; !ok {
+		f.doc["version"] = int64(Version)
+	}
+	data, err := toml.Marshal(f.doc)
+	if err != nil {
+		return err
+	}
+	header := []byte("# Switchyard (sy) settings. Unofficial; not affiliated with Anthropic.\n" +
+		"# Change with `sy config set`; comments added by hand are not kept.\n")
+	if err := os.MkdirAll(f.dir, 0o700); err != nil {
+		return err
+	}
+	return atomicfile.Write(f.Path(), append(header, data...), 0o600)
+}
+
+var colourRe = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+
+// labelRe is the account label rule; it must stay identical to model.ValidLabel
+// (setup.md step 2). Labels end up in launcher file names and launcher text, so slots.labels.* values
+// are checked on every write.
+var labelRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,23}$`)
+
+// ValidLabel reports whether s is a valid account label (`^[a-z0-9][a-z0-9-]{0,23}$`).
+func ValidLabel(s string) bool { return labelRe.MatchString(s) }
+
+// SetJSON sets key from a JSON value, the form `sy setup` plans config changes in
+// (setup.md 6.1 config_set): a string or bool is passed to Set, an array of strings sets a
+// list, and null deletes the key (only the free-form slot keys and share.* may be deleted).
+func (f *File) SetJSON(key string, raw json.RawMessage) error {
+	var v any
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return fmt.Errorf("%s: %w", key, err)
+	}
+	switch t := v.(type) {
+	case nil:
+		return f.Delete(key)
+	case string:
+		return f.set(key, []string{t}, true)
+	case bool:
+		return f.set(key, []string{fmt.Sprint(t)}, true)
+	case float64:
+		return f.set(key, []string{fmt.Sprint(int64(t))}, true)
+	case []any:
+		var args []string
+		for _, x := range t {
+			s, ok := x.(string)
+			if !ok {
+				return fmt.Errorf("%s: want a list of strings", key)
+			}
+			args = append(args, s)
+		}
+		if args == nil {
+			args = []string{"[]"}
+		}
+		return f.set(key, args, true)
+	}
+	return fmt.Errorf("%s: unsupported value %s", key, raw)
+}
+
+// Delete removes a key from the file (a free-form slot key, or a share.* key). A missing
+// key is not an error.
+func (f *File) Delete(key string) error {
+	if table, rest, ok := slotMapKey(key); ok && rest != "" {
+		if m, ok := lookupPath(f.doc, []string{"slots", table}).(map[string]any); ok {
+			delete(m, rest)
+		}
+		return nil
+	}
+	if !strings.HasPrefix(key, "share.") {
+		return fmt.Errorf("%s cannot be deleted", key)
+	}
+	if m, ok := lookupPath(f.doc, []string{"share"}).(map[string]any); ok {
+		delete(m, strings.TrimPrefix(key, "share."))
+	}
+	return nil
+}
+
+// CheckDirectServer validates a push.direct.server value: an origin over https, or over http
+// only for loopback, private and tailnet addresses (the `sy connect` rule, push.md 7.1). The
+// secret topic and the Bearer token go to this server, so a public http URL is refused.
+func CheckDirectServer(server string) error {
+	u, err := url.Parse(server)
+	if err != nil || u.Host == "" || u.User != nil || (u.Path != "" && u.Path != "/") || u.RawQuery != "" || u.Fragment != "" {
+		return fmt.Errorf("push.direct.server: want an origin like https://ntfy.sh, got %q", server)
+	}
+	switch u.Scheme {
+	case "https":
+		return nil
+	case "http":
+		host := u.Hostname()
+		if host == "localhost" {
+			return nil
+		}
+		if ip := net.ParseIP(host); ip != nil && (ip.IsLoopback() || ip.IsPrivate() || tailnetIP(ip)) {
+			return nil
+		}
+		return fmt.Errorf("push.direct.server: http is allowed only for loopback, private and tailnet addresses, got %q", server)
+	}
+	return fmt.Errorf("push.direct.server: want https, got %q", server)
+}
+
+func tailnetIP(ip net.IP) bool {
+	_, cgnat, _ := net.ParseCIDR("100.64.0.0/10")
+	return cgnat.Contains(ip)
+}

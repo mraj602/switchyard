@@ -1,0 +1,263 @@
+// Package claudecli wraps the `claude` command line that `sy setup` and `sy account` call:
+// `claude --version`, `claude auth status|login`, `claude plugin marketplace
+// add|remove|update|list`, `claude plugin install|uninstall|enable|disable|list`, and
+// `claude agents --json`. Callers depend on the Runner interface; the real implementation
+// (os/exec) is wave 1 (WP-D, other files of this package), and Fake is the in-memory
+// implementation for unit tests.
+//
+// Rules every Runner follows (setup.md 5.2, identity.md 3):
+//   - every call takes the config folder and sets CLAUDE_CONFIG_DIR to it, except for the
+//     default ~/.claude (Folder.Unset), where the variable is removed from the environment;
+//   - stdin is closed (except AuthLogin, which inherits the terminal);
+//   - each call has a 60 s timeout (DefaultTimeout), shorter if the context says so;
+//   - commands that take --json have the JSON line parsed into Result;
+//   - the real runner never reads .credentials.json.
+//
+// Contract: docs/spec/setup.md sections 3, 5.2, 8.2, 13. Phase 3.
+package claudecli
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"runtime"
+	"strings"
+	"time"
+)
+
+// DefaultTimeout bounds one non-interactive `claude` call.
+const DefaultTimeout = 60 * time.Second
+
+// ErrNotImplemented is returned by stubs that wave 1 replaces.
+var ErrNotImplemented = errors.New("claudecli: not implemented")
+
+// ErrNotFound means the claude binary was not found (setup exits 7).
+var ErrNotFound = errors.New("claudecli: claude not found")
+
+// Folder names the config folder a call runs as.
+type Folder struct {
+	Dir   string // absolute config folder, symlinks not resolved
+	Unset bool   // true for ~/.claude with CLAUDE_CONFIG_DIR unset (identity.Slot.Default)
+}
+
+// String is the folder as shown in errors and the fake's call log.
+func (f Folder) String() string {
+	if f.Unset {
+		return f.Dir + " (default)"
+	}
+	return f.Dir
+}
+
+// Environ returns base with CLAUDE_CONFIG_DIR set to f.Dir, or removed when f.Unset.
+// base is not modified. Variable names are compared exactly, except on Windows, where they
+// are case-insensitive (so `claude_config_dir=` is removed too).
+func (f Folder) Environ(base []string) []string {
+	return f.environ(runtime.GOOS, base)
+}
+
+func (f Folder) environ(goos string, base []string, drop ...string) []string {
+	out := stripEnv(goos, base, append([]string{"CLAUDE_CONFIG_DIR"}, drop...)...)
+	if !f.Unset {
+		out = append(out, "CLAUDE_CONFIG_DIR="+f.Dir)
+	}
+	return out
+}
+
+// authEnvVars are login credentials Claude Code takes from the environment ahead of the
+// folder's own login. `claude auth status|login` run without them, so they report and change
+// the folder's login, not the shell's.
+var authEnvVars = []string{"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN"}
+
+// authEnviron is Environ for `claude auth ...`: also without authEnvVars.
+func (f Folder) authEnviron(goos string, base []string) []string {
+	return f.environ(goos, base, authEnvVars...)
+}
+
+// stripEnv returns base without the variables named in names. base is not modified. On
+// Windows (goos "windows") names match case-insensitively, as the OS treats them.
+func stripEnv(goos string, base []string, names ...string) []string {
+	out := make([]string, 0, len(base))
+	for _, kv := range base {
+		k, _, _ := strings.Cut(kv, "=")
+		drop := false
+		for _, n := range names {
+			if k == n || (goos == "windows" && strings.EqualFold(k, n)) {
+				drop = true
+				break
+			}
+		}
+		if !drop {
+			out = append(out, kv)
+		}
+	}
+	return out
+}
+
+// Stdio is the terminal handed to an interactive command (AuthLogin).
+type Stdio struct {
+	In  io.Reader
+	Out io.Writer
+	Err io.Writer
+}
+
+// VersionInfo is `claude --version`.
+type VersionInfo struct {
+	Path    string // binary path used
+	Version string // "2.1.296"
+	Raw     string // "2.1.296 (Claude Code)"
+}
+
+// AuthStatus is `claude auth status --json`.
+type AuthStatus struct {
+	LoggedIn bool            `json:"loggedIn"`
+	Email    string          `json:"email,omitempty"`
+	Org      string          `json:"orgName,omitempty"`
+	Plan     string          `json:"subscriptionType,omitempty"`
+	Method   string          `json:"authMethod,omitempty"`
+	Raw      json.RawMessage `json:"-"` // the full JSON line, for diagnostics (never printed by sy)
+}
+
+// Result is the parsed `--json` outcome line of a plugin command.
+//
+// Claude Code 2.1.296 prints one line per command, for example
+//
+//	{"command":"install","outcome":"ok","plugin":"p@m","pluginId":"p@m","scope":"user","message":"..."}
+//	{"command":"marketplace-add","outcome":"ok","marketplace":"m","message":"..."}
+//
+// and, when the command changed nothing because the goal already holds, exits 1 with
+//
+//	{"command":"enable","outcome":"failed","plugin":"p@m","message":"Plugin \"p@m\" is already enabled",
+//	 "failureCode":"already_in_goal_state","alreadyInGoalState":true}
+//
+// (enable and disable; other failureCodes seen: not_installed for uninstall, not_found for
+// install, not_configured for `marketplace remove` of an unknown name). Exec turns the
+// already-in-goal answers into a nil error with AlreadyInGoalState set, so every caller is
+// idempotent without looking at exit codes.
+type Result struct {
+	Outcome            string          // "ok" on success; "failed" with AlreadyInGoalState
+	Message            string          // human message from the JSON line, if any
+	Command            string          // "install", "enable", "marketplace-add", ... (if printed)
+	FailureCode        string          // "already_in_goal_state", "not_installed", ... (if printed)
+	AlreadyInGoalState bool            // nothing to do: the command's goal already held
+	Raw                json.RawMessage // the JSON line
+}
+
+// OK reports whether the command succeeded or had nothing to do (idempotent success).
+func (r Result) OK() bool { return r.Outcome == "ok" || r.AlreadyInGoalState }
+
+// PluginInfo is one row of `claude plugin list --json`.
+type PluginInfo struct {
+	ID          string `json:"id"` // "switchyard@sy-local"
+	Version     string `json:"version,omitempty"`
+	Enabled     bool   `json:"enabled"`
+	Scope       string `json:"scope,omitempty"`
+	InstallPath string `json:"installPath,omitempty"`
+}
+
+// MarketplaceInfo is one row of `claude plugin marketplace list --json`.
+type MarketplaceInfo struct {
+	Name   string `json:"name"`
+	Source string `json:"source,omitempty"` // directory path or repo
+}
+
+// Agent is one row of `claude agents --json` (a live or recent session).
+type Agent struct {
+	ID     string          `json:"id,omitempty"`
+	Status string          `json:"status,omitempty"`
+	Raw    json.RawMessage `json:"-"`
+}
+
+// Error is a failed claude call.
+type Error struct {
+	Args     []string // arguments after "claude"
+	ExitCode int
+	Outcome  string // JSON outcome if one was printed
+	Message  string // JSON message or the first stderr line
+	// FailureCode is the JSON failureCode if one was printed ("not_found", "not_installed", ...).
+	FailureCode string
+}
+
+func (e *Error) Error() string {
+	return fmt.Sprintf("claude %s: exit %d: %s", strings.Join(e.Args, " "), e.ExitCode, e.Message)
+}
+
+// Runner is the `claude` command line. All methods are safe for concurrent use.
+type Runner interface {
+	// Version runs `claude --version` (CLAUDE_CONFIG_DIR as inherited).
+	Version(ctx context.Context) (VersionInfo, error)
+	// AuthStatus runs `claude auth status --json` as folder f.
+	AuthStatus(ctx context.Context, f Folder) (AuthStatus, error)
+	// AuthLogin runs `claude auth login --claudeai` as f with the terminal inherited (8.2).
+	// It returns when the command exits; callers confirm with AuthStatus.
+	AuthLogin(ctx context.Context, f Folder, tty Stdio) error
+
+	// PluginMarketplaceAdd adds a marketplace from source (a local directory) as f.
+	PluginMarketplaceAdd(ctx context.Context, f Folder, source string) (Result, error)
+	PluginMarketplaceRemove(ctx context.Context, f Folder, name string) (Result, error)
+	PluginMarketplaceUpdate(ctx context.Context, f Folder, name string) (Result, error)
+	PluginMarketplaceList(ctx context.Context, f Folder) ([]MarketplaceInfo, error)
+
+	// PluginInstall installs id ("name@marketplace") as f. Uninstall removes the record for
+	// every folder sharing f's plugin root. Enable/Disable change enabledPlugins in f's
+	// settings target only.
+	PluginInstall(ctx context.Context, f Folder, id string) (Result, error)
+	// PluginUpdate updates an installed plugin to its marketplace's current version as f
+	// (`sy update`'s post-update step, setup.md 5.2).
+	PluginUpdate(ctx context.Context, f Folder, id string) (Result, error)
+	PluginUninstall(ctx context.Context, f Folder, id string) (Result, error)
+	PluginEnable(ctx context.Context, f Folder, id string) (Result, error)
+	PluginDisable(ctx context.Context, f Folder, id string) (Result, error)
+	PluginList(ctx context.Context, f Folder) ([]PluginInfo, error)
+
+	// Agents runs `claude agents --json` as f.
+	Agents(ctx context.Context, f Folder) ([]Agent, error)
+}
+
+// Unimplemented is a Runner whose every method returns ErrNotImplemented. It is the stand-in
+// until the real runner (WP-D) lands; embed it to implement a subset.
+type Unimplemented struct{}
+
+var _ Runner = Unimplemented{}
+
+func (Unimplemented) Version(context.Context) (VersionInfo, error) {
+	return VersionInfo{}, ErrNotImplemented
+}
+func (Unimplemented) AuthStatus(context.Context, Folder) (AuthStatus, error) {
+	return AuthStatus{}, ErrNotImplemented
+}
+func (Unimplemented) AuthLogin(context.Context, Folder, Stdio) error { return ErrNotImplemented }
+func (Unimplemented) PluginMarketplaceAdd(context.Context, Folder, string) (Result, error) {
+	return Result{}, ErrNotImplemented
+}
+func (Unimplemented) PluginMarketplaceRemove(context.Context, Folder, string) (Result, error) {
+	return Result{}, ErrNotImplemented
+}
+func (Unimplemented) PluginMarketplaceUpdate(context.Context, Folder, string) (Result, error) {
+	return Result{}, ErrNotImplemented
+}
+func (Unimplemented) PluginMarketplaceList(context.Context, Folder) ([]MarketplaceInfo, error) {
+	return nil, ErrNotImplemented
+}
+func (Unimplemented) PluginInstall(context.Context, Folder, string) (Result, error) {
+	return Result{}, ErrNotImplemented
+}
+func (Unimplemented) PluginUpdate(context.Context, Folder, string) (Result, error) {
+	return Result{}, ErrNotImplemented
+}
+func (Unimplemented) PluginUninstall(context.Context, Folder, string) (Result, error) {
+	return Result{}, ErrNotImplemented
+}
+func (Unimplemented) PluginEnable(context.Context, Folder, string) (Result, error) {
+	return Result{}, ErrNotImplemented
+}
+func (Unimplemented) PluginDisable(context.Context, Folder, string) (Result, error) {
+	return Result{}, ErrNotImplemented
+}
+func (Unimplemented) PluginList(context.Context, Folder) ([]PluginInfo, error) {
+	return nil, ErrNotImplemented
+}
+func (Unimplemented) Agents(context.Context, Folder) ([]Agent, error) {
+	return nil, ErrNotImplemented
+}

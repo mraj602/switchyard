@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>sy setup — Accounts and sharing</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#E8B04B}a:hover{color:#F3CB7A}
+</style>
+</helmet>
+<div style="width: 960px; height: 640px; box-sizing: border-box; background: #0B0C0E; padding: 24px; font-family: 'IBM Plex Mono', ui-monospace, monospace; color: #D7DADF">
+  <div style="height: 100%; display: flex; flex-direction: column; border: 1px solid #2A2E33; border-radius: 10px; overflow: hidden; background: #111315">
+    <div style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #2A2E33; background: #16191C; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; color: #8B929B">
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3F45"></span>
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3F45"></span>
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3F45"></span>
+      <span style="margin-left: 10px">laptop — sy setup</span>
+    </div>
+    <div style="flex: 1; padding: 22px 26px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 22px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <span style="font-weight: 600; color: #F2F3F5">Accounts</span>
+        <span style="color: #8B929B">step 2 of 5</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 3ch 14ch 12ch 22ch 1fr; column-gap: 14px; row-gap: 2px">
+        <span style="color: #6CC08B">ok</span><span>~/.claude</span><span style="color: #3CC1B8">personal</span><span>you@example.com</span><span style="color: #8B929B">launcher: claude</span>
+        <span style="color: #6CC08B">ok</span><span>~/.claude-2</span><span style="color: #A08CFF">work</span><span>you@work.example</span><span style="color: #8B929B">launcher: claude-2</span>
+        <span style="color: #6CC08B">ok</span><span>~/.claude-3</span><span style="color: #E2C044">client</span><span>you@client.example</span><span style="color: #8B929B">launcher: claude-3</span>
+        <span style="color: #E8B04B">&gt;</span><span>~/.claude-4</span><span style="color: #F2F3F5; text-decoration: underline">research_</span><span style="color: #8B929B">log in now? [Y/n]</span><span style="color: #8B929B">opens the login link</span>
+      </div>
+      <div style="color: #8B929B">Labels and colours follow the login everywhere: terminal tabs, phone, desktop.</div>
+
+      <div style="height: 8px"></div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <span style="font-weight: 600; color: #F2F3F5">What every account shares</span>
+        <span style="color: #8B929B">step 3 of 5 · space to toggle</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 6ch 26ch 1fr; column-gap: 14px; row-gap: 3px">
+        <span style="color: #E8B04B">[x]</span><span>Settings</span><span style="color: #8B929B">hooks, permissions, plugins on/off · link</span>
+        <span style="color: #E8B04B">[x]</span><span>Instructions</span><span style="color: #8B929B">CLAUDE.md, rules/ · link</span>
+        <span style="color: #E8B04B">[x]</span><span>Skills, agents, commands</span><span style="color: #8B929B">link each folder</span>
+        <span style="color: #E8B04B">[x]</span><span>Plugins</span><span style="color: #8B929B">one plugin folder for all (not a link: paths inside are absolute)</span>
+        <span style="color: #E8B04B">[x]</span><span>MCP servers</span><span style="color: #8B929B">one list, copied into each login file · sign-ins stay per account</span>
+        <span style="color: #F2F3F5; background: #23272B">[x]</span><span style="background: #23272B; color: #F2F3F5">History and memory</span><span style="background: #23272B">any account can resume any session; memory follows the project</span>
+        <span style="color: #E8B04B">[x]</span><span>Prompt history, plans</span><span style="color: #8B929B">link</span>
+      </div>
+      <div style="margin-top: 6px; color: #5D646C">Never shared: login and tokens, live sessions, caches, usage counters</div>
+
+      <div style="flex: 1"></div>
+      <div style="display: flex; gap: 22px; padding-top: 10px; border-top: 1px solid #2A2E33">
+        <span><span style="color: #111315; background: #E8B04B; padding: 1px 7px; border-radius: 4px">Enter</span> continue</span>
+        <span><span style="color: #D7DADF; background: #2A2E33; padding: 1px 7px; border-radius: 4px">a</span> add account</span>
+        <span><span style="color: #D7DADF; background: #2A2E33; padding: 1px 7px; border-radius: 4px">Esc</span> back</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":960,"height":640}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

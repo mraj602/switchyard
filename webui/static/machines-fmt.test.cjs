@@ -1,0 +1,88 @@
+// node --test webui/static/*.test.cjs
+// The sentences of the Machines screen (components/machines-fmt.js, docs/spec/machines.md 6.1).
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const mod = (f) => {
+  const src = fs.readFileSync(path.join(__dirname, f), 'utf8');
+  if (/^import /m.test(src)) throw new Error(`${f} has imports; test only pure modules`);
+  const names = [...src.matchAll(/^export (?:async )?(?:function|const|let|class) ([A-Za-z0-9_]+)/gm)].map((m) => m[1]);
+  const body = src.replace(/^export /gm, '');
+  return vm.runInNewContext(`(function () {\n${body}\nreturn { ${names.join(', ')} };\n})()`, { Date, Number, String, Math, Array, Object, Set, Map, isNaN: Number.isNaN });
+};
+
+const M = mod('components/machines-fmt.js');
+const F = mod('format.js');
+const f = { ago: F.ago, agoLabel: F.agoLabel, clock: F.clock };
+const NOW = Date.parse('2026-10-12T14:30:00Z');
+const at = (min) => new Date(NOW - min * 60e3).toISOString();
+
+test('thousands are spaced as the spec writes them', () => {
+  assert.equal(M.spaced(1240), '1\u00a0240');
+  assert.equal(M.spaced(12), '12');
+  assert.equal(M.spaced(1234567), '1\u00a0234\u00a0567');
+});
+
+test('reach chip: the three modes and unknown', () => {
+  assert.equal(M.reachChip({ reach: 'direct' }).text, 'Direct');
+  assert.equal(M.reachChip({ reach: 'forward' }).text, 'via laptop SSH');
+  assert.equal(M.reachChip({ reach: 'pull', pull: { interval_s: 60 } }).text, 'pulled by hub every 1 min');
+  assert.equal(M.reachChip({ reach: 'pull', pull: { interval_s: 15 } }).text, 'pulled by hub every 15 s');
+  assert.equal(M.reachChip({ reach: 'pull', pull: { interval_s: 3600 } }).text, 'pulled by hub every 1 h');
+  assert.equal(M.reachChip({ reach: 'pull' }).text, 'pulled by hub');
+  assert.equal(M.reachChip({ reach: null }), null);
+});
+
+test('status line: live, quiet, seen, never', () => {
+  assert.deepEqual({ ...M.statusOf({ last_record: at(1) }, NOW, f) }, { cls: 'ok', text: 'Live' });
+  assert.equal(M.statusOf({ silent: true, last_record: at(72) }, NOW, f).text, 'Quiet 1 h');
+  assert.equal(M.statusOf({ silent: true, last_record: at(72) }, NOW, f).cls, 'warn');
+  assert.equal(M.statusOf({ last_seen: at(12) }, NOW, f).text, 'Seen 12 min ago');
+  assert.equal(M.statusOf({}, NOW, f).text, 'Never seen');
+});
+
+test('backlog shows only above zero, with the age of the oldest', () => {
+  assert.equal(M.backlogText({ backlog: 0 }, NOW, f), '');
+  assert.equal(M.backlogText({ backlog: null }, NOW, f), '');
+  assert.match(M.backlogText({ backlog: 1240, backlog_oldest: at(40) }, NOW, f), /^1\u00a0240 queued, oldest \d\d:\d\d$/);
+  assert.equal(M.backlogText({ backlog: 3 }, NOW, f), '3 queued');
+});
+
+test('version line: same, older, newer, held, unknown', () => {
+  assert.deepEqual({ ...M.versionLine({ sy_version: '0.5.0', version_status: 'same' }, '0.5.0') }, { text: '0.5.0 · same as hub', cls: '' });
+  assert.deepEqual({ ...M.versionLine({ sy_version: '0.4.2', version_status: 'older' }, '0.5.0') }, { text: '0.4.2 · older than hub 0.5.0', cls: 'warn' });
+  assert.equal(M.versionLine({ sy_version: '0.6.0', version_status: 'newer' }, '0.5.0').text, '0.6.0 · newer than hub 0.5.0');
+  const held = M.versionLine({ sy_version: '0.6.0', version_status: 'newer', held: 37 }, '0.5.0');
+  assert.equal(held.text, '0.6.0 · holding 37 records: hub too old');
+  assert.equal(held.cls, 'bad');
+  assert.equal(M.versionLine({ sy_version: 'dev', version_status: 'unknown' }, '0.5.0').cls, '');
+  assert.equal(M.versionLine({}, '0.5.0').text, 'not reported');
+});
+
+test('pull state per state; host key and refused cannot be pulled now', () => {
+  const st = (state, extra = {}) => M.pullLine({ state, ...extra }, NOW, f);
+  assert.equal(M.pullLine(null, NOW, f), null);
+  assert.equal(st('ok', { last_ok: at(1) }).text, 'OK, last pull 1 min ago');
+  assert.equal(st('failing', { last_error: 'timeout' }).text, 'Failing: timeout');
+  for (const s of ['ok', 'new', 'failing', 'auth']) assert.equal(st(s).canRun, true, s);
+  for (const s of ['host_key', 'refused', 'disabled', 'frozen']) assert.equal(st(s).canRun, false, s);
+  assert.equal(st('host_key').cls, 'bad');
+  assert.match(st('frozen').text, /frozen/);
+});
+
+test('cards sort silent first, then by name, removed last', () => {
+  const out = M.sortMachines([
+    { name: 'b' }, { name: 'z', removed_at: 'x' }, { name: 'c', silent: true }, { name: 'a' },
+  ]).map((m) => m.name);
+  assert.deepEqual([...out], ['c', 'a', 'b', 'z']);
+});
+
+test('silent alert sentence', () => {
+  assert.equal(M.alertText(null, NOW, f), '');
+  assert.equal(M.alertText({ status: 'fired', fired_at: at(165) }, NOW, f), 'Silent alert sent 3 h ago');
+  assert.equal(M.alertText({ status: 'snoozed' }, NOW, f), 'Silent alert snoozed');
+});

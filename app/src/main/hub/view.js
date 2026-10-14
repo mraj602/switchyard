@@ -1,0 +1,271 @@
+// The hub view (C7): a WebContentsView in the session `persist:sy-hub`, created when first
+// needed and kept afterwards. The board is signed in by main: before the first load (when the
+// partition holds no read cookie) and whenever the view lands on `#/login` or `#/pair`, main posts
+// the desktop token to `<hub>/v1/session/login` through that partition's own session, so the
+// cookie lands there and the token never enters the page. The login only ever targets the hub's
+// origin. Owner sign-in loads the one-time link of `sy desktop owner-link`.
+
+import { HUB_PARTITION } from '../../shared/constants.js';
+import { hubUrl } from './client.js';
+
+const LOGIN_ROUTE_RE = /^#\/(login|pair)(?:[/?]|$)/;
+const COOKIE = 'sy_session';
+const LOGIN_WINDOW_MS = 30_000;
+const LOGIN_MAX_IN_WINDOW = 2;
+
+/**
+ * @param {{electron: object, security: object, window: object, log?: object,
+ *          base: () => string|null,                       // the hub URL (normalized) or null
+ *          auth: () => ({url: string, token: string}|null),
+ *          onSessionLink: (url: string) => void,
+ *          onOwner: (owner: boolean) => void,
+ *          onLoginRefused: (status: number) => void,       // 401 on login: the token is revoked
+ *          now?: () => number, timeoutMs?: number}} deps
+ */
+export function createHubView(deps) {
+  const { electron } = deps;
+  const log = deps.log ?? console;
+  const now = deps.now ?? Date.now;
+  const timeoutMs = deps.timeoutMs ?? 10_000;
+
+  let view = null;
+  let viewBase = null; // the hub URL the view was made for
+  let pendingRoute = '';
+  let loginTimes = [];
+  let ownerTimer = null;
+
+  const session = () => electron.session.fromPartition(HUB_PARTITION);
+  const originOf = (u) => {
+    try {
+      return new URL(u).origin;
+    } catch {
+      return null;
+    }
+  };
+  const target = (base, route = '') => `${base}/${route}`;
+
+  /** A fetch through the hub partition's session (its cookie), to the hub's own origin only. */
+  async function sessionFetch(method, path, body) {
+    const base = deps.base();
+    const url = base && hubUrl(base, path);
+    if (!url) return { ok: false, status: 0, error: 'no hub' };
+    try {
+      const res = await session().fetch(url, {
+        method,
+        headers: body === undefined ? { accept: 'application/json' } : { 'content-type': 'application/json', accept: 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        credentials: 'include',
+        redirect: 'manual',
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      let data = null;
+      if (res.status !== 204) {
+        const text = await res.text();
+        if (text.length > 2 * 1024 * 1024) return { ok: false, status: res.status, error: 'reply too large' };
+        try {
+          data = text ? JSON.parse(text) : null;
+        } catch {
+          data = null;
+        }
+      }
+      const ok = res.status >= 200 && res.status < 300;
+      const msg = data?.error?.message ?? data?.message;
+      return { ok, status: res.status, data, ...(ok ? {} : { error: typeof msg === 'string' ? msg.slice(0, 200) : `hub answered ${res.status}` }) };
+    } catch (err) {
+      return { ok: false, status: 0, error: String(err?.message ?? err).split('\n')[0].slice(0, 200) };
+    }
+  }
+
+  /** POST /v1/session/login with the desktop token (never in the page). */
+  async function sessionLogin() {
+    const auth = deps.auth();
+    const base = deps.base();
+    if (!auth || !base) return { ok: false, status: 0, error: 'not paired' };
+    const url = hubUrl(base, '/v1/session/login');
+    if (!url || originOf(url) !== originOf(base)) return { ok: false, status: 0, error: 'bad hub URL' };
+    try {
+      const res = await session().fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token: auth.token }),
+        credentials: 'include',
+        redirect: 'error',
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (res.status === 204 || res.status === 200) return { ok: true, status: res.status };
+      if (res.status === 401) deps.onLoginRefused(401);
+      return { ok: false, status: res.status, error: res.status === 429 ? 'the hub is rate limiting logins' : `login answered ${res.status}` };
+    } catch (err) {
+      return { ok: false, status: 0, error: String(err?.message ?? err).split('\n')[0].slice(0, 200) };
+    }
+  }
+
+  async function hasCookie() {
+    const base = deps.base();
+    if (!base) return false;
+    try {
+      const list = await session().cookies.get({ url: `${base}/`, name: COOKIE });
+      return list.some((c) => !c.expirationDate || c.expirationDate * 1000 > now());
+    } catch {
+      return false;
+    }
+  }
+
+  async function refreshOwner() {
+    const r = await sessionFetch('GET', '/v1/me');
+    if (r.ok) deps.onOwner(r.data?.owner === true);
+    else if (r.status === 401 || r.status === 403) deps.onOwner(false);
+  }
+
+  function scheduleOwnerCheck() {
+    if (ownerTimer) clearTimeout(ownerTimer);
+    ownerTimer = setTimeout(() => {
+      ownerTimer = null;
+      refreshOwner();
+    }, 500);
+    ownerTimer.unref?.();
+  }
+
+  /** Error code of a failed loadURL; never its message, which holds the URL (an owner link's secret). */
+  const loadErrorCode = (err) => {
+    const code = typeof err?.code === 'string' && /^[A-Z0-9_]{1,64}$/.test(err.code) ? err.code : null;
+    const errno = Number.isInteger(err?.errno) ? err.errno : null;
+    return code ?? (errno !== null ? `errno ${errno}` : 'error');
+  };
+
+  /** Load url in the view (the view at call time; nothing when it is gone). */
+  async function navigate(url) {
+    const v = view;
+    if (!v) return;
+    try {
+      await v.webContents.loadURL(url);
+    } catch (err) {
+      // ERR_ABORTED is what a redirect to the same document or a hash change reports
+      log.debug?.(`hub view: loadURL failed: ${loadErrorCode(err)}`);
+    }
+  }
+
+  async function relogin() {
+    const base = deps.base();
+    if (!base || !deps.auth()) return;
+    const t = now();
+    loginTimes = loginTimes.filter((x) => t - x < LOGIN_WINDOW_MS);
+    if (loginTimes.length >= LOGIN_MAX_IN_WINDOW) {
+      log.warn?.('hub view: not signing in again, the board keeps asking for a login');
+      return;
+    }
+    loginTimes.push(t);
+    const r = await sessionLogin();
+    const v = view;
+    if (!r.ok || !v) return;
+    const was = v.webContents.getURL();
+    const to = target(base, pendingRoute);
+    await navigate(to);
+    // the view may have been dropped (reset) while it loaded
+    if (view === v && was.split('#')[0] === to.split('#')[0]) v.webContents.reload?.();
+  }
+
+  function onNavigated(url) {
+    const base = deps.base();
+    if (!base || originOf(url) !== originOf(base)) return; // a login is never made for another origin
+    let hash = '';
+    try {
+      hash = new URL(url).hash;
+    } catch {
+      return;
+    }
+    if (LOGIN_ROUTE_RE.test(hash)) relogin();
+  }
+
+  function create() {
+    const base = deps.base();
+    if (!base) return null;
+    const v = new electron.WebContentsView({ webPreferences: deps.security.webPreferences('hub', { partition: HUB_PARTITION }) });
+    deps.security.guardSession(session(), 'hub');
+    deps.security.guardView(v.webContents, 'hub', {
+      hubOrigin: originOf(base),
+      onSessionLink: (url) => deps.onSessionLink(url),
+    });
+    v.webContents.on('did-navigate', (_e, url) => onNavigated(url));
+    v.webContents.on('did-navigate-in-page', (_e, url) => {
+      onNavigated(url);
+      // The board's #/owner route swaps the link in-page and then moves on in-page, with no
+      // new load: check the session's owner flag again (debounced).
+      scheduleOwnerCheck();
+    });
+    v.webContents.on('did-finish-load', () => scheduleOwnerCheck());
+    deps.window.addView('hub', v, 'hub');
+    view = v;
+    viewBase = base;
+    return v;
+  }
+
+  return {
+    view: () => view,
+    /** The view, created (not loaded) when missing; null without a hub URL. */
+    ensure() {
+      if (view && viewBase !== deps.base()) this.reset();
+      return view ?? create();
+    },
+    /** Load `<hub>/<route>` (route like `#/sessions/x`, or ''), signing the partition in first when needed. */
+    async load(route = '') {
+      const v = this.ensure();
+      if (!v) return false;
+      pendingRoute = route;
+      if (deps.auth() && !(await hasCookie())) {
+        loginTimes.push(now());
+        await sessionLogin();
+      }
+      await navigate(target(deps.base(), route));
+      return true;
+    },
+    /** Load a one-time owner link; only the hub's own origin is accepted. */
+    async loadOwnerLink(link) {
+      const base = deps.base();
+      if (!base || originOf(link) !== originOf(base)) return false;
+      const v = this.ensure();
+      if (!v) return false;
+      pendingRoute = '';
+      await navigate(link);
+      return true;
+    },
+    sessionFetch,
+    sessionLogin,
+    refreshOwner,
+    /** The route in the view's address now, e.g. `#/sessions/abc`, or ''. */
+    currentRoute() {
+      try {
+        return view ? new URL(view.webContents.getURL()).hash : '';
+      } catch {
+        return '';
+      }
+    },
+    /** Drop the view (the hub URL changed). */
+    reset() {
+      if (ownerTimer) clearTimeout(ownerTimer);
+      ownerTimer = null;
+      if (!view) return;
+      try {
+        deps.window.removeView('hub');
+      } catch (err) {
+        log.warn?.(`hub view: removeView: ${err?.message ?? err}`);
+      }
+      try {
+        view.webContents.close?.();
+      } catch {
+        // already gone
+      }
+      view = null;
+      viewBase = null;
+    },
+    /** Forget the partition's cookie (the token was revoked or replaced). */
+    async signOut() {
+      try {
+        await session().clearStorageData?.({ storages: ['cookies'] });
+      } catch {
+        // nothing to clear
+      }
+      deps.onOwner(false);
+    },
+  };
+}

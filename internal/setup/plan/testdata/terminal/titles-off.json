@@ -1,0 +1,74 @@
+{
+  "plan_id": "p_85d009c36bae",
+  "actions": [
+    {
+      "id": "a1",
+      "step": "terminal",
+      "op": "json_delete",
+      "file": "/home/u/.claude-3/settings.json",
+      "pointer": "/env/CLAUDE_CODE_DISABLE_TERMINAL_TITLE",
+      "before": "1",
+      "covers": [
+        "~/.claude-3"
+      ],
+      "note": "Claude Code's own title back on",
+      "pre": [
+        {
+          "path": "/home/u/.claude-3/settings.json",
+          "state": {
+            "type": "file"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a2",
+      "step": "terminal",
+      "op": "json_delete",
+      "file": "/home/u/.claude/settings.json",
+      "via": [
+        "/home/u/.claude-2/settings.json"
+      ],
+      "pointer": "/env/CLAUDE_CODE_DISABLE_TERMINAL_TITLE",
+      "before": "1",
+      "covers": [
+        "~/.claude",
+        "~/.claude-2"
+      ],
+      "note": "Claude Code's own title back on",
+      "pre": [
+        {
+          "path": "/home/u/.claude/settings.json",
+          "state": {
+            "type": "file"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a3",
+      "step": "config",
+      "op": "config_set",
+      "path": "/home/u/.config/switchyard/config.toml",
+      "value": false,
+      "key": "terminal.titles",
+      "pre": [
+        {
+          "path": "/home/u/.config/switchyard/config.toml",
+          "state": {
+            "type": "file"
+          }
+        }
+      ]
+    }
+  ],
+  "keep": [],
+  "conflicts": [],
+  "needs": [],
+  "summary": {
+    "changes": 3,
+    "backed_up": 3,
+    "links_changed": 0,
+    "logins_touched": 0
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "v": 1,
+  "sy": "0.6.0",
+  "machine": {
+    "id": "m_MACHINE",
+    "name": "laptop"
+  },
+  "hub": {
+    "url": "http://127.0.0.1:8787",
+    "connected": true,
+    "reachable": true,
+    "version": "0.6.0",
+    "local": true,
+    "dial": null,
+    "service": "running"
+  },
+  "admin": "local",
+  "admin_error": null,
+  "outbox": {
+    "pending": 0,
+    "last_error": null
+  }
+}

@@ -1,0 +1,2054 @@
+openapi: 3.1.0
+info:
+  title: Switchyard hub API
+  version: "1.0.0"
+  summary: Upload records from machines; read sessions, usage and machines.
+  description: |
+    Spec v1, phase 0. Implemented in `internal/hub/api` (phase 2).
+
+    Unofficial; not affiliated with Anthropic.
+
+    Rules:
+    - Clients only write (`/v1/ingest`); viewers only read. Nothing in a reply can make a
+      client do anything.
+    - Every request except `/health` needs `Authorization: Bearer <token>` (tokens.md).
+      `x-scopes` on each operation lists the scopes that may call it (any one is enough).
+    - JSON everywhere, UTF-8. Times in replies are RFC 3339 UTC strings with milliseconds.
+    - Errors use the `Error` schema. `401` = unknown or revoked token, `403` = missing scope.
+    - Unknown query parameters are ignored. Unknown fields in replies must be ignored by
+      clients (new fields are added without a version bump).
+    - Paths marked `x-reserved` are named here so nothing else takes them; they return `501`
+      until their phase. Phase 4 operations carry their final shapes while still reserved.
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: http://127.0.0.1:8787
+    description: Merged mode (hub on this laptop)
+  - url: https://hub.example.ts.net
+    description: Home server behind tailscale serve or Caddy
+security:
+  - bearer: []
+  - cookie: []
+tags:
+  - name: ingest
+  - name: read
+  - name: live
+  - name: meta
+  - name: pairing
+  - name: devices
+  - name: push
+  - name: alerts
+  - name: reserved
+
+paths:
+  /health:
+    get:
+      tags: [meta]
+      operationId: health
+      summary: Up, version, schema
+      security: []
+      x-scopes: []
+      responses:
+        "200":
+          description: Hub is up and the database is open.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Health"}
+              example: {ok: true, version: "0.2.0", schema: 1, time: "2026-10-12T14:03:22.418Z"}
+        "503":
+          description: Hub is starting or the database is not usable.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Health"}
+
+  /v1/session/login:
+    post:
+      tags: [meta]
+      operationId: sessionLogin
+      summary: Swap a token for a session cookie (web board)
+      description: |
+        The web board's login page posts a pasted token here. If it is a valid, unrevoked
+        token with the `read` scope, the hub answers `204` and sets the cookie `sy_session`
+        (`HttpOnly`, `SameSite=Strict`, `Path=/`, `Secure` when served over TLS, 30 days).
+        The cookie holds a new token of its own: a `browser` device with the `read` scope
+        only, recorded as made from the pasted token's device. Afterwards the read
+        endpoints and `/v1/stream` accept that cookie. A cookie never carries `write` or
+        `push`, even when a desktop token was pasted; revoking the pasted token's device
+        revokes its board sessions. The board never keeps the token in JavaScript.
+        Unknown or revoked token: `401`; a token without `read`: `403`; more than 10
+        failed logins a minute: `429`. Same-origin only; no CORS headers are sent.
+      security: []
+      x-scopes: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: {type: string}
+            example: {token: "sy_b_4fQx0Lr2..."}
+      responses:
+        "204": {description: Signed in; cookie set.}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /v1/session/logout:
+    post:
+      tags: [meta]
+      operationId: sessionLogout
+      summary: Clear the session cookie
+      security: []
+      x-scopes: []
+      responses:
+        "204": {description: "Cookie cleared and its board session revoked (the pasted token stays valid)."}
+
+  /v1/ingest:
+    post:
+      tags: [ingest]
+      operationId: ingest
+      summary: Upload a batch of records
+      description: |
+        Stores every record raw (record.md), then types it. Idempotent by record id.
+
+        Every id in the batch appears exactly once in the reply: in `accepted` if it is stored
+        now or was already stored from the same device (`duplicates` lists the latter, as a
+        subset of `accepted`), or in `rejected` with a reason. The client advances past both.
+        A malformed batch (not JSON, `v` unknown, no `records` array, over the size limit)
+        is refused as a whole with `400`/`413` and the client keeps its records.
+
+        If every record of the batch is rejected as `machine_mismatch` (the token is bound to
+        another machine), the whole request is answered `403` with `code: machine_mismatch`
+        and nothing is stored. The client keeps its outbox and cursor: the token is wrong,
+        not the records. A batch that mixes mismatched and other records gets the normal `200`.
+      x-scopes: [write]
+      parameters:
+        - name: Content-Encoding
+          in: header
+          required: false
+          schema: {type: string, enum: [gzip, identity]}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Batch"}
+            example:
+              v: 1
+              client: sy/0.1.0
+              records:
+                - v: 1
+                  id: 01JA2XQ8R7Y5V0Z6M3K1T9B4CD
+                  kind: hook_event
+                  ts: "2026-10-11T14:03:22.418Z"
+                  machine: m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K
+                  slot: "~/.claude-2"
+                  seat: {account: 3f1c6a2e-0000-4000-8000-000000000001, org: 9b20d4f1-0000-4000-8000-000000000002, src: claude_json}
+                  derived: {last_message: "Should I also update the migration?"}
+                  payload: {hook_event_name: Stop, session_id: c41e0000-0000-4000-8000-000000000003, cwd: /home/me/api}
+      responses:
+        "200":
+          description: Batch answered.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/IngestReply"}
+              example:
+                accepted: [01JA2XQ8R7Y5V0Z6M3K1T9B4CD]
+                duplicates: []
+                rejected: []
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403":
+          description: "Token lacks the scope, or (`code: machine_mismatch`) every record belongs to another machine than the token's."
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+        "413":
+          description: Batch over 8 MiB uncompressed or over 1000 records.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+        "429": {$ref: "#/components/responses/TooMany"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+
+  /v1/overview:
+    get:
+      tags: [read]
+      operationId: overview
+      summary: Everything the home screens need, in one call
+      x-scopes: [read]
+      responses:
+        "200":
+          description: Seats with usage, sessions needing you, machine health.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Overview"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /v1/sessions:
+    get:
+      tags: [read]
+      operationId: listSessions
+      summary: The session board
+      description: |
+        Sessions ordered by `needs_you` first, then `state_since` (oldest waiting first for
+        needs-you, newest activity first for the rest). Ended and gone sessions are included
+        only with `state=ended`, `state=gone` or `include_ended=true`, and only from the last
+        `days` days.
+      x-scopes: [read]
+      parameters:
+        - name: state
+          in: query
+          description: Comma-separated states, or `needs_you`.
+          schema: {type: string, examples: ["needs_you", "working,done"]}
+        - name: seat
+          in: query
+          description: Seat id(s), comma-separated.
+          schema: {type: string}
+        - name: machine
+          in: query
+          description: Machine id(s), comma-separated.
+          schema: {type: string}
+        - name: include_ended
+          in: query
+          schema: {type: boolean, default: false}
+        - name: since
+          in: query
+          description: Only sessions with activity at or after this time (RFC 3339).
+            Needs-you sessions are always included.
+          schema: {type: string, format: date-time}
+        - name: days
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 365, default: 2}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 500, default: 200}
+        - name: cursor
+          in: query
+          description: Opaque `next` value from a previous page.
+          schema: {type: string}
+      responses:
+        "200":
+          description: One page of sessions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sessions]
+                properties:
+                  sessions:
+                    type: array
+                    items: {$ref: "#/components/schemas/Session"}
+                  next: {type: [string, "null"]}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /v1/sessions/{id}:
+    get:
+      tags: [read]
+      operationId: getSession
+      summary: One session with its timeline
+      x-scopes: [read]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: The session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SessionDetail"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /v1/accounts:
+    get:
+      tags: [read]
+      operationId: listAccounts
+      summary: Usage cards, one per seat
+      description: |
+        The plan's `/v1/seats`. Named "accounts" because that is the word on every screen;
+        each item is one seat (account + org). `/v1/seats` is an alias.
+      x-scopes: [read]
+      parameters:
+        - name: include_hidden
+          in: query
+          schema: {type: boolean, default: false}
+      responses:
+        "200":
+          description: Seats.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accounts]
+                properties:
+                  accounts:
+                    type: array
+                    items: {$ref: "#/components/schemas/Seat"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /v1/accounts/{seat}:
+    patch:
+      tags: [read]
+      operationId: patchSeat
+      summary: Set a seat's label, colour, order or hidden flag
+      description: |
+        desktop.md C10 (phase 6). `null` clears `label` or `colour`; a missing key leaves it.
+        Sets `seat.look_src = 'ui'`, so a later `slot_info` label or colour no longer applies
+        (record.md 4.7). Publishes a `usage` stream event.
+      x-scopes: [owner]
+      parameters:
+        - {name: seat, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/SeatPatch"}
+      responses:
+        "200":
+          description: The seat after the change.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Seat"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /v1/accounts/{seat}/windows:
+    get:
+      tags: [read]
+      operationId: seatWindows
+      summary: Limit window history for one seat
+      x-scopes: [read]
+      parameters:
+        - name: seat
+          in: path
+          required: true
+          schema: {type: string}
+        - name: key
+          in: query
+          description: Window key(s), comma-separated. Default all.
+          schema: {type: string}
+        - name: since
+          in: query
+          schema: {type: string, format: date-time}
+        - name: samples
+          in: query
+          description: Include raw samples (for charts), not only windows.
+          schema: {type: boolean, default: false}
+      responses:
+        "200":
+          description: Windows, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [windows]
+                properties:
+                  windows:
+                    type: array
+                    items: {$ref: "#/components/schemas/Window"}
+                  samples:
+                    type: array
+                    items: {$ref: "#/components/schemas/LimitSample"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /v1/machines:
+    get:
+      tags: [read]
+      operationId: listMachines
+      summary: Machines with last seen, backlog and version
+      description: Phase 5 adds the fields of machines.md 6.1 and `all`.
+      x-scopes: [read]
+      parameters:
+        - {name: all, in: query, required: false, schema: {type: boolean, default: false}, description: "Include removed machines (with `removed_at`); phase 5."}
+      responses:
+        "200":
+          description: Machines and their slots.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [machines]
+                properties:
+                  machines:
+                    type: array
+                    items: {$ref: "#/components/schemas/Machine"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /v1/machines/{id}:
+    patch:
+      tags: [read]
+      operationId: patchMachine
+      summary: Rename a machine
+      description: machines.md 6.2 (phase 5).
+      x-scopes: [owner]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/MachinePatch"}
+      responses:
+        "200":
+          description: The machine after the change.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Machine"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    delete:
+      tags: [read]
+      operationId: removeMachine
+      summary: Remove a machine from the board (history stays)
+      description: |
+        machines.md 6.2 (phase 5). Sets `removed_at`, revokes every device bound to the machine
+        (the pull device included), disables its pull target and closes its open alerts.
+        `409` when it is the machine the caller's own device is bound to.
+      x-scopes: [owner]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "204": {description: Removed.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+
+  /v1/machines/{id}/pull:
+    post:
+      tags: [read]
+      operationId: pullMachineNow
+      summary: Pull a machine now (pull targets only)
+      description: |
+        machines.md 6.2 (phase 5). Sets the target's `next_at` to now. `404` without a pull
+        target; `409` while the target is in `host_key` or `refused` state.
+      x-scopes: [owner]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "202":
+          description: Accepted; the pull runs shortly.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PullStatus"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+
+  /v1/push/direct-policy:
+    get:
+      tags: [read]
+      operationId: directPushPolicy
+      summary: The hub's push rules resolved for the calling machine (direct push)
+      description: machines.md 5.3 (phase 5). `403` for a device without a machine.
+      x-scopes: [write]
+      responses:
+        "200":
+          description: The resolved policy.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DirectPolicy"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /v1/stream:
+    get:
+      tags: [live]
+      operationId: stream
+      summary: Live changes (server-sent events)
+      description: |
+        `text/event-stream`. Each message has `id` (a hub-wide increasing integer), `event`
+        (one of `StreamEventType`) and `data` (one JSON object, schema per type below).
+
+        - On connect the hub sends `hello`. If `Last-Event-ID` is given and still in the
+          hub's buffer (last 10 minutes or 5000 events), missed events follow; otherwise it
+          sends `reset`, and the client refetches `/v1/overview`.
+        - `ping` every 25 seconds keeps proxies from closing the connection. The hub checks
+          the device on every ping and closes the stream when it was revoked (or its board
+          session expired).
+        - Browsers cannot set headers on `EventSource`, so the token may also be given as
+          `?token=` on this endpoint only (the web board uses its `sy_session` cookie instead, see `/v1/session/login`).
+        - `focus_url` in `session` events is sent only to desktop devices on the same
+          machine as the terminal (record.md 3.3).
+      x-scopes: [read]
+      parameters:
+        - name: Last-Event-ID
+          in: header
+          schema: {type: string}
+        - name: last_event_id
+          in: query
+          description: |
+            Same as `Last-Event-ID`, for the first connect (an `EventSource` cannot set the
+            header). The board passes the `stream_id` of the `/v1/overview` it just fetched,
+            so events published between that fetch and the subscription are replayed. The
+            header wins when both are given.
+          schema: {type: integer, minimum: 0}
+        - name: token
+          in: query
+          schema: {type: string}
+        - name: types
+          in: query
+          description: Comma-separated event types to receive. Default all.
+          schema: {type: string}
+      responses:
+        "200":
+          description: Event stream.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  Example:
+
+                      id: 4182
+                      event: session
+                      data: {"session":{"id":"c41e…","state":"asked","needs_you":true,...},"change":"state"}
+              x-events:
+                hello: {$ref: "#/components/schemas/StreamHello"}
+                reset: {$ref: "#/components/schemas/StreamReset"}
+                ping: {$ref: "#/components/schemas/StreamPing"}
+                session: {$ref: "#/components/schemas/StreamSession"}
+                usage: {$ref: "#/components/schemas/StreamUsage"}
+                machine: {$ref: "#/components/schemas/StreamMachine"}
+                alert: {$ref: "#/components/schemas/StreamAlert"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  # ------------------------------------------------------------------ reserved (later phases)
+
+  /v1/analytics/{report}:
+    get:
+      tags: [reserved]
+      operationId: analytics
+      summary: Tokens, cost, models, projects, heatmap (phase 2+)
+      x-reserved: "phase 2 (port of the prototype's analytics)"
+      x-scopes: [read]
+      parameters:
+        - name: report
+          in: path
+          required: true
+          schema: {type: string, enum: [daily, models, projects, heatmap, sessions, limits, hits]}
+      responses:
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  # ------------------------------------------------------------------ phase 4: pairing, devices, pushes
+  # Each operation below keeps `x-reserved: phase 4` (501) until its work package implements
+  # it (docs/phases/4.md); the shapes are final. Specs: pairing.md, push.md, pwa.md.
+
+  /v1/me:
+    get:
+      tags: [devices]
+      operationId: me
+      summary: Who is calling (device, scopes, owner)
+      description: The web app calls this at start to choose between the pair screen, the
+        read-only board and owner settings (pairing.md 6).
+      x-scopes: [read, write, push, owner]
+      responses:
+        "200":
+          description: The caller.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Me"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+
+  /v1/session/owner:
+    post:
+      tags: [meta]
+      operationId: ownerSignIn
+      summary: Swap a one-time owner link secret for an owner session cookie
+      description: |
+        The secret comes from `sy hub owner-link` (pairing.md 4). On success the hub makes a
+        `browser` device with scopes `owner`, `read`, `push`, expiring in 30 days, and sets it
+        as the `sy_session` cookie. Invalid, used or expired secret: `401`. Rate limited as
+        `/v1/pair/claim`.
+      security: []
+      x-scopes: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [secret]
+              properties:
+                secret: {type: string, minLength: 22, maxLength: 64}
+                name: {type: string, maxLength: 60}
+      responses:
+        "204": {description: Signed in as owner; cookie set.}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "429": {$ref: "#/components/responses/TooMany"}
+
+  /v1/pair/codes:
+    post:
+      tags: [pairing]
+      operationId: makePairCode
+      summary: Make a one-time pairing code (10 minutes)
+      description: |
+        pairing.md 2. At most 5 live codes; a sixth cancels the oldest. `url` defaults to
+        `hub.public_url`, else the origin of this request. Phone and browser codes need an
+        `https` URL.
+      x-scopes: [owner]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind]
+              properties:
+                kind: {type: string, enum: [machine, desktop, phone, browser]}
+                name: {type: string, maxLength: 60}
+                machine: {type: string}
+                url: {type: string, format: uri}
+                ttl_s: {type: integer, minimum: 60, maximum: 3600, default: 600}
+      responses:
+        "201":
+          description: The code. `code`, `secret` and `url` are shown only in this reply.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PairCode"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /v1/pair/codes/{id}:
+    get:
+      tags: [pairing]
+      operationId: getPairCode
+      summary: Status of a pairing code (the board polls it while the dialog is open)
+      x-scopes: [owner]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: Status; never the code or secret.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PairCodeStatus"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    delete:
+      tags: [pairing]
+      operationId: cancelPairCode
+      summary: Cancel a live pairing code
+      x-scopes: [owner]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "204": {description: "Cancelled (or already claimed, cancelled or expired)."}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /v1/pair/claim:
+    post:
+      tags: [pairing]
+      operationId: claimPairCode
+      summary: Swap a pairing code or QR secret for a device token
+      description: |
+        pairing.md 3. No token: the code or secret is the credential. Unknown, used, cancelled
+        and expired codes all get the same `401`. `expect_kind` mismatch: `409`, the code
+        stays live. With `cookie: true` (phone and browser codes only) the token is set as the
+        `sy_session` cookie and left out of the body.
+      security: []
+      x-scopes: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PairClaim"}
+            example: {secret: "Q2xhdWRlIGlzIG5vdCBoZXJl", name: "iPhone · Safari", cookie: true, expect_kind: phone}
+      responses:
+        "200":
+          description: Device made.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PairClaimReply"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "429": {$ref: "#/components/responses/TooMany"}
+
+  /v1/devices:
+    get:
+      tags: [devices]
+      operationId: listDevices
+      summary: Machines, desktop apps, phones, browsers and owner sessions
+      x-scopes: [owner]
+      parameters:
+        - {name: all, in: query, description: Include revoked and expired devices., schema: {type: boolean, default: false}}
+      responses:
+        "200":
+          description: Devices, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [devices]
+                properties:
+                  devices:
+                    type: array
+                    items: {$ref: "#/components/schemas/Device"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /v1/devices/{id}:
+    get:
+      tags: [devices]
+      operationId: getDevice
+      summary: One device; `self` is the caller
+      description: Owner for any id; every other token only for `self`.
+      x-scopes: [owner, read, push]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: The device.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Device"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    patch:
+      tags: [devices]
+      operationId: updateDevice
+      summary: Rename a device or change its push preferences
+      description: Owner for any id; push-scoped devices for `self`. `prefs` replaces the whole object (push.md 5.4).
+      x-scopes: [owner, push]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string, minLength: 1, maxLength: 60}
+                prefs: {$ref: "#/components/schemas/DevicePrefs"}
+      responses:
+        "200":
+          description: The updated device.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Device"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    delete:
+      tags: [devices]
+      operationId: revokeDevice
+      summary: Revoke a device (owner), or unpair this phone (`self`)
+      description: |
+        Sets `revoked_at`, deletes its push targets, cancels its pending deliveries and
+        revokes board/owner sessions made from it. Revoking `self` also clears the cookie.
+        The owner cannot revoke the session making the request this way (`409`; use sign
+        out).
+      x-scopes: [owner, push]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "204": {description: Revoked.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+
+  /v1/push/config:
+    get:
+      tags: [push]
+      operationId: pushConfig
+      summary: VAPID public key and which channels are on
+      x-scopes: [read, push, owner]
+      responses:
+        "200":
+          description: Push configuration.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PushConfig"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /v1/push/settings:
+    put:
+      tags: [push]
+      operationId: putPushSettings
+      summary: Replace the hub-wide push settings (push.md 2)
+      x-scopes: [owner]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PushSettings"}
+      responses:
+        "200":
+          description: The stored settings.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PushSettings"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /v1/push/channels/{kind}:
+    put:
+      tags: [push]
+      operationId: putChannel
+      summary: Turn a channel kind on or off hub-wide
+      description: |
+        `expo` (push.md 12.5) takes `settings: {base_url?, access_token?}`. `base_url` must be
+        `https://` on port 443 (default `https://exp.host`). The access token is stored in
+        `hub_secret` key `expo_access_token`, is never returned (the channel shows
+        `access_token_set`) and never logged; an empty string removes it.
+      x-scopes: [owner]
+      parameters:
+        - {name: kind, in: path, required: true, schema: {type: string, enum: [webpush, ntfy, expo]}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Channel"}
+      responses:
+        "200":
+          description: The channel.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Channel"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /v1/push/targets:
+    get:
+      tags: [push]
+      operationId: listPushTargets
+      summary: Push targets (a push-scoped device sees its own; the owner sees all)
+      x-scopes: [push, owner]
+      responses:
+        "200":
+          description: Targets.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [targets]
+                properties:
+                  targets:
+                    type: array
+                    items: {$ref: "#/components/schemas/PushTarget"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    post:
+      tags: [push]
+      operationId: addPushTarget
+      summary: Register a Web Push subscription, an ntfy topic or an app's Expo push token
+      description: |
+        `expo` (push.md 12.7): `expo_token` must match
+        `^Expo(nent)?PushToken\[[A-Za-z0-9_-]{8,200}\]$`, `platform` is required, `app` is
+        optional. Upsert by token, re-bound to the caller, as for Web Push.
+        `webpush`: upsert by endpoint (a re-subscribing browser re-binds to the caller). The
+        endpoint host must be in `webpush_hosts` (push.md 6.6); `p256dh` must be a P-256 point,
+        `auth` 16 bytes. `ntfy`: `topic` is generated when omitted; a push-scoped device's
+        topic belongs to it, an owner's has no device. Private defaults to true on ntfy.sh. A device
+        may name only an https ntfy server on a public address (the owner may name private and
+        tailnet servers) and may hold at most 10 targets (409).
+      x-scopes: [push, owner]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PushTargetNew"}
+            example:
+              kind: webpush
+              endpoint: "https://web.push.apple.com/QGz…"
+              keys: {p256dh: "BNcR…", auth: "tBHI…"}
+              name: "iPhone · Safari"
+      responses:
+        "201":
+          description: Registered (or re-bound).
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PushTarget"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "409": {$ref: "#/components/responses/Conflict"}
+
+  /v1/push/targets/{id}:
+    patch:
+      tags: [push]
+      operationId: updatePushTarget
+      summary: Enable, disable, rename a target; prefs of a device-less target
+      x-scopes: [push, owner]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled: {type: boolean}
+                name: {type: string, maxLength: 60}
+                prefs: {$ref: "#/components/schemas/DevicePrefs"}
+      responses:
+        "200":
+          description: The target.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PushTarget"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    delete:
+      tags: [push]
+      operationId: deletePushTarget
+      summary: Remove a target (own, or any for the owner)
+      x-scopes: [push, owner]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "204": {description: Removed.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /v1/push/targets/{id}/test:
+    post:
+      tags: [push]
+      operationId: testPushTarget
+      summary: Send a test push now and return the push service's answer
+      description: Ignores rules, quiet hours and mutes. At most one per 5 seconds per target (`429`). Not written to the alert log.
+      x-scopes: [push, owner]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: Result of the attempt (also when the push service refused it).
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PushTestResult"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "429": {$ref: "#/components/responses/TooMany"}
+
+  /v1/rules:
+    get:
+      tags: [alerts]
+      operationId: listRules
+      summary: Rules and hub-wide push settings
+      x-scopes: [read, push, owner]
+      responses:
+        "200":
+          description: Base rules first (fixed trigger order), then overrides.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rules, settings]
+                properties:
+                  rules:
+                    type: array
+                    items: {$ref: "#/components/schemas/Rule"}
+                  settings: {$ref: "#/components/schemas/PushSettings"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    post:
+      tags: [alerts]
+      operationId: addRule
+      summary: Add an override (push.md 3.4)
+      x-scopes: [owner]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/RuleInput"}
+      responses:
+        "201":
+          description: The override.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Rule"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /v1/rules/{id}:
+    put:
+      tags: [alerts]
+      operationId: putRule
+      summary: Change a base rule or an override
+      description: For base rules only `enabled`, `delay_s`, `bypass_quiet` and `scope.windows` may change; `trigger` never.
+      x-scopes: [owner]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/RuleInput"}
+      responses:
+        "200":
+          description: The rule.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Rule"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    delete:
+      tags: [alerts]
+      operationId: deleteRule
+      summary: Delete an override (base rules can only be disabled, `409`)
+      x-scopes: [owner]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "204": {description: Deleted.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+
+  /v1/alerts:
+    get:
+      tags: [alerts]
+      operationId: listAlerts
+      summary: Recent pushes (the alert log), newest first
+      description: |
+        The "recent pushes" log of plan section 16 phase 4. Every alert with its outcome and
+        deliveries, including cancelled ones ("you answered first"). `baseline` rows are left
+        out unless `status=skipped&reason=baseline`.
+      x-scopes: [read, push, owner]
+      parameters:
+        - {name: status, in: query, description: Comma-separated alert statuses., schema: {type: string}}
+        - {name: session, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}
+        - {name: cursor, in: query, description: Opaque `next` value., schema: {type: string}}
+      responses:
+        "200":
+          description: One page.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [alerts]
+                properties:
+                  alerts:
+                    type: array
+                    items: {$ref: "#/components/schemas/Alert"}
+                  next: {type: [string, "null"]}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /v1/alerts/{id}:
+    get:
+      tags: [alerts]
+      operationId: getAlert
+      summary: One alert with its deliveries (private push links resolve through this)
+      x-scopes: [read, push, owner]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: The alert.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Alert"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /v1/alerts/{id}/snooze:
+    post:
+      tags: [alerts]
+      operationId: snoozeAlert
+      summary: Snooze an alert (default 15 minutes); push again if still open
+      description: Allowed in `pending`, `fired`, `snoozed`; otherwise `409` (push.md 4).
+      x-scopes: [push, owner]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                minutes: {type: integer, minimum: 5, maximum: 240}
+      responses:
+        "200":
+          description: The alert after snoozing.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Alert"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+
+  /v1/alerts/{id}/seen:
+    post:
+      tags: [alerts]
+      operationId: seenAlert
+      summary: Mark an alert seen; no more pushes for this episode
+      x-scopes: [push, owner]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: The alert after marking it seen.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Alert"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+
+  /v1/actions/{token}:
+    post:
+      tags: [alerts]
+      operationId: alertAction
+      summary: Snooze or Seen from a push button (signed one-time action token)
+      description: |
+        push.md 8. The token is the only credential; it names the alert, the action, the
+        fire it belongs to and an expiry (24 h). Snooze applies at most once per fire
+        (`applied: false` otherwise). Only POST: link previews must never act.
+      security: []
+      x-scopes: []
+      parameters:
+        - {name: token, in: path, required: true, schema: {type: string, pattern: "^a1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"}}
+      responses:
+        "200":
+          description: Done (or nothing to do).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [alert, applied]
+                properties:
+                  alert: {$ref: "#/components/schemas/AlertBrief"}
+                  applied: {type: boolean}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "410": {$ref: "#/components/responses/Gone"}
+        "429": {$ref: "#/components/responses/TooMany"}
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: "sy_<kind>_<43 base62> (tokens.md)"
+    cookie:
+      type: apiKey
+      in: cookie
+      name: sy_session
+      description: |
+        The web app's cookie (board login, phone pairing in cookie mode, owner session). A
+        cookie request that changes state must send `Content-Type: application/json` and, if
+        it sends `Origin`, the hub's own origin (pairing.md 3.2).
+
+  responses:
+    BadRequest:
+      description: Malformed request.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    Unauthorized:
+      description: Missing, unknown or revoked token.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    Forbidden:
+      description: Token lacks the scope.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    NotFound:
+      description: No such item.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    TooMany:
+      description: Rate limited. `Retry-After` header in seconds.
+      headers:
+        Retry-After:
+          schema: {type: integer}
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    Unavailable:
+      description: Hub is starting, migrating or the database is busy. Retry later.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    Conflict:
+      description: The request conflicts with the item's state (wrong kind, wrong status, base rule).
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    Gone:
+      description: Expired (action token).
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    NotImplemented:
+      description: Reserved; not implemented in this phase.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+
+  schemas:
+    Error:
+      type: object
+      required: [error, code]
+      properties:
+        error: {type: string, description: Human-readable message.}
+        code:
+          type: string
+          enum: [bad_request, unauthorized, forbidden, machine_mismatch, not_found, conflict, gone, too_large, rate_limited, unavailable, not_implemented, internal]
+
+    Health:
+      type: object
+      required: [ok, version, schema]
+      properties:
+        ok: {type: boolean}
+        version: {type: string, description: Hub (sy) version.}
+        schema: {type: integer, description: Database schema version.}
+        time: {type: string, format: date-time}
+        ui: {type: string, description: "Build hash of the embedded web app (pwa.md 4); phase 4."}
+        record_v_max: {type: integer, description: "Highest record `v` this hub types (machines.md 7.2); phase 5. Absent means 1."}
+        batch_v:
+          type: array
+          description: Upload batch versions this hub accepts; phase 5.
+          items: {type: integer}
+        drain_proto: {type: integer, description: "Drain protocol version this hub speaks (machines.md 3.5); phase 5."}
+        frozen:
+          type: object
+          description: "Present while the hub is frozen for a move (machines.md 8.1); informational, clients never follow it."
+          required: [since]
+          properties:
+            since: {type: string, format: date-time}
+            moved_to: {type: [string, "null"]}
+
+    # ---------------------------------------------------------------- records (record.md)
+
+    Batch:
+      type: object
+      required: [v, records]
+      properties:
+        v: {type: integer, const: 1}
+        client: {type: string, description: "name/semver of the uploader"}
+        records:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items: {$ref: "#/components/schemas/Record"}
+      additionalProperties: true
+
+    Record:
+      type: object
+      description: The envelope. See record.md section 3. Unknown fields are stored, never refused.
+      required: [v, id, kind, ts, machine, payload]
+      properties:
+        v: {type: integer, minimum: 1}
+        id: {type: string, pattern: "^[0-9A-Za-z_-]{16,64}$"}
+        kind:
+          type: string
+          pattern: "^[a-z][a-z0-9_]{0,39}$"
+          description: "hook_event, limit_sample, web_usage, token_rows, session_list, history_import, slot_info, or a future kind."
+          examples: [hook_event, limit_sample, web_usage, token_rows, session_list, history_import, slot_info]
+        ts: {type: string, format: date-time}
+        machine: {type: string, pattern: "^m_[0-9A-HJKMNP-TV-Z]{26}$"}
+        slot: {type: string}
+        seat: {$ref: "#/components/schemas/SeatRef"}
+        term: {$ref: "#/components/schemas/Term"}
+        client: {type: string}
+        redacted:
+          type: array
+          items: {type: string}
+        derived:
+          type: object
+          additionalProperties: true
+        payload:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
+    SeatRef:
+      type: object
+      required: [account, org]
+      properties:
+        account: {type: string, description: "Account uuid; empty string when only auth status was available (identity.md 4)."}
+        org: {type: string}
+        email: {type: string}
+        src: {type: string, enum: [claude_json, auth_status, claude_ai]}
+      additionalProperties: true
+
+    Term:
+      type: object
+      required: [app]
+      properties:
+        app: {type: string}
+        id: {type: string}
+        focus_url: {type: string}
+        host: {type: string}
+      additionalProperties: true
+
+    IngestReply:
+      type: object
+      required: [accepted, rejected]
+      properties:
+        accepted:
+          type: array
+          description: Ids stored now or already stored from this device.
+          items: {type: string}
+        duplicates:
+          type: array
+          description: Subset of `accepted` that was already stored.
+          items: {type: string}
+        rejected:
+          type: array
+          items:
+            type: object
+            required: [id, reason]
+            properties:
+              id: {type: string}
+              reason:
+                type: string
+                enum: [bad_id, bad_envelope, machine_mismatch, id_conflict, too_large]
+              detail: {type: string}
+        hub:
+          type: object
+          description: "What the hub reads (machines.md 7.2); phase 5. Absent from older hubs, which read record v 1."
+          properties:
+            version: {type: string}
+            record_v_max: {type: integer}
+
+    # ---------------------------------------------------------------- read models
+
+    SessionState:
+      type: string
+      enum: [working, needs_permission, asked, done, failed, ended, gone]
+
+    Session:
+      type: object
+      required: [id, state, needs_you, state_since]
+      properties:
+        id: {type: string}
+        state: {$ref: "#/components/schemas/SessionState"}
+        detail: {type: [string, "null"], description: "Reason for the state (states.md 1)."}
+        needs_you: {type: boolean}
+        state_since: {type: string, format: date-time}
+        question: {type: [string, "null"], description: "Question line, when allowed."}
+        last_message: {type: [string, "null"], description: "derived.last_message of the last Stop, when allowed."}
+        seat: {type: [string, "null"], description: Seat id; null = Unattributed.}
+        seat_label: {type: [string, "null"]}
+        seat_colour: {type: [string, "null"]}
+        machine: {type: [string, "null"]}
+        machine_name: {type: [string, "null"]}
+        slot: {type: [string, "null"], description: "Folder, e.g. ~/.claude-2"}
+        project: {type: [string, "null"]}
+        cwd: {type: [string, "null"]}
+        name: {type: [string, "null"]}
+        title: {type: [string, "null"]}
+        kind: {type: [string, "null"], enum: [interactive, background, null]}
+        model: {type: [string, "null"]}
+        context_pct: {type: [number, "null"]}
+        started_at: {type: [string, "null"], format: date-time}
+        last_event_at: {type: [string, "null"], format: date-time}
+        ended_at: {type: [string, "null"], format: date-time}
+        remote_url: {type: [string, "null"], description: Remote Control link.}
+        resume: {type: [string, "null"], description: "Resume command, e.g. claude-2 --resume <id>"}
+        focus_url: {type: [string, "null"], description: Only for a desktop device on the terminal's machine.}
+        stale: {type: boolean, description: "Working with no event for 12 h and no session lists (states.md 5)."}
+        machine_stale: {type: boolean, description: "Machine silent for 15 min (states.md 5)."}
+        alert:
+          description: "The open alert of this session's current episode, if any (phase 4, push.md 4)."
+          oneOf:
+            - {$ref: "#/components/schemas/AlertBrief"}
+            - {type: "null"}
+
+    SessionDetail:
+      allOf:
+        - {$ref: "#/components/schemas/Session"}
+        - type: object
+          required: [timeline]
+          properties:
+            timeline:
+              type: array
+              description: Hook events, oldest first (last 500).
+              items:
+                type: object
+                required: [ts, event]
+                properties:
+                  ts: {type: string, format: date-time}
+                  event: {type: string}
+                  subtype: {type: [string, "null"]}
+                  tool_name: {type: [string, "null"]}
+                  state_after: {type: [string, "null"]}
+                  last_message: {type: [string, "null"]}
+            transitions:
+              type: array
+              description: State changes, oldest first (session_transition, schema v2).
+              items:
+                type: object
+                required: [at, to, cause]
+                properties:
+                  at: {type: string, format: date-time}
+                  from: {type: [string, "null"]}
+                  to: {type: string}
+                  detail: {type: [string, "null"]}
+                  cause: {type: string, description: "The hook event name, `session_list` or `gone`."}
+            tokens:
+              type: object
+              description: Totals from token rows.
+              properties:
+                input: {type: integer}
+                output: {type: integer}
+                cache_read: {type: integer}
+                cache_write: {type: integer}
+                replies: {type: integer}
+                api_usd: {type: number}
+
+    Seat:
+      type: object
+      required: [id, account, org]
+      properties:
+        id: {type: string}
+        account: {type: string, description: Account uuid.}
+        org: {type: string, description: Org uuid.}
+        email: {type: [string, "null"]}
+        org_name: {type: [string, "null"]}
+        plan: {type: [string, "null"]}
+        label: {type: [string, "null"]}
+        colour: {type: [string, "null"]}
+        order: {type: integer}
+        hidden: {type: boolean}
+        windows:
+          type: array
+          description: Current window per key (five_hour, seven_day, per-model weeks, iguana_necktie…).
+          items: {$ref: "#/components/schemas/Window"}
+        extra_usage: {type: [object, "null"], description: "Raw extra_usage from the newest web_usage, whole."}
+        spend: {type: [object, "null"], description: "Raw spend from the newest web_usage, whole."}
+        web_raw_at: {type: [string, "null"], format: date-time, description: Time of the newest web_usage.}
+        places:
+          type: array
+          description: Where this seat is used.
+          items:
+            type: object
+            properties:
+              machine: {type: string}
+              machine_name: {type: string}
+              slot: {type: [string, "null"]}
+              tab_id: {type: [string, "null"]}
+              stopped_reason:
+                type: [string, "null"]
+                description: "Why the desktop app stopped reading this web seat (web_seat.stopped_reason: 401, 403 or 429); null while reading or for a slot place. Phase 6."
+        live_sessions: {type: integer}
+
+    Window:
+      type: object
+      required: [key, resets_at]
+      properties:
+        key: {type: string}
+        label: {type: [string, "null"]}
+        used_pct: {type: [number, "null"]}
+        peak_pct: {type: [number, "null"]}
+        resets_at: {type: string, format: date-time}
+        started_at: {type: [string, "null"], format: date-time}
+        unused_pct: {type: [number, "null"]}
+        source: {type: string, enum: [statusline, web, both]}
+        updated_at: {type: [string, "null"], format: date-time}
+        pace:
+          type: [object, "null"]
+          description: Projection at the current rate.
+          properties:
+            projected_pct: {type: number}
+            full_at: {type: [string, "null"], format: date-time}
+            band: {type: string, enum: [comfortable, on_track, fast, runaway]}
+
+    LimitSample:
+      type: object
+      required: [ts, key, source]
+      properties:
+        ts: {type: string, format: date-time}
+        key: {type: string}
+        source: {type: string, enum: [statusline, web]}
+        used_pct: {type: [number, "null"]}
+        resets_at: {type: [string, "null"], format: date-time}
+
+    Machine:
+      type: object
+      required: [id, name]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        os: {type: [string, "null"]}
+        arch: {type: [string, "null"]}
+        sy_version: {type: [string, "null"]}
+        last_seen: {type: [string, "null"], format: date-time}
+        last_record: {type: [string, "null"], format: date-time}
+        backlog: {type: [integer, "null"]}
+        silent: {type: boolean, description: No record for 15 minutes while it has live sessions.}
+        live_sessions: {type: integer}
+        reach:
+          type: [string, "null"]
+          enum: [direct, forward, pull, null]
+          description: "How its records reach the hub (machines.md 3); phase 5."
+        backlog_oldest: {type: [string, "null"], format: date-time, description: "Ts of its oldest unanswered record; phase 5."}
+        backlog_at: {type: [string, "null"], format: date-time, description: "When backlog was reported; phase 5."}
+        version_status:
+          type: string
+          enum: [same, older, newer, unknown]
+          description: "sy_version compared with the hub's version; phase 5."
+        record_v: {type: [integer, "null"], description: "Highest record v the machine writes; phase 5."}
+        held: {type: integer, description: "Records held back because the hub is too old (machines.md 7.2); phase 5."}
+        direct_push: {type: boolean, description: "Direct ntfy is on (machines.md 5); phase 5."}
+        timer_ok: {type: [boolean, "null"], description: "Its OS timer runs (sy doctor); phase 5."}
+        linger: {type: [boolean, "null"], description: "Linux: loginctl linger on; phase 5."}
+        removed_at: {type: [string, "null"], format: date-time, description: "Only with ?all=true; phase 5."}
+        pull:
+          oneOf:
+            - {$ref: "#/components/schemas/PullStatus"}
+            - {type: "null"}
+        alert:
+          oneOf:
+            - {$ref: "#/components/schemas/AlertBrief"}
+            - {type: "null"}
+          description: "The open machine_silent alert, if any; phase 5."
+        slots:
+          type: array
+          items:
+            type: object
+            properties:
+              folder: {type: string}
+              launcher: {type: [string, "null"]}
+              seat: {type: [string, "null"]}
+              logged_in: {type: boolean}
+              claude_version: {type: [string, "null"]}
+
+    SeatPatch:
+      type: object
+      description: "PATCH /v1/accounts/{seat} (desktop.md C10); phase 6. null clears label or colour; a missing key leaves it."
+      properties:
+        label: {type: [string, "null"], pattern: "^[a-z0-9][a-z0-9-]{0,23}$"}
+        colour: {type: [string, "null"], pattern: "^#[0-9a-f]{6}$"}
+        order: {type: integer}
+        hidden: {type: boolean}
+      additionalProperties: false
+
+    MachinePatch:
+      type: object
+      description: "PATCH /v1/machines/{id} (machines.md 6.2); phase 5."
+      properties:
+        name: {type: string, minLength: 1, maxLength: 60}
+      additionalProperties: false
+
+    PullStatus:
+      type: object
+      description: "A pull target's health (machines.md 3.4, 6.1); phase 5."
+      required: [name, target, interval_s, state]
+      properties:
+        name: {type: string}
+        target: {type: string, description: "user@host[:port], for display."}
+        interval_s: {type: integer}
+        state: {type: string, enum: [new, ok, failing, host_key, auth, refused, disabled, frozen]}
+        last_try: {type: [string, "null"], format: date-time}
+        last_ok: {type: [string, "null"], format: date-time}
+        last_error: {type: [string, "null"]}
+        next_at: {type: [string, "null"], format: date-time}
+
+    DirectPolicyRule:
+      type: object
+      description: "One resolved rule for direct push; the client takes the first match (machines.md 5.3); phase 5."
+      required: [trigger, enabled, delay_s, bypass_quiet, seats, projects]
+      properties:
+        trigger: {type: string, enum: [needs_permission, asked, failed]}
+        enabled: {type: boolean}
+        delay_s: {type: integer}
+        bypass_quiet: {type: boolean}
+        seats:
+          type: array
+          items:
+            type: object
+            required: [account, org]
+            properties:
+              account: {type: string}
+              org: {type: string}
+        projects:
+          type: array
+          items: {type: string}
+
+    DirectPolicy:
+      type: object
+      description: "GET /v1/push/direct-policy (machines.md 5.3); phase 5."
+      required: [v, machine, settings, rules]
+      properties:
+        v: {type: integer, const: 1}
+        hub: {type: string}
+        public_url: {type: [string, "null"]}
+        machine: {type: string}
+        settings:
+          type: object
+          properties:
+            quiet_hours: {$ref: "#/components/schemas/QuietHours"}
+            skip_remote: {type: boolean}
+            max_age_s: {type: integer}
+        rules:
+          type: array
+          items: {$ref: "#/components/schemas/DirectPolicyRule"}
+
+    Overview:
+      type: object
+      required: [time, seats, needs_you, machines, counts]
+      properties:
+        time: {type: string, format: date-time}
+        seats:
+          type: array
+          items: {$ref: "#/components/schemas/Seat"}
+        needs_you:
+          type: array
+          description: Sessions with needs_you, oldest first.
+          items: {$ref: "#/components/schemas/Session"}
+        machines:
+          type: array
+          items: {$ref: "#/components/schemas/Machine"}
+        counts:
+          type: object
+          properties:
+            working: {type: integer}
+            needs_you: {type: integer}
+            done: {type: integer}
+            live: {type: integer}
+        stream_id: {type: integer, description: Current stream event id; pass as Last-Event-ID to continue live.}
+
+    # ---------------------------------------------------------------- stream events
+
+    StreamEventType:
+      type: string
+      enum: [hello, reset, ping, session, usage, machine, alert]
+
+    StreamHello:
+      type: object
+      required: [version, schema]
+      properties:
+        version: {type: string}
+        schema: {type: integer}
+        device: {type: string}
+
+    StreamReset:
+      type: object
+      properties:
+        reason: {type: string, enum: [buffer_expired, hub_restarted]}
+
+    StreamPing:
+      type: object
+      properties:
+        time: {type: string, format: date-time}
+
+    StreamSession:
+      type: object
+      required: [session, change]
+      properties:
+        change:
+          type: string
+          enum: [new, state, update, ended]
+          description: "`state` = state changed; `update` = other fields (title, context %, remote link)."
+        session: {$ref: "#/components/schemas/Session"}
+        previous_state: {type: [string, "null"]}
+
+    StreamUsage:
+      type: object
+      required: [seat]
+      properties:
+        seat: {type: string}
+        windows:
+          type: array
+          items: {$ref: "#/components/schemas/Window"}
+
+    StreamMachine:
+      type: object
+      required: [machine]
+      properties:
+        machine: {$ref: "#/components/schemas/Machine"}
+
+    StreamAlert:
+      type: object
+      description: An alert changed status (phase 4, push.md 4).
+      required: [alert, change]
+      properties:
+        change: {type: string, enum: [created, fired, snoozed, seen, cancelled, closed, skipped]}
+        alert: {$ref: "#/components/schemas/AlertBrief"}
+        session: {type: [string, "null"]}
+        seat: {type: [string, "null"]}
+        machine: {type: [string, "null"]}
+
+    # ---------------------------------------------------------------- phase 4: pairing, devices, pushes
+
+    Me:
+      type: object
+      required: [device, owner, hub]
+      properties:
+        device: {$ref: "#/components/schemas/Device"}
+        owner: {type: boolean, description: The caller holds the owner scope.}
+        hub:
+          type: object
+          properties:
+            version: {type: string}
+            public_url: {type: [string, "null"]}
+
+    PairCode:
+      type: object
+      required: [id, kind, code, secret, url, expires_at, qr]
+      properties:
+        id: {type: string}
+        kind: {type: string, enum: [machine, desktop, phone, browser]}
+        name: {type: [string, "null"]}
+        code: {type: string, description: "Six digits shown as 482-913.", examples: ["482-913"]}
+        secret: {type: string, description: 22-character base64url QR secret.}
+        url: {type: string, description: "The QR content: <hub>/#/pair?s=<secret>&c=<digits>."}
+        expires_at: {type: string, format: date-time}
+        command: {type: [string, "null"], description: "For machine codes: sy connect <hub> --code 482-913."}
+        qr:
+          type: object
+          description: QR module matrix of `url` (pairing.md 2.2), quiet zone included.
+          required: [size, rows]
+          properties:
+            size: {type: integer}
+            rows:
+              type: array
+              items: {type: string, pattern: "^[01]+$"}
+
+    PairCodeStatus:
+      type: object
+      required: [id, kind, status, expires_at]
+      properties:
+        id: {type: string}
+        kind: {type: string}
+        status: {type: string, enum: [live, claimed, cancelled, expired]}
+        expires_at: {type: string, format: date-time}
+        claimed_at: {type: [string, "null"], format: date-time}
+        device: {type: [object, "null"], description: "The new device ({id, name, kind}) once claimed."}
+
+    PairClaim:
+      type: object
+      properties:
+        code: {type: string, description: "Six digits; 482913, 482-913 or 482 913."}
+        secret: {type: string}
+        name: {type: string, maxLength: 60}
+        machine: {type: string, description: Required for machine and desktop codes.}
+        expect_kind: {type: string, enum: [machine, desktop, phone, browser]}
+        cookie: {type: boolean, default: false, description: "Phone and browser codes: set the sy_session cookie instead of returning the token."}
+        client: {type: string}
+      oneOf:
+        - {required: [code]}
+        - {required: [secret]}
+
+    PairClaimReply:
+      type: object
+      required: [device, kind, name, scopes, hub]
+      properties:
+        device: {type: string}
+        kind: {type: string}
+        name: {type: string}
+        scopes:
+          type: array
+          items: {type: string}
+        token: {type: string, description: Shown once; absent in cookie mode.}
+        machine: {type: [string, "null"]}
+        hub:
+          type: object
+          properties:
+            url: {type: string}
+            version: {type: string}
+
+    Device:
+      type: object
+      required: [id, kind, name, scopes, created_at]
+      properties:
+        id: {type: string}
+        kind: {type: string, enum: [machine, desktop, phone, browser]}
+        name: {type: string}
+        hint: {type: string, description: "sy_p_…k3Qz"}
+        scopes:
+          type: array
+          items: {type: string}
+        owner_session: {type: boolean}
+        machine: {type: [string, "null"]}
+        created_at: {type: string, format: date-time}
+        created_by: {type: string}
+        last_used_at: {type: [string, "null"], format: date-time}
+        last_used_ip: {type: [string, "null"]}
+        expires_at: {type: [string, "null"], format: date-time}
+        revoked_at: {type: [string, "null"], format: date-time}
+        current: {type: boolean, description: The device making this request.}
+        prefs: {$ref: "#/components/schemas/DevicePrefs"}
+        targets:
+          type: array
+          items: {$ref: "#/components/schemas/PushTarget"}
+
+    QuietHours:
+      type: object
+      required: [enabled, start, end]
+      properties:
+        enabled: {type: boolean}
+        start: {type: string, pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"}
+        end: {type: string, pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"}
+        tz: {type: string, description: IANA time zone.}
+        critical: {type: boolean, default: true, description: Let rules with bypass_quiet through.}
+
+    DevicePrefs:
+      type: object
+      description: push.md 5.4. Missing keys take their defaults.
+      properties:
+        mute:
+          type: array
+          items: {type: string}
+        quiet_hours:
+          oneOf:
+            - {$ref: "#/components/schemas/QuietHours"}
+            - {type: "null"}
+        private: {type: [boolean, "null"]}
+        tap: {type: string, enum: [auto, session, claude], default: auto}
+        tz: {type: [string, "null"]}
+        widgets:
+          type: boolean
+          default: false
+          description: Silent widget refresh pushes to this device's expo targets (push.md 12.9); phase 8.
+
+    PushSettings:
+      type: object
+      description: push.md 2.
+      properties:
+        quiet_hours: {$ref: "#/components/schemas/QuietHours"}
+        private: {type: boolean}
+        skip_remote: {type: boolean}
+        snooze_min: {type: integer, minimum: 5, maximum: 240}
+        max_age_s: {type: integer, minimum: 60, maximum: 86400}
+        batch_s: {type: integer, minimum: 0, maximum: 30}
+        flood:
+          type: object
+          properties:
+            max: {type: integer, minimum: 1}
+            per_s: {type: integer, minimum: 60}
+        vapid_subject: {type: string}
+        webpush_hosts:
+          type: array
+          items: {type: string}
+        expo_refresh_min:
+          type: integer
+          minimum: 10
+          maximum: 240
+          default: 15
+          description: Least minutes between two silent widget refreshes to one expo target (push.md 12.9); phase 8.
+
+    Channel:
+      type: object
+      required: [kind, enabled]
+      properties:
+        kind: {type: string, enum: [webpush, ntfy, expo]}
+        enabled: {type: boolean}
+        settings:
+          type: object
+          additionalProperties: true
+          description: |
+            Per kind. `expo` (push.md 12.5) answers `{base_url, access_token_set}` and takes
+            `{base_url?, access_token?}`; the access token is write-only.
+          properties:
+            base_url: {type: string, description: "expo: https on port 443; default https://exp.host."}
+            access_token: {type: string, writeOnly: true, description: "expo: Expo access token (enhanced push security); never returned."}
+            access_token_set: {type: boolean, readOnly: true, description: "expo: an access token is stored."}
+
+    PushConfig:
+      type: object
+      required: [vapid_public_key, channels]
+      properties:
+        vapid_public_key: {type: string, description: "Uncompressed P-256 point, base64url (applicationServerKey)."}
+        channels:
+          type: array
+          items: {$ref: "#/components/schemas/Channel"}
+        ntfy_default_server: {type: string}
+
+    PushTargetNew:
+      type: object
+      required: [kind]
+      properties:
+        kind: {type: string, enum: [webpush, ntfy, expo]}
+        name: {type: string, maxLength: 60}
+        endpoint: {type: string, description: webpush only.}
+        keys:
+          type: object
+          description: webpush only.
+          required: [p256dh, auth]
+          properties:
+            p256dh: {type: string}
+            auth: {type: string}
+        server: {type: string, description: "ntfy only; default https://ntfy.sh"}
+        topic: {type: string, pattern: "^[-_A-Za-z0-9]{1,64}$", description: ntfy only; generated when omitted.}
+        token: {type: string, description: "ntfy access token; stored, never returned."}
+        private: {type: boolean, description: ntfy only.}
+        expo_token:
+          type: string
+          pattern: "^Expo(nent)?PushToken\\[[A-Za-z0-9_-]{8,200}\\]$"
+          description: expo only (push.md 12.7); stored as the target's endpoint.
+        platform: {type: string, enum: [ios, android], description: expo only; required for expo.}
+        app:
+          type: object
+          description: expo only. The app's version and build.
+          required: [version, build]
+          properties:
+            version: {type: string, maxLength: 32}
+            build: {type: string, maxLength: 32}
+
+    PushTarget:
+      type: object
+      required: [id, kind, enabled, status]
+      properties:
+        id: {type: string}
+        kind: {type: string, enum: [webpush, ntfy, expo]}
+        platform: {type: [string, "null"], enum: [ios, android, null], description: expo only.}
+        app_version: {type: [string, "null"], description: expo only.}
+        device: {type: [string, "null"]}
+        name: {type: [string, "null"]}
+        endpoint_host: {type: string, description: "web.push.apple.com, ntfy.sh…"}
+        endpoint: {type: [string, "null"], description: "Full endpoint (expo: the Expo push token): only to the owning device and the owner."}
+        server: {type: [string, "null"]}
+        topic: {type: [string, "null"]}
+        token_set: {type: boolean}
+        enabled: {type: boolean}
+        status: {type: string, enum: [ok, failing, gone, disabled, new]}
+        last_ok_at: {type: [string, "null"], format: date-time}
+        last_error: {type: [string, "null"]}
+        last_error_at: {type: [string, "null"], format: date-time}
+        prefs: {$ref: "#/components/schemas/DevicePrefs"}
+        created_at: {type: string, format: date-time}
+
+    PushTestResult:
+      type: object
+      required: [outcome]
+      properties:
+        outcome: {type: string, enum: [sent, retry, gone, failed]}
+        http_status: {type: [integer, "null"]}
+        error: {type: [string, "null"]}
+
+    RuleScope:
+      type: object
+      properties:
+        seats:
+          type: array
+          items: {type: string}
+        projects:
+          type: array
+          items: {type: string}
+        machines:
+          type: array
+          items: {type: string}
+        windows:
+          type: array
+          items: {type: string}
+
+    RuleInput:
+      type: object
+      properties:
+        trigger: {type: string, enum: [needs_permission, asked, failed, limit_80, limit_95, reset, machine_silent]}
+        enabled: {type: boolean}
+        delay_s: {type: integer, minimum: 0, maximum: 86400}
+        bypass_quiet: {type: boolean}
+        scope: {$ref: "#/components/schemas/RuleScope"}
+
+    Rule:
+      type: object
+      required: [id, trigger, base, enabled, delay_s, bypass_quiet, scope]
+      properties:
+        id: {type: string}
+        trigger: {type: string}
+        base: {type: boolean}
+        enabled: {type: boolean}
+        delay_s: {type: integer}
+        bypass_quiet: {type: boolean}
+        scope: {$ref: "#/components/schemas/RuleScope"}
+        updated_at: {type: string, format: date-time}
+
+    AlertStatus:
+      type: string
+      enum: [pending, fired, snoozed, seen, cancelled, closed, skipped]
+
+    AlertBrief:
+      type: object
+      required: [id, status]
+      properties:
+        id: {type: string}
+        trigger: {type: string}
+        status: {$ref: "#/components/schemas/AlertStatus"}
+        reason: {type: [string, "null"]}
+        due_at: {type: [string, "null"], format: date-time}
+        fired_at: {type: [string, "null"], format: date-time}
+        fire_count: {type: integer}
+        snoozed_until: {type: [string, "null"], format: date-time}
+        seen_at: {type: [string, "null"], format: date-time}
+
+    Alert:
+      allOf:
+        - {$ref: "#/components/schemas/AlertBrief"}
+        - type: object
+          properties:
+            rule: {type: [string, "null"]}
+            session: {type: [string, "null"]}
+            seat: {type: [string, "null"]}
+            machine: {type: [string, "null"]}
+            window_key: {type: [string, "null"]}
+            title: {type: string, description: Push title as rendered for a non-private target.}
+            body: {type: [string, "null"]}
+            url: {type: string, description: Deep link (push.md 5.8).}
+            created_at: {type: string, format: date-time}
+            since_at: {type: [string, "null"], format: date-time}
+            ended_at: {type: [string, "null"], format: date-time}
+            deliveries:
+              type: array
+              items: {$ref: "#/components/schemas/Delivery"}
+
+    Delivery:
+      type: object
+      required: [target, kind, status, fire]
+      properties:
+        target: {type: string}
+        kind: {type: string, enum: [webpush, ntfy, expo]}
+        target_name: {type: [string, "null"]}
+        fire: {type: integer}
+        batch: {type: [string, "null"]}
+        status: {type: string, enum: [pending, held, sent, failed, skipped, gone]}
+        reason: {type: [string, "null"]}
+        tries: {type: integer}
+        http_status: {type: [integer, "null"]}
+        updated_at: {type: string, format: date-time}

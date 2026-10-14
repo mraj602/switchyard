@@ -1,0 +1,39 @@
+{
+  "v": 1,
+  "id": "ID",
+  "kind": "hook_event",
+  "ts": "TS",
+  "machine": "m_MACHINE",
+  "slot": "~/.claude-3",
+  "seat": {
+    "account": "aaaaaaaa-0000-4000-8000-000000000003",
+    "org": "bbbbbbbb-0000-4000-8000-000000000003",
+    "email": "user3@example.com",
+    "src": "claude_json"
+  },
+  "term": {
+    "app": "warp",
+    "id": "00000000000000000000000000000001",
+    "focus_url": "warp://session/00000000000000000000000000000001"
+  },
+  "client": "sy/dev",
+  "redacted": [
+    "tool_input"
+  ],
+  "derived": {
+    "hook_ms": 0
+  },
+  "payload": {
+    "cwd": "/tmp/claude-1000/-home-user-projects-personal/92757a3d-04cd-4927-8177-c75bc52051b4/scratchpad/proj1",
+    "effort": {
+      "level": "medium"
+    },
+    "hook_event_name": "PreToolUse",
+    "permission_mode": "default",
+    "prompt_id": "7a9a969e-019e-4e0f-947d-fdc6eb1ae172",
+    "session_id": "3dffa0a7-736b-46c3-ab3e-ea895fdf359e",
+    "tool_name": "Agent",
+    "tool_use_id": "toolu_01KoztVaM4pHn9R3qN336w1b",
+    "transcript_path": "/home/user/.claude-3/projects/-tmp-claude-1000--home-user-projects-personal-92757a3d-04cd-4927-8177-c75bc52051b4-scratchpad-proj1/3dffa0a7-736b-46c3-ab3e-ea895fdf359e.jsonl"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "to": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+  "title": "client · 5-hour at 82%",
+  "body": "Resets 17:00 · work has 59% left",
+  "data": {
+    "v": 1,
+    "type": "alert",
+    "alert": "al_01JA3B7Q0007",
+    "alerts": [
+      "al_01JA3B7Q0007"
+    ],
+    "trigger": "limit_80",
+    "title": "client · 5-hour at 82%",
+    "body": "Resets 17:00 · work has 59% left",
+    "tag": "sy-l-seat-client-five_hour",
+    "url": "/#/accounts?seat=seat-client",
+    "tap": "auto",
+    "needs_you": 0,
+    "actions": {
+      "snooze": "a1.YWxfMDFKQTNCN1EwMDA3AHNub296ZQAAAAABcHRfMDFKQTNCMDAwMDAwMDAwMDAwMDAwMDAwMAAAAAAAas-LWA.vZORpUdiWeAr1H8n1Gm0sQ",
+      "seen": "a1.YWxfMDFKQTNCN1EwMDA3AHNlZW4AAAAAAXB0XzAxSkEzQjAwMDAwMDAwMDAwMDAwMDAwMDAAAAAAAGrPi1g.nEwaloJsiquKSPyG1RnvaQ"
+    },
+    "private": false,
+    "ts": "2026-10-13T14:02:00.000Z"
+  },
+  "categoryId": "sy_alert",
+  "channelId": "sy_limits",
+  "sound": "default",
+  "badge": 0,
+  "priority": "normal",
+  "ttl": 21600
+}

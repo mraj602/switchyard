@@ -1,0 +1,15 @@
+{
+  "device": "dev_phone",
+  "hub": {
+    "url": "http://127.0.0.1:18788",
+    "version": "0.5.0"
+  },
+  "kind": "phone",
+  "machine": null,
+  "name": "Pixel",
+  "scopes": [
+    "read",
+    "push"
+  ],
+  "token": "sy_p_devphone00000000000000000000000000000000"
+}

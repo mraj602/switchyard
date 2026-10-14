@@ -1,0 +1,77 @@
+// Names and limits shared by the app, its tasks, its widgets and the hub (docs/spec/phone.md
+// and push.md 12). A change here is a contract change.
+
+import type { AndroidChannelId } from './payload';
+
+/** SecureStore key of the paired hub: {origin, token, device, name, paired_at} (P3). */
+export const SECURE_HUB_KEY = 'sy.hub.v1';
+
+/**
+ * SecureStore key of unpairings the hub has not confirmed yet (P3): a JSON list of
+ * `{origin, token}`, retried with DELETE /v1/devices/self until the hub answers 2xx, 401 or 404.
+ */
+export const SECURE_REVOKE_KEY = 'sy.revoke.v1';
+
+/**
+ * AsyncStorage key of the notification actions already carried out (P6.4, P6.5): the
+ * "<notification id>|<action>" keys of the last few, so the Android background task and the
+ * response listener never both act on one tap. Never a token.
+ */
+export const ACTED_KEY = 'sy.acted.v1';
+
+/** AsyncStorage key of the last good replies (P5). Never a token or secret. */
+export const CACHE_KEY = 'sy.cache.v1';
+
+/** AsyncStorage key of the last WidgetSnapshot for Android widgets (P11). */
+export const WIDGET_KEY = 'sy.widget.v1';
+
+/**
+ * AsyncStorage key of the app's own settings (P12): `{auto_countdown: boolean}`. Local to this
+ * install, not a hub pref; never a token or secret.
+ */
+export const LOCAL_PREFS_KEY = 'sy.local.v1';
+
+/** The background notification task (P6.5). */
+export const NOTIFY_TASK = 'SY_NOTIFY_TASK';
+
+/** Notification category with Open, Snooze and Seen (P6.2). No '-' or ':' (an Expo rule). */
+export const ALERT_CATEGORY = 'sy_alert';
+
+/** Action identifiers of ALERT_CATEGORY. */
+export const ACTION_OPEN = 'open';
+export const ACTION_SNOOZE = 'snooze';
+export const ACTION_SEEN = 'seen';
+
+/** Android channels (P6.1), in creation order. Importance names are expo-notifications'. */
+export const ANDROID_CHANNELS: readonly {
+  id: AndroidChannelId;
+  name: string;
+  importance: 'HIGH' | 'DEFAULT' | 'LOW';
+}[] = [
+  { id: 'sy_needs_you', name: 'Needs you', importance: 'HIGH' },
+  { id: 'sy_limits', name: 'Limits', importance: 'DEFAULT' },
+  { id: 'sy_machines', name: 'Machines', importance: 'LOW' },
+  { id: 'sy_test', name: 'Test', importance: 'DEFAULT' },
+];
+
+/** Foreground poll period (P5). */
+export const POLL_MS = 15_000;
+
+/** Hub request timeout, and the /health probe's (P3). */
+export const REQUEST_TIMEOUT_MS = 10_000;
+export const HEALTH_TIMEOUT_MS = 1_500;
+
+/** The background task's budget (P6.5). */
+export const BACKGROUND_BUDGET_MS = 20_000;
+
+/** Action tokens (push.md 8; the same check as sw-lib.js actionToken). */
+export const ACTION_TOKEN = /^a1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+
+/** Expo push tokens the hub accepts (push.md 12.7). */
+export const EXPO_TOKEN = /^Expo(nent)?PushToken\[[A-Za-z0-9_-]{8,200}\]$/;
+
+/** expo-secure-store keychainAccessible for SECURE_HUB_KEY (P3). */
+export const KEYCHAIN_ACCESSIBLE = 'AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY';
+
+/** Device kind the app claims as (P2). */
+export const DEVICE_KIND = 'phone';

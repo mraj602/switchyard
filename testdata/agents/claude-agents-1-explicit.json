@@ -1,0 +1,11 @@
+[
+  {
+    "id": "bg000002",
+    "cwd": "/home/user/projects/area-a/backend",
+    "kind": "background",
+    "startedAt": 1790163306762,
+    "sessionId": "00000000-0000-4000-8000-000000000001",
+    "name": "session 1",
+    "state": "blocked"
+  }
+]

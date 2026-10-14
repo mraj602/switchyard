@@ -1,0 +1,28 @@
+# Optional public HTTPS in front of the hub (VPS mode). Caddy gets and renews the
+# certificate by itself. Replace the host name; point its DNS A/AAAA record at this server
+# and open ports 80 and 443 only (never 8787).
+#
+#   caddy run --config deploy/Caddyfile
+#
+# The hub must listen on loopback (the default). The read API returns project names and
+# session text, so it is never exposed without a token.
+hub.example.com {
+	encode zstd gzip
+
+	# Server-sent events (/v1/stream) must not be buffered.
+	reverse_proxy 127.0.0.1:8787 {
+		flush_interval -1
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	# Batches are at most 8 MiB uncompressed.
+	request_body {
+		max_size 10MB
+	}
+}

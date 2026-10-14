@@ -1,0 +1,75 @@
+/* The hub board's colour tokens (webui/static/styles/base.css), copied so the shell matches the
+   board. Light is the default; dark follows prefers-color-scheme. Owned by WP-D. */
+
+:root {
+  --ground: #F3F4F1;
+  --panel: #FFFFFF;
+  --ink: #17191B;
+  --muted: #5E646B;
+  --hair: #DFE1DC;
+  --hair-soft: #ECEDEA;
+  --track: #E9EBE6;
+  --group: #F7F5EF;
+  --selected: #F1EADB;
+  --btn-border: #C9CCC6;
+  --link: #7A4E00;
+  --accent: #E8B04B;
+  --accent-ink: #17191B;
+
+  --needs: #C2410C;
+  --needs-ink: #9A3412;
+  --needs-bg: #FBE9DF;
+  --working: #2563EB;
+  --working-ink: #1D4ED8;
+  --failed: #B42318;
+  --failed-bg: #FDE8E7;
+  --ok-ink: #2E6B3A;
+  --ok-bg: #E7F2E9;
+  --warn-ink: #8A5A00;
+  --warn-bg: #FBF0D5;
+  --info-ink: #1D4ED8;
+  --info-bg: #E6EEFC;
+  --ended-ink: #6B7178;
+
+  --seat-0: #0E7C76;
+  --seat-1: #6A4FD6;
+  --seat-2: #9A7400;
+  --seat-3: #2F6FDE;
+
+  --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --radius: 12px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #121416;
+    --panel: #1B1E21;
+    --ink: #ECEEEF;
+    --muted: #9AA1A8;
+    --hair: #2C3034;
+    --hair-soft: #25292C;
+    --track: #2A2E32;
+    --group: #202327;
+    --selected: #2E2A20;
+    --btn-border: #40454A;
+    --link: #E8B04B;
+
+    --needs: #F08A57;
+    --needs-ink: #F4A27A;
+    --needs-bg: #3A2216;
+    --working: #5B8DF0;
+    --working-ink: #86A9F5;
+    --failed: #F0877D;
+    --failed-bg: #3A1B19;
+    --ok-ink: #7CC48A;
+    --ok-bg: #1C2E21;
+    --warn-ink: #E8B04B;
+    --warn-bg: #33290F;
+    --info-ink: #86A9F5;
+    --info-bg: #1A2438;
+    --ended-ink: #8F969D;
+    color-scheme: dark;
+  }
+}

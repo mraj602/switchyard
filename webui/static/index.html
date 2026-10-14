@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F3F4F1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17191B" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Switchyard">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Switchyard</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Cpath d='M3 18 L11 4 L19 18' fill='none' stroke='%2317191B' stroke-width='2'/%3E%3Cpath d='M7 18 L11 11 L15 18' fill='none' stroke='%23E8B04B' stroke-width='2'/%3E%3C/svg%3E">
+<!-- Fonts are optional: the board falls back to system fonts when offline. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="styles/base.css">
+<link rel="stylesheet" href="styles/layout.css">
+<link rel="stylesheet" href="styles/components.css">
+<link rel="stylesheet" href="styles/phone.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div id="banners" class="banners" role="region" aria-label="Notices"></div>
+<div id="app" class="shell">
+  <nav id="nav" class="nav" aria-label="Main"></nav>
+  <main id="main" class="main" tabindex="-1"><p class="muted pad">Loading…</p></main>
+</div>
+<div id="announce" class="sr-only" aria-live="polite" role="status"></div>
+<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+<noscript><p class="pad">The Switchyard board needs JavaScript.</p></noscript>
+</body>
+</html>

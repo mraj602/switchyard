@@ -1,0 +1,19 @@
+{
+  "name": "switchyard",
+  "version": "0.1.0",
+  "description": "One window for all your Claude accounts: isolated claude.ai tabs, a usage dashboard and Claude Code notifications. Unofficial; not affiliated with Anthropic.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "server": "node server/server.js",
+    "test": "node test/server.js && node test/e2e.js",
+    "test:server": "node test/server.js",
+    "test:e2e": "node test/e2e.js"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^37.10.3",
+    "playwright-core": "^1.64.0"
+  },
+  "private": true
+}

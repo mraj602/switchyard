@@ -1,0 +1,11 @@
+[Unit]
+Description=Switchyard: send queued records to the hub
+Documentation=https://github.com/mraj602/switchyard
+
+[Service]
+Type=oneshot
+Environment="SY_HOME=/srv/sy home"
+Environment=SY_STATE_DIR=/srv/state
+ExecStart="/opt/my tools/sy" tick --quiet
+Nice=10
+TimeoutStartSec=60

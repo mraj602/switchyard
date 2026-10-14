@@ -1,0 +1,94 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+
+import { notifyText, cut, routeFor } from './notify-text.js';
+import { badgeKey, badgeFile, badgeText, normalizeCount, BADGE_KEYS } from './badge.js';
+
+const session = (over = {}) => ({ id: 's1', seat: 'st1', seat_label: 'work', project: 'api', detail: 'question', question: null, ...over });
+
+test('golden: needs_permission', () => {
+  assert.deepEqual(
+    notifyText({ alert: { id: 'al1', trigger: 'needs_permission', session: 's1' }, session: session({ detail: 'tool' }) }),
+    { title: 'work · api', body: 'needs permission', route: '#/sessions/s1?alert=al1' },
+  );
+});
+
+test('golden: asked with a question', () => {
+  assert.deepEqual(
+    notifyText({ alert: { id: 'al2', trigger: 'asked' }, session: session({ question: 'Shall I   drop\nthe table?' }) }),
+    { title: 'work · api', body: 'asked a question\nShall I drop the table?', route: '#/sessions/s1?alert=al2' },
+  );
+});
+
+test('golden: asked by elicitation', () => {
+  assert.equal(notifyText({ alert: { id: 'a', trigger: 'asked' }, session: session({ detail: 'elicitation' }) }).body, 'is waiting for input');
+});
+
+test('the question is cut to 140 characters with an ellipsis', () => {
+  const q = 'x'.repeat(300);
+  const { body } = notifyText({ alert: { id: 'a', trigger: 'asked' }, session: session({ question: q }) });
+  assert.equal(body, `asked a question\n${'x'.repeat(139)}…`);
+  assert.equal(body.split('\n')[1].length, 140);
+  assert.equal(cut('short', 140), 'short');
+});
+
+test('golden: failed variants', () => {
+  const body = (detail) => notifyText({ alert: { id: 'a', trigger: 'failed' }, session: session({ detail }) }).body;
+  assert.equal(body('rate_limit'), 'rate limited');
+  assert.equal(body('authentication_failed'), 'login needed');
+  assert.equal(body('billing_error'), 'billing problem');
+  assert.equal(body('max_output'), 'stopped: max_output');
+});
+
+test('golden: limit triggers go to the accounts route', () => {
+  const seat = { id: 'st1', label: 'client' };
+  assert.deepEqual(
+    notifyText({ alert: { id: 'l1', trigger: 'limit_80', seat: 'st1', window_key: 'five_hour', title: 'client · 5-hour at 82%' }, seat }),
+    { title: 'client', body: '5-hour at 82 %', route: '#/accounts?seat=st1' },
+  );
+  assert.equal(
+    notifyText({ alert: { id: 'l2', trigger: 'limit_95', seat: 'st1', window_key: 'seven_day', title: 'client · 7-day limit reached at 100%' }, seat }).body,
+    '7-day limit reached',
+  );
+  assert.equal(notifyText({ alert: { id: 'l3', trigger: 'limit_95', seat: 'st1', window_key: 'five_hour' }, seat }).body, '5-hour at 95 %');
+  assert.equal(notifyText({ alert: { id: 'r', trigger: 'reset', seat: 'st1', window_key: 'five_hour' }, seat }).body, '5-hour reset');
+});
+
+test('golden: machine_silent', () => {
+  assert.deepEqual(
+    notifyText({ alert: { id: 'm1', trigger: 'machine_silent', machine: 'mc1' }, machine_name: 'old-vps' }),
+    { title: 'old-vps · silent', body: 'went quiet', route: '#/machines?machine=mc1' },
+  );
+});
+
+test('title falls back from label to the email local part to Unattributed', () => {
+  const t = (s, seat) => notifyText({ alert: { id: 'a', trigger: 'asked' }, session: s, seat }).title;
+  assert.equal(t(session({ seat_label: null }), { email: 'you@example.com' }), 'alex · api');
+  assert.equal(t(session({ seat_label: null, seat: null }), null), 'Unattributed · api');
+  assert.equal(t(session({ project: null }), null), 'work');
+});
+
+test('text carries nothing a private push would hide behind (no generic placeholder)', () => {
+  const { title, body } = notifyText({ alert: { id: 'a', trigger: 'asked' }, session: session() });
+  assert.doesNotMatch(`${title} ${body}`, /1 session needs you/);
+});
+
+test('routes: a session alert without a session id falls back to the hub root', () => {
+  assert.equal(routeFor({ id: 'a', trigger: 'asked' }, null), '#/');
+  assert.match(routeFor({ id: 'a b', trigger: 'asked', session: 's/1' }, null), /^#\/sessions\/s%2F1\?alert=a%20b$/);
+});
+
+test('badge keys', () => {
+  assert.deepEqual(BADGE_KEYS.length, 11);
+  assert.equal(badgeKey(0), '0');
+  assert.equal(badgeKey(9), '9');
+  assert.equal(badgeKey(10), '9plus');
+  assert.equal(badgeKey(-3), '0');
+  assert.equal(badgeKey('x'), '0');
+  assert.equal(badgeKey(4.9), '4');
+  assert.equal(badgeFile(12), 'tray-9plus.png');
+  assert.equal(badgeText(0), '');
+  assert.equal(badgeText(7), '7');
+  assert.equal(badgeText(30), '9+');
+  assert.equal(normalizeCount(undefined), 0);
+});

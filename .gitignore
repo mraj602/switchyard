@@ -1,0 +1,19 @@
+node_modules/
+data/
+# phone/src/lib/data is source (the app's poller and cache), not a data folder
+!phone/src/lib/data/
+.env
+docker-compose.override.yml
+
+# Go build output (bin/ holds the prototype's scripts, so builds go to dist/)
+dist/
+*.test
+*.out
+coverage.*
+.claude/
+/sy
+
+# Phone app (phase 8): generated native projects, never committed (phone/.gitignore too)
+/phone/android/
+/phone/ios/
+/scripts/fixtures/private-words.txt

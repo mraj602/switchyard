@@ -1,0 +1,4 @@
+go test fuzz v1
+[]byte("[ {\"x\" :1 } ,\t2 ]")
+string("/0/x")
+[]byte("\"\\u00e9\"")

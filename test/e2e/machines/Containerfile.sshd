@@ -1,0 +1,29 @@
+# Machines E2E image (docs/phases/5.md, "End to end over real SSH"): a plain Ubuntu server
+# with sshd, a user "dev" that accepts the per-run test key, and the phase 3 fake claude on
+# the PATH of non-interactive shells (/usr/local/bin). No sy inside: `sy machine add`
+# installs it. Host keys are generated here, at build time, so the harness can read them
+# back and write a known_hosts that is checked strictly (no test turns host key checking off).
+#
+# Build context (made by machines_test.go): this file, authorized_key.pub and claude.
+FROM ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssh-server ca-certificates procps \
+    && rm -rf /var/lib/apt/lists/*
+# "*" (not "!") as the password hash: a locked account is refused by sshd even for keys.
+RUN useradd -m -u 1500 -s /bin/bash dev && usermod -p '*' dev \
+    && mkdir -p /run/sshd /home/dev/.ssh && ssh-keygen -A
+COPY authorized_key.pub /home/dev/.ssh/authorized_keys
+RUN chown -R dev:dev /home/dev/.ssh && chmod 700 /home/dev/.ssh && chmod 600 /home/dev/.ssh/authorized_keys
+COPY claude /usr/local/bin/claude
+# A Claude Code that has run once and is logged in (the shape of test/e2e/setup/homes/_lib.sh
+# login_folder): `sy setup` on the server refuses to run without ~/.claude.
+USER dev
+RUN mkdir -m 700 /home/dev/.claude \
+    && printf '%s' '{"numStartups":12,"installMethod":"native","oauthAccount":{"emailAddress":"dev@example.com","organizationName":"Example Org","organizationType":"claude_max","accountUuid":"00000000-0000-4000-8000-000000000001"},"mcpServers":{},"projects":{}}' > /home/dev/.claude.json \
+    && printf '%s' '{"theme":"dark"}' > /home/dev/.claude/settings.json \
+    && printf '%s' '{"claudeAiOauth":{"accessToken":"fake-access-token","refreshToken":"fake-refresh-token","expiresAt":4102444800000}}' > /home/dev/.claude/.credentials.json \
+    && chmod 600 /home/dev/.claude.json /home/dev/.claude/.credentials.json
+USER root
+EXPOSE 22
+CMD ["/usr/sbin/sshd", "-D", "-e"]

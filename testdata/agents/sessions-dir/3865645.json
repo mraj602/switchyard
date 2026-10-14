@@ -1,0 +1,25 @@
+{
+  "pid": 3865645,
+  "sessionId": "00000000-0000-4000-8000-000000000008",
+  "cwd": "/home/user/projects/area-a/example-backend",
+  "startedAt": 1791811803405,
+  "procStart": "31528883",
+  "version": "2.1.296",
+  "peerProtocol": 1,
+  "peerFeatures": [
+    "notify_idle",
+    "reply_across_default_dirs",
+    "artifact_yield"
+  ],
+  "kind": "interactive",
+  "entrypoint": "cli",
+  "pidDomain": "linux:00000000000000000000000000000000:pid:[4026531836]",
+  "messagingSocketPath": "/run/user/1000/cc-socks/3865645.sock",
+  "name": "session 5",
+  "nameSource": "derived",
+  "nameSince": 1791811803405,
+  "status": "idle",
+  "updatedAt": 1791812995359,
+  "statusUpdatedAt": 1791812995359,
+  "bridgeSessionId": "session_REDACTED"
+}

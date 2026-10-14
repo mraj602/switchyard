@@ -1,0 +1,5 @@
+{
+  "name": "pane-forbidden",
+  "version": "0.0.1",
+  "description": "Fixture for scripts/pane-check.sh --self-test: a mod that uses surfaces the pane must never use."
+}

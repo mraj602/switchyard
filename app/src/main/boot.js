@@ -1,0 +1,360 @@
+// Start-up wiring and shutdown of the main process (docs/phases/6.md WP-I). index.js imports
+// Electron and calls boot(); everything here takes Electron and the modules as arguments, so
+// a unit test runs it on plain Node with the fakes. Modules talk only through bus.js and their
+// create() interfaces; none imports another module's internals.
+//
+// Start order (START_ORDER is the order of the create() calls):
+//
+//   before 'ready'  test hooks → paths (userData) → security (+ applyGlobal) → protocol
+//                   (+ registerSchemes) → ipc → store (created, not loaded) → autostart →
+//                   background → background.claim() (single instance; a second launch or a
+//                   --autostart=on|off launch stops here)
+//   after 'ready'   protocol.handle → store.load → --import-prototype (before the tabs start)
+//                   → sy → hub → ipc.start() (before the shell can call) → window (hidden with
+//                   --background or start_hidden) → state → tabs.start() → usage.start() →
+//                   hub.start() (the hub view is made when Hub is selected) → tray, notify,
+//                   menu.build() → background.start()
+//
+// tabs.start() needs window.addView, so it runs right after the window; the shell's first
+// state:get comes after its page has loaded, by when the tabs and usage events are on the bus.
+//
+// Shutdown (background's before-quit → onQuit): usage.stop() (waits ≤ 5 s for the last
+// sy outbox append) → tabs.stop() (cookies flushed, lastUrl written) → hub.stop() (the stream)
+// → sy.flushNow() (a pending flush, capped) → store.flush() → notify, tray, state.
+
+import * as nodePath from 'node:path';
+import * as nodeFs from 'node:fs/promises';
+import * as nodeOs from 'node:os';
+import { fileURLToPath } from 'node:url';
+
+import { createBus } from './bus.js';
+import * as paths from './paths.js';
+import * as security from './security.js';
+import * as protocol from './protocol.js';
+import * as store from './store.js';
+import * as ipc from './ipc.js';
+import * as state from './state.js';
+import * as sy from './sy/index.js';
+import * as hub from './hub/index.js';
+import * as window from './window.js';
+import * as tabs from './tabs/index.js';
+import * as usage from './usage/index.js';
+import * as tray from './tray.js';
+import * as notify from './notify.js';
+import * as menu from './menu.js';
+import * as autostart from './autostart.js';
+import * as background from './background.js';
+import * as importPrototype from './import-prototype.js';
+
+/** The order of the create() calls (see the header). */
+export const START_ORDER = Object.freeze([
+  'paths', 'security', 'protocol', 'ipc', 'store', 'autostart', 'background', 'importPrototype',
+  'sy', 'hub', 'window', 'state', 'tabs', 'usage', 'tray', 'notify', 'menu',
+]);
+
+/** The order of the shutdown steps (onQuit). */
+export const SHUTDOWN_ORDER = Object.freeze(['usage.stop', 'tabs.stop', 'hub.stop', 'sy.flushNow', 'store.flush']);
+
+export const MODULES = Object.freeze({
+  paths, security, protocol, store, ipc, state, sy, hub, window, tabs, usage, tray, notify, menu, autostart, background, importPrototype,
+});
+
+const here = nodePath.dirname(fileURLToPath(import.meta.url));
+export const SRC_DIR = nodePath.resolve(here, '..');
+export const APP_DIR = nodePath.resolve(SRC_DIR, '..');
+export const PRELOAD_PATH = nodePath.join(SRC_DIR, 'preload', 'shell.cjs');
+export const ASSETS_DIR = nodePath.join(APP_DIR, 'assets');
+
+/** A pending `sy flush` at quit may wait this long (6.md WP-I: ≤ 5 s); the outbox keeps the records anyway. */
+export const QUIT_FLUSH_MAX_MS = 5_000;
+
+/** Toast texts for the importer's ImportError codes. */
+export const IMPORT_TOASTS = Object.freeze({
+  running: ['warn', 'The Switchyard prototype is running. Quit it (tray, Quit), then import again.'],
+  not_found: ['warn', 'No prototype data folder was found on this computer.'],
+  bad_accounts: ['error', "The prototype's accounts.json could not be read, so nothing was imported."],
+  same_folder: ['error', "That is this app's own folder, so nothing was imported."],
+});
+
+/** test-hooks.js (WP-A) is imported only when unpackaged; null when packaged or absent. */
+async function defaultTestHooks(app) {
+  if (app.isPackaged) return null;
+  try {
+    return await import('./test-hooks.js');
+  } catch (err) {
+    if (err?.code === 'ERR_MODULE_NOT_FOUND') return null;
+    throw err;
+  }
+}
+
+/**
+ * An object whose properties are read from get() at use time: for modules made later than the
+ * module that needs them (background is made before the window and the tray).
+ */
+export function late(get) {
+  return new Proxy(Object.create(null), {
+    get(_t, key) {
+      const o = get();
+      if (o === null || o === undefined) return undefined;
+      const v = o[key];
+      return typeof v === 'function' ? v.bind(o) : v;
+    },
+    has: (_t, key) => {
+      const o = get();
+      return o !== null && o !== undefined && key in o;
+    },
+  });
+}
+
+const isPidAlive = (pid) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return err?.code === 'EPERM';
+  }
+};
+
+function withTimeout(p, ms) {
+  let h;
+  const limit = new Promise((resolve) => {
+    h = setTimeout(resolve, ms);
+    h.unref?.();
+  });
+  return Promise.race([Promise.resolve(p), limit]).finally(() => clearTimeout(h));
+}
+
+/**
+ * @param {object} electron  the electron module (or test/fakes/electron.js's `electron`)
+ * @param {{modules?: object, env?: object, fs?: object, path?: object, log?: object, os?: object,
+ *          testHooks?: (app: object) => Promise<object|null>, argv?: string[], fetch?: Function,
+ *          platform?: string, minSy?: string, stdout?: {write: Function}, stderr?: {write: Function}}} [opts]
+ * @returns {Promise<object>} the created modules by name, plus `shutdown()`; `stopped: true`
+ *   when this launch handed over to another instance (or applied --autostart) and quits
+ */
+export async function boot(electron, opts = {}) {
+  const m = opts.modules ?? MODULES;
+  const env = opts.env ?? process.env;
+  const fs = opts.fs ?? nodeFs;
+  const path = opts.path ?? nodePath;
+  const os = opts.os ?? nodeOs;
+  const log = opts.log ?? console;
+  const platform = opts.platform ?? process.platform;
+  const argv = opts.argv ?? process.argv;
+  const stdout = opts.stdout ?? process.stdout;
+  const stderr = opts.stderr ?? process.stderr;
+  const { app } = electron;
+  const made = {};
+  const bus = createBus({ onError: (err, ev) => log.error(`bus ${ev}:`, err) });
+  made.bus = bus;
+
+  // ---- before 'ready'
+
+  const testHooks = await (opts.testHooks ?? defaultTestHooks)(app);
+  const claudeOrigin = testHooks?.claudeOrigin?.(env) ?? null;
+  const cadenceMs = testHooks?.cadenceMs?.(env) ?? null;
+
+  made.paths = m.paths.create({ app, path, env, testHooks });
+  made.security = m.security.create({ electron, log, env, testHooks, claudeOrigin });
+  made.security.applyGlobal();
+  made.protocol = m.protocol.create({ electron, fs, path, srcDir: SRC_DIR, log });
+  made.protocol.registerSchemes();
+  made.ipc = m.ipc.create({ electron, log, getShell: () => made.window?.shell ?? null });
+
+  const toast = (level, text) => {
+    try {
+      made.ipc.send('toast', { level, text: String(text).slice(0, 500) || '…' });
+    } catch (err) {
+      log.warn?.(`toast: ${err?.message ?? err}`);
+    }
+  };
+
+  made.store = m.store.create({ fs, path, file: made.paths.appStateFile, log, toast });
+  made.autostart = m.autostart.create({
+    electron, fs, path, platform,
+    home: env.HOME || os.homedir(),
+    execPath: process.execPath,
+    appImage: env.APPIMAGE || null,
+    appPath: app.getAppPath(),
+    isPackaged: app.isPackaged,
+    env,
+  });
+  made.background = m.background.create({
+    electron,
+    window: late(() => made.window),
+    tray: late(() => made.tray),
+    store: made.store,
+    autostart: made.autostart,
+    argv,
+    log,
+    bus,
+    platform,
+    onQuit: () => made.shutdown(),
+  });
+  made.shutdown = () => shutdown(made, log);
+
+  if (!made.background.claim()) {
+    // Another instance has the lock (it shows its window or applies our --autostart), or this
+    // launch carried --autostart=on|off: applied() resolves once it is written (and exits).
+    await made.background.applied();
+    app.exit(0);
+    made.stopped = true;
+    return made;
+  }
+
+  await app.whenReady();
+
+  // ---- after 'ready'
+
+  made.protocol.handle();
+  await made.store.load();
+
+  made.importer = m.importPrototype.create({
+    fs, path, platform,
+    appData: app.getPath('appData'),
+    userData: made.paths.userData,
+    store: made.store,
+    hostname: os.hostname(),
+    isPidAlive,
+    log,
+  });
+  const importArgs = m.importPrototype.parseArgs?.(argv) ?? null;
+  if (importArgs) {
+    const done = await importFromCli(made, importArgs, { app, log, stdout, stderr, toast });
+    if (done) {
+      made.stopped = true;
+      return made;
+    }
+  }
+
+  made.sy = m.sy.create({
+    env, fs, path, log, platform, resourcesPath: process.resourcesPath ?? '',
+    minSy: opts.minSy ?? '0.6.0', syBin: testHooks?.syBin?.(env) ?? null,
+  });
+  made.hub = m.hub.create({
+    electron, sy: made.sy, security: made.security, bus, ipc: made.ipc, fs, path, log, platform,
+    tokenFile: made.paths.hubTokenFile, fetch: opts.fetch ?? globalThis.fetch,
+    get window() {
+      return made.window;
+    },
+    // C7 handoff: true when an account tab took the link; else the hub opens it externally.
+    openSessionLink: (url, seat) => made.tabs?.openLink(url, seat) === true,
+  });
+
+  made.ipc.register('settings:set', (patch) => made.background.setSettings(patch));
+  made.ipc.register('import:prototype', (args) => importFromShell(made, args, { log, toast }));
+  made.ipc.start();
+
+  made.window = m.window.create({
+    electron, security: made.security, bus, log, preloadPath: PRELOAD_PATH, startHidden: made.background.startHidden(),
+  });
+  made.state = m.state.create({ bus, ipc: made.ipc, window: made.window, hub: made.hub, store: made.store, log });
+
+  made.tabs = m.tabs.create({
+    electron, security: made.security, window: made.window, store: made.store, bus, ipc: made.ipc, log, platform,
+    claudeOrigin, userData: made.paths.userData,
+  });
+  await made.tabs.start();
+  made.usage = m.usage.create({
+    tabs: made.tabs, sy: made.sy, store: made.store, bus, ipc: made.ipc, log, clientVersion: app.getVersion(),
+    claudeOrigin, cadenceMs,
+  });
+  made.usage.start();
+
+  // The hub view is made when Hub is first selected (C7), and only once the board can show.
+  const ensureHubView = () => {
+    if (made.window.selected() !== 'hub' || made.hub.view()) return;
+    if (bus.last('hub')?.status !== 'ok') return;
+    Promise.resolve(made.hub.ensureView()).catch((err) => log.warn?.(`hub view: ${err?.message ?? err}`));
+  };
+  made.window.onSelect((id) => {
+    if (id === 'hub') ensureHubView();
+  });
+  bus.on('hub', ensureHubView);
+  Promise.resolve(made.hub.start())
+    .then(ensureHubView)
+    .catch((err) => log.warn?.(`hub start: ${err?.message ?? err}`));
+
+  made.tray = m.tray.create({
+    electron, bus, window: made.window, usage: made.usage, hub: made.hub, platform, assetsDir: ASSETS_DIR, log,
+  });
+  made.tray.start();
+  made.notify = m.notify.create({ electron, bus, hub: made.hub, window: made.window, store: made.store, log });
+  made.notify.start();
+  made.menu = m.menu.create({
+    electron, window: made.window, tabs: made.tabs, usage: made.usage, autostart: made.autostart, store: made.store,
+    isPackaged: app.isPackaged, bus, platform, log,
+    setSettings: (patch) => made.background.setSettings(patch),
+  });
+  await made.menu.build();
+  made.background.start();
+
+  if (testHooks?.expose?.(env) && !app.isPackaged) globalThis.__switchyard = { modules: made, electron };
+  return made;
+}
+
+/** The before-quit shutdown, in SHUTDOWN_ORDER; a failing step never blocks the next. */
+async function shutdown(made, log) {
+  if (made.shuttingDown) return made.shuttingDown;
+  const step = async (name, fn) => {
+    try {
+      await fn();
+    } catch (err) {
+      log.error?.(`shutdown: ${name}:`, err);
+    }
+  };
+  made.shuttingDown = (async () => {
+    await step('usage.stop', () => made.usage?.stop());
+    await step('tabs.stop', () => made.tabs?.stop());
+    await step('hub.stop', () => made.hub?.stop());
+    await step('sy.flushNow', () => withTimeout(made.sy?.flushNow(), QUIT_FLUSH_MAX_MS));
+    await step('store.flush', () => made.store?.flush());
+    await step('notify.stop', () => made.notify?.stop());
+    await step('tray.stop', () => made.tray?.stop());
+    await step('state.stop', () => made.state?.stop());
+  })();
+  return made.shuttingDown;
+}
+
+/**
+ * --import-prototype[=<dir>] [--dry-run]: the report goes to stdout as one JSON line. A dry run
+ * (or a failed one) ends the launch; a real import goes on starting, so the tabs open.
+ * @returns {Promise<boolean>} true when this launch ends here
+ */
+async function importFromCli(made, args, { app, log, stdout, stderr, toast }) {
+  try {
+    const report = await made.importer.run(args);
+    stdout.write(`${JSON.stringify(report)}\n`);
+    if (args.dry_run) {
+      app.exit(0);
+      return true;
+    }
+    if (report.copied.length) toast('info', `Imported ${report.copied.length} tab${report.copied.length === 1 ? '' : 's'} from the prototype. Accept the reading warning on each.`);
+    return false;
+  } catch (err) {
+    stderr.write(`switchyard-desktop: import: ${err?.message ?? err}\n`);
+    log.warn?.(`import: ${err?.code ?? ''} ${err?.message ?? err}`);
+    app.exit(err?.code === 'running' ? 3 : 1);
+    return true;
+  }
+}
+
+/** import:prototype from Settings. An ImportError becomes a toast (no report). */
+async function importFromShell(made, args, { log, toast }) {
+  try {
+    const report = await made.importer.run({ dry_run: args.dry_run });
+    if (!args.dry_run && report.copied.length) {
+      toast('info', `Imported ${report.copied.length} tab${report.copied.length === 1 ? '' : 's'}. Quit and start Switchyard again to open them.`);
+    }
+    return report;
+  } catch (err) {
+    const known = err?.name === 'ImportError' ? IMPORT_TOASTS[err.code] : null;
+    if (known) {
+      toast(known[0], err.code === 'running' || err.code === 'not_found' ? known[1] : `${known[1]} ${String(err.message).slice(0, 300)}`);
+      return undefined;
+    }
+    log.error?.('import failed:', err);
+    toast('error', `The import failed: ${String(err?.message ?? err).slice(0, 300)}`);
+    return undefined;
+  }
+}

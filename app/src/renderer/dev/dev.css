@@ -1,0 +1,10 @@
+/* Dev page only: draws the native view's area as a hatched placeholder (as in the design). */
+.view-slot {
+  background: repeating-linear-gradient(135deg, var(--ground) 0 14px, var(--hair-soft) 14px 28px);
+  display: flex; align-items: center; justify-content: center;
+}
+.view-slot::after {
+  content: 'The claude.ai page loads here, in this account’s own signed-in session.';
+  background: var(--panel); border: 1px dashed var(--btn-border); border-radius: var(--radius); padding: 24px 28px;
+  max-width: 480px; text-align: center; color: var(--muted);
+}

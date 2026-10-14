@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>sy setup — Hub</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#E8B04B}a:hover{color:#F3CB7A}
+</style>
+</helmet>
+<div style="width: 960px; height: 640px; box-sizing: border-box; background: #0B0C0E; padding: 24px; font-family: 'IBM Plex Mono', ui-monospace, monospace; color: #D7DADF">
+  <div style="height: 100%; display: flex; flex-direction: column; border: 1px solid #2A2E33; border-radius: 10px; overflow: hidden; background: #111315">
+    <div style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #2A2E33; background: #16191C; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; color: #8B929B">
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3F45"></span>
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3F45"></span>
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3F45"></span>
+      <span style="margin-left: 10px">laptop — sy setup</span>
+    </div>
+    <div style="flex: 1; padding: 22px 26px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 22px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <span style="font-weight: 600; color: #F2F3F5">Where should Switchyard keep your data?</span>
+        <span style="color: #8B929B">step 4 of 5 · Hub</span>
+      </div>
+      <div style="color: #8B929B">The hub stores history, computes usage and sends pushes to your phone.</div>
+
+      <div style="margin-top: 8px; border: 1px solid #E8B04B; border-radius: 8px; padding: 12px 14px; background: #1B1A15">
+        <div><span style="color: #E8B04B">(•)</span> <span style="color: #F2F3F5; font-weight: 500">Just this computer</span> <span style="color: #8B929B">recommended for one laptop</span></div>
+        <div style="color: #8B929B; padding-left: 4ch">Runs the hub here in the background (127.0.0.1:8787). Pushes still reach your phone.</div>
+        <div style="color: #8B929B; padding-left: 4ch">SSH servers can join later through Tailscale or your SSH connection.</div>
+      </div>
+      <div style="border: 1px solid #2A2E33; border-radius: 8px; padding: 12px 14px">
+        <div><span style="color: #5D646C">( )</span> <span style="color: #F2F3F5">Connect to my hub</span></div>
+        <div style="color: #8B929B; padding-left: 4ch">Paste its address and the code from Add machine.</div>
+      </div>
+      <div style="border: 1px solid #2A2E33; border-radius: 8px; padding: 12px 14px">
+        <div><span style="color: #5D646C">( )</span> <span style="color: #F2F3F5">I'll run the hub on another server</span></div>
+        <div style="color: #8B929B; padding-left: 4ch">Prints a Docker command for that server, then waits for its code.</div>
+      </div>
+
+      <div style="margin-top: 6px; color: #8B929B">Found: <span style="color: #D7DADF">tailscale</span> is running (laptop.tail-[NET].ts.net) — the hub will also be reachable there.</div>
+
+      <div style="flex: 1"></div>
+      <div style="display: flex; gap: 22px; padding-top: 10px; border-top: 1px solid #2A2E33">
+        <span><span style="color: #111315; background: #E8B04B; padding: 1px 7px; border-radius: 4px">Enter</span> choose</span>
+        <span><span style="color: #D7DADF; background: #2A2E33; padding: 1px 7px; border-radius: 4px">↑↓</span> move</span>
+        <span><span style="color: #D7DADF; background: #2A2E33; padding: 1px 7px; border-radius: 4px">Esc</span> back</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":960,"height":640}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

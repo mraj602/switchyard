@@ -1,0 +1,33 @@
+{
+  "name": "switchyard-desktop",
+  "productName": "Switchyard",
+  "version": "0.6.0",
+  "description": "Switchyard desktop app: claude.ai account tabs, web usage and the hub board. Unofficial; not affiliated with Anthropic.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "src/main/index.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "switchyard": {
+    "minSy": "0.6.0"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test \"src/**/*.test.js\"",
+    "lint": "node scripts/check-syntax.mjs && node scripts/lint-security.mjs",
+    "smoke": "node --test \"test/smoke/*.test.mjs\"",
+    "e2e": "node --test \"test/e2e/*.test.mjs\"",
+    "dist": "electron-builder --publish never",
+    "dist:linux": "electron-builder --linux --publish never",
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:win": "electron-builder --win --publish never"
+  },
+  "devDependencies": {
+    "@electron/fuses": "2.1.3",
+    "electron": "44.4.5",
+    "electron-builder": "26.17.0",
+    "playwright-core": "1.63.0"
+  }
+}

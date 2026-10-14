@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F1115">
+<meta name="robots" content="noindex">
+<title>Switchyard</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.png">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="stylesheet" href="/web/analytics.css">
+<link rel="stylesheet" href="/web/app.css">
+</head>
+<body>
+<div id="login" class="login" hidden>
+  <form id="login-form" class="login-card">
+    <img src="/icon.png" alt="" width="48" height="48">
+    <h1>Switchyard</h1>
+    <p class="muted">Usage, limits and Claude Code activity for all your Claude accounts. Sign in with the server token (<code>SWITCHYARD_TOKEN</code>).</p>
+    <label for="token">Server token</label>
+    <input id="token" name="token" type="password" autocomplete="current-password" required>
+    <button class="btn primary" type="submit">Sign in</button>
+    <p id="login-err" class="err" role="alert"></p>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <header class="top">
+    <span class="brand"><img src="/icon.png" alt="" width="22" height="22">Switchyard</span>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-view="overview" aria-selected="true">Overview</button>
+      <button role="tab" data-view="analytics" aria-selected="false">Analytics</button>
+    </nav>
+    <span class="spacer"></span>
+    <span id="sync-pill" class="pill"></span>
+    <button id="logout" class="ghost">Sign out</button>
+  </header>
+  <main id="overview" class="ov"></main>
+  <main id="analytics" hidden></main>
+</div>
+<script src="/web/charts.js"></script>
+<script src="/web/analytics.js"></script>
+<script src="/web/app.js"></script>
+</body>
+</html>

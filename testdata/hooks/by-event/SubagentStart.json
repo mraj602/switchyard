@@ -1,0 +1,9 @@
+{
+  "session_id": "3dffa0a7-736b-46c3-ab3e-ea895fdf359e",
+  "transcript_path": "/home/user/.claude-3/projects/-tmp-claude-1000--home-user-projects-personal-92757a3d-04cd-4927-8177-c75bc52051b4-scratchpad-proj1/3dffa0a7-736b-46c3-ab3e-ea895fdf359e.jsonl",
+  "cwd": "/tmp/claude-1000/-home-user-projects-personal/92757a3d-04cd-4927-8177-c75bc52051b4/scratchpad/proj1",
+  "prompt_id": "7a9a969e-019e-4e0f-947d-fdc6eb1ae172",
+  "agent_id": "ad3cff132f3becd67",
+  "agent_type": "general-purpose",
+  "hook_event_name": "SubagentStart"
+}

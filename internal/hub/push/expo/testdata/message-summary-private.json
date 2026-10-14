@@ -1,0 +1,28 @@
+{
+  "to": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+  "title": "Switchyard",
+  "body": "3 sessions need you",
+  "data": {
+    "v": 1,
+    "type": "summary",
+    "alert": "al_01JA3B7Q0101",
+    "alerts": [
+      "al_01JA3B7Q0101",
+      "al_01JA3B7Q0102",
+      "al_01JA3B7Q0103"
+    ],
+    "title": "Switchyard",
+    "body": "3 sessions need you",
+    "tag": "sy-summary",
+    "url": "/#/",
+    "tap": "auto",
+    "needs_you": 3,
+    "private": true,
+    "ts": "2026-10-13T14:02:00.000Z"
+  },
+  "channelId": "sy_needs_you",
+  "sound": "default",
+  "badge": 3,
+  "priority": "high",
+  "ttl": 21600
+}

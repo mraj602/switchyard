@@ -1,0 +1,33 @@
+{
+  "to": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+  "title": "work · api · login needed",
+  "body": "gpu-box",
+  "data": {
+    "v": 1,
+    "type": "alert",
+    "alert": "al_01JA3B7Q0006",
+    "alerts": [
+      "al_01JA3B7Q0006"
+    ],
+    "trigger": "failed",
+    "title": "work · api · login needed",
+    "body": "gpu-box",
+    "tag": "sy-s-sess_01JA3B7Q",
+    "url": "/#/sessions/sess_01JA3B7Q?alert=al_01JA3B7Q0006",
+    "tap": "auto",
+    "session": "sess_01JA3B7Q",
+    "needs_you": 1,
+    "actions": {
+      "snooze": "a1.YWxfMDFKQTNCN1EwMDA2AHNub296ZQAAAAABcHRfMDFKQTNCMDAwMDAwMDAwMDAwMDAwMDAwMAAAAAAAas-LWA.E4HzIs2IlAuh01QFUC5cAg",
+      "seen": "a1.YWxfMDFKQTNCN1EwMDA2AHNlZW4AAAAAAXB0XzAxSkEzQjAwMDAwMDAwMDAwMDAwMDAwMDAAAAAAAGrPi1g.tMQMn3z1MSS4bzH_B98Fxw"
+    },
+    "private": false,
+    "ts": "2026-10-13T14:02:00.000Z"
+  },
+  "categoryId": "sy_alert",
+  "channelId": "sy_needs_you",
+  "sound": "default",
+  "badge": 1,
+  "priority": "high",
+  "ttl": 21600
+}

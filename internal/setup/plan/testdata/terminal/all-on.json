@@ -1,0 +1,308 @@
+{
+  "plan_id": "p_9e1f35c1dfe8",
+  "actions": [
+    {
+      "id": "a1",
+      "step": "terminal",
+      "op": "run",
+      "covers": [
+        "~/.claude",
+        "~/.claude-2"
+      ],
+      "argv": [
+        "claude",
+        "plugin",
+        "install",
+        "switchyard-pane@sy-local",
+        "--json"
+      ],
+      "env": {
+        "CLAUDE_CONFIG_DIR": null
+      },
+      "touches": [
+        "/home/u/.claude/settings.json",
+        "/home/u/.claude/plugins/installed_plugins.json",
+        "/home/u/.local/state/switchyard/term/journal/pane.install"
+      ],
+      "watch": [
+        "/home/u/.claude/plugins"
+      ],
+      "note": "shared plugin root",
+      "pre": [
+        {
+          "path": "/home/u/.claude/settings.json",
+          "state": {
+            "type": "file"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a2",
+      "step": "terminal",
+      "op": "run",
+      "covers": [
+        "~/.claude-3"
+      ],
+      "argv": [
+        "claude",
+        "plugin",
+        "install",
+        "switchyard-pane@sy-local",
+        "--json"
+      ],
+      "env": {
+        "CLAUDE_CONFIG_DIR": "/home/u/.claude-3"
+      },
+      "touches": [
+        "/home/u/.claude-3/settings.json",
+        "/home/u/.claude-3/plugins/installed_plugins.json",
+        "/home/u/.local/state/switchyard/term/journal/pane.install"
+      ],
+      "watch": [
+        "/home/u/.claude-3/plugins"
+      ],
+      "pre": [
+        {
+          "path": "/home/u/.claude-3/settings.json",
+          "state": {
+            "type": "file"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a3",
+      "step": "terminal",
+      "op": "run",
+      "covers": [
+        "~/.claude",
+        "~/.claude-2"
+      ],
+      "argv": [
+        "claude",
+        "plugin",
+        "marketplace",
+        "add",
+        "warpdotdev/claude-code-warp#main",
+        "--json"
+      ],
+      "env": {
+        "CLAUDE_CONFIG_DIR": null
+      },
+      "touches": [
+        "/home/u/.claude/settings.json",
+        "/home/u/.claude/plugins/known_marketplaces.json",
+        "/home/u/.local/state/switchyard/term/journal/warp-plugin.marketplace-add"
+      ],
+      "watch": [
+        "/home/u/.claude/plugins"
+      ]
+    },
+    {
+      "id": "a4",
+      "step": "terminal",
+      "op": "run",
+      "covers": [
+        "~/.claude",
+        "~/.claude-2"
+      ],
+      "argv": [
+        "claude",
+        "plugin",
+        "install",
+        "warp@claude-code-warp",
+        "--json"
+      ],
+      "env": {
+        "CLAUDE_CONFIG_DIR": null
+      },
+      "touches": [
+        "/home/u/.claude/settings.json",
+        "/home/u/.claude/plugins/installed_plugins.json",
+        "/home/u/.local/state/switchyard/term/journal/warp-plugin.install"
+      ],
+      "watch": [
+        "/home/u/.claude/plugins"
+      ],
+      "note": "shared plugin root"
+    },
+    {
+      "id": "a5",
+      "step": "terminal",
+      "op": "run",
+      "covers": [
+        "~/.claude-3"
+      ],
+      "argv": [
+        "claude",
+        "plugin",
+        "marketplace",
+        "add",
+        "warpdotdev/claude-code-warp#main",
+        "--json"
+      ],
+      "env": {
+        "CLAUDE_CONFIG_DIR": "/home/u/.claude-3"
+      },
+      "touches": [
+        "/home/u/.claude-3/settings.json",
+        "/home/u/.claude-3/plugins/known_marketplaces.json",
+        "/home/u/.local/state/switchyard/term/journal/warp-plugin.marketplace-add"
+      ],
+      "watch": [
+        "/home/u/.claude-3/plugins"
+      ]
+    },
+    {
+      "id": "a6",
+      "step": "terminal",
+      "op": "run",
+      "covers": [
+        "~/.claude-3"
+      ],
+      "argv": [
+        "claude",
+        "plugin",
+        "install",
+        "warp@claude-code-warp",
+        "--json"
+      ],
+      "env": {
+        "CLAUDE_CONFIG_DIR": "/home/u/.claude-3"
+      },
+      "touches": [
+        "/home/u/.claude-3/settings.json",
+        "/home/u/.claude-3/plugins/installed_plugins.json",
+        "/home/u/.local/state/switchyard/term/journal/warp-plugin.install"
+      ],
+      "watch": [
+        "/home/u/.claude-3/plugins"
+      ]
+    },
+    {
+      "id": "a7",
+      "step": "terminal",
+      "op": "json_set",
+      "file": "/home/u/.claude/settings.json",
+      "via": [
+        "/home/u/.claude-2/settings.json"
+      ],
+      "pointer": "/env/CLAUDE_CODE_DISABLE_TERMINAL_TITLE",
+      "value": "1",
+      "covers": [
+        "~/.claude",
+        "~/.claude-2"
+      ],
+      "note": "Claude Code's own title off"
+    },
+    {
+      "id": "a8",
+      "step": "terminal",
+      "op": "json_set",
+      "file": "/home/u/.claude-3/settings.json",
+      "pointer": "/env/CLAUDE_CODE_DISABLE_TERMINAL_TITLE",
+      "value": "1",
+      "covers": [
+        "~/.claude-3"
+      ],
+      "note": "Claude Code's own title off"
+    },
+    {
+      "id": "a9",
+      "step": "terminal",
+      "op": "mkdir",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs",
+      "mode": "0755",
+      "note": "Warp's tab_configs folder",
+      "pre": [
+        {
+          "path": "/home/u/.local/share/warp-terminal/tab_configs",
+          "state": {
+            "type": "absent"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a10",
+      "step": "terminal",
+      "op": "write_file",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-me.toml",
+      "mode": "0644",
+      "content_sha256": "df4b0e9301c36f660e42227e74eaa96d1df8bbc2121107bc69d2243d19f060b6",
+      "note": "me · cyan · ~/.local/bin/claude",
+      "pre": [
+        {
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-me.toml",
+          "state": {
+            "type": "absent"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a11",
+      "step": "terminal",
+      "op": "write_file",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-work.toml",
+      "mode": "0644",
+      "content_sha256": "19fbf0aae224849d9308e3031216b1555d5f85e4b1b17de325d7732fe3c15b97",
+      "note": "work · yellow · ~/.local/bin/claude-2",
+      "pre": [
+        {
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-work.toml",
+          "state": {
+            "type": "absent"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a12",
+      "step": "terminal",
+      "op": "write_file",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-claude-3.toml",
+      "mode": "0644",
+      "content_sha256": "65f58e55fcbdaf4848065de618317d7d144f491340857d77faf13056256a24a1",
+      "note": "claude-3 · magenta · ~/.local/bin/claude-3",
+      "pre": [
+        {
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-claude-3.toml",
+          "state": {
+            "type": "absent"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a13",
+      "step": "config",
+      "op": "config_set",
+      "path": "/home/u/.config/switchyard/config.toml",
+      "value": true,
+      "key": "terminal.titles",
+      "pre": [
+        {
+          "path": "/home/u/.config/switchyard/config.toml",
+          "state": {
+            "type": "file"
+          }
+        }
+      ]
+    }
+  ],
+  "keep": [],
+  "conflicts": [],
+  "needs": [],
+  "summary": {
+    "changes": 13,
+    "backed_up": 3,
+    "links_changed": 0,
+    "logins_touched": 0
+  },
+  "warnings": [
+    "Warp's plugin comes from github.com/warpdotdev/claude-code-warp at branch main (a commit cannot be pinned); sy records the commit it got and sy doctor warns when it moves",
+    "Claude Code's own tab title goes off (CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1); this also skips its background session-title request (/resume shows no generated title) and its OSC 7501 status reports to the terminal"
+  ]
+}

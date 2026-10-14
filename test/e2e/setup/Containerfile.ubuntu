@@ -1,0 +1,13 @@
+# Setup E2E image, Ubuntu. No Go inside: binaries are built on the host and mounted.
+FROM ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        bash coreutils curl findutils grep gawk sed tar gzip unzip zip python3 procps diffutils \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+# The base image ships a user "ubuntu" with uid 1000; replace it with "me".
+RUN userdel -r ubuntu 2>/dev/null || true; useradd -m -u 1000 -s /bin/bash me
+USER me
+WORKDIR /home/me
+CMD ["/bin/bash"]

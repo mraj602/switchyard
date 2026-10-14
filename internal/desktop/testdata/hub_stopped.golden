@@ -1,0 +1,5 @@
+{
+  "service": "stopped",
+  "unit": "switchyard-hub.service",
+  "health": true
+}

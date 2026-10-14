@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Switchyard installed by Claude</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#E8B04B}a:hover{color:#F3CB7A}
+</style>
+</helmet>
+<div style="width: 960px; height: 640px; box-sizing: border-box; background: #0B0C0E; padding: 24px; font-family: 'IBM Plex Mono', ui-monospace, monospace; color: #D7DADF">
+  <div style="height: 100%; display: flex; flex-direction: column; border: 1px solid #2A2E33; border-radius: 10px; overflow: hidden; background: #111315">
+    <div style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #2A2E33; background: #16191C; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; color: #8B929B">
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3F45"></span>
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3F45"></span>
+      <span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3F45"></span>
+      <span style="margin-left: 10px">gpu-box (ssh) — claude</span>
+    </div>
+    <div style="flex: 1; padding: 20px 26px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 22px">
+      <div style="color: #F2F3F5"><span style="color: #8B929B">&gt;</span> install switchyard on this server and connect it to my hub</div>
+      <div><span style="color: #E8B04B">●</span> I'll use the Switchyard setup skill. First, a few choices.</div>
+      <div style="padding-left: 2ch; color: #8B929B">Bash(curl -fsSL https://[SITE]/install.sh | sh -s -- --no-setup)</div>
+      <div style="padding-left: 4ch; color: #6CC08B">sy 0.1.0 installed, checksum ok</div>
+      <div style="padding-left: 2ch; color: #8B929B">Bash(sy setup --detect --json)</div>
+      <div style="padding-left: 4ch; color: #8B929B">2 folders: ~/.claude (you@work.example), ~/.claude-2 (not logged in)</div>
+
+      <div style="border: 1px solid #3A3F45; border-radius: 8px; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; background: #15181B">
+        <div style="color: #F2F3F5; font-weight: 500">Where is your hub?</div>
+        <div style="color: #E8B04B">❯ 1. My home server over Tailscale <span style="color: #8B929B">(oci-home.tail-[NET].ts.net, seen in tailscale status)</span></div>
+        <div>  2. My laptop, through my SSH connection <span style="color: #8B929B">(works while I'm connected)</span></div>
+        <div>  3. I'll paste an address and code</div>
+        <div style="color: #8B929B">  Also asked: share settings with ~/.claude-2? · log in ~/.claude-2 now?</div>
+      </div>
+
+      <div style="padding-left: 2ch; color: #8B929B">Bash(sy setup --yes --hub https://oci-home.tail-[NET].ts.net --code 482-913 --share defaults)</div>
+      <div style="padding-left: 4ch">paired as <span style="color: #F2F3F5">gpu-box</span> · plugin + status line in 2 folders · timer on (linger enabled)</div>
+      <div><span style="color: #E8B04B">●</span> Done. One step needs you: log in to <span style="color: #F2F3F5">~/.claude-2</span>. Open this link and paste the code here:</div>
+      <div style="padding-left: 2ch"><a href="#">https://claude.ai/oauth/authorize?…</a></div>
+      <div style="flex: 1"></div>
+      <div style="border-top: 1px solid #2A2E33; padding-top: 8px; color: #5D646C">Switchyard never logs in for you: every login goes through Anthropic's own page.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":960,"height":640}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

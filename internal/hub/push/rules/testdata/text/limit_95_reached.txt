@@ -1,0 +1,4 @@
+title: client · 5-hour limit reached
+body: Resets 17:00
+url: /#/accounts?seat=seat-client
+tag: sy-l-seat-client-five_hour

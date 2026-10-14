@@ -1,0 +1,129 @@
+{
+  "rules": [
+    {
+      "base": true,
+      "bypass_quiet": false,
+      "delay_s": 30,
+      "enabled": true,
+      "id": "rule_needs_permission",
+      "scope": {},
+      "trigger": "needs_permission",
+      "updated_at": "2026-10-11T08:11:39.463Z"
+    },
+    {
+      "base": true,
+      "bypass_quiet": false,
+      "delay_s": 60,
+      "enabled": true,
+      "id": "rule_asked",
+      "scope": {},
+      "trigger": "asked",
+      "updated_at": "2026-10-11T08:11:39.463Z"
+    },
+    {
+      "base": true,
+      "bypass_quiet": true,
+      "delay_s": 0,
+      "enabled": true,
+      "id": "rule_failed",
+      "scope": {},
+      "trigger": "failed",
+      "updated_at": "2026-10-11T08:11:39.463Z"
+    },
+    {
+      "base": true,
+      "bypass_quiet": false,
+      "delay_s": 0,
+      "enabled": true,
+      "id": "rule_limit_80",
+      "scope": {
+        "windows": [
+          "five_hour",
+          "seven_day"
+        ]
+      },
+      "trigger": "limit_80",
+      "updated_at": "2026-10-11T08:11:39.463Z"
+    },
+    {
+      "base": true,
+      "bypass_quiet": false,
+      "delay_s": 0,
+      "enabled": true,
+      "id": "rule_limit_95",
+      "scope": {
+        "windows": [
+          "five_hour",
+          "seven_day"
+        ]
+      },
+      "trigger": "limit_95",
+      "updated_at": "2026-10-11T08:11:39.463Z"
+    },
+    {
+      "base": true,
+      "bypass_quiet": false,
+      "delay_s": 0,
+      "enabled": false,
+      "id": "rule_reset",
+      "scope": {
+        "windows": [
+          "five_hour",
+          "seven_day"
+        ]
+      },
+      "trigger": "reset",
+      "updated_at": "2026-10-11T08:11:39.463Z"
+    },
+    {
+      "base": true,
+      "bypass_quiet": false,
+      "delay_s": 3600,
+      "enabled": true,
+      "id": "rule_machine_silent",
+      "scope": {},
+      "trigger": "machine_silent",
+      "updated_at": "2026-10-11T08:11:39.463Z"
+    },
+    {
+      "base": false,
+      "bypass_quiet": false,
+      "delay_s": 300,
+      "enabled": true,
+      "id": "rule_o1",
+      "scope": {
+        "seats": [
+          "seat_work"
+        ]
+      },
+      "trigger": "asked",
+      "updated_at": "2026-10-13T06:11:39.463Z"
+    }
+  ],
+  "settings": {
+    "batch_s": 2,
+    "expo_refresh_min": 15,
+    "flood": {
+      "max": 6,
+      "per_s": 600
+    },
+    "max_age_s": 900,
+    "private": false,
+    "quiet_hours": {
+      "critical": true,
+      "enabled": false,
+      "end": "08:00",
+      "start": "23:00",
+      "tz": "Asia/Kolkata"
+    },
+    "skip_remote": false,
+    "snooze_min": 15,
+    "vapid_subject": "https://hub.example.ts.net",
+    "webpush_hosts": [
+      "fcm.googleapis.com",
+      "updates.push.services.mozilla.com",
+      "web.push.apple.com",
+      "wns2-par02p.notify.windows.com"
+    ]
+  }
+}

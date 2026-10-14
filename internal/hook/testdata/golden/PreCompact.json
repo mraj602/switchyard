@@ -1,0 +1,35 @@
+{
+  "v": 1,
+  "id": "ID",
+  "kind": "hook_event",
+  "ts": "TS",
+  "machine": "m_MACHINE",
+  "slot": "~/.claude-3",
+  "seat": {
+    "account": "aaaaaaaa-0000-4000-8000-000000000003",
+    "org": "bbbbbbbb-0000-4000-8000-000000000003",
+    "email": "user3@example.com",
+    "src": "claude_json"
+  },
+  "term": {
+    "app": "warp",
+    "id": "00000000000000000000000000000001",
+    "focus_url": "warp://session/00000000000000000000000000000001"
+  },
+  "client": "sy/dev",
+  "redacted": [
+    "custom_instructions"
+  ],
+  "derived": {
+    "custom_instructions_chars": 0,
+    "hook_ms": 0
+  },
+  "payload": {
+    "cwd": "/tmp/claude-1000/-home-user-projects-personal/92757a3d-04cd-4927-8177-c75bc52051b4/scratchpad/proj1",
+    "hook_event_name": "PreCompact",
+    "prompt_id": "eba919a4-5696-465d-bbe9-a0ea38fae107",
+    "session_id": "b1d50adc-e171-4719-9b58-8317197d7abb",
+    "transcript_path": "/home/user/.claude-3/projects/-tmp-claude-1000--home-user-projects-personal-92757a3d-04cd-4927-8177-c75bc52051b4-scratchpad-proj1/b1d50adc-e171-4719-9b58-8317197d7abb.jsonl",
+    "trigger": "manual"
+  }
+}

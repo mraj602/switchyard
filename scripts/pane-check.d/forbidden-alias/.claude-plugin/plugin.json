@@ -1,0 +1,5 @@
+{
+  "name": "pane-forbidden-alias",
+  "version": "0.0.1",
+  "description": "Fixture for scripts/pane-check.sh --self-test: runs another program through an alias of $.process."
+}

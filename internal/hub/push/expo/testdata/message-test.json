@@ -1,0 +1,21 @@
+{
+  "to": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+  "title": "Switchyard",
+  "body": "Test push from your hub",
+  "data": {
+    "v": 1,
+    "type": "test",
+    "title": "Switchyard",
+    "body": "Test push from your hub",
+    "tag": "sy-test",
+    "url": "/#/",
+    "tap": "auto",
+    "needs_you": 0,
+    "private": false,
+    "ts": "2026-10-13T14:02:00.000Z"
+  },
+  "channelId": "sy_test",
+  "sound": "default",
+  "priority": "high",
+  "ttl": 60
+}

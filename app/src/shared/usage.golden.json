@@ -1,0 +1,261 @@
+{
+ "windows": {
+  "response-01.json": [
+   {
+    "key": "five_hour",
+    "label": "5-hour",
+    "pct": 2,
+    "resetsAt": "2026-10-10T07:39:59.867309+00:00",
+    "usedDollars": null,
+    "limitDollars": null,
+    "locked": null
+   },
+   {
+    "key": "seven_day",
+    "label": "7-day",
+    "pct": 13,
+    "resetsAt": "2026-10-14T02:59:59.867331+00:00",
+    "usedDollars": null,
+    "limitDollars": null,
+    "locked": null
+   },
+   {
+    "key": "iguana_necktie",
+    "label": "Cloud session credits",
+    "pct": 0,
+    "resetsAt": "2026-11-05T07:59:00+00:00",
+    "usedDollars": 0,
+    "limitDollars": 250,
+    "locked": null
+   },
+   {
+    "key": "weekly_fable",
+    "label": "7-day · Fable",
+    "pct": 0,
+    "resetsAt": "2026-10-14T03:00:00+00:00",
+    "inactive": true
+   }
+  ],
+  "response-02.json": [
+   {
+    "key": "five_hour",
+    "label": "5-hour",
+    "pct": 47,
+    "resetsAt": "2026-10-12T16:29:59.733501+00:00",
+    "usedDollars": null,
+    "limitDollars": null,
+    "locked": null
+   },
+   {
+    "key": "seven_day",
+    "label": "7-day",
+    "pct": 59,
+    "resetsAt": "2026-10-14T02:59:59.733525+00:00",
+    "usedDollars": null,
+    "limitDollars": null,
+    "locked": null
+   },
+   {
+    "key": "iguana_necktie",
+    "label": "Cloud session credits",
+    "pct": 0,
+    "resetsAt": "2026-11-05T07:59:00+00:00",
+    "usedDollars": 0,
+    "limitDollars": 250,
+    "locked": null
+   },
+   {
+    "key": "weekly_fable",
+    "label": "7-day · Fable",
+    "pct": 0,
+    "resetsAt": "2026-10-14T03:00:00+00:00",
+    "inactive": true
+   }
+  ],
+  "response-03.json": [
+   {
+    "key": "five_hour",
+    "label": "5-hour",
+    "pct": 2,
+    "resetsAt": "2026-10-10T10:39:59.655622+00:00",
+    "usedDollars": null,
+    "limitDollars": null,
+    "locked": null
+   },
+   {
+    "key": "seven_day",
+    "label": "7-day",
+    "pct": 96,
+    "resetsAt": "2026-10-13T18:59:59.655648+00:00",
+    "usedDollars": null,
+    "limitDollars": null,
+    "locked": null
+   },
+   {
+    "key": "iguana_necktie",
+    "label": "Cloud session credits",
+    "pct": 30.1,
+    "resetsAt": "2026-11-05T07:59:00+00:00",
+    "usedDollars": 75.326437,
+    "limitDollars": 250,
+    "locked": null
+   },
+   {
+    "key": "weekly_fable",
+    "label": "7-day · Fable",
+    "pct": 0,
+    "resetsAt": "2026-10-13T19:00:00+00:00",
+    "inactive": true
+   }
+  ],
+  "response-04.json": [
+   {
+    "key": "five_hour",
+    "label": "5-hour",
+    "pct": 0,
+    "resetsAt": null,
+    "usedDollars": null,
+    "limitDollars": null,
+    "locked": null
+   },
+   {
+    "key": "seven_day",
+    "label": "7-day",
+    "pct": 100,
+    "resetsAt": "2026-10-13T19:00:00.483019+00:00",
+    "usedDollars": null,
+    "limitDollars": null,
+    "locked": null
+   },
+   {
+    "key": "iguana_necktie",
+    "label": "Cloud session credits",
+    "pct": 30.1,
+    "resetsAt": "2026-11-05T07:59:00+00:00",
+    "usedDollars": 75.326437,
+    "limitDollars": 250,
+    "locked": null
+   },
+   {
+    "key": "weekly_fable",
+    "label": "7-day · Fable",
+    "pct": 0,
+    "resetsAt": "2026-10-13T19:00:00+00:00",
+    "inactive": true
+   }
+  ],
+  "response-05.json": [
+   {
+    "key": "five_hour",
+    "label": "5-hour",
+    "pct": 4,
+    "resetsAt": "2026-10-10T08:10:00.452617+00:00",
+    "usedDollars": null,
+    "limitDollars": null,
+    "locked": null
+   },
+   {
+    "key": "weekly_fable",
+    "label": "7-day · Fable",
+    "pct": 0,
+    "resetsAt": "2026-10-15T18:00:00+00:00",
+    "inactive": true
+   }
+  ],
+  "response-06.json": [
+   {
+    "key": "five_hour",
+    "label": "5-hour",
+    "pct": 20,
+    "resetsAt": "2026-10-12T17:29:59.970358+00:00",
+    "usedDollars": null,
+    "limitDollars": null,
+    "locked": null
+   },
+   {
+    "key": "weekly_fable",
+    "label": "7-day · Fable",
+    "pct": 0,
+    "resetsAt": "2026-10-15T18:00:00+00:00",
+    "inactive": true
+   }
+  ]
+ },
+ "plans": [
+  {
+   "org": {
+    "capabilities": [
+     "chat"
+    ],
+    "rate_limit_tier": "default"
+   },
+   "plan": "Free"
+  },
+  {
+   "org": {
+    "capabilities": [
+     "chat",
+     "claude_pro"
+    ]
+   },
+   "plan": "Pro"
+  },
+  {
+   "org": {
+    "capabilities": [
+     "chat",
+     "claude_max"
+    ],
+    "rate_limit_tier": "default_claude_max_5x"
+   },
+   "plan": "Max 5x"
+  },
+  {
+   "org": {
+    "capabilities": [
+     "chat",
+     "claude_max"
+    ],
+    "rate_limit_tier": "default_claude_max_20x"
+   },
+   "plan": "Max 20x"
+  },
+  {
+   "org": {
+    "capabilities": [
+     "chat",
+     "raven"
+    ]
+   },
+   "plan": "Team"
+  },
+  {
+   "org": {
+    "capabilities": [
+     "chat"
+    ],
+    "raven_type": "team"
+   },
+   "plan": "Team"
+  },
+  {
+   "org": {
+    "capabilities": [
+     "enterprise"
+    ]
+   },
+   "plan": "Enterprise"
+  },
+  {
+   "org": {
+    "capabilities": [],
+    "rate_limit_tier": "weird"
+   },
+   "plan": "weird"
+  },
+  {
+   "org": {},
+   "plan": "Unknown"
+  }
+ ]
+}

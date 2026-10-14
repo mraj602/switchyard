@@ -1,0 +1,20 @@
+Claude Code 2.1.296 at ~/.local/bin/claude
+
+Accounts
+  ~/.claude    claude     you@example.com  logged in · Max   launcher: claude (shell function)
+  ~/.claude-2  claude-2   you@work.example  logged in · Max   launcher: claude-2 (shell function)
+  ~/.claude-3  claude-3   you@team.example  logged in · Team   launcher: claude-3 (shell function)
+  ~/.claude-4  claude-4   not logged in   launcher: claude-4 (shell function)
+  ~/.claude-5  claude-5   not logged in   launcher: claude-5 (shell function)
+  ~/.claude-6  claude-6   not logged in   launcher: claude-6 (shell function)
+  ~/.claude-7  claude-7   not logged in   launcher: claude-7 (shell function)
+
+Already set up by hand
+  keep     48 links between folders
+  keep     7 launcher(s): shell functions
+  keep     3 launcher(s): scripts
+  keep     MCP sync by your launcher (~/.claude/sync-mcp-to-2.sh)
+  wrap     status line in ~/.claude/settings.json
+  note     3 prototype hooks in ~/.claude/settings.json (kept until a hub is live)
+
+Nothing has been changed yet.

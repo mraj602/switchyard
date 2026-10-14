@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:">
+<title>Switchyard</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="../web/analytics.css">
+</head>
+<body>
+<nav id="tabs" aria-label="Accounts"></nav>
+<div id="strip" hidden></div>
+<main id="dash"></main>
+<main id="analytics" hidden></main>
+
+<dialog id="dlg-add" aria-labelledby="add-title">
+  <form method="dialog" id="form-add">
+    <h2 id="add-title">Add an account</h2>
+    <p class="muted">A new tab opens with its own isolated sign-in. Sign in to claude.ai with <strong>email + code</strong> — Google sign-in is blocked inside embedded browsers.</p>
+    <label for="add-label">Tab name</label>
+    <input id="add-label" name="label" type="text" maxlength="40" placeholder="e.g. freelance-1" required>
+    <fieldset><legend>Colour</legend><div class="swatches" id="add-colors"></div></fieldset>
+    <label class="check"><input type="checkbox" id="add-track" checked> <span>Track usage for this account (reads the limits claude.ai shows in Settings → Usage, every 5 minutes, on this device only)</span></label>
+    <div class="actions"><button type="button" class="btn" data-close>Cancel</button><button type="submit" class="btn primary">Open sign-in tab</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlg-edit" aria-labelledby="edit-title">
+  <form method="dialog" id="form-edit">
+    <h2 id="edit-title">Account settings</h2>
+    <label for="edit-label">Tab name</label>
+    <input id="edit-label" type="text" maxlength="40" required>
+    <fieldset><legend>Colour</legend><div class="swatches" id="edit-colors"></div></fieldset>
+    <label class="check"><input type="checkbox" id="edit-track"> <span>Track usage for this account</span></label>
+    <div class="actions spread">
+      <button type="button" class="btn danger" id="edit-remove">Remove account…</button>
+      <span><button type="button" class="btn" data-close>Cancel</button> <button type="submit" class="btn primary">Save</button></span>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-connect" aria-labelledby="connect-title">
+  <div class="connect">
+    <h2 id="connect-title">Connect Claude Code</h2>
+    <p class="muted">Run once per account on this machine. It adds Notification + Stop hooks to that account's <code>settings.json</code> (a backup is kept) so sessions — including Remote Control ones — show up under “Needs you” and as desktop notifications.</p>
+    <div id="connect-cmds"></div>
+    <div class="actions"><button type="button" class="btn" data-close>Close</button></div>
+  </div>
+</dialog>
+
+<dialog id="dlg-settings" aria-labelledby="settings-title">
+  <form method="dialog" id="form-settings">
+    <h2 id="settings-title">Background &amp; sync</h2>
+    <p class="muted">Switchyard collects usage only while it runs. Let it start hidden when you log in and keep running when the window is closed, so tracking never stops.</p>
+    <label class="check"><input type="checkbox" id="set-autostart"> <span>Run at login, in the background (no window)</span></label>
+    <label class="check"><input type="checkbox" id="set-keep"> <span>Keep running when the window is closed (quit with Ctrl+Q)</span></label>
+    <fieldset>
+      <legend>Self-hosted server (optional)</legend>
+      <p class="muted">Push usage, limits, Claude Code tokens and alerts to your own Switchyard server (see <code>server/</code> and <code>docker-compose.yml</code>) to view analytics from any browser or phone. claude.ai sign-ins never leave this computer.</p>
+    </fieldset>
+    <label for="set-url">Server URL</label>
+    <input id="set-url" type="text" placeholder="http://localhost:8787" autocomplete="off">
+    <label for="set-token">Server token</label>
+    <input id="set-token" type="text" placeholder="leave empty to keep the saved token" autocomplete="off">
+    <p class="muted" id="set-status" aria-live="polite"></p>
+    <div class="actions spread">
+      <button type="button" class="btn" id="set-sync">Sync now</button>
+      <span><button type="button" class="btn" data-close>Close</button> <button type="submit" class="btn primary">Save</button></span>
+    </div>
+  </form>
+</dialog>
+
+<script src="../web/charts.js"></script>
+<script src="../web/analytics.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
