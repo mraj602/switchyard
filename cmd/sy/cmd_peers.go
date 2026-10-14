@@ -216,7 +216,7 @@ func peersSend(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if rf != nil {
 		return peersExit(peerspkg.ExitCode(rf.Code), errors.New(rf.Detail))
 	}
-	res, rf, err := peersDeliver(pe, caller, to, text)
+	res, rf, err := peersDeliver(pe, caller, to, text, *ttl, *wait)
 	if err != nil {
 		return err
 	}
@@ -225,6 +225,9 @@ func peersSend(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		return peersExit(peerspkg.ExitCode(rf.Code), nil)
 	}
 	fmt.Fprintln(stdout, res.Line())
+	if res.Status == "queued" {
+		return peersExit(peerspkg.ExitQueued, nil)
+	}
 	return nil
 }
 
@@ -256,7 +259,8 @@ func peersAgent(pe peerEnv, req agent.Request) (agent.Reply, error) {
 	if c, rf := pe.Env.Whoami(); rf == nil {
 		req.ClaudePID, req.ConfigDir = c.ClaudePID, c.Slot.Name
 	}
-	return agent.Call(agentSocket(pe.Env), req, 30*time.Second)
+	// A send to another machine waits up to 10 s for the hub and --wait for the result.
+	return agent.Call(agentSocket(pe.Env), req, 30*time.Second+time.Duration(req.WaitS)*time.Second)
 }
 
 func peersListEntries(pe peerEnv, all bool) ([]peerspkg.ListEntry, bool, *peerspkg.Refusal) {
@@ -274,14 +278,22 @@ func peersListEntries(pe peerEnv, all bool) ([]peerspkg.ListEntry, bool, *peersp
 }
 
 // peersDeliver sends through the agent when it runs, else writes the inbox itself.
-func peersDeliver(pe peerEnv, caller peerspkg.Caller, to, text string) (peerspkg.SendResult, *peerspkg.Refusal, error) {
-	rep, err := peersAgent(pe, agent.Request{Op: agent.OpSend, To: to, Text: text})
+func peersDeliver(pe peerEnv, caller peerspkg.Caller, to, text string, ttl time.Duration, wait int) (peerspkg.SendResult, *peerspkg.Refusal, error) {
+	if wait == 0 {
+		wait = -1 // --wait 0: do not wait (0 on the wire is the default)
+	}
+	rep, err := peersAgent(pe, agent.Request{Op: agent.OpSend, To: to, Text: text, TTLs: int(ttl / time.Second), WaitS: wait})
 	switch {
 	case err == nil:
 		if rf := rep.Refusal(); rf != nil {
 			return peerspkg.SendResult{}, rf, nil
 		}
-		return peerspkg.SendResult{Msg: rep.Msg, Thread: rep.Thread, Target: peerspkg.Session{Handle: rep.To}, HeldLikely: rep.HeldLikely}, nil, nil
+		res := peerspkg.SendResult{Msg: rep.Msg, Thread: rep.Thread, Target: peerspkg.Session{Handle: rep.To}, HeldLikely: rep.HeldLikely}
+		if rep.Status == "queued" {
+			res.Status, res.Offline = "queued", rep.Detail == "offline"
+			res.Expires, _ = time.Parse(time.RFC3339, rep.Expires)
+		}
+		return res, nil, nil
 	case !errors.Is(err, agent.ErrNoAgent):
 		return peerspkg.SendResult{}, nil, fmt.Errorf("sy agent: %w", err)
 	}
