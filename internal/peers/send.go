@@ -59,8 +59,11 @@ func ReplySocketPath(runtime, senderSession string) string {
 	return filepath.Join(runtime, "sy", "r", hex.EncodeToString(sum[:])[:16]+".sock")
 }
 
-// Header is the first two lines of the message body (peers.md 8.5).
+// Header is the first two lines of the message body (peers.md 8.5). The parts of a remote
+// message come from the sender's envelope, so each is cleaned to one line (CleanName): a
+// newline in a handle would add a header line of the sender's choosing.
 func Header(handle, label, machine, thread string) string {
+	handle, label, machine, thread = CleanName(handle), CleanName(label), CleanName(machine), CleanName(thread)
 	return fmt.Sprintf("[Switchyard] from %s · account %s · machine %s · thread %s\nReply with: sy peers send %s \"…\"",
 		handle, label, machine, thread, handle)
 }
