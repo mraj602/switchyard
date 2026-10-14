@@ -408,7 +408,13 @@ adapters).
   - iOS `UIBackgroundModes: ["remote-notification"]` and `NSSupportsLiveActivities: true`;
   - Android `allowBackup="false"`;
   - removes `RECORD_AUDIO` and `SYSTEM_ALERT_WINDOW` if a library adds them;
-  - `usesCleartextTraffic` only in development builds.
+  - `usesCleartextTraffic` only in development builds;
+  - Android Gradle: every `androidx.work` artifact is forced to 2.8.1 in `app/build.gradle`
+    (`resolutionStrategy.eachDependency`). `react-native-android-widget` declares
+    `work-runtime` 2.8.1, while `expo-widgets`' `androidx.glance` 1.2.0-rc01 pulls
+    `work-runtime-ktx` 2.7.1; work 2.8 merged the ktx classes into `work-runtime`, so both
+    together fail `:app:checkDebugDuplicateClasses`. Forcing 2.8.1 makes ktx an empty artifact.
+    Revisit when Glance or the widget library moves to a common version.
 - `eas.json` profiles (run only by you):
   - `development`: `developmentClient`, internal distribution;
   - `preview`: Android `buildType: "apk"`, iOS internal;
@@ -416,6 +422,8 @@ adapters).
 
 ## P14. Tests and fixtures
 
+- `test/with-sy-native.test.ts` unit-tests the plugin's Gradle edit (`alignWorkVersions`:
+  forces the `androidx.work` group, idempotent). `make phone-android-debug` is the real proof.
 - `test/setup.ts` (jest `setupFilesAfterEnv`) replaces `expo-notifications`,
   `expo-secure-store`, `expo-camera`, `expo-widgets`, `@expo/ui/swift-ui` (and `/modifiers`),
   `react-native-android-widget`, `expo-task-manager` and AsyncStorage with the recording fakes

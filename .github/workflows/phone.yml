@@ -48,7 +48,7 @@ jobs:
 
   # native compile, unsigned debug, never uploaded
   android-debug:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     needs: check
     runs-on: ubuntu-latest
     defaults:
@@ -69,6 +69,8 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+          cache: gradle # ~/.gradle caches; android/ is generated, so key on the npm lockfile
+          cache-dependency-path: phone/package-lock.json
       - run: npm ci
       - run: npx expo prebuild --platform android --no-install --clean
       - run: ./gradlew :app:assembleDebug --no-daemon
