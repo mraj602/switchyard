@@ -270,6 +270,32 @@ func TestSocketPath(t *testing.T) {
 	}
 }
 
+func TestSocketPathLengthRule(t *testing.T) {
+	long := "/very/" + strings.Repeat("deep/", 30)
+	for _, goos := range []string{"darwin", "linux"} {
+		max := MaxSocketPath(goos)
+		if p := socketPath(goos, "/run/user/7", "/s", "/tmp", 7); len(p) > max {
+			t.Errorf("%s short: %d bytes", goos, len(p))
+		}
+		// Long inputs fall back to <tmp>/sy-<uid>/agent.sock.
+		if p := socketPath(goos, long, long, "/var/folders/ab/cd/T", 501); p != "/var/folders/ab/cd/T/sy-501/agent.sock" {
+			t.Errorf("%s long: %q", goos, p)
+		}
+		// A long temp dir falls back to /tmp.
+		if p := socketPath(goos, long, long, long, 501); p != "/tmp/sy-501/agent.sock" || len(p) > max {
+			t.Errorf("%s long tmp: %q", goos, p)
+		}
+	}
+	// The boundary: exactly 103 bytes is kept, one more is not.
+	state := "/" + strings.Repeat("a", 103-len("//agent/agent.sock"))
+	if p := socketPath("darwin", "", state, "/t", 1); p != state+"/agent/agent.sock" || len(p) != 103 {
+		t.Errorf("boundary: %d %q", len(p), p)
+	}
+	if p := socketPath("darwin", "", state+"b", "/t", 1); p != "/t/sy-1/agent.sock" {
+		t.Errorf("over boundary: %q", p)
+	}
+}
+
 // "Hooks never wait on it": nothing in the hook path may import the agent.
 func TestHookDoesNotImportAgent(t *testing.T) {
 	var files []string

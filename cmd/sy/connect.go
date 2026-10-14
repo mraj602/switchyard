@@ -390,7 +390,7 @@ func claimMachineToken(ctx context.Context, deps connectDeps, url, code string) 
 	if hc == nil {
 		hc = &http.Client{Timeout: 15 * time.Second}
 	}
-	req := client.ClaimRequest{Name: m.Name, Machine: m.ID, ExpectKind: "machine"}
+	req := client.ClaimRequest{Name: identity.ClampMachineName(m.Name), Machine: m.ID, ExpectKind: "machine"}
 	var dk keys.DeviceKeys
 	var sent keys.DeviceKeysNew
 	if pairSecretShape.MatchString(code) {
