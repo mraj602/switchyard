@@ -304,8 +304,8 @@ func (s *Server) pushConfig(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) putChannel(w http.ResponseWriter, r *http.Request) {
 	kind := r.PathValue("kind")
-	if kind != model.KindWebPush && kind != model.KindNtfy && kind != model.KindExpo {
-		badRequest(w, "kind must be webpush, ntfy or expo")
+	if kind != model.KindWebPush && kind != model.KindNtfy && kind != model.KindExpo && kind != "link" {
+		badRequest(w, "kind must be webpush, ntfy, expo or link")
 		return
 	}
 	var body struct {
@@ -336,6 +336,12 @@ func (s *Server) putChannel(w http.ResponseWriter, r *http.Request) {
 	if kind == model.KindExpo {
 		s.putExpoChannel(w, r, *body.Enabled, settings)
 		return
+	}
+	if kind == "link" {
+		if err := checkLinkSettings(settings); err != nil {
+			badRequest(w, err.Error())
+			return
+		}
 	}
 	c, err := s.store.SetChannel(r.Context(), kind, *body.Enabled, settings)
 	if err != nil {
@@ -544,6 +550,9 @@ func (s *Server) addTarget(w http.ResponseWriter, r *http.Request) {
 			name = "App"
 		}
 		t = model.Target{Kind: model.KindExpo, DeviceID: d.ID, Name: name, Endpoint: b.ExpoToken, Meta: meta}
+	case "link":
+		badRequest(w, "link targets are made by pairing")
+		return
 	default:
 		badRequest(w, "kind must be webpush, ntfy or expo")
 		return

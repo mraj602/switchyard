@@ -1181,7 +1181,6 @@ paths:
         link.md. A WebSocket upgrade with `Sec-WebSocket-Protocol: sy-link.1`. No bearer:
         the device logs in with a signed `hello` answering the hub's `challenge` (link.md 3).
         Frames, acks, close codes: link.md 4-8. `Origin`, when sent, must be the hub's own.
-      x-reserved: "F1"
       security: []
       x-scopes: []
       responses:
@@ -1189,7 +1188,7 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "426": {description: Missing or unknown subprotocol.}
         "429": {$ref: "#/components/responses/TooMany"}
-        "501": {$ref: "#/components/responses/NotImplemented"}
+        "503": {$ref: "#/components/responses/Unavailable"}
 
   /v1/link/poll:
     post:
@@ -1197,10 +1196,11 @@ paths:
       operationId: linkPoll
       summary: Long-poll fallback for the link
       description: |
-        link.md 2.1. `op: challenge` returns a challenge; `op: poll` carries a signed `hello`,
-        the cumulative ack and device frames, and is held up to 25 s while nothing is queued.
-        Each reply carries the next challenge. No bearer.
-      x-reserved: "F1"
+        link.md 2.1. `op: challenge` returns the challenge frame itself (link.md 3.1, not
+        wrapped); `op: poll` carries a signed `hello`, the cumulative ack and device frames,
+        and is held up to 25 s while nothing is queued. Each reply carries the next challenge.
+        No bearer. A refused login answers the HTTP form of its close code: 401 (4401), 403
+        (4403 revoked), 426 (4426), 429 (4429), 503 (4503 frozen, or the hub shutting down).
       security: []
       x-scopes: []
       requestBody:
@@ -1217,8 +1217,9 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
+        "426": {description: The hub needs a newer client (4426).}
         "429": {$ref: "#/components/responses/TooMany"}
-        "501": {$ref: "#/components/responses/NotImplemented"}
+        "503": {$ref: "#/components/responses/Unavailable"}
 
   /v1/keys:
     get:
@@ -2694,8 +2695,8 @@ components:
 
     LinkPollReply:
       type: object
+      description: "The reply to op poll. op challenge answers the challenge frame itself (LinkFrame)."
       properties:
-        challenge: {$ref: "#/components/schemas/LinkFrame"}
         welcome: {$ref: "#/components/schemas/LinkFrame"}
         frames:
           type: array
