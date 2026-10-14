@@ -324,7 +324,7 @@ func (c *conn) readLoop(seen func()) {
 				c.close(link.CloseBadFrame, "bad_seq")
 				return
 			}
-			if err := h.cfg.Store.Write(c.ctx, func(tx *store.Tx) error { return ackTx(tx, s.device, u.Seq) }); err != nil {
+			if err := h.cfg.Store.Write(c.ctx, func(tx *store.Tx) error { return h.ackTx(tx, s.device, u.Seq) }); err != nil {
 				if c.ctx.Err() == nil {
 					h.log.Printf("link %s: ack: %v", s.device, err)
 					c.close(link.CloseInternal, "internal")

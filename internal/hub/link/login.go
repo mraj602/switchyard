@@ -152,7 +152,7 @@ func (h *Hub) login(ctx context.Context, hl link.Hello, transport, ip string) (*
 			if err := h.resyncTx(tx, hl.Device, hl.Last, st.NextSeq); err != nil {
 				return err
 			}
-		} else if err := ackTx(tx, hl.Device, hl.Last); err != nil {
+		} else if err := h.ackTx(tx, hl.Device, hl.Last); err != nil {
 			return err
 		}
 		st, err = tx.LinkState(hl.Device)
