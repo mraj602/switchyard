@@ -2,6 +2,7 @@ package dev.switchyard.link
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -174,6 +175,23 @@ class FramesTest {
     assertEquals(41, hello.getLong("last"))
     val input = Codec.utf8("sy-link-v1 hello\n${hub.fp}\n$nonce\n1760518860\ndev_X\n41")
     assertTrue(signer.verify(Codec.unb64u(hello.getString("sig"))!!, input))
+  }
+
+  @Test fun onlyAChallengeThePinnedKeyDidNotSignIsAChangedHubKey() {
+    val hub = HubKey()
+    val other = HubKey(ByteArray(32) { 9 })
+    val nonce = Codec.b64u(ByteArray(32) { 4 })
+    val v = hub.verifier()
+    // 14.7 "Hub key changed" (the service stops and asks to pair again): another key signed it
+    assertTrue(Login.fromAnotherHub(other.challenge(nonce, 1760518860), hub.fp, v))
+    assertTrue(Login.fromAnotherHub(hub.challenge(nonce, 1760518860).put("exp", 1760518861), hub.fp, v))
+    // the pinned hub's own challenge is not
+    assertFalse(Login.fromAnotherHub(hub.challenge(nonce, 1760518860), hub.fp, v))
+    // a malformed challenge is a bad frame (retry), not a reason to give up the pairing
+    assertFalse(Login.fromAnotherHub(hub.challenge(nonce, 1760518860).put("v", 2), hub.fp, v))
+    assertFalse(Login.fromAnotherHub(hub.challenge(nonce, 1760518860).put("sig", "%%"), hub.fp, v))
+    assertFalse(Login.fromAnotherHub(hub.challenge("short", 1760518860), hub.fp, v))
+    assertFalse(Login.fromAnotherHub(JSONObject().put("t", "challenge"), hub.fp, v))
   }
 
   @Test fun signedInputIsByteExact() {

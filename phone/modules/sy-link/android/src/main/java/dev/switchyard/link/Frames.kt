@@ -68,18 +68,28 @@ object Frames {
 data class Challenge(val hub: String, val nonce: String, val exp: Long)
 
 object Login {
-  /** Checks the challenge against the pins; null when the hub is not the pinned one. */
-  fun checkChallenge(o: JSONObject, pinnedFp: String, verifier: HubVerifier): Challenge? {
+  /** A well-formed challenge (link.md 3.1) and its signature, not checked yet; null otherwise. */
+  private fun parse(o: JSONObject): Pair<Challenge, ByteArray>? {
     if (o.optString("t") != "challenge" || o.optInt("v", 0) != 1) return null
-    val hub = o.optString("hub")
     val nonce = o.optString("nonce")
     val exp = o.optLong("exp", -1)
     val sig = Codec.unb64u(o.optString("sig")) ?: return null
-    if (hub != pinnedFp || nonce.isEmpty() || nonce.contains('\n') || exp < 0) return null
-    if (Codec.unb64u(nonce)?.size != 32) return null
-    if (!verifier.verify(sig, Frames.challengeInput(hub, nonce, exp))) return null
-    return Challenge(hub, nonce, exp)
+    if (nonce.contains('\n') || exp < 0 || Codec.unb64u(nonce)?.size != 32) return null
+    return Challenge(o.optString("hub"), nonce, exp) to sig
   }
+
+  /** Checks the challenge against the pins; null when it is malformed or not the pinned hub's. */
+  fun checkChallenge(o: JSONObject, pinnedFp: String, verifier: HubVerifier): Challenge? {
+    val (c, sig) = parse(o) ?: return null
+    return c.takeIf { it.hub == pinnedFp && verifier.verify(sig, Frames.challengeInput(c.hub, c.nonce, c.exp)) }
+  }
+
+  /**
+   * push.md 14.7 "Hub key changed": a well-formed challenge the pinned key did not sign (another
+   * fingerprint or signature). A malformed one is only a bad frame and is retried.
+   */
+  fun fromAnotherHub(o: JSONObject, pinnedFp: String, verifier: HubVerifier): Boolean =
+    parse(o) != null && checkChallenge(o, pinnedFp, verifier) == null
 
   /** The hello frame (link.md 3.2), signed with the device's login key. */
   fun hello(c: Challenge, device: String, last: Long, client: JSONObject, signer: Signer): JSONObject {

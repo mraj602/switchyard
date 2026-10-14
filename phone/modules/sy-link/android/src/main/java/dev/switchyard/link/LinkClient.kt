@@ -169,10 +169,11 @@ class LinkClient(
         val o = try { JSONObject(text) } catch (_: Exception) { return closeWith(4400, "bad_frame") }
         val pin = store.hubFp ?: return closeWith(1000, "not_configured")
         val pub = store.hubPub ?: return closeWith(1000, "not_configured")
-        val c = Login.checkChallenge(o, pin, TinkHubVerifier(pub))
+        val verifier = TinkHubVerifier(pub)
+        val c = Login.checkChallenge(o, pin, verifier)
         if (c == null) {
-          // 14.7 "Hub key changed": never sign a nonce for a hub we do not trust (link.md 3.1).
-          if (o.optString("t") == "challenge") return hubKeyChanged()
+          // Never sign a nonce for a hub we do not trust (link.md 3.1); another key is 14.7's "Hub key changed".
+          if (Login.fromAnotherHub(o, pin, verifier)) return hubKeyChanged()
           return closeWith(4400, "bad_frame")
         }
         failedHandshakes = 0
@@ -463,7 +464,7 @@ class LinkClient(
       while (alive() && n < rounds && System.currentTimeMillis() < until) {
         n++
         val c = Login.checkChallenge(challenge, pin, verifier)
-          ?: if (challenge.optString("t") == "challenge") throw Stop("changed", "Hub key changed: pair this phone again") else throw IOException("bad_challenge")
+          ?: if (Login.fromAnotherHub(challenge, pin, verifier)) throw Stop("changed", "Hub key changed: pair this phone again") else throw IOException("bad_challenge")
         val device = store.device ?: throw Stop("error", "not configured")
         val pending = store.pending(System.currentTimeMillis()).take(64)
         val up = JSONArray()
