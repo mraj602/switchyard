@@ -236,9 +236,13 @@ func (e Env) sendRemote(unlock *func(), out Outgoing, thread Thread) (SendResult
 	}
 	ts := LoadThreads(e.ThreadsPath())
 	th := ts.FindOpen(out.From.Entry.SessionID, out.To.Entry.SessionID)
-	if th == nil {
+	switch {
+	case th == nil:
 		th = ts.Adopt(thread.ID, thread.A, thread.B, thread.AAccount, thread.BAccount, out.To.Entry.SessionID, thread.OpenedAt)
 		th.HumanAt, th.Turns = thread.HumanAt, thread.Turns
+	case thread.HumanAt.After(th.HumanAt):
+		// The loop guard reset the count for a new human prompt on the copy it checked.
+		th.HumanAt, th.Turns, th.PausedAt = thread.HumanAt, 0, nil
 	}
 	th.RecordMessage(out.Now)
 	_ = ts.Save(e.ThreadsPath())
