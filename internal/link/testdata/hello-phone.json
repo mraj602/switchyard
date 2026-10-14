@@ -1,0 +1,33 @@
+{
+  "name": "hello-phone",
+  "keys": {
+    "device": "dev_01JA4VECT0RPH0NE00000000",
+    "hub": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w",
+    "hub_fp": "gr2q7gf5lh6pzfdnurnkvput",
+    "sign_p256": "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4"
+  },
+  "fields": {
+    "device": "dev_01JA4VECT0RPH0NE00000000",
+    "exp": 1760518860,
+    "hub": "gr2q7gf5lh6pzfdnurnkvput",
+    "last": 7,
+    "nonce": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA"
+  },
+  "signed_hex": "73792d6c696e6b2d76312068656c6c6f0a67723271376766356c6836707a66646e75726e6b767075740a41514944424155474277674a4367734d4451345045424553457851564668635947526f62484230654879410a313736303531383836300a6465765f30314a41345645435430525048304e4530303030303030300a37",
+  "frame": {
+    "t": "hello",
+    "v": 1,
+    "device": "dev_01JA4VECT0RPH0NE00000000",
+    "nonce": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA",
+    "exp": 1760518860,
+    "last": 7,
+    "client": {
+      "kind": "android",
+      "app": "0.9.0",
+      "build": "14",
+      "sdk": 35,
+      "ping_s": 180
+    },
+    "sig": "MEYCIQC7rerUmJ2fmZ-1T-EDZNs6JHZOr1ZXp2TosNPmaoKH5gIhAO4s7lGe_6A__7zejajJydCZ1vBtaM3tLhEmECd-9AR7"
+  }
+}

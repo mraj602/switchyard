@@ -1,0 +1,30 @@
+{
+  "name": "matrix-machine",
+  "keys": {
+    "device": "dev_01JA4VECT0RMACH1NE000000",
+    "hub": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w",
+    "hub_fp": "gr2q7gf5lh6pzfdnurnkvput",
+    "sign_ed25519": "gTl3Dqh9F19Wo1Rmw0x-zMuNipG07jeiXfYPW4_Js5Q",
+    "x25519_private": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM",
+    "x25519_public": "Xf7dO2vUf2-ijuFdlp1bsOpTd01Ii9r53xxuASSz7yI"
+  },
+  "fields": {
+    "ctx": "queue",
+    "device": "dev_01JA4VECT0RMACH1NE000000",
+    "exp": 1763110860,
+    "payload_hex": "15f487dca8c654bb835c3408342af0d3cbd7519a3564cf4f45b9b93464f8ea4e6e3a4d27dd327f6ef7b5d75018502cdcd2a5358ae65ef822967648f45dc5868215f1f6950428d0888b620c753756d83ac7",
+    "plaintext": "{\"type\":\"\",\"body\":\"\",\"sigs\":null}",
+    "seq": 3,
+    "t": "matrix",
+    "tag": "matrix"
+  },
+  "signed_hex": "73792d6c696e6b2d76310a6465765f30314a41345645435430524d414348314e453030303030300a6d61747269780a330a313736333131303836300a6d61747269780a71756575650a15f487dca8c654bb835c3408342af0d3cbd7519a3564cf4f45b9b93464f8ea4e6e3a4d27dd327f6ef7b5d75018502cdcd2a5358ae65ef822967648f45dc5868215f1f6950428d0888b620c753756d83ac7",
+  "frame": {
+    "t": "matrix",
+    "seq": 3,
+    "exp": 1763110860,
+    "tag": "matrix",
+    "body": "FfSH3KjGVLuDXDQINCrw08vXUZo1ZM9PRbm5NGT46k5uOk0n3TJ_bve111AYUCzc0qU1iuZe-CKWdkj0XcWGghXx9pUEKNCIi2IMdTdW2DrH",
+    "sig": "Oycu4DwRfjiMzyClVz8DsjSFX1cWFbuYXpYzBv2ON5lOtklQWFfhiAu7G2BJXvSkOa71P9zqiqJYIlAllePWAw"
+  }
+}
