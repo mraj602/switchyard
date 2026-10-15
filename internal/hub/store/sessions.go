@@ -231,3 +231,28 @@ func (tx *Tx) SetStateAfter(recordID, state string) error {
 	_, err := tx.exec(`UPDATE hook_event SET state_after = ? WHERE record_id = ?`, nullStr(state), recordID)
 	return err
 }
+
+// SessionIDs lists every session id, sorted.
+func (tx *Tx) SessionIDs() ([]string, error) {
+	rows, err := tx.QueryContext(tx.ctx, `SELECT id FROM session ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
+// SetSessionStart replaces started_at (0 = unknown, NULL). Only sy hub refold uses it:
+// ingest keeps the earliest start (PatchSession).
+func (tx *Tx) SetSessionStart(id string, at int64) error {
+	_, err := tx.exec(`UPDATE session SET started_at = ? WHERE id = ?`, nullInt(at), id)
+	return err
+}

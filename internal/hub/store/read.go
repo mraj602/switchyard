@@ -54,7 +54,7 @@ const (
 	LiveWithin        = 24 * time.Hour
 	TimelineMax       = 500
 	activeStatesSQL   = `'working', 'needs_permission', 'asked'`
-	activityExpr      = `max(coalesce(s.last_event_at, 0), coalesce(s.last_listed_at, 0), coalesce(s.started_at, 0))`
+	activityExpr      = `max(coalesce(s.last_event_at, 0), coalesce(s.last_listed_at, 0), coalesce(s.started_at, 0), coalesce(s.ended_at, 0))`
 	sessionStateExpr  = `coalesce(st.state, 'done')`
 	sessionNeedsExpr  = `coalesce(st.needs_you, 0)`
 	sessionSinceExpr  = `coalesce(st.since_at, s.started_at, s.last_event_at, 0)`
@@ -103,6 +103,13 @@ type SessionView struct {
 	FocusURL     *string  `json:"focus_url"`
 	Stale        bool     `json:"stale"`
 	MachineStale bool     `json:"machine_stale"`
+	// Dormant: open (not ended or gone), not needing you, and no activity for LiveWithin
+	// (states.md 5): computed at read time, not a state. Not counted in counts.live.
+	Dormant bool `json:"dormant"`
+	// Activity is the newest of last_event_at, last listing, started_at and ended_at: what
+	// the days window and the order use. Null when nothing is known (imported history with
+	// no times).
+	Activity Time `json:"activity_at"`
 	// Alert is the open alert of this session's current episode (phase 4), or null.
 	Alert *model.AlertBrief `json:"alert"`
 
@@ -154,6 +161,8 @@ func scanSession(sc interface{ Scan(...any) error }, now time.Time) (SessionView
 	v.Stale = v.State == "working" && listed == 0 && lastEv.Int64 > 0 && nowMS-lastEv.Int64 > StaleAfter.Milliseconds()
 	active := v.State == "working" || v.State == "needs_permission" || v.State == "asked"
 	v.MachineStale = active && lastSeen > 0 && nowMS-lastSeen > MachineSilent.Milliseconds()
+	v.Activity = Time(activity)
+	v.Dormant = v.State != "ended" && v.State != "gone" && !v.NeedsYou && nowMS-activity > LiveWithin.Milliseconds()
 	if alertJSON.Valid {
 		v.Alert = scanAlertBrief(alertJSON.String)
 	}
@@ -226,6 +235,18 @@ type SessionFilter struct {
 	Offset       int
 }
 
+// Cut is the start of the activity window: Since, else now minus Days (default 2).
+func (f SessionFilter) Cut(now time.Time) time.Time {
+	if !f.Since.IsZero() {
+		return f.Since
+	}
+	days := f.Days
+	if days <= 0 {
+		days = 2
+	}
+	return now.Add(-time.Duration(days) * 24 * time.Hour)
+}
+
 func in(col string, vals []string, args *[]any) string {
 	ph := make([]string, len(vals))
 	for i, v := range vals {
@@ -274,14 +295,7 @@ func (s *Store) Sessions(ctx context.Context, f SessionFilter, now time.Time) (o
 	if len(f.Machines) > 0 {
 		where = append(where, in("s.machine_id", f.Machines, &args))
 	}
-	cut := f.Since
-	if cut.IsZero() {
-		days := f.Days
-		if days <= 0 {
-			days = 2
-		}
-		cut = now.Add(-time.Duration(days) * 24 * time.Hour)
-	}
+	cut := f.Cut(now)
 	where = append(where, "("+activityExpr+" >= ? OR "+sessionNeedsExpr+" = 1)")
 	args = append(args, cut.UnixMilli())
 	limit := f.Limit

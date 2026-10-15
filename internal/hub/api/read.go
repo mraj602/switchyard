@@ -253,7 +253,8 @@ func (s *Server) sessions(w http.ResponseWriter, r *http.Request) {
 		}
 		f.Offset = off
 	}
-	list, more, err := s.store.Sessions(r.Context(), f, s.now())
+	now := s.now()
+	list, more, err := s.store.Sessions(r.Context(), f, now)
 	if err != nil {
 		s.fail(w, err)
 		return
@@ -267,7 +268,9 @@ func (s *Server) sessions(w http.ResponseWriter, r *http.Request) {
 		c := base64.RawURLEncoding.EncodeToString([]byte("o:" + strconv.Itoa(f.Offset+len(list))))
 		next = &c
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"sessions": nonNil(list), "next": next})
+	// from: the start of the activity window, so the board can say "showing the last 2 days".
+	writeJSON(w, http.StatusOK, map[string]any{"sessions": nonNil(list), "next": next,
+		"from": store.Time(f.Cut(now).UnixMilli())})
 }
 
 // TokenTotals is SessionDetail.tokens.

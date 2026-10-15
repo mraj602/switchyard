@@ -22,13 +22,13 @@ change to `session_transition` (schema v2).
 | `asked` | Claude is waiting for an answer: a dialog, AskUserQuestion, or a turn that ended with a plain-text question. | 1 |
 | `done` | Idle at the prompt, nothing pending. Also a freshly started session. | 0 |
 | `failed` | The turn stopped with an error (rate limit, login, billing, overload…). | 1, except `detail` = `overloaded` / `server_error` → 0 |
-| `ended` | SessionEnd was received. | 0 |
+| `ended` | SessionEnd was received, or (`detail` = `history`) the session is known only from its transcript (section 5.1). | 0 |
 | `gone` | The session vanished without SessionEnd (crash, `kill`, machine reboot). | 0 |
 
 `session_state.detail` holds a short machine-readable reason: the notification type, the
 StopFailure error, the SessionEnd reason, or one of `started`, `resumed`, `question`,
 `elicitation`, `tool` (AskUserQuestion / ExitPlanMode), `permission_request` (a
-PermissionRequest event), `repaired`, `gone`. A session with no record yet is `done` with an
+PermissionRequest event), `repaired`, `gone`, `history` (section 5.1). A session with no record yet is `done` with an
 empty detail; a first record that changes nothing (a `compact` SessionStart) leaves it
 there. A session brought back from `ended`/`gone` by a `compact` SessionStart gets
 `done:compact`.
@@ -103,6 +103,10 @@ The current state of a session with no state yet is treated as `done`.
 | `session_list` lists it as `idle` | done:repaired | = | = | = | = | · done |
 | `session_list` lists it as `waiting` | = | = | = | = | = | · = |
 | `session_list` (complete) does not list it | see section 5 | | | | | = |
+| transcript activity (`token_rows`, section 5.1) | = | = | = | = | = | = (`ended:history`: ended_at moves on) |
+
+A session with **no state yet** (no hook event and no list ever folded) goes to
+`ended:history` on transcript activity; see section 5.1.
 
 Notes on the table:
 
@@ -210,8 +214,52 @@ alone, because a quiet session (a long build, a person reading) is normal.
   `machine_stale = true`. The machine-silent alert (1 hour, plan section 11) is phase 4.
 - **Done sessions with no list:** nothing happens; `done` is a resting state.
 
+- **Dormant.** An open session (not `ended`/`gone`) that does not need you and has had no
+  activity (hook event, listing, start or end) for **24 hours** is reported with
+  `dormant = true` (read time, not a state). `counts.live` and the overview leave it out;
+  the session list still shows it (as `done`, `failed`, …) inside its `days` window. A
+  session on a slot with complete lists is listed every 5 minutes while it runs, so only a
+  slot without lists (or a machine that stopped sending) can have dormant sessions.
+
 The timer interval and both thresholds are hub settings (`setting` table), with these
 defaults.
+
+### 5.1 Sessions from transcript history
+
+`sy scan` reads whole transcript folders, so the first scan on a machine (and
+`sy hub import-prototype`) sends `token_rows` for every past session. Its per-session
+facts (`sessions`, record.md 4.4) make a `session` row for a session the hub has never
+seen. Such a session has **no live signal**: no hook event and no `session_list` entry
+ever said it runs. The rules:
+
+- **State.** A session with no state yet gets `ended` with `detail` = `history`
+  (`end_reason` = `history`), `ended_at` = `state_since` = the `ts` of its newest
+  transcript row the hub has. Newer rows move both forward; older rows change nothing.
+  A session with any other state ignores transcript activity, so scanning a live
+  session's transcript after each Stop never touches its state.
+- **Coming back.** It is an ended session like any other: a later hook event or a list
+  entry brings it back (`·` column), and a hook or list with a `ts` before the history
+  state's `updated_at` refolds the session from its hook events and lists, which drops
+  the history state.
+- **Times.** `started_at` is the earliest row's `ts` (earliest wins, also for live
+  sessions, whose transcripts can start before the process the list reports). A
+  `token_rows` record never sets `started_at` from its own `ts` (that is when the scan
+  ran): a session with facts but no rows has `started_at`, `ended_at` and `state_since`
+  null. A session with no known time has no activity, so it is outside every `days`
+  window of the session list.
+- **Project.** `project` is the basename of the earliest row's `cwd` when the session has
+  none (the transcript `cwd` is written with `~`, so `cwd` itself is left to hook events).
+- **Not live.** History sessions are never in `counts.live` and need no one.
+
+**Replay (`sy hub refold [--dry-run]`).** The raw records are kept, so the fold can be
+rebuilt with the current engine over the whole history: every session with a hook event
+or a list entry is refolded from those records (section 3, "Ordering"), and every other
+session is rebuilt as history from all its `token_rows` records; `started_at` becomes the
+earliest of its first hook event, its first row and (listed sessions) the stored start;
+for a history session it is its first row, or null. It runs in one write transaction, so it
+is safe while the hub runs (ingest waits for it), and running it twice changes nothing.
+`--dry-run` reports the counts and writes nothing. It repairs hubs that typed history
+before these rules (all imported sessions `done`, `started_at` = the scan time, no project).
 
 ## 6. Mapping to other views
 

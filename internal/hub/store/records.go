@@ -242,3 +242,25 @@ func (s *Store) TouchDevice(ctx context.Context, id string, at int64, ip string)
 		return err
 	})
 }
+
+// EachRecordOfKind streams every stored record of one kind in (ts, id) order to fn (sy hub
+// refold reads token_rows this way).
+func (tx *Tx) EachRecordOfKind(kind string, fn func(RecordRef) error) error {
+	rows, err := tx.QueryContext(tx.ctx, `SELECT id, ts, body FROM record WHERE kind = ? ORDER BY ts, id`, kind)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var r RecordRef
+		var body string
+		if err := rows.Scan(&r.ID, &r.TS, &body); err != nil {
+			return err
+		}
+		r.Body = []byte(body)
+		if err := fn(r); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
+}

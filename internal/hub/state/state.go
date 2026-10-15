@@ -87,8 +87,28 @@ func (s *Session) Apply(in Input) {
 		s.applyHook(in.TS, in.Hook)
 	case in.List != nil:
 		s.applyList(in.TS, in.List)
+	case in.Transcript != nil:
+		s.applyTranscript(in.TS)
 	}
 }
+
+// History is the detail (and end reason) of a session known only from its transcript.
+const History = "history"
+
+// applyTranscript (states.md 5.1): a session that has no state yet (no hook event, no list
+// ever folded) is history: ended:history at its newest transcript activity. Newer activity
+// moves ended_at and since forward; anything else ignores the transcript.
+func (s *Session) applyTranscript(ts time.Time) {
+	switch {
+	case s.State == "":
+		s.set(ts, Ended, History, "transcript")
+	case s.State == Ended && s.Detail == History && ts.After(s.EndedAt):
+		s.EndedAt, s.Since = ts, ts
+	}
+}
+
+// IsHistory reports whether the session is known only from its transcript.
+func (s *Session) IsHistory() bool { return s.State == Ended && s.Detail == History }
 
 func (s *Session) closed() bool { return s.State == Ended || s.State == Gone }
 
