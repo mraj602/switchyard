@@ -1,7 +1,9 @@
-// More (phone tab): Alerts, Machines, Settings, Peers, Analytics; the owner also gets Devices and Add phone.
+// More (phone tab): Alerts, Machines, Settings, Peers, Analytics; the owner also gets Devices.
 
 import { h } from '../components/dom.js';
 import { isOwner } from '../store.js';
+import { plural } from '../format.js';
+import { isMobile } from '../platform.js';
 
 function item(href, label, sub, extra) {
   return h('li', {}, h('a', { class: 'more-link', href, ...(extra || {}) },
@@ -11,16 +13,16 @@ function item(href, label, sub, extra) {
 
 export function render({ store }) {
   const owner = isOwner();
+  const mobile = isMobile(navigator.userAgent, navigator.maxTouchPoints, navigator.platform);
   const node = h('div', { class: 'page' },
     h('header', { class: 'page-head' }, h('h1', {}, 'More')),
     h('ul', { class: 'panel more-list' },
-      item('#/more/alerts', 'Alerts', 'Which pushes you get, and the recent ones'),
-      item('#/machines', 'Machines', `${store.overview.machines.length} reporting to this hub`),
-      item('#/more/settings', 'Settings', 'Notifications, this phone, app version'),
-      item('#/more/peers', 'Peers', 'Which accounts may message each other, and Pause all peers'),
-      owner ? item('#/more/devices', 'Devices', 'Phones, browsers and machines paired with this hub') : null,
-      owner ? item('#/more/devices?add=phone', 'Add phone', 'Show a QR code to pair a phone') : null,
-      item('#/more/analytics', 'Analytics', 'Tokens and API-equivalent cost by day, model and project')),
-    owner ? null : h('p', { class: 'muted small' }, 'Devices and Add phone need an owner sign-in: run sy hub owner-link on the hub.'));
+      item('#/more/alerts', 'Alerts', 'Which notifications you get, and the recent ones'),
+      item('#/machines', 'Machines', `${plural(store.overview.machines.length, 'machine')} reporting to this hub`),
+      item('#/more/settings', 'Settings', `Notifications, this ${mobile ? 'phone' : 'device'}, app version`),
+      item('#/more/peers', 'Peers', 'Which accounts’ sessions may message each other, and how to pause them'),
+      owner ? item('#/more/devices', 'Devices', 'Phones, browsers and machines paired with this hub; add a phone') : null,
+      item('#/more/analytics', 'Analytics', 'Tokens and their cost at API prices, by day, model and project')),
+    owner ? null : h('p', { class: 'muted small' }, 'Devices needs an owner sign-in: run ', h('code', {}, 'sy hub owner-link'), ' on the hub and open the link it prints.'));
   return { title: 'More · Switchyard', node };
 }
