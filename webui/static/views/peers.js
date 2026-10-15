@@ -103,7 +103,11 @@ function grid(accts, m) {
         onclick: () => { st.pick = on ? null : { from: r.account, to: c.account }; again(); },
       }, CELL_GLYPH[state]));
     })));
-  return h('div', { class: 'mx-wrap' }, h('table', { class: 'mx', 'data-key': 'matrix' }, h('thead', {}, head), h('tbody', {}, rows)));
+  const wrap = h('div', { class: 'mx-wrap', tabindex: '0', role: 'region', 'aria-label': 'Account matrix, scrolls sideways' }, h('table', { class: 'mx', 'data-key': 'matrix' }, h('thead', {}, head), h('tbody', {}, rows)));
+  const hint = h('p', { class: 'muted small mx-hint', hidden: true, 'data-key': 'mx-hint' }, 'Scroll sideways to see every account →');
+  // Show the hint only when the table is wider than its card (R5).
+  requestAnimationFrame(() => { hint.hidden = wrap.scrollWidth <= wrap.clientWidth + 1; });
+  return h('div', { class: 'mx-box' }, wrap, hint);
 }
 
 function editor(accts, m) {
@@ -146,7 +150,7 @@ function matrixBlock() {
       h('ul', { class: 'mx-legend muted small', 'aria-label': 'Legend' }, LEGEND.map(([g, t]) => h('li', {}, h('span', { class: 'mx-glyph', 'aria-hidden': 'true' }, g), ` ${t}`))),
       h('p', { class: 'muted small' }, 'Replies inside a thread are always allowed.'),
       toggle({
-        label: 'Same account', sub: 'Sessions of one account may message each other (what native /peers allows).', checked: m.same_account,
+        label: 'Same account', sub: 'Sessions of one account may message each other.', checked: m.same_account,
         disabled: st.busy || !!sameOff, key: 'same-account',
         onChange: (v) => edit({ same_account: v }, v),
       }),

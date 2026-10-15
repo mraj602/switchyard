@@ -47,17 +47,32 @@ export const row = (...kids) => h('div', { class: 'row' }, ...kids);
 
 // A short message at the bottom of the screen (errors from actions).
 let toastTimer = 0;
-export function toast(msg) {
+// `action` ({label, run}) adds a button to the message (and keeps it up a little longer).
+export function toast(msg, action) {
   const el = document.getElementById('toasts');
   if (!el) return;
-  el.replaceChildren(h('div', { class: 'toast' }, msg));
+  el.replaceChildren(h('div', { class: 'toast' }, msg,
+    action ? h('button', { type: 'button', class: 'linkish toast-action', 'data-key': 'toast-action', onclick: () => { el.replaceChildren(); action.run(); } }, action.label) : null));
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.replaceChildren(), 5000);
+  toastTimer = setTimeout(() => el.replaceChildren(), action ? 10000 : 5000);
 }
 
-export const pillNav = (items, current) =>
-  h('nav', { class: 'pills phone-only', 'aria-label': 'More' }, items.map(([page, href, label]) =>
+// One row that scrolls sideways when it is too wide; an edge fade shows which side has more (R12).
+export function pillNav(items, current) {
+  const nav = h('nav', { class: 'pills phone-only', 'aria-label': 'More' }, items.map(([page, href, label]) =>
     h('a', { class: 'pill', href, 'aria-current': page === current ? 'page' : undefined }, label)));
+  const fades = () => {
+    nav.classList.toggle('fade-r', nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 2);
+    nav.classList.toggle('fade-l', nav.scrollLeft > 2);
+  };
+  nav.addEventListener('scroll', fades, { passive: true });
+  requestAnimationFrame(() => {
+    const cur = nav.querySelector('[aria-current]');
+    if (cur && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = Math.max(0, cur.offsetLeft - 44);
+    fades();
+  });
+  return nav;
+}
 
 // The Switchyard mark and name, for the screens without the sidebar (sign-in, pairing).
 export const brandRow = () => h('div', { class: 'brand-row' },
@@ -71,8 +86,7 @@ export const brandRow = () => h('div', { class: 'brand-row' },
 export const details = (summary, ...kids) => h('details', { class: 'tech', 'data-key': summary.key },
   h('summary', {}, summary.text || summary), h('div', { class: 'tech-body' }, ...kids));
 
-// Pill row shown right under the title of the screens behind the More tab. The pills wrap
-// onto a second line on a narrow phone, so none hides off the edge.
+// Pill row shown right under the title of the screens behind the More tab. One row on a phone; it scrolls sideways when it does not fit.
 export function moreTabs(current, { owner } = {}) {
   const items = [['alerts', '#/more/alerts', 'Alerts'], ['machines', '#/machines', 'Machines'], ['settings', '#/more/settings', 'Settings'], ['peers', '#/more/peers', 'Peers'], ['analytics', '#/more/analytics', 'Analytics']];
   if (owner) items.push(['devices', '#/more/devices', 'Devices']);

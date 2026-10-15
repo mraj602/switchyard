@@ -18,8 +18,9 @@ function ring(seat, colour, now) {
       svg('circle', { cx: 24, cy: 24, r: R, fill: 'none', class: 'ring-track', 'stroke-width': 6 }),
       svg('circle', { cx: 24, cy: 24, r: R, fill: 'none', stroke: colour, 'stroke-width': 6, 'stroke-linecap': 'round', 'stroke-dasharray': `${filled.toFixed(1)} ${C.toFixed(1)}`, transform: 'rotate(-90 24 24)' }),
       (() => { const t = svg('text', { x: 24, y: 28, 'text-anchor': 'middle', 'font-size': used != null && used >= 100 ? 9.5 : 10.5, class: `ring-num${hot ? ' hot' : ''}` }); t.textContent = used == null ? '–' : `${Math.round(used)}%`; return t; })()),
-    h('span', { class: 'ring-name', title: name }, name),
-    h('span', { class: `ring-reset${hot ? ' hot' : ''}` }, w && w.resets_at ? `resets ${clock(w.resets_at, now)}` : used == null ? 'no data' : ''));
+    h('span', { class: 'ring-text' },
+      h('span', { class: 'ring-name', title: name }, name),
+      h('span', { class: `ring-reset${hot ? ' hot' : ''}` }, w && w.resets_at ? `resets ${clock(w.resets_at, now)}` : used == null ? 'no data' : '')));
 }
 
 export function ringRow(seats, now) {

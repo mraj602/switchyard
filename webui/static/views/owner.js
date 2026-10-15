@@ -3,7 +3,9 @@
 
 import { h } from '../components/dom.js';
 import { ownerSignIn } from '../api.js';
+import { brandRow } from '../components/ui.js';
 import { deviceName } from '../platform.js';
+import { clock as clockOf } from '../format.js';
 
 const st = { phase: 'idle', error: '' };
 const again = () => window.dispatchEvent(new Event('sy-rerender'));
@@ -13,7 +15,7 @@ const again = () => window.dispatchEvent(new Event('sy-rerender'));
 let sent = '';
 
 const NEW_LINK = 'Run sy hub owner-link on the hub for a new one.';
-const clock = (at) => { const d = at ? new Date(at) : null; return d && !isNaN(d) ? ` (${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''; };
+const clock = (at) => { const t = at ? clockOf(at) : ''; return t ? ` (${t})` : ''; };
 function refusal(e) {
   switch (e.code) {
     case 'link_used': return `This sign-in link was already used${clock(e.at)}. ${NEW_LINK}`;
@@ -51,5 +53,5 @@ export function render() {
     ? h('div', { class: 'card login-card' }, h('h1', {}, 'Owner sign-in'), h('p', { class: 'form-error', role: 'alert', 'data-key': 'owner-error' }, st.error),
       h('a', { class: 'btn', href: '#/login' }, 'Sign in with a token instead'))
     : h('div', { class: 'card login-card' }, h('h1', {}, 'Owner sign-in'), h('p', { class: 'muted', role: 'status' }, 'Signing in…'));
-  return { title: 'Owner sign-in · Switchyard', node: h('div', { class: 'login-wrap' }, body) };
+  return { title: 'Owner sign-in · Switchyard', node: h('div', { class: 'login-wrap' }, h('div', { class: 'login-col' }, brandRow(), body)) };
 }
