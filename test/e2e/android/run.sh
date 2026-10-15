@@ -37,6 +37,7 @@
 #   SY_E2E_KEEP=1       keep the temp dir (hub state, logs) even when everything passes
 #   SY_E2E_KEEP_EMU=1   leave the emulator running at the end
 #   SY_E2E_PHASES       space separated list of phase numbers to run (default: all; phase 2 always)
+#   SY_E2E_PORT         the hub's port on 127.0.0.1 (default: a free one)
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
@@ -270,7 +271,7 @@ fi
 
 # ================================================================ hub
 echo "== hub (temp HOME $T/home)"
-PORT="$(free_port)"
+PORT="${SY_E2E_PORT:-$(free_port)}"
 hub_start || { cat "$T/hub.log"; die "the hub did not start"; }
 owner_login || die "owner sign-in failed"
 # The alert engine waits 60 s before an "asked" push: this test does not.
