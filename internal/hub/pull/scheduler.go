@@ -507,10 +507,10 @@ func (s *Scheduler) record(ctx context.Context, t store.PullTarget, res Result, 
 		// Just registered: `sy machine add` adds the target before it authorizes the key on the
 		// server, so the first scheduled try can race it. Stay `new` and retry soon.
 		r = store.PullResult{State: store.PullStateNew, FailCount: fails, NextAt: now.Add(Ladder[0]).UnixMilli(),
-			Error: "ssh: " + line + " (the pull key may not be authorized yet)"}
+			Error: sshLine(line) + " (the pull key may not be authorized yet)"}
 	case strings.Contains(stderr, "Permission denied"):
 		r = store.PullResult{State: store.PullStateAuth, FailCount: fails, NextAt: now.Add(AuthRetry).UnixMilli(),
-			Error: "ssh: " + line}
+			Error: sshLine(line)}
 	default:
 		msg := "pull failed"
 		switch {
@@ -519,7 +519,7 @@ func (s *Scheduler) record(ctx context.Context, t store.PullTarget, res Result, 
 		case res.Err != nil && reached:
 			msg = res.Err.Error()
 		case line != "":
-			msg = "ssh: " + line
+			msg = sshLine(line)
 		case exit > 0:
 			msg = fmt.Sprintf("ssh exited %d", exit)
 		case res.Err != nil:
@@ -561,4 +561,13 @@ func (s *Scheduler) setBusy(id string, v bool) (was bool) {
 // jitter is d with +-10 %.
 func (s *Scheduler) jitter(d time.Duration) time.Duration {
 	return time.Duration(float64(d) * (0.9 + 0.2*s.cfg.Rand()))
+}
+
+// sshLine names ssh as the source of an error line, once: ssh's own messages already start
+// with "ssh: " ("ssh: Could not resolve hostname …").
+func sshLine(line string) string {
+	if strings.HasPrefix(line, "ssh: ") {
+		return line
+	}
+	return "ssh: " + line
 }
