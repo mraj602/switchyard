@@ -65,7 +65,7 @@ func TestHubLockStopsSecondServeAndImport(t *testing.T) {
 	}
 	f := filepath.Join(t.TempDir(), "x.syx")
 	os.WriteFile(f, []byte("x"), 0o600)
-	_, err = run(t, "import", f, "--db", db, "--yes")
+	_, err = run(t, "import", f, "--db", db, "--yes", "--listen", "127.0.0.1:1") // not the real hub's 8787
 	var re *RefusedError
 	if !errors.As(err, &re) || !errors.Is(err, store.ErrHubRunning) {
 		t.Fatalf("import with the lock held: %v", err)

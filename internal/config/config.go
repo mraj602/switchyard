@@ -75,6 +75,9 @@ type Config struct {
 	} `toml:"hooks"`
 	Statusline struct {
 		Wrap string `toml:"wrap"`
+		// Show: append Switchyard's part ("label · 5h · ctx") to the line. Off still records
+		// the limit samples; only the text is left out.
+		Show bool `toml:"show"`
 	} `toml:"statusline"`
 	Outbox struct {
 		Fsync    bool `toml:"fsync"`
@@ -143,6 +146,7 @@ func Defaults() Config {
 	c.Slots.Labels = map[string]string{}
 	c.Slots.Colours = map[string]string{}
 	c.Share.MCPExclude = []string{}
+	c.Statusline.Show = true
 	c.Terminal.Band = true
 	c.Terminal.PaneAutoOpen = true
 	c.Terminal.Source = TerminalSourceAuto
@@ -187,6 +191,7 @@ var known = map[string]spec{
 	"privacy.last_message":      {kind: kBool, def: true},
 	"hooks.tool_events":         {kind: kBool, def: false},
 	"statusline.wrap":           {kind: kString, def: ""},
+	"statusline.show":           {kind: kBool, def: true},
 	"outbox.fsync":              {kind: kBool, def: true},
 	"outbox.max_mb":             {kind: kInt, def: int64(50)},
 	"outbox.keep_days":          {kind: kInt, def: int64(7)},
