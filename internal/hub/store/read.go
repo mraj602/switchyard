@@ -73,7 +73,17 @@ const (
 	(SELECT h.last_message FROM hook_event h WHERE h.session_id = s.id AND h.event IN ('Stop', 'StopFailure') ORDER BY h.ts DESC LIMIT 1),
 	s.seat_id, se.label, se.colour, s.machine_id, m.name, sl.folder, sl.launcher, s.project, s.cwd, s.name, s.title, s.kind,
 	s.model, s.context_pct, s.started_at, s.last_event_at, s.ended_at, s.remote_url, s.term, coalesce(s.last_listed_at, 0),
-	coalesce(m.last_seen, 0), ` + activityExpr + `, ` + sessionAlertExpr
+	coalesce(m.last_seen, 0), ` + activityExpr + `, ` + sessionAlertExpr + `, ` + sessionWaitExpr
+	// sessionWaitExpr is what a waiting session waits on, from the events since its state
+	// began (the same inputs as a push, push.md 5.5): the tool of the newest PermissionRequest,
+	// PreToolUse (AskUserQuestion, ExitPlanMode) or Notification, and Claude Code's own text of
+	// the newest Notification. Only for needs_permission and asked; NULL otherwise.
+	sessionWaitExpr = `CASE WHEN st.state IN ('needs_permission', 'asked') THEN
+	(SELECT h.tool_name FROM hook_event h WHERE h.session_id = s.id AND h.tool_name IS NOT NULL
+	   AND h.event IN ('PermissionRequest', 'PreToolUse', 'Notification') AND h.ts >= coalesce(st.since_at, 0) ORDER BY h.ts DESC LIMIT 1) END,
+	CASE WHEN st.state IN ('needs_permission', 'asked') THEN
+	(SELECT r.body ->> '$.payload.message' FROM hook_event h JOIN record r ON r.id = h.record_id
+	   WHERE h.session_id = s.id AND h.event = 'Notification' AND h.ts >= coalesce(st.since_at, 0) ORDER BY h.ts DESC LIMIT 1) END`
 	// sessionAlertExpr is the open alert of the current episode (push.md 4), as JSON or NULL.
 	sessionAlertExpr = `(SELECT json_object('id', a.id, 'trigger', a.trigger, 'status', a.status, 'reason', a.reason,
 	'due_at', a.due_at, 'fired_at', a.fired_at, 'fire_count', a.fire_count, 'snoozed_until', a.snoozed_until, 'seen_at', a.seen_at)
@@ -85,13 +95,17 @@ const (
 
 // SessionView is api.yaml Session.
 type SessionView struct {
-	ID           string   `json:"id"`
-	State        string   `json:"state"`
-	Detail       *string  `json:"detail"`
-	NeedsYou     bool     `json:"needs_you"`
-	StateSince   Time     `json:"state_since"`
-	Question     *string  `json:"question"`
-	LastMessage  *string  `json:"last_message"`
+	ID          string  `json:"id"`
+	State       string  `json:"state"`
+	Detail      *string `json:"detail"`
+	NeedsYou    bool    `json:"needs_you"`
+	StateSince  Time    `json:"state_since"`
+	Question    *string `json:"question"`
+	LastMessage *string `json:"last_message"`
+	// ToolName and Notification: what a needs_permission or asked session waits on
+	// (sessionWaitExpr); null in other states.
+	ToolName     *string  `json:"tool_name"`
+	Notification *string  `json:"notification"`
 	Seat         *string  `json:"seat"`
 	SeatLabel    *string  `json:"seat_label"`
 	SeatColour   *string  `json:"seat_colour"`
@@ -144,14 +158,15 @@ func scanSession(sc interface{ Scan(...any) error }, now time.Time) (SessionView
 	var started, lastEv, ended sql.NullInt64
 	var needs int
 	var since, listed, lastSeen, activity int64
-	var alertJSON sql.NullString
+	var alertJSON, tool, notif sql.NullString
 	err := sc.Scan(&v.ID, &v.State, &detail, &needs, &since, &question, &lm, &seat, &label, &colour, &machine, &mname, &folder,
 		&launcher, &project, &cwd, &name, &title, &kind, &model, &ctxPct, &started, &lastEv, &ended, &remote, &term, &listed,
-		&lastSeen, &activity, &alertJSON)
+		&lastSeen, &activity, &alertJSON, &tool, &notif)
 	if err != nil {
 		return v, err
 	}
 	v.Detail, v.Question, v.LastMessage = ns(detail), ns(question), ns(lm)
+	v.ToolName, v.Notification = ns(tool), ns(notif)
 	v.NeedsYou, v.StateSince = needs == 1, Time(since)
 	v.Seat, v.SeatLabel, v.SeatColour = ns(seat), ns(label), ns(colour)
 	v.Machine, v.MachineName, v.Slot = ns(machine), ns(mname), ns(folder)

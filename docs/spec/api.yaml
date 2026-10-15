@@ -1929,6 +1929,8 @@ components:
         state_since: {type: [string, "null"], format: date-time, description: "Null when unknown (imported history with no times, states.md 5.1)."}
         question: {type: [string, "null"], description: "Question line, when allowed."}
         last_message: {type: [string, "null"], description: "derived.last_message of the last Stop, when allowed."}
+        tool_name: {type: [string, "null"], description: "needs_permission or asked: the tool it waits on (newest PermissionRequest, PreToolUse or Notification since the state began). Null otherwise."}
+        notification: {type: [string, "null"], description: "needs_permission or asked: Claude Code's text of the newest Notification since the state began. Null otherwise."}
         seat: {type: [string, "null"], description: Seat id; null = Unattributed.}
         seat_label: {type: [string, "null"]}
         seat_colour: {type: [string, "null"]}
