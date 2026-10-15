@@ -163,6 +163,11 @@ func crashAt(step string, nth int, err error) func(string) error {
 
 var errBoom = errors.New("boom")
 
+// The budgets are generous on purpose: the store is modernc SQLite, which under -race costs ~30 ms
+// per record (a 250-record fill takes ~7 s idle, several times that on a loaded CI runner). A
+// 20 s budget flaked there (TestSessionFreezeMidSessionRefusesFrozen, "context deadline exceeded").
+// They only bound a real hang; nothing here waits on them.
+//
 // session runs one drain session between client.Drain and pull.Session over pipes. A side
 // that "crashes" (its hook errors) has its pipe ends closed, as a dying process would.
 func (e *env) session(f faults, mutate func(*pull.Session, *client.DrainOptions)) endpoint {
@@ -170,16 +175,16 @@ func (e *env) session(f faults, mutate func(*pull.Session, *client.DrainOptions)
 	r1, w1 := io.Pipe() // remote -> hub
 	r2, w2 := io.Pipe() // hub -> remote
 	sess := &pull.Session{Store: e.st, Ingester: e.ing, HubVersion: "0.5.0", Now: e.clk.Now, MaxRecords: 100,
-		HelloTimeout: 30 * time.Second, BatchTimeout: 30 * time.Second, Hook: f.hub}
+		HelloTimeout: 60 * time.Second, BatchTimeout: 60 * time.Second, Hook: f.hub}
 	dopts := client.DrainOptions{Outbox: e.ob, Machine: machineID, Name: "gpu-box", SyVersion: "0.5.0", Now: e.clk.Now,
-		StartTimeout: 30 * time.Second, AckTimeout: 30 * time.Second, Hook: f.remote}
+		StartTimeout: 60 * time.Second, AckTimeout: 60 * time.Second, Hook: f.remote}
 	if mutate != nil {
 		mutate(sess, &dopts)
 	}
 	var ep endpoint
 	var wg sync.WaitGroup
 	wg.Add(2)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	go func() {
 		defer wg.Done()
