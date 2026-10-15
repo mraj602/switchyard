@@ -1,6 +1,6 @@
 // Settings: who gets notifications (this browser, the Android app), this device's
-// preferences, install, hub and app version, sign out or unpair (pwa.md 6). ntfy and the old
-// Expo app are under Advanced (SE1).
+// preferences, install, hub and app version, sign out or unpair (pwa.md 6). ntfy and the
+// old phone app are under Advanced (SE1).
 
 import { h } from '../components/dom.js';
 import { section, select, toggle, toast, moreTabs, details } from '../components/ui.js';
@@ -137,10 +137,10 @@ function prefs() {
   const priv = pr.private == null ? 'default' : pr.private ? 'on' : 'off';
   return section('This device',
     h('div', { class: 'panel' },
-      h('div', { class: 'row' }, h('span', { class: 'row-text' }, h('span', {}, 'Private notifications'), h('span', { class: 'muted small' }, 'The lock screen says only “1 session needs you”; the details load from your hub when you open it.')),
+      h('div', { class: 'row row-ctl' }, h('span', { class: 'row-text' }, h('span', {}, 'Private notifications'), h('span', { class: 'muted small' }, 'The lock screen says only “1 session needs you”; the details load from your hub when you open it.')),
         select({ label: 'Private notifications', value: priv, key: 'pref-private', options: [['default', `Hub default${st.hub ? (st.hub.private ? ' (on)' : ' (off)') : ''}`], ['on', 'On'], ['off', 'Off']],
           onChange: (v) => savePrefs({ private: v === 'default' ? null : v === 'on' }) })),
-      h('div', { class: 'row' }, h('span', { class: 'row-text' }, h('span', {}, 'When you tap a notification'), h('span', { class: 'muted small' }, 'Automatic opens the Claude app when the session supports it, otherwise the session page here.')),
+      h('div', { class: 'row row-ctl' }, h('span', { class: 'row-text' }, h('span', {}, 'When you tap a notification'), h('span', { class: 'muted small' }, 'Automatic opens the Claude app when the session supports it, otherwise the session page here.')),
         select({ label: 'When you tap a notification', value: pr.tap || 'auto', key: 'pref-tap', options: [['auto', 'Automatic'], ['session', 'Open the session page'], ['claude', 'Open in the Claude app']],
           onChange: (v) => savePrefs({ tap: v }) })),
       h('div', { class: 'row' }, quietHours({
@@ -173,7 +173,7 @@ function expoForm(ch) {
   };
   return h('div', { class: 'col' },
     toggle({
-      label: 'Expo push (old app builds)', sub: 'Only for app builds that use Expo’s push service. The current Android app does not need it.', checked: ch.enabled, key: 'chan-expo',
+      label: 'Notifications for the old phone app', sub: 'Only for early versions of the phone app. The current Android app does not need this.', checked: ch.enabled, key: 'chan-expo',
       onChange: async (v) => { await saveExpo(ch, { enabled: v }); again(); },
     }),
     ch.enabled ? [
@@ -181,7 +181,7 @@ function expoForm(ch) {
         h('input', { type: 'text', value: base, placeholder: 'https://exp.host', 'data-key': 'expo-base-url', autocomplete: 'off', spellcheck: 'false', oninput: (e) => { expo.base = e.target.value.trim(); } })),
       h('label', { class: 'field col-field' }, `Access token (${set ? 'set' : 'not set'})`,
         h('input', { type: 'password', value: '', placeholder: set ? 'Type a new token to replace it' : 'Optional', 'data-key': 'expo-token', autocomplete: 'off', spellcheck: 'false', oninput: (e) => { expo.token = e.target.value; } })),
-      h('p', { class: 'muted small' }, 'The token is needed only if you turned on Expo “enhanced security” for the app. It is never shown again.'),
+      h('p', { class: 'muted small' }, 'The token is needed only if you turned on extra security for the old app’s notification service. It is never shown again.'),
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn', 'data-key': 'expo-save', onclick: (e) => run(e, { token: expo.token }, 'Saved.') }, 'Save'),
         set ? h('button', { type: 'button', class: 'btn btn-sm', 'data-key': 'expo-clear', onclick: (e) => run(e, { clear: true }, 'Token removed.') }, 'Clear token') : null),
@@ -193,7 +193,7 @@ function appPush(owner) {
   const targets = ((st.self && st.self.targets) || []).filter((t) => t.kind === 'expo');
   const ch = owner ? expoChannel() : null;
   if (!targets.length && !ch) return null;
-  return h('div', { class: 'sub-block' }, h('h3', {}, 'Expo app'),
+  return h('div', { class: 'sub-block' }, h('h3', {}, 'Old phone app'),
     targets.length ? h('div', { class: 'panel' }, targets.map((t) => h('div', { class: 'row', 'data-key': `app-${t.id}` },
       h('span', { class: 'row-text' }, h('span', {}, expoTargetLabel(t)), h('span', { class: 'muted small' }, t.status))))) : null,
     ch ? h('div', { class: 'panel pad-s col' }, expoForm(ch)) : null);
@@ -242,7 +242,7 @@ function advanced(owner) {
   const kids = [ntfy(), appPush(owner)].filter(Boolean);
   if (!kids.length) return null;
   const d = h('details', { class: 'tech advanced', 'data-key': 'advanced' },
-    h('summary', {}, 'Advanced: ntfy and the Expo app'),
+    h('summary', {}, 'Advanced: ntfy and the old phone app'),
     h('div', { class: 'tech-body' }, kids));
   return h('section', { class: 'block', 'aria-label': 'Advanced' }, d);
 }

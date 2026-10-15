@@ -49,9 +49,13 @@ input.sw:disabled { cursor: default; }
 .rule-row .field, .rule-row select { flex: none; }
 
 /* ---- pills (More sub-navigation) ----------------------------------------------------------- */
-/* The pills wrap rather than scroll, so none hides off the right edge (G11). */
-.pills { display: flex; flex-wrap: wrap; gap: 8px; }
-.pill { border: 1px solid var(--btn-border); border-radius: 18px; padding: 6px 14px; min-height: 36px; display: inline-flex; align-items: center; text-decoration: none; color: var(--ink); background: var(--panel); white-space: nowrap; font-size: 14px; }
+/* One row; it scrolls sideways when too wide, with a fade on the side that has more (R12). */
+.pills { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; scrollbar-width: none; max-width: 100%; padding: 2px 0; }
+.pills::-webkit-scrollbar { display: none; }
+.pills.fade-r { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
+.pills.fade-l { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 32px), transparent); }
+.pills.fade-l.fade-r { -webkit-mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent); }
+.pill { flex: none; border: 1px solid var(--btn-border); border-radius: 18px; padding: 6px 14px; min-height: 36px; display: inline-flex; align-items: center; text-decoration: none; color: var(--ink); background: var(--panel); white-space: nowrap; font-size: 14px; }
 .pill[aria-current="page"] { background: var(--ink); color: var(--ground); border-color: var(--ink); }
 
 /* ---- More -------------------------------------------------------------------------------- */
@@ -73,7 +77,16 @@ input.sw:disabled { cursor: default; }
 .ring-num.hot { fill: var(--failed); }
 /* At most two lines (a told-apart name like "you · gmail" needs the second), then cut (LN1). */
 .ring-name { font-size: 12px; font-weight: 600; max-width: 100%; text-align: center; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
-.ring-reset { font-size: 11px; color: var(--muted); }
+.ring-text { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; max-width: 100%; }
+.ring-reset { font-size: 11px; color: var(--muted); text-align: center; overflow-wrap: anywhere; line-height: 1.3; }
+/* Narrow phones: two rings per row, the text beside the ring, so names and reset times never collide (R2). */
+@media (max-width: 380px) {
+  .rings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; }
+  .ring { width: auto; flex-direction: row; align-items: center; gap: 8px; }
+  .ring svg { flex: none; }
+  .ring-text { align-items: flex-start; flex: 1 1 0; }
+  .ring-name, .ring-reset { text-align: left; }
+}
 .swipe-note { margin-left: auto; }
 
 .swipe { position: relative; border-radius: var(--radius); min-width: 0; }
@@ -211,3 +224,12 @@ dialog.dialog[open] { display: flex; flex-direction: column; gap: 14px; }
   .row { padding: 12px 14px; }
   .toasts { bottom: calc(76px + env(safe-area-inset-bottom)); }
 }
+
+/* A row of text and one control: below 520 px the control goes under the text, full width (R1). */
+@media (max-width: 520px) {
+  .row-ctl { flex-direction: column; align-items: stretch; gap: 8px; }
+  .row-ctl select { width: 100%; min-height: 40px; }
+}
+.toast-action { color: inherit; margin-left: 10px; font-weight: 600; white-space: nowrap; font-size: 14px; }
+@keyframes flash { from { box-shadow: inset 0 0 0 2px var(--accent); } to { box-shadow: inset 0 0 0 2px transparent; } }
+.flash { animation: flash 2.4s ease-out; }
