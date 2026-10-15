@@ -65,3 +65,45 @@ func TestConnectProbeCatchesTokenForAnotherMachine(t *testing.T) {
 		t.Errorf("timer touched: %v", runner.calls)
 	}
 }
+
+// The labels and colours sy setup stored locally reach the hub in the probe's slot_info
+// (setup.md 8.4), so the board shows the account under the label chosen at setup.
+func TestConnectProbeCarriesLabels(t *testing.T) {
+	deps, _, home := sandbox(t)
+	for _, d := range []string{".claude", ".claude-2"} {
+		if err := os.MkdirAll(filepath.Join(home, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(home, d, "settings.json"), []byte("{}"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.MkdirAll(deps.dirs.Config.Path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	cfg := "version = 1\n\n[slots]\n[slots.colours]\n'~/.claude' = '#14b8a6'\n\n[slots.labels]\n'~/.claude' = 'work'\n'~/.claude-2' = 'Bad Label'\n"
+	if err := os.WriteFile(filepath.Join(deps.dirs.Config.Path, "config.toml"), []byte(cfg), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	recs, err := probeRecords(deps)
+	if err != nil || len(recs) != 2 {
+		t.Fatalf("%d records, %v", len(recs), err)
+	}
+	got := map[string]map[string]any{}
+	for _, b := range recs {
+		var r struct {
+			Slot    string         `json:"slot"`
+			Payload map[string]any `json:"payload"`
+		}
+		if err := json.Unmarshal(b, &r); err != nil {
+			t.Fatal(err)
+		}
+		got[r.Slot] = r.Payload
+	}
+	if p := got["~/.claude"]; p["label"] != "work" || p["colour"] != "#14b8a6" {
+		t.Errorf("~/.claude payload %v, want label work and colour #14b8a6", p)
+	}
+	if p := got["~/.claude-2"]; p["label"] != nil || p["colour"] != nil {
+		t.Errorf("~/.claude-2: an invalid hand-edited label must be left out: %v", p)
+	}
+}
