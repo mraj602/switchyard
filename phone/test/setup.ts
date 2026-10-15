@@ -19,6 +19,13 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 const offline = () => Promise.reject(new Error('network is off in tests: inject a fetch'));
 (globalThis as { fetch: unknown }).fetch = offline;
 
+// Timing headroom for loaded machines. Nothing polls on real timers (waits are microtask
+// flushes), so a generous ceiling only matters when a worker is starved: RNTL's 1 s findBy/waitFor
+// default and jest's 5 s per-test default both flaked when the suite ran next to other CPU-heavy
+// work (jest.config.js sets testTimeout). A passing test never waits for these.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+require('@testing-library/react-native').configure({ asyncUtilTimeout: 10_000 });
+
 beforeEach(() => {
   jest.requireActual<typeof import('./fakes')>('./fakes').resetFakes();
   // the in-memory half of the one-act-per-tap guard (src/lib/notify claimAct)
