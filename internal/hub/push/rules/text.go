@@ -288,11 +288,16 @@ func silentFor(a model.Alert, now time.Time) string {
 	if from == 0 {
 		from = a.SinceAt
 	}
-	h := int(now.Sub(from.Std()) / time.Hour)
-	if from == 0 || h < 1 {
-		h = 1
+	if from == 0 {
+		return "1 h"
 	}
-	return fmt.Sprintf("%d h", h)
+	d := now.Sub(from.Std())
+	// A rule delay under an hour (delay_s may be 0-86400) fires early: say minutes then,
+	// not "1 h". From 45 min on it reads in whole hours (at least 1 h) as before.
+	if d < 45*time.Minute {
+		return fmt.Sprintf("%d min", max(1, int(d/time.Minute)))
+	}
+	return fmt.Sprintf("%d h", max(1, int(d/time.Hour)))
 }
 
 func sessionBody(t model.Trigger, f model.Facts, o TextOptions) string {
