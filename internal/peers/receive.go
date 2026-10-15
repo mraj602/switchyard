@@ -122,6 +122,44 @@ func (e Env) Receive(in Incoming) ReceiveResult {
 	return res
 }
 
+// Outcomes of a thread resume on this machine (peers.md 6.3), as audit statuses.
+const (
+	ResumeResumed = "resumed"
+	ResumeRefused = "refused"
+	ResumeUnknown = "unknown_thread"
+)
+
+// ResumeThread applies an owner's "Resume thread" that the hub relayed (peers.md 6.3): an open
+// thread's turn count goes back to 0 and its pause is cleared, as a human prompt would do. A
+// thread this machine does not know, or that is closed, is left alone (ResumeUnknown). The
+// caller decides first whether this machine takes a hub-signed resume at all
+// (hub_may_widen); RefuseResume records a refusal. An error means threads.json could not be
+// written.
+func (e Env) ResumeThread(id string) (string, error) {
+	unlock := lockState(e.State)
+	defer unlock()
+	now := e.now()
+	threads := LoadThreads(e.ThreadsPath())
+	th := threads.Find(id)
+	if th == nil || !th.Open() || now.Sub(th.LastAt) > ThreadIdle {
+		e.audit(auditLine{Thread: id, Status: ResumeUnknown, Detail: "thread_resume"}, now)
+		return ResumeUnknown, nil
+	}
+	th.Resume()
+	if err := threads.Save(e.ThreadsPath()); err != nil {
+		return "", err
+	}
+	e.audit(auditLine{Thread: id, From: th.A, To: th.B, FromA: th.AAccount, ToA: th.BAccount, Status: ResumeResumed,
+		Detail: "thread_resume"}, now)
+	return ResumeResumed, nil
+}
+
+// RefuseResume records a relayed thread resume this machine did not take (reason, e.g.
+// "hub_may_widen"); the thread keeps its turns until a human prompt.
+func (e Env) RefuseResume(id, reason string) {
+	e.audit(auditLine{Thread: id, Status: ResumeRefused, Detail: "thread_resume: " + reason}, e.now())
+}
+
 // AuditIncoming records a remote message this machine did not deliver (peers.md 10).
 func (e Env) AuditIncoming(env Envelope, status, detail string, at time.Time) {
 	e.audit(auditLine{Msg: env.Msg, Thread: env.Thread, From: env.From.Session, To: env.To.Session, FromA: env.From.Account,

@@ -121,6 +121,7 @@ func agentRun(stderr io.Writer) error {
 	lc := agentLink
 	// Sessions on other machines are reached through the link (peers.md 8.2-8.4).
 	remote := peerlink.New(pe.Env, log.New(stderr, "sy agent: ", log.LstdFlags))
+	remote.HubMayWiden = !pe.NoHubWiden // a hub-signed thread resume widens (keys.md 5.4)
 	if lc == nil {
 		var c *linkclient.Client
 		if c, err = newAgentLink(pe.Env.State, remote, stderr); err != nil {
