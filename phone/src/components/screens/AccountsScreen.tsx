@@ -1,11 +1,14 @@
 // Accounts (PhoneAccounts): one card per login, "most room", every limit window with its
-// reset and pace, and "Count down on Lock Screen" where the Live Activity qualifies (iOS).
+// reset and pace, "Open claude.ai" (the seat's account tab, P17, Android) and "Count down on
+// Lock Screen" where the Live Activity qualifies (iOS).
 import { Text, View } from 'react-native';
 import type { Seat, Window } from '../../contract/api';
 import {
   agoLabel, clock, mostRoom, paceInfo, pct, plural, seatIndex, seatName, sortWindows, until, windowLabel, worstPace,
 } from '../../lib/format';
 import { useHubApi } from '../hub-api';
+import { go } from '../nav';
+import { useTabsSupported } from '../tabs';
 import { useTheme } from '../theme';
 import { Btn, Calm, Card, Meter, Muted, Page, useToast, useToneColour } from '../ui';
 
@@ -13,6 +16,7 @@ export default function AccountsScreen({ seat: focus }: { seat?: string }) {
   const api = useHubApi();
   const t = useTheme();
   const toast = useToast();
+  const tabs = useTabsSupported() === true;
   const o = api.data.overview;
   const accounts = api.data.accounts.length ? api.data.accounts : o?.seats ?? [];
   if (!o && !accounts.length) {
@@ -44,6 +48,7 @@ export default function AccountsScreen({ seat: focus }: { seat?: string }) {
             now={api.now}
             highlight={focus === s.id}
             canCountdown={!!api.countdown?.can(s.id)}
+            onTab={tabs ? () => go.tab(s.id) : undefined}
             onCountdown={() => api.countdown?.start(s.id).then(() => toast.show('Counting down on the Lock Screen'), () => toast.show('Could not start the countdown'))}
           />
         ))
@@ -52,8 +57,8 @@ export default function AccountsScreen({ seat: focus }: { seat?: string }) {
   );
 }
 
-function AccountCard({ seat, colour, now, highlight, canCountdown, onCountdown }: {
-  seat: Seat; colour: string; now: number; highlight: boolean; canCountdown: boolean; onCountdown: () => void;
+function AccountCard({ seat, colour, now, highlight, canCountdown, onCountdown, onTab }: {
+  seat: Seat; colour: string; now: number; highlight: boolean; canCountdown: boolean; onCountdown: () => void; onTab?: () => void;
 }) {
   const t = useTheme();
   const tone = useToneColour();
@@ -96,6 +101,7 @@ function AccountCard({ seat, colour, now, highlight, canCountdown, onCountdown }
         )}
         {worst && worst.p.band === 'runaway' ? <Text style={{ color: t.bad, fontWeight: '600' }}>{worst.p.text}</Text> : null}
         <Muted>{webAt ? `claude.ai usage read ${agoLabel(webAt, now)}` : 'No claude.ai web usage: figures come from the status line only.'}</Muted>
+        {onTab ? <Btn label="Open claude.ai" testID={`tab-${seat.id}`} onPress={onTab} /> : null}
         {canCountdown ? <Btn label="Count down on Lock Screen" testID={`countdown-${seat.id}`} onPress={onCountdown} /> : null}
       </Card>
     </View>

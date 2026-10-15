@@ -489,6 +489,47 @@ export const syLink = {
   },
 };
 
+// ---------------------------------------------------------------- sy-tabs (phone.md P17.1)
+
+type TabViewPropsT = import('../modules/sy-tabs').TabViewProps;
+
+/** Scriptable state of the sy-tabs fake; `tabsState.view` holds the last TabView's props. */
+export const tabsState = {
+  available: true,
+  supported: true,
+  profiles: [] as string[],
+  /** Seats whose tab is open (deleteProfile refuses them, as ProfileStore does). */
+  inUse: new Set<string>(),
+  view: null as TabViewPropsT | null,
+};
+
+export const syTabs = {
+  __esModule: true,
+  get available() {
+    return tabsState.available;
+  },
+  async isSupported() {
+    rec('tabs.isSupported', []);
+    return tabsState.available && tabsState.supported;
+  },
+  async listProfiles() {
+    rec('tabs.listProfiles', []);
+    return [...tabsState.profiles];
+  },
+  async deleteProfile(seat: string) {
+    rec('tabs.deleteProfile', [seat]);
+    if (tabsState.inUse.has(seat)) throw codedError('ERR_SY_TABS_IN_USE', 'sy-tabs: close the tab first');
+    const had = tabsState.profiles.includes(seat);
+    tabsState.profiles = tabsState.profiles.filter((x) => x !== seat);
+    return had;
+  },
+  TabView(props: TabViewPropsT) {
+    tabsState.view = props;
+    if (!tabsState.profiles.includes(props.seat)) tabsState.profiles.push(props.seat);
+    return React.createElement('SyTabView', { testID: props.testID ?? 'tab-view', seat: props.seat, url: props.url });
+  },
+};
+
 // ---------------------------------------------------------------- reset
 
 /** Clears every fake (test/setup.ts runs it before each test). */
@@ -525,4 +566,9 @@ export function resetFakes(): void {
   linkState.installError = null;
   linkState.hubAuth = false;
   linkState.listeners.clear();
+  tabsState.available = true;
+  tabsState.supported = true;
+  tabsState.profiles = [];
+  tabsState.inUse.clear();
+  tabsState.view = null;
 }
