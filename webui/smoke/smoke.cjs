@@ -10,6 +10,7 @@
 //   a phone claim by QR secret, the phone screens, Seen from the row menu, swipe Snooze
 //   an owner sign-in, Alerts/Settings/Devices and the Add phone dialog
 //   Settings → Peers as the owner (grid, pause/resume, widen, audit) and as a paired phone (narrow only)
+//   Resume thread: absent for a paired phone on the unresumed stop; the owner clicks it, sees the toast and the button go
 // Once (phone viewport, Android user agent unless noted): manifest and installability,
 // service worker control and caches, offline banner, update banner, push display, push
 // registration (subscribe stubbed), iPhone pairing path (no claim, digits shown).
@@ -362,6 +363,22 @@ async function peersChecks(page, sizeName, who, owner) {
   const audit = await page.evaluate(async () => (await (await fetch('/v1/peers/audit')).json()).entries);
   if (audit.some((e) => e.msg)) fail(t('mock audit carries message text'));
 
+  // Resume thread (peers.md 6.3): the owner sees it on the newest loop_guard stop and clicks it; a device never sees it.
+  const resumeSel = '[data-key^=resume-]';
+  if (owner) {
+    if (!(await page.$(resumeSel))) fail(t('no Resume thread button on the loop-guard stop'));
+    else {
+      if (!/^Resume thread$/.test((await txt(resumeSel)) || '')) fail(t('resume button has the wrong label'));
+      await shot(page, `${sizeName}-${who}-peers-resume`);
+      await pressSel(resumeSel);
+      try { await page.waitForFunction(() => /Thread resumed: 2 machines were told/.test((document.getElementById('toasts') || {}).textContent || ''), { timeout: 4000 }); } catch (e) { fail(t('resume showed no success toast')); }
+      try { await page.waitForFunction((k) => !document.querySelector(k), { timeout: 4000 }, resumeSel); } catch (e) { fail(t('Resume thread button is still there after resuming')); }
+      if (!(await page.evaluate(async () => (await (await fetch('/v1/peers/audit')).json()).entries.some((e) => e.event === 'thread_resume')))) fail(t('audit has no thread_resume entry'));
+      await settle();
+      await shot(page, `${sizeName}-${who}-peers-resumed`);
+    }
+  } else if (await page.$(resumeSel)) fail(t('a paired device sees Resume thread'));
+
   // Pause, then resume (owner) or see why not (device).
   if (await page.$eval('[data-key=peers-pause]', (b) => b.disabled)) fail(t('pause button is disabled'));
   await pressSel('[data-key=peers-pause]');
@@ -422,6 +439,19 @@ async function peersChecks(page, sizeName, who, owner) {
 }
 
 async function peersFlow(sizeName, w, hgt) {
+  // The paired phone pairs first, and while the stop is still unresumed must not see "Resume thread".
+  const pctx = await browser.createBrowserContext();
+  const ppage = await newPage(pctx, sizeName, w, hgt, { ua: ANDROID, label: 'peers-phone' });
+  await ppage.goto(`${BASE}/#/pair?s=${SECRET}&c=${CODE}`, { waitUntil: 'networkidle2' });
+  await ppage.waitForSelector('[data-key=paired-as]');
+  await ppage.click('[data-key=pair-continue]');
+  await ppage.waitForSelector('.needs-card');
+  await visit(ppage, sizeName, 'device-peers-stop', '#/more/peers', '[data-key=matrix]');
+  if (!(await ppage.$('.audit-list [data-key^=audit-]'))) fail(ppage.tag('peers device: audit has no rows'));
+  if (!(await ppage.evaluate(async () => (await (await fetch('/v1/peers/audit')).json()).entries.some((e) => e.event === 'loop_guard')))) fail(ppage.tag('peers device: no loop_guard stop to hide the button on'));
+  if (await ppage.$('[data-key^=resume-]')) fail(ppage.tag('peers device: sees Resume thread on an unresumed stop'));
+  await ppage.evaluate(() => { location.hash = '#/more'; });
+
   const octx = await browser.createBrowserContext();
   const opage = await newPage(octx, sizeName, w, hgt, { label: 'peers-owner', mobile: false });
   await opage.goto(`${BASE}/#/owner?s=${OWNER}`, { waitUntil: 'networkidle2' });
@@ -429,13 +459,7 @@ async function peersFlow(sizeName, w, hgt) {
   await peersChecks(opage, sizeName, 'owner', true);
   await octx.close();
 
-  // The owner's edits stay in the mock: a paired phone (read + push) now narrows them.
-  const pctx = await browser.createBrowserContext();
-  const ppage = await newPage(pctx, sizeName, w, hgt, { ua: ANDROID, label: 'peers-phone' });
-  await ppage.goto(`${BASE}/#/pair?s=${SECRET}&c=${CODE}`, { waitUntil: 'networkidle2' });
-  await ppage.waitForSelector('[data-key=paired-as]');
-  await ppage.click('[data-key=pair-continue]');
-  await ppage.waitForSelector('.needs-card');
+  // The owner's edits stay in the mock: the paired phone (read + push) now narrows them.
   await peersChecks(ppage, sizeName, 'device', false);
   await pctx.close();
   await resetHub();
