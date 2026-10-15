@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"regexp"
 	"strconv"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/peerrelay"
 	"github.com/mraj602/switchyard/internal/hub/store"
 	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/switchyard/internal/peers"
 )
 
 // PE1 peers endpoints (peers.md 5.4, 6.3, 10, 11; api.yaml tag peers): the matrix, the kill
@@ -46,9 +46,6 @@ type PeerThreads interface {
 	ResumeThread(ctx context.Context, id, by string) (peerrelay.ResumeResult, error)
 }
 
-// threadIDRE is api.yaml's pattern for a thread id (peers.md 6.1).
-var threadIDRE = regexp.MustCompile(`^t_[0-9a-f]{16}$`)
-
 // peerThreadResume is "Resume thread" (peers.md 6.3, owner scope by the route table): the
 // hub resets its own loop guard for the thread and queues peer_thread_resume to both
 // machines' agents. A hub-signed resume widens, so a machine with hub_may_widen = false
@@ -59,7 +56,7 @@ func (s *Server) peerThreadResume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	if !threadIDRE.MatchString(id) {
+	if !peers.ValidThreadID(id) {
 		auth.WriteError(w, http.StatusNotFound, "not_found", "no such thread")
 		return
 	}
