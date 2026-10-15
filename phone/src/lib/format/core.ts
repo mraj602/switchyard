@@ -6,7 +6,7 @@ const MIN = 60e3;
 const HOUR = 36e5;
 const DAY = 864e5;
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const two = (n: number) => String(n).padStart(2, '0');
 
 type Ts = string | null | undefined;
@@ -77,7 +77,7 @@ export function num(n: unknown): string {
   return r.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-/** "HH:MM" today, "Thu HH:MM" within 6 days, otherwise "3 Sept 14:02", in tz (default: the device's zone). */
+/** "HH:MM" today, "Thu HH:MM" within 6 days, otherwise "3 Sep 14:02", in tz (default: the device's zone). */
 export function clock(ts: Ts, now: number, tz?: string): string {
   const t = toMs(ts);
   if (Number.isNaN(t)) return '';
@@ -160,13 +160,21 @@ function offsetMin(tz: string, at: number): number | null {
   }
 }
 
+// Older names of renamed zone cities; same table as webui/static/format.js.
+const TZ_CITY: Record<string, string> = {
+  Calcutta: 'Kolkata', Saigon: 'Ho Chi Minh City', Katmandu: 'Kathmandu', Rangoon: 'Yangon', Kiev: 'Kyiv',
+  Dacca: 'Dhaka', Thimbu: 'Thimphu', Ujung_Pandang: 'Makassar', Macao: 'Macau', Ulan_Bator: 'Ulaanbaatar',
+  Buenos_Aires: 'Buenos Aires', Godthab: 'Nuuk', Faeroe: 'Faroe', Asmera: 'Asmara', Reykjavik: 'Reykjavik',
+};
+
 /** A time zone for people: "UTC", or "Kolkata (GMT+5:30)". Falls back to the raw name. */
 export function tzLabel(tz: string | null | undefined, at: number = Date.now()): string {
   if (!tz) return '';
   if (/^(UTC|Etc\/UTC|GMT|Etc\/GMT)$/i.test(tz)) return 'UTC';
   const off = offsetMin(tz, at);
   if (off == null) return tz;
-  const city = String(tz).split('/').pop()!.replace(/_/g, ' ');
+  const last = String(tz).split('/').pop()!;
+  const city = (TZ_CITY[last] ?? last).replace(/_/g, ' ');
   const a = Math.abs(off);
   const sign = off < 0 ? '-' : '+';
   const v = off === 0 ? 'GMT' : `GMT${sign}${Math.floor(a / 60)}${a % 60 ? ':' + two(a % 60) : ''}`;
