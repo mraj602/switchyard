@@ -23,6 +23,14 @@ class TabPolicyTest {
     for (b in bad) assertNull(b, TabPolicy.profileName(b))
   }
 
+  @Test fun listedHidesPendingAndForeignProfiles() {
+    val other = "seat_01JA2W5N0G8H3Q7S2V6X9Y1Z4M"
+    val all = listOf("Default", "sy-tab-$other", "sy-tab-$seat", "other-$seat")
+    assertEquals(listOf(seat, other).sorted(), TabPolicy.listed(all, emptySet()))
+    assertEquals(listOf(other), TabPolicy.listed(all, setOf("sy-tab-$seat")))
+    assertEquals(emptyList<String>(), TabPolicy.listed(all, setOf("sy-tab-$seat", "sy-tab-$other")))
+  }
+
   @Test fun seatOfIgnoresOtherProfiles() {
     assertNull(TabPolicy.seatOf("Default"))
     assertNull(TabPolicy.seatOf("sy-tab-me@example.com"))

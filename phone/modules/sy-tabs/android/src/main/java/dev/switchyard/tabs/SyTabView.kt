@@ -64,10 +64,12 @@ class SyTabView(context: Context, appContext: AppContext) : ExpoView(context, ap
     main.removeCallbacksAndMessages(null)
     val w = web ?: return
     web = null
-    profile?.let { SyTabsModule.flush(it) }
+    val closed = profile
+    closed?.let { SyTabsModule.flush(it) }
     profile = null
     loaded = null
     removeView(w)
+    closed?.let { SyTabsModule.closed(it) }
     w.stopLoading()
     w.destroy()
   }
@@ -104,6 +106,7 @@ class SyTabView(context: Context, appContext: AppContext) : ExpoView(context, ap
     addView(w, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     web = w
     profile = name
+    SyTabsModule.opened(name)
     return w
   }
 

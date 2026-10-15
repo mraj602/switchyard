@@ -708,7 +708,7 @@ dependency, `androidx.webkit:webkit` (the profile API).
 | `available` | The module is in this build (Android) |
 | `isSupported(): Promise<boolean>` | `WebViewFeature.isFeatureSupported(MULTI_PROFILE)` (WebView 110 or later) |
 | `listProfiles(): Promise<string[]>` | The seat ids of `ProfileStore.getAllProfileNames()` that are tab profiles |
-| `deleteProfile(seat): Promise<boolean>` | `ProfileStore.deleteProfile(name)`: cookies, storage and cache of that tab. Rejects `ERR_SY_TABS_IN_USE` while the tab is open, `ERR_SY_TABS_SEAT` on a bad seat id |
+| `deleteProfile(seat): Promise<boolean>` | `ProfileStore.deleteProfile(name)`: cookies, storage and cache of that tab. Rejects `ERR_SY_TABS_IN_USE` while the tab is open, `ERR_SY_TABS_SEAT` on a bad seat id. WebView keeps the profile of a tab that was open in this process "in use" even after the tab is closed and its WebView destroyed, so `deleteProfile` then wipes its cookies and storage, hides it from `listProfiles` and deletes it for real at the next app start (before any WebView exists); opening the tab again cancels that |
 | `<TabView seat url onTabState>` | A `WebView` bound with `WebViewCompat.setProfile` to the seat's profile (made on first use) before anything loads, then `loadUrl(url)` |
 
 - **Profile name:** `sy-tab-` + the hub seat id (`^seat_[0-9A-HJKMNP-TV-Z]{26}$`), never an
