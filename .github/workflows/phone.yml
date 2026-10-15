@@ -73,7 +73,7 @@ jobs:
           cache-dependency-path: phone/package-lock.json
       - run: npm ci
       - run: npx expo prebuild --platform android --no-install --clean
-      - run: ./gradlew :app:assembleDebug --no-daemon
+      - run: ./gradlew :app:assembleDebug :sy-link:testDebugUnitTest :sy-tabs:testDebugUnitTest --no-daemon
         working-directory: phone/android
 
   # native compile for the simulator, no signing
