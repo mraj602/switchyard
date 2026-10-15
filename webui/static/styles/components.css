@@ -212,3 +212,29 @@ select, input[type="password"], input[type="text"] { border: 1px solid var(--btn
   .machine .kv dt { margin-top: 0; font-size: inherit; }
   .cols { grid-template-columns: 1fr; }
 }
+
+/* Analytics (views/analytics.js) */
+.ana-controls { align-items: center; }
+.ana-controls select { border: 1px solid var(--btn-border); background: var(--panel); border-radius: 18px; padding: 6px 12px; min-height: 36px; }
+.ana-body.is-loading { opacity: 0.55; }
+.ana-body { display: flex; flex-direction: column; gap: 24px; }
+.ana-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.ana-tile { display: flex; flex-direction: column; gap: 2px; background: var(--panel); border: 1px solid var(--hair); border-radius: var(--radius); padding: 12px 14px; }
+.ana-tile-v { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ana-bars { display: flex; align-items: flex-end; gap: 2px; height: 140px; background: var(--panel); border: 1px solid var(--hair); border-radius: var(--radius); padding: 10px 10px 0; }
+.ana-bar { flex: 1 1 0; min-width: 1px; background: var(--accent); border-radius: 2px 2px 0 0; }
+.ana-bar.is-history { background: var(--track); }
+.ana-axis { display: flex; justify-content: space-between; margin-top: 4px; }
+.ana-list { list-style: none; padding: 0; margin: 0; }
+.ana-row { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--hair-soft); }
+.ana-row:first-child { border-top: 0; }
+.ana-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--selected); border-radius: 0 6px 6px 0; }
+.ana-name { position: relative; display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.ana-val { position: relative; font-variant-numeric: tabular-nums; font-weight: 600; }
+.ana-heat { display: grid; grid-template-columns: 34px repeat(24, minmax(0, 1fr)); gap: 2px; align-items: center; }
+.ana-hr, .ana-wd { font-size: 11px; color: var(--muted); }
+.ana-cell { aspect-ratio: 1; min-height: 10px; border-radius: 2px; background: var(--track); }
+.ana-cell.lvl-1 { background: color-mix(in srgb, var(--accent) 30%, var(--track)); }
+.ana-cell.lvl-2 { background: color-mix(in srgb, var(--accent) 55%, var(--track)); }
+.ana-cell.lvl-3 { background: color-mix(in srgb, var(--accent) 80%, var(--track)); }
+.ana-cell.lvl-4 { background: var(--accent); }

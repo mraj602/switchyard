@@ -146,7 +146,7 @@ func (s *Server) Routes() []Route {
 		{"GET", "/v1/seats/{seat}/windows", read, false},
 		{"GET", "/v1/machines", read, false},
 		{"GET", "/v1/stream", read, false},
-		{"GET", "/v1/analytics/{report}", []string{"read"}, true},
+		{"GET", "/v1/analytics/{report}", read, false},
 	}
 	// Phase 4, 5 and 6 operations live in routes_phase4.go, routes_phase5.go and
 	// routes_phase6.go, the addendum's (keys, link, peers, app updates) in
@@ -174,6 +174,7 @@ func (s *Server) Handler() http.Handler {
 		"/v1/seats/{seat}/windows":    http.HandlerFunc(s.windows),
 		"/v1/machines":                http.HandlerFunc(s.machines),
 		"/v1/stream":                  http.HandlerFunc(s.stream),
+		"/v1/analytics/{report}":      http.HandlerFunc(s.analytics),
 	}
 	for _, rt := range s.Routes() {
 		h := handlers[rt.Path]

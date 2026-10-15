@@ -19,6 +19,7 @@ describe('hashToRoute (push payload url)', () => {
     ['/#/more/alerts', { name: 'alerts-settings' }],
     ['/#/more/settings', { name: 'settings' }],
     ['/#/more/peers', { name: 'peers' }],
+    ['/#/more/analytics', { name: 'analytics' }],
     ['/#/sessions/ab:cd?alert=al_x', { name: 'session', id: 'ab:cd', alert: 'al_x' }],
   ];
   it.each(ok)('%s', (url, want) => {
@@ -143,6 +144,7 @@ describe('routeToHref', () => {
     [{ name: 'alert', id: 'al_1' }, '/alerts/al_1'],
     [{ name: 'settings' }, '/more/settings'],
     [{ name: 'peers' }, '/more/peers'],
+    [{ name: 'analytics' }, '/more/analytics'],
     [{ name: 'alerts-settings' }, '/more/alerts'],
     [{ name: 'more' }, '/more'],
     [{ name: 'pair', origin: 'https://h.ts.net', code: '123456' }, '/pair?origin=https%3A%2F%2Fh.ts.net&code=123456'],

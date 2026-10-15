@@ -121,6 +121,7 @@ func (s *Server) routes() {
 	s.phase5Routes()
 	s.phase6Routes()
 	s.peersRoutes()
+	s.analyticsRoutes()
 	if s.opts.Dev {
 		s.mux.HandleFunc("POST /_dev/promote", s.promote)
 		s.mux.HandleFunc("POST /_dev/build", s.devBuild)

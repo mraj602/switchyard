@@ -12,6 +12,7 @@ export const go = {
   alerts: () => router.push('/more/alerts' as never),
   settings: () => router.push('/more/settings' as never),
   peers: () => router.push('/more/peers' as never),
+  analytics: () => router.push('/more/analytics' as never),
   notifySettings: () => router.push('/more/settings/notifications' as never),
   /** P17: the seat's claude.ai tab, at `url` (a claude.ai link) or the home page. */
   tab: (seat: string, url?: string) => router.push(`/tabs/${enc(seat)}${url ? `?url=${enc(url)}` : ''}` as never),

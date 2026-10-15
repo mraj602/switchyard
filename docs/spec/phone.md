@@ -233,7 +233,7 @@ ways offers one way either way or none, one way offers none, none offers nothing
 the board or at a terminal (peers.md 5.4). A 409 reloads the matrix, a 403 says the change needs
 the owner. Everything is disabled while offline.
 
-Owner-only PWA screens (Devices, Add phone, rule editing, Analytics) are not in the app.
+Owner-only PWA screens (Devices, Add phone, rule editing) are not in the app. Analytics (More, Analytics; `GET /v1/analytics/{report}`, analytics.md) is: a range (7, 30, 90 days), a seat filter, totals, daily cost bars, models, projects and limit hits as lists with bars. No heatmap on the phone.
 Wording, ages and state words come from `src/lib/format` and match `webui/static/format.js`
 on a shared table (WP-S).
 

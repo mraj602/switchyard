@@ -224,14 +224,15 @@ describe('Accounts', () => {
 });
 
 describe('More, Machines', () => {
-  it('More links to Alerts, Machines, Peers and Settings', async () => {
+  it('More links to Alerts, Machines, Peers, Analytics and Settings', async () => {
     await show(<MoreScreen />);
     await fireEvent.press(screen.getByTestId('more-alerts'));
     await fireEvent.press(screen.getByTestId('more-machines'));
     await fireEvent.press(screen.getByTestId('more-peers'));
+    await fireEvent.press(screen.getByTestId('more-analytics'));
     await fireEvent.press(screen.getByTestId('more-settings'));
-    expect(routerMock.router.push.mock.calls.map((c) => c[0])).toEqual(['/more/alerts', '/more/machines', '/more/peers', '/more/settings']);
-    expect(screen.getByText('Coming later')).toBeTruthy();
+    expect(routerMock.router.push.mock.calls.map((c) => c[0])).toEqual(['/more/alerts', '/more/machines', '/more/peers', '/more/analytics', '/more/settings']);
+    expect(screen.queryByText('Coming later')).toBeNull();
   });
 
   it('Machines shows reach, backlog and version', async () => {

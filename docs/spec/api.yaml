@@ -535,22 +535,61 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
 
-  # ------------------------------------------------------------------ reserved (later phases)
+  # ------------------------------------------------------------------ analytics (analytics.md)
 
   /v1/analytics/{report}:
     get:
-      tags: [reserved]
+      tags: [read]
       operationId: analytics
-      summary: Tokens, cost, models, projects, heatmap (phase 2+)
-      x-reserved: "phase 2 (port of the prototype's analytics)"
+      summary: Tokens, API-equivalent cost, models, projects, heatmap, sessions, limit windows and hits
+      description: |
+        The prototype's analytics on the hub (analytics.md). Token reports sum `token_row` and
+        price it at API list prices (`api_usd`: a yardstick, not a bill). A day is a day of the
+        hub's time zone. The reply is the schema named after the report.
       x-scopes: [read]
       parameters:
         - name: report
           in: path
           required: true
           schema: {type: string, enum: [daily, models, projects, heatmap, sessions, limits, hits]}
+        - name: from
+          in: query
+          description: First day, `YYYY-MM-DD`, hub time zone. Default `days` - 1 days before `to`.
+          schema: {type: string, format: date}
+        - name: to
+          in: query
+          description: Last day, inclusive. Default today. At most 366 days from `from`.
+          schema: {type: string, format: date}
+        - name: days
+          in: query
+          description: Length of the range when `from` is not given, 1-366. Default 30.
+          schema: {type: integer, minimum: 1, maximum: 366, default: 30}
+        - name: seat
+          in: query
+          description: One seat id, or `unattributed` for rows with no seat. Default every seat.
+          schema: {type: string}
       responses:
-        "501": {$ref: "#/components/responses/NotImplemented"}
+        "200":
+          description: The report.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: "#/components/schemas/AnalyticsDaily"}
+                  - {$ref: "#/components/schemas/AnalyticsModels"}
+                  - {$ref: "#/components/schemas/AnalyticsProjects"}
+                  - {$ref: "#/components/schemas/AnalyticsHeatmap"}
+                  - {$ref: "#/components/schemas/AnalyticsSessions"}
+                  - {$ref: "#/components/schemas/AnalyticsLimits"}
+                  - {$ref: "#/components/schemas/AnalyticsHits"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404":
+          description: Unknown report or seat.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
 
   # ------------------------------------------------------------------ phase 4: pairing, devices, pushes
   # Each operation below keeps `x-reserved: phase 4` (501) until its work package implements
@@ -2113,6 +2152,191 @@ components:
             done: {type: integer}
             live: {type: integer}
         stream_id: {type: integer, description: Current stream event id; pass as Last-Event-ID to continue live.}
+
+    # ---------------------------------------------------------------- analytics
+
+    AnalyticsHead:
+      type: object
+      required: [report, from, to, tz, seat]
+      properties:
+        report: {type: string, enum: [daily, models, projects, heatmap, sessions, limits, hits]}
+        from: {type: string, format: date, description: First day of the range, hub time zone.}
+        to: {type: string, format: date, description: Last day, inclusive.}
+        tz: {type: string, description: "The hub's time zone (IANA name); days and hours are in it."}
+        seat: {type: [string, "null"], description: The seat filter; null = every seat.}
+
+    AnalyticsTokens:
+      type: object
+      required: [input, output, cache_5m, cache_1h, cache_read, replies, api_usd, unpriced_replies]
+      properties:
+        input: {type: integer}
+        output: {type: integer}
+        cache_5m: {type: integer, description: Cache writes, 5-minute.}
+        cache_1h: {type: integer, description: Cache writes, 1-hour.}
+        cache_read: {type: integer}
+        replies: {type: integer, description: API responses (token rows). For a day from history, Claude Code's message count.}
+        api_usd: {type: number, description: API list-price equivalent in USD. Unknown models count 0.}
+        unpriced_replies: {type: integer, description: Replies of models with no known price; not in api_usd.}
+
+    AnalyticsDaily:
+      allOf:
+        - {$ref: "#/components/schemas/AnalyticsHead"}
+        - type: object
+          required: [totals, days, seats]
+          properties:
+            totals: {$ref: "#/components/schemas/AnalyticsTokens"}
+            days:
+              type: array
+              description: Every day of the range, oldest first, zero-filled.
+              items:
+                allOf:
+                  - {$ref: "#/components/schemas/AnalyticsTokens"}
+                  - type: object
+                    required: [day, source, total_tokens]
+                    properties:
+                      day: {type: string, format: date}
+                      source:
+                        type: string
+                        enum: [transcripts, history]
+                        description: "`history` for a day before the first token row that has Claude Code's own totals (history_day); then only `total_tokens` and `replies` are set."
+                      total_tokens: {type: integer, description: Sum of the five counters; for `history`, the imported total.}
+            seats:
+              type: array
+              description: Totals per seat, dearest first; seat null = Unattributed.
+              items:
+                allOf:
+                  - {$ref: "#/components/schemas/AnalyticsTokens"}
+                  - type: object
+                    required: [seat, name]
+                    properties:
+                      seat: {type: [string, "null"]}
+                      name: {type: string, description: 'Seat label, else account email; "Unattributed" for null.'}
+
+    AnalyticsModels:
+      allOf:
+        - {$ref: "#/components/schemas/AnalyticsHead"}
+        - type: object
+          required: [models]
+          properties:
+            models:
+              type: array
+              description: Dearest first.
+              items:
+                allOf:
+                  - {$ref: "#/components/schemas/AnalyticsTokens"}
+                  - type: object
+                    required: [model, label, priced]
+                    properties:
+                      model: {type: string, description: 'Model id; "" when the row had none.'}
+                      label: {type: string, description: '"Opus 5.5"; unknown ids unchanged.'}
+                      priced: {type: boolean}
+
+    AnalyticsProjects:
+      allOf:
+        - {$ref: "#/components/schemas/AnalyticsHead"}
+        - type: object
+          required: [projects]
+          properties:
+            projects:
+              type: array
+              description: The 50 dearest.
+              items:
+                allOf:
+                  - {$ref: "#/components/schemas/AnalyticsTokens"}
+                  - type: object
+                    required: [project, name, sessions, last_ts]
+                    properties:
+                      project: {type: string, description: 'Project path; "" when unknown.'}
+                      name: {type: string, description: 'Last path part, or "(unknown)".'}
+                      sessions: {type: integer}
+                      last_ts: {type: [string, "null"], format: date-time}
+
+    AnalyticsHeatmap:
+      allOf:
+        - {$ref: "#/components/schemas/AnalyticsHead"}
+        - type: object
+          required: [api_usd, replies]
+          properties:
+            api_usd:
+              type: array
+              description: 7 weekdays (0 = Sunday) of 24 hours (0-23, hub time zone).
+              minItems: 7
+              maxItems: 7
+              items: {type: array, minItems: 24, maxItems: 24, items: {type: number}}
+            replies:
+              type: array
+              minItems: 7
+              maxItems: 7
+              items: {type: array, minItems: 24, maxItems: 24, items: {type: integer}}
+
+    AnalyticsSessions:
+      allOf:
+        - {$ref: "#/components/schemas/AnalyticsHead"}
+        - type: object
+          required: [sessions]
+          properties:
+            sessions:
+              type: array
+              description: The 50 dearest.
+              items:
+                allOf:
+                  - {$ref: "#/components/schemas/AnalyticsTokens"}
+                  - type: object
+                    required: [session_id, seat, seat_name, project, models, first_ts, last_ts]
+                    properties:
+                      session_id: {type: string}
+                      seat: {type: [string, "null"]}
+                      seat_name: {type: string}
+                      project: {type: string}
+                      models: {type: array, items: {type: string}}
+                      first_ts: {type: string, format: date-time}
+                      last_ts: {type: string, format: date-time}
+
+    AnalyticsLimits:
+      allOf:
+        - {$ref: "#/components/schemas/AnalyticsHead"}
+        - type: object
+          required: [windows]
+          properties:
+            windows:
+              type: array
+              description: Limit windows that reset inside the range, oldest first (usage_window).
+              items:
+                type: object
+                required: [seat, seat_name, key, label, started_at, resets_at, peak_pct, final_pct, unused_pct, samples]
+                properties:
+                  seat: {type: string}
+                  seat_name: {type: string}
+                  key: {type: string, description: "five_hour, seven_day, weekly_fable, ..."}
+                  label: {type: string}
+                  started_at: {type: [string, "null"], format: date-time}
+                  resets_at: {type: string, format: date-time}
+                  peak_pct: {type: [number, "null"]}
+                  final_pct: {type: [number, "null"]}
+                  unused_pct: {type: [number, "null"]}
+                  samples: {type: integer}
+
+    AnalyticsHits:
+      allOf:
+        - {$ref: "#/components/schemas/AnalyticsHead"}
+        - type: object
+          required: [hits]
+          properties:
+            hits:
+              type: array
+              description: '"You''ve hit your limit" replies, oldest first; one per seat, type and reset time.'
+              items:
+                type: object
+                required: [ts, seat, seat_name, session_id, type, status, resets_at, wait_s]
+                properties:
+                  ts: {type: string, format: date-time}
+                  seat: {type: [string, "null"]}
+                  seat_name: {type: string}
+                  session_id: {type: string}
+                  type: {type: [string, "null"], description: "five_hour, seven_day, ..."}
+                  status: {type: [string, "null"]}
+                  resets_at: {type: [string, "null"], format: date-time}
+                  wait_s: {type: [integer, "null"], description: Seconds from the hit to the reset.}
 
     # ---------------------------------------------------------------- stream events
 

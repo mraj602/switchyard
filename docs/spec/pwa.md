@@ -93,10 +93,11 @@ Hash routes (phase 2 had `#/`, `#/sessions`, `#/sessions/<id>`, `#/accounts`, `#
 | `#/sessions/<id>?alert=<al>` | Session (`PhoneSession`) | **Open in Claude** (`remote_url`, with the wrong-account note), **Copy resume command**, **Snooze 15 min** (alert), state history |
 | `#/accounts?seat=<id>` | Accounts (`PhoneAccounts`) | "Most room right now" line; `seat` scrolls to and highlights a card |
 | `#/machines?machine=<id>` | Machines | Under More on phones; stays in the desktop sidebar |
-| `#/more` | More (new) | Links: Alerts, Machines, Peers, Settings; owner only: Devices, Add phone; Analytics listed as "coming" (its API is still reserved) |
+| `#/more` | More (new) | Links: Alerts, Machines, Peers, Settings; owner only: Devices, Add phone; Analytics (`#/more/analytics`) |
 | `#/more/alerts` | Alerts and rules (`PhoneAlerts`) | Rule list (5 below), quiet hours, recent pushes from `GET /v1/alerts` with outcome (open, seen, snoozed, cancelled + the "cancelled means you answered first" note) |
 | `#/more/settings` | Settings | Hub address, version, live status; notifications (6); private pushes, tap behaviour, own quiet hours (device prefs); ntfy topic (push.md 7); install status; app version + "Check for update"; **Unpair this phone** |
 | `#/more/peers` | Settings → Peers (PE3) | The account matrix, **Pause all peers**, the audit list (3.1); under More on phones and a Peers entry in the desktop sidebar; linked from Settings |
+| `#/more/analytics` | Analytics | `GET /v1/analytics/{report}` (analytics.md): range chips (7, 30, 90 days), a seat filter, totals, a daily cost bar chart, by model, by project, a weekday by hour heatmap, limit hits; read scope, so also for a read-only phone |
 | `#/more/devices` | Devices (owner; `DeskAlerts` "Paired phones") | `GET /v1/devices`, rename, revoke, test push per target, Add phone / Add machine (QR dialog, pairing.md 2.4) |
 | `#/pair?s=…&c=…` | Pairing (`PhonePair`) | pairing.md 5 |
 | `#/owner?s=…` | Owner sign-in | Posts `/v1/session/owner`, then `#/more/settings` |
