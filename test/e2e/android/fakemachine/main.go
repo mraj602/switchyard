@@ -2,7 +2,9 @@
 // session into "asked" (needs you), answers it, or ends it, with no Claude Code involved. It
 // only talks HTTP to the hub it is given.
 //
-//	fakemachine -hub http://127.0.0.1:18787 -token sy_m_... -machine m_x -session <uuid> ask|answer
+//	fakemachine -hub http://127.0.0.1:18787 -token sy_m_... -machine m_x -session <uuid> ask|answer|tokens
+//
+// tokens posts one token_rows record for the session (1M in, 100k out of claude-sonnet-5: $3.00).
 package main
 
 import (
@@ -35,7 +37,10 @@ func main() {
 	}
 	p := map[string]any{"session_id": *sid, "cwd": "/home/u/api",
 		"transcript_path": "/home/u/.claude/projects/x/" + *sid + ".jsonl"}
-	switch flag.Arg(0) {
+	action := flag.Arg(0)
+	switch action {
+	case "tokens":
+		// no hook payload: a token_rows record, built below
 	case "ask":
 		p["hook_event_name"] = "Stop"
 		p["last_assistant_message"] = "Done with the schema.\n\n" + *msg
@@ -43,13 +48,21 @@ func main() {
 		p["hook_event_name"] = "UserPromptSubmit"
 		p["prompt"] = "yes"
 	default:
-		fmt.Fprintln(os.Stderr, "action must be ask or answer")
+		fmt.Fprintln(os.Stderr, "action must be ask, answer or tokens")
 		os.Exit(2)
 	}
 	raw, _ := json.Marshal(p)
 	seat := &record.Seat{Account: *account, Org: *org, Email: *email}
-	rec, err := record.NewHookEvent(record.Meta{Machine: *machine, Slot: "~/.claude", Seat: seat, Client: "sy/e2e-android", Now: time.Now()},
-		raw, record.HookOptions{LastMessages: true})
+	meta := record.Meta{Machine: *machine, Slot: "~/.claude", Seat: seat, Client: "sy/e2e-android", Now: time.Now()}
+	var rec *record.Record
+	var err error
+	if action == "tokens" {
+		rec, err = record.NewTokenRows(meta, record.TokenRowsPayload{Rows: []record.TokenRow{{
+			Key: "e2e-" + *sid, TS: time.Now().UTC().Format(time.RFC3339Nano), SessionID: *sid, Cwd: "/home/u/api",
+			Model: "claude-sonnet-5", Input: 1_000_000, Output: 100_000}}})
+	} else {
+		rec, err = record.NewHookEvent(meta, raw, record.HookOptions{LastMessages: true})
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

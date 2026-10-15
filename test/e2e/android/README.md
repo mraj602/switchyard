@@ -28,6 +28,7 @@ The whole run takes about 8 minutes once the APK exists.
 | 9 | `adb reboot`: `BOOT_COMPLETED` restarts the service without opening the app, the link reconnects |
 | 10 | revoke via `DELETE /v1/devices/{id}`: 4403, service stops, "This phone was removed from the hub" stays, no orphaned connection notification, the app shows Pair and says why; then re-pair and `sy hub token revoke` (the running hub notices at its next sweep) |
 | 11 | claude.ai account tabs (P17): two seats with hub-made `seat_<ULID>` ids; Accounts > Open claude.ai opens each seat's tab, the WebView loads a claude.ai page (SKIP when the emulator has no internet), no crash; Settings > Claude tabs lists one profile per seat; Open in Claude on B's session opens B's tab; Sign out (A) removes A's profile only, also after an app restart. Never signs in or types into claude.ai. The "non-claude link goes to the browser" check is a SKIP: the hub drops any `remote_url` outside `https://claude.ai/`, so only a link tapped inside the page could do it |
+| 12 | analytics: the fake machine posts a `token_rows` record (1M in, 100k out of claude-sonnet-5 = $3.00); More > Analytics shows $3.00, 1.1M tokens and the daily bars |
 
 ## How it is built
 
