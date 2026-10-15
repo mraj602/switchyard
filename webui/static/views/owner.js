@@ -5,7 +5,7 @@ import { h } from '../components/dom.js';
 import { ownerSignIn } from '../api.js';
 import { brandRow } from '../components/ui.js';
 import { deviceName } from '../platform.js';
-import { clock as clockOf } from '../format.js';
+import { clock as clockOf, lifetime } from '../format.js';
 
 const st = { phase: 'idle', error: '' };
 const again = () => window.dispatchEvent(new Event('sy-rerender'));
@@ -16,10 +16,13 @@ let sent = '';
 
 const NEW_LINK = 'Run sy hub owner-link on the hub for a new one.';
 const clock = (at) => { const t = at ? clockOf(at) : ''; return t ? ` (${t})` : ''; };
+// lasted is how long the link worked: the hub sends the lifetime it was made with
+// (`sy hub owner-link --ttl`), which is not always the default 10 minutes.
+const lasted = (ttlS) => { const d = lifetime(ttlS); return d ? `: it worked for ${d} after it was made` : ''; };
 function refusal(e) {
   switch (e.code) {
     case 'link_used': return `This sign-in link was already used${clock(e.at)}. ${NEW_LINK}`;
-    case 'link_expired': return `This sign-in link expired${clock(e.at)}: links work for 10 minutes. ${NEW_LINK}`;
+    case 'link_expired': return `This sign-in link expired${clock(e.at)}${lasted(e.ttl_s)}. ${NEW_LINK}`;
     case 'link_cancelled': return `This sign-in link was cancelled. ${NEW_LINK}`;
     case 'link_unknown': return `This hub does not know that sign-in link. Check that the whole link was opened, or: ${NEW_LINK}`;
   }

@@ -633,7 +633,7 @@ paths:
         The secret comes from `sy hub owner-link` (pairing.md 4). On success the hub makes a
         `browser` device with scopes `owner`, `read`, `push`, expiring in 30 days, and sets it
         as the `sy_session` cookie. A refused secret is `401` with `code` = `link_used`,
-        `link_expired`, `link_cancelled` or `link_unknown`, and `at` (pairing.md 4). Rate
+        `link_expired`, `link_cancelled` or `link_unknown`, `at` and `ttl_s` (pairing.md 4). Rate
         limited as `/v1/pair/claim`.
       security: []
       x-scopes: []
@@ -661,6 +661,7 @@ paths:
                     properties:
                       code: {enum: [link_used, link_expired, link_cancelled, link_unknown]}
                       at: {type: string, format: date-time, description: "When it was used, expired or was cancelled; absent for link_unknown."}
+                      ttl_s: {type: integer, minimum: 1, description: "The lifetime the link was made with (`sy hub owner-link --ttl`), so the board can say how long links work; absent for link_unknown."}
         "429": {$ref: "#/components/responses/TooMany"}
 
   /v1/pair/codes:

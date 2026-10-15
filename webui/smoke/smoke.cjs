@@ -280,6 +280,11 @@ async function phoneFlow(sizeName, w, hgt) {
 async function ownerFlow(sizeName, w, hgt) {
   const ctx = await browser.createBrowserContext();
   const page = await newPage(ctx, sizeName, w, hgt, { label: 'owner', mobile: false });
+  // An expired link made with --ttl 1m says 1 minute, not a fixed 10 (pairing.md 4).
+  await page.goto(`${BASE}/#/owner?s=${process.env.EXPIRED_OWNER_SECRET}`, { waitUntil: 'networkidle2' });
+  await page.waitForFunction(() => /expired.*it worked for 1 minute after it was made/.test(document.body.textContent || ''), { timeout: 4000 })
+    .catch(() => fail(page.tag('expired owner link does not say its 1 minute lifetime')));
+  await shot(page, `${sizeName}-o-expired`);
   await page.goto(`${BASE}/#/owner?s=${OWNER}`, { waitUntil: 'networkidle2' });
   // An owner link lands on Now with a toast (O3).
   try { await page.waitForSelector('.page-now', { timeout: 6000 }); } catch (e) { fail(page.tag('owner link did not land on Now')); }

@@ -24,6 +24,8 @@ const (
 	PairSecret  = "ZGV2c2VydmVyLXBhaXItc2VjcjE"
 	PairCode    = "482913"
 	OwnerSecret = "ZGV2c2VydmVyLW93bmVyLXNlYzE"
+	// ExpiredOwnerSecret is an owner link made with --ttl 1m that has expired.
+	ExpiredOwnerSecret = "ZGV2c2VydmVyLWV4cGlyZWQtbGluaw"
 )
 
 type pairState struct {
@@ -360,6 +362,11 @@ func (s *Server) ownerSignIn(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(b.Secret) < 22 {
 		writeErr(w, 400, "bad_request", "secret is required")
+		return
+	}
+	if b.Secret == ExpiredOwnerSecret {
+		writeJSON(w, 401, M{"error": "this sign-in link has expired", "code": "link_expired",
+			"at": time.Now().Add(-2 * time.Minute).UTC().Format("2006-01-02T15:04:05.000Z"), "ttl_s": 60})
 		return
 	}
 	if b.Secret != OwnerSecret {

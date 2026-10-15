@@ -92,3 +92,12 @@ test('silent alert sentence', () => {
   assert.equal(M.alertText({ status: 'fired', fired_at: at(165) }, NOW, f), 'Quiet-machine notification sent 3 h ago');
   assert.equal(M.alertText({ status: 'snoozed' }, NOW, f), 'Quiet-machine notification snoozed');
 });
+
+test('lifetime: an owner link lifetime in words (pairing.md 4)', () => {
+  assert.equal(F.lifetime(60), '1 minute');
+  assert.equal(F.lifetime(600), '10 minutes');
+  assert.equal(F.lifetime(3600), '1 hour');
+  assert.equal(F.lifetime(90), '90 seconds');
+  assert.equal(F.lifetime(0), '');
+  assert.equal(F.lifetime(undefined), '');
+});

@@ -117,6 +117,9 @@ func pairFail(w http.ResponseWriter, err error) {
 		if lk.At != 0 {
 			body["at"] = store.Time(lk.At)
 		}
+		if s := int64(lk.TTL / time.Second); s > 0 {
+			body["ttl_s"] = s
+		}
 		writeJSON(w, http.StatusUnauthorized, body)
 	case errors.As(err, &le):
 		w.Header().Set("Retry-After", strconv.Itoa(int(le.RetryAfter.Seconds())+1))

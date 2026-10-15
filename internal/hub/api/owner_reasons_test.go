@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/mraj602/switchyard/internal/hub/pair"
 	"github.com/mraj602/switchyard/internal/hub/store"
@@ -68,5 +69,23 @@ func TestOwnerSignInReasons(t *testing.T) {
 	}
 	if tc := h.call("POST", "/v1/session/owner", map[string]string{"secret": expired.Secret}, same).json(t); tc["at"] != "1970-01-01T00:00:01.000Z" {
 		t.Errorf("expired at %v", tc["at"])
+	}
+
+	// An expired link says the lifetime it was made with (--ttl 1m), not a fixed 10 minutes.
+	short, err := h.svc.CreateOwnerLink(ctx, pair.OwnerLinkRequest{URL: pairHubURL, TTL: time.Minute})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.st.Write(ctx, func(tx *store.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE pair_code SET created_at = 1000, expires_at = 61000 WHERE id = ?`, short.ID)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if m := h.call("POST", "/v1/session/owner", map[string]string{"secret": short.Secret}, same).json(t); m["code"] != "link_expired" || m["ttl_s"] != float64(60) {
+		t.Errorf("short link: %v", m)
+	}
+	if m := h.call("POST", "/v1/session/owner", map[string]string{"secret": strings.Repeat("A", 22)}, same).json(t); m["ttl_s"] != nil {
+		t.Errorf("unknown link has a ttl: %v", m)
 	}
 }

@@ -44,7 +44,7 @@ func TestBrowserSmoke(t *testing.T) {
 
 	cmd := exec.Command("node", "smoke.cjs")
 	cmd.Env = append(os.Environ(), "NODE_PATH="+modules, "BASE_URL="+ts.URL, "TOKEN="+devserver.DefaultToken,
-		"PAIR_SECRET="+devserver.PairSecret, "PAIR_CODE="+devserver.PairCode, "OWNER_SECRET="+devserver.OwnerSecret, "OUT_DIR="+out)
+		"PAIR_SECRET="+devserver.PairSecret, "PAIR_CODE="+devserver.PairCode, "OWNER_SECRET="+devserver.OwnerSecret, "EXPIRED_OWNER_SECRET="+devserver.ExpiredOwnerSecret, "OUT_DIR="+out)
 	b, err := cmd.CombinedOutput()
 	t.Logf("%s", b)
 	if err != nil {
