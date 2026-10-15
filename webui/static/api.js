@@ -112,6 +112,7 @@ export const deleteRule = (id) => del(`/v1/rules/${enc(id)}`);
 export const getMatrix = () => getJSON('/v1/peers/matrix');
 export const editMatrix = (body) => putJSON('/v1/peers/matrix', body);
 export const pausePeers = (paused) => postJSON('/v1/peers/pause', { paused });
+export const resumePeerThread = (thread) => postJSON(`/v1/peers/threads/${enc(thread)}/resume`);
 export const getPeerAudit = (params) => getJSON('/v1/peers/audit', params);
 export const getPeerMessages = (params) => getJSON('/v1/peers/messages', params);
 export const getAlerts = (params) => getJSON('/v1/alerts', params);
