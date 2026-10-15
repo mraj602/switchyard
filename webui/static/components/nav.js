@@ -5,19 +5,28 @@ import { dot } from './cards.js';
 import { seatIndex, seatName } from './seat.js';
 import { pct, clock } from '../format.js';
 import { TAB_OF } from '../route.js';
+import { liveState } from '../store.js';
 
 const LIVE_TEXT = {
   live: 'Live',
-  connecting: 'Reconnecting…',
-  polling: 'Live updates off, refreshing every 15 s',
-  offline: 'Offline',
+  connecting: 'Connecting…',
+  reconnecting: 'Reconnecting…',
+  polling: 'Refreshing every 15 s',
+};
+const LIVE_TITLE = {
+  live: 'Changes show up as they happen',
+  connecting: 'Opening the live connection to the hub',
+  reconnecting: 'The live connection dropped; the board keeps refreshing meanwhile',
+  polling: 'The live connection is not available; the board refreshes every 15 s',
 };
 
-// offline = store.offline ({since}) while the service worker shows its stored copy.
-export function liveBadge(status, offline) {
+// The live badge. Only a hub the board cannot reach is shown as a warning; a dropped stream
+// is neutral grey, and only after a few seconds (store.liveState).
+export function liveBadge(store) {
+  const offline = store.offline;
   if (offline) return h('span', { class: 'live live-warn' }, h('span', { class: 'live-dot', 'aria-hidden': 'true' }), `Offline · showing ${clock(new Date(offline.since).toISOString())}`);
-  const cls = status === 'live' ? 'ok' : 'warn';
-  return h('span', { class: `live live-${cls}` }, h('span', { class: 'live-dot', 'aria-hidden': 'true' }), LIVE_TEXT[status] || status);
+  const s = liveState();
+  return h('span', { class: `live live-${s === 'live' ? 'ok' : 'idle'}`, title: LIVE_TITLE[s], 'data-key': 'live-badge' }, h('span', { class: 'live-dot', 'aria-hidden': 'true' }), LIVE_TEXT[s] || s);
 }
 
 // `where`: phone = bottom tabs only, desk = sidebar only, both = everywhere (CSS hides the
@@ -78,11 +87,11 @@ export function renderNav(navEl, { page, store, onLogout }) {
       h('ul', {}, o.seats.filter((s) => !s.hidden).map((s) => {
         const five = (s.windows || []).find((w) => w.key === 'five_hour');
         const used = five ? five.used_pct : null;
-        return h('li', {}, h('a', { href: `#/accounts?seat=${encodeURIComponent(s.id)}`, 'data-key': `nav-seat-${s.id}` },
-          dot(idx.get(s.id).colour), h('span', { class: 'grow' }, seatName(s)),
+        return h('li', {}, h('a', { href: `#/accounts?seat=${encodeURIComponent(s.id)}`, 'data-key': `nav-seat-${s.id}`, title: seatName(s) },
+          dot(idx.get(s.id).colour), h('span', { class: 'grow nav-seat-name' }, seatName(s)),
           h('span', { class: `mono small${used >= 90 ? ' hot' : ' muted'}` }, used == null ? '' : pct(used))));
       }))) : null,
     h('div', { class: 'nav-foot' },
-      liveBadge(store.live, store.offline),
+      liveBadge(store),
       h('button', { type: 'button', class: 'linkish', onclick: onLogout, 'data-key': 'logout' }, 'Sign out'))));
 }

@@ -11,7 +11,7 @@ const BASE = {
   done: { label: 'Done', long: 'Done', glyph: '○', cls: 'done' },
   failed: { label: 'Failed', long: 'Failed', glyph: '■', cls: 'failed' },
   ended: { label: 'Ended', long: 'Ended', glyph: '◌', cls: 'ended' },
-  gone: { label: 'Gone', long: 'Ended without a goodbye', glyph: '◌', cls: 'ended' },
+  gone: { label: 'Ended', long: 'Ended (terminal closed)', glyph: '◌', cls: 'ended' },
 };
 
 const FAILURES = {
@@ -42,4 +42,5 @@ export function stateTag(session, long = false) {
   return h('span', { class: `state state-${i.cls}` }, h('span', { 'aria-hidden': 'true' }, i.glyph), ' ', long ? i.long : i.label);
 }
 
-export const isLive = (s) => s.state !== 'ended' && s.state !== 'gone';
+// Which sessions count as open (pure, so node can test it): see live.js.
+export { IDLE_MS, isEnded, isHistory, isLive, liveCounts } from './live.js';

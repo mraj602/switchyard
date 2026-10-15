@@ -1,7 +1,7 @@
 // Hash routes (pwa.md 3). Pure, so node can test it.
 //
 //   #/                       Now
-//   #/sessions               Sessions (?filter=needs_you|working|done|all|ended, ?by=machine|project, ?machine=<id>)
+//   #/sessions               Sessions (?filter=open|needs_you|working|done|ended|all, ?by=machine|project, ?machine=<id>)
 //   #/sessions/<id>          Session (?alert=<alert id>)
 //   #/accounts               Accounts (?seat=<id>)
 //   #/machines               Machines (?machine=<id>)
@@ -15,6 +15,7 @@
 //   #/owner?s=<secret>       Owner sign-in
 //   #/alerts/<id>            Redirects to the alert's deep link
 //   #/login                  Token sign-in
+//   anything else            Page not found (with a link to Now)
 
 // Routes that work without being signed in.
 export const PUBLIC_VIEWS = new Set(['login', 'pair', 'owner']);
@@ -23,6 +24,7 @@ export const PUBLIC_VIEWS = new Set(['login', 'pair', 'owner']);
 export const TAB_OF = {
   now: 'now', sessions: 'sessions', accounts: 'accounts',
   machines: 'more', alerts: 'more', settings: 'more', devices: 'more', peers: 'more', analytics: 'more', more: 'more',
+  notfound: '',
 };
 
 export function parseRoute(hash) {
@@ -37,6 +39,8 @@ export function parseRoute(hash) {
   if (a === 'owner') return { page: 'owner', view: 'owner', query };
   if (a === 'alerts' && b) return { page: 'alerts', view: 'alertRedirect', id: b, query };
   if (a === 'sessions' && b) return { page: 'sessions', view: 'session', id: b, query };
+  const notFound = { page: 'notfound', view: 'notfound', query };
+  if (parts.length > (a === 'more' ? 2 : 1)) return notFound;
   if (a === 'sessions') return { page: 'sessions', view: 'sessions', query };
   if (a === 'accounts') return { page: 'accounts', view: 'accounts', query };
   if (a === 'machines') return { page: 'machines', view: 'machines', query };
@@ -46,9 +50,11 @@ export function parseRoute(hash) {
     if (b === 'analytics') return { page: 'analytics', view: 'analytics', query };
     if (b === 'peers') return { page: 'peers', view: 'peers', query };
     if (b === 'devices') return { page: 'devices', view: 'devices', query };
-    return { page: 'more', view: 'more', query };
+    if (!b) return { page: 'more', view: 'more', query };
+    return notFound;
   }
-  return { page: 'now', view: 'now', query };
+  if (!a || a === 'now') return { page: 'now', view: 'now', query };
+  return notFound;
 }
 
 // A hash route for an app deep link from the hub ("/#/sessions/x?alert=y" or "#/…").
@@ -59,4 +65,4 @@ export function hashOfLink(url) {
 }
 
 // The sessions screen's query: legacy-free filter names from pwa.md 3.
-export const SESSION_FILTERS = ['needs_you', 'working', 'done', 'all', 'ended'];
+export const SESSION_FILTERS = ['open', 'needs_you', 'working', 'done', 'ended', 'all'];
