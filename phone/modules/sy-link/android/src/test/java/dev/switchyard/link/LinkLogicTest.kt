@@ -296,3 +296,15 @@ class SharedHttpTest {
     }
   }
 }
+
+class ConnectionNoteGateTest {
+  @Test
+  fun `a late state report after the service stopped does not post the connection notification`() {
+    val g = ConnectionNoteGate()
+    assertTrue(g.mayPost())
+    g.stopped() // SyLinkService.stopSelfNow, before the client's executor reports "off"
+    assertFalse(g.mayPost())
+    g.started() // a new start command on the same instance
+    assertTrue(g.mayPost())
+  }
+}
