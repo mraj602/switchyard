@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -34,6 +35,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/appmirror"
 	"github.com/mraj602/switchyard/internal/hub/auth"
 	"github.com/mraj602/switchyard/internal/hub/hublock"
+	"github.com/mraj602/switchyard/internal/hub/ingest"
 	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
 	hublink "github.com/mraj602/switchyard/internal/hub/link"
 	"github.com/mraj602/switchyard/internal/hub/pair"
@@ -68,6 +70,7 @@ Commands:
   token list         List devices (--all includes revoked)
   token revoke ID    Revoke a device by id, token hint or name
   backup             Write a consistent copy of the database (--to file)
+  refold             Rebuild every session's state and times from the stored records [--dry-run]
   prune              Delete raw records and fine-grained rows older than --older-than 90d / --before DATE
   import-prototype   Import the prototype's usage.db (a copy) into the hub database
   pull               Pull servers over SSH: add|list|run|trust|enable|disable|remove|key (phase 5)
@@ -115,6 +118,8 @@ func Run(args []string, stdout, stderr io.Writer) error {
 		return backup(args[1:], stdout, stderr)
 	case "prune":
 		return prune(args[1:], stdout, stderr)
+	case "refold":
+		return refold(args[1:], stdout, stderr)
 	case "import-prototype":
 		return importPrototype(args[1:], stdout, stderr)
 	case "pull":
@@ -744,6 +749,45 @@ func ParseAge(s string) (time.Duration, error) {
 		return 0, fmt.Errorf("bad age %q (use 90d, 2w or 12h)", s)
 	}
 	return d, nil
+}
+
+// refold is `sy hub refold` (states.md 5.1): the replay path for the session fold. Raw
+// records are kept, so a fix to the state engine or to how sessions are made applies to
+// the whole history. Safe while the hub runs (one write transaction).
+func refold(args []string, stdout, stderr io.Writer) error {
+	fs, db := newFlags("refold", stderr)
+	dry := fs.Bool("dry-run", false, "only report what would change")
+	if pos, err := parse(fs, args); err != nil || len(pos) > 0 {
+		fmt.Fprintln(stderr, "usage: sy hub refold [--dry-run] [--db hub.db]")
+		return ErrUsage
+	}
+	ctx := context.Background()
+	st, err := openStore(ctx, *db, nil)
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+	rep, err := ingest.Refold(ctx, st, *dry)
+	if err != nil {
+		return err
+	}
+	verb := "changed"
+	if *dry {
+		verb = "would change"
+	}
+	fmt.Fprintf(stdout, "%d sessions: %d refolded from hook events and lists, %d history (transcript only)\n", rep.Sessions, rep.Live, rep.History)
+	fmt.Fprintf(stdout, "%s: %d states, %d start times, %d projects\n", verb, rep.Changed, rep.Started, rep.Project)
+	states := make([]string, 0, len(rep.ByState))
+	for k := range rep.ByState {
+		states = append(states, k)
+	}
+	sort.Strings(states)
+	parts := make([]string, 0, len(states))
+	for _, k := range states {
+		parts = append(parts, fmt.Sprintf("%s %d", k, rep.ByState[k]))
+	}
+	fmt.Fprintf(stdout, "states after: %s\n", strings.Join(parts, ", "))
+	return nil
 }
 
 func prune(args []string, stdout, stderr io.Writer) error {

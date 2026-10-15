@@ -112,6 +112,32 @@ func (t *typer) fold(sessionID string, in state.Input) error {
 	return nil
 }
 
+// transcript folds a transcript observation (token_rows) into a session. It only matters
+// for a session no hook event or list has seen (states.md 5.1), so it never refolds: a
+// session with a live state ignores it, and a history session only moves forward.
+func (t *typer) transcript(sessionID string, at time.Time, recordID string) error {
+	f, ok, err := t.tx.GetFold(sessionID)
+	if err != nil {
+		return err
+	}
+	var s state.Session
+	if ok {
+		s = sessionFrom(f)
+		if !s.IsHistory() || !at.After(s.EndedAt) {
+			return nil
+		}
+	}
+	s.Apply(state.Input{ID: recordID, TS: at, Transcript: &state.TranscriptObs{}})
+	lastEvent, lastRecord := f.LastEvent, f.LastRecord
+	if n := len(s.History); n > 0 {
+		lastEvent, lastRecord = s.History[n-1].Cause, recordID
+	}
+	if err := t.tx.PutFold(sessionID, foldRowOf(&s, max(ms(at), f.UpdatedAt), lastEvent, lastRecord)); err != nil {
+		return err
+	}
+	return t.tx.AppendTransitions(sessionID, transitionsOf(s.History, recordID), false)
+}
+
 // refold rebuilds a session's fold from its hook_event records and the session_list
 // records of its slot.
 func (t *typer) refold(sessionID string) error {

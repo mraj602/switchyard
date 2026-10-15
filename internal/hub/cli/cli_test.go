@@ -89,6 +89,13 @@ func TestTokenLifecycleBackupPrune(t *testing.T) {
 	if err != nil || !strings.Contains(out, "would remove 0 records") {
 		t.Fatalf("prune: %s %v", out, err)
 	}
+	out, err = run(t, "refold", "--db", db, "--dry-run")
+	if err != nil || !strings.Contains(out, "0 sessions") || !strings.Contains(out, "would change: 0 states") {
+		t.Fatalf("refold: %s %v", out, err)
+	}
+	if _, err := run(t, "refold", "extra", "--db", db); !errors.Is(err, ErrUsage) {
+		t.Errorf("refold with an argument: %v", err)
+	}
 	if _, err := run(t, "prune", "--db", db); !errors.Is(err, ErrUsage) {
 		t.Errorf("prune without age: %v", err)
 	}

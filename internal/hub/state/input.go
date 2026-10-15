@@ -6,15 +6,23 @@ import (
 	"time"
 )
 
-// Input is one fact about one session, in the form the fold needs. Exactly one of Hook and
-// List is set. It deliberately does not depend on internal/record; a later step adapts a
+// Input is one fact about one session, in the form the fold needs. Exactly one of Hook,
+// List and Transcript is set. It deliberately does not depend on internal/record; a later step adapts a
 // record to an Input (hook_event -> HookInput, session_list -> a ListObs per session).
 type Input struct {
 	ID   string // record id; tie-break for equal timestamps
 	TS   time.Time
 	Hook *Hook
 	List *ListObs
+	// Transcript: the session's transcript has activity at TS (token_rows, states.md 5.1).
+	// It is no live signal: it only gives a session that no hook event or list ever saw
+	// the state ended:history, ended at its newest transcript activity.
+	Transcript *TranscriptObs
 }
+
+// TranscriptObs is "the transcript was written at Input.TS" (the newest row of the session
+// in a token_rows record). TS may be zero when the transcript gave no time.
+type TranscriptObs struct{}
 
 // Hook is the part of a hook_event the fold reads.
 type Hook struct {

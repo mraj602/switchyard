@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -265,10 +266,9 @@ func (t *typer) ensureSession(c *ctx, id string, info store.SessionInfo) error {
 		if err := t.touch(id, true); err != nil {
 			return err
 		}
+		// started stays unknown (NULL) when the record gives no start: a token_rows record's
+		// ts is when the scan ran, not when the session started (states.md 5.1).
 		started := info.StartedAt
-		if started == 0 {
-			started = c.at
-		}
 		return t.tx.InsertSession(store.SessionRow{
 			ID: id, SeatID: c.seat, SlotID: c.slotID, MachineID: c.r.Machine, Cwd: info.Cwd, Project: info.Project,
 			Name: info.Name, Title: info.Title, Kind: info.Kind, TranscriptPath: info.TranscriptPath,
@@ -580,7 +580,11 @@ func (t *typer) tokenRows(c *ctx) error {
 	if err := json.Unmarshal(c.r.Payload, &p); err != nil {
 		return fmt.Errorf("token_rows payload: %w", err)
 	}
+	// What the rows say about each session's transcript (states.md 5.1): first and last
+	// activity and the project, so a session made here gets real times, not the scan's.
+	ext := transcriptExtents(p.Rows)
 	// Session facts first, so rows can take the session's seat.
+	var facts []string
 	for _, raw := range p.Sessions {
 		var s struct {
 			SessionID    string `json:"session_id"`
@@ -600,9 +604,15 @@ func (t *typer) tokenRows(c *ctx) error {
 			}
 			sc.seat = id
 		}
-		if err := t.ensureSession(&sc, s.SessionID, store.SessionInfo{RemoteURL: s.RemoteURL, Title: s.Title}); err != nil {
+		e := ext[s.SessionID]
+		if err := t.ensureSession(&sc, s.SessionID, store.SessionInfo{RemoteURL: s.RemoteURL, Title: s.Title,
+			Project: project(e.cwd), StartedAt: e.first}); err != nil {
 			return err
 		}
+		facts = append(facts, s.SessionID)
+	}
+	if err := t.transcripts(c, ext, facts); err != nil {
+		return err
 	}
 	seats := map[string]string{}
 	seatOf := func(sid string) (string, error) {
@@ -659,6 +669,84 @@ func (t *typer) tokenRows(c *ctx) error {
 		}
 		if err := t.tx.InsertLimitHit(store.LimitHitRow{SessionID: h.SessionID, TS: ts, Type: h.Type, Status: h.Status,
 			ResetsAt: msOf(h.ResetsAt), SeatID: seat}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// extent is one session's span in a token_rows record.
+type extent struct {
+	first, last int64 // ms, 0 = unknown
+	cwd         string
+	rec         string // record with the newest row (refold only)
+}
+
+func transcriptExtents(rows []record.TokenRow) map[string]extent {
+	out := map[string]extent{}
+	for _, row := range rows {
+		if row.SessionID == "" {
+			continue
+		}
+		ts, err := time.Parse(time.RFC3339Nano, row.TS)
+		if err != nil {
+			continue
+		}
+		at := ts.UnixMilli()
+		e, ok := out[row.SessionID]
+		if !ok || at < e.first {
+			e.first = at
+			if row.Cwd != "" {
+				e.cwd = row.Cwd
+			}
+		}
+		if e.cwd == "" {
+			e.cwd = row.Cwd
+		}
+		e.last = max(e.last, at)
+		out[row.SessionID] = e
+	}
+	return out
+}
+
+// transcripts applies the rows' extents to the sessions the hub knows (the facts' sessions
+// were just made or patched; other row sessions only if they exist): an earlier start, the
+// project, and the transcript fold input.
+func (t *typer) transcripts(c *ctx, ext map[string]extent, facts []string) error {
+	ids := make([]string, 0, len(ext)+len(facts))
+	seen := map[string]bool{}
+	for _, id := range facts {
+		if !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+	rest := make([]string, 0, len(ext))
+	for id := range ext {
+		if !seen[id] {
+			rest = append(rest, id)
+		}
+	}
+	sort.Strings(rest)
+	for _, id := range rest {
+		_, ok, err := t.tx.GetSession(id)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			continue // rows alone do not make a session
+		}
+		e := ext[id]
+		if err := t.touch(id, false); err != nil {
+			return err
+		}
+		if err := t.tx.PatchSession(id, store.SessionInfo{Project: project(e.cwd), StartedAt: e.first}); err != nil {
+			return err
+		}
+		ids = append(ids, id)
+	}
+	for _, id := range ids {
+		if err := t.transcript(id, tm(ext[id].last), c.r.ID); err != nil {
 			return err
 		}
 	}

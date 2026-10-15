@@ -354,7 +354,7 @@ merges rows by keeping the largest value of each counter (the prototype's `token
 | --- | --- | --- | --- |
 | `rows` | array | yes | See below. May be empty if only `limit_hits` or `sessions` are sent. |
 | `limit_hits` | array | no | "You've hit your limit" replies: `{session_id, ts, type, status, resets_at}` (`type` = `quotaLimits.rateLimitType`). |
-| `sessions` | array | no | Per-session facts found in transcripts: `{session_id, owner_account, owner_org, remote_url, title}`. `owner_*` come from `bridge-session` lines (Remote Control). |
+| `sessions` | array | no | Per-session facts found in transcripts: `{session_id, owner_account, owner_org, remote_url, title}`. `owner_*` come from `bridge-session` lines (Remote Control). A fact for a session the hub does not know makes its `session` row; with no hook event or list it is history (`ended:history`, times and project from the rows, [states.md](states.md) 5.1). Rows alone never make a session. |
 | `source` | object | no | `{path, from, to}`: transcript file (with `~`) and byte range scanned. Debugging only. |
 
 Row fields (all counts are integers ≥ 0):
