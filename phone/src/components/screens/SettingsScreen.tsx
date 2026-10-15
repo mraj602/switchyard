@@ -1,10 +1,11 @@
 // Settings (P4): hub and status, notifications and Send test push, private pushes, tap
-// behaviour, own quiet hours, the widgets refresh switch, app version and Unpair.
+// behaviour, own quiet hours, the widgets refresh switch, Claude tabs (P17), app version and Unpair.
 import { useState } from 'react';
 import { Alert as RNAlert, Switch, Text, TextInput, View } from 'react-native';
 import type { PushTestResult, QuietHours, TapMode } from '../../contract/api';
 import { clock } from '../../lib/format';
 import { updateText, type Updater } from '../../lib/update';
+import { ClaudeTabsSection } from '../claude-tabs-section';
 import { useUpdate } from '../use-update';
 import { useHubApi } from '../hub-api';
 import { go } from '../nav';
@@ -171,6 +172,8 @@ export default function SettingsScreen() {
           </Card>
         </Section>
       ) : null}
+
+      <ClaudeTabsSection toast={toast.show} />
 
       <Section title="App version">
         <Card>
