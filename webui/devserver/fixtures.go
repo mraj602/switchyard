@@ -193,7 +193,7 @@ func (d *Data) Overview(streamID int) M {
 			n("done")
 		}
 	}
-	return M{"time": ts(d.Now), "seats": d.Seats, "needs_you": sortBySince(needs), "machines": d.LiveMachines(), "counts": counts, "stream_id": streamID}
+	return M{"time": ts(d.Now), "seats": d.Seats, "needs_you": sortBySince(needs), "machines": d.LiveMachines(), "counts": counts, "stream_id": streamID, "tz": "Asia/Kolkata", "tz_source": "system"}
 }
 
 func sortBySince(in []M) []M {

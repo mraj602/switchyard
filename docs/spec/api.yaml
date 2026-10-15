@@ -572,6 +572,13 @@ paths:
           in: query
           description: One seat id, or `unattributed` for rows with no seat. Default every seat.
           schema: {type: string}
+        - name: tz
+          in: query
+          description: >-
+            The zone days and hours are counted in (IANA name, such as the viewer's
+            `Intl.DateTimeFormat().resolvedOptions().timeZone`); `from` and `to` are read in it and
+            the head's `tz` echoes it. Default the hub's time zone. Not a zone the hub knows: 400.
+          schema: {type: string}
       responses:
         "200":
           description: The report.
@@ -2188,6 +2195,17 @@ components:
             done: {type: integer}
             live: {type: integer, description: "Open sessions that are not dormant (states.md 5); history is never live."}
         stream_id: {type: integer, description: Current stream event id; pass as Last-Event-ID to continue live.}
+        tz:
+          type: string
+          description: >-
+            The hub's time zone (IANA name, push.md 2): hub-wide quiet hours, alert text, analytics
+            days and anything the board labels "hub time" use it. Show it beside such times.
+        tz_source:
+          type: string
+          enum: [setting, system, utc]
+          description: >-
+            Where tz came from: the hub.tz setting, the hub machine's own zone ($TZ, else
+            /etc/localtime), or utc when neither names a zone.
 
     # ---------------------------------------------------------------- analytics
 
@@ -2198,7 +2216,7 @@ components:
         report: {type: string, enum: [daily, models, projects, heatmap, sessions, limits, hits]}
         from: {type: string, format: date, description: First day of the range, hub time zone.}
         to: {type: string, format: date, description: Last day, inclusive.}
-        tz: {type: string, description: "The hub's time zone (IANA name); days and hours are in it."}
+        tz: {type: string, description: "The zone days and hours are in (IANA name): the `tz` parameter, else the hub's time zone."}
         seat: {type: [string, "null"], description: The seat filter; null = every seat.}
 
     AnalyticsTokens:

@@ -208,9 +208,10 @@ func (s *Server) overview(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
+	tz, tzSource := s.hubZone(r)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"time": store.Time(now.UnixMilli()), "seats": seats, "needs_you": nonNil(needs), "machines": nonNilM(machines),
-		"counts": counts, "stream_id": stream, "version": version.Version,
+		"counts": counts, "stream_id": stream, "version": version.Version, "tz": tz, "tz_source": tzSource,
 	})
 }
 

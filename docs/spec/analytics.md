@@ -38,8 +38,9 @@ client can show the range the hub chose.
 
 ## 3. Days and time zone
 
-A day is a day of the hub's time zone: the `hub.tz` setting, else `$TZ`, else UTC (the zone the
-alert rules use, push.md 2). `tz` in the reply says which. Token rows are summed in 15-minute
+A day is a day of the hub's time zone: the `hub.tz` setting, else the hub machine's own zone,
+else UTC (the zone the alert rules use, push.md 2), or the zone the client names with `?tz=` (an IANA name; the board
+passes the viewer's, so "When you work" is in local hours). `tz` in the reply says which. Token rows are summed in 15-minute
 buckets and the buckets assigned to days and hours, so zones such as Asia/Kolkata (UTC+5:30) and
 daylight saving changes come out right. `rollup_daily` is not used: it fixes the zone when it is
 built, and the queries are cheap over `token_row`'s indexes.

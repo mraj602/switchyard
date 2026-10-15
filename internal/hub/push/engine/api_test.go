@@ -280,6 +280,7 @@ func TestAPIActionTokens(t *testing.T) {
 }
 
 func TestAPIRulesAndSettings(t *testing.T) {
+	t.Setenv("TZ", "UTC") // the hub machine's zone, the default quiet_hours.tz (push.md 2)
 	r := newAPIRig(t)
 	var list struct {
 		Rules    []model.Rule   `json:"rules"`

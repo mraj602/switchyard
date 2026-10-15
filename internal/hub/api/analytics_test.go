@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -240,7 +241,7 @@ func TestAnalyticsDaily(t *testing.T) {
 func TestAnalyticsRangeAndZone(t *testing.T) {
 	// Same data in UTC: k1 (20:00Z) belongs to 10-14, and k5 (after the Kolkata range) to 10-15.
 	h, tok := anaHub(t, "", true)
-	t.Setenv("TZ", "")
+	t.Setenv("TZ", "UTC") // the machine's zone (push.md 2); unset, /etc/localtime would decide
 	_, m := h.report("/v1/analytics/daily?from=2026-10-14&to=2026-10-15", tok)
 	if m["tz"] != "UTC" || m["from"] != "2026-10-14" || m["to"] != "2026-10-15" {
 		t.Fatalf("head: %v", m)
@@ -267,6 +268,27 @@ func TestAnalyticsRangeAndZone(t *testing.T) {
 	_, m = h.report("/v1/analytics/models?from=2026-10-12", tok)
 	if m["from"] != "2026-10-12" || m["to"] != "2026-10-15" {
 		t.Fatalf("default to: %v", m)
+	}
+	// UI audit AN3: ?tz= counts days and hours in the viewer's zone; a UTC hub asked for
+	// Asia/Kolkata answers as a Kolkata hub does.
+	kol, ktok := anaHub(t, "Asia/Kolkata", true)
+	for _, rep := range []string{"daily", "heatmap"} {
+		q := "/v1/analytics/" + rep + "?from=2026-10-14&to=2026-10-15"
+		_, viewer := h.report(q+"&tz=Asia/Kolkata", tok)
+		_, hubKol := kol.report(q, ktok)
+		if viewer["tz"] != "Asia/Kolkata" {
+			t.Fatalf("%s tz echo: %v", rep, viewer["tz"])
+		}
+		a, _ := json.Marshal(viewer)
+		b, _ := json.Marshal(hubKol)
+		if string(a) != string(b) {
+			t.Errorf("%s ?tz=Asia/Kolkata on a UTC hub:\n%s\nKolkata hub:\n%s", rep, a, b)
+		}
+	}
+	for _, bad := range []string{"Mars/Base", "../etc/passwd", "/etc/localtime"} {
+		if code, m := h.report("/v1/analytics/daily?tz="+url.QueryEscape(bad), tok); code != 400 {
+			t.Errorf("tz=%s: %d %v", bad, code, m)
+		}
 	}
 }
 

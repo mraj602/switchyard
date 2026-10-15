@@ -199,12 +199,19 @@ func (s *Server) analytics(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-// analyticsRange reads ?from=&to=&days=&seat=. from and to are days (YYYY-MM-DD, inclusive, hub
-// time zone); to defaults to today and from to the day that makes the range `days` (30) long.
-// msg is non-empty for a bad query.
+// analyticsRange reads ?from=&to=&days=&seat=&tz=. from and to are days (YYYY-MM-DD,
+// inclusive, in tz: the viewer's zone when the client passes one, else the hub's); to defaults
+// to today and from to the day that makes the range `days` (30) long. msg is non-empty for a
+// bad query.
 func (s *Server) analyticsRange(r *http.Request) (rg anaRange, msg string) {
 	q := r.URL.Query()
 	rg.tz = s.alertHubTZ(r)
+	if v := q.Get("tz"); v != "" {
+		if !rules.ValidZone(v) {
+			return rg, "tz must be an IANA time zone, such as Asia/Kolkata"
+		}
+		rg.tz = v
+	}
 	rg.loc = rules.Location(rg.tz)
 	rg.seat = q.Get("seat")
 	now := s.now().In(rg.loc)

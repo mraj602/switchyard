@@ -11,7 +11,7 @@
 // Construction in `sy hub serve` (WP-E):
 //
 //	eng := engine.New(engine.Config{Store: st, Clock: clock.Real{}, Senders: []model.Sender{wp, nf},
-//		TZ: os.Getenv("TZ"), PublicURL: publicURL, Log: logger})
+//		TZ: rules.SystemZone(), PublicURL: publicURL, Log: logger})
 //	srv := api.New(api.Config{Store: st, Engine: eng, ...})
 //	eng.SetBroker(srv.Broker)          // alert stream events
 //	if err := eng.Start(ctx); err != nil { ... }

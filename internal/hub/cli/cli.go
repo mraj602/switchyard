@@ -47,6 +47,7 @@ import (
 	pushlink "github.com/mraj602/switchyard/internal/hub/push/link"
 	"github.com/mraj602/switchyard/internal/hub/push/model"
 	"github.com/mraj602/switchyard/internal/hub/push/ntfy"
+	"github.com/mraj602/switchyard/internal/hub/push/rules"
 	"github.com/mraj602/switchyard/internal/hub/push/webpush"
 	"github.com/mraj602/switchyard/internal/hub/store"
 	"github.com/mraj602/switchyard/internal/hub/store/importproto"
@@ -344,7 +345,7 @@ func serve(args []string, stdout, stderr io.Writer) error {
 			cfg.Senders[s.Kind()] = s
 			list = append(list, s)
 		}
-		eng = engine.New(engine.Config{Store: st, Clock: clk, Senders: list, TZ: os.Getenv("TZ"), PublicURL: pub, Log: logger,
+		eng = engine.New(engine.Config{Store: st, Clock: clk, Senders: list, TZ: rules.SystemZone(), PublicURL: pub, Log: logger,
 			Link: lk})
 		cfg.Engine = eng // only when non-nil: a typed nil in the interface would be called
 	}
