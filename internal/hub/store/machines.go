@@ -293,21 +293,23 @@ type machineInfoFlags struct {
 	} `json:"timer"`
 }
 
-// MachineList is the read model of /v1/machines (machines.md 6.1), by name.
+// MachineList is the read model of /v1/machines (machines.md 6.1), by name. The outer machine
+// is aliased mc: the count subqueries use sessionFrom, which joins its own machine m, and an
+// outer m would be shadowed there (every machine then counted every machine's sessions).
 func (s *Store) MachineList(ctx context.Context, q MachineQuery, now time.Time) ([]MachineView, error) {
 	args := liveArgs(now)
-	sqlq := `SELECT m.id, m.name, m.os, m.arch, m.sy_version, coalesce(m.last_seen, 0), coalesce(m.last_record, 0), m.backlog,
-		(SELECT count(*)` + sessionFrom + ` WHERE s.machine_id = m.id AND ` + liveNowCondition + `),
-		(SELECT count(*)` + sessionFrom + ` WHERE s.machine_id = m.id AND ` + sessionStateExpr + ` IN (` + activeStatesSQL + `)),
-		m.reach, m.record_v, m.held, coalesce(m.backlog_oldest, 0), coalesce(m.backlog_at, 0), m.info, coalesce(m.removed_at, 0)
-		FROM machine m WHERE 1 = 1`
+	sqlq := `SELECT mc.id, mc.name, mc.os, mc.arch, mc.sy_version, coalesce(mc.last_seen, 0), coalesce(mc.last_record, 0), mc.backlog,
+		(SELECT count(*)` + sessionFrom + ` WHERE s.machine_id = mc.id AND ` + liveNowCondition + `),
+		(SELECT count(*)` + sessionFrom + ` WHERE s.machine_id = mc.id AND ` + sessionStateExpr + ` IN (` + activeStatesSQL + `)),
+		mc.reach, mc.record_v, mc.held, coalesce(mc.backlog_oldest, 0), coalesce(mc.backlog_at, 0), mc.info, coalesce(mc.removed_at, 0)
+		FROM machine mc WHERE 1 = 1`
 	if !q.All {
-		sqlq += ` AND m.removed_at IS NULL`
+		sqlq += ` AND mc.removed_at IS NULL`
 	}
 	if q.IDs != nil {
-		sqlq += " AND " + in("m.id", q.IDs, &args)
+		sqlq += " AND " + in("mc.id", q.IDs, &args)
 	}
-	rows, err := s.r.QueryContext(ctx, sqlq+` ORDER BY m.name, m.id`, args...)
+	rows, err := s.r.QueryContext(ctx, sqlq+` ORDER BY mc.name, mc.id`, args...)
 	if err != nil {
 		return nil, err
 	}

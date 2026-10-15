@@ -241,6 +241,9 @@ test('targets: who can get a notification', async () => {
   assert.deepEqual(T.notifiable(devs).map((x) => x.device.id), ['d1']);
   assert.equal(T.appPaired(devs), true);
   assert.equal(T.appPaired(devs.slice(1)), false);
+  // A machine paired by code keeps a link too, but it is not the Android app.
+  assert.equal(T.appPaired([{ id: 'm1', kind: 'machine', link: { connected: false }, targets: [] }]), false);
+  assert.equal(T.appPaired([{ id: 'p1', kind: 'phone', link: { connected: true }, targets: [] }]), true);
   assert.equal(T.notifiable(null).length, 0);
   assert.equal(T.targetKindText({ kind: 'link' }), 'Android app');
   assert.equal(T.targetKindText({ kind: 'webpush' }), 'browser notifications');

@@ -1,7 +1,7 @@
 // Session detail: state, last message, facts, transition timeline.
 
 import { h } from '../components/dom.js';
-import { dot, copyButton } from '../components/cards.js';
+import { dot, copyButton, ask } from '../components/cards.js';
 import { seatIndex, sessionSeat } from '../components/seat.js';
 import { stateTag, stateInfo, isEnded, isHistory } from '../components/state.js';
 import { ago, agoLabel, dateTime, timeOfDay, day, pct, projectOf, compact, humanKey, httpsUrl } from '../format.js';
@@ -14,6 +14,7 @@ let linked = null;
 
 export function load({ route }) {
   linked = null;
+  if (route.id !== showAllFor) { showAll = false; showAllFor = route.id; }
   const id = route.query.get('alert');
   if (id) getAlert(id).then((a) => { linked = a; window.dispatchEvent(new Event('sy-rerender')); }).catch(() => {});
   return openDetail(route.id);
@@ -31,7 +32,9 @@ function transitions(tl) {
   return tl.filter((e, i) => i === 0 || i === tl.length - 1 || (e.state_after && e.state_after !== tl[i - 1].state_after));
 }
 
+// "Show all events" is for the session it was turned on in.
 let showAll = false;
+let showAllFor = null;
 
 export function render({ store, route, now }) {
   const back = h('a', { href: '#/sessions', class: 'back' }, '← Sessions');
@@ -47,7 +50,9 @@ export function render({ store, route, now }) {
   const info = stateInfo(s);
   const tl = s.timeline || [];
   const events = showAll ? tl : transitions(tl);
-  const text = s.question || s.last_message;
+  const text = ask(s);
+  // The text is what it waits on (a question, a permission or a plan), not its last message.
+  const waits = !!s.question || s.state === 'needs_permission' || (s.state === 'asked' && s.tool_name === 'ExitPlanMode');
   // Imported from Claude Code's history: ended with detail "history" (D3), or a bare row.
   const fromHistory = s.state === 'ended' && s.detail === 'history';
   const imported = isHistory(s) || fromHistory;
@@ -73,7 +78,8 @@ export function render({ store, route, now }) {
     ['Session ID', h('span', { class: 'mono small' }, s.id)],
   ].filter(([, v]) => v);
 
-  const t = s.tokens;
+  // No replies counted (hooks never sent usage, or imported): no token line rather than zeros.
+  const t = s.tokens && s.tokens.replies ? s.tokens : null;
   const node = h('div', { class: 'page' }, back,
     h('header', { class: 'page-head col' },
       h('h1', {}, name, s.title || s.name ? h('span', { class: 'muted' }, ` · ${s.title || s.name}`) : null),
@@ -92,8 +98,8 @@ export function render({ store, route, now }) {
     s.resume ? h('pre', { class: 'cmd mono small' }, s.resume) : null,
     remote ? h('p', { class: 'muted small' }, 'The Claude app is signed in to one account at a time: if it shows another account, use the resume command.') : null,
 
-    text ? h('section', { class: `card quote needs-${info.cls}`, 'aria-label': s.question ? 'Question' : 'Last message' },
-      h('div', { class: 'quote-label' }, s.question ? 'Waiting on you' : 'Last message'),
+    text ? h('section', { class: `card quote needs-${info.cls}`, 'aria-label': waits ? 'Question' : 'Last message' },
+      h('div', { class: 'quote-label' }, waits ? 'Waiting on you' : 'Last message'),
       h('p', { class: s.state === 'needs_permission' ? 'mono' : '' }, text)) : null,
 
     h('div', { class: 'cols' },

@@ -729,3 +729,33 @@ func TestStreamEndsForADeviceRevokedFromTheList(t *testing.T) {
 		t.Fatal("the stream of a revoked device stayed open")
 	}
 }
+
+// The revoke itself ends the stream, not the next ping: with an hour between pings, a revoked
+// board must not keep getting live updates (the confirm says "It stops working at once").
+func TestStreamEndsAtOnceOnRevoke(t *testing.T) {
+	old := api.PairPepperPath
+	api.PairPepperPath = filepath.Join(t.TempDir(), "pair_pepper")
+	t.Cleanup(func() { api.PairPepperPath = old })
+	h := &pairHub{hub: startHubPing(t, "", time.Hour)}
+	h.svc = pair.NewService(h.st, api.PairPepperPath)
+	owner := h.ownerCookie()
+	phone, phoneID := h.phoneCookie("Pixel 9 · Chrome")
+	req, _ := http.NewRequest("GET", h.http.URL+"/v1/stream", nil)
+	req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: phone})
+	res, err := http.DefaultClient.Do(req)
+	if err != nil || res.StatusCode != 200 {
+		t.Fatalf("stream: %v %v", res, err)
+	}
+	defer res.Body.Close()
+	done := make(chan struct{})
+	go func() { _, _ = io.Copy(io.Discard, res.Body); close(done) }()
+	time.Sleep(100 * time.Millisecond)
+	if r := h.call("DELETE", "/v1/devices/"+phoneID, nil, opts{cookie: owner, ctype: "application/json"}); r.code != 204 {
+		t.Fatalf("revoke: %d", r.code)
+	}
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("the stream of a revoked device stayed open until the next ping")
+	}
+}

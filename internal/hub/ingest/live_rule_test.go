@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mraj602/switchyard/internal/hub/store"
 	"github.com/mraj602/switchyard/internal/record"
 )
 
@@ -55,5 +56,69 @@ func TestLiveRule(t *testing.T) {
 				t.Errorf("+%v: %s (%s, stale %v) dormant %v, want %v", tc.after, sid[len(sid)-1:], v.State, v.Stale, v.Dormant, want)
 			}
 		}
+	}
+}
+
+// Each machine counts only its own sessions: the machine list once counted every machine's
+// open sessions for every machine (its count subquery's own machine join shadowed the outer
+// row), and marked a quiet machine silent because another machine had a working session.
+func TestMachineLiveCountsArePerMachine(t *testing.T) {
+	f := newFixture(t)
+	m1, m2 := "m_"+record.NewID(t0), "m_"+record.NewID(t0.Add(time.Millisecond))
+	d1, d2 := f.device("laptop", m1), f.device("server", m2)
+	f.now = t0
+	ev := func(d store.Device, m, sid, name string) {
+		f.ingest(d, hook(t, m, t0, `{"hook_event_name":"`+name+`","session_id":"`+sid+`","cwd":"/home/me/x"}`))
+	}
+	ev(d1, m1, "eeeeeeee-0000-4000-8000-000000000001", "UserPromptSubmit")
+	ev(d1, m1, "eeeeeeee-0000-4000-8000-000000000002", "UserPromptSubmit")
+	ev(d2, m2, "eeeeeeee-0000-4000-8000-000000000003", "SessionStart")
+	at := t0.Add(20 * time.Minute) // past MachineSilent for both
+	got, err := f.st.MachineList(f.ctx, store.MachineQuery{}, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]struct {
+		live   int
+		silent bool
+	}{m1: {2, true}, m2: {1, false}}
+	if len(got) != 2 {
+		t.Fatalf("%d machines", len(got))
+	}
+	for _, m := range got {
+		w := want[m.ID]
+		if m.LiveSessions != w.live || m.Silent != w.silent {
+			t.Errorf("%s: live %d silent %v, want live %d silent %v", m.Name, m.LiveSessions, m.Silent, w.live, w.silent)
+		}
+	}
+}
+
+// A session waiting on a permission carries the tool and Claude Code's notification text
+// (sessionWaitExpr), so the board can say what it waits on; once it moves on, both are null.
+func TestSessionWaitsOnToolAndNotification(t *testing.T) {
+	f := newFixture(t)
+	m := "m_" + record.NewID(t0)
+	d := f.device("laptop", m)
+	sid := "eeeeeeee-0000-4000-8000-000000000011"
+	at := t0
+	ev := func(payload string) {
+		at = at.Add(time.Second)
+		f.now = at
+		f.ingest(d, hook(t, m, at, `{"session_id":"`+sid+`","cwd":"/home/me/x",`+payload+`}`))
+	}
+	ev(`"hook_event_name":"UserPromptSubmit","prompt":"go"`)
+	ev(`"hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"rm -rf build"}`)
+	ev(`"hook_event_name":"Notification","message":"Claude needs your permission to use Bash"`)
+	v := f.session(sid)
+	if v.State != "needs_permission" {
+		t.Fatalf("state %s", v.State)
+	}
+	if v.ToolName == nil || *v.ToolName != "Bash" || v.Notification == nil || *v.Notification != "Claude needs your permission to use Bash" {
+		t.Fatalf("tool %v notification %v", v.ToolName, v.Notification)
+	}
+	ev(`"hook_event_name":"UserPromptSubmit","prompt":"ok"`)
+	v = f.session(sid)
+	if v.ToolName != nil || v.Notification != nil {
+		t.Fatalf("after answer: tool %v notification %v", v.ToolName, v.Notification)
 	}
 }
