@@ -117,6 +117,10 @@ export interface Session {
   remote_url?: string | null;
   resume?: string | null;
   stale?: boolean;
+  /** Idle or stale long enough that it no longer counts as open (states.md 5). */
+  dormant?: boolean;
+  /** Last sign of life: event, state change, start or end; never a listing. */
+  activity_at?: Iso | null;
   machine_stale?: boolean;
   alert?: AlertBrief | null;
 }

@@ -10,12 +10,12 @@ import { ask } from '../needs-card';
 import { useTheme } from '../theme';
 import { Calm, Card, Chip, Dot, Muted, Page, StateTag } from '../ui';
 
-const FILTERS: { id: SessionFilter; label: string; test: (s: Session) => boolean }[] = [
+const FILTERS: { id: SessionFilter; label: string; test: (s: Session, now: number) => boolean }[] = [
   { id: 'needs_you', label: 'Needs you', test: (s) => s.needs_you },
   { id: 'working', label: 'Working', test: (s) => s.state === 'working' },
   { id: 'done', label: 'Done', test: (s) => s.state === 'done' },
-  { id: 'all', label: 'All', test: (s) => isLive(s) },
-  { id: 'ended', label: 'Ended', test: (s) => !isLive(s) },
+  { id: 'all', label: 'All', test: (s, now) => isLive(s, now) },
+  { id: 'ended', label: 'Ended or idle', test: (s, now) => !isLive(s, now) },
 ];
 
 const asFilter = (v?: string): SessionFilter => (FILTERS.some((f) => f.id === v) ? (v as SessionFilter) : 'all');
@@ -34,7 +34,7 @@ export default function SessionsScreen({ filter: filterParam, by, machine }: { f
   }
   const idx = seatIndex(o?.seats ?? []);
   const f = FILTERS.find((x) => x.id === filter) ?? FILTERS[3]!;
-  const rows = all.filter((s) => f.test(s) && (!machine || s.machine === machine));
+  const rows = all.filter((s) => f.test(s, api.now) && (!machine || s.machine === machine));
 
   const groups = new Map<string, { label: string; colour?: string; sub: string; rows: Session[] }>();
   for (const s of rows) {
@@ -70,7 +70,7 @@ export default function SessionsScreen({ filter: filterParam, by, machine }: { f
     <Page title="Sessions">
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {FILTERS.map((x) => (
-          <Chip key={x.id} testID={`filter-${x.id}`} label={x.label} count={all.filter((s) => x.test(s)).length} on={x.id === filter} onPress={() => setFilter(x.id === filter ? 'all' : x.id)} />
+          <Chip key={x.id} testID={`filter-${x.id}`} label={x.label} count={all.filter((s) => x.test(s, api.now)).length} on={x.id === filter} onPress={() => setFilter(x.id === filter ? 'all' : x.id)} />
         ))}
         <Chip testID="by-machine" label="By machine" on={group === 'machine'} onPress={() => setGroup(group === 'machine' ? 'account' : 'machine')} />
       </View>

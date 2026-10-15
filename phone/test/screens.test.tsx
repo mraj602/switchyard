@@ -13,9 +13,9 @@ import SessionScreen from '../src/components/screens/SessionScreen';
 import { swipeAction } from '../src/components/needs-card';
 import SessionsScreen from '../src/components/screens/SessionsScreen';
 import SettingsScreen from '../src/components/screens/SettingsScreen';
-import { clock, mostRoom } from '../src/lib/format';
+import { clock, isLive, mostRoom } from '../src/lib/format';
 import { HubError } from '../src/lib/hub';
-import type { Device } from '../src/contract/api';
+import type { Device, Session } from '../src/contract/api';
 import { NOW, fakeClient, freshData, fx, makeHarness, routerMock } from './screen-harness';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -130,7 +130,7 @@ describe('Sessions', () => {
 
   it('shows live sessions, grouped by account, and filters', async () => {
     await show(<SessionsScreen />);
-    expect(rows().length).toBe(fx.sessions.sessions.filter((s) => s.state !== 'ended' && s.state !== 'gone').length);
+    expect(rows().length).toBe(fx.sessions.sessions.filter((s) => isLive(s as Session, NOW)).length);
     await fireEvent.press(screen.getByTestId('filter-needs_you'));
     expect(rows().length).toBe(3);
     await fireEvent.press(screen.getByTestId('filter-working'));
@@ -138,7 +138,10 @@ describe('Sessions', () => {
     await fireEvent.press(screen.getByTestId('filter-done'));
     expect(rows().length).toBe(fx.sessions.sessions.filter((s) => s.state === 'done').length);
     await fireEvent.press(screen.getByTestId('filter-ended'));
-    expect(screen.getByText('No ended sessions.')).toBeTruthy();
+    // Idle done sessions (12 h without activity at the fixture's clock) sit here with the ended ones.
+    const quiet = fx.sessions.sessions.filter((s) => !isLive(s as Session, NOW)).length;
+    expect(quiet).toBeGreaterThan(0);
+    expect(rows().length).toBe(quiet);
   });
 
   it('starts on the filter and grouping of its route params', async () => {
@@ -149,7 +152,7 @@ describe('Sessions', () => {
 
   it('filters by machine', async () => {
     await show(<SessionsScreen machine="m_gpu" />);
-    const want = fx.sessions.sessions.filter((s) => s.machine === 'm_gpu' && s.state !== 'ended').length;
+    const want = fx.sessions.sessions.filter((s) => s.machine === 'm_gpu' && isLive(s as Session, NOW)).length;
     expect(rows().length).toBe(want);
   });
 
