@@ -42,7 +42,25 @@ export function stateInfo(s: Pick<Session, 'state' | 'detail' | 'needs_you'>): S
   return base;
 }
 
-export const isLive = (s: Pick<Session, 'state'>): boolean => s.state !== 'ended' && s.state !== 'gone';
+/** How long a finished turn may sit before the session no longer counts as open (the hub's 12 h mark). */
+export const IDLE_MS = 12 * 36e5;
+
+/**
+ * Open: not ended, and not a finished session idle for 12 h, nor a stale working one. The
+ * board's isLive (webui/static/components/live.js) and the hub's `dormant` use the same rule
+ * (states.md 5); the hub's own `dormant` wins when it is sent.
+ */
+export const isLive = (
+  s: Pick<Session, 'state'> & Partial<Pick<Session, 'needs_you' | 'stale' | 'dormant' | 'activity_at' | 'last_event_at' | 'state_since' | 'started_at'>>,
+  now: number = Date.now(),
+): boolean => {
+  if (s.state === 'ended' || s.state === 'gone') return false;
+  if (s.needs_you) return true;
+  if (typeof s.dormant === 'boolean') return !s.dormant;
+  if (s.state !== 'done' && !s.stale) return true;
+  const t = Date.parse(s.activity_at || s.last_event_at || s.state_since || s.started_at || '');
+  return Number.isNaN(t) || now - t < IDLE_MS;
+};
 
 /**
  * The short state word of a session ("Asked", "Permission", "Rate limited", "Done", …): the
