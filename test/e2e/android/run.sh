@@ -17,6 +17,7 @@
 #   8  task removed (swipe away from Recents): the service keeps running
 #   9  adb reboot: BOOT_COMPLETED restarts the service, the link reconnects
 #  11  claude.ai account tabs (P17): two seats, a WebView profile each, Open in Claude, sign out
+#  12  analytics (More > Analytics): a token_rows record from the fake machine shows in the totals
 #  10  revoke from the hub API (DELETE /v1/devices/{id}): 4403, service stops, UI says so, and no
 #      orphaned notification is left; then `sy hub token revoke` (CLI) the same way
 #
@@ -237,6 +238,12 @@ shade_tap() { # the action button of the notification shade
   local rc=$?
   shade_close
   return $rc
+}
+go_bar() { # go_bar LABEL: the bottom bar entry (not a screen's own title)
+  local xy
+  ui_dump || return 1
+  xy="$(python3 -I "$LIB" tapbar "$1" <"$T/ui.xml")" || return 1
+  adbx shell input tap $xy
 }
 home() { adbx shell input keyevent KEYCODE_HOME; }
 launch() { adbx shell am start -n "$PKG/.MainActivity" >/dev/null 2>&1; }
@@ -496,12 +503,6 @@ if phase_on 11; then
 
   profiles_has() { ui_has "id=tabrow-$1"; }
   profiles_not() { ui_dump && ! python3 -I "$LIB" has "id=tabrow-$1" <"$T/ui.xml"; }
-  go_bar() { # go_bar LABEL: the bottom bar entry (not a screen's own title)
-    local xy
-    ui_dump || return 1
-    xy="$(python3 -I "$LIB" tapbar "$1" <"$T/ui.xml")" || return 1
-    adbx shell input tap $xy
-  }
   scroll_to() { # scroll_to TEXT: swipe up until a node with TEXT is on screen
     local i
     for i in 1 2 3 4 5 6 7 8; do
@@ -603,6 +604,31 @@ if phase_on 11; then
   adbx shell input keyevent KEYCODE_BACK
 
   echo "SKIP  11.19 a non-claude link goes to the browser  [the hub drops any remote_url outside https://claude.ai/, so no session carries one; nothing on screen is a non-claude link]"
+fi
+
+# ================================================================ 12 analytics
+if phase_on 12; then
+  echo "== 12 analytics: More > Analytics shows the totals of a token row"
+  if ! has_phone; then # phase 10 leaves the phone revoked: pair again
+    pair_by_link
+    wait_until 30 ui_has "Pair with 10.0.2.2:$PORT" && tap_pair
+    check "12.0 the phone is paired again" 60 link_connected
+  fi
+  # 1M in + 100k out of claude-sonnet-5 = $3.00 at API list prices, 1 reply, today (UTC)
+  "$T/bin/fakemachine" -hub "$(hub_origin)" -token "$MTOKEN" -machine "$MACHINE" -session "$(sid 21)" tokens >>"$T/fakemachine.log" 2>&1 \
+    && pass "12.1 the fake machine posted a token_rows record" || fail "12.1 the fake machine posted a token_rows record"
+  USD="$(api GET '/v1/analytics/daily?days=7' | python3 -I "$LIB" json totals.api_usd)"
+  python3 -I -c "import sys;sys.exit(abs(float(sys.argv[1] or 0)-3) > 1e-6)" "$USD" && pass "12.2 the hub reports \$3.00 for the last 7 days" || fail "12.2 the hub reports \$3.00 for the last 7 days" "api_usd=$USD"
+  launch
+  wait_until 30 ui_has "Needs you" || save_diag ana0
+  go_bar More
+  check "12.3 More lists Analytics" 15 ui_has "id=more-analytics"
+  ui_tap "id=more-analytics"
+  check "12.4 the Analytics screen loads its totals" 30 ui_has "id=total-usd"
+  ui_has '$3.00' && pass "12.5 API-equivalent cost reads \$3.00" || { fail "12.5 API-equivalent cost reads \$3.00"; save_diag ana; }
+  ui_has "1.1M" && pass "12.6 Tokens reads 1.1M" || fail "12.6 Tokens reads 1.1M"
+  ui_has "id=day-bars" && pass "12.7 the daily bars are drawn" || fail "12.7 the daily bars are drawn"
+  adbx shell input keyevent KEYCODE_BACK
 fi
 
 # ================================================================ summary
