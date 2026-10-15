@@ -167,6 +167,12 @@ func TestOtherUserRefused(t *testing.T) {
 	})
 	defer r.stop(t)
 	rep, err := Call(r.sock, Request{Op: OpState}, time.Second)
+	// The agent refuses and closes at once. If it closes before the client checks who serves
+	// the socket, macOS cannot report a closed peer's uid and the client refuses first (also
+	// ErrNoAgent, nothing sent). Either way no state comes back.
+	if errors.Is(err, ErrNoAgent) {
+		return
+	}
 	if err != nil || rep.Error == nil || rep.State != nil {
 		t.Fatalf("%+v %v", rep, err)
 	}
