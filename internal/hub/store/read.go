@@ -51,7 +51,7 @@ func (t Time) MarshalJSON() ([]byte, error) {
 const (
 	StaleAfter       = 12 * time.Hour
 	MachineSilent    = 15 * time.Minute
-	LiveWithin       = 24 * time.Hour
+	LiveWithin       = 12 * time.Hour // a done session idle this long is dormant (states.md 5)
 	TimelineMax      = 500
 	activeStatesSQL  = `'working', 'needs_permission', 'asked'`
 	activityExpr     = `max(coalesce(s.last_event_at, 0), coalesce(s.last_listed_at, 0), coalesce(s.started_at, 0), coalesce(s.ended_at, 0))`
@@ -59,9 +59,13 @@ const (
 	sessionNeedsExpr = `coalesce(st.needs_you, 0)`
 	sessionSinceExpr = `coalesce(st.since_at, s.started_at, s.last_event_at, 0)`
 	liveCondition    = sessionStateExpr + ` NOT IN ('ended', 'gone')`
-	// liveNowCondition is "open and not dormant" (states.md 5), with one ? for now - LiveWithin:
-	// every live count (overview, machines, accounts) uses it.
-	liveNowCondition  = liveCondition + ` AND (` + activityExpr + ` >= ? OR ` + sessionNeedsExpr + ` = 1)`
+	// liveNowCondition is "open and not dormant" (states.md 5): needs you, or any other open
+	// state but done unless it is stale, or done with activity in the last LiveWithin. Its two
+	// ? are both now - 12 h (liveArgs): every live count (overview, machines, accounts) uses it,
+	// and the board's isLive (components/live.js) is the same rule.
+	liveNowCondition = liveCondition + ` AND (` + sessionNeedsExpr + ` = 1 OR (` + sessionStateExpr + ` <> 'done' AND NOT (` +
+		sessionStateExpr + ` = 'working' AND coalesce(s.last_listed_at, 0) = 0 AND coalesce(s.last_event_at, 0) > 0 AND s.last_event_at < ?)) OR ` +
+		activityExpr + ` >= ?)`
 	sessionSelectCols = `s.id, ` + sessionStateExpr + `, st.detail, ` + sessionNeedsExpr + `, ` + sessionSinceExpr + `, st.question,
 	(SELECT h.last_message FROM hook_event h WHERE h.session_id = s.id AND h.event IN ('Stop', 'StopFailure') ORDER BY h.ts DESC LIMIT 1),
 	s.seat_id, se.label, se.colour, s.machine_id, m.name, sl.folder, sl.launcher, s.project, s.cwd, s.name, s.title, s.kind,
@@ -165,7 +169,8 @@ func scanSession(sc interface{ Scan(...any) error }, now time.Time) (SessionView
 	active := v.State == "working" || v.State == "needs_permission" || v.State == "asked"
 	v.MachineStale = active && lastSeen > 0 && nowMS-lastSeen > MachineSilent.Milliseconds()
 	v.Activity = Time(activity)
-	v.Dormant = v.State != "ended" && v.State != "gone" && !v.NeedsYou && nowMS-activity > LiveWithin.Milliseconds()
+	v.Dormant = v.State != "ended" && v.State != "gone" && !v.NeedsYou && !(v.State != "done" && !v.Stale) &&
+		nowMS-activity > LiveWithin.Milliseconds()
 	if alertJSON.Valid {
 		v.Alert = scanAlertBrief(alertJSON.String)
 	}
@@ -424,11 +429,16 @@ type SessionCounts struct {
 	Live     int `json:"live"`
 }
 
-// Counts counts live sessions: open and not dormant (activity in the last LiveWithin, or needs you).
+// liveArgs are the two arguments of liveNowCondition.
+func liveArgs(now time.Time) []any {
+	return []any{now.Add(-StaleAfter).UnixMilli(), now.Add(-LiveWithin).UnixMilli()}
+}
+
+// Counts counts live sessions: open and not dormant (states.md 5).
 func (s *Store) Counts(ctx context.Context, now time.Time) (SessionCounts, error) {
 	var c SessionCounts
 	err := s.r.QueryRowContext(ctx, `SELECT coalesce(sum(`+sessionStateExpr+` = 'working'), 0), coalesce(sum(`+sessionNeedsExpr+` = 1), 0),
 		coalesce(sum(`+sessionStateExpr+` = 'done'), 0), count(*)`+sessionFrom+` WHERE `+liveNowCondition,
-		now.Add(-LiveWithin).UnixMilli()).Scan(&c.Working, &c.NeedsYou, &c.Done, &c.Live)
+		liveArgs(now)...).Scan(&c.Working, &c.NeedsYou, &c.Done, &c.Live)
 	return c, err
 }

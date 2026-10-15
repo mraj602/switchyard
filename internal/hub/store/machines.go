@@ -295,7 +295,7 @@ type machineInfoFlags struct {
 
 // MachineList is the read model of /v1/machines (machines.md 6.1), by name.
 func (s *Store) MachineList(ctx context.Context, q MachineQuery, now time.Time) ([]MachineView, error) {
-	args := []any{now.Add(-LiveWithin).UnixMilli()}
+	args := liveArgs(now)
 	sqlq := `SELECT m.id, m.name, m.os, m.arch, m.sy_version, coalesce(m.last_seen, 0), coalesce(m.last_record, 0), m.backlog,
 		(SELECT count(*)` + sessionFrom + ` WHERE s.machine_id = m.id AND ` + liveNowCondition + `),
 		(SELECT count(*)` + sessionFrom + ` WHERE s.machine_id = m.id AND ` + sessionStateExpr + ` IN (` + activeStatesSQL + `)),

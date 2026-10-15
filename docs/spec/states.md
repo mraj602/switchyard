@@ -214,12 +214,14 @@ alone, because a quiet session (a long build, a person reading) is normal.
   `machine_stale = true`. The machine-silent alert (1 hour, plan section 11) is phase 4.
 - **Done sessions with no list:** nothing happens; `done` is a resting state.
 
-- **Dormant.** An open session (not `ended`/`gone`) that does not need you and has had no
-  activity (hook event, listing, start or end) for **24 hours** is reported with
-  `dormant = true` (read time, not a state). `counts.live` and the overview leave it out;
-  the session list still shows it (as `done`, `failed`, …) inside its `days` window. A
-  session on a slot with complete lists is listed every 5 minutes while it runs, so only a
-  slot without lists (or a machine that stopped sending) can have dormant sessions.
+- **Dormant.** An open session (not `ended`/`gone`) that does not need you is reported with
+  `dormant = true` (read time, not a state) when it is `done` with no activity (hook event,
+  listing, start or end) for **12 hours**, or `working` and `stale` (above). Any other open
+  state (`failed`, a fresh `working`) is not dormant however old. `counts.live`, the
+  machines' and accounts' live counts and the overview leave dormant sessions out; the
+  session list still shows them inside its `days` window. The board's "open" filter is the
+  same rule. A session on a slot with complete lists is listed every 5 minutes while it runs,
+  so only a slot without lists (or a machine that stopped sending) can have dormant sessions.
 
 The timer interval and both thresholds are hub settings (`setting` table), with these
 defaults.
