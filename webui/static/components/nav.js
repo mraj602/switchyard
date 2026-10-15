@@ -22,7 +22,7 @@ export function liveBadge(status, offline) {
 
 // `where`: phone = bottom tabs only, desk = sidebar only, both = everywhere (CSS hides the
 // other, nav-phone / nav-desk). Tabs on a phone: Now, Sessions, Accounts, More; the sidebar
-// on a computer: Now, Sessions, Accounts, Machines, Alerts, Settings, Peers (+ Devices for the owner).
+// on a computer: Now, Sessions, Accounts, Machines, Alerts, Settings, Analytics, Peers (+ Devices for the owner).
 const ITEMS = [
   { id: 'now', href: '#/', label: 'Now', icon: 'M3 12h4l3-8 4 16 3-8h4', where: 'both' },
   { id: 'sessions', href: '#/sessions', label: 'Sessions', icon: 'M4 6h16M4 12h16M4 18h16', where: 'both' },
@@ -30,6 +30,7 @@ const ITEMS = [
   { id: 'machines', href: '#/machines', label: 'Machines', icon: 'M3 5h18v10H3zM8 19h8M12 15v4', where: 'desk' },
   { id: 'alerts', href: '#/more/alerts', label: 'Alerts', icon: 'M6 9a6 6 0 0112 0c0 6 2 7 2 7H4s2-1 2-7zM10 20a2 2 0 004 0', where: 'desk' },
   { id: 'settings', href: '#/more/settings', label: 'Settings', icon: 'M12 15a3 3 0 100-6 3 3 0 000 6zM19 12l2-1-1-3-2 .5-1.5-1.5.5-2-3-1-1 2h-2l-1-2-3 1 .5 2L6.5 8.5 4.5 8l-1 3 2 1v2l-2 1 1 3 2-.5L8 19.5l-.5 2 3 1 1-2h2l1 2 3-1-.5-2 1.5-1.5 2 .5 1-3-2-1z', where: 'desk' },
+  { id: 'analytics', href: '#/more/analytics', label: 'Analytics', icon: 'M5 20V10M12 20V4M19 20v-7', where: 'desk' },
   { id: 'peers', href: '#/more/peers', label: 'Peers', icon: 'M4 7h12l-3-3M20 17H8l3 3', where: 'desk' },
   { id: 'devices', href: '#/more/devices', label: 'Devices', icon: 'M8 3h8a1 1 0 011 1v16a1 1 0 01-1 1H8a1 1 0 01-1-1V4a1 1 0 011-1zM11 18h2', where: 'desk', owner: true },
   { id: 'more', href: '#/more', label: 'More', icon: 'M5 12h.01M12 12h.01M19 12h.01', where: 'phone' },
