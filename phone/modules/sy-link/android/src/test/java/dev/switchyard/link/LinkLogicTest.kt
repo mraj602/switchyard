@@ -317,3 +317,43 @@ class RemovedNoticeTest {
     assertEquals(CloseAction.Stop("revoked", CloseCodes.REMOVED_NOTICE), CloseCodes.decide(4403, 1))
   }
 }
+
+class RevokedStatusSurvivesShutdownTest {
+  private fun client(p: TestPhone) = LinkClient(
+    p.store, SoftwareSigner(), p.processor(),
+    object : LinkEvents {
+      override fun state() = Unit
+      override fun stopped(status: String, why: String) = Unit
+      override fun longTimer(atMs: Long) = Unit
+    },
+    { JSONObject() }, { it() },
+  )
+
+  /**
+   * After a 4403 the service stops itself and its onDestroy shuts the client down, which queues
+   * stop(): it must not turn "revoked" into "off", or the unpair that follows (JS, seconds later)
+   * sees no revocation and leaves no "removed from the hub" notice.
+   */
+  @Test
+  fun `the client's shutdown after a 4403 keeps the revoked status for the unpair`() {
+    val p = TestPhone()
+    p.store.setConnection("revoked", null, null, null, CloseCodes.REMOVED_NOTICE)
+    val c = client(p)
+    c.stop().get()
+    c.shutdown()
+    assertEquals("revoked", p.store.status)
+    assertEquals(CloseCodes.REMOVED_NOTICE, CloseCodes.noticeAfterReset(p.store.status))
+  }
+
+  @Test
+  fun `stop still reports off for a link that was running or backing off`() {
+    for (st in listOf("connected", "backoff", "connecting", "off")) {
+      val p = TestPhone()
+      p.store.setConnection(st, null, null, null, null)
+      val c = client(p)
+      c.stop().get()
+      c.shutdown()
+      assertEquals("off", p.store.status)
+    }
+  }
+}
