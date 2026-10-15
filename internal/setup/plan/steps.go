@@ -273,7 +273,7 @@ func (p *planner) planHub() error {
 		}
 		unit, name := p.serviceUnit()
 		if !(h.ServiceInstalled && h.ServiceActive) {
-			p.add(model.StepHub, model.Action{Op: model.OpService, Name: name, Unit: unit,
+			p.add(model.StepHub, model.Action{Op: model.OpService, Name: name, Unit: unit, Listen: p.c.Listen,
 				Note: "sy hub serve --listen " + listen, Pre: pres(preAbsent(unit))})
 		}
 		p.add(model.StepHub, model.Action{Op: model.OpConnect, URL: url, Note: "token minted locally; installs the timer"})

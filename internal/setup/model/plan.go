@@ -159,7 +159,10 @@ type Action struct {
 
 	Name string `json:"name,omitempty"` // service
 	Unit string `json:"unit,omitempty"` // service: unit file path
-	URL  string `json:"url,omitempty"`  // connect (the token is never in the plan)
+	// Listen is the hub service's `--listen` address when --listen was given; empty means
+	// the service default (127.0.0.1:8787).
+	Listen string `json:"listen,omitempty"`
+	URL    string `json:"url,omitempty"` // connect (the token is never in the plan)
 	// connect, phase 5: hub.dial (forward mode) and hub.reach ("pull": no URL, no token).
 	Dial  string `json:"dial,omitempty"`
 	Reach string `json:"reach,omitempty"`
