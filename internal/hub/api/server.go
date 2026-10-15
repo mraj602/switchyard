@@ -52,6 +52,9 @@ type Config struct {
 	Keys *hubkeys.Service
 	// Link is the device link (F1, link.md). Nil: /v1/link and /v1/link/poll answer 503.
 	Link Link
+	// PeerThreads is the peer relay (PE3, peers.md 6.3). Nil: POST
+	// /v1/peers/threads/{id}/resume answers 503.
+	PeerThreads PeerThreads
 	// AppMirror is the mirrored Android app release (N2, phone.md P16.2). Nil: /v1/app/android
 	// answers 404.
 	AppMirror AppMirror

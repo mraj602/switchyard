@@ -303,6 +303,7 @@ func serve(args []string, stdout, stderr io.Writer) error {
 	})
 	cfg.Link = lk
 	relay.Link = lk
+	cfg.PeerThreads = relay // "Resume thread" (peers.md 6.3)
 	// A new matrix goes to every machine at once (link.md 7); the sweeper catches the rest.
 	// A pause also drops the queued peer messages (peers.md 11).
 	ks.OnMatrix = func(d keys.Doc) {
