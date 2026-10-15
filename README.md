@@ -20,6 +20,8 @@ it phase by phase.
 - [docs/spec/](docs/spec/): the contract (records, hub schema, session states, API, tokens,
   identity, outbox, paths).
 - [docs/phases/](docs/phases/): the task list of each phase.
+- [docs/TESTING.md](docs/TESTING.md): an ordered manual test guide for a real setup (laptop,
+  SSH worker, phone). Most of what is below has not been tested by hand yet.
 
 ```bash
 make build    # ./dist/sy (Go 1.27)
@@ -46,6 +48,19 @@ sy uninstall             # remove what sy installed; your folders and logins sta
 ```
 
 See [docs/spec/setup.md](docs/spec/setup.md) for every flag.
+
+### Keys, the link and peers
+
+Newer parts, all off until you turn them on (see [docs/TESTING.md](docs/TESTING.md) to try them):
+
+| What | Commands | Spec |
+| --- | --- | --- |
+| Owner key: a passphrase-sealed key on your own machine that signs what machines and phones may do; the hub cannot widen on its own with it set up | `sy keys init`, `sy keys status`, `sy keys certify`, `sy hub keys confirm-owner` | [keys.md](docs/spec/keys.md) |
+| The link and `sy agent`: one encrypted, hub-signed channel per device (`/v1/link`), and the per-machine agent service that holds it | `sy agent enable`, `sy agent status` | [link.md](docs/spec/link.md) |
+| Peers: Claude Code sessions message each other across accounts and machines, gated by an account matrix you set; the hub relays ciphertext and never sees the text. Includes the `peers` skill and Settings → Peers on the board and phone | `sy peers enable`, `matrix`, `allow`, `deny`, `pause`, `send`, `audit` | [peers.md](docs/spec/peers.md) |
+| Android app notifications without Google, Expo or any account: the app keeps its own link to your hub and posts them itself (Settings → Notifications), with an in-app updater and a release build you sign yourself | `make phone-apk-release` | [push.md 13-14](docs/spec/push.md), [phone.md](docs/spec/phone.md) |
+
+Owner-key commands refuse to run inside a Claude Code session; run them in a normal terminal.
 
 The rest of this README describes the prototype.
 
