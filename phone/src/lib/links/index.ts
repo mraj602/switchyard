@@ -109,6 +109,7 @@ export function hashToRoute(url: string): AppRoute | null {
     if (segs.length === 2 && segs[1] === 'alerts') return { name: 'alerts-settings' };
     if (segs.length === 2 && segs[1] === 'settings') return { name: 'settings' };
     if (segs.length === 2 && segs[1] === 'peers') return { name: 'peers' };
+    if (segs.length === 2 && segs[1] === 'analytics') return { name: 'analytics' };
     return null;
   }
   return commonRoute(segs, query);

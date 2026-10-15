@@ -24,11 +24,12 @@ import * as alerts from './views/alerts.js';
 import * as settings from './views/settings.js';
 import * as devices from './views/devices.js';
 import * as peers from './views/peers.js';
+import * as analytics from './views/analytics.js';
 import * as pair from './views/pair.js';
 import * as owner from './views/owner.js';
 import * as alertRedirect from './views/alert-redirect.js';
 
-const VIEWS = { now, sessions, session, accounts, machines, login, more, alerts, settings, devices, peers, pair, owner, alertRedirect };
+const VIEWS = { now, sessions, session, accounts, machines, login, more, alerts, settings, devices, peers, analytics, pair, owner, alertRedirect };
 const navEl = document.getElementById('nav');
 const mainEl = document.getElementById('main');
 const announceEl = document.getElementById('announce');

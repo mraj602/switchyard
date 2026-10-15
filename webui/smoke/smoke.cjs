@@ -125,6 +125,7 @@ async function boardFlow(sizeName, w, hgt) {
   for (const [name, hash, sel] of [['more', '#/more', '.more-list'], ['alerts-readonly', '#/more/alerts', '.log'], ['settings-readonly', '#/more/settings', '[data-key=build]'], ['devices-readonly', '#/more/devices', '.calm']]) {
     await visit(page, sizeName, name, hash, sel);
   }
+  await analyticsChecks(page, sizeName, 'board');
   // A plain board login has no Rename / Remove / Pull now, but sees reach, version and pull state.
   await visit(page, sizeName, 'machines-readonly', '#/machines', '.machine');
   if (await page.$('.machine-actions')) fail(page.tag('read-only session shows the machine actions'));
@@ -171,6 +172,7 @@ async function phoneFlow(sizeName, w, hgt) {
   await visit(page, sizeName, 'p-session', `#/sessions/${ASKED}?alert=al_pending`, '.session-actions');
   await visit(page, sizeName, 'p-accounts', '#/accounts?seat=seat_work', '.room');
   await visit(page, sizeName, 'p-more', '#/more', '.more-list');
+  await analyticsChecks(page, sizeName, 'phone');
   await visit(page, sizeName, 'p-alerts', '#/more/alerts', '.log');
   await visit(page, sizeName, 'p-settings', '#/more/settings', '[data-key=notif-state]');
 
@@ -308,6 +310,30 @@ async function machinesFlow(page, sizeName) {
 
 const ACCT = (n) => `3f1c6a2e-0000-4000-8000-0000000000${String(n).padStart(2, '0')}`;
 const CELL = (a, b) => `[data-key="cell-${ACCT(a)}-${ACCT(b)}"]`;
+
+// ---- Analytics (analytics.md): totals, bars, lists, heatmap, range and seat controls ---------------
+
+async function analyticsChecks(page, sizeName, who) {
+  const t = (m) => page.tag(`analytics ${who}: ${m}`);
+  const txt = (sel) => page.$eval(sel, (e) => e.textContent.trim()).catch(() => '');
+  await visit(page, sizeName, `${who}-analytics`, '#/more/analytics', '[data-key=ana-bars] .ana-bar');
+  const bars = () => page.$$eval('[data-key=ana-bars] .ana-bar', (e) => e.length);
+  if ((await bars()) !== 30) fail(t(`expected 30 bars, got ${await bars()}`));
+  if (!/\$\d/.test(await txt('.ana-tiles'))) fail(t('no dollar total in the tiles'));
+  for (const h of ['Cost per day', 'By model', 'By project', 'When you work', 'Limit hits']) {
+    if (!(await page.$$eval('section h2', (hs, want) => hs.some((x) => x.textContent === want), h))) fail(t(`no "${h}" section`));
+  }
+  if (!/Opus 4\.6/.test(await txt('.ana-list'))) fail(t('no model row'));
+  if ((await page.$$eval('[data-key=ana-heat] .ana-cell', (e) => e.length)) !== 168) fail(t('heatmap is not 7 x 24'));
+  if (!(await page.$('[data-key=ana-heat] .ana-cell.lvl-4'))) fail(t('heatmap has no hottest cell'));
+  await page.click('[data-key=ana-days-7]');
+  try { await page.waitForFunction(() => document.querySelectorAll('[data-key=ana-bars] .ana-bar').length === 7, { timeout: 4000 }); } catch (e) { fail(t('7 days did not give 7 bars')); }
+  await page.select('[data-key=ana-seat]', 'seat_work');
+  try { await page.waitForFunction(() => document.querySelector('[data-key=ana-seat]').value === 'seat_work', { timeout: 4000 }); } catch (e) { fail(t('seat choice did not stick')); }
+  await sleep(400);
+  await shot(page, `${sizeName}-${who}-analytics-7d`);
+  await page.evaluate(() => { location.hash = '#/more'; });
+}
 
 async function peersChecks(page, sizeName, who, owner) {
   const t = (m) => page.tag(`peers ${who}: ${m}`);
