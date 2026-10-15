@@ -19,6 +19,7 @@ import (
 	"github.com/mraj602/switchyard/internal/client"
 	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
 	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/switchyard/internal/localtime"
 	peerspkg "github.com/mraj602/switchyard/internal/peers"
 )
 
@@ -700,7 +701,7 @@ func peersStatus(args []string, stdout, stderr io.Writer) error {
 	tw := tabwriter.NewWriter(stdout, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "WHEN\tSTATUS\tFROM\tTO\tSIZE\tMSG")
 	for _, l := range keep {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%d\t%s\n", l.TS, l.Status, shortID(l.From), shortID(l.To), l.Size, l.Msg)
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%d\t%s\n", localtime.String(l.TS), l.Status, shortID(l.From), shortID(l.To), l.Size, l.Msg)
 	}
 	return tw.Flush()
 }
@@ -766,21 +767,27 @@ func peersAudit(args []string, stdout, stderr io.Writer) error {
 		enc.SetIndent("", "  ")
 		return enc.Encode(out)
 	}
-	tw := tabwriter.NewWriter(stdout, 0, 4, 2, ' ', 0)
+	// Section titles are plain lines, not table cells, so they do not widen WHEN; each
+	// section is its own table.
 	if hubOK {
-		fmt.Fprintln(tw, "HUB\t\t\t")
+		fmt.Fprintln(stdout, "HUB")
+		tw := tabwriter.NewWriter(stdout, 0, 4, 2, ' ', 0)
 		fmt.Fprintln(tw, "WHEN\tEVENT\tBY\tDETAIL")
 		for _, e := range hubEntries {
 			det, _ := json.Marshal(e.Detail)
-			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", e.At, e.Event, e.Actor, det)
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", localtime.String(e.At), e.Event, e.Actor, det)
+		}
+		if err := tw.Flush(); err != nil {
+			return err
 		}
 	} else {
-		fmt.Fprintln(tw, "(the hub's log is not readable with this token; showing this machine's)\t\t\t")
+		fmt.Fprintln(stdout, "(the hub's log is not readable with this token; showing this machine's)")
 	}
-	fmt.Fprintln(tw, "THIS MACHINE\t\t\t")
+	fmt.Fprintln(stdout, "THIS MACHINE")
+	tw := tabwriter.NewWriter(stdout, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "WHEN\tSTATUS\tFROM → TO\tSIZE")
 	for _, l := range local {
-		fmt.Fprintf(tw, "%s\t%s\t%s → %s\t%d\n", l.TS, l.Status, shortID(l.From), shortID(l.To), l.Size)
+		fmt.Fprintf(tw, "%s\t%s\t%s → %s\t%d\n", localtime.String(l.TS), l.Status, shortID(l.From), shortID(l.To), l.Size)
 	}
 	return tw.Flush()
 }

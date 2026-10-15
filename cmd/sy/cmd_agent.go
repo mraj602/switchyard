@@ -20,6 +20,7 @@ import (
 	"github.com/mraj602/switchyard/internal/client"
 	"github.com/mraj602/switchyard/internal/config"
 	"github.com/mraj602/switchyard/internal/linkclient"
+	"github.com/mraj602/switchyard/internal/localtime"
 	"github.com/mraj602/switchyard/internal/paths"
 	"github.com/mraj602/switchyard/internal/peerlink"
 	peerspkg "github.com/mraj602/switchyard/internal/peers"
@@ -267,7 +268,7 @@ func agentStatus(stdout, stderr io.Writer) error {
 	case rep.State == nil:
 		fmt.Fprintf(stdout, "agent: %s\n", rep.Refusal())
 	default:
-		fmt.Fprintf(stdout, "agent: running, pid %d, since %s, link %s\n", rep.State.PID, rep.State.Started, rep.State.Link.State)
+		fmt.Fprintf(stdout, "agent: running, pid %d, since %s, link %s\n", rep.State.PID, localtime.String(rep.State.Started), rep.State.Link.State)
 		fmt.Fprintf(stdout, "socket: %s\n", rep.State.Socket)
 	}
 	return nil
