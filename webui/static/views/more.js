@@ -1,4 +1,4 @@
-// More (phone tab): Alerts, Machines, Settings; the owner also gets Devices and Add phone.
+// More (phone tab): Alerts, Machines, Settings, Peers, Analytics; the owner also gets Devices and Add phone.
 
 import { h } from '../components/dom.js';
 import { isOwner } from '../store.js';
@@ -20,9 +20,7 @@ export function render({ store }) {
       item('#/more/peers', 'Peers', 'Which accounts may message each other, and Pause all peers'),
       owner ? item('#/more/devices', 'Devices', 'Phones, browsers and machines paired with this hub') : null,
       owner ? item('#/more/devices?add=phone', 'Add phone', 'Show a QR code to pair a phone') : null,
-      h('li', {}, h('div', { class: 'more-link is-disabled', 'aria-disabled': 'true' },
-        h('span', { class: 'more-text' }, h('span', { class: 'strong' }, 'Analytics'), h('span', { class: 'muted small' }, 'Coming later')),
-        h('span', { class: 'tag' }, 'coming')))),
+      item('#/more/analytics', 'Analytics', 'Tokens and API-equivalent cost by day, model and project')),
     owner ? null : h('p', { class: 'muted small' }, 'Devices and Add phone need an owner sign-in: run sy hub owner-link on the hub.'));
   return { title: 'More · Switchyard', node };
 }

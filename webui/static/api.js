@@ -109,6 +109,7 @@ export const getRules = () => getJSON('/v1/rules');
 export const putRule = (id, body) => putJSON(`/v1/rules/${enc(id)}`, body);
 export const addRule = (body) => postJSON('/v1/rules', body);
 export const deleteRule = (id) => del(`/v1/rules/${enc(id)}`);
+export const getAnalytics = (report, params) => getJSON(`/v1/analytics/${enc(report)}`, params);
 export const getMatrix = () => getJSON('/v1/peers/matrix');
 export const editMatrix = (body) => putJSON('/v1/peers/matrix', body);
 export const pausePeers = (paused) => postJSON('/v1/peers/pause', { paused });
