@@ -38,6 +38,7 @@ describe('HubClient requests', () => {
     ['overview', (c) => c.overview(), 'GET', '/v1/overview'],
     ['sessions', (c) => c.sessions({ filter: 'needs_you', limit: 50, cursor: 'a b' }), 'GET', '/v1/sessions?filter=needs_you&limit=50&cursor=a%20b'],
     ['sessions bare', (c) => c.sessions(), 'GET', '/v1/sessions'],
+    ['sessions with ended', (c) => c.sessions({ includeEnded: true, days: 2, limit: 200 }), 'GET', '/v1/sessions?include_ended=true&days=2&limit=200'],
     ['session', (c) => c.session('c41e/0'), 'GET', '/v1/sessions/c41e%2F0'],
     ['accounts', (c) => c.accounts(), 'GET', '/v1/accounts'],
     ['machines', (c) => c.machines(), 'GET', '/v1/machines'],

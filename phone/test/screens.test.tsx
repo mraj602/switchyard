@@ -118,6 +118,20 @@ describe('Now', () => {
     expect(swipeAction(-20)).toBeNull();
   });
 
+  it("never shows the internal detail code as the ask (the board's rule)", async () => {
+    const data = freshData();
+    const strip = (x: Session) => (x.id === ID4 ? { ...x, question: null, last_message: null, detail: 'permission_request' } : x);
+    const ov = data.overview!;
+    ov.needs_you = ov.needs_you.map((x) => strip(x as Session)) as typeof ov.needs_you;
+    data.sessions = data.sessions.map((x) => (x.state === 'done' ? { ...x, last_message: null, question: null, detail: 'started' } : strip(x)));
+    await show(<NowScreen />, { data });
+    expect(screen.queryByText('permission_request')).toBeNull();
+    expect(screen.getAllByText('No details were sent.').length).toBeGreaterThan(0);
+    await show(<SessionsScreen />, { data });
+    expect(screen.queryByText('permission_request')).toBeNull();
+    expect(screen.queryByText('started')).toBeNull();
+  });
+
   it('opens a session when a row is tapped', async () => {
     await show(<NowScreen />);
     await fireEvent.press(screen.getByLabelText(/^Asked a question: api/));
