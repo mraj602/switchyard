@@ -275,7 +275,7 @@ sig = Ed25519(hub key,
 
 ## 5. The queue
 
-### 5.1 Tables (schema v7)
+### 5.1 Tables (schema v7; `type` gained `peer_thread_resume` in v10)
 
 - `link_state`: per device `next_seq`, `acked_seq`, the current transport and connection time,
   last seen, last close, last IP and the last `hello` (client versions and `known`).
@@ -307,6 +307,7 @@ inserting the new one. The device sees a gap in `seq`, which is normal. Tags mat
 | `refresh` | `refresh` (only the newest snapshot matters) |
 | `matrix`, `revoke` | `matrix`, `revoke` (the newest version contains everything) |
 | `peer_status` | `ps:<msg id>` |
+| `peer_thread_resume` | `tr:<thread id>` (a second resume of a thread replaces an unsent one) |
 | `peer_msg` | `""`: never collapsed |
 
 A collapsed alert's `delivery` row gets `last_error = "collapsed"` and no `delivered_at`.
@@ -314,7 +315,8 @@ A collapsed alert's `delivery` row gets `last_error = "collapsed"` and no `deliv
 ### 5.4 Expiry
 
 `exp` = enqueue time + the TTL of the type: alerts use push.md 6.4's TTL table; `refresh` 900 s;
-`peer_msg` the message's TTL (peers.md 9.3, default 1 h, at most 24 h); `peer_status` 24 h;
+`peer_msg` the message's TTL (peers.md 9.3, default 1 h, at most 24 h); `peer_status` and
+`peer_thread_resume` 24 h;
 `matrix` and `revoke` 30 days. A sweeper (every minute, with the scheduler) deletes rows past
 `exp`; a peer message's row expiring sets its `peer_message.status = 'expired'` and queues a
 `peer_status` to the sender's machine. Expired rows are never sent.
@@ -323,7 +325,8 @@ A collapsed alert's `delivery` row gets `last_error = "collapsed"` and no `deliv
 
 Per device: at most **500 rows** and **4 MiB** of `body`. When an enqueue goes over either:
 
-- `refresh`, `matrix`, `revoke`, `peer_status`: never dropped (they collapse to one per tag).
+- `refresh`, `matrix`, `revoke`, `peer_status`, `peer_thread_resume`: never dropped (they
+  collapse to one per tag).
 - `alert`: the oldest alert rows are deleted until it fits, and the next alert carries
   `"missed": n` so the app refetches `/v1/alerts`.
 - `peer_msg`: the new message is refused (`peer_message.status = 'failed'`, `detail =
@@ -398,12 +401,14 @@ device that asked, on its TLS connection, at once, and hold nothing a session re
 | `refresh` | phones with widgets | `{"v":1,"needs_you","seats":[{"seat","window","used_pct","resets_at"}],"ts"}`: the widget snapshot (push.md 13.5). |
 | `peer_msg` | machines | `{"v":1,"doc","cert"}` (peers.md 8.3): the sender's envelope, as the sender signed it (its own seal to this machine inside), and the sender's certificate. |
 | `peer_status` | machines | `{"v":1,"msg","status","detail","at"}`: the final state of a message this machine sent. |
+| `peer_thread_resume` | machines | `{"v":1,"thread","by","at"}`: the owner resumed a thread the loop guard stopped (peers.md 6.3); `by` is the device that asked. |
 | `matrix` | machines (phones in PE3) | The newest matrix document, wire form (keys.md 4.1). |
 | `revoke` | machines | The newest revocation document, wire form (keys.md 6). |
 
 A signed document inside a frame is verified twice: the frame by the hub key, the document by
 its own signer (keys.md 5). A `matrix` frame whose document is hub-signed and widens is
-accepted only under `hub_may_widen` (keys.md 5.4).
+accepted only under `hub_may_widen` (keys.md 5.4); so is a `peer_thread_resume`, which carries no
+signature but the frame's (the hub alone makes it).
 
 ## 7. Revocation and timing
 
