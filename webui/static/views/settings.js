@@ -1,6 +1,6 @@
 // Settings: who gets notifications (this browser, the Android app), this device's
-// preferences, install, hub and app version, sign out or unpair (pwa.md 6). ntfy and the
-// old phone app are under Advanced (SE1).
+// preferences, install, hub and app version, sign out or unpair (pwa.md 6). ntfy is under
+// Advanced (SE1).
 
 import { h } from '../components/dom.js';
 import { section, select, toggle, toast, moreTabs, details } from '../components/ui.js';
@@ -8,10 +8,10 @@ import { quietHours } from '../components/quiet.js';
 import { liveBadge } from '../components/nav.js';
 import { notifiable, appPaired } from '../components/targets.js';
 import { store, isOwner, canPush } from '../store.js';
-import { getSelf, getRules, getPushConfig, patchDevice, addTarget, deleteTarget, revokeDevice, putPushChannel, listDevices } from '../api.js';
+import { getSelf, getRules, getPushConfig, patchDevice, addTarget, deleteTarget, revokeDevice, listDevices } from '../api.js';
 import { pwa, isStandalone, canInstall, promptInstall, checkForUpdate, updateReady, applyUpdate } from '../pwa.js';
 import { pushStatus, turnOn, sendTest } from '../push.js';
-import { isIOS, isMobile, ntfyLink, expoTargetLabel, expoChannelBody, installHint } from '../platform.js';
+import { isIOS, isMobile, ntfyLink, installHint } from '../platform.js';
 import { day, clock, agoLabel, humanKey, plural } from '../format.js';
 
 const st = { self: null, push: null, config: null, hub: null, devices: null, test: null, ntfy: null, busy: false, updateNote: '', error: null };
@@ -148,56 +148,7 @@ function prefs() {
       }))));
 }
 
-// ---- Advanced: Expo app and ntfy ----------------------------------------------------------
-
-const expo = { base: null, token: '', note: '' };
-
-// The channel as the hub shows it: {kind:'expo', enabled, settings:{base_url, access_token_set}}.
-const expoChannel = () => ((st.config && st.config.channels) || []).find((c) => c.kind === 'expo') || null;
-
-async function saveExpo(ch, patch) {
-  const baseUrl = expo.base == null ? (ch.settings && ch.settings.base_url) || '' : expo.base;
-  const next = await putPushChannel('expo', expoChannelBody({ enabled: ch.enabled, baseUrl, ...patch }));
-  st.config = { ...st.config, channels: st.config.channels.map((c) => (c.kind === 'expo' ? next : c)) };
-  expo.token = '';
-  expo.base = null;
-}
-
-function expoForm(ch) {
-  const set = !!(ch.settings && ch.settings.access_token_set);
-  const base = expo.base == null ? (ch.settings && ch.settings.base_url) || 'https://exp.host' : expo.base;
-  const run = async (e, patch, note) => {
-    e.currentTarget.disabled = true;
-    try { await saveExpo(ch, patch); expo.note = note; } catch (ex) { expo.note = ex.message; }
-    again();
-  };
-  return h('div', { class: 'col' },
-    toggle({
-      label: 'Notifications for the old phone app', sub: 'Only for early versions of the phone app. The current Android app does not need this.', checked: ch.enabled, key: 'chan-expo',
-      onChange: async (v) => { await saveExpo(ch, { enabled: v }); again(); },
-    }),
-    ch.enabled ? [
-      h('label', { class: 'field col-field' }, 'Base URL',
-        h('input', { type: 'text', value: base, placeholder: 'https://exp.host', 'data-key': 'expo-base-url', autocomplete: 'off', spellcheck: 'false', oninput: (e) => { expo.base = e.target.value.trim(); } })),
-      h('label', { class: 'field col-field' }, `Access token (${set ? 'set' : 'not set'})`,
-        h('input', { type: 'password', value: '', placeholder: set ? 'Type a new token to replace it' : 'Optional', 'data-key': 'expo-token', autocomplete: 'off', spellcheck: 'false', oninput: (e) => { expo.token = e.target.value; } })),
-      h('p', { class: 'muted small' }, 'The token is needed only if you turned on extra security for the old app’s notification service. It is never shown again.'),
-      h('div', { class: 'row' },
-        h('button', { type: 'button', class: 'btn', 'data-key': 'expo-save', onclick: (e) => run(e, { token: expo.token }, 'Saved.') }, 'Save'),
-        set ? h('button', { type: 'button', class: 'btn btn-sm', 'data-key': 'expo-clear', onclick: (e) => run(e, { clear: true }, 'Token removed.') }, 'Clear token') : null),
-    ] : null,
-    expo.note ? h('p', { class: 'small', role: 'status', 'data-key': 'expo-note' }, expo.note) : null);
-}
-
-function appPush(owner) {
-  const targets = ((st.self && st.self.targets) || []).filter((t) => t.kind === 'expo');
-  const ch = owner ? expoChannel() : null;
-  if (!targets.length && !ch) return null;
-  return h('div', { class: 'sub-block' }, h('h3', {}, 'Old phone app'),
-    targets.length ? h('div', { class: 'panel' }, targets.map((t) => h('div', { class: 'row', 'data-key': `app-${t.id}` },
-      h('span', { class: 'row-text' }, h('span', {}, expoTargetLabel(t)), h('span', { class: 'muted small' }, t.status))))) : null,
-    ch ? h('div', { class: 'panel pad-s col' }, expoForm(ch)) : null);
-}
+// ---- Advanced: ntfy ------------------------------------------------------------------------
 
 function ntfy() {
   if (!canPush() || !st.self) return null;
@@ -238,12 +189,12 @@ function ntfy() {
     form);
 }
 
-function advanced(owner) {
-  const kids = [ntfy(), appPush(owner)].filter(Boolean);
-  if (!kids.length) return null;
+function advanced() {
+  const n = ntfy();
+  if (!n) return null;
   const d = h('details', { class: 'tech advanced', 'data-key': 'advanced' },
-    h('summary', {}, 'Advanced: ntfy and the old phone app'),
-    h('div', { class: 'tech-body' }, kids));
+    h('summary', {}, 'Advanced: ntfy'),
+    h('div', { class: 'tech-body' }, n));
   return h('section', { class: 'block', 'aria-label': 'Advanced' }, d);
 }
 
@@ -316,7 +267,7 @@ export function render({ store: s }) {
     installBlock(),
     hubBlock(s),
     deviceBlock(),
-    advanced(owner),
+    advanced(),
     h('p', { class: 'muted small' }, h('a', { href: '#/more/peers', 'data-key': 'peers-link' }, 'Peers: which accounts may message each other'),
       owner ? [' · ', h('a', { href: '#/more/devices' }, 'Manage paired devices')] : null));
   return { title: 'Settings · Switchyard', node };

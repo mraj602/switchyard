@@ -770,8 +770,8 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request, c *caller) 
 		writeErr(w, 400, "bad_request", "snooze_min must be 5 to 240")
 		return
 	}
-	if v, ok := next["expo_refresh_min"].(float64); ok && (v < 10 || v > 240) {
-		writeErr(w, 400, "bad_request", "expo_refresh_min must be 10 to 240")
+	if v, ok := next["refresh_min"].(float64); ok && (v < 10 || v > 240) {
+		writeErr(w, 400, "bad_request", "refresh_min must be 10 to 240")
 		return
 	}
 	s.data.Settings = next
@@ -799,42 +799,6 @@ func (s *Server) putChannel(w http.ResponseWriter, r *http.Request, c *caller) {
 		return
 	}
 	ch["enabled"] = *b.Enabled
-	if kind == "expo" {
-		// Like the hub: unknown keys are refused, a sent-back access_token_set is ignored,
-		// the token is write-only ("" clears it) and only access_token_set is shown.
-		cur, _ := ch["settings"].(M)
-		next := M{"base_url": "https://exp.host", "access_token_set": false}
-		for k, v := range cur {
-			next[k] = v
-		}
-		for k, v := range b.Settings {
-			str, isStr := v.(string)
-			switch k {
-			case "access_token_set":
-			case "base_url":
-				if !isStr || (str != "" && !strings.HasPrefix(str, "https://")) {
-					writeErr(w, 400, "bad_request", "base_url must be an https URL")
-					return
-				}
-				if str == "" {
-					str = "https://exp.host"
-				}
-				next["base_url"] = strings.TrimRight(str, "/")
-			case "access_token":
-				if !isStr || len(strings.TrimSpace(str)) > 512 {
-					writeErr(w, 400, "bad_request", "access_token must be at most 512 printable characters")
-					return
-				}
-				next["access_token_set"] = strings.TrimSpace(str) != ""
-			default:
-				writeErr(w, 400, "bad_request", "settings."+k+" is not an expo setting (base_url, access_token)")
-				return
-			}
-		}
-		ch["settings"] = next
-		writeJSON(w, 200, ch)
-		return
-	}
 	if b.Settings != nil {
 		ch["settings"] = b.Settings
 	}
@@ -897,13 +861,6 @@ func (s *Server) addTarget(w http.ResponseWriter, r *http.Request, c *caller) {
 		Topic   string `json:"topic"`
 		Token   string `json:"token"`
 		Private *bool  `json:"private"`
-		// expo (push.md 12.7)
-		ExpoToken string `json:"expo_token"`
-		Platform  string `json:"platform"`
-		App       *struct {
-			Version string `json:"version"`
-			Build   string `json:"build"`
-		} `json:"app"`
 	}
 	if !decode(w, r, &b) {
 		return
@@ -969,41 +926,10 @@ func (s *Server) addTarget(w http.ResponseWriter, r *http.Request, c *caller) {
 			"last_ok_at": nil, "last_error": nil, "last_error_at": nil, "prefs": prefs, "created_at": now}
 		s.data.Targets = append(s.data.Targets, t)
 		writeJSON(w, 201, t)
-	case "expo":
-		// Like the hub (push.md 12.7): the token pattern, ios|android, upsert by token.
-		if !expoTokenRe.MatchString(b.ExpoToken) {
-			writeErr(w, 400, "bad_request", "expo_token must be an Expo push token")
-			return
-		}
-		if b.Platform != "ios" && b.Platform != "android" {
-			writeErr(w, 400, "bad_request", "platform must be ios or android")
-			return
-		}
-		var version any
-		if b.App != nil && b.App.Version != "" {
-			version = b.App.Version
-		}
-		if name == nil {
-			name = "App"
-		}
-		if t, _ := findBy(s.data.Targets, "endpoint", b.ExpoToken); t != nil {
-			t["device"], t["enabled"], t["status"], t["last_error"], t["last_error_at"] = devRef, true, "new", nil, nil
-			t["name"], t["platform"], t["app_version"] = name, b.Platform, version
-			writeJSON(w, 201, t)
-			return
-		}
-		t := M{"id": s.newID("pt_"), "kind": "expo", "device": devRef, "name": name, "endpoint_host": "exp.host",
-			"endpoint": b.ExpoToken, "server": nil, "topic": nil, "token_set": false, "enabled": true, "status": "new",
-			"platform": b.Platform, "app_version": version,
-			"last_ok_at": nil, "last_error": nil, "last_error_at": nil, "created_at": now}
-		s.data.Targets = append(s.data.Targets, t)
-		writeJSON(w, 201, t)
 	default:
-		writeErr(w, 400, "bad_request", "kind must be webpush, ntfy or expo")
+		writeErr(w, 400, "bad_request", "kind must be webpush or ntfy")
 	}
 }
-
-var expoTokenRe = regexp.MustCompile(`^Expo(nent)?PushToken\[[A-Za-z0-9_-]{8,200}\]$`)
 
 // target finds a target the caller may touch; ok=false has written the reply.
 func (s *Server) target(w http.ResponseWriter, id string, c *caller) (M, bool) {
