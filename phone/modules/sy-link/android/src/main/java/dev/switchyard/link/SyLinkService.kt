@@ -138,6 +138,7 @@ class SyLinkService : Service(), LinkEvents {
   private lateinit var notifier: Notifier
   private var client: LinkClient? = null
   private var netCb: ConnectivityManager.NetworkCallback? = null
+  private val noteGate = ConnectionNoteGate()
 
   override fun onBind(intent: Intent?): IBinder? = null
 
@@ -164,6 +165,7 @@ class SyLinkService : Service(), LinkEvents {
       stopSelf()
       return START_NOT_STICKY
     }
+    noteGate.started()
     if (!store.enabled || !store.configured || store.verified == "changed") {
       stopSelfNow()
       return START_NOT_STICKY
@@ -220,6 +222,7 @@ class SyLinkService : Service(), LinkEvents {
   }
 
   private fun stopSelfNow() {
+    noteGate.stopped()
     stopForeground(STOP_FOREGROUND_REMOVE)
     stopSelf()
   }
@@ -227,10 +230,12 @@ class SyLinkService : Service(), LinkEvents {
   // ------------------------------------------------------------------ LinkEvents
 
   override fun state() {
-    try {
-      getSystemService(NotificationManager::class.java)?.notify(NotifyIds.CONNECTION, notifier.connection())
-    } catch (_: SecurityException) {
-      // notifications blocked: the service still runs
+    if (noteGate.mayPost()) {
+      try {
+        getSystemService(NotificationManager::class.java)?.notify(NotifyIds.CONNECTION, notifier.connection())
+      } catch (_: SecurityException) {
+        // notifications blocked: the service still runs
+      }
     }
     SyLinkModule.emit("state", Link.state(this, store))
   }

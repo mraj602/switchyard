@@ -24,3 +24,25 @@ object Foreground {
     false
   }
 }
+
+/**
+ * Whether the service may post the connection notification. The client reports its state from
+ * its own executor, after [SyLinkService] has already removed the foreground notification
+ * (`stop()` and `reset()` queue "off" and stop the service in the same breath); posting then
+ * left an orphaned ongoing "Not connected" notification with no service behind it.
+ */
+class ConnectionNoteGate {
+  @Volatile private var live = true
+
+  /** The service is going down: late state reports must not post. */
+  fun stopped() {
+    live = false
+  }
+
+  /** A start command arrived (possibly on an instance that was stopping). */
+  fun started() {
+    live = true
+  }
+
+  fun mayPost(): Boolean = live
+}
