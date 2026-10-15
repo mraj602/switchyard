@@ -94,6 +94,7 @@ func Run(args []string, stdin io.Reader, getenv func(string) string) {
 		logError(env, getenv, event, err)
 		// Still try the background work: a flush may drain what is already queued.
 	}
+	maybeSlotInfo(env, getenv, eventName(in), time.Now())
 
 	if authStale(env, eventName(in)) {
 		startRefresh(env)
