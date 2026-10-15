@@ -282,22 +282,23 @@ func Render(a model.Alert, o TextOptions) Text {
 	return out
 }
 
-// silentFor is "1 h" or "2 h" (rounded down, at least 1 h) since the last record.
+// silentFor is "20 min" under 55 min, else "1 h" or "2 h" (rounded down, at least 1 h), since
+// the last record.
 func silentFor(a model.Alert, now time.Time) string {
 	from := a.Facts.LastSeen
 	if from == 0 {
 		from = a.SinceAt
 	}
+	if from == 0 {
+		return "1 h"
+	}
 	d := now.Sub(from.Std())
-	if from != 0 && d < 55*time.Minute {
-		// A machine_silent rule may wait less than the default hour (delay_s).
+	// A rule delay under an hour (delay_s may be 0-86400) fires early: say minutes then,
+	// not "1 h". From 55 min on it reads in whole hours (at least 1 h) as before.
+	if d < 55*time.Minute {
 		return fmt.Sprintf("%d min", max(1, int(d/time.Minute)))
 	}
-	h := int(d / time.Hour)
-	if from == 0 || h < 1 {
-		h = 1
-	}
-	return fmt.Sprintf("%d h", h)
+	return fmt.Sprintf("%d h", max(1, int(d/time.Hour)))
 }
 
 func sessionBody(t model.Trigger, f model.Facts, o TextOptions) string {

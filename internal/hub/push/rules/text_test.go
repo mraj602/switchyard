@@ -181,3 +181,24 @@ func TestClockAndLabels(t *testing.T) {
 		t.Errorf("WindowLabel = %q", got)
 	}
 }
+
+// A machine_silent rule with a delay under an hour must not claim "silent for 1 h" (T3).
+func TestSilentForShortDelays(t *testing.T) {
+	for _, c := range []struct {
+		ago  time.Duration
+		want string
+	}{
+		{30 * time.Second, "1 min"},
+		{81 * time.Second, "1 min"},
+		{15 * time.Minute, "15 min"},
+		{44 * time.Minute, "44 min"},
+		{58 * time.Minute, "1 h"},
+		{150 * time.Minute, "2 h"},
+	} {
+		a := model.Alert{AlertBrief: model.AlertBrief{ID: "al_s", Trigger: model.TriggerMachineSilent},
+			Machine: sp("m-old"), Facts: model.Facts{Machine: "old-vps", Sessions: 1, LastSeen: ms(textNow.Add(-c.ago))}}
+		if got := Render(a, TextOptions{Now: textNow}).Title; got != "old-vps silent for "+c.want {
+			t.Errorf("%v ago: %q, want %q", c.ago, got, "old-vps silent for "+c.want)
+		}
+	}
+}

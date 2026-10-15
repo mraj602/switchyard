@@ -179,3 +179,34 @@ func TestHubSecretAndSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// The engine's write-back (AlertTargetResult) must not repeat a status the sender already put
+// in the text: "410 410" and "401 HTTP 401" were seen on a live hub.
+func TestAlertTargetResultErrorText(t *testing.T) {
+	st, ctx := openTargets(t)
+	addDevice(t, st, ctx, "dev_1")
+	a, err := st.UpsertTarget(ctx, model.Target{Kind: "webpush", DeviceID: "dev_1", Name: "P", Endpoint: "https://fcm.googleapis.com/y",
+		Keys: &model.Keys{P256dh: "pk", Auth: "au"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		r    model.Result
+		want string
+	}{
+		{model.Result{Outcome: model.OutcomeFailed, HTTPStatus: 413, Err: "413"}, "413"},
+		{model.Result{Outcome: model.OutcomeFailed, HTTPStatus: 413, Err: "413 payload too large"}, "413 payload too large"},
+		{model.Result{Outcome: model.OutcomeFailed, HTTPStatus: 401, Err: "HTTP 401"}, "HTTP 401"},
+		{model.Result{Outcome: model.OutcomeRetry, HTTPStatus: 500, Err: "upstream down"}, "500 upstream down"},
+		{model.Result{Outcome: model.OutcomeRetry, Err: "timeout"}, "timeout"},
+		{model.Result{Outcome: model.OutcomeGone, HTTPStatus: 410, Err: "410"}, "410"},
+	} {
+		if err := st.Write(ctx, func(tx *store.Tx) error { return tx.AlertTargetResult(a.ID, c.r, 1) }); err != nil {
+			t.Fatal(err)
+		}
+		g, _ := st.TargetByID(ctx, a.ID)
+		if g.LastError != c.want {
+			t.Errorf("%+v: last_error %q, want %q", c.r, g.LastError, c.want)
+		}
+	}
+}
