@@ -47,6 +47,10 @@ describe('audit sentences', () => {
     expect(eventLabel('some_new_event')).toBe('some new event');
     expect(eventLabel('loop_guard')).toBe('Loop guard stopped a thread');
     expect(eventLabel('thread_resume')).toBe('Thread resumed');
+    expect(eventLabel('thread_resume_refused', { machine: 'gpu-box' })).toBe('gpu-box kept the stop: hub_may_widen is off');
+    expect(eventLabel('thread_resume_refused', {})).toBe('A machine kept the stop: hub_may_widen is off');
+    expect(eventLabel('thread_resume_refused', { machine: 7 })).toBe('A machine kept the stop: hub_may_widen is off');
+    expect(eventLabel('thread_resume', { machine: 'gpu-box' })).toBe('Thread resumed');
     expect(detailText({ version: 3, widens: true, paused: false, pairs: 1, text: 'secret', nested: { a: 1 } })).toBe('v3 · widened · not paused · 1 pair');
     expect(detailText({ size: 2400, status: 'refused' })).toBe('2.4 KB · refused');
     expect(detailText(null)).toBe('');

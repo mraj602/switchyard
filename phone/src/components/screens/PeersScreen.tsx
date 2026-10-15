@@ -199,7 +199,7 @@ export default function PeersScreen() {
             {audit.map((e) => (
               <View key={e.id} testID={`audit-${e.id}`} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
                 <View style={{ flexShrink: 1, paddingRight: 8 }}>
-                  <Text style={{ color: t.text }}>{eventLabel(e.event)}</Text>
+                  <Text style={{ color: t.text }}>{eventLabel(e.event, e.detail)}</Text>
                   <Muted>{[auditWho(e, label), detailText(e.detail)].filter(Boolean).join(' · ')}</Muted>
                 </View>
                 <Muted>{agoLabel(e.at, api.now)}</Muted>

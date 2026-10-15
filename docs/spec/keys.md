@@ -349,8 +349,8 @@ document only when `Widens(current, new)` is false for **its own** current docum
 with none starts from peers.md 5.1's version-1 baseline), so nothing that holds the hub key can
 widen what that machine delivers; widening then needs the owner key. Narrowing documents are
 always accepted from either signer. The same setting governs `peer_thread_resume` (peers.md
-6.3), which the hub alone signs: with `false` the agent refuses it and the thread stays stopped
-until a human prompt.
+6.3), which the hub alone signs: with `false` the agent refuses it, tells the hub (the audit
+shows the refusal), and the thread stays stopped until a human prompt.
 
 This is the one place the H4 default ("board sign-in is enough") trades against the
 addendum's "the hub can only narrow". Who can widen, per setting:

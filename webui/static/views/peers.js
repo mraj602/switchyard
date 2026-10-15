@@ -148,7 +148,8 @@ function matrixBlock() {
 // ---- audit --------------------------------------------------------------------------------
 
 // "Resume thread" (peers.md 6.3): owner session only; the hub resets its loop guard and tells
-// both machines, which take it only with hub_may_widen on.
+// both machines, which take it only with hub_may_widen on; one that refuses reports it, and
+// its thread_resume_refused entry shows in the audit.
 async function resumeThread(thread) {
   st.busy = true;
   again();
@@ -178,7 +179,7 @@ function auditBlock(label) {
         : null;
       rows.push(h('li', { class: 'row audit-row', 'data-key': `audit-${e.id}` },
         h('span', { class: 'row-text' },
-          h('span', {}, eventLabel(e.event)),
+          h('span', {}, eventLabel(e.event, e.detail)),
           h('span', { class: 'muted small' }, [auditWho(e, label), detailText(e.detail)].filter(Boolean).join(' · '))),
         resume,
         h('time', { class: 'muted small', datetime: e.at, title: dateTime(e.at) }, agoLabel(e.at, Date.now()))));

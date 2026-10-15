@@ -314,6 +314,11 @@ func (r *Remote) spoolPath() string { return filepath.Join(r.Env.State, "agent",
 func (r *Remote) Log(l peers.LocalLog) {
 	up := peers.PeerLogUp{T: link.TypePeerLog, Msg: l.Msg, Thread: l.Thread, FromSession: l.FromSession, ToSession: l.ToSession,
 		Kind: l.Kind, Status: l.Status, Detail: l.Detail, Size: l.Size, At: l.At.UTC().Format(time.RFC3339Nano)}
+	r.sendLog(up)
+}
+
+// sendLog sends one peer_log line, or spools it while the hub cannot be reached.
+func (r *Remote) sendLog(up peers.PeerLogUp) {
 	if err := r.send(up); err != nil {
 		r.spool(up)
 		return
@@ -459,7 +464,8 @@ func (r *Remote) Queued(ctx context.Context, t string, seq int64, body []byte) e
 
 // threadResume is peers.md 6.3's "Resume thread" on this machine. The link client has already
 // checked the frame's hub signature and opened its seal; the hub alone signs it, so a machine
-// with hub_may_widen = false refuses it and the thread keeps its turns until a human prompt.
+// with hub_may_widen = false refuses it, tells the hub (a peer_log thread_resume_refused), and
+// the thread keeps its turns here until a human prompt.
 // An error (threads.json not written) leaves the frame unacked for a replay.
 func (r *Remote) threadResume(body []byte) error {
 	var b peers.ThreadResumeBody
@@ -470,7 +476,10 @@ func (r *Remote) threadResume(body []byte) error {
 	if !r.HubMayWiden {
 		r.Logger.Printf("peers: the hub asked to resume thread %s; refused: peers.hub_may_widen is false, so the thread "+
 			"stays stopped until a human prompt in either session", b.Thread)
-		r.Env.RefuseResume(b.Thread, "hub_may_widen")
+		r.Env.RefuseResume(b.Thread, peers.ResumeRefusedReason)
+		// Tell the hub, so its audit and the board show that this machine kept the stop.
+		r.sendLog(peers.PeerLogUp{T: link.TypePeerLog, Event: peers.EventThreadResumeRefused, Thread: b.Thread,
+			Detail: peers.ResumeRefusedReason, At: r.now().UTC().Format(time.RFC3339Nano)})
 		return nil
 	}
 	got, err := r.Env.ResumeThread(b.Thread)

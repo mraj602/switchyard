@@ -83,13 +83,20 @@ const EVENTS = {
   loop_stop: 'Loop guard stopped a thread',
   loop_guard: 'Loop guard stopped a thread',
   thread_resume: 'Thread resumed',
+  thread_resume_refused: 'A machine kept the stop: hub_may_widen is off',
   refused: 'Message refused',
   rejected: 'Message rejected by a machine',
   off: 'Peers turned off on a machine',
   on: 'Peers turned on on a machine',
 };
 
-export const eventLabel = (e) => EVENTS[e] || String(e || '').replace(/_/g, ' ');
+// The label of an audit event; detail names the machine of a thread_resume_refused (a machine
+// that refused the owner's "Resume thread" because hub_may_widen is off, peers.md 6.3).
+export function eventLabel(e, detail) {
+  const machine = detail && typeof detail.machine === 'string' ? detail.machine.slice(0, 60) : '';
+  if (e === 'thread_resume_refused' && machine) return `${machine} kept the stop: hub_may_widen is off`;
+  return EVENTS[e] || String(e || '').replace(/_/g, ' ');
+}
 
 const THREAD_ID = /^t_[0-9a-f]{16}$/;
 
@@ -113,7 +120,7 @@ export function resumableStops(entries) {
 export function resumeText(r) {
   const n = r && Number.isFinite(r.machines) ? r.machines : 0;
   const told = n === 1 ? '1 machine was told' : `${n} machines were told`;
-  return `Thread resumed: ${told}. A machine with hub_may_widen off keeps its stop until someone types in either session.`;
+  return `Thread resumed: ${told}. A machine with hub_may_widen off keeps its stop until someone types in either session; the audit names each machine that refuses.`;
 }
 
 // The audit is metadata only. Only these detail keys are shown, in this order, and only when
