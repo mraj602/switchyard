@@ -2,8 +2,9 @@
 // 8.3, 9.2, 10, 11; PE2): it answers `peers_list` with the session directory, checks and
 // queues `peer_msg` envelopes for the target machine, turns `peer_result` and expiry into
 // `peer_status` for the sender, records `peer_log` lines, and relays the owner's thread
-// resume (`peer_thread_resume`, peers.md 6.3) to both machines. It stores metadata only: the
-// message text exists at the hub only sealed, inside link_queue, while it is queued.
+// resume (`peer_thread_resume`, peers.md 6.3) to both machines, recording a machine that
+// refuses it. It stores metadata only: the message text exists at the hub only sealed, inside
+// link_queue, while it is queued.
 package peerrelay
 
 import (
@@ -102,7 +103,11 @@ func (r *Relay) Up(ctx context.Context, device string, u link.Up) (string, any, 
 	case link.TypePeerLog:
 		var m peers.PeerLogUp
 		if err := json.Unmarshal(u.Raw, &m); err == nil {
-			if err := r.peerLog(ctx, device, m); err != nil {
+			record := r.peerLog
+			if m.Event != "" {
+				record = r.threadResumeRefused
+			}
+			if err := record(ctx, device, m); err != nil {
 				return "", nil, err
 			}
 		}
@@ -595,6 +600,56 @@ func (r *Relay) ResumeThread(ctx context.Context, id, by string) (ResumeResult, 
 		return tx.InsertPeerAudit(store.PeerAuditRow{At: now.UnixMilli(), Actor: by, Event: "thread_resume", Thread: id, Detail: d})
 	})
 	return res, err
+}
+
+// threadResumeRefused records a machine that refused the owner's peer_thread_resume and keeps
+// its loop-guard stop (peers.md 6.3 step 2; a peer_log with event thread_resume_refused). Only
+// the agent device of a machine one of the thread's two sessions runs on may report it; any
+// other report is dropped. The hub writes a thread_resume_refused audit row (actor: that
+// device; detail: the machine's name) and marks its thread paused again (paused_at, if
+// clear): turns stay 0, so the hub itself does not refuse, but the thread no longer reads as
+// resumed everywhere while that machine still holds its stop.
+func (r *Relay) threadResumeRefused(ctx context.Context, device string, m peers.PeerLogUp) error {
+	if m.Event != peers.EventThreadResumeRefused || m.Detail != peers.ResumeRefusedReason || !peers.ValidThreadID(m.Thread) {
+		return nil
+	}
+	agents, err := r.Store.AgentDevices(ctx)
+	if err != nil {
+		return err
+	}
+	now := r.Now().UnixMilli()
+	return r.Store.Write(ctx, func(tx *store.Tx) error {
+		th, err := tx.PeerThread(m.Thread)
+		if errors.Is(err, store.ErrNotFound) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		machine := ""
+		for _, s := range []string{th.A, th.B} {
+			ps, ok, err := tx.PeerSession(s)
+			if err != nil {
+				return err
+			}
+			if ok && ps.MachineID != "" && agents[ps.MachineID] == device {
+				machine = coalesce(ps.MachineName, ps.MachineID)
+				break
+			}
+		}
+		if machine == "" {
+			r.Log.Printf("peers: device %s reported a refused resume of thread %s, which has no session on its machine; dropped", device, m.Thread)
+			return nil
+		}
+		if th.ClosedAt == 0 && th.PausedAt == 0 {
+			th.PausedAt = now
+			if err := tx.PutPeerThread(th); err != nil {
+				return err
+			}
+		}
+		d, _ := json.Marshal(map[string]any{"machine": machine})
+		return tx.InsertPeerAudit(store.PeerAuditRow{At: now, Actor: device, Event: peers.EventThreadResumeRefused, Thread: m.Thread, Detail: d})
+	})
 }
 
 // peerLog records a same-machine delivery an agent reports (peers.md 10, local = 1).

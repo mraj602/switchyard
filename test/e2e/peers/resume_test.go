@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -121,7 +122,8 @@ func TestThreadResumeAcrossMachines(t *testing.T) {
 
 // A machine with hub_may_widen off does not take the hub's resume: the hub and the other
 // machine lift their stop, but that machine refuses the next message with loop_guard until a
-// human prompt. Whoever holds the hub key cannot restart a thread there.
+// human prompt, and reports the refusal to the hub's audit. Whoever holds the hub key cannot
+// restart a thread there.
 func TestThreadResumeRefusedByStrictMachine(t *testing.T) {
 	h := newHub(t, 2)
 	h.mayWiden = map[string]bool{"laptop": true} // the worker keeps hub_may_widen = false
@@ -133,6 +135,44 @@ func TestThreadResumeRefusedByStrictMachine(t *testing.T) {
 	}
 	w.laptop.waitResume(thread, peers.ResumeResumed)
 	w.worker.waitResume(thread, peers.ResumeRefused)
+
+	// The worker tells the hub: a thread_resume_refused audit row by its agent device naming
+	// its machine, and the hub's thread reads paused again (turns still 0).
+	var refusal store.PeerAuditRow
+	if !eventually(10*time.Second, func() bool {
+		rows, err := h.st.PeerAudit(h.ctx, 0, 50)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, r := range rows {
+			if r.Event == peers.EventThreadResumeRefused && r.Thread == thread {
+				refusal = r
+				return true
+			}
+		}
+		return false
+	}) {
+		t.Fatal("the hub never heard of the worker's refusal")
+	}
+	var detail map[string]any
+	_ = json.Unmarshal(refusal.Detail, &detail)
+	if refusal.Actor != w.worker.device || detail["machine"] == nil {
+		t.Errorf("refusal row %+v %s", refusal, refusal.Detail)
+	}
+	if err := h.st.Write(h.ctx, func(tx *store.Tx) error {
+		th, err := tx.PeerThread(thread)
+		if err == nil && (th.Turns != 0 || th.PausedAt == 0) {
+			t.Errorf("hub thread after the refusal: %+v", th)
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if rows, _ := h.st.PeerAudit(h.ctx, 0, 50); slices.ContainsFunc(rows, func(r store.PeerAuditRow) bool {
+		return r.Event == peers.EventThreadResumeRefused && r.Actor == w.laptop.device
+	}) {
+		t.Error("the laptop, which took the resume, reported a refusal")
+	}
 
 	rf := w.laptop.send("api", toWorker, "turn three, after the resume", 0, 0).Refusal()
 	refusedWith(t, rf, peers.CodeRejected)

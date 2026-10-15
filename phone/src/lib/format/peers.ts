@@ -87,13 +87,22 @@ const EVENTS: Record<string, string> = {
   loop_stop: 'Loop guard stopped a thread',
   loop_guard: 'Loop guard stopped a thread',
   thread_resume: 'Thread resumed',
+  thread_resume_refused: 'A machine kept the stop: hub_may_widen is off',
   refused: 'Message refused',
   rejected: 'Message rejected by a machine',
   off: 'Peers turned off on a machine',
   on: 'Peers turned on on a machine',
 };
 
-export const eventLabel = (e: string): string => EVENTS[e] ?? String(e || '').replace(/_/g, ' ');
+/**
+ * The label of an audit event; detail names the machine of a thread_resume_refused (a machine
+ * that refused the owner's "Resume thread" because hub_may_widen is off, peers.md 6.3).
+ */
+export function eventLabel(e: string, detail?: Record<string, unknown> | null): string {
+  const m = detail && typeof detail === 'object' ? detail.machine : undefined;
+  if (e === 'thread_resume_refused' && typeof m === 'string' && m) return `${m.slice(0, 60)} kept the stop: hub_may_widen is off`;
+  return EVENTS[e] ?? String(e || '').replace(/_/g, ' ');
+}
 
 /** Plain metadata of an audit entry's detail, never anything else the hub might send. */
 export function detailText(d: Record<string, unknown> | null | undefined): string {

@@ -374,6 +374,7 @@ async function peersChecks(page, sizeName, who, owner) {
       try { await page.waitForFunction(() => /Thread resumed: 2 machines were told/.test((document.getElementById('toasts') || {}).textContent || ''), { timeout: 4000 }); } catch (e) { fail(t('resume showed no success toast')); }
       try { await page.waitForFunction((k) => !document.querySelector(k), { timeout: 4000 }, resumeSel); } catch (e) { fail(t('Resume thread button is still there after resuming')); }
       if (!(await page.evaluate(async () => (await (await fetch('/v1/peers/audit')).json()).entries.some((e) => e.event === 'thread_resume')))) fail(t('audit has no thread_resume entry'));
+      try { await page.waitForFunction(() => /gpu-box kept the stop: hub_may_widen is off/.test((document.querySelector('.audit-list') || {}).textContent || ''), { timeout: 4000 }); } catch (e) { fail(t('audit list does not show the machine that kept the stop')); }
       await settle();
       await shot(page, `${sizeName}-${who}-peers-resumed`);
     }

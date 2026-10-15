@@ -17,6 +17,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store"
 	"github.com/mraj602/switchyard/internal/keys"
 	"github.com/mraj602/switchyard/internal/link"
+	"github.com/mraj602/switchyard/internal/peers"
 )
 
 const resumeThread = "t_0123456789abcdef"
@@ -26,6 +27,7 @@ const resumeThread = "t_0123456789abcdef"
 type resumeHub struct {
 	*keysHub
 	machines [2]string // agent device ids
+	relay    *peerrelay.Relay
 }
 
 func newResumeHub(t *testing.T, relay bool) *resumeHub {
@@ -40,16 +42,18 @@ func newResumeHub(t *testing.T, relay bool) *resumeHub {
 	testPepperPath(t)
 	cfg := api.Config{Store: st, PingEvery: time.Hour, PublicURL: "https://hub.example.ts.net", Keys: ks}
 	lk := hublink.New(hublink.Config{Store: st, Keys: ks})
+	var relayOf *peerrelay.Relay
 	if relay {
 		rl := peerrelay.New(st, ks, nil, nil)
 		rl.Link = lk
 		cfg.PeerThreads = rl
+		relayOf = rl
 	}
 	cfg.Link = lk
 	srv := api.New(cfg)
 	hs := httptest.NewServer(srv.Handler())
 	t.Cleanup(func() { srv.Close(); hs.Close(); lk.Close(); st.Close() })
-	h := &resumeHub{keysHub: &keysHub{t: t, st: st, ks: ks, url: hs.URL}}
+	h := &resumeHub{keysHub: &keysHub{t: t, st: st, ks: ks, url: hs.URL}, relay: relayOf}
 	h.owner = ownerSessionToken(t, st).Token
 
 	now := time.Now().UnixMilli()
@@ -218,5 +222,87 @@ func TestPeerThreadResumeWithoutRelay(t *testing.T) {
 	h := newResumeHub(t, false)
 	if st, _ := h.call("POST", "/v1/peers/threads/"+resumeThread+"/resume", h.owner, nil); st != 503 {
 		t.Fatalf("%d, want 503", st)
+	}
+}
+
+// A machine that refuses the resume (hub_may_widen off) reports it with a peer_log event
+// (peers.md 6.3): only a machine of the thread may, and the hub then writes a
+// thread_resume_refused audit row and marks its thread paused again, turns still 0.
+func TestPeerThreadResumeRefusedReport(t *testing.T) {
+	h := newResumeHub(t, true)
+	ctx := context.Background()
+	if st, m := h.call("POST", "/v1/peers/threads/"+resumeThread+"/resume", h.owner, nil); st != 200 {
+		t.Fatalf("resume: %d %v", st, m)
+	}
+	up := func(device string, l peers.PeerLogUp) {
+		t.Helper()
+		l.T = link.TypePeerLog
+		raw, _ := json.Marshal(l)
+		if _, _, err := h.relay.Up(ctx, device, link.Up{T: link.TypePeerLog, Raw: raw}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	report := func(device, thread, detail string) {
+		t.Helper()
+		up(device, peers.PeerLogUp{Event: peers.EventThreadResumeRefused, Thread: thread, Detail: detail,
+			At: time.Now().UTC().Format(time.RFC3339Nano)})
+	}
+	refusals := func() []store.PeerAuditRow {
+		t.Helper()
+		rows, err := h.st.PeerAudit(ctx, 0, 50)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []store.PeerAuditRow
+		for _, r := range rows {
+			if r.Event == peers.EventThreadResumeRefused {
+				out = append(out, r)
+			}
+		}
+		return out
+	}
+
+	// A machine with agent keys but no session in the thread, an unknown thread, a malformed
+	// id, an unknown reason and an unknown event: all dropped.
+	outsider, err := auth.Create(ctx, h.st, auth.CreateRequest{Kind: "machine", Name: "c", Machine: "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4C"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.st.Write(ctx, func(tx *store.Tx) error {
+		_, err := h.ks.RegisterTx(tx, outsider.Device, testMachineKeys(t), keys.RegQR)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	report(outsider.Device.ID, resumeThread, peers.ResumeRefusedReason)
+	report(h.machines[0], "t_ffffffffffffffff", peers.ResumeRefusedReason)
+	report(h.machines[0], "../threads", peers.ResumeRefusedReason)
+	report(h.machines[0], resumeThread, "because")
+	up(h.machines[0], peers.PeerLogUp{Event: "thread_bogus", Thread: resumeThread, Detail: peers.ResumeRefusedReason})
+	if got := refusals(); len(got) != 0 {
+		t.Fatalf("forged reports were recorded: %+v", got)
+	}
+	if th := h.thread(); th.PausedAt != 0 || th.Turns != 0 {
+		t.Fatalf("a forged report changed the thread: %+v", th)
+	}
+
+	// Machine B of the thread refuses: one audit row, actor its device, detail its machine; the
+	// hub's thread reads paused again, turns still 0.
+	report(h.machines[1], resumeThread, peers.ResumeRefusedReason)
+	got := refusals()
+	if len(got) != 1 || got[0].Actor != h.machines[1] || got[0].Thread != resumeThread {
+		t.Fatalf("refusal audit: %+v", got)
+	}
+	var detail map[string]any
+	_ = json.Unmarshal(got[0].Detail, &detail)
+	if m, _ := detail["machine"].(string); m == "" || len(detail) != 1 {
+		t.Fatalf("refusal detail %s", got[0].Detail)
+	}
+	if th := h.thread(); th.PausedAt == 0 || th.Turns != 0 {
+		t.Fatalf("thread after the refusal: %+v", th)
+	}
+	// A second resume finds the thread paused: a machine still held the stop.
+	if st, m := h.call("POST", "/v1/peers/threads/"+resumeThread+"/resume", h.owner, nil); st != 200 || m["was_paused"] != true {
+		t.Fatalf("resume after refusal: %d %v", st, m)
 	}
 }

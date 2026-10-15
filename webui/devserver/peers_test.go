@@ -93,11 +93,14 @@ func TestPeersThreadResume(t *testing.T) {
 		t.Fatalf("resume: %v", m)
 	}
 	a := owner.want(200, "GET", "/v1/peers/audit", nil)
-	first := a["entries"].([]any)[0].(map[string]any)
-	if first["event"] != "thread_resume" || first["thread"] != mockThread {
-		t.Fatalf("newest audit entry %v", first)
+	entries := a["entries"].([]any)
+	first, second := entries[0].(map[string]any), entries[1].(map[string]any)
+	if first["event"] != "thread_resume_refused" || first["thread"] != mockThread || second["event"] != "thread_resume" ||
+		second["thread"] != mockThread {
+		t.Fatalf("newest audit entries %v, %v", first, second)
 	}
-	if m := owner.want(200, "POST", path, nil); m["was_paused"] != false {
+	// A machine kept its stop, so the thread is paused again.
+	if m := owner.want(200, "POST", path, nil); m["was_paused"] != true {
 		t.Fatalf("second resume: %v", m)
 	}
 }
