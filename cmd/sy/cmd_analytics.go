@@ -229,9 +229,9 @@ func renderAnalytics(w io.Writer, report string, raw json.RawMessage) error {
 		}
 		if len(r.Seats) > 0 {
 			fmt.Fprintln(tw)
-			fmt.Fprintln(tw, "SEAT\tREPLIES\tTOKENS\t\t\t\t\tAPI USD")
+			fmt.Fprintln(tw, "SEAT\tREPLIES\tTOKENS\tAPI USD")
 			for _, s := range r.Seats {
-				fmt.Fprintf(tw, "%s\t%s\t%s\t\t\t\t\t%s\n", s.Name, num(s.Replies), human(s.total()), usd(s.APIUSD))
+				fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", s.Name, num(s.Replies), human(s.total()), usd(s.APIUSD))
 			}
 		}
 	case "models":
