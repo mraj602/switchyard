@@ -136,6 +136,8 @@ describe('poller', () => {
     await flush();
     expect(t.dispatched.map((a) => a.type)).toEqual(['loaded']);
     expect(t.requests()).toBe(4); // overview, sessions, accounts, alerts
+    // Ended sessions come too, or Sessions > Ended or idle could never list one (T3).
+    expect(t.fetch.calls.map((c) => c.url).find((u) => u.includes('/v1/sessions'))).toContain('include_ended=true&days=2');
 
     await t.clock.advance(POLL_MS - 1);
     expect(t.dispatched).toHaveLength(1);
