@@ -27,6 +27,7 @@ test('cells: none, one way, back and both', () => {
   assert.equal(P.cellState([[A, B], [B, A]], A, B), 'both');
   assert.equal(P.cellState([[A, C]], A, B), 'none');
   assert.equal(P.CELL_GLYPH.both, '⇄');
+  assert.equal(P.CELL_GLYPH.none, '—');
 });
 
 test('an edit allows what it adds and denies what it removes; only adding widens', () => {
@@ -61,6 +62,7 @@ test('accounts: visible seats first, then accounts only the matrix names', () =>
   const seats = [{ account: A, label: 'work' }, { account: B, label: 'home', hidden: true }, { account: C, email: 'c@x' }, { account: A, label: 'dup' }];
   const m = { accounts: { 'acct-z': 'old' }, allow: [[A, 'acct-z']] };
   assert.deepEqual(j(P.peerAccounts(seats, m).map((a) => [a.account, a.label])), [[A, 'work'], [C, 'c@x'], ['acct-z', 'old']]);
+  assert.deepEqual(j(P.peerAccounts(seats, m, (s) => `#${s.label || 'c'}`).map((a) => a.label)), ['#work', '#c', 'old']);
 });
 
 test('audit sentences show metadata only', () => {
@@ -93,17 +95,19 @@ test('Resume thread: the newest loop-guard stop of each thread not resumed since
   assert.deepEqual([...P.resumableStops(entries)].sort(), [6, 9]);
   assert.equal(P.resumableStops(null).size, 0);
   assert.equal(P.eventLabel('thread_resume'), 'Thread resumed');
-  assert.equal(P.eventLabel('loop_guard'), 'Loop guard stopped a thread');
+  assert.equal(P.eventLabel('loop_guard'), 'Stopped a thread that went back and forth too often');
+  assert.equal(P.eventLabel('matrix', { version: 1 }), 'Peers set up (defaults)');
+  assert.equal(P.eventLabel('matrix', { version: 2 }), 'Who may message whom changed');
   assert.match(P.resumeText({ machines: 2 }), /^Thread resumed: 2 machines were told\./);
   assert.match(P.resumeText({ machines: 1 }), /1 machine was told/);
   assert.match(P.resumeText({ machines: 2 }), /the audit names each machine that refuses/);
 });
 
 test('a machine that refused the resume: named when the hub says which', () => {
-  assert.equal(P.eventLabel('thread_resume_refused', { machine: 'gpu-box' }), 'gpu-box kept the stop: hub_may_widen is off');
-  assert.equal(P.eventLabel('thread_resume_refused', {}), 'A machine kept the stop: hub_may_widen is off');
-  assert.equal(P.eventLabel('thread_resume_refused', { machine: { x: 1 } }), 'A machine kept the stop: hub_may_widen is off');
-  assert.equal(P.eventLabel('thread_resume_refused'), 'A machine kept the stop: hub_may_widen is off');
+  assert.equal(P.eventLabel('thread_resume_refused', { machine: 'gpu-box' }), 'gpu-box kept the stop: it does not let the hub reopen threads');
+  assert.equal(P.eventLabel('thread_resume_refused', {}), 'A machine kept the stop: it does not let the hub reopen threads');
+  assert.equal(P.eventLabel('thread_resume_refused', { machine: { x: 1 } }), 'A machine kept the stop: it does not let the hub reopen threads');
+  assert.equal(P.eventLabel('thread_resume_refused'), 'A machine kept the stop: it does not let the hub reopen threads');
   assert.equal(P.eventLabel('thread_resume', { machine: 'gpu-box' }), 'Thread resumed');
   assert.equal(P.detailText({ machine: 'gpu-box' }), '');
   // The refusal does not bring the button back: a resume would be refused again until a prompt.

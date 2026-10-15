@@ -127,6 +127,7 @@ func (s *Server) routes() {
 		s.mux.HandleFunc("POST /_dev/build", s.devBuild)
 		s.mux.HandleFunc("POST /_dev/reset", s.devReset)
 		s.mux.HandleFunc("POST /_dev/pull-states", s.devPullStates)
+		s.mux.HandleFunc("POST /_dev/scenario", s.devScenario)
 	}
 	s.mux.Handle("/", webui.HandlerWithBuild(s.opts.Static, s.build))
 }

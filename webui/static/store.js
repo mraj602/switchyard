@@ -15,6 +15,8 @@ export const store = {
   detail: null,        // GET /v1/sessions/{id} for the open session page
   detailId: null,
   live: 'connecting',  // connecting | live | polling | offline
+  liveAt: 0,           // when `live` last changed
+  everLive: false,     // the stream has connected at least once
   offline: null,       // {since: ms} while the service worker answers from its copy
   updatedAt: 0,
   error: null,
@@ -36,13 +38,15 @@ async function guarded(fn) {
   try {
     const r = await fn();
     store.error = null;
+    store.errorStatus = 0;
     return r;
   } catch (e) {
     if (e instanceof AuthError) { store.unauthorized = true; stop(); onAuthLost(); return undefined; }
     store.error = e.message;
+    store.errorStatus = e.status || 0;
     // The live badge belongs to the stream alone (openStream's onStatus): a read that failed
-    // (a 404 for a deleted session, a 403) says nothing about the stream, and nothing would
-    // set the badge back to live while the stream stays open (UI audit G5).
+    // (a 404 for a deleted session, a 403, even a network error) says nothing about the open
+    // stream, and nothing would set the badge back to live while it stays open (UI audit G5).
     emit();
     return undefined;
   }
@@ -182,7 +186,20 @@ function applyMachine({ machine }) {
 
 // ---- lifecycle ---------------------------------------------------------------------------
 
-let closeStream = null, pollTimer = null;
+let closeStream = null, pollTimer = null, reconnectTimer = null;
+
+// How long the stream may be down before the board says so.
+export const RECONNECT_GRACE = 6000;
+
+// What the live badge should say: 'live', 'connecting' (first connect), 'reconnecting' (down
+// for longer than the grace), or 'polling'. A drop shorter than the grace still reads 'live'.
+export function liveState(now = Date.now()) {
+  const s = store.live;
+  if (s === 'live') return 'live';
+  if (s === 'polling') return 'polling';
+  if (!store.everLive) return 'connecting';
+  return now - store.liveAt < RECONNECT_GRACE ? 'live' : 'reconnecting';
+}
 
 // Resolves true when signed in and the overview loaded. On false, `store.unauthorized`
 // says the hub answered 401 (pair or sign in); otherwise `store.error` holds the reason.
@@ -199,7 +216,14 @@ export async function start() {
     onResync: refreshAll,
     onStatus: (s) => {
       if (store.live === s) return;
+      if (s !== 'live' && store.live === 'live') {
+        // A short drop is normal: the badge says "Reconnecting…" only once it lasts (G5).
+        clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(emit, RECONNECT_GRACE + 100);
+      }
+      if (s === 'live') store.everLive = true;
       store.live = s;
+      store.liveAt = Date.now();
       emit();
       if (s === 'live' && store.offline) refreshAll(); // the hub is back: drop the stored copies
     },
