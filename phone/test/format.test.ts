@@ -30,7 +30,7 @@ const cases = (table.cases as Case[]).map((c) => ({ ...c, args: dec(c.args) as u
 type Fn = (...a: unknown[]) => unknown;
 const run = (m: Record<string, unknown>, c: Case) => (m[c.fn] as Fn)(...c.args);
 
-const LOCAL_FNS = new Set(['clock', 'dateTime']);
+const LOCAL_FNS = new Set(['clock', 'dateTime', 'day', 'timeOfDay', 'num', 'tzLabel', 'sameTz']);
 const isUtc = new Date().getTimezoneOffset() === 0;
 // Local-time functions read the device zone, so their stored output only applies in UTC.
 const storedApplies = (c: Case) => isUtc || !LOCAL_FNS.has(c.fn) || (c.webui === false && !!c.args[2] && c.args[2] !== 'No/Such_Zone');
@@ -39,7 +39,7 @@ describe('format port', () => {
   it('has a table', () => {
     expect(cases.length).toBeGreaterThan(150);
     expect(new Set(cases.map((c) => c.fn))).toEqual(
-      new Set(['toMs', 'ago', 'agoLabel', 'clock', 'until', 'pct', 'plural', 'humanKey', 'compact', 'projectOf', 'httpsUrl', 'dateTime']),
+      new Set(['toMs', 'ago', 'agoLabel', 'clock', 'until', 'pct', 'plural', 'humanKey', 'compact', 'projectOf', 'httpsUrl', 'dateTime', 'day', 'timeOfDay', 'num', 'tzLabel', 'sameTz']),
     );
   });
 
