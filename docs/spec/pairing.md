@@ -159,7 +159,7 @@ offers **Test push** (push.md). Closing the dialog does not cancel the code;
 | Field | Rule |
 | --- | --- |
 | `secret` or `code` | Exactly one. `code` accepts `482913`, `482-913`, `482 913`. |
-| `name` | 1–60 characters after trimming; control characters removed. Default: the code's `name`, else `"<kind> <yyyy-mm-dd>"`. The web app sends a guess from the user agent ("iPhone · Safari", "Pixel 9 · Chrome"). |
+| `name` | 1–60 characters after trimming; control characters removed. A code made with a `name` (`sy hub pair --name`) names the device whatever the claimer sends; otherwise this `name`, else `"<kind> <yyyy-mm-dd>"`. The web app sends the name the person typed on the pair screen, prefilled with a guess from the user agent ("iPhone · Safari", "Pixel 9 · Chrome"). |
 | `machine` | Required for `machine` and `desktop` codes (400 `bad_request` "machine is required" without consuming the code); must match the record envelope pattern. Ignored for other kinds. |
 | `expect_kind` | Optional. When it differs from the code's kind the reply is 409 `conflict` and the code is **not** consumed (`sy connect` sends `machine`; the web app sends `phone` or `browser`). |
 | `cookie` | Only for `phone` and `browser` codes. When true the token is not returned in the body; it is set as the `sy_session` cookie instead (3.2). |

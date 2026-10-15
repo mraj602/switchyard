@@ -701,7 +701,9 @@ func (s *Service) Claim(ctx context.Context, ip string, req ClaimRequest) (Claim
 		if req.Cookie && auth.NeedsMachine(row.Kind) {
 			return badRequest("cookie mode is only for phone and browser codes")
 		}
-		if name == "" {
+		// The name the owner gave the code (`sy hub pair --name`) wins over the claimer's
+		// guess (pairing.md 3).
+		if row.Name != "" {
 			name = row.Name
 		}
 		if name == "" {
