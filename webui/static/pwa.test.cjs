@@ -71,6 +71,7 @@ test('deviceName guesses a readable name', async () => {
   assert.equal(deviceName(UA.pixel), 'Pixel 9 · Chrome');
   assert.equal(deviceName(UA.reduced), 'Android · Chrome');
   assert.equal(deviceName(UA.iphone), 'iPhone · Safari');
+  assert.equal(deviceName('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/140.0.0.0 Safari/537.36'), 'Headless Chrome');
   assert.equal(deviceName(UA.ipad), 'iPad · Safari');
   assert.equal(deviceName(UA.mac), 'Mac · Safari');
   assert.equal(deviceName(UA.linuxChrome), 'Linux · Chrome');
@@ -142,9 +143,9 @@ test('format: untilShort style countdown helpers stay stable', async () => {
 
 test('platform: expo target label', async () => {
   const p = await mod('platform.js');
-  assert.equal(p.expoTargetLabel({ kind: 'expo', platform: 'ios', app_version: '0.8.0' }), 'App · iPhone · 0.8.0');
-  assert.equal(p.expoTargetLabel({ kind: 'expo', platform: 'android', app_version: null }), 'App · Android');
-  assert.equal(p.expoTargetLabel({ kind: 'expo' }), 'App');
+  assert.equal(p.expoTargetLabel({ kind: 'expo', platform: 'ios', app_version: '0.8.0' }), 'Old phone app (iPhone), version 0.8.0');
+  assert.equal(p.expoTargetLabel({ kind: 'expo', platform: 'android', app_version: null }), 'Old phone app (Android)');
+  assert.equal(p.expoTargetLabel({ kind: 'expo' }), 'Old phone app');
 });
 
 test('platform: app pair link encodes origin, secret and code', async () => {

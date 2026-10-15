@@ -300,8 +300,8 @@ async function machinesFlow(page, sizeName) {
   await want('[data-key="reach-m_gpu"]', /^Through your laptop$/, 'forward chip');
   await want('[data-key="reach-m_vps"]', /^Collected by the hub every 1 min$/, 'pull chip');
   await want('#machine-m_gpu .kv', /1,240 waiting to send \(oldest \d+ h\)/, 'backlog with its age');
-  await want('#machine-m_gpu .kv', /0\.4\.2 . older than hub 0\.5\.0/, 'older version');
-  await want('#machine-m_oci .kv', /holding 37 updates: the hub is too old/, 'held records');
+  await want('#machine-m_gpu', /0\.4\.2[\s\S]*older than hub 0\.5\.0/i, 'older version');
+  await want('#machine-m_oci', /holding 37 updates because the hub is too old/i, 'held records');
   await want('[data-key="pull-state-m_vps"]', /^Collecting · failing: ssh: connect/, 'failing pull');
   await want('[data-key="alert-m_vps"]', /^Quiet-machine notification sent/, 'silent alert');
   await want('[data-key="status-m_vps"]', /^Quiet /, 'quiet status');

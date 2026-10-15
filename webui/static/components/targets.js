@@ -1,6 +1,6 @@
 // Which devices can get a notification, in plain words. No imports, so node can test it
 // (pwa.test.cjs). A device's targets are its ways of being reached: the Android app's own
-// connection ("link"), the browser's Web Push ("webpush"), ntfy, or the old Expo app.
+// connection ("link"), the browser's Web Push ("webpush"), ntfy, or the old phone app.
 
 // A target that can still deliver: switched on and not given up by the push service.
 export const usable = (t) => !!t && t.enabled !== false && t.status !== 'gone' && t.status !== 'disabled';
@@ -13,7 +13,7 @@ export function notifiable(devices) {
     .filter((x) => x.targets.length);
 }
 
-const KIND = { link: 'Android app', webpush: 'browser notifications', ntfy: 'ntfy', expo: 'Expo app (old)' };
+const KIND = { link: 'Android app', webpush: 'browser notifications', ntfy: 'ntfy', expo: 'old phone app' };
 
 export const targetKindText = (t) => KIND[t && t.kind] || String((t && t.kind) || 'unknown');
 

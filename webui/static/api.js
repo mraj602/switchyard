@@ -39,11 +39,12 @@ async function request(path, init, opts = {}) {
   if (res.status === 401 && !opts.anon) { clearCachedData(); throw new AuthError(); }
   if (!res.ok) {
     let msg = `Hub answered ${res.status}`;
-    let code = '', at = null;
-    try { const j = await res.json(); msg = j.error || msg; code = j.code || ''; at = j.at || null; } catch (_) { /* not JSON */ }
+    let code = '', at = null, rule = '';
+    try { const j = await res.json(); msg = j.error || msg; code = j.code || ''; at = j.at || null; rule = j.rule || ''; } catch (_) { /* not JSON */ }
     const err = new Error(code === 'offline' ? 'Cannot reach the hub' : msg);
     err.status = res.status;
     err.code = code;
+    err.rule = rule; // duplicate_rule: the id of the rule that already matches
     err.at = at; // when a refused owner link was used / expired (api.yaml ownerSignIn)
     throw err;
   }

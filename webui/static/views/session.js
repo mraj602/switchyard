@@ -48,10 +48,13 @@ export function render({ store, route, now }) {
   const tl = s.timeline || [];
   const events = showAll ? tl : transitions(tl);
   const text = s.question || s.last_message;
-  const imported = isHistory(s);
+  // Imported from Claude Code's history: ended with detail "history" (D3), or a bare row.
+  const fromHistory = s.state === 'ended' && s.detail === 'history';
+  const imported = isHistory(s) || fromHistory;
   const name = s.project || s.cwd ? projectOf(s) : imported ? 'Imported session' : 'Session';
   const since = ago(s.state_since, now);
-  const remote = httpsUrl(s.remote_url);
+  // An imported session cannot be reopened in the Claude app (D3).
+  const remote = imported ? null : httpsUrl(s.remote_url);
 
   const facts = [
     ['Account', h('span', {}, dot(seat.colour), seat.label)],
@@ -82,9 +85,9 @@ export function render({ store, route, now }) {
       alertButtons(s)),
     s.alert ? h('p', { class: 'muted small alert-meta' }, 'Alert: ', alertLine(s.alert, now)) : null,
     linked && (!s.alert || s.alert.id !== linked.id) ? h('p', { class: 'muted small alert-meta' }, `The alert you opened: ${alertText(linked, now)}`) : null,
-    imported ? h('p', { class: 'calm small', 'data-key': 'imported-note' }, 'Imported from history: the hub has no project, folder or messages for this session.') : null,
+    imported ? h('p', { class: 'calm small', 'data-key': 'imported-note' }, isHistory(s) ? 'Imported from history: the hub has no project, folder or messages for this session.' : 'Imported from history: the hub never saw this session live, so it cannot be reopened in the Claude app.') : null,
     s.resume ? h('pre', { class: 'cmd mono small' }, s.resume) : null,
-    remote && !imported ? h('p', { class: 'muted small' }, 'The Claude app is signed in to one account at a time: if it shows another account, use the resume command.') : null,
+    remote ? h('p', { class: 'muted small' }, 'The Claude app is signed in to one account at a time: if it shows another account, use the resume command.') : null,
 
     text ? h('section', { class: `card quote needs-${info.cls}`, 'aria-label': s.question ? 'Question' : 'Last message' },
       h('div', { class: 'quote-label' }, s.question ? 'Waiting on you' : 'Last message'),
