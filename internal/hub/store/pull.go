@@ -275,8 +275,18 @@ func (s *Store) RecordPullRun(ctx context.Context, id string, r PullResult) erro
 
 // SchedulePullNow sets a target's next run to now (`sy hub pull run`, POST .../pull).
 func (s *Store) SchedulePullNow(ctx context.Context, id string) error {
-	return s.Write(ctx, func(tx *Tx) error {
-		res, err := tx.exec(`UPDATE pull_target SET next_at = ? WHERE id = ?`, tx.NowMS(), id)
+	_, err := s.SchedulePullAt(ctx, id)
+	return err
+}
+
+// SchedulePullAt is SchedulePullNow returning the next_at it wrote. A run that was already
+// going when it was called leaves that value alone (RecordPullRun's guard), so the value
+// changing means a run that started after the call has finished.
+func (s *Store) SchedulePullAt(ctx context.Context, id string) (int64, error) {
+	var at int64
+	err := s.Write(ctx, func(tx *Tx) error {
+		at = tx.NowMS()
+		res, err := tx.exec(`UPDATE pull_target SET next_at = ? WHERE id = ?`, at, id)
 		if err != nil {
 			return err
 		}
@@ -285,6 +295,7 @@ func (s *Store) SchedulePullNow(ctx context.Context, id string) error {
 		}
 		return nil
 	})
+	return at, err
 }
 
 // SetPullEnabled enables or disables a target. Enabling goes back to state new with a run

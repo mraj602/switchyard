@@ -360,30 +360,22 @@ func pullRun(args []string, stdout, stderr io.Writer) error {
 				return err
 			}
 		}
+		scheduled := map[string]int64{}
 		for _, t := range list {
 			if len(pos) == 1 && (t.State == store.PullStateHostKey || t.State == store.PullStateRefused) {
 				return fmt.Errorf("target %s is %s; fix it first (sy hub pull trust / remove)", t.Name, t.State)
 			}
-			if err := st.SchedulePullNow(ctx, t.ID); err != nil {
+			at, err := st.SchedulePullAt(ctx, t.ID)
+			if err != nil {
 				return err
 			}
+			scheduled[t.ID] = at
 		}
 		if *wait {
 			deadline := time.Now().Add(pull.Ladder[0] + 2*time.Minute)
 			for _, t := range list {
-				for time.Now().Before(deadline) {
-					cur, err := st.PullTargetByID(ctx, t.ID)
-					if err != nil {
-						return err
-					}
-					if cur.LastTryAt >= started {
-						break
-					}
-					select {
-					case <-ctx.Done():
-						return ctx.Err()
-					case <-time.After(200 * time.Millisecond):
-					}
+				if err := waitForRun(ctx, st, t.ID, scheduled[t.ID], deadline, 200*time.Millisecond); err != nil {
+					return err
 				}
 			}
 		}
@@ -411,6 +403,36 @@ func pullRun(args []string, stdout, stderr io.Writer) error {
 	for _, r := range rows {
 		if len(targets) == 1 && r.State != api.PullOK && r.State != api.PullNew && *wait {
 			return fmt.Errorf("pull %s ended in state %s", r.Name, r.State)
+		}
+	}
+	return nil
+}
+
+// waitForRun waits until a run that started after SchedulePullAt returned `scheduled` has
+// been recorded. A run already in flight then (a freshly registered target is due at once, so
+// the hub starts it before `sy machine add` has authorized the key) also records last_try_at
+// afterwards, but leaves next_at alone because it was due before the schedule; only a run
+// started after the call moves next_at off `scheduled`. A state that stops the schedule
+// (host key, refused, disabled) ends the wait too, once something was recorded.
+func waitForRun(ctx context.Context, st *store.Store, id string, scheduled int64, deadline time.Time, poll time.Duration) error {
+	for time.Now().Before(deadline) {
+		cur, err := st.PullTargetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+		if cur.LastTryAt >= scheduled {
+			if cur.NextAt != scheduled {
+				return nil
+			}
+			switch cur.State {
+			case store.PullStateHostKey, store.PullStateRefused, store.PullStateDisabled:
+				return nil
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(poll):
 		}
 	}
 	return nil
