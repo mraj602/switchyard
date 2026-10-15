@@ -57,7 +57,6 @@ type Listener = (x: unknown) => void;
 
 export const notificationsState = {
   permission: 'granted' as 'granted' | 'denied' | 'undetermined',
-  token: 'ExponentPushToken[fakefakefake0001]',
   channels: new Map<string, unknown>(),
   categories: new Map<string, unknown>(),
   badge: 0,
@@ -109,10 +108,6 @@ export const notifications = {
     rec('notifications.requestPermissionsAsync', [req]);
     return perm();
   },
-  async getExpoPushTokenAsync(opts: unknown) {
-    rec('notifications.getExpoPushTokenAsync', [opts]);
-    return { type: 'expo', data: notificationsState.token };
-  },
   async setBadgeCountAsync(n: number) {
     rec('notifications.setBadgeCountAsync', [n]);
     notificationsState.badge = n;
@@ -149,12 +144,6 @@ export const notifications = {
     rec('notifications.addNotificationReceivedListener', []);
     notificationsState.receivedListeners.push(l);
     return { remove: () => (notificationsState.receivedListeners = notificationsState.receivedListeners.filter((x) => x !== l)) };
-  },
-  async registerTaskAsync(name: string) {
-    rec('notifications.registerTaskAsync', [name]);
-  },
-  async unregisterTaskAsync(name: string) {
-    rec('notifications.unregisterTaskAsync', [name]);
   },
 };
 
@@ -319,31 +308,6 @@ export const androidWidget = hostModule('Android', {
     return [];
   },
 });
-
-// ---------------------------------------------------------------- expo-task-manager
-
-export const taskState = { tasks: new Map<string, (body: unknown) => Promise<unknown>>() };
-
-export const taskManager = {
-  __esModule: true,
-  defineTask(name: string, fn: (body: unknown) => Promise<unknown>) {
-    rec('tasks.defineTask', [name]);
-    taskState.tasks.set(name, fn);
-  },
-  isTaskDefined: (name: string) => taskState.tasks.has(name),
-  isTaskRegisteredAsync: async (name: string) => taskState.tasks.has(name),
-  async unregisterTaskAsync(name: string) {
-    rec('tasks.unregisterTaskAsync', [name]);
-  },
-  isAvailableAsync: async () => true,
-};
-
-/** Runs a defined task as the OS would (the background notification task, P6.5). */
-export async function runTask(name: string, body: unknown): Promise<unknown> {
-  const fn = taskState.tasks.get(name);
-  if (!fn) throw new Error(`task ${name} not defined`);
-  return fn(body);
-}
 
 // ---------------------------------------------------------------- sy-link (push.md 14.8)
 
@@ -536,7 +500,6 @@ export const syTabs = {
 export function resetFakes(): void {
   calls.length = 0;
   notificationsState.permission = 'granted';
-  notificationsState.token = 'ExponentPushToken[fakefakefake0001]';
   notificationsState.channels.clear();
   notificationsState.categories.clear();
   notificationsState.badge = 0;
@@ -552,7 +515,6 @@ export function resetFakes(): void {
   widgetsState.liveComponents.clear();
   widgetsState.activities = [];
   androidWidgetState.taskHandler = null;
-  taskState.tasks.clear();
   linkState.available = true;
   linkState.state = linkInitial();
   linkState.config = null;

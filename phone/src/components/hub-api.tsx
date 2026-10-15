@@ -42,13 +42,13 @@ export interface HubApi {
    */
   autoCountdown?: { on: boolean; set(on: boolean): Promise<void> };
   /**
-   * The sy-link module (self-hosted profile on Android, push.md 14.8): Settings → Notifications
-   * (P6.7). Absent: the Expo profile, iOS or a build without the module.
+   * The sy-link module (Android, push.md 14.8): Settings → Notifications (P6.7). Absent: iOS or a
+   * build without the module.
    */
   link?: LinkLike;
   /**
-   * The in-app updater (phone.md P16.3), Android in the self-hosted profile: Settings → App
-   * version shows it. Absent elsewhere (iOS, the Expo profile, no module): no Updates row.
+   * The in-app updater (phone.md P16.3), Android only: Settings → App version shows it. Absent
+   * elsewhere (iOS, no module): no Updates row.
    */
   updater?: Updater;
   /** DELETE /v1/devices/self (best effort), then clear the keychain, cache and widget data. */

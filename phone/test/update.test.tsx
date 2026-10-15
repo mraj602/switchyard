@@ -194,7 +194,7 @@ async function showSettings(updater?: Updater) {
 }
 
 describe('Settings: Updates row', () => {
-  it('is absent without an updater (iOS, the Expo profile)', async () => {
+  it('is absent without an updater (iOS, no module)', async () => {
     await showSettings();
     await screen.findByText('App version');
     expect(screen.queryByTestId('update-check')).toBeNull();

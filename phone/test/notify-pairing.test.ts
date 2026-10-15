@@ -1,6 +1,6 @@
 // Notification actions across pairings (phase 8 review): an act goes only to the pairing that
-// issued the notification (finding 2), and each tap acts once even when the Android background
-// task and the response listener both see it (finding 9). Offline: fetch is a fake.
+// issued the notification (finding 2), and each tap acts once even when two JS runtimes both see
+// it (finding 9). Offline: fetch is a fake.
 import * as ExpoNotifications from 'expo-notifications';
 import type { Clock, FetchLike, KVStore, RequestInitLike } from '../src/contract/platform';
 import { ACTED_KEY } from '../src/contract/constants';
@@ -9,7 +9,6 @@ import {
   decideResponse,
   performDecision,
   resetActed,
-  runNotifyTask,
   type Decision,
   type NotificationResponseLike,
   type NotificationsLike,
@@ -120,28 +119,16 @@ describe('acts go only to the pairing that issued them (finding 2)', () => {
     expect(f.sent).toHaveLength(1);
   });
 
-  it('the background task applies the same rule with the keychain paired_at', async () => {
-    const f = fakeFetch();
-    const r = await runNotifyTask(
-      { notifications: N, fetch: f.fetch, clock, loadHub: async () => ({ origin: ORIGIN, token: 'T', pairedAt: PAIRED }), refresh: async () => 1 },
-      { data: resp('seen', payload(), 'bg-old', PAIRED - 1) },
-    );
-    expect(r).toBe('ok');
-    expect(f.sent).toHaveLength(0);
-  });
 });
 
 describe('one act per tap (finding 9)', () => {
   const seen: Decision = { kind: 'act', token: SEEN_TOKEN, action: 'seen' };
 
-  it('the Android background task and then the response listener act once on one Seen', async () => {
+  it('two JS runtimes act once on one Seen (only the shared storage remembers)', async () => {
     const f = fakeFetch();
     const kv = memKV();
-    await runNotifyTask(
-      { notifications: N, fetch: f.fetch, clock, loadHub: async () => ({ origin: ORIGIN, token: 'T' }), refresh: async () => 0, acted: kv },
-      { data: resp('seen', payload(), 'dup-1') },
-    );
-    resetActed(); // the app's own JS runtime starts later: only the shared storage remembers
+    await performDecision(perform(f, { acted: kv }), seen, 'dup-1');
+    resetActed(); // a second runtime starts later: only the shared storage remembers
     await performDecision(perform(f, { acted: kv }), seen, 'dup-1');
     expect(f.sent).toHaveLength(1);
     expect(kv.items.get(ACTED_KEY)).toBe('["dup-1|seen"]');

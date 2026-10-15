@@ -1,4 +1,4 @@
-// Settings (P4): hub and status, notifications and Send test push, private pushes, tap
+// Settings (P4): hub and status, notifications, private pushes, tap
 // behaviour, own quiet hours, the widgets refresh switch, Claude tabs (P17), app version and Unpair.
 import { useState } from 'react';
 import { Alert as RNAlert, Switch, Text, TextInput, View } from 'react-native';
@@ -16,7 +16,6 @@ import { Btn, Calm, Card, Chip, KV, Muted, Page, Section, useToast } from '../ui
 const PUSH_TEXT: Record<string, string> = {
   registered: 'On',
   blocked: 'Blocked in system settings. Allow notifications for this app there, then come back.',
-  'no-project': "This build can't receive pushes.",
   error: 'Could not register this phone. Try again.',
 };
 
@@ -41,25 +40,9 @@ export default function SettingsScreen() {
   const t = useTheme();
   const toast = useToast();
   const { self, savePrefs } = useSelf(toast.show);
-  const [test, setTest] = useState<PushTestResult | null>(null);
-  const [testing, setTesting] = useState(false);
   const prefs = self?.prefs ?? {};
   const offline = api.data.offline;
   const off = offline || !self;
-
-  const target = (self?.targets ?? []).find((x) => x.kind === 'expo' && x.status !== 'gone');
-
-  const sendTest = async () => {
-    if (!api.client || !target) return;
-    setTesting(true);
-    setTest(null);
-    try {
-      setTest(await api.client.testTarget(target.id));
-    } catch (e) {
-      setTest({ outcome: 'failed', error: e instanceof Error ? e.message : 'failed' });
-    }
-    setTesting(false);
-  };
 
   const confirmUnpair = () =>
     RNAlert.alert(`Unpair from ${api.host}?`, 'This phone will stop receiving pushes and must be paired again.', [
@@ -97,13 +80,8 @@ export default function SettingsScreen() {
               ) : null}
               <Btn label="Notification settings" testID="notify-settings" onPress={go.notifySettings} />
             </>
-          ) : api.pushState === 'registered' ? (
-            <>
-              <Btn label="Send test push" testID="test-push" disabled={off || !target || testing} onPress={() => void sendTest()} />
-              {test || testing ? <Muted>{testText(test, testing)}</Muted> : null}
-            </>
-          ) : api.pushState === 'blocked' || api.pushState === 'no-project' ? null : (
-            <Btn kind="primary" label="Turn on notifications" testID="turn-on" onPress={() => void api.enablePush()} />
+          ) : (
+            <Muted>{"Push notifications use the Android app's own connection to your hub. This phone has none."}</Muted>
           )}
         </Card>
       </Section>

@@ -98,7 +98,7 @@ describe('SecureHub', () => {
     expect(await sh.loadRevokes()).toEqual([]);
   });
 
-  it('a locked store throws on read and write (the background task fake)', async () => {
+  it('a locked store throws on read and write (the locked-store fake)', async () => {
     const mem = createMemorySecureStore({ locked: true });
     const sh = createSecureHub(mem, secureOptions(1));
     await expect(sh.load()).rejects.toThrow();

@@ -1,6 +1,6 @@
 // Entry points of the widgets and the Live Activity for the app (phone.md P11, P12). WP-I wires:
 //   - app/_layout.tsx, module scope: `registerAndroidWidgets()` (Android task handler);
-//   - after every data refresh (and in the background notification task):
+//   - after every data refresh:
 //       const snap = buildSnapshot(overview, accounts, now, {private, origin});
 //       updateTimelines(snap, now); await updateAndroidWidgets(snap);
 //       await syncCountdown(snap, now, wantAutoStart);

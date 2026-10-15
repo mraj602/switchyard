@@ -70,7 +70,7 @@ async function mount(
     fetch: f,
     clock,
     appState,
-    app: { version: '0.8.0', build: '3', model: 'Pixel', platform: 'android', projectId: null, dev: false },
+    app: { version: '0.8.0', build: '3', model: 'Pixel', platform: 'android', dev: false },
     notifications: Notifications as unknown as NotificationsLike,
   };
   let latest: HubState | null = null;
@@ -153,7 +153,7 @@ describe('HubProvider start-up', () => {
     };
     await render(
       <HubProvider
-        deps={{ secure, cache, fetch: f, clock: manualClock(), appState: fakeAppState(), app: { version: '1', build: '1', model: 'P', platform: 'ios', projectId: null, dev: false }, notifications: Notifications as unknown as NotificationsLike }}
+        deps={{ secure, cache, fetch: f, clock: manualClock(), appState: fakeAppState(), app: { version: '1', build: '1', model: 'P', platform: 'ios', dev: false }, notifications: Notifications as unknown as NotificationsLike }}
         navigate={jest.fn()}
         openUrl={jest.fn()}
       >

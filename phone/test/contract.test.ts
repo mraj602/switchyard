@@ -1,16 +1,12 @@
 // Contract test (phases/8.md wave 0): the TS validators accept what the Go side really emits.
-// - Go goldens: internal/hub/push/expo/testdata/*.json (WP-H's message-*.json: every push.md 5.5
-//   row, private, summary, test and refresh).
 // - Devserver replies: test/fixtures/hub/ (scripts/dump-fixtures.sh).
 // - The P11 snapshot example: test/fixtures/widget-snapshot.v1.json.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import {
-  EXPO_TOKEN,
   PAYLOAD_KEYS,
   validateAlert,
-  validateExpoMessage,
   validateLiveProps,
   validateMatrixInfo,
   validateMe,
@@ -18,62 +14,63 @@ import {
   validatePairClaimReply,
   validatePayload,
   validatePeerAudit,
+  validatePushTarget,
+  validateRefresh,
   validateSeat,
   validateSession,
   validateWidgetSnapshot,
 } from '../src/contract';
 
-const GOLDENS = path.resolve(__dirname, '../../internal/hub/push/expo/testdata');
 const HUB = path.join(__dirname, 'fixtures/hub');
 const read = (file: string): unknown => JSON.parse(fs.readFileSync(file, 'utf8'));
 const hub = (name: string) => read(path.join(HUB, name)) as Record<string, unknown>;
 
-describe('Go Expo message goldens', () => {
-  const files = fs.readdirSync(GOLDENS).filter((f) => f.endsWith('.json'));
-
-  it('exist', () => {
-    expect(files.length).toBeGreaterThan(0);
-  });
-
-  it.each(files)('%s is a valid Expo message', (f) => {
-    expect(validateExpoMessage(read(path.join(GOLDENS, f)))).toEqual([]);
-  });
-
-  it.each(files)('%s data is the Go payload exactly (key order, no unknown keys)', (f) => {
-    const m = read(path.join(GOLDENS, f)) as { data: { type: string } };
-    if (m.data.type === 'refresh') return;
-    expect(validatePayload(m.data, 'expo.data', true)).toEqual([]);
-  });
-});
-
 describe('validators reject what the contract forbids', () => {
-  const alert = read(path.join(GOLDENS, 'message-asked-question.json')) as Record<string, unknown> & { data: Record<string, unknown> };
+  const alert: Record<string, unknown> = {
+    v: 1,
+    type: 'alert',
+    alert: 'al_01JA3B7Q0001',
+    alerts: ['al_01JA3B7Q0001'],
+    trigger: 'asked',
+    title: 'work · api · asked a question',
+    body: 'Should I also update the migration?',
+    tag: 'sy-s-sess_01JA3B7Q',
+    url: '/#/sessions/sess_01JA3B7Q?alert=al_01JA3B7Q0001',
+    remote_url: 'https://claude.ai/code/session_01JA3B7Q',
+    tap: 'auto',
+    session: 'sess_01JA3B7Q',
+    needs_you: 3,
+    actions: { snooze: 'a1.YWxf.EIJN', seen: 'a1.YWxf.BUhr' },
+    private: false,
+    ts: '2026-10-13T14:02:00.000Z',
+  };
 
-  it('a private Expo push with remote_url', () => {
-    const data: Record<string, unknown> = { ...alert.data, remote_url: 'https://claude.ai/code/x', private: true };
+  it('a payload in Go key order passes', () => {
+    expect(validatePayload(alert, 'payload', true)).toEqual([]);
+  });
+
+  it('a private payload with remote_url', () => {
+    const data: Record<string, unknown> = { ...alert, private: true };
     // Rebuild in Go key order so only the private rule fires.
     const ordered = Object.fromEntries(PAYLOAD_KEYS.filter((k) => k in data).map((k) => [k, data[k]]));
-    expect(validateExpoMessage({ ...alert, data: ordered }).join()).toMatch(/remote_url/);
+    expect(validatePayload(ordered, 'payload', true).join()).toMatch(/remote_url/);
   });
 
   it('a payload with keys out of Go order', () => {
-    const { v, ...rest } = alert.data;
+    const { v, ...rest } = alert;
     expect(validatePayload({ ...rest, v }, 'payload', true).join()).toMatch(/Go order/);
   });
 
-  it('a refresh with a title', () => {
-    const r = read(path.join(GOLDENS, 'message-refresh.json')) as Record<string, unknown>;
-    expect(validateExpoMessage({ ...r, title: 'x' }).join()).toMatch(/title/);
+  it('a refresh payload passes, with an extra key it does not', () => {
+    const r = { v: 1, type: 'refresh', needs_you: 2, ts: '2026-10-13T14:02:00.000Z' };
+    expect(validateRefresh(r)).toEqual([]);
+    expect(validateRefresh({ ...r, title: 'x' }).join()).toMatch(/title/);
   });
 
-  it('a message over 4096 bytes', () => {
-    expect(validateExpoMessage({ ...alert, body: 'x'.repeat(5000) }).join()).toMatch(/4096/);
-  });
-
-  it('a bad push token', () => {
-    expect(EXPO_TOKEN.test('ExponentPushToken[abc]')).toBe(false);
-    expect(EXPO_TOKEN.test('ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]')).toBe(true);
-    expect(EXPO_TOKEN.test('ExpoPushToken[xxxxxxxxxxxxxxxxxxxxxx]')).toBe(true);
+  it('a push target of an unknown kind', () => {
+    const t = { id: 'pt_1', kind: 'pigeon', enabled: true, status: 'ok' };
+    expect(validatePushTarget(t).join()).toMatch(/kind/);
+    expect(validatePushTarget({ ...t, kind: 'link' })).toEqual([]);
   });
 
   it('a private snapshot with a top item', () => {
@@ -114,6 +111,7 @@ describe('devserver fixtures', () => {
   it('snooze_min is in GET /v1/rules settings', () => {
     const settings = hub('rules.json').settings as Record<string, unknown>;
     expect(typeof settings.snooze_min).toBe('number');
+    expect(typeof settings.refresh_min).toBe('number');
   });
 });
 

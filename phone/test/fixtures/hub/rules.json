@@ -102,7 +102,7 @@
   ],
   "settings": {
     "batch_s": 2,
-    "expo_refresh_min": 15,
+    "refresh_min": 15,
     "flood": {
       "max": 6,
       "per_s": 600

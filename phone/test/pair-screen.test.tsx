@@ -22,7 +22,7 @@ const claimOk = { device: 'dev_phone', kind: 'phone', name: 'Pixel · app', scop
 function renderPair(f: FakeFetch, value: Partial<HubState> = {}) {
   const pairWith = jest.fn(async () => {});
   const unpair = jest.fn(async () => {});
-  const claimDeps = { fetch: f, clock: manualClock(), app: { version: '0.8.0', build: '3', model: 'Pixel', platform: 'android' as const, projectId: null, dev: false } };
+  const claimDeps = { fetch: f, clock: manualClock(), app: { version: '0.8.0', build: '3', model: 'Pixel', platform: 'android' as const, dev: false } };
   const ui = (
     <HubTestProvider value={{ status: 'unpaired', hub: null, pairWith, unpair, claimDeps, dev: false, ...value }}>
       <PairScreen />

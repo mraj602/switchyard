@@ -72,7 +72,7 @@ function parseStored(text: string): StoredHub | null {
   };
 }
 
-/** Refuses to run without keychainAccessible: the background task needs it (P3). */
+/** Refuses to run without keychainAccessible: the token must stay readable while the phone is locked after the first unlock (P3). */
 export function createSecureHub(store: SecureStoreLike, options: SecureStoreOptions): SecureHub {
   if (options.keychainAccessible === undefined || options.keychainAccessible === null) {
     throw new Error('secure: keychainAccessible is required (AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY)');
@@ -100,7 +100,7 @@ export function createSecureHub(store: SecureStoreLike, options: SecureStoreOpti
   };
 }
 
-/** In-memory SecureStoreLike for tests and the background task's locked-store fake. */
+/** In-memory SecureStoreLike for tests and the locked-store fake. */
 export function createMemorySecureStore(opts?: { locked?: boolean }): SecureStoreLike & { dump(): Record<string, string> } {
   const items = new Map<string, string>();
   const locked = () => {

@@ -65,7 +65,7 @@ if [ "${1:-}" = "--preflight" ]; then
 fi
 
 # --- build -------------------------------------------------------------------------------
-export SY_APP_VARIANT=production SY_PUSH=link
+export SY_APP_VARIANT=production
 if [ -z "${SY_SKIP_PREBUILD:-}" ]; then
   npx expo prebuild --platform android --no-install --clean
 fi

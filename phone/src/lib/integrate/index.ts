@@ -1,29 +1,25 @@
 // The integration of the app core with notifications, widgets and the Live Activity (phases/8.md
-// wave 2, WP-I): what runs after a refresh, on pairing, on start, on unpair, in the background
-// notification task, and the auto countdown. Pure: every platform piece (the widget adapters,
-// the task registration, storage, fetch, the clock) is an argument, so tests drive it through
-// the recording fakes and the app binds the real modules (src/state/glue.tsx).
-import type { Me, Overview, PushSettings, Seat } from '../../contract/api';
+// wave 2, WP-I): what runs after a refresh, on pairing, on start, on unpair, and the auto
+// countdown. Pure: every platform piece (the widget adapters, storage, fetch, the clock) is an
+// argument, so tests drive it through the recording fakes and the app binds the real modules
+// (src/state/glue.tsx).
+import type { Me, Overview, PushSettings } from '../../contract/api';
 import { ACTION_OPEN, LOCAL_PREFS_KEY } from '../../contract/constants';
 import type { LinkLike } from '../../contract/link';
 import type { LiveCountdownProps } from '../../contract/live';
-import type { AppInfo, Clock, FetchLike, KVStore } from '../../contract/platform';
+import type { AppInfo, Clock, KVStore } from '../../contract/platform';
 import type { WidgetSnapshot } from '../../contract/snapshot';
 import type { HubData } from '../data';
-import { loadCache, saveCache } from '../data';
 import type { HubClient } from '../hub';
-import { createHubClient } from '../hub';
 import { countdownFor } from '../live';
 import {
   DEFAULT_ACTION,
-  linkMode,
   registerForPush,
   setupChannelsAndCategories,
   syncRegistration,
   type NotificationResponseLike,
   type NotificationsLike,
   type RegisterState,
-  type TaskHub,
 } from '../notify';
 import { buildSnapshot } from '../widget';
 
@@ -47,11 +43,7 @@ export interface GluePlatform {
   startCountdown(props: LiveCountdownProps, seatId: string): Promise<unknown>;
   clearIos(now: number): Promise<void>;
   clearAndroidWidgets(): Promise<void>;
-  registerNotifyTask(): Promise<void>;
-  /**
-   * The sy-link module (self-hosted profile, Android; push.md 14.8). With `app.push = 'link'` it
-   * replaces the Expo token and the background notification task (P6.5).
-   */
+  /** The sy-link module (Android; push.md 14.8): the app's only push path. Null elsewhere. */
   link?: LinkLike | null;
 }
 
@@ -200,50 +192,6 @@ export async function widgetSteps(
   await quietly(() => p.syncCountdown(s, now, ctx.wantStart));
 }
 
-// ------------------------------------------------------------------ background refresh
-
-export interface BackgroundDeps extends Pick<GluePlatform, 'notifications' | 'updateTimelines' | 'updateAndroidWidgets' | 'syncCountdown'> {
-  fetch: FetchLike;
-  clock: Clock;
-  /** The last-known cache (AsyncStorage, sy.cache.v1). */
-  cache: KVStore;
-}
-
-/**
- * `refresh` of the background notification task (P6.5): overview, accounts, the device's prefs
- * and the hub settings with the keychain token; the cache, the widgets and the Live Activity;
- * the badge. Returns the needs-you count, or null without an overview. The task's budget is
- * runNotifyTask's. The token goes only into the client's Authorization header.
- */
-export async function backgroundRefresh(deps: BackgroundDeps, hub: TaskHub): Promise<number | null> {
-  const client = createHubClient({ origin: hub.origin, token: hub.token, fetch: deps.fetch, clock: deps.clock });
-  const [o, a, m, r] = await Promise.allSettled([client.overview(), client.accounts(), client.me(), client.rules()]);
-  if (o.status !== 'fulfilled') return null;
-  const overview = o.value;
-  const accounts: Seat[] = a.status === 'fulfilled' ? a.value.accounts : [];
-  const at = deps.clock.now();
-  // The cache keeps its sessions and alerts; only an existing cache is updated, so a first
-  // start offline never shows empty lists as if they were the hub's.
-  await quietly(async () => {
-    const cached = await loadCache(deps.cache);
-    if (!cached) return;
-    await saveCache(deps.cache, {
-      ...cached,
-      overview,
-      accounts: a.status === 'fulfilled' ? accounts : cached.accounts,
-      fetchedAt: at,
-      offline: false,
-    });
-  });
-  await widgetSteps(deps, { overview, accounts }, at, {
-    me: m.status === 'fulfilled' ? m.value : null,
-    settings: r.status === 'fulfilled' ? r.value.settings : null,
-    origin: hub.origin,
-    wantStart: false,
-  });
-  return needsYouCount(overview);
-}
-
 // ------------------------------------------------------------------ the foreground integration
 
 export interface Glue {
@@ -258,9 +206,9 @@ export interface Glue {
   afterRefresh(d: HubData): Promise<void>;
   /** stateHooks.onCleared. */
   onCleared(): Promise<void>;
-  /** stateHooks.onPaired: GET /v1/rules, the registration (P6.3), then categories and the task. */
+  /** stateHooks.onPaired: GET /v1/rules, the registration (P6.3), then categories. */
   onPaired(client: HubClient): Promise<void>;
-  /** On start when paired (once per client): rules, syncRegistration, categories and the task. */
+  /** On start when paired (once per client): rules, syncRegistration, categories. */
   startUp(client: HubClient): Promise<void>;
   /** Settings "Turn on notifications". */
   enablePush(client: HubClient): Promise<void>;
@@ -275,7 +223,7 @@ export interface Glue {
    * phone then gets the 401 that shows Pair, P3). Returns the unsubscribe.
    */
   attachLink(): () => void;
-  /** The link module when the self-hosted profile uses it (for Settings → Notifications). */
+  /** The link module, when present (Android; for Settings → Notifications). */
   readonly link: LinkLike | null;
   /** Tests. */
   internals(): { wantStart: boolean; settings: PushSettings | null; categoriesMin: number | null };
@@ -296,10 +244,8 @@ export function createGlue(p: GluePlatform): Glue {
   let gen = 0;
   let view: GlueView = { pushState, snoozeMin: DEFAULT_SNOOZE_MIN, autoCountdown };
   const subs = new Set<() => void>();
-  /** The self-hosted profile with the module present. */
-  const link = linkMode(p.app) && p.link ? p.link : null;
-  /** The background task is the Expo profile's (P6.5); the link does its work natively. */
-  const registerTask = () => (link ? Promise.resolve() : p.registerNotifyTask());
+  /** The sy-link module, when present (Android). */
+  const link = p.link ?? null;
   let snoozeSent: number | null = null;
   const sendSnooze = async () => {
     const min = snoozeMin();
@@ -330,7 +276,7 @@ export function createGlue(p: GluePlatform): Glue {
   };
   const granted = async () => (await permission()).granted;
 
-  /** Categories with the hub's snooze_min (P6.2), and the background task. */
+  /** Categories with the hub's snooze_min (P6.2). */
   const setupCategories = async () => {
     const min = snoozeMin();
     await quietly(async () => {
@@ -359,7 +305,6 @@ export function createGlue(p: GluePlatform): Glue {
     pushState = await registerForPush({
       notifications: p.notifications,
       app: p.app,
-      addTarget: (b) => client.addTarget(b),
       patchSelf: (prefs) => client.patchSelf(prefs),
       tz: p.tz(),
       // widgets: true only on the first registration (P6.3): GET /v1/me when it has answered,
@@ -369,7 +314,6 @@ export function createGlue(p: GluePlatform): Glue {
     emit();
     if (await granted()) {
       await setupCategories();
-      await quietly(registerTask);
     }
   };
 
@@ -434,9 +378,7 @@ export function createGlue(p: GluePlatform): Glue {
       const r = await syncRegistration({
         notifications: p.notifications,
         app: p.app,
-        addTarget: (b) => client.addTarget(b),
         patchSelf: (prefs) => client.patchSelf(prefs),
-        deviceSelf: () => client.deviceSelf(),
         tz: p.tz(),
       });
       // Never asked is "off" (Settings offers "Turn on notifications"), not "blocked".
@@ -445,7 +387,6 @@ export function createGlue(p: GluePlatform): Glue {
       emit();
       if (perm.granted) {
         await setupCategories();
-        await quietly(registerTask);
       }
       // push.md 14.4: start on each app start while instant delivery is on.
       if (link) {

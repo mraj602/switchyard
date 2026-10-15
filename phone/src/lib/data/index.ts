@@ -97,7 +97,7 @@ const SESSIONS_LIMIT = 200;
 
 /**
  * Foreground polling every 15 s plus an immediate refresh when the app becomes active.
- * Nothing runs in the background (the notification task does that, P6.5). Overlapping
+ * Nothing runs in the background. Overlapping
  * refreshes share one request. A 401 is the client's business (onUnauthorized), not "offline".
  */
 export function createPoller(deps: PollerDeps): Poller {

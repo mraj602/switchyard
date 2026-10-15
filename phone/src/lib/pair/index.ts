@@ -220,7 +220,7 @@ export interface ClaimDeps {
   clock: Clock;
   app: AppInfo;
   /**
-   * The sy-link module (self-hosted profile, Android): keys go into the claim and the reply is
+   * The sy-link module (Android): keys go into the claim and the reply is
    * checked and configured (P2 "Keys in the claim"). Absent: a claim without keys.
    */
   link?: ClaimLink;

@@ -4,7 +4,7 @@ import { claim, ClaimError, claimMessage, hostOf, pairInputMessage, parsePairInp
 import type { PairInputError } from './index';
 
 const S = 'Q2xhdWRlIGlzIG5vdCBoZXJl'.slice(0, 22); // 22 base64url characters
-const app: AppInfo = { version: '0.8.0', build: '12', model: 'Pixel 9', platform: 'android', projectId: null, dev: false };
+const app: AppInfo = { version: '0.8.0', build: '12', model: 'Pixel 9', platform: 'android', dev: false };
 
 const prod = { dev: false };
 const dev = { dev: true };

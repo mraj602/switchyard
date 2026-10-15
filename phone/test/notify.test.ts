@@ -1,7 +1,5 @@
 import * as ExpoNotifications from 'expo-notifications';
-import type { Device, ExpoTargetNew, PushTarget } from '../src/contract/api';
 import type { AppInfo, Clock, FetchLike, RequestInitLike } from '../src/contract/platform';
-import { NOTIFY_TASK } from '../src/contract/constants';
 import {
   actOnToken,
   decideResponse,
@@ -9,15 +7,13 @@ import {
   performDecision,
   registerForPush,
   registrationPrefs,
-  runNotifyTask,
   setupChannelsAndCategories,
   syncRegistration,
   type Decision,
   type NotificationResponseLike,
   type NotificationsLike,
 } from '../src/lib/notify';
-import { defineNotifyTask } from '../src/tasks/notify-task';
-import { calls, callsOf, emitNotificationReceived, emitNotificationResponse, notificationsState, runTask } from './fakes';
+import { calls, callsOf, emitNotificationReceived, emitNotificationResponse, notificationsState } from './fakes';
 
 const N = ExpoNotifications as unknown as NotificationsLike;
 const DEFAULT = 'expo.modules.notifications.actions.DEFAULT';
@@ -29,7 +25,6 @@ const app = (over: Partial<AppInfo> = {}): AppInfo => ({
   build: '45',
   model: 'Pixel 8',
   platform: 'android',
-  projectId: 'proj-123',
   dev: false,
   ...over,
 });
@@ -115,19 +110,13 @@ describe('channels and categories', () => {
 
 describe('registerForPush', () => {
   function deps(over: Partial<Parameters<typeof registerForPush>[0]> = {}) {
-    const added: ExpoTargetNew[] = [];
     const patched: unknown[] = [];
     return {
-      added,
       patched,
       deps: {
         notifications: N,
         app: app(),
         tz: 'Europe/London',
-        addTarget: async (b: ExpoTargetNew) => {
-          added.push(b);
-          return { id: 'pt_1', kind: 'expo', enabled: true, status: 'new' } as PushTarget;
-        },
         patchSelf: async (p: unknown) => {
           patched.push(p);
           return {};
@@ -137,27 +126,14 @@ describe('registerForPush', () => {
     };
   }
 
-  it('creates channels before the permission request, then token, target, prefs', async () => {
-    notificationsState.permission = 'undetermined';
+  it('creates channels before the permission request, then PATCHes the prefs (no target is registered)', async () => {
     const d = deps({ currentPrefs: async () => ({}) }); // a new device: prefs.widgets never set
-    notificationsState.permission = 'granted'; // the fake answers by state; grant it
     await expect(registerForPush(d.deps)).resolves.toBe('registered');
     const order = calls.map((c) => c.fn);
     const lastChannel = order.lastIndexOf('notifications.setNotificationChannelAsync');
     const perm = order.findIndex((f) => f === 'notifications.getPermissionsAsync' || f === 'notifications.requestPermissionsAsync');
     expect(lastChannel).toBeGreaterThanOrEqual(0);
     expect(perm).toBeGreaterThan(lastChannel);
-    expect(order.indexOf('notifications.getExpoPushTokenAsync')).toBeGreaterThan(perm);
-    expect(callsOf('notifications.getExpoPushTokenAsync')[0]!.args).toEqual([{ projectId: 'proj-123' }]);
-    expect(d.added).toEqual([
-      {
-        kind: 'expo',
-        expo_token: 'ExponentPushToken[fakefakefake0001]',
-        name: 'Pixel 8 · app',
-        platform: 'android',
-        app: { version: '1.2.3', build: '45' },
-      },
-    ]);
     expect(d.patched).toEqual([{ tz: 'Europe/London', widgets: true }]);
   });
 
@@ -188,23 +164,13 @@ describe('registerForPush', () => {
     expect(callsOf('notifications.requestPermissionsAsync')[0]!.args).toEqual([
       { ios: { allowAlert: true, allowBadge: true, allowSound: true } },
     ]);
-    expect(d.added).toHaveLength(0);
-    expect(callsOf('notifications.getExpoPushTokenAsync')).toHaveLength(0);
-  });
-
-  it('posts nothing when projectId is missing', async () => {
-    const d = deps({ app: app({ projectId: null }) });
-    await expect(registerForPush(d.deps)).resolves.toBe('no-project');
-    expect(d.added).toHaveLength(0);
     expect(d.patched).toHaveLength(0);
-    expect(callsOf('notifications.getExpoPushTokenAsync')).toHaveLength(0);
-    expect(callsOf('notifications.requestPermissionsAsync')).toHaveLength(0);
   });
 
   it('reports an error state, without the error text, when the hub call fails', async () => {
     const d = deps({
-      addTarget: async () => {
-        throw new Error('boom ExponentPushToken[fakefakefake0001]');
+      patchSelf: async () => {
+        throw new Error('boom SECRET');
       },
     });
     await expect(registerForPush(d.deps)).resolves.toBe('error');
@@ -212,80 +178,16 @@ describe('registerForPush', () => {
 });
 
 describe('syncRegistration', () => {
-  const target = (over: Partial<PushTarget> = {}): PushTarget => ({
-    id: 'pt_1',
-    kind: 'expo',
-    endpoint: 'ExponentPushToken[fakefakefake0001]',
-    enabled: true,
-    status: 'ok',
-    ...over,
-  });
-  const device = (targets: PushTarget[]) => ({ id: 'd1', targets }) as unknown as Device;
+  const deps = () => ({ notifications: N, app: app(), tz: 'UTC', patchSelf: async () => ({}) });
 
-  function run(targets: PushTarget[]) {
-    const added: ExpoTargetNew[] = [];
-    return {
-      added,
-      result: syncRegistration({
-        notifications: N,
-        app: app(),
-        tz: 'UTC',
-        deviceSelf: async () => device(targets),
-        addTarget: async (b) => {
-          added.push(b);
-          return target();
-        },
-        patchSelf: async () => ({}),
-      }),
-    };
-  }
-
-  it('re-registering never turns widget refresh back on (finding 8)', async () => {
-    for (const [prefs, want] of [
-      [{ widgets: false }, { tz: 'UTC' }],
-      [undefined, { tz: 'UTC', widgets: true }],
-    ] as const) {
-      const patched: unknown[] = [];
-      await syncRegistration({
-        notifications: N,
-        app: app(),
-        tz: 'UTC',
-        deviceSelf: async () => ({ id: 'd1', targets: [], ...(prefs ? { prefs } : {}) }) as unknown as Device,
-        addTarget: async () => target(),
-        patchSelf: async (p) => {
-          patched.push(p);
-          return {};
-        },
-      });
-      expect(patched).toEqual([want]);
-    }
-  });
-
-  it('does nothing when the live target has this token', async () => {
-    const r = run([target()]);
-    await expect(r.result).resolves.toBe('unchanged');
-    expect(r.added).toHaveLength(0);
-  });
-
-  it('registers again when the token changed', async () => {
-    const r = run([target({ endpoint: 'ExponentPushToken[oldoldoldold0001]' })]);
-    await expect(r.result).resolves.toBe('registered');
-    expect(r.added[0]!.expo_token).toBe('ExponentPushToken[fakefakefake0001]');
-  });
-
-  it('registers again when the target is gone, disabled or deleted', async () => {
-    for (const t of [[target({ status: 'gone' })], [target({ status: 'disabled' })], []]) {
-      const r = run(t);
-      await expect(r.result).resolves.toBe('registered');
-      expect(r.added).toHaveLength(1);
-    }
+  it("has nothing to re-register: the link target is the hub's", async () => {
+    await expect(syncRegistration(deps())).resolves.toBe('unchanged');
+    expect(callsOf('notifications.requestPermissionsAsync')).toHaveLength(0);
   });
 
   it('never asks for permission, and does nothing when it is not granted', async () => {
     notificationsState.permission = 'denied';
-    const r = run([]);
-    await expect(r.result).resolves.toBe('blocked');
-    expect(r.added).toHaveLength(0);
+    await expect(syncRegistration(deps())).resolves.toBe('blocked');
     expect(callsOf('notifications.requestPermissionsAsync')).toHaveLength(0);
   });
 });
@@ -510,111 +412,5 @@ describe('initNotifications and performDecision', () => {
     emitNotificationResponse(resp('seen', payload()));
     await flush();
     expect(s.ran).toHaveLength(0);
-  });
-});
-
-describe('background task', () => {
-  const hub = { origin: 'https://hub.ts.net', token: 'SECRET-DEVICE-TOKEN' };
-
-  function deps(over: Partial<Parameters<typeof runNotifyTask>[0]> = {}) {
-    const f = fakeFetch();
-    const refreshed: unknown[] = [];
-    return {
-      f,
-      refreshed,
-      deps: {
-        notifications: N,
-        fetch: f.fetch,
-        clock,
-        loadHub: async () => hub as typeof hub | null,
-        refresh: async (h: unknown) => {
-          refreshed.push(h);
-          return 3 as number | null;
-        },
-        ...over,
-      },
-    };
-  }
-
-  it('a refresh push refreshes and sets the badge from needs_you', async () => {
-    const d = deps();
-    const body = { data: { notification: { request: { identifier: 'x', content: { data: { v: 1, type: 'refresh', needs_you: 3 } } } } } };
-    await expect(runNotifyTask(d.deps, body)).resolves.toBe('ok');
-    expect(d.refreshed).toEqual([hub]);
-    expect(callsOf('notifications.setBadgeCountAsync').map((c) => c.args[0])).toEqual([3]);
-    expect(d.f.sent).toHaveLength(0);
-  });
-
-  it('an action tap acts without a bearer, dismisses, then refreshes', async () => {
-    const d = deps();
-    await expect(runNotifyTask(d.deps, { data: resp('seen', payload(), 'bg-1') })).resolves.toBe('ok');
-    expect(d.f.sent).toHaveLength(1);
-    expect(d.f.sent[0]!.url).toBe(`https://hub.ts.net/v1/actions/${SEEN_TOKEN}`);
-    expect(JSON.stringify(d.f.sent[0]!.init)).not.toContain('SECRET-DEVICE-TOKEN');
-    expect(callsOf('notifications.dismissNotificationAsync').map((c) => c.args[0])).toEqual(['bg-1']);
-    expect(d.refreshed).toHaveLength(1);
-  });
-
-  it('a plain tap is the UI is business: no act, no refresh', async () => {
-    const d = deps();
-    await expect(runNotifyTask(d.deps, { data: resp(DEFAULT, payload()) })).resolves.toBe('ignored');
-    expect(d.f.sent).toHaveLength(0);
-    expect(d.refreshed).toHaveLength(0);
-  });
-
-  it('with a locked keychain it does nothing and does not throw', async () => {
-    const d = deps({
-      loadHub: async () => {
-        throw new Error('User interaction is not allowed.');
-      },
-    });
-    await expect(runNotifyTask(d.deps, { data: resp('seen', payload()) })).resolves.toBe('locked');
-    expect(d.f.sent).toHaveLength(0);
-    expect(d.refreshed).toHaveLength(0);
-    expect(callsOf('notifications.setBadgeCountAsync')).toHaveLength(0);
-  });
-
-  it('unpaired: nothing happens', async () => {
-    const d = deps({ loadHub: async () => null });
-    await expect(runNotifyTask(d.deps, {})).resolves.toBe('no-hub');
-    expect(d.refreshed).toHaveLength(0);
-  });
-
-  it('a failed refresh leaves the badge alone', async () => {
-    const d = deps({ refresh: async () => null });
-    await expect(runNotifyTask(d.deps, {})).resolves.toBe('failed');
-    expect(callsOf('notifications.setBadgeCountAsync')).toHaveLength(0);
-    const d2 = deps({
-      refresh: async () => {
-        throw new Error('x');
-      },
-    });
-    await expect(runNotifyTask(d2.deps, {})).resolves.toBe('failed');
-  });
-
-  it('gives up after the 20 s budget', async () => {
-    jest.useFakeTimers();
-    try {
-      const fake: Clock = {
-        now: () => Date.now(),
-        setTimeout: (fn, ms) => setTimeout(fn, ms),
-        clearTimeout: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
-      };
-      const d = deps({ clock: fake, refresh: () => new Promise<number | null>(() => {}) });
-      const p = runNotifyTask(d.deps, {});
-      await jest.advanceTimersByTimeAsync(20_001);
-      await expect(p).resolves.toBe('failed');
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  it('is defined as SY_NOTIFY_TASK through the task manager adapter', async () => {
-    const d = deps();
-    defineNotifyTask({ loadHub: d.deps.loadHub, refresh: d.deps.refresh, fetch: d.f.fetch, clock });
-    expect(callsOf('tasks.defineTask').map((c) => c.args[0])).toEqual([NOTIFY_TASK]);
-    await runTask(NOTIFY_TASK, { data: resp('snooze', payload(), 'bg-2') });
-    expect(d.f.sent.map((x) => x.url)).toEqual([`https://hub.ts.net/v1/actions/${SNOOZE_TOKEN}`]);
-    expect(callsOf('notifications.setBadgeCountAsync').map((c) => c.args[0])).toEqual([3]);
   });
 });

@@ -13,18 +13,15 @@ import { createSecureHub, secureOptions } from '../lib/secure';
 import type { SecureHub } from '../lib/secure';
 
 export function getAppInfo(): AppInfo {
-  const extra = Constants.expoConfig?.extra as { eas?: { projectId?: string }; push?: string; cleartext?: boolean } | undefined;
+  const extra = Constants.expoConfig?.extra as { cleartext?: boolean } | undefined;
   return {
     version: Application.nativeApplicationVersion ?? Constants.expoConfig?.version ?? '0.0.0',
     build: Application.nativeBuildVersion ?? '0',
     model: Device.modelName ?? 'Phone',
     platform: Platform.OS === 'ios' ? 'ios' : 'android',
-    projectId: extra?.eas?.projectId ?? null,
     // __DEV__, or a build made with SY_APP_VARIANT=development (extra.cleartext): the builds that
     // may talk to an http:// loopback / LAN hub (phone.md P2).
     dev: __DEV__ || extra?.cleartext === true,
-    // app.config.ts sets extra.push; a build without it is the self-hosted default (P13).
-    push: extra?.push === 'expo' ? 'expo' : 'link',
     ...(Device.manufacturer ? { maker: Device.manufacturer } : {}),
   };
 }
@@ -54,12 +51,9 @@ export function systemSecureHub(): SecureHub {
 
 export const systemCache: KVStore = AsyncStorage;
 
-/**
- * The sy-link module (push.md 14.8) in the self-hosted profile on Android; null otherwise (iOS,
- * Expo Go, an `SY_PUSH=expo` build), and the app then works as in phase 8.
- */
+/** The sy-link module (push.md 14.8) on Android; null elsewhere (iOS, Expo Go, no native module). */
 export function systemLink(app: AppInfo): LinkLike | null {
-  return app.push === 'link' && app.platform === 'android' && SyLink.available ? SyLink : null;
+  return app.platform === 'android' && SyLink.available ? SyLink : null;
 }
 
 export const systemFetch: FetchLike = (url, init) => fetch(url, init as RequestInit) as unknown as ReturnType<FetchLike>;

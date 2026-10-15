@@ -13,9 +13,9 @@ export const SECURE_HUB_KEY = 'sy.hub.v1';
 export const SECURE_REVOKE_KEY = 'sy.revoke.v1';
 
 /**
- * AsyncStorage key of the notification actions already carried out (P6.4, P6.5): the
- * "<notification id>|<action>" keys of the last few, so the Android background task and the
- * response listener never both act on one tap. Never a token.
+ * AsyncStorage key of the notification actions already carried out (P6.4): the
+ * "<notification id>|<action>" keys of the last few, so two JS runtimes never both act on one
+ * tap. Never a token.
  */
 export const ACTED_KEY = 'sy.acted.v1';
 
@@ -30,9 +30,6 @@ export const WIDGET_KEY = 'sy.widget.v1';
  * install, not a hub pref; never a token or secret.
  */
 export const LOCAL_PREFS_KEY = 'sy.local.v1';
-
-/** The background notification task (P6.5). */
-export const NOTIFY_TASK = 'SY_NOTIFY_TASK';
 
 /** Notification category with Open, Snooze and Seen (P6.2). No '-' or ':' (an Expo rule). */
 export const ALERT_CATEGORY = 'sy_alert';
@@ -61,14 +58,8 @@ export const POLL_MS = 15_000;
 export const REQUEST_TIMEOUT_MS = 10_000;
 export const HEALTH_TIMEOUT_MS = 1_500;
 
-/** The background task's budget (P6.5). */
-export const BACKGROUND_BUDGET_MS = 20_000;
-
 /** Action tokens (push.md 8; the same check as sw-lib.js actionToken). */
 export const ACTION_TOKEN = /^a1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
-
-/** Expo push tokens the hub accepts (push.md 12.7). */
-export const EXPO_TOKEN = /^Expo(nent)?PushToken\[[A-Za-z0-9_-]{8,200}\]$/;
 
 /** expo-secure-store keychainAccessible for SECURE_HUB_KEY (P3). */
 export const KEYCHAIN_ACCESSIBLE = 'AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY';

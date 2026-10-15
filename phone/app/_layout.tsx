@@ -1,7 +1,7 @@
-// Root layout (phone.md P3, P6.4, P6.5, P11, P12). Owner: WP-P; wiring: WP-I.
-// Module scope (once, guarded against Fast Refresh): the background notification task, the
-// Android widget task handler, the integration's state hooks, and WP-N's initNotifications, so
-// a cold-start notification response is read exactly once; its decisions reach the hub through
+// Root layout (phone.md P3, P6.4, P11, P12). Owner: WP-P; wiring: WP-I.
+// Module scope (once, guarded against Fast Refresh): the Android widget task handler, the
+// integration's state hooks, and WP-N's initNotifications, so a cold-start notification
+// response is read exactly once; its decisions reach the hub through
 // `bridge`, which the provider installs after it has read the keychain. The tree: WP-P's
 // HubProvider (the one source of truth), the glue that derives the screens' HubApi from it,
 // and the gate: unpaired (including a 401 on any call) goes to Pair.
@@ -14,17 +14,14 @@ import type { Glue } from '../src/lib/integrate';
 import { initNotifications } from '../src/lib/notify';
 import type { NotificationsLike } from '../src/lib/notify';
 import { routeToHref } from '../src/lib/links';
-import { bridge, HubGlue, HubProvider, installStateHooks, loadTaskHub, systemGluePlatform, taskRefresh, useHub } from '../src/state';
+import { bridge, HubGlue, HubProvider, installStateHooks, systemGluePlatform, useHub } from '../src/state';
 import type { ProviderDeps } from '../src/state';
 import { getAppInfo, systemAppState, systemCache, systemClock, systemFetch, systemLink, systemSecureHub } from '../src/state/platform';
-import { defineNotifyTask } from '../src/tasks/notify-task';
 import { registerAndroidWidgets } from '../widgets/android/task-handler';
 
 const g = globalThis as { __syNotifInit?: boolean; __syGlue?: Glue };
 if (!g.__syNotifInit || !g.__syGlue) {
   g.__syNotifInit = true; // Fast Refresh re-evaluates modules: register once
-  // The silent-push task is the Expo profile's (P6.5); the self-hosted build has no silent pushes.
-  if (getAppInfo().push !== 'link') defineNotifyTask({ loadHub: loadTaskHub, refresh: taskRefresh, acted: systemCache });
   registerAndroidWidgets();
   const glue = createGlue(systemGluePlatform(getAppInfo()));
   g.__syGlue = glue;

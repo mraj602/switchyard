@@ -1,5 +1,5 @@
 // The wave 2 glue (phases/8.md WP-I): the state hooks after a refresh, on unpair and on pairing,
-// the start-up registration, the background task's refresh, the Lock Screen countdown and the
+// the start-up registration, the Lock Screen countdown and the
 // auto countdown, and the unified provider rendering a screen. Offline: the hub is a fake
 // fetch and every native module is a recording fake (test/fakes.ts).
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -7,7 +7,7 @@ import { act, render, screen } from '@testing-library/react-native';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import type { Me, Overview, Seat } from '../src/contract/api';
-import { CACHE_KEY, KEYCHAIN_ACCESSIBLE, LOCAL_PREFS_KEY, NOTIFY_TASK, SECURE_HUB_KEY, WIDGET_KEY } from '../src/contract/constants';
+import { KEYCHAIN_ACCESSIBLE, LOCAL_PREFS_KEY, WIDGET_KEY } from '../src/contract/constants';
 import type { AppInfo } from '../src/contract/platform';
 import NowScreen from '../src/components/screens/NowScreen';
 import { useHubApi, type HubApi } from '../src/components/hub-api';
@@ -22,10 +22,9 @@ import {
 } from '../src/lib/integrate';
 import { DEFAULT_ACTION, type NotificationResponseLike, type NotificationsLike } from '../src/lib/notify';
 import { createMemorySecureStore, createSecureHub, secureOptions } from '../src/lib/secure';
-import { HubGlue, HubProvider, installStateHooks, loadTaskHub, stateHooks, systemGluePlatform, taskRefresh } from '../src/state';
-import { defineNotifyTask } from '../src/tasks/notify-task';
+import { HubGlue, HubProvider, installStateHooks, stateHooks, systemGluePlatform } from '../src/state';
 import { resetAdapter } from '../widgets/ios/adapter';
-import { calls, callsOf, notificationsState, runTask, secureState, widgetsState } from './fakes';
+import { calls, callsOf, notificationsState, widgetsState } from './fakes';
 import accountsFx from './fixtures/hub/accounts.json';
 import alertsFx from './fixtures/hub/alerts.json';
 import meFx from './fixtures/hub/me.json';
@@ -61,7 +60,6 @@ function hubReplies(opts: { snoozeMin?: number; widgets?: boolean } = {}) {
     if (url.endsWith('/v1/accounts')) return response(200, accountsFx);
     if (url.includes('/v1/alerts')) return response(200, alertsFx);
     if (url.endsWith('/v1/rules')) return response(200, rulesWith(opts.snoozeMin ?? 15));
-    if (url.endsWith('/v1/push/targets')) return response(201, { id: 'pt_app', kind: 'expo', status: 'active' });
     const me = meWith('widgets' in opts ? { widgets: opts.widgets } : { widgets: true });
     if (url.endsWith('/v1/devices/self')) return response(init.method === 'DELETE' ? 204 : 200, me.device);
     if (url.endsWith('/v1/me')) return response(200, me);
@@ -74,7 +72,6 @@ const app = (platform: 'ios' | 'android', over: Partial<AppInfo> = {}): AppInfo 
   build: '12',
   model: 'Pixel 9',
   platform,
-  projectId: 'proj',
   dev: false,
   ...over,
 });
@@ -86,7 +83,6 @@ function clientOf(handler = hubReplies()): { client: HubClient; calls: FetchCall
     health: async () => true,
     me: async () => meWith({ widgets: true }),
     rules: async () => (await (await f(`${ORIGIN}/v1/rules`, {})).json()) as never,
-    addTarget: async (b: unknown) => (await (await f(`${ORIGIN}/v1/push/targets`, { method: 'POST', body: JSON.stringify(b) })).json()) as never,
     patchSelf: async (p: unknown) => (await (await f(`${ORIGIN}/v1/devices/self`, { method: 'PATCH', body: JSON.stringify({ prefs: p }) })).json()) as never,
     deviceSelf: async () => (await (await f(`${ORIGIN}/v1/devices/self`, {})).json()) as never,
   } as unknown as HubClient;
@@ -239,7 +235,7 @@ describe('onCleared', () => {
 });
 
 describe('onPaired and start-up registration', () => {
-  it('Android: channels before the permission, then the target, then categories with the hub snooze_min, then the task', async () => {
+  it('Android: channels before the permission, then the prefs, then categories with the hub snooze_min', async () => {
     const glue = createGlue(systemGluePlatform(app('android'), manualClock(NOW)));
     installStateHooks(glue);
     const { client, calls: hubCalls } = clientOf(hubReplies({ snoozeMin: 30, widgets: undefined }));
@@ -247,14 +243,12 @@ describe('onPaired and start-up registration', () => {
     const firstChannel = idx('notifications.setNotificationChannelAsync');
     expect(firstChannel).toBeGreaterThanOrEqual(0);
     expect(firstChannel).toBeLessThan(idx('notifications.getPermissionsAsync'));
-    expect(idx('notifications.getExpoPushTokenAsync')).toBeLessThan(idx('notifications.setNotificationCategoryAsync'));
-    expect(idx('notifications.setNotificationCategoryAsync')).toBeLessThan(idx('notifications.registerTaskAsync'));
+    expect(idx('notifications.getPermissionsAsync')).toBeLessThan(idx('notifications.setNotificationCategoryAsync'));
     const actions = notificationsState.categories.get('sy_alert') as { buttonTitle: string }[];
     expect(actions.map((a) => a.buttonTitle)).toEqual(['Open', 'Snooze 30 min', 'Seen']);
-    expect(callsOf('notifications.registerTaskAsync')[0]!.args).toEqual([NOTIFY_TASK]);
     // GET /v1/devices/self: the device's prefs, so widgets: true goes only on the first registration
-    expect(hubCalls.map((c) => c.url.replace(ORIGIN, ''))).toEqual(['/v1/rules', '/v1/devices/self', '/v1/push/targets', '/v1/devices/self']);
-    expect(JSON.parse(hubCalls[3]!.init.body!).prefs).toMatchObject({ widgets: true });
+    expect(hubCalls.map((c) => c.url.replace(ORIGIN, ''))).toEqual(['/v1/rules', '/v1/devices/self', '/v1/devices/self']);
+    expect(JSON.parse(hubCalls[2]!.init.body!).prefs).toMatchObject({ widgets: true });
     expect(glue.view()).toMatchObject({ pushState: 'registered', snoozeMin: 30 });
   });
 
@@ -266,36 +260,29 @@ describe('onPaired and start-up registration', () => {
     expect(JSON.parse(patch.init.body!).prefs).toEqual({ tz: expect.any(String) });
   });
 
-  it('start-up re-registration keeps widget refresh off (finding 8)', async () => {
-    notificationsState.token = 'ExponentPushToken[changedchanged01]';
+  it('start-up registers nothing: the link target is the hub\'s, only the rules are read', async () => {
     const glue = createGlue(systemGluePlatform(app('android'), manualClock(NOW)));
     const { client, calls: hubCalls } = clientOf(hubReplies({ widgets: false }));
     await glue.startUp(client);
-    expect(hubCalls.some((c) => c.url.endsWith('/v1/push/targets'))).toBe(true);
-    const patch = hubCalls.find((c) => c.init.method === 'PATCH')!;
-    expect(JSON.parse(patch.init.body!).prefs).not.toHaveProperty('widgets');
+    expect(hubCalls.map((c) => c.url.replace(ORIGIN, ''))).toEqual(['/v1/rules']);
   });
 
-  it('a refused permission: blocked, no categories and no task', async () => {
+  it('a refused permission: blocked, no categories', async () => {
     notificationsState.permission = 'denied';
     const glue = createGlue(systemGluePlatform(app('ios'), manualClock(NOW)));
     await glue.onPaired(clientOf().client);
     expect(glue.view().pushState).toBe('blocked');
     expect(callsOf('notifications.setNotificationCategoryAsync')).toHaveLength(0);
-    expect(callsOf('notifications.registerTaskAsync')).toHaveLength(0);
   });
 
-  it('on start: a live target is "registered" without a POST; categories and the task once per client', async () => {
-    const live = { ...meWith({}).device, targets: [{ id: 'pt_app', kind: 'expo', endpoint: notificationsState.token, status: 'active' }] };
-    const handler = (url: string, init: { method?: string }) => (url.endsWith('/v1/devices/self') ? response(200, live) : hubReplies()(url, init));
+  it('on start with the permission granted: "registered" without a write; categories once per client', async () => {
     const glue = createGlue(systemGluePlatform(app('android'), manualClock(NOW)));
-    const { client, calls: hubCalls } = clientOf(handler);
+    const { client, calls: hubCalls } = clientOf();
     await glue.startUp(client);
     await glue.startUp(client);
     expect(glue.view().pushState).toBe('registered');
-    expect(hubCalls.some((c) => c.url.endsWith('/v1/push/targets'))).toBe(false);
+    expect(hubCalls.some((c) => c.init.method === 'POST' || c.init.method === 'PATCH')).toBe(false);
     expect(callsOf('notifications.setNotificationCategoryAsync')).toHaveLength(1);
-    expect(callsOf('notifications.registerTaskAsync')).toHaveLength(1);
     expect(callsOf('notifications.requestPermissionsAsync')).toHaveLength(0);
   });
 
@@ -304,7 +291,6 @@ describe('onPaired and start-up registration', () => {
     const glue = createGlue(systemGluePlatform(app('ios'), manualClock(NOW)));
     await glue.startUp(clientOf().client);
     expect(glue.view().pushState).toBeNull();
-    expect(callsOf('notifications.registerTaskAsync')).toHaveLength(0);
   });
 
   it('the categories follow a new snooze_min (re-read at most every 5 minutes)', async () => {
@@ -323,60 +309,6 @@ describe('onPaired and start-up registration', () => {
     const cats = callsOf('notifications.setNotificationCategoryAsync');
     expect(cats).toHaveLength(2);
     expect((cats[1]!.args[1] as { buttonTitle: string }[])[1]!.buttonTitle).toBe('Snooze 45 min');
-  });
-});
-
-// ------------------------------------------------------------------ background task
-
-describe('background notification task', () => {
-  const realFetch = globalThis.fetch;
-  afterEach(() => {
-    globalThis.fetch = realFetch;
-  });
-
-  it('a refresh push refreshes with the keychain token, updates cache and widgets, sets the badge', async () => {
-    onPlatform('android');
-    secureState.items.set(SECURE_HUB_KEY, JSON.stringify({ origin: ORIGIN, token: TOKEN, device: 'd', name: 'n', paired_at: 't' }));
-    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ v: 1, at: 1, overview: null, sessions: sessionsFx.sessions, accounts: [], alerts: [] }));
-    const f = fakeFetch(hubReplies({ widgets: true }));
-    globalThis.fetch = f as unknown as typeof fetch;
-    defineNotifyTask({ loadHub: loadTaskHub, refresh: taskRefresh });
-    await runTask(NOTIFY_TASK, { data: { v: 1, type: 'refresh', needs_you: 9, ts: '2026-10-13T06:27:00Z' } });
-
-    expect(notificationsState.badge).toBe(NEEDS); // from the overview, not the push
-    expect(f.calls.map((c) => c.url.replace(ORIGIN, '')).sort()).toEqual(['/v1/accounts', '/v1/me', '/v1/overview', '/v1/rules']);
-    expect(f.calls.every((c) => c.init.headers?.Authorization === `Bearer ${TOKEN}`)).toBe(true);
-    const cache = JSON.parse((await AsyncStorage.getItem(CACHE_KEY))!);
-    expect(cache.overview).not.toBeNull();
-    expect(cache.sessions).toHaveLength(sessionsFx.sessions.length); // kept
-    expect(cache.at).toBeGreaterThan(1);
-    expect(JSON.parse((await AsyncStorage.getItem(WIDGET_KEY))!)).toMatchObject({ needs_you: NEEDS });
-    // the token is nowhere but the Authorization header
-    for (const k of await AsyncStorage.getAllKeys()) expect(await AsyncStorage.getItem(k)).not.toContain(TOKEN);
-    expect(JSON.stringify(calls)).not.toContain(TOKEN);
-  });
-
-  it('without an existing cache nothing is cached; the hub down leaves the badge', async () => {
-    secureState.items.set(SECURE_HUB_KEY, JSON.stringify({ origin: ORIGIN, token: TOKEN, device: 'd', name: 'n', paired_at: 't' }));
-    globalThis.fetch = fakeFetch(hubReplies()) as unknown as typeof fetch;
-    defineNotifyTask({ loadHub: loadTaskHub, refresh: taskRefresh });
-    await runTask(NOTIFY_TASK, { data: { v: 1, type: 'refresh', needs_you: 1, ts: 't' } });
-    expect(await AsyncStorage.getItem(CACHE_KEY)).toBeNull();
-    expect(notificationsState.badge).toBe(NEEDS);
-
-    notificationsState.badge = 5;
-    globalThis.fetch = fakeFetch(() => Promise.reject(new Error('down'))) as unknown as typeof fetch;
-    await runTask(NOTIFY_TASK, { data: { v: 1, type: 'refresh', needs_you: 1, ts: 't' } });
-    expect(notificationsState.badge).toBe(5);
-  });
-
-  it('loadTaskHub: only origin, token and when it was paired; a locked keychain rejects', async () => {
-    secureState.items.set(SECURE_HUB_KEY, JSON.stringify({ origin: ORIGIN, token: TOKEN, device: 'd', name: 'n', paired_at: 't' }));
-    expect(await loadTaskHub()).toEqual({ origin: ORIGIN, token: TOKEN, pairedAt: null });
-    secureState.items.set(SECURE_HUB_KEY, JSON.stringify({ origin: ORIGIN, token: TOKEN, device: 'd', name: 'n', paired_at: '2026-10-13T12:00:00.000Z' }));
-    expect(await loadTaskHub()).toEqual({ origin: ORIGIN, token: TOKEN, pairedAt: Date.parse('2026-10-13T12:00:00.000Z') });
-    secureState.locked = true;
-    await expect(loadTaskHub()).rejects.toBeDefined();
   });
 });
 
@@ -579,7 +511,6 @@ function fakePlatform(over: Partial<GluePlatform> = {}): GluePlatform {
     startCountdown: jest.fn(async () => 'started'),
     clearIos: jest.fn(async () => {}),
     clearAndroidWidgets: jest.fn(async () => {}),
-    registerNotifyTask: jest.fn(async () => {}),
     ...over,
   };
 }

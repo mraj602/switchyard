@@ -68,7 +68,7 @@ try {
     const infos = xml.filter((f) => fs.readFileSync(f, 'utf8').includes('<appwidget-provider'));
     check(infos.length === 2, `two appwidget-provider infos (found ${infos.length})`);
     check(!fs.existsSync(path.join(app, 'android', 'android')), 'no doubled android/android path');
-    // The self-hosted profile (P13, push.md 14.2). The sy-link module's own manifest is merged
+    // The link build (P13, push.md 14.2). The sy-link module's own manifest is merged
     // by Gradle, so its entries are read there; the app's must carry no FCM entry.
     const link = fs.readFileSync(path.join(app, 'modules', 'sy-link', 'android', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
     const both = manifest + link;
@@ -90,14 +90,12 @@ try {
     const mainPlist = plists.find((f) => !/Widget|Extension|ExpoWidgetsTarget/i.test(path.relative(path.join(app, 'ios'), f)));
     const plist = mainPlist ? fs.readFileSync(mainPlist, 'utf8') : '';
     check(Boolean(mainPlist), 'app Info.plist');
-    check(/<key>UIBackgroundModes<\/key>\s*<array>[\s\S]*?<string>remote-notification<\/string>/.test(plist), 'UIBackgroundModes remote-notification');
     check(/<key>NSSupportsLiveActivities<\/key>\s*<true\/>/.test(plist), 'NSSupportsLiveActivities');
     check(plist.includes('<key>NSCameraUsageDescription</key>'), 'NSCameraUsageDescription');
     check(/<key>CFBundleURLSchemes<\/key>\s*<array>[\s\S]*?<string>switchyard<\/string>/.test(plist), 'switchyard URL scheme');
     const ents = findFiles(path.join(app, 'ios'), /\.entitlements$/);
     const withGroup = ents.filter((f) => /com\.apple\.security\.application-groups[\s\S]*?group\./.test(fs.readFileSync(f, 'utf8')));
     check(withGroup.length >= 2, `App Group entitlement on the app and the widget extension (${withGroup.map((f) => path.relative(app, f)).join(', ') || 'none'})`);
-    check(ents.some((f) => fs.readFileSync(f, 'utf8').includes('aps-environment')), 'aps-environment entitlement');
     const pbx = findFiles(path.join(app, 'ios'), /^project\.pbxproj$/).map((f) => fs.readFileSync(f, 'utf8')).join('\n');
     check(/com\.apple\.product-type\.app-extension/.test(pbx), 'widget extension target in project.pbxproj');
     check(/IPHONEOS_DEPLOYMENT_TARGET = 16\.4;/.test(pbx), 'deployment target 16.4');
