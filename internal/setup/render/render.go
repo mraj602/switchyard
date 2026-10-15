@@ -24,7 +24,7 @@ const Redacted = "<redacted>"
 
 // Input is everything a renderer needs.
 type Input struct {
-	Mode    string // model.ModeDryRun, ModeApplied, ModeRolledBack
+	Mode    string // model.ModeDryRun, ModeApplied, ModePartial, ModeRolledBack
 	Primary string // "~/.claude"
 	State   *model.State
 	Plan    model.Plan
@@ -172,6 +172,9 @@ func Text(in Input) string {
 	if in.Mode == model.ModeApplied {
 		title = "sy setup — applied"
 	}
+	if in.Mode == model.ModePartial {
+		title = "sy setup — partly applied (hub step failed)"
+	}
 	if in.Mode == model.ModeRolledBack {
 		title = "sy setup — rolled back"
 	}
@@ -189,6 +192,7 @@ func Text(in Input) string {
 	w.config(p)
 	w.mcp(p)
 	w.hub(p)
+	w.hubFailure(in)
 	w.prototype(p)
 	w.needs(in)
 	w.warnings(p)
@@ -796,6 +800,22 @@ func (w *writer) prototype(p model.Plan) {
 	}
 	if del > 0 {
 		w.line("  − %s → %s   (backup kept)", plural(del, "hook", "hooks"), w.tilde(script))
+	}
+}
+
+// hubFailure names the hub step that did not happen and how to finish it (exit 6).
+func (w *writer) hubFailure(in Input) {
+	h := in.Hub
+	if h == nil || h.Error == "" {
+		return
+	}
+	step := h.Step
+	if step == "" {
+		step = "hub"
+	}
+	w.line("  ✗ not done: %s: %s", step, h.Error)
+	if h.Fix != "" {
+		w.line("    fix: %s", h.Fix)
 	}
 }
 

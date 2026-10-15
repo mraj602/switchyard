@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -84,9 +85,31 @@ func TestSetupHubJoinWithCode(t *testing.T) {
 	// A refused code leaves the hub step skipped (exit 6), not a crash.
 	bad := claimHub(t, 401, &map[string]any{})
 	s2 := newSetupHome(t, detecttest.Laptop(t))
-	_, errOut, code = s2.sy(t, "", "setup", "--yes", "--no-timer", "--hub", "join:"+bad.URL, "--code", "000-000")
+	out, errOut, code = s2.sy(t, "", "setup", "--yes", "--no-timer", "--hub", "join:"+bad.URL, "--code", "000-000")
 	if code != 6 || !strings.Contains(errOut, "not valid") {
 		t.Errorf("refused code: exit %d\n%s", code, errOut)
+	}
+	// The report says the setup is only partly done, which step failed and how to finish.
+	for _, want := range []string{"sy setup — partly applied (hub step failed)", "✗ not done: connect: no hub token given",
+		"fix: make a code on the hub (sy hub pair --kind machine), then rerun: sy setup --hub join:" + bad.URL + " --code <code>"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "sy setup — applied") {
+		t.Errorf("a failed hub step reported as applied:\n%s", out)
+	}
+	s3 := newSetupHome(t, detecttest.Laptop(t))
+	out, _, code = s3.sy(t, "", "setup", "--yes", "--json", "--no-timer", "--hub", "join:"+bad.URL, "--code", "000-000")
+	var rep struct {
+		Mode string
+		Hub  struct{ Step, Error, Fix string }
+	}
+	if err := json.Unmarshal([]byte(out), &rep); err != nil || code != 6 {
+		t.Fatalf("json: exit %d %v\n%s", code, err, out)
+	}
+	if rep.Mode != "partly-applied" || rep.Hub.Step != "connect" || rep.Hub.Error == "" || !strings.Contains(rep.Hub.Fix, "sy hub pair --kind machine") {
+		t.Errorf("json report %+v", rep)
 	}
 }
 
