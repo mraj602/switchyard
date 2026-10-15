@@ -81,12 +81,40 @@ const EVENTS = {
   pause: 'All peers paused',
   resume: 'Peers resumed',
   loop_stop: 'Loop guard stopped a thread',
+  loop_guard: 'Loop guard stopped a thread',
+  thread_resume: 'Thread resumed',
   refused: 'Message refused',
+  rejected: 'Message rejected by a machine',
   off: 'Peers turned off on a machine',
   on: 'Peers turned on on a machine',
 };
 
 export const eventLabel = (e) => EVENTS[e] || String(e || '').replace(/_/g, ' ');
+
+const THREAD_ID = /^t_[0-9a-f]{16}$/;
+
+// The audit ids (newest first list) of the loop-guard stops that "Resume thread" may lift
+// (peers.md 6.3): for each thread, its newest `loop_guard` entry, unless a `thread_resume` of
+// that thread came after it. Threads the list does not show resumed may have closed since;
+// the hub then answers 409.
+export function resumableStops(entries) {
+  const out = new Set();
+  const seen = new Set();
+  for (const e of entries || []) {
+    const t = e && e.thread;
+    if (typeof t !== 'string' || !THREAD_ID.test(t) || seen.has(t)) continue;
+    if (e.event === 'thread_resume') seen.add(t);
+    else if (e.event === 'loop_guard') { seen.add(t); out.add(e.id); }
+  }
+  return out;
+}
+
+// What the board says after a resume (POST /v1/peers/threads/{id}/resume's answer).
+export function resumeText(r) {
+  const n = r && Number.isFinite(r.machines) ? r.machines : 0;
+  const told = n === 1 ? '1 machine was told' : `${n} machines were told`;
+  return `Thread resumed: ${told}. A machine with hub_may_widen off keeps its stop until someone types in either session.`;
+}
 
 // The audit is metadata only. Only these detail keys are shown, in this order, and only when
 // they are plain values; anything else the hub sends is left out.

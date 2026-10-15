@@ -6,7 +6,7 @@ goes here first, before any code (plan section 16).
 | File | What it fixes |
 | --- | --- |
 | [record.md](record.md) | Upload batch, record envelope, the seven record kinds, content rules. |
-| [schema.sql](schema.sql) | The hub's SQLite schema (version 9; each phase's migration is in its header). |
+| [schema.sql](schema.sql) | The hub's SQLite schema (version 10; each phase's migration is in its header). |
 | [states.md](states.md) | Session state machine, question detection, `gone` and timeouts. |
 | [api.yaml](api.yaml) | OpenAPI 3.1 for ingest, the read API, the live stream and reserved paths. |
 | [tokens.md](tokens.md) | Token format, hashing, scopes, CLI, pairing codes. |

@@ -89,3 +89,12 @@ type PeerStatusBody struct {
 	Detail string `json:"detail,omitempty"`
 	At     string `json:"at"`
 }
+
+// ThreadResumeBody is the body of a queued `peer_thread_resume` (link.md 6.4, peers.md 6.3):
+// the owner resumed a thread the loop guard stopped. By is the device that asked at the hub.
+type ThreadResumeBody struct {
+	V      int    `json:"v"`
+	Thread string `json:"thread"`
+	By     string `json:"by"`
+	At     string `json:"at"`
+}

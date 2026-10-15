@@ -437,3 +437,50 @@ func TestSchemaV8LinkKeepsTargets(t *testing.T) {
 	refused("unknown peer status", `INSERT INTO peer_message (id, thread_id, from_session, from_device, from_account, to_session,
 	          to_device, to_account, kind, size, status, created_at, expires_at) VALUES ('m1', 't', 's1', 'd1', 'a1', 's2', 'd2', 'a2', 'start', 1, 'read', 1, 2)`)
 }
+
+// Schema v10 (peers.md 6.3): migrating a v9 database recreates link_queue with the
+// peer_thread_resume type and keeps every queued row, its columns and the indexes.
+func TestSchemaV10KeepsLinkQueue(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "hub.db")
+	seedAt(t, 9, path,
+		`INSERT INTO device (id, kind, name, token_hash, token_hint, scopes, created_at, created_by)
+		 VALUES ('dev_m', 'phone', 'Pixel · app', randomblob(32), 'sy_p_…abcd', '["read","push"]', 0, 'test')`,
+		`INSERT INTO link_queue (device_id, seq, type, tag, body, sig, exp, ref, created_at)
+		 VALUES ('dev_m', 1, 'peer_msg', '', x'0102', randomblob(64), 10, 'pm:m1', 1),
+		        ('dev_m', 2, 'matrix', 'matrix', x'03', randomblob(64), 20, NULL, 2)`)
+	s, err := Open(ctx, path, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if v, _ := s.SchemaVersion(ctx); v != LatestVersion() || v < 10 {
+		t.Fatalf("schema version %d, want %d (>= 10)", v, LatestVersion())
+	}
+	count := func(q string) int {
+		t.Helper()
+		var n int
+		if err := s.R().QueryRowContext(ctx, q).Scan(&n); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+		return n
+	}
+	if n := count(`SELECT count(*) FROM link_queue WHERE device_id = 'dev_m' AND seq = 1 AND type = 'peer_msg' AND body = x'0102'
+		AND exp = 10 AND ref = 'pm:m1' AND created_at = 1`); n != 1 {
+		t.Error("peer_msg row not kept")
+	}
+	if n := count(`SELECT count(*) FROM link_queue WHERE seq = 2 AND tag = 'matrix' AND ref IS NULL`); n != 1 {
+		t.Error("matrix row not kept")
+	}
+	if n := count(`SELECT count(*) FROM sqlite_schema WHERE type = 'index' AND name IN ('link_queue_tag', 'link_queue_exp')`); n != 2 {
+		t.Error("link_queue indexes missing")
+	}
+	if _, err := s.w.ExecContext(ctx, `INSERT INTO link_queue (device_id, seq, type, tag, body, sig, exp, created_at)
+	          VALUES ('dev_m', 3, 'peer_thread_resume', 'tr:t_0123456789abcdef', x'00', randomblob(64), 10, 1)`); err != nil {
+		t.Errorf("peer_thread_resume refused: %v", err)
+	}
+	if _, err := s.w.ExecContext(ctx, `INSERT INTO link_queue (device_id, seq, type, body, sig, exp, created_at)
+	          VALUES ('dev_m', 4, 'chat', x'00', randomblob(64), 10, 1)`); err == nil {
+		t.Error("unknown link frame type accepted")
+	}
+}

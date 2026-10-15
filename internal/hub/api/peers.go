@@ -1,8 +1,11 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -13,8 +16,8 @@ import (
 	"github.com/mraj602/switchyard/internal/keys"
 )
 
-// PE1 peers endpoints (peers.md 5.4, 10, 11; api.yaml tag peers): the matrix, the kill
-// switch and the audit log. The audit holds metadata only; no message text ever reaches it.
+// PE1 peers endpoints (peers.md 5.4, 6.3, 10, 11; api.yaml tag peers): the matrix, the kill
+// switch, thread resume and the audit log. The audit holds metadata only; no message text ever reaches it.
 // Like the key endpoints they answer 503 when the hub has no signing key.
 
 func init() {
@@ -35,6 +38,45 @@ func init() {
 	reg("GET", "/v1/peers/audit", (*Server).peersAudit)
 	reg("GET", "/v1/peers", (*Server).peersList)
 	reg("GET", "/v1/peers/messages", (*Server).peerMessages)
+	reg("POST", "/v1/peers/threads/{id}/resume", (*Server).peerThreadResume)
+}
+
+// PeerThreads is what the server needs from the peer relay (peerrelay.Relay).
+type PeerThreads interface {
+	ResumeThread(ctx context.Context, id, by string) (peerrelay.ResumeResult, error)
+}
+
+// threadIDRE is api.yaml's pattern for a thread id (peers.md 6.1).
+var threadIDRE = regexp.MustCompile(`^t_[0-9a-f]{16}$`)
+
+// peerThreadResume is "Resume thread" (peers.md 6.3, owner scope by the route table): the
+// hub resets its own loop guard for the thread and queues peer_thread_resume to both
+// machines' agents. A hub-signed resume widens, so a machine with hub_may_widen = false
+// refuses it and keeps its own stop until a human prompt (keys.md 5.4).
+func (s *Server) peerThreadResume(w http.ResponseWriter, r *http.Request) {
+	if s.cfg.PeerThreads == nil {
+		auth.WriteError(w, http.StatusServiceUnavailable, "unavailable", "this hub does not relay peer messages")
+		return
+	}
+	id := r.PathValue("id")
+	if !threadIDRE.MatchString(id) {
+		auth.WriteError(w, http.StatusNotFound, "not_found", "no such thread")
+		return
+	}
+	caller, _ := auth.DeviceFrom(r.Context())
+	res, err := s.cfg.PeerThreads.ResumeThread(r.Context(), id, caller.ID)
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		auth.WriteError(w, http.StatusNotFound, "not_found", "no such thread")
+		return
+	case errors.Is(err, peerrelay.ErrThreadClosed):
+		auth.WriteError(w, http.StatusConflict, "conflict", "the thread is closed; a new message opens a new one")
+		return
+	case err != nil:
+		keysFail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"thread": id, "was_paused": res.WasPaused, "machines": len(res.Devices)})
 }
 
 // peersList is the session directory for viewers (api.yaml PeerSession): every live

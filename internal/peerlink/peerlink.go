@@ -1,8 +1,8 @@
 // Package peerlink is the agent's path to sessions on other machines (docs/spec/peers.md 3.1
 // hub source, 8.2, 8.4, 9.3; PE2). It implements peers.Remote over the link (the hub's
 // directory with `peers_list`, envelopes with `peer_msg`, same-machine audit with
-// `peer_log`) and linkclient.PeerHandler (queued `peer_msg` and `peer_status`, the hub's
-// ephemeral answers). It does not import linkclient: the client is reached through Sender.
+// `peer_log`) and linkclient.PeerHandler (queued `peer_msg`, `peer_status` and
+// `peer_thread_resume`, the hub's ephemeral answers). It does not import linkclient: the client is reached through Sender.
 package peerlink
 
 import (
@@ -52,6 +52,10 @@ type Remote struct {
 	// AckWait, ListWait and Fresh override AckWait, ListWait and ListFresh (tests; a
 	// negative Fresh asks the hub every time).
 	AckWait, ListWait, Fresh time.Duration
+	// HubMayWiden is config peers.hub_may_widen (keys.md 5.4). A thread resume the hub relays
+	// (peer_thread_resume, peers.md 6.3) is signed by the hub alone and widens what this
+	// machine delivers, so it is taken only when this is true. The zero value refuses.
+	HubMayWiden bool
 
 	mu     sync.Mutex
 	lists  map[string]chan *peers.PeersReply
@@ -419,9 +423,10 @@ func (r *Remote) Ephemeral(t string, body []byte) {
 	}
 }
 
-// Queued handles a queued peer_msg (deliver it) or peer_status (a sent message's final
-// state). An error leaves the frame unacked so the hub replays it: only when the result
-// could not be reported or the state could not be written.
+// Queued handles a queued peer_msg (deliver it), peer_status (a sent message's final state)
+// or peer_thread_resume (the owner resumed a stopped thread). An error leaves the frame
+// unacked so the hub replays it: only when the result could not be reported or the state
+// could not be written.
 func (r *Remote) Queued(ctx context.Context, t string, seq int64, body []byte) error {
 	switch t {
 	case link.TypePeerStatus:
@@ -446,8 +451,51 @@ func (r *Remote) Queued(ctx context.Context, t string, seq int64, body []byte) e
 		return nil
 	case link.TypePeerMsg:
 		return r.incoming(body)
+	case link.TypePeerThreadResume:
+		return r.threadResume(body)
 	}
 	return nil
+}
+
+// threadResume is peers.md 6.3's "Resume thread" on this machine. The link client has already
+// checked the frame's hub signature and opened its seal; the hub alone signs it, so a machine
+// with hub_may_widen = false refuses it and the thread keeps its turns until a human prompt.
+// An error (threads.json not written) leaves the frame unacked for a replay.
+func (r *Remote) threadResume(body []byte) error {
+	var b peers.ThreadResumeBody
+	if err := json.Unmarshal(body, &b); err != nil || !validThreadID(b.Thread) {
+		r.Logger.Printf("peers: a peer_thread_resume body does not parse; dropped")
+		return nil
+	}
+	if !r.HubMayWiden {
+		r.Logger.Printf("peers: the hub asked to resume thread %s; refused: peers.hub_may_widen is false, so the thread "+
+			"stays stopped until a human prompt in either session", b.Thread)
+		r.Env.RefuseResume(b.Thread, "hub_may_widen")
+		return nil
+	}
+	got, err := r.Env.ResumeThread(b.Thread)
+	if err != nil {
+		return fmt.Errorf("resuming thread %s: %w", b.Thread, err)
+	}
+	if got == peers.ResumeResumed {
+		r.Logger.Printf("peers: thread %s resumed by the owner (asked from %s)", b.Thread, b.By)
+	} else {
+		r.Logger.Printf("peers: the hub asked to resume thread %s, which is not open here; nothing to do", b.Thread)
+	}
+	return nil
+}
+
+// validThreadID is peers.md 6.1's form: "t_" + 16 lowercase hex.
+func validThreadID(id string) bool {
+	if len(id) != 18 || id[:2] != "t_" {
+		return false
+	}
+	for _, c := range id[2:] {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 // seen is <state>/peers/seen.json: message ids handled, with the result reported (8.4).

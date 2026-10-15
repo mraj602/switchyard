@@ -7,7 +7,8 @@ import (
 	"time"
 )
 
-// PE3 mock (peers.md 5, 10, 11): the account matrix, the kill switch and the audit list. The
+// PE3 mock (peers.md 5, 6.3, 10, 11): the account matrix, the kill switch, thread resume and
+// the audit list. The
 // rules are the hub's: an edit that widens (adds a pair, same_account on, resume, more turns)
 // needs an owner caller; narrowing is accepted from owner, push and write callers. The
 // documents are not signed here (the signature is a fixed placeholder of the right shape).
@@ -29,17 +30,28 @@ type peersState struct {
 	at          time.Time
 	audit       []M // newest first
 	nextAudit   int
+	threads     map[string]bool // thread id -> open
 }
 
+// mockThread is the thread the mock's loop guard stopped (peers.md 6.3).
+const mockThread = "t_3a9e5c7d1b2f4a60"
+
 func newPeersState(d *Data, now time.Time) *peersState {
-	p := &peersState{version: 1, sameAccount: true, maxTurns: 30, allow: [][]string{}, signer: "hub", madeBy: "hub", at: now.Add(-48 * time.Hour), nextAudit: 1}
+	p := &peersState{version: 1, sameAccount: true, maxTurns: 30, allow: [][]string{}, signer: "hub", madeBy: "hub", at: now.Add(-48 * time.Hour), nextAudit: 1,
+		threads: map[string]bool{mockThread: true}}
 	p.log(now.Add(-48*time.Hour), "hub", "matrix", M{"version": 1, "signer": "hub", "widens": false, "paused": false, "same_account": true, "max_turns": 30, "pairs": 0})
+	p.logThread(now.Add(-30*time.Minute), "hub", "loop_guard", mockThread, M{})
 	return p
 }
 
 func (p *peersState) log(at time.Time, actor, event string, detail M) {
 	p.audit = append([]M{{"id": p.nextAudit, "at": ts(at), "actor": actor, "event": event, "thread": nil, "msg": nil, "detail": detail}}, p.audit...)
 	p.nextAudit++
+}
+
+func (p *peersState) logThread(at time.Time, actor, event, thread string, detail M) {
+	p.log(at, actor, event, detail)
+	p.audit[0]["thread"] = thread
 }
 
 func (s *Server) peersRoutes() {
@@ -49,6 +61,34 @@ func (s *Server) peersRoutes() {
 	m("POST /v1/peers/pause", s.guard(s.pausePeers, "owner", "push", "write"))
 	m("GET /v1/peers/audit", s.guard(s.peerAudit, "owner", "read"))
 	m("GET /v1/peers/messages", s.guard(s.peerMessages, "owner", "read"))
+	m("POST /v1/peers/threads/{id}/resume", s.guard(s.resumeThread, "owner"))
+}
+
+// resumeThread is "Resume thread": owner only, 404 for a thread the mock does not know, 409
+// for a closed one; the mock tells its two pretend machines.
+func (s *Server) resumeThread(w http.ResponseWriter, r *http.Request, c *caller) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	p := s.peers()
+	id := r.PathValue("id")
+	open, ok := p.threads[id]
+	switch {
+	case !ok:
+		writeErr(w, 404, "not_found", "no such thread")
+		return
+	case !open:
+		writeErr(w, 409, "conflict", "the thread is closed; a new message opens a new one")
+		return
+	}
+	wasPaused := false
+	for _, e := range p.audit {
+		if e["thread"] == id {
+			wasPaused = e["event"] == "loop_guard"
+			break
+		}
+	}
+	p.logThread(s.opts.Now(), c.kind, "thread_resume", id, M{"was_paused": wasPaused, "machines": 2})
+	writeJSON(w, 200, M{"thread": id, "was_paused": wasPaused, "machines": 2})
 }
 
 // peers returns the state, made on first use. Call with s.mu held.
