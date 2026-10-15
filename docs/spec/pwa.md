@@ -13,7 +13,7 @@ no build step, served by the hub at `/`. CSS already switches between a sidebar 
 bottom tabs (phone). Phase 4 adds an install manifest, a service worker, pairing, push
 registration and the More / Alerts / Settings screens. Reasons: one code path for the data
 (store.js, the stream, the read API), screens that already match the designs, and nothing to
-publish. The phase 8 Expo app is the separate native app.
+publish. The phase 8 phone app (built with Expo) is the separate native app.
 
 **Requirement:** install and Web Push need a secure context, so the phone must open the hub at
 an `https://` address with a publicly trusted certificate (`tailscale serve --bg 8787` gives

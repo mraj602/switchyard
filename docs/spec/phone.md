@@ -6,36 +6,37 @@ tests, decisions ("decision N"), risks ("risk N") and manual steps are in
 not affiliated with Anthropic.
 
 The phone app is a `phone` device (tokens.md 3: scopes `read` and `push`) with the PWA's
-screens, native pushes with **Open**, **Snooze** and **Seen**, home-screen widgets on iOS and
-Android, and an iOS Lock Screen countdown to a limit reset. It talks only to its hub's
-existing API; the hub side (the `expo` push channel and widget refresh pushes) is
-[push.md 12](push.md#12-the-expo-channel-phase-8).
+screens, native notifications with **Open**, **Snooze** and **Seen** (Android, over the app's
+own link to the hub), home-screen widgets on iOS and Android, and an iOS Lock Screen countdown
+to a limit reset. It talks only to its hub's existing API; the hub side (the link channel and
+widget refresh frames) is [push.md 13](push.md#13-the-link-channel-n1).
 
 Related: pairing.md 2.2, 3.1 (the QR, `cookie: false`), tokens.md 3 (`phone` scopes),
 push.md 5.4 (`prefs`), 5.5 (texts), 5.8 (deep links), 6.5 (the payload), 8 (action tokens),
-12 (Expo), pwa.md 3 and 5 (screens and the service worker's tap rule), api.yaml (`expo`
-enums, `PushTargetNew.expo_token`, `DevicePrefs.widgets`, `PushSettings.expo_refresh_min`),
-schema.sql v6.
+13 (the link channel), pwa.md 3 and 5 (screens and the service worker's tap rule), api.yaml
+(`DevicePrefs.widgets`, `PushSettings.refresh_min`), schema.sql v11.
 
-Section numbers follow phases/8.md's contract: P8 to P10 (the hub side) are push.md 12.
+Section numbers follow phases/8.md's contract: P8 to P10 (the hub side) were push.md 12, which
+is removed; the hub side of widget refresh is push.md 13.5.
 
-**Self-hosted profile (N0, built in N1/N2; plan addendum C).** Android only. Native
-notifications come over the app's own link to the hub (push.md 13, the `sy-link` module of
-push.md 14), not through Expo or Firebase. P2 adds keys to the claim, P6.3 does not register
-an Expo token, P6.7 is the new Settings → Notifications screen, P13 drops EAS and the Firebase
-config and raises `minSdkVersion` to 31, and P16 is the in-app updater. iOS sections (P6.6's
-iOS badge, P12, the iOS widgets of P11) stay in the code and are not worked on.
+**Notifications (N0, built in N1/N2; plan addendum C).** Android only. Native notifications
+come over the app's own link to the hub (push.md 13, the `sy-link` module of push.md 14); the
+app uses no push service, Expo's, Google's or any other. P2 adds keys to the claim, P6.3
+registers nothing with the hub (the link target comes from pairing), P6.7 is the Settings →
+Notifications screen, P13 has no EAS or Firebase config and `minSdkVersion` is 31, and P16 is
+the in-app updater. iOS sections (P6.6's iOS badge, P12, the iOS widgets of P11) stay in the
+code and are not worked on; iOS gets no native notifications (use Web Push in the browser).
 
 Code map (wave 0): `phone/src/contract/` is the TypeScript side of this spec:
 
 | File | Holds |
 | --- | --- |
-| `api.ts` | Mirrors of the api.yaml schemas the app reads or sends (`Overview`, `Session`, `Seat`, `Window`, `AlertBrief`, `Alert`, `Me`, `Device`, `DevicePrefs`, `PushTarget`, `ExpoTargetNew`, `PairClaim`, `PairClaimReply`, `PushSettings`, `ActionReply`, …) |
-| `payload.ts` | `Payload` (exactly Go `model.Payload`, `PAYLOAD_KEYS` in Go's key order), `RefreshData`, `ExpoMessage`, `ExpoTicket`, `AndroidChannelId` |
+| `api.ts` | Mirrors of the api.yaml schemas the app reads or sends (`Overview`, `Session`, `Seat`, `Window`, `AlertBrief`, `Alert`, `Me`, `Device`, `DevicePrefs`, `PushTarget`, `PairClaim`, `PairClaimReply`, `PushSettings`, `ActionReply`, …) |
+| `payload.ts` | `Payload` (exactly Go `model.Payload`, `PAYLOAD_KEYS` in Go's key order), `RefreshData`, `AndroidChannelId` |
 | `snapshot.ts` | `WidgetSnapshot` v1 (P11), `TimelineEntry`, `SNAPSHOT_MAX_SEATS` 4, `SNAPSHOT_LABEL_MAX` 12, `TIMELINE_MAX` 8 |
 | `live.ts` | `LiveCountdownProps` (P12), `LIVE_MAX_H` 8, `LIVE_MIN_PCT` 80, `LIVE_END_AFTER_MS`, `LIVE_ACTIVITY_NAME` |
 | `routes.ts` | `SCHEME`, `AppRoute`, route paths, the hash routes and incoming hosts of P7 |
-| `constants.ts` | Storage keys (`sy.hub.v1`, `sy.cache.v1`, `sy.widget.v1`, `sy.local.v1`), the task name, category and action ids, channels (P6.1), timeouts, `ACTION_TOKEN` and `EXPO_TOKEN` patterns |
+| `constants.ts` | Storage keys (`sy.hub.v1`, `sy.cache.v1`, `sy.widget.v1`, `sy.local.v1`), category and action ids, channels (P6.1), timeouts, the `ACTION_TOKEN` pattern |
 | `platform.ts` | The service interfaces `src/lib` takes as arguments (`FetchLike`, `Clock`, `KVStore`, `SecureStoreLike`, `AppStateSource`, `AppInfo`) |
 | `validate.ts` | Runtime validators for all of the above (empty list = valid), used by the contract test and by the app on data it did not make |
 
@@ -46,7 +47,7 @@ Each `src/lib/<module>/index.ts` holds the exported signatures of its wave 1 own
 
 ```
 phone/
-  package.json  package-lock.json  app.config.ts  tsconfig.json   (eas.json until N1)
+  package.json  package-lock.json  app.config.ts  tsconfig.json
   babel.config.js  jest.config.js  eslint.config.js  .gitignore  README.md
   app/                      expo-router routes (P4); thin screens only
   src/contract/             TypeScript mirrors of hub JSON (api.ts, payload.ts), WidgetSnapshot,
@@ -55,13 +56,13 @@ phone/
   src/lib/pair/             QR/typed input parsing, claim
   src/lib/secure/           keychain wrapper (SecureStore behind an interface + in-memory fake)
   src/lib/data/             poller, last-known cache (AsyncStorage, never secrets), reducer
-  src/lib/notify/           channels, categories, registration, response decisions, background task
+  src/lib/notify/           channels, categories, response decisions, link frames
   src/lib/links/            hash route ↔ app route, incoming URL allow-list
   src/lib/format/           ages, reset times, labels, state words (port of webui format.js)
   src/lib/widget/           WidgetSnapshot builder, timeline, Android render props
   src/lib/live/             countdown choice, Live Activity props, end policy
   src/lib/integrate/        wave 2 glue (pure): after-refresh widget/live/badge steps, registration
-                            on pairing and start, the background task's refresh, auto countdown
+                            on pairing and start, link `refresh` frames, auto countdown
   src/state/                provider (the one source of truth), notification bridge, and glue.tsx:
                             binds the real modules and derives the screens' HubApi from useHub()
   src/components/           shared UI (rows, rings, chips, banners)
@@ -88,8 +89,7 @@ versions `expo@57.0.26`'s `bundledNativeModules.json` names):
 | `expo` | 57.0.26 | 2026-09-29 | SDK 57 (decision 1) |
 | `react` / `react-native` | 19.2.3 / 0.86.3 | — | SDK 57 pins |
 | `expo-router` | 57.0.24 | 2026-09-29 | Routes, deep links |
-| `expo-notifications` | 57.0.21 | 2026-09-24 | Push token, categories, responses, background task |
-| `expo-task-manager` | 57.0.21 | 2026-09-29 | Background notification task |
+| `expo-notifications` | 57.0.21 | 2026-09-24 | Channels, permission prompt, categories, responses |
 | `expo-secure-store` | 57.0.4 | 2026-09-11 | Token in Keychain / Android Keystore |
 | `expo-camera` | 57.0.6 | 2026-09-29 | QR scanning (`CameraView` `onBarcodeScanned`; `expo-barcode-scanner` is abandoned) |
 | `expo-linking` | 57.0.11 | 2026-09-24 | Scheme URLs, opening `remote_url` |
@@ -99,7 +99,7 @@ versions `expo@57.0.26`'s `bundledNativeModules.json` names):
 | `expo-clipboard` | 57.0.2 | 2026-09-11 | Copy resume command |
 | `react-native-android-widget` | 0.22.1 | 2026-08-17 | Android widgets |
 | `expo-build-properties` | 57.0.22 | 2026-09-24 | Deployment targets |
-| `expo-dev-client` | 57.0.19 | ≤ 2026-09-29 | Development builds (Expo Go has no remote push on Android since SDK 53) |
+| `expo-dev-client` | 57.0.19 | ≤ 2026-09-29 | Development builds (native modules need a development build) |
 | `@react-native-async-storage/async-storage` | 2.2.0 | — | Last-known cache only |
 | `react-native-safe-area-context` / `react-native-screens` | 5.7.0 / 4.26.2 | 2026-02-24 / 2026-07-16 | expo-router |
 | `typescript` | 6.0.3 | 2026-04-16 | SDK 57 template |
@@ -193,8 +193,8 @@ optional React 19.3 peers); they are expected and do not fail the install.
   `sy.revoke.v1` (a short list), do the same local clearing (which also dismisses the old
   hub's delivered notifications), then `DELETE /v1/devices/self`. An unpairing the hub has
   not confirmed is retried on every start and foreground until it answers 2xx, 401 or 404;
-  pairing again with the same hub confirms it first, so its old push target (holding this
-  phone's Expo token) is gone before `POST /v1/push/targets`.
+  pairing again with the same hub confirms it first, so its old link target is gone before the
+  new claim makes its own.
 - A keychain that cannot be read at start (locked before the first unlock) is state
   `locked`, not unpaired: nothing is cleared, notification decisions stay queued, and the
   entry is read again when the app becomes active.
@@ -213,7 +213,7 @@ Accounts, More**:
 | `/more` | `#/more` | Alerts, Machines, Peers, Settings |
 | `/more/alerts` | `#/more/alerts` | Rule switches as `prefs.mute` (`PATCH /v1/devices/self`), recent pushes (`GET /v1/alerts`) |
 | `/more/machines?machine=` | `#/machines` | Machines list |
-| `/more/settings` | `#/more/settings` | Hub and status, notifications state and **Send test push**, private pushes, tap behaviour, own quiet hours, widgets refresh switch (`prefs.widgets`), app version and **Check for update** (P16), **Unpair** |
+| `/more/settings` | `#/more/settings` | Hub and status, notifications state, private pushes, tap behaviour, own quiet hours, widgets refresh switch (`prefs.widgets`), app version and **Check for update** (P16), **Unpair** |
 | `/more/settings/notifications` | — | P6.7 (N1) |
 | `/more/peers` | `#/more/peers` | PE3: **Pause all peers**, the matrix (view; a tapped cell can only narrow) and the audit list (peers.md 5, 10, 11); see below |
 | `/alerts/[id]` | `#/alerts/<id>` | Loads the alert and replaces itself with its deep link (push.md 5.8) |
@@ -240,8 +240,8 @@ on a shared table (WP-S).
 ## P5. Data refresh
 
 - Foreground (`AppState` `active`): poll every 15 s, plus at once on foreground, on a
-  received push and after a Seen or Snooze. Background: no polling. Data refreshes only
-  through the background notification task (P6.5).
+  received push and after a Seen or Snooze. Background: no polling; the `sy-link` module's `refresh` frames
+  (P6.5) update the widgets.
 - The last good replies go to AsyncStorage key `sy.cache.v1` (no token, no secret). When the
   hub cannot be reached, the screens show them under "Offline · showing 14:02", and Seen,
   Snooze and test push are disabled, as in the PWA.
@@ -282,28 +282,13 @@ on iOS while the app is killed is **unverified** (risk 3). If it does not, one c
 `BACKGROUND_ACTIONS_IOS`, flips Snooze and Seen to `opensAppToForeground: true`: the app
 opens briefly, acts and shows a toast.
 
-**P6.3 Registration** (`registerForPush(deps)`, pure with injected `Notifications`).
-**Self-hosted profile:** only step 1 (channels and the permission prompt; `expo-notifications`
-stays for that) and the `PATCH /v1/devices/self {prefs}` of step 3 run; steps 2 and 4's Expo
-parts are skipped (`SY_PUSH=link`, P13) and the link target comes from pairing (push.md 13.7).
-The steps below are the Expo profile:
-
-1. Android: create the channels. Then `requestPermissionsAsync({ios: {allowAlert,
-   allowBadge, allowSound}})`. Anything but granted → Settings shows "Blocked in system
-   settings".
-2. `getExpoPushTokenAsync({projectId})`. `projectId` comes from
-   `Constants.expoConfig.extra.eas.projectId`. If it is missing (a build made without your
-   EAS project), Settings shows "This build can't receive pushes" and nothing is registered.
-3. `POST /v1/push/targets {kind: "expo", expo_token, name: "<model> · app", platform,
-   app: {version, build}}`, then `PATCH /v1/devices/self {prefs: {tz, widgets: true}}`.
-   `widgets: true` goes only on the first registration, when the device's `prefs.widgets`
-   has never been set (read from `GET /v1/me` or `GET /v1/devices/self`); later
-   registrations send `{tz}` only, so a person who turned widget refresh off keeps it off.
-4. Offer **Send test push** (`POST /v1/push/targets/{id}/test`).
-
-On every start with permission granted: get the token again. If it changed, or
-`GET /v1/devices/self` shows no live `expo` target with it (gone or deleted), repeat step 3
-silently. Expo push tokens are stable, but may change on an Android reinstall.
+**P6.3 Registration.** The app registers no push target: the `link` target comes from pairing
+(push.md 13.7). On start `expo-notifications` creates the channels (P6.1) and asks for the
+permission (`requestPermissionsAsync`; anything but granted → Settings shows "Blocked in system
+settings"), then `PATCH /v1/devices/self {prefs: {tz, widgets: true}}`. `widgets: true` goes only
+on the first registration, when the device's `prefs.widgets` has never been set (read from
+`GET /v1/me` or `GET /v1/devices/self`); later registrations send `{tz}` only, so a person who
+turned widget refresh off keeps it off. `widgets` means widget refresh frames over the link.
 
 **P6.4 Responses** (`decideResponse(response, reachable) → Decision`, pure):
 
@@ -317,35 +302,26 @@ An act goes only to the hub that sent the notification. The payload has no hub i
 today, so the app drops (and dismisses) an act on a notification the OS delivered before the
 current pairing was made (`notification.date` against `paired_at`, both on the phone's
 clock); when a payload names an `origin`, an act whose origin is not the paired one is
-dropped too. Each notification's Snooze or Seen runs once: the Android background task and
+dropped too. Each notification's Snooze or Seen runs once: the `sy-link` module's action handling and
 the response listener share the AsyncStorage key `sy.acted.v1` (`"<id>|<action>"`, the last
 50, never a token).
 
 The listener is registered at module scope in `app/_layout.tsx`. On cold start,
 `getLastNotificationResponseAsync()` is read once and then cleared, so a response is never
-handled twice. Foreground pushes are shown (`setNotificationHandler`: banner, list, badge)
+handled twice. Foreground notifications are shown (`setNotificationHandler`: banner, list, badge)
 and trigger a refresh.
 
-**P6.5 Background task** (`SY_NOTIFY_TASK`, `Notifications.registerTaskAsync`): it runs for
-`refresh` pushes (iOS `content-available`, Android data-only) and, on Android, for action
-taps while the app is in the background or killed. It reads the keychain entry, refreshes
-overview and accounts within about 20 s, rebuilds the widget timeline, updates the Live
-Activity and sets the badge from `needs_you`. For an action tap it does the same `act` as
-P6.4. It must finish without the UI tree (no React imports, only `src/lib` plus thin
-adapters).
+**P6.5 Link frames:** there is no JS background task and no silent push. The `sy-link` module
+handles link frames, `refresh` frames (push.md 13.5) and actions natively (push.md 14.5, 14.6) and
+emits `refresh` to JS when the app is running; JS then rebuilds the widget timeline, updates the
+Live Activity and sets the badge from `needs_you`. Action handling is P6.4's `act`.
 
-**P6.6 Badge:** iOS from the push's `badge` (P8.2), corrected after each refresh with
-`setBadgeCountAsync(needs_you)`.
-
-In the self-hosted profile the background task of P6.5 does not exist (no silent pushes): the
-`sy-link` module handles link frames, refreshes and actions natively (push.md 14.5, 14.6) and
-emits `refresh` to JS when the app is running.
+**P6.6 Badge:** set after each refresh with `setBadgeCountAsync(needs_you)`.
 
 **P6.7 Settings → Notifications** (N1, route `/more/settings/notifications`, screen
 `PhoneNotifySettings` to be drawn in `docs/design/screens/`; built as
 `src/components/screens/NotifySettingsScreen.tsx`, reached from a "Notification settings"
-button in Settings' Notifications card, which in the self-hosted profile replaces the Expo
-"Send test push"):
+button in Settings' Notifications card):
 
 | Row | Content | Action |
 | --- | --- | --- |
@@ -481,16 +457,12 @@ then gets the 401 that shows Pair, P3).
 
 - `app.config.ts` reads only non-secret environment values:
   - `SY_APP_ID`: bundle id and package name, default `dev.switchyard.app.local`;
-  - `EAS_PROJECT_ID` → `extra.eas.projectId`;
-  - `SY_GOOGLE_SERVICES_JSON`: a path outside the repo → `android.googleServicesFile`,
-    omitted when unset, so builds still compile without push. It must point outside
-    `phone/` (the config throws otherwise);
   - `SY_APP_VARIANT`: `development` allows cleartext traffic (P2's loopback hubs); any
     other value, or none, is a release config.
 - `scheme: "switchyard"`; iOS `ios.deploymentTarget` 16.4 (the app config field: the
   `expo-build-properties` iOS option is deprecated since SDK 56, and `expo-widgets` reads
   the same field for its extension), Android `minSdkVersion` 24 (through
-  `expo-build-properties`; 31 in the self-hosted profile below).
+  `expo-build-properties`; 31 in the Android build below).
 - Android `permissions: [POST_NOTIFICATIONS, CAMERA]` and `blockedPermissions:
   [RECORD_AUDIO, SYSTEM_ALERT_WINDOW, READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE]`.
   POST_NOTIFICATIONS is listed so the prebuilt manifest shows it (expo-notifications would
@@ -502,7 +474,7 @@ then gets the 401 that shows Pair, P3).
   `enableAndroid: false`); `react-native-android-widget` (the two widgets);
   `./plugins/with-sy-native.js`.
 - `with-sy-native.js` (ours) sets:
-  - iOS `UIBackgroundModes: ["remote-notification"]` and `NSSupportsLiveActivities: true`;
+  - iOS `NSSupportsLiveActivities: true`;
   - Android `allowBackup="false"`;
   - removes `RECORD_AUDIO` and `SYSTEM_ALERT_WINDOW` if a library adds them;
   - `usesCleartextTraffic` only in development builds;
@@ -512,18 +484,10 @@ then gets the 401 that shows Pair, P3).
     `work-runtime-ktx` 2.7.1; work 2.8 merged the ktx classes into `work-runtime`, so both
     together fail `:app:checkDebugDuplicateClasses`. Forcing 2.8.1 makes ktx an empty artifact.
     Revisit when Glance or the widget library moves to a common version.
-- `eas.json` profiles (run only by you):
-  - `development`: `developmentClient`, internal distribution;
-  - `preview`: Android `buildType: "apk"`, iOS internal;
-  - `production`: store builds, autoIncrement.
 
-**Self-hosted profile (N1, N2).** This replaces the EAS and Firebase parts above; nothing in it
-needs an Expo, Google or store account.
+**Android build (N1, N2).** Nothing in it needs an Expo, Google or store account: no EAS
+profiles, no `extra.eas.projectId`, no `googleServicesFile` and no push credentials.
 
-- `SY_PUSH`: `link` (default from N1) or `expo`. With `link`, `app.config.ts` sets no
-  `extra.eas.projectId` and no `googleServicesFile` (it throws if `SY_GOOGLE_SERVICES_JSON` is
-  set), and the app never calls `getExpoPushTokenAsync`. `eas.json` is deleted in N1;
-  `EAS_PROJECT_ID` is ignored.
 - Android `minSdkVersion` **31** (push.md 14.2: Keystore key agreement), `targetSdkVersion`
   the SDK 57 default.
 - The `sy-link` module adds its permissions and components through its own
@@ -535,21 +499,19 @@ needs an Expo, Google or store account.
   local modules' `android/` sources into its temporary tree).
 - **No FCM entry point.** `expo-notifications` stays (channels and the permission prompt), but
   its config plugin writes `com.google.firebase.messaging.*` meta-data and its library manifest
-  declares `ExpoFirebaseMessagingService`. In the self-hosted profile
-  `plugins/with-sy-no-firebase.js` drops the meta-data and removes the service from the merged
+  declares `ExpoFirebaseMessagingService`. `plugins/with-sy-no-firebase.js` drops the meta-data
+  and removes the service from the merged
   manifest (`tools:node="remove"`); it is listed **before** `expo-notifications`, because
   manifest mods run in reverse order of the plugins list. The `firebase-messaging` library
   stays on the classpath (expo-notifications' Kotlin links it) but is never initialised: there
   is no `google-services.json`, no Google Services Gradle plugin and no token call.
-- The background notification task of P6.5 is neither defined nor registered in this profile
-  (`app/_layout.tsx`, `src/lib/integrate`): there are no silent pushes.
-- `getAppInfo()` reads `extra.push` (default `link`) into `AppInfo.push`; the glue uses the
-  module only when it is `link`, on Android, and the module is present (`systemLink`).
+- There is no background notification task: there are no silent pushes.
+- The glue uses the `sy-link` module only on Android, when the module is present (`systemLink`).
 - **Build:** `make phone-apk-release` (you run it, not an agent): `expo prebuild --platform
-  android --clean` with `SY_APP_VARIANT=production SY_PUSH=link`, then `./gradlew
+  android --clean` with `SY_APP_VARIANT=production`, then `./gradlew
   assembleRelease` in `phone/android`. Output `phone/dist/switchyard-<version>.apk`, its
   `SHA256SUMS` (the APK's line) and `manifest.json` (P16.1). A development build for the phase 8 manual check is
-  `expo prebuild` + `./gradlew assembleDebug`, without push.
+  `expo prebuild` + `./gradlew assembleDebug`.
 - **Signing:** your own release keystore, outside the repo. The make target refuses to start
   without it: `SY_ANDROID_KEYSTORE` (path), `SY_ANDROID_KEY_ALIAS` and
   `SY_ANDROID_KEYSTORE_PASSWORD` (and `SY_ANDROID_KEY_PASSWORD` when it differs), or the same
@@ -593,8 +555,7 @@ needs an Expo, Google or store account.
   (version 1, nothing allowed) and audit (`GET /v1/peers/matrix`, `/v1/peers/audit`);
   `validateMatrixInfo` and `validatePeerAudit` check them, and the Peers screen tests start from
   them (`test/screens.test.tsx`, `test/peers-format.test.ts`).
-- `test/contract.test.ts` checks the Go Expo message goldens
-  (`internal/hub/push/expo/testdata/*.json`) with `validateExpoMessage` and, for alerts,
+- `test/contract.test.ts` checks the Go payload goldens with
   `validatePayload(…, exact)` (Go key order, no unknown keys), and every fixture with its
   validator. Wave 0 ships `placeholder-alert.json` and `placeholder-refresh.json`; WP-H replaces
   them with its `message-*.json` goldens.
@@ -673,7 +634,7 @@ The app is sideloaded (no store), so it updates itself, with your confirmation e
   than the installed `versionCode` and `min_sdk` fits.
 - The app (`src/lib/update`) calls it on start when paired and at most every 24 hours, and the
   offer is remembered until installed. A failed check does not count as a check.
-- Settings → App version has an **Updates** row (Android, self-hosted profile): the state ("Not
+- Settings → App version has an **Updates** row (Android): the state ("Not
   checked yet", "Checking…", "Up to date", the error), **Check for update** (never throttled)
   and, when one is offered, the notes, the source ("your hub" or "GitHub") and **Install**.
 - Settings shows "Update 0.9.0 available" with the notes. **Install**: download to the app's
@@ -693,7 +654,7 @@ The app is sideloaded (no store), so it updates itself, with your confirmation e
 
 ## P17. claude.ai account tabs (8b)
 
-Android only (self-hosted profile, `minSdkVersion` 31). One claude.ai web tab per seat, each its
+Android only (`minSdkVersion` 31). One claude.ai web tab per seat, each its
 own WebView profile, so every account stays signed in at once. **Open in Claude** opens a
 session's Remote Control link in its seat's tab. Switchyard never reads the tabs' cookies,
 storage or usage: the tab is a plain browser view the person signs in to.
