@@ -208,7 +208,7 @@ Accounts, More**:
 | --- | --- | --- |
 | `/` (tab Now) | `#/` | Needs-you inbox with swipe Seen / Snooze (`POST /v1/alerts/{id}/seen`, `/snooze`), alert status words, rings per account, running count per machine |
 | `/sessions?filter=&by=` | `#/sessions` | Grouped list with filter chips |
-| `/sessions/[id]?alert=` | `#/sessions/<id>` | State history, last message, **Open in Claude** (`remote_url` with the wrong-account note), **Copy resume command**, Snooze |
+| `/sessions/[id]?alert=` | `#/sessions/<id>` | State history, last message, **Open in Claude** (`remote_url` in the seat's claude.ai tab on Android, P17; elsewhere with the wrong-account note), **Copy resume command**, Snooze |
 | `/accounts?seat=` | `#/accounts` | Cards, "most room", **Count down on Lock Screen** (iOS, P12) |
 | `/more` | `#/more` | Alerts, Machines, Peers, Settings |
 | `/more/alerts` | `#/more/alerts` | Rule switches as `prefs.mute` (`PATCH /v1/devices/self`), recent pushes (`GET /v1/alerts`) |
@@ -218,6 +218,7 @@ Accounts, More**:
 | `/more/peers` | `#/more/peers` | PE3: **Pause all peers**, the matrix (view; a tapped cell can only narrow) and the audit list (peers.md 5, 10, 11); see below |
 | `/alerts/[id]` | `#/alerts/<id>` | Loads the alert and replaces itself with its deep link (push.md 5.8) |
 | `/pair` | `#/pair` | P2 |
+| `/tabs/[seat]?url=` | — | P17: the seat's claude.ai tab (Android) |
 
 **Peers** (`PeersScreen`, PE3) reads `GET /v1/peers/matrix`, `/v1/peers/audit` and, when the hub
 serves it, `/v1/peers/messages` through the hub client (`matrix`, `editMatrix`, `pausePeers`,
@@ -689,3 +690,96 @@ The app is sideloaded (no store), so it updates itself, with your confirmation e
 - Google's developer verification for sideloaded apps (from 2027) does not change this flow;
   if a phone requires it, install once with Android's "advanced flow" or `adb install` (plan
   addendum C, H7).
+
+## P17. claude.ai account tabs (8b)
+
+Android only (self-hosted profile, `minSdkVersion` 31). One claude.ai web tab per seat, each its
+own WebView profile, so every account stays signed in at once. **Open in Claude** opens a
+session's Remote Control link in its seat's tab. Switchyard never reads the tabs' cookies,
+storage or usage: the tab is a plain browser view the person signs in to.
+
+### P17.1 The `sy-tabs` module
+
+A local Expo module, `phone/modules/sy-tabs` (Kotlin, `dev.switchyard.tabs`), with one
+dependency, `androidx.webkit:webkit` (the profile API).
+
+| JS | Native |
+| --- | --- |
+| `available` | The module is in this build (Android) |
+| `isSupported(): Promise<boolean>` | `WebViewFeature.isFeatureSupported(MULTI_PROFILE)` (WebView 110 or later) |
+| `listProfiles(): Promise<string[]>` | The seat ids of `ProfileStore.getAllProfileNames()` that are tab profiles |
+| `deleteProfile(seat): Promise<boolean>` | `ProfileStore.deleteProfile(name)`: cookies, storage and cache of that tab. Rejects `ERR_SY_TABS_IN_USE` while the tab is open, `ERR_SY_TABS_SEAT` on a bad seat id |
+| `<TabView seat url onTabState>` | A `WebView` bound with `WebViewCompat.setProfile` to the seat's profile (made on first use) before anything loads, then `loadUrl(url)` |
+
+- **Profile name:** `sy-tab-` + the hub seat id (`^seat_[0-9A-HJKMNP-TV-Z]{26}$`), never an
+  email or label. Other names (and `Default`) are never listed or deleted.
+- **`onTabState`** `{state, url?, status?, height?, code?, reason?}`: `loading` (main frame started), `loaded`
+  (main frame finished, `height` = content height 3 s later), `http` (main-frame HTTP error,
+  `status`), `error` (main-frame network error, `code`; or `reason` `unsupported` / `profile` when no tab could be made), `crashed` (renderer gone; the view drops its
+  WebView), `download` (a download was refused), `external` (a link went to the browser).
+- **Lifecycle:** the screen mounts one `TabView` at a time. Cookies are flushed when the view
+  is detached and when the app pauses; profiles are on disk in the app's data folder, so they
+  survive restarts and updates (P16.3: same package, same key) and go with an uninstall or
+  "Clear data". A seat change on a mounted view rebuilds the WebView.
+
+### P17.2 Tab model and routing
+
+There is no tab list of our own: a seat has a tab once its profile exists. `src/lib/tabs`
+(pure) decides where a link opens, `openTarget(session, {supported})`:
+
+1. `remote_url` not an `https://claude.ai/…` link → browser (or nothing when not https).
+2. Tabs not supported (no module, not Android, WebView without `MULTI_PROFILE`) → browser,
+   reason `unsupported`.
+3. No seat, or a seat id that fails the pattern → browser, reason `unattributed`.
+4. Else the tab of `session.seat`, at `remote_url`, even if that tab was never opened (it then
+   shows the sign-in).
+
+The seat comes from the hub (`Session.seat`, identity.md 1), so a session from account B always
+opens in B's tab. **Open claude.ai** on an Accounts card opens the seat's tab at
+`https://claude.ai/`.
+
+### P17.3 Screens
+
+- `/tabs/[seat]?url=` (`ClaudeTabScreen`): a header with the account's dot and name,
+  **Open in browser** and **Close**, then the `TabView`. A strip says: "Sign in with your email
+  and the code claude.ai sends. Google sign-in does not work inside apps."
+- Accounts: **Open claude.ai** on each card when tabs are supported.
+- Settings → **Claude tabs**: one row per profile (seat name, or "Removed account" for a seat
+  the hub no longer lists) with **Sign out (clear this tab)**, which confirms, then
+  `deleteProfile`. Shown only when supported; otherwise "This phone's WebView cannot keep
+  separate claude.ai sign-ins; links open in the browser."
+
+### P17.4 Fallback
+
+claude.ai may refuse embedded WebViews. `assessTab(events, elapsed)` (pure) turns the events
+into `ok`, `waiting`, `refused` (a main-frame `http` 401, 403, 429 or 451 not followed by a
+`loaded` page with content within 10 s: Cloudflare's challenge also starts with a 403),
+`blank` (`loaded` with `height` 0, or `about:blank`), `failed` (`error`, `crashed`) or
+`timeout` (no `loaded` within 20 s). On anything but `ok` and `waiting` the screen shows
+"claude.ai did not load in this tab" with the reason and **Open in browser** (the tab's current
+claude.ai URL through `Linking.openURL`). It does not switch on its own, so a slow page is not lost.
+
+### P17.5 Security
+
+- No `addJavascriptInterface`, no injected script, no `evaluateJavascript`. JavaScript and DOM
+  storage are on (claude.ai needs them); file and content access, geolocation and mixed content
+  are off; Safe Browsing stays on; `setSupportMultipleWindows(false)`.
+- Switchyard never calls the profile's `CookieManager.getCookie` or `WebStorage` reads; the
+  module only flushes and deletes.
+- **URL allow-list** (main frame, `shouldOverrideUrlLoading` and the first `loadUrl`):
+  `https:` only, host `claude.ai`, `anthropic.com`, `claude.com`,
+  `challenges.cloudflare.com` or a subdomain of one (desktop.md C2's list) → in the tab. Any
+  other `https:` or `mailto:` link → the browser (`ACTION_VIEW`, `external` event). Anything
+  else (`http:`, `intent:`, `javascript:`, `file:`, `data:`, custom schemes) is dropped.
+  Subframes are not filtered (sign-in and payment widgets live there).
+- Downloads are refused (`setDownloadListener` reports `download`, saves nothing). File
+  choosers, camera, microphone, geolocation and other permission requests are denied.
+- Certificate errors are never overridden. WebView debugging stays off.
+
+### P17.6 Limits
+
+- Needs WebView 110+ with `MULTI_PROFILE`; older phones open links in the browser.
+- Sign-in is email and code only; Google sign-in is blocked in WebViews by Google.
+- Attachments and file uploads do not work in a tab (no file chooser); use the browser.
+- A refusal that claude.ai serves as a normal page with content cannot be told apart without
+  reading the page, which the module never does; **Open in browser** is always in the header.

@@ -157,6 +157,17 @@ func TestEnvelopeChecks(t *testing.T) {
 	_, _, err = peers.CheckIncoming(d, f.laptopC, f.trust, nil, "dev_worker", f.now.Add(2*time.Hour))
 	reasonIs(t, err, peers.ReasonExpired)
 
+	// exp more than 24 h after created_at (peers.md 8.2) is rejected, 24 h exactly is not.
+	long := e
+	long.Exp = f.now.Add(peers.MaxTTL + time.Second).Unix()
+	_, _, err = peers.CheckIncoming(f.seal(long, "hello", f.laptop), f.laptopC, f.trust, nil, "dev_worker", f.now)
+	reasonIs(t, err, peers.ReasonBadSignature)
+	edge := e
+	edge.Exp = f.now.Add(peers.MaxTTL).Unix()
+	if _, _, err = peers.CheckIncoming(f.seal(edge, "hello", f.laptop), f.laptopC, f.trust, nil, "dev_worker", f.now); err != nil {
+		t.Errorf("exp = created_at + 24h: %v", err)
+	}
+
 	// A sender certificate without the owner signature.
 	_, bare := f.device("dev_laptop", "m_laptop", 7, false)
 	_, err = f.open(d, bare, nil)

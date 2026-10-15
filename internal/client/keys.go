@@ -225,6 +225,22 @@ func (c *Client) UploadRevocations(ctx context.Context, doc keys.Doc) ([]string,
 	return r.Revoked, c.doJSON(ctx, http.MethodPost, "/v1/keys/revocations", map[string]any{"doc": doc}, &r)
 }
 
+// MyDevice is GET /v1/me: the id of the device this token belongs to.
+func (c *Client) MyDevice(ctx context.Context) (string, error) {
+	var r struct {
+		Device struct {
+			ID string `json:"id"`
+		} `json:"device"`
+	}
+	if err := c.doJSON(ctx, http.MethodGet, "/v1/me", nil, &r); err != nil {
+		return "", err
+	}
+	if r.Device.ID == "" {
+		return "", errors.New("the hub did not say which device this is")
+	}
+	return r.Device.ID, nil
+}
+
 // PutKeys is PUT /v1/devices/self/keys; it returns the hub-signed certificate.
 func (c *Client) PutKeys(ctx context.Context, k keys.DeviceKeysNew) (keys.Doc, error) {
 	var r struct {

@@ -69,6 +69,38 @@ func noMore(t *testing.T, in *fakeinbox.Server, n int) {
 	}
 }
 
+// A worker added with sy machine add (keys registered over SSH through the admin channel,
+// reg ssh, then owner-certified) holds a link and exchanges a message with a QR-paired laptop.
+func TestSSHAddedMachineExchanges(t *testing.T) {
+	h := newHub(t, 30)
+	laptop := h.newMachine("laptop", laptopID, sessionSpec{slot: ".claude-2", label: "work", account: accWork, pid: 500, id: "sess-api", name: "api"})
+	worker := h.newMachineWith((*testHub).pairSSH, "worker", workerID,
+		sessionSpec{slot: ".claude-5", label: "personal", account: accPersonal, pid: 600, id: "sess-worker", name: "worker"})
+	c, err := h.ks.Cert(h.ctx, worker.device)
+	if err != nil || c.Body.Reg != keys.RegSSH || !c.OwnerSigned {
+		t.Fatalf("worker cert at the hub: reg %s owner-signed %v, %v", c.Body.Reg, c.OwnerSigned, err)
+	}
+	if p, err := keys.ReadPin(keys.Path(worker.state, keys.HubPinFile)); err != nil || p.How != keys.PinSSH {
+		t.Fatalf("worker hub pin %+v %v", p, err)
+	}
+	laptop.connect(matrixV)
+	worker.connect(matrixV)
+
+	const hello, answer = "okapi-tern-2208 to the ssh-added worker", "lemur-wren-5531 back over its link"
+	rep := laptop.send("api", toWorker, hello, 0, 0)
+	delivered(t, rep, rep.Status)
+	if got := onlyContent(t, worker.session("worker").inbox, 1); got[0].Outcome != fakeinbox.Deliver || !strings.Contains(got[0].Wrapper.Body, hello) {
+		t.Fatalf("worker got %s %q", got[0].Outcome, got[0].Wrapper.Body)
+	}
+	back := worker.send("worker", toAPI, answer, 0, 0)
+	delivered(t, back, back.Status)
+	if got := onlyContent(t, laptop.session("api").inbox, 1); got[0].Outcome != fakeinbox.Deliver || !strings.Contains(got[0].Wrapper.Body, answer) {
+		t.Fatalf("laptop got %s %q", got[0].Outcome, got[0].Wrapper.Body)
+	}
+	h.waitRow(rep.Msg, "delivered")
+	h.waitRow(back.Msg, "delivered")
+}
+
 // Laptop to worker is delivered with no prompt, the worker's session replies the way the
 // header says, and the hub's rows are metadata only.
 func TestDeliverAndReply(t *testing.T) {
@@ -371,6 +403,7 @@ func TestLoopGuardAcrossMachines(t *testing.T) {
 // The rates bind at the sender and, for a sender that forgot its limits, at the hub.
 func TestRateLimits(t *testing.T) {
 	w := newWorld(t, 500)
+	w.h.clk.Freeze()
 	for i := 0; i < peers.SessionBurst; i++ {
 		rep := w.laptop.send("api", toWorker, "message", 0, 0)
 		delivered(t, rep, rep.Status)
@@ -380,10 +413,61 @@ func TestRateLimits(t *testing.T) {
 		t.Fatal(err)
 	}
 	refusedWith(t, w.laptop.send("api", toWorker, "one too many, again", 0, 0).Refusal(), peers.CodeRateLimited)
-	if r := w.h.rows()[0]; r.Status != "refused" || r.Detail != peers.CodeRateLimited {
-		t.Fatalf("hub row %+v", r)
+	limited := 0 // the clock is frozen, so rows share one timestamp: count, don't rely on order
+	for _, r := range w.h.rows() {
+		if r.Status == "refused" && r.Detail == peers.CodeRateLimited {
+			limited++
+		}
+	}
+	if limited != 1 {
+		t.Fatalf("hub rows refused as rate_limited: %d, want 1", limited)
 	}
 	onlyContent(t, w.worker.session("worker").inbox, peers.SessionBurst)
+}
+
+// A sender that forgot its limits and threads and keeps sending envelopes the hub refuses
+// (here the loop guard) is rate-limited at the hub like any other sender.
+func TestHubRateLimitsRefusedEnvelopes(t *testing.T) {
+	w := newWorld(t, 2)
+	rep := w.laptop.send("api", toWorker, "turn one", 0, 0)
+	delivered(t, rep, rep.Status)
+	back := w.worker.send("worker", toAPI, "turn two", 0, 0)
+	delivered(t, back, back.Status)
+	var last *peers.Refusal
+	for i := 0; i < peers.SessionBurst+3; i++ {
+		_ = os.Remove(filepath.Join(w.laptop.state, "peers", "threads.json"))
+		_ = os.Remove(filepath.Join(w.laptop.state, "peers", "limits.json"))
+		last = w.laptop.send("api", toWorker, "again", 0, 0).Refusal()
+		if last == nil {
+			t.Fatalf("send %d was delivered", i)
+		}
+	}
+	refusedWith(t, last, peers.CodeRateLimited)
+}
+
+// A hub that takes the envelope but does not answer in time is not "not delivered": the send
+// is reported queued (unconfirmed) and counts in the sender's thread (peers.md 4.3).
+func TestAckTimeoutIsQueuedUnconfirmed(t *testing.T) {
+	w := newWorld(t, 30)
+	w.laptop.remote.AckWait = 300 * time.Millisecond
+	w.h.setRogue(func(ctx context.Context, device string, u link.Up) (bool, string, any, error) {
+		return u.T == link.TypePeerMsg, "", nil, nil // swallowed: no peer_ack
+	})
+	rep := w.laptop.send("api", toWorker, "no answer", 0, 0)
+	if rf := rep.Refusal(); rf != nil {
+		t.Fatalf("refused: %v", rf)
+	}
+	if rep.Status != "queued" || rep.Detail != "unconfirmed" {
+		t.Fatalf("reply %+v", rep)
+	}
+	ts := peers.LoadThreads(w.laptop.env().ThreadsPath())
+	if len(ts.Threads) != 1 || ts.Threads[0].Turns != 1 {
+		t.Errorf("threads %+v", ts.Threads)
+	}
+	res := peers.SendResult{Status: "queued", Unconfirmed: true, Target: peers.Session{Handle: "worker"}, Msg: rep.Msg}
+	if !strings.Contains(res.Line(), "queued for worker") || !strings.Contains(res.Line(), "not confirmed") {
+		t.Errorf("line %q", res.Line())
+	}
 }
 
 // A revoked machine is not reachable: the hub no longer lists an agent for it, and an
@@ -410,6 +494,22 @@ func TestRevokedTarget(t *testing.T) {
 			t.Errorf("row %+v", r)
 		}
 	}
+}
+
+// When seen.json cannot be written after a delivery, the result is still reported and the
+// frame acked: an unacked frame would be replayed and delivered twice (peers.md 8.4).
+func TestSeenWriteFailureStillAcks(t *testing.T) {
+	w := newWorld(t, 30)
+	blocker := filepath.Join(w.worker.state, "peers", "seen.json") // a directory: the rename onto it fails
+	if err := os.MkdirAll(filepath.Join(blocker, "x"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	rep := w.laptop.send("api", toWorker, "once despite the failure", 0, 0)
+	delivered(t, rep, rep.Status)
+	in := w.worker.session("worker").inbox
+	onlyContent(t, in, 1)
+	w.h.waitRow(rep.Msg, "delivered")
+	noMore(t, in, 1)
 }
 
 // A replayed peer_msg (the agent crashed before its ack) is reported again but not

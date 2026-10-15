@@ -23,6 +23,7 @@ import (
 
 	"github.com/mraj602/switchyard/internal/agent"
 	"github.com/mraj602/switchyard/internal/hub/auth"
+	"github.com/mraj602/switchyard/internal/hub/cli"
 	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
 	hublink "github.com/mraj602/switchyard/internal/hub/link"
 	"github.com/mraj602/switchyard/internal/hub/peerrelay"
@@ -31,6 +32,7 @@ import (
 	"github.com/mraj602/switchyard/internal/keys"
 	"github.com/mraj602/switchyard/internal/link"
 	"github.com/mraj602/switchyard/internal/linkclient"
+	"github.com/mraj602/switchyard/internal/machineadd"
 	"github.com/mraj602/switchyard/internal/peerlink"
 	"github.com/mraj602/switchyard/internal/peers"
 	"github.com/mraj602/switchyard/internal/peers/fakeinbox"
@@ -45,14 +47,25 @@ const (
 
 // clock is the one test clock: the hub, the store, both agents and both link clients.
 type clock struct {
-	mu  sync.Mutex
-	off time.Duration
+	mu     sync.Mutex
+	off    time.Duration
+	frozen time.Time // set: time stands still (Advance still moves it)
 }
 
 func (c *clock) Now() time.Time {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if !c.frozen.IsZero() {
+		return c.frozen.Add(c.off)
+	}
 	return time.Now().Add(c.off)
+}
+
+// Freeze stops the clock at the current time, so token buckets do not refill mid-test.
+func (c *clock) Freeze() {
+	c.mu.Lock()
+	c.frozen = time.Now()
+	c.mu.Unlock()
 }
 
 func (c *clock) Advance(d time.Duration) {
@@ -305,31 +318,15 @@ func mustJSON(v any) string { b, _ := json.Marshal(v); return string(b) }
 // creates its sessions (fake processes, registry files, fake inboxes, hub session rows) and
 // starts its agent. The link is not connected yet: connect does that.
 func (h *testHub) newMachine(name, id string, specs ...sessionSpec) *machine {
+	h.t.Helper()
+	return h.newMachineWith((*testHub).pairQR, name, id, specs...)
+}
+
+// pairQR registers the machine's keys the way a QR pairing does (reg qr), certifies them
+// with the owner key in process, and pins the hub and owner keys.
+func (h *testHub) pairQR(m *machine, c auth.Created, dk keys.DeviceKeys) {
 	t := h.t
 	t.Helper()
-	base, err := os.MkdirTemp("", "sye") // short: Unix socket paths are limited
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { os.RemoveAll(base) })
-	m := &machine{t: t, h: h, name: name, id: id, base: base, home: filepath.Join(base, "h"), state: filepath.Join(base, "s"),
-		runtime: filepath.Join(base, "r"), procRoot: filepath.Join(base, "p"), sock: filepath.Join(base, "a.sock")}
-	for _, d := range []string{m.home, m.state, filepath.Join(m.runtime, peers.SocksDirName), m.procRoot} {
-		if err := os.MkdirAll(d, 0o700); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	// Pairing: a machine device with keys, certified by the owner; the hub and owner pins.
-	c, err := auth.Create(h.ctx, h.st, auth.CreateRequest{Kind: "machine", Name: name, Machine: id})
-	if err != nil {
-		t.Fatal(err)
-	}
-	m.device = c.Device.ID
-	dk, err := keys.NewDeviceKeys(h.clk.Now(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
 	pub, _ := dk.Public()
 	if err := h.st.Write(h.ctx, func(tx *store.Tx) error {
 		_, err := h.ks.RegisterTx(tx, c.Device, pub, keys.RegQR)
@@ -355,6 +352,90 @@ func (h *testHub) newMachine(name, id string, specs ...sessionSpec) *machine {
 	if err := keys.SetPin(keys.Path(m.state, keys.OwnerPinFile), keys.NewPin(ownerPub, keys.PinLocal, h.clk.Now())); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// pairSSH is sy machine add's keys step (machines.md 4.2): the hub host registers the keys
+// read over SSH through the admin channel (sy hub keys register, reg ssh), the remote pins
+// the hub and owner keys it was handed (pin how ssh), and the owner machine certifies the
+// certificate through sy hub keys certify. The admin commands run in process against the
+// hub's database, with the hub's key file in SY_STATE_DIR.
+func (h *testHub) pairSSH(m *machine, c auth.Created, dk keys.DeviceKeys) {
+	t := h.t
+	t.Helper()
+	hubState := filepath.Join(h.dir, "state")
+	if _, err := os.Stat(filepath.Join(hubState, hubkeys.KeyFile)); err != nil {
+		m.write(filepath.Join(hubState, hubkeys.KeyFile), string(bytes.Repeat([]byte{1}, 32)))
+		if err := os.Chmod(filepath.Join(hubState, hubkeys.KeyFile), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("SY_STATE_DIR", hubState)
+	admin := machineadd.LocalAdmin{Run: func(_ context.Context, args []string, stdin []byte) ([]byte, []byte, int) {
+		var out, errb bytes.Buffer
+		if err := cli.KeysIn(bytes.NewReader(stdin), append(args[1:], "--db", filepath.Join(h.dir, "hub.db")), &out, &errb); err != nil {
+			fmt.Fprintln(&errb, err)
+			return out.Bytes(), errb.Bytes(), 1
+		}
+		return out.Bytes(), errb.Bytes(), 0
+	}}
+	pub, _ := dk.Public()
+	r, err := machineadd.RegisterKeysSSH(h.ctx, admin, c.Device.ID, m.id, pub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hub, err := r.HubKey.Key()
+	if err != nil || !hub.Equal(h.ks.Key.Pub) {
+		t.Fatalf("handed hub key %v: %v", r.HubKey, err)
+	}
+	cert, err := keys.VerifyCert(r.Cert.Only(keys.ByHub), keys.Trust{Hub: hub}, false)
+	if err != nil || cert.Body.Reg != keys.RegSSH || cert.Body.Sign != pub.Sign || r.Reg != keys.RegSSH {
+		t.Fatalf("ssh registration: reg %s/%s, %v", r.Reg, cert.Body.Reg, err)
+	}
+	ownerPub := h.owner.Public().(ed25519.PublicKey)
+	sig := keys.SignDoc(keys.TypeDeviceCert, cert.Raw, keys.ByOwner, h.owner).Sig
+	if _, err := admin.Hub(h.ctx, []string{"keys", "certify", c.Device.ID, "--fp", keys.Fingerprint(ownerPub), "--sig-stdin"}, []byte(sig)); err != nil {
+		t.Fatal(err)
+	}
+	dk.Device = m.device
+	if err := keys.WriteDeviceKeys(m.state, dk); err != nil {
+		t.Fatal(err)
+	}
+	if err := keys.SetPin(keys.Path(m.state, keys.HubPinFile), keys.NewPin(hub, keys.PinSSH, h.clk.Now())); err != nil {
+		t.Fatal(err)
+	}
+	if err := keys.SetPin(keys.Path(m.state, keys.OwnerPinFile), keys.NewPin(ownerPub, keys.PinSSH, h.clk.Now())); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// newMachineWith is newMachine with the pairing step given.
+func (h *testHub) newMachineWith(pair func(*testHub, *machine, auth.Created, keys.DeviceKeys), name, id string, specs ...sessionSpec) *machine {
+	t := h.t
+	t.Helper()
+	base, err := os.MkdirTemp("", "sye") // short: Unix socket paths are limited
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(base) })
+	m := &machine{t: t, h: h, name: name, id: id, base: base, home: filepath.Join(base, "h"), state: filepath.Join(base, "s"),
+		runtime: filepath.Join(base, "r"), procRoot: filepath.Join(base, "p"), sock: filepath.Join(base, "a.sock")}
+	for _, d := range []string{m.home, m.state, filepath.Join(m.runtime, peers.SocksDirName), m.procRoot} {
+		if err := os.MkdirAll(d, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Pairing: a machine device with keys, certified by the owner; the hub and owner pins.
+	c, err := auth.Create(h.ctx, h.st, auth.CreateRequest{Kind: "machine", Name: name, Machine: id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.device = c.Device.ID
+	dk, err := keys.NewDeviceKeys(h.clk.Now(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pair(h, m, c, dk)
 
 	// Sessions: a claude process with a bash child (the Bash tool sy peers send runs in), the
 	// registry file, a bypass-mode session file and a fake inbox; the same session at the hub.

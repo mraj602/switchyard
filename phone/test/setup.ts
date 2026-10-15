@@ -10,6 +10,7 @@ jest.mock('@expo/ui/swift-ui/modifiers', () => jest.requireActual('./fakes').swi
 jest.mock('react-native-android-widget', () => jest.requireActual('./fakes').androidWidget);
 jest.mock('expo-task-manager', () => jest.requireActual('./fakes').taskManager);
 jest.mock('../modules/sy-link', () => jest.requireActual('./fakes').syLink);
+jest.mock('../modules/sy-tabs', () => jest.requireActual('./fakes').syTabs);
 jest.mock('@react-native-async-storage/async-storage', () =>
   jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
@@ -21,5 +22,4 @@ const offline = () => Promise.reject(new Error('network is off in tests: inject 
 beforeEach(() => {
   jest.requireActual<typeof import('./fakes')>('./fakes').resetFakes();
   // the in-memory half of the one-act-per-tap guard (src/lib/notify claimAct)
-  jest.requireActual<typeof import('../src/lib/notify')>('../src/lib/notify').resetActed();
-});
+  jest.requireActual<typeof import('../src/lib/notify')>('../src/lib/notify').resetActed();});

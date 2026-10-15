@@ -390,8 +390,35 @@ func (s *Service) Certs(ctx context.Context) (map[string]DeviceKeyInfo, error) {
 // keys for a `tofu` device without an owner signature. A device registered under the QR
 // seal or SSH, or owner-certified, is refused with 409 ("re-pair this device"): a stolen
 // bearer must not downgrade it to keys of its own. Replaced keys go into the next
-// revocation list.
+// revocation list. The keys a device already has are a no-op: the stored certificate comes
+// back unchanged (`sy agent enable` run again).
 func (s *Service) RegisterKeys(ctx context.Context, deviceID string, k keys.DeviceKeysNew) (keys.Doc, error) {
+	return s.register(ctx, deviceID, "", k, keys.RegTOFU)
+}
+
+// RegisterSSH registers keys `sy machine add` read from the machine over the person's SSH
+// session and handed to the hub host through the admin channel (`sy hub keys register`,
+// keys.md 4.2, reg ssh). The device must be a live machine bound to machineID (the id the
+// add probed over SSH). The admin channel is the hub host itself, so it may replace the
+// keys of any registration (the old ones go into the next revocation list). The same keys
+// again are a no-op, except that a tofu certificate without an owner signature is reissued
+// as ssh.
+func (s *Service) RegisterSSH(ctx context.Context, deviceID, machineID string, k keys.DeviceKeysNew) (keys.Doc, error) {
+	if machineID == "" {
+		return keys.Doc{}, badRequest("the machine id is required")
+	}
+	return s.register(ctx, deviceID, machineID, k, keys.RegSSH)
+}
+
+// sameKeys reports whether a stored row holds exactly these public keys.
+func sameKeys(r store.DeviceKeyRow, k keys.DeviceKeysNew) bool {
+	sp, err1 := keys.UnB64(k.Sign.Pub)
+	bp, err2 := keys.UnB64(k.Box.Pub)
+	return err1 == nil && err2 == nil && r.SignAlg == k.Sign.Alg && r.BoxAlg == k.Box.Alg &&
+		bytes.Equal(r.SignPub, sp) && bytes.Equal(r.BoxPub, bp)
+}
+
+func (s *Service) register(ctx context.Context, deviceID, machineID string, k keys.DeviceKeysNew, reg string) (keys.Doc, error) {
 	var doc keys.Doc
 	err := s.Store.Write(ctx, func(tx *store.Tx) error {
 		d, err := tx.DeviceDetailByID(deviceID)
@@ -401,8 +428,27 @@ func (s *Service) RegisterKeys(ctx context.Context, deviceID string, k keys.Devi
 		if err != nil {
 			return err
 		}
+		if reg == keys.RegSSH && (d.Kind != "machine" || d.MachineID != machineID) {
+			return conflict("device %s is not a device of machine %s", deviceID, machineID)
+		}
 		if err := keys.CheckKeys(d.Kind, k, d.Kind == "phone"); err != nil {
 			return badRequest("key registration invalid: %v", err)
+		}
+		t, owner, err := s.trustTx(tx)
+		if err != nil {
+			return err
+		}
+		// Keys on the revocation list stay dead: agents drop what they sign (keys.md 6).
+		rows, err := tx.SignedDocs(false, 0)
+		if err != nil {
+			return err
+		}
+		if rl := s.newestRevocations(rows, t); rl != nil {
+			sp, _ := keys.UnB64(k.Sign.Pub)
+			bp, _ := keys.UnB64(k.Box.Pub)
+			if rl.Body.RevokedKey(keys.Fingerprint(sp)) || rl.Body.RevokedKey(keys.Fingerprint(bp)) {
+				return conflict("these keys were revoked; make new ones on the machine and register those")
+			}
 		}
 		old, err := tx.DeviceKey(deviceID)
 		switch {
@@ -410,25 +456,31 @@ func (s *Service) RegisterKeys(ctx context.Context, deviceID string, k keys.Devi
 		case err != nil:
 			return err
 		default:
-			_, owner, err := s.trustTx(tx)
-			if err != nil {
-				return err
-			}
 			// reg from the hub-signed certificate, not the row's column: a database writer
 			// must not turn qr/ssh keys into replaceable tofu ones (keys.md 4.2)
-			c, err := s.certFromRow(old, owner)
-			if err != nil {
-				return conflict("this device's certificate does not verify; re-pair this device")
+			c, cerr := s.certFromRow(old, owner)
+			same := sameKeys(old, k)
+			upgrade := reg == keys.RegSSH && cerr == nil && c.Body.Reg == keys.RegTOFU && !c.OwnerSigned && old.OwnerSig == nil
+			if cerr == nil && same && !upgrade {
+				doc = c.Doc
+				return nil
 			}
-			if c.Body.Reg != keys.RegTOFU || c.OwnerSigned || old.OwnerSig != nil {
-				return conflict("this device's keys were verified (%s%s); re-pair this device to change them", c.Body.Reg,
-					map[bool]string{true: ", owner-certified", false: ""}[c.OwnerSigned || old.OwnerSig != nil])
+			if reg == keys.RegTOFU {
+				if cerr != nil {
+					return conflict("this device's certificate does not verify; re-pair this device")
+				}
+				if c.Body.Reg != keys.RegTOFU || c.OwnerSigned || old.OwnerSig != nil {
+					return conflict("this device's keys were verified (%s%s); re-pair this device to change them", c.Body.Reg,
+						map[bool]string{true: ", owner-certified", false: ""}[c.OwnerSigned || old.OwnerSig != nil])
+				}
 			}
-			if err := s.appendRevocationTx(tx, []keys.RevokedDevice{s.entryFor(old, owner, "replaced", tx.NowMS())}, deviceID); err != nil {
-				return err
+			if !same {
+				if err := s.appendRevocationTx(tx, []keys.RevokedDevice{s.entryFor(old, owner, "replaced", tx.NowMS())}, deviceID); err != nil {
+					return err
+				}
 			}
 		}
-		doc, err = s.RegisterTx(tx, d.Device, k, keys.RegTOFU)
+		doc, err = s.RegisterTx(tx, d.Device, k, reg)
 		return err
 	})
 	return doc, err

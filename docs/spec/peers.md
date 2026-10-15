@@ -49,10 +49,17 @@ B or C reads it as a cross-session message and answers with sy peers send (or Se
 - **Windows:** not in F1. Claude Code requires the per-session auth token on Windows inbox
   sockets, which lives in `sessions/*.key`; Switchyard never reads that file (identity.md 4).
   `sy agent enable` on Windows says so and exits 3 (so do `disable`, `status` and `run`).
-- `sy agent enable` makes the device keys if needed (keys.md 10), registers them (`PUT
-  /v1/devices/{id}/keys` with the machine token; the hub signs the certificate), prints the
-  key fingerprints for `sy keys certify` (the keys step is a seam in `cmd/sy`, empty until
-  `internal/keys` lands), turns `[peers] enabled = true` in `config.toml`, then installs and
+- `sy agent enable [--repin-hub]` makes the device keys if needed (keys.md 10), pins the hub
+  key on first use (`how = tofu`; a key that differs from the pin stops here with both
+  fingerprints and "run `sy agent enable --repin-hub`", which replaces the pin after the
+  guard and a TTY confirmation, keys.md 3.5), registers the keys unless the hub already holds
+  them (`PUT /v1/devices/self/keys` with the machine token, `reg = tofu`; a `qr` or `ssh`
+  machine whose keys were lost is told to run `sy machine add` again), pins the owner key on
+  first use, and prints the key fingerprints with "Owner-certified" or the next step `sy keys
+  certify <device>` on the owner machine. Machines added with `sy machine add` already have
+  `reg = ssh` keys and both pins (machines.md 4.2 step 10), so this is a no-op for them. A
+  `pull` machine (no route to the hub) gets no link keys and says so. Then it turns `[peers]
+  enabled = true` in `config.toml`, then installs and
   starts the service (hooks begin writing session files even if the service manager fails). `sy agent disable` stops and removes the service
   and sets `enabled = false`; keys stay (`sy uninstall --purge` removes them). `sy uninstall`
   removes the unit too (found by its file, not the ledger: enabling is not a setup step) and
@@ -60,6 +67,10 @@ B or C reads it as a cross-session message and answers with sy peers send (or Se
   `sy agent status` prints the service state and, from the `state` op, pid, start time and
   link state. `sy doctor` adds an `agent` line when peers are enabled: running, or a warning
   "not running (same-machine sends write the inbox directly)" with the fix `sy agent enable`.
+  With a hub to reach (not `pull`) a `link keys` line follows: a warning when the machine has
+  no keys, the hub has none or other keys for it, or the certificate has no owner signature
+  ("peers on other machines refuse this machine", fix `sy keys certify <device>` on the owner
+  machine); OK with `reg` and the fingerprint when certified.
 - Plan section 1 ("nothing stays running") gets its one exception here: the agent is installed
   only by `sy agent enable` (or `sy peers enable`, which calls it). Hooks, the status line and
   `sy tick` never depend on it.
@@ -244,6 +255,13 @@ delivered to api-worker@work.worker (msg 5f0c…, thread t_3a9e…)
 queued for api-worker@work.worker: its machine is offline; expires 10:42 (msg 5f0c…)
 not delivered: the matrix does not allow work → personal. Ask the owner to change it; do not retry.
 ```
+
+If the envelope was written to the hub link but the hub's `peer_ack` does not come within 10 s,
+the message may still be queued and delivered, so it is not reported `not delivered` or
+`hub_unreachable`: the line is `queued for <handle>: the hub has not confirmed it, so it may
+still be delivered; do not resend (msg …)`, the exit code is 8 (7.2, no new code), the turn
+counts in the sender's thread, and a later `peer_status` still answers `--wait` and
+`sy peers status`.
 
 No notice is ever injected into the sender's session later. `sy peers status [<msg>]` shows
 what became of earlier messages.
@@ -520,6 +538,8 @@ On `peer_msg` the hub:
 1. checks the envelope signature against the sending device's certificate (hub row) and that
    `from.device` is the link's device, `from.machine` its machine, and `from.session` a
    session the hub has seen on that machine → else `refused` `forbidden`;
+   Once the sender is verified, the hub takes the 9.2 rate token (a repeated `msg` takes none)
+   before the checks below, so refused envelopes are limited like good ones; no later step takes one;
 2. looks up `to.session` (live, on `to.machine`, whose agent device is `to.device`) → else
    `refused` `unknown_target` or `target_gone`;
 3. runs 5.3 (matrix, with the accounts it knows for both sessions: the hub's own view wins
@@ -540,7 +560,8 @@ On a `peer_msg` frame:
    owner signature is rejected, `uncertified`); the certificate's `kind` is `machine`, its
    `device` and `machine` equal `from.device` and `from.machine`, its `hub` is the pinned hub;
    the envelope signature by the certificate's sign key; neither key in the revocation list;
-   `to.device` is this device; `exp` not passed → else `rejected` with `bad_signature` /
+   `to.device` is this device; `exp` not passed and at most `created_at` + 24 h (8.2; a longer
+   one is `bad_signature`, a malformed envelope) → else `rejected` with `bad_signature` /
    `uncertified` / `revoked` / `wrong_device` / `expired`.
 2. 5.3 and 6.3 with its own matrix and threads, using the receiving session's account from its
    slot → `rejected` `not_allowed` / `paused` / `loop_guard`; `off` when `sy peers off`.
@@ -553,8 +574,11 @@ On a `peer_msg` frame:
 
 A replayed frame (same `msg` already final in `<state>/peers/seen.json`, kept 48 h) is acked and
 not delivered twice; its stored result is sent again (the first one may not have reached the
-hub). The frame is left unacked (the hub replays it) only when the result could not be sent
-or `seen.json` not written; every other outcome is final.
+hub). The frame is left unacked (the hub replays it) only when the result could not be sent,
+or when `seen.json` could not be written for a message that was **not** delivered (a replay
+cannot duplicate it). If the message was delivered and `seen.json` cannot be written, the agent
+logs it, reports the result and acks anyway: a replay would deliver it twice, and the only cost
+of acking is that a replay after a lost ack goes undetected. Every other outcome is final.
 
 ### 8.5 Writing to the inbox
 
