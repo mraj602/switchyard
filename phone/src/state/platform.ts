@@ -45,7 +45,11 @@ export const systemAppState: AppStateSource = {
 
 /** The keychain entry, readable while locked after the first unlock (P3). */
 export function systemSecureHub(): SecureHub {
-  return createSecureHub(SecureStore, secureOptions(SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY));
+  // expo-secure-store defines the keychain constants on iOS only; on Android they are undefined
+  // (and the native side ignores keychainAccessible: its key is in the Android Keystore, usable
+  // after the first unlock). createSecureHub refuses an undefined value, so name it explicitly.
+  const accessible = SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY ?? 'AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY';
+  return createSecureHub(SecureStore, secureOptions(accessible));
 }
 
 export const systemCache: KVStore = AsyncStorage;
