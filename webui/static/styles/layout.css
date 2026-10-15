@@ -49,11 +49,11 @@
 .block-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 
 .grid { display: grid; gap: 14px; }
-.grid-needs { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-.grid-seats, .grid-accounts { grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); align-items: start; }
-.grid-machines { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: start; }
-.grid-mini { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-.cols { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start; }
+.grid-needs { grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
+.grid-seats, .grid-accounts { grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr)); align-items: start; }
+.grid-machines { grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); align-items: start; }
+.grid-mini { grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); }
+.cols { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); align-items: start; }
 
 .shell-login .nav { display: none; }
 .shell-login .main { max-width: none; padding: 0; }
