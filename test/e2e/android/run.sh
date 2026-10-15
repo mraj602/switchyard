@@ -218,7 +218,11 @@ app_pid() { adbx shell pidof "$PKG" 2>/dev/null | tr -d '\r'; }
 ui_dump() {
   local i
   for i in 1 2 3; do
-    adbx shell uiautomator dump /sdcard/sy-ui.xml >/dev/null 2>&1 && adbx exec-out cat /sdcard/sy-ui.xml >"$T/ui.xml" 2>/dev/null && [ -s "$T/ui.xml" ] && return 0
+    if adbx shell uiautomator dump /sdcard/sy-ui.xml >/dev/null 2>&1 && adbx exec-out cat /sdcard/sy-ui.xml >"$T/ui.xml" 2>/dev/null && [ -s "$T/ui.xml" ]; then
+      # A loaded emulator can raise "System UI isn't responding" over the app: wait it out.
+      grep -q "isn&apos;t responding\|isn't responding" "$T/ui.xml" || return 0
+      adbx shell input tap $(python3 -I "$LIB" tap Wait <"$T/ui.xml") 2>/dev/null
+    fi
     sleep 1
   done
   return 1
