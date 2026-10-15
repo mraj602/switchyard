@@ -623,8 +623,9 @@ paths:
       description: |
         The secret comes from `sy hub owner-link` (pairing.md 4). On success the hub makes a
         `browser` device with scopes `owner`, `read`, `push`, expiring in 30 days, and sets it
-        as the `sy_session` cookie. Invalid, used or expired secret: `401`. Rate limited as
-        `/v1/pair/claim`.
+        as the `sy_session` cookie. A refused secret is `401` with `code` = `link_used`,
+        `link_expired`, `link_cancelled` or `link_unknown`, and `at` (pairing.md 4). Rate
+        limited as `/v1/pair/claim`.
       security: []
       x-scopes: []
       requestBody:
@@ -640,7 +641,17 @@ paths:
       responses:
         "204": {description: Signed in as owner; cookie set.}
         "400": {$ref: "#/components/responses/BadRequest"}
-        "401": {$ref: "#/components/responses/Unauthorized"}
+        "401":
+          description: The link is used, expired, cancelled or unknown.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: "#/components/schemas/Error"}
+                  - type: object
+                    properties:
+                      code: {enum: [link_used, link_expired, link_cancelled, link_unknown]}
+                      at: {type: string, format: date-time, description: "When it was used, expired or was cancelled; absent for link_unknown."}
         "429": {$ref: "#/components/responses/TooMany"}
 
   /v1/pair/codes:
@@ -1758,7 +1769,8 @@ components:
         error: {type: string, description: Human-readable message.}
         code:
           type: string
-          enum: [bad_request, unauthorized, forbidden, machine_mismatch, not_found, conflict, gone, too_large, rate_limited, unavailable, not_implemented, internal]
+          enum: [bad_request, unauthorized, forbidden, machine_mismatch, not_found, conflict, gone, too_large, rate_limited, unavailable, not_implemented, internal,
+            link_used, link_expired, link_cancelled, link_unknown]
 
     Health:
       type: object

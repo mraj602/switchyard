@@ -69,6 +69,16 @@ func (tx *Tx) LivePairCodeBySecretHash(hash []byte, now int64) (PairCodeRow, err
 	return tx.livePair(`secret_hash`, hash, now)
 }
 
+// PairCodeBySecretHash finds the code with this secret hash whatever its status (ErrNotFound
+// if none): owner sign-in says why a known link no longer works (pairing.md 4).
+func (tx *Tx) PairCodeBySecretHash(hash []byte) (PairCodeRow, error) {
+	r, err := scanPair(tx.queryRow(`SELECT `+pairCols+` FROM pair_code WHERE secret_hash = ? ORDER BY created_at DESC LIMIT 1`, hash))
+	if errors.Is(err, sql.ErrNoRows) {
+		return r, ErrNotFound
+	}
+	return r, err
+}
+
 // LivePairCodeByCodeHash finds the live code with this digits hash (ErrNotFound if none).
 func (tx *Tx) LivePairCodeByCodeHash(hash []byte, now int64) (PairCodeRow, error) {
 	return tx.livePair(`code_hash`, hash, now)

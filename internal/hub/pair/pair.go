@@ -63,6 +63,59 @@ var (
 	ErrNotFound = store.ErrNotFound
 )
 
+// Owner sign-in refusals (pairing.md 4): an owner link's secret has 128 random bits, so
+// telling a used link from an expired one gives nothing to a guesser, and it tells the
+// owner what to do. Typed codes keep the single ErrInvalid answer.
+const (
+	LinkUsed      = "link_used"
+	LinkExpired   = "link_expired"
+	LinkCancelled = "link_cancelled"
+	LinkUnknown   = "link_unknown"
+)
+
+// LinkError is a 401 of owner sign-in with its reason. At is when the link was used,
+// expired or was cancelled (ms; 0 for LinkUnknown).
+type LinkError struct {
+	Code string
+	At   int64
+}
+
+func (e *LinkError) Error() string {
+	switch e.Code {
+	case LinkUsed:
+		return "this sign-in link was already used"
+	case LinkExpired:
+		return "this sign-in link has expired"
+	case LinkCancelled:
+		return "this sign-in link was cancelled"
+	}
+	return "this hub does not know that sign-in link"
+}
+
+// Is makes errors.Is(err, ErrInvalid) hold, so callers that only know ErrInvalid still
+// answer 401.
+func (e *LinkError) Is(target error) bool { return target == ErrInvalid }
+
+// linkError says why secret hash h is not a live owner link.
+func linkError(tx *store.Tx, h []byte, now int64) error {
+	row, err := tx.PairCodeBySecretHash(h)
+	if errors.Is(err, store.ErrNotFound) || (err == nil && (row.Kind != "owner" || !hmac.Equal(row.SecretHash, h))) {
+		return &LinkError{Code: LinkUnknown}
+	}
+	if err != nil {
+		return err
+	}
+	switch {
+	case row.ClaimedAt != 0:
+		return &LinkError{Code: LinkUsed, At: row.ClaimedAt}
+	case row.CancelledAt != 0:
+		return &LinkError{Code: LinkCancelled, At: row.CancelledAt}
+	case row.ExpiresAt <= now:
+		return &LinkError{Code: LinkExpired, At: row.ExpiresAt}
+	}
+	return &LinkError{Code: LinkUnknown}
+}
+
 // ClaimError is a refusal that does not consume the code: 400 or 409.
 type ClaimError struct {
 	Status  int
@@ -754,13 +807,13 @@ func (s *Service) OwnerSignIn(ctx context.Context, ip, secret, name string) (aut
 		now := tx.NowMS()
 		row, err := tx.LivePairCodeBySecretHash(h, now)
 		if errors.Is(err, store.ErrNotFound) {
-			return ErrInvalid
+			return linkError(tx, h, now)
 		}
 		if err != nil {
 			return err
 		}
 		if !hmac.Equal(row.SecretHash, h) || row.Kind != "owner" {
-			return ErrInvalid
+			return &LinkError{Code: LinkUnknown}
 		}
 		p, err := auth.Prepare(auth.CreateRequest{Kind: "browser", Name: name, CreatedBy: "owner-link:" + row.ID, Owner: true, Pepper: pepper}, time.UnixMilli(now))
 		if err != nil {
@@ -774,7 +827,7 @@ func (s *Service) OwnerSignIn(ctx context.Context, ip, secret, name string) (aut
 			return err
 		}
 		if !won {
-			return ErrInvalid
+			return &LinkError{Code: LinkUsed, At: now} // a concurrent sign-in won
 		}
 		out = p.Created
 		return nil
@@ -782,7 +835,12 @@ func (s *Service) OwnerSignIn(ctx context.Context, ip, secret, name string) (aut
 	if err != nil {
 		if errors.Is(err, ErrInvalid) {
 			s.Limiter.Fail(ip, false)
-			s.logf("pair owner fail ip=%s", ip)
+			reason := "invalid"
+			var le *LinkError
+			if errors.As(err, &le) {
+				reason = le.Code
+			}
+			s.logf("pair owner fail ip=%s reason=%s", ip, reason)
 		}
 		return auth.Created{}, err
 	}
