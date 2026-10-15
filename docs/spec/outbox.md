@@ -135,6 +135,11 @@ Flush loop:
    a backoff is stored (as in step 4) and `flush.status.json` gets `refuses_records: true`
    (`sy doctor`: "hub refuses records"). At most 10 records are dropped per run in any case.
 7. Repeat until the outbox is drained or 30 seconds have passed.
+8. A flush started by `sy hook` (`--from-hook`), once drained, waits until `flush.stamp` is
+   2 seconds old and reads the outbox again, repeating while that finds records (within the
+   30 seconds). The hooks that wrote while the stamp was younger started no flush of their
+   own (below), so without this their records (say a Stop a second after a SubagentStop)
+   would wait for the timer. The timer's flush and `sy flush` by hand do not wait.
 
 A crash between the hub's reply and the cursor write just resends the batch; the hub reports
 the ids as accepted duplicates.

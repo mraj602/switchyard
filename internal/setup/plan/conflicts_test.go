@@ -335,6 +335,15 @@ func TestHubPrototypeMCPLaunchers(t *testing.T) {
 	if got[len(got)-2] != "service" || got[len(got)-1] != "connect" {
 		t.Errorf("here: %v", got)
 	}
+	if svc := p.Actions[len(p.Actions)-2]; svc.Listen != "" {
+		t.Errorf("here, default listen: service carries %q", svc.Listen)
+	}
+	// here with --listen: the service action carries the address (not only its note), so
+	// the unit serves where connect waits for /health.
+	p = mustPlan(t, st, model.Choices{Hub: model.HubChoice{Mode: model.HubHere}, Listen: "127.0.0.1:19100"})
+	if svc, conn := p.Actions[len(p.Actions)-2], p.Actions[len(p.Actions)-1]; svc.Listen != "127.0.0.1:19100" || conn.URL != "http://127.0.0.1:19100" {
+		t.Errorf("here --listen: service listen %q, connect url %q", svc.Listen, conn.URL)
+	}
 	// Named launchers are written next to claude-N only for folders without one.
 	fh := detecttest.Fresh(t)
 	fh.B.File(".claude-2/.claude.json", `{}`, 0o600)

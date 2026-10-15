@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/mraj602/switchyard/internal/account"
 	"github.com/mraj602/switchyard/internal/client"
 	"github.com/mraj602/switchyard/internal/config"
 	"github.com/mraj602/switchyard/internal/identity"
@@ -57,9 +58,10 @@ func probeRecords(deps connectDeps) ([][]byte, error) {
 		return nil, nil
 	}
 	var extra []string
+	var labels, colours map[string]string
 	if f, err := config.Load(deps.dirs.Config.Path); err == nil {
 		if cfg, err := f.Typed(); err == nil {
-			extra = cfg.Slots.Extra
+			extra, labels, colours = cfg.Slots.Extra, cfg.Slots.Labels, cfg.Slots.Colours
 		}
 	}
 	slots, err := (identity.Locator{Home: home, FS: identity.OSFS{}}).Discover(extra, deps.timer.Getenv)
@@ -78,6 +80,11 @@ func probeRecords(deps connectDeps) ([][]byte, error) {
 		if l, err := store.Login(s); err == nil && l.HasSeat {
 			meta.Seat = &record.Seat{Account: l.Seat.Account, Org: l.Seat.Org, Email: l.Seat.Email, Src: l.Seat.Src}
 			p.LoggedIn = true
+		}
+		// The labels and colours sy setup wrote reach the hub here (setup.md 8.4); an
+		// invalid hand-edited one is left out rather than failing the connect.
+		if x, err := account.SlotInfoExtra(labels[s.Name], colours[s.Name]); err == nil && len(x) > 0 {
+			p.Extra = x
 		}
 		r, err := record.NewSlotInfo(meta, p)
 		if err != nil {

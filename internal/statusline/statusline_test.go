@@ -266,10 +266,30 @@ func TestLimitSampleRules(t *testing.T) {
 	if n := len(sb.samples()); n != 2 {
 		t.Fatalf("changed value after a minute: %d records", n)
 	}
+	// Inside the minute, a value that reaches an alert mark (80, 95, 100) is written at once;
+	// one that moves without reaching a new mark still waits.
+	at80 := bytes.Replace(in, []byte(`"used_percentage": 23.5`), []byte(`"used_percentage": 81`), 1)
+	sb.backdate(10 * time.Second)
+	sb.run(at80)
+	if n := len(sb.samples()); n != 3 {
+		t.Fatalf("crossing 80%% inside the minute: %d records, want 3", n)
+	}
+	at90 := bytes.Replace(in, []byte(`"used_percentage": 23.5`), []byte(`"used_percentage": 90`), 1)
+	sb.backdate(10 * time.Second)
+	sb.run(at90)
+	if n := len(sb.samples()); n != 3 {
+		t.Fatalf("81 -> 90 inside the minute: %d records, want still 3", n)
+	}
+	at96 := bytes.Replace(in, []byte(`"used_percentage": 23.5`), []byte(`"used_percentage": 96`), 1)
+	sb.backdate(10 * time.Second)
+	sb.run(at96)
+	if n := len(sb.samples()); n != 4 {
+		t.Fatalf("crossing 95%% inside the minute: %d records, want 4", n)
+	}
 	// A different session samples at once.
 	other := bytes.Replace(in, []byte("11111111-2222-4333-8444-555555555555"), []byte("99999999-2222-4333-8444-555555555555"), 1)
 	sb.run(other)
-	if n := len(sb.samples()); n != 3 {
+	if n := len(sb.samples()); n != 5 {
 		t.Fatalf("new session: %d records", n)
 	}
 }
