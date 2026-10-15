@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/mraj602/switchyard/internal/hub/store"
 	"github.com/mraj602/switchyard/internal/record"
@@ -31,7 +33,7 @@ func (t *typer) machineInfo(c *ctx) error {
 	}
 	changed, err := t.tx.MachineInfo(c.r.Machine, store.MachineInfoUpdate{
 		OS: p.OS, Arch: p.Arch, Reach: p.Reach, RecordV: p.RecordV, Held: p.Outbox.Held,
-		BacklogOldest: oldest, Info: c.r.Payload, At: c.at,
+		BacklogOldest: oldest, Info: c.r.Payload, At: c.at, Name: cleanMachineName(p.Name),
 	})
 	if err != nil {
 		return err
@@ -40,6 +42,21 @@ func (t *typer) machineInfo(c *ctx) error {
 		t.ch.Machines[c.r.Machine] = true
 	}
 	return nil
+}
+
+// cleanMachineName is machine_info.name when it is a valid machine name (identity.md 2:
+// 1-60 characters, no control characters), else "" (ignored; the record still applies).
+func cleanMachineName(n string) string {
+	n = strings.TrimSpace(n)
+	if n == "" || !utf8.ValidString(n) || utf8.RuneCountInString(n) > 60 {
+		return ""
+	}
+	for _, r := range n {
+		if unicode.IsControl(r) {
+			return ""
+		}
+	}
+	return n
 }
 
 // directPush applies a direct_push record (machines.md 5.5) to the episode's alert. A failed

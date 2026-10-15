@@ -136,6 +136,60 @@ func TestMachineInfoNewestWins(t *testing.T) {
 	}
 }
 
+// machine_info.name (record.md 4.8): the hub's machine name follows the machine's own name
+// when the machine reports a new one, and never on the first report or a repeat, so a
+// rename on the board stays until the machine is renamed (`sy machine rename`).
+func TestMachineInfoNameFollowsARename(t *testing.T) {
+	f := newFixture(t)
+	m := "m_" + record.NewID(t0)
+	d := f.device("lab-machine", m)
+	step := 0
+	send := func(name string) string {
+		t.Helper()
+		step++
+		r := info(t, m, t0.Add(time.Duration(step)*time.Minute), record.ReachDirect, 0)
+		var p record.MachineInfoPayload
+		if err := json.Unmarshal(r.Payload, &p); err != nil {
+			t.Fatal(err)
+		}
+		p.Name = name
+		r.Payload, _ = json.Marshal(p)
+		if rep, err := f.ing.IngestWith(f.ctx, d, body(t, r), ingest.Options{}); err != nil || len(rep.Accepted) != 1 {
+			t.Fatalf("%+v %v", rep, err)
+		}
+		v, err := f.st.MachineByID(f.ctx, m, t0.Add(time.Hour))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return v.Name
+	}
+	if got := send("lab-box"); got != "lab-machine" {
+		t.Fatalf("first report renamed the machine: %q", got)
+	}
+	if got := send("lab-box2"); got != "lab-box2" {
+		t.Fatalf("rename not followed: %q", got)
+	}
+	if err := f.st.Write(f.ctx, func(tx *store.Tx) error { return tx.MachineRename(m, "on-the-board") }); err != nil {
+		t.Fatal(err)
+	}
+	if got := send("lab-box2"); got != "on-the-board" {
+		t.Fatalf("a repeat undid the board's rename: %q", got)
+	}
+	if got := send("bad\x01name"); got != "on-the-board" {
+		t.Fatalf("an invalid name was applied: %q", got)
+	}
+	if got := send("lab-box3"); got != "lab-box3" {
+		t.Fatalf("rename not followed: %q", got)
+	}
+	// An older sy (no name), then a newer one again: that report counts as a first one.
+	if got := send(""); got != "lab-box3" {
+		t.Fatalf("a report without a name renamed: %q", got)
+	}
+	if got := send("lab-box4"); got != "lab-box3" {
+		t.Fatalf("first report after one without a name renamed: %q", got)
+	}
+}
+
 func TestVersionStatus(t *testing.T) {
 	for _, c := range []struct{ m, h, want string }{
 		{"0.5.0", "0.5.0", store.VersionSame},

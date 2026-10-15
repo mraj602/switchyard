@@ -54,6 +54,10 @@ type MachineInfoUpdate struct {
 	BacklogOldest int64  // ms, 0 = none
 	Info          []byte // the payload as received
 	At            int64  // the record's ts (ms): only a newer info_at wins
+	// Name is machine_info.name, already cleaned ("" = not sent or not valid). The stored
+	// name follows it only when it differs from the name the last stored machine_info had,
+	// so an owner's rename on the board stays until the machine itself is renamed.
+	Name string
 }
 
 // MachineInfo applies a machine_info record when it is newer than the stored info_at.
@@ -64,11 +68,14 @@ func (tx *Tx) MachineInfo(machine string, u MachineInfoUpdate) (bool, error) {
 	default:
 		reach = ""
 	}
+	// SET reads the old row: info ->> '$.name' is the name of the last stored report.
 	res, err := tx.exec(`UPDATE machine SET os = ?, arch = ?, reach = coalesce(?, reach), record_v = ?, held = ?,
-		backlog_oldest = ?, info = ?, info_at = ?
+		backlog_oldest = ?, info = ?, info_at = ?,
+		name = CASE WHEN ? != '' AND json_valid(info) AND (info ->> '$.name') IS NOT NULL AND (info ->> '$.name') != ?
+			THEN ? ELSE name END
 		WHERE id = ? AND (info_at IS NULL OR info_at < ?)`,
 		nullStr(u.OS), nullStr(u.Arch), nullStr(reach), nullInt(int64(u.RecordV)), max(u.Held, 0),
-		nullInt(u.BacklogOldest), nullStr(string(u.Info)), u.At, machine, u.At)
+		nullInt(u.BacklogOldest), nullStr(string(u.Info)), u.At, u.Name, u.Name, u.Name, machine, u.At)
 	if err != nil {
 		return false, err
 	}

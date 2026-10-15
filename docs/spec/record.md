@@ -471,7 +471,15 @@ Written by `sy tick` when the content changed (counters and times excluded) and 
 every 6 hours, and by `sy connect`, `sy setup`, `sy update` and `sy machine rename`
 (machines.md 6.3). No `slot`, no `seat`. The hub copies it into the `machine` row (`os`,
 `arch`, `reach`, `record_v`, `held`, `backlog_oldest`, `info`, `info_at`) when it is newer than
-the stored `info_at`.
+the stored `info_at`. It also sets `machine.name` to `name` when `name` is a valid machine
+name (1–60 characters, no control characters) and differs from the `name` of the stored
+`info` it replaces; a first report, a repeat, or a report after one without `name` leaves
+the name alone, so a rename on the board is kept until the machine is renamed again.
+
+`name` was added after phase 5 without a new `v`: it is optional, so `v` stays `1` (a new
+`v` is only for a change an older hub would read wrongly, 3). A hub that does not know the
+field keeps it in `info` only (payloads keep unknown fields, 6), and an older `sy` that
+leaves it out never renames the machine.
 
 | Field | Type | Required | Meaning |
 | --- | --- | --- | --- |
@@ -485,6 +493,7 @@ the stored `info_at`.
 | `timer` | object | no | `{active, linger}` as `sy doctor` sees them (`linger` Linux only). |
 | `claude_version` | string | no | `claude --version` on the login PATH. |
 | `update` | object | no | `{last_check, latest}` from `sy update --check`, when it ran. |
+| `name` | string | no | The machine's own name (`<state>/machine.json`, identity.md 2; `sy machine rename`). |
 
 ### 4.9 `direct_push` (phase 5)
 

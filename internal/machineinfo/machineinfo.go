@@ -1,5 +1,5 @@
 // Package machineinfo builds and queues this machine's `machine_info` record (record.md 4.8,
-// machines.md 6.3): os/arch, version, reach and dial type, outbox health, direct-push state
+// machines.md 6.3): its name, os/arch, version, reach and dial type, outbox health, direct-push state
 // and the timer. `sy tick` sends it when its content (counters and times excluded) changed
 // since the last one sent, and otherwise every 6 hours; `sy connect`, `sy update` and
 // `sy machine rename` send it at once. The last one sent is <state>/machine-info.json.
@@ -58,6 +58,8 @@ type Options struct {
 	Now   func() time.Time
 	// GOOS and GOARCH default to runtime's (tests set them).
 	GOOS, GOARCH string
+	// Name is machine_info.name, the machine's own name; Send fills it from machine.json.
+	Name string
 }
 
 func (o Options) now() time.Time {
@@ -108,7 +110,7 @@ func Build(o Options) (record.MachineInfoPayload, error) {
 		goarch = runtime.GOARCH
 	}
 	p := record.MachineInfoPayload{OS: goos, Arch: goarch, Sy: version.Version, RecordV: record.MaxVersion,
-		Reach: Reach(o.Config), Dial: Dial(o.Config)}
+		Reach: Reach(o.Config), Dial: Dial(o.Config), Name: o.Name}
 
 	ob := outbox.New(o.outboxDir())
 	if _, err := os.Stat(ob.Dir); err == nil {
@@ -219,6 +221,11 @@ func Send(o Options, force bool) (sent bool, err error) {
 	if o.StateDir == "" {
 		return false, errors.New("machineinfo: no state folder")
 	}
+	m, err := identity.LoadOrCreateMachine(o.StateDir, identity.MachineOptions{})
+	if err != nil {
+		return false, err
+	}
+	o.Name = m.Name
 	p, err := Build(o)
 	if err != nil {
 		return false, err
@@ -226,10 +233,6 @@ func Send(o Options, force bool) (sent bool, err error) {
 	now := o.now()
 	if !force && !Due(o.StateDir, p, now) {
 		return false, nil
-	}
-	m, err := identity.LoadOrCreateMachine(o.StateDir, identity.MachineOptions{})
-	if err != nil {
-		return false, err
 	}
 	r, err := record.NewMachineInfo(record.Meta{Machine: m.ID, Client: "sy/" + version.Version, Now: now}, p)
 	if err != nil {

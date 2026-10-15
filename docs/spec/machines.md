@@ -520,7 +520,7 @@ revoke <device>`.
 | Command | Runs on | Does |
 | --- | --- | --- |
 | `sy machine [show] [--json]` | any | Unchanged: id and name. |
-| `sy machine rename <name>` | any | identity.md 2: changes `machine.json` and sends a `slot_info` and `machine_info`. |
+| `sy machine rename <name>` | any | identity.md 2: changes `machine.json` and sends a `slot_info` and a `machine_info` with the new `name` (6.3); the hub's name follows with the next flush. |
 | `sy machine list [--json]` | operator | The registry, with each machine's hub view when the hub is reachable (reach, last seen, backlog, version). |
 | `sy machine remove <name> [--revoke] [--keep-remote]` | operator | Removes the forward block, the remote's `authorized_keys` line and pull target, and the registry entry. `--revoke` also revokes the machine's devices through the admin channel (the hub keeps its history; the board hides removed machines). The remote's `sy`, outbox and Claude folders are left; `ssh host sy uninstall` is printed as the next step. |
 | `sy machine repoint <url> [--machines all\|a,b]` | operator | After a hub move (8.3): `ssh host .local/bin/sy connect <url> --keep-token` for each registered `direct`/`forward` machine, 4 at a time; pull targets need nothing. |
@@ -706,6 +706,11 @@ Other contract changes, no new path:
 Sent by `sy tick` when its content (minus counters and times) changed since the last one sent,
 and otherwise every 6 hours; also by `sy connect`, `sy setup`, `sy update` and
 `sy machine rename`. The last one sent is remembered in `<state>/machine-info.json`.
+It carries the machine's own name (`name`, from `machine.json`), so a rename is a change
+even for `sy tick`. The hub's `machine.name` follows a reported name that differs from the
+one in the last stored `machine_info` (record.md 4.8): `sy machine rename` reaches the board
+and the CLI with the next flush, while a rename on the board (`PATCH /v1/machines/{id}`)
+stays until the machine itself is renamed again.
 
 ## 7. Versions and `sy update`
 

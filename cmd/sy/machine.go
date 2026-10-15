@@ -222,7 +222,7 @@ func machineRename(e *machineEnv, args []string, stdout, stderr io.Writer) error
 		fmt.Fprintf(stdout, "%s is already named %s.\n", m.ID, m.Name)
 		return nil
 	}
-	fmt.Fprintf(stdout, "Renamed %s from %s to %s. The hub follows with the next flush (rename it on the board to change it there now).\n", m.ID, old.Name, m.Name)
+	fmt.Fprintf(stdout, "Renamed %s from %s to %s. The hub follows with the next flush (sy flush sends it now).\n", m.ID, old.Name, m.Name)
 	return nil
 }
 

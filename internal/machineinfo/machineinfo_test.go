@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/mraj602/switchyard/internal/config"
+	"github.com/mraj602/switchyard/internal/identity"
 	"github.com/mraj602/switchyard/internal/outbox"
 	"github.com/mraj602/switchyard/internal/record"
 )
@@ -121,6 +122,31 @@ func TestSendOnChangeAndEverySixHours(t *testing.T) {
 	raw, _ := os.ReadFile(filepath.Join(state, File))
 	if !strings.Contains(string(raw), `"key"`) {
 		t.Errorf("%s: %s", File, raw)
+	}
+}
+
+// machine_info.name is the machine's own name; a rename is a change, so `sy tick` sends it
+// even without the forced send of `sy machine rename`.
+func TestSendCarriesTheMachineName(t *testing.T) {
+	state := t.TempDir()
+	now := time.Date(2026, 10, 13, 9, 0, 0, 0, time.UTC)
+	o := Options{StateDir: state, Config: cfgWith("https://hub.example", config.ReachDirect, ""), Now: func() time.Time { return now }}
+	if _, _, err := identity.RenameMachine(state, "lab-box", identity.MachineOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if sent, err := Send(o, false); err != nil || !sent {
+		t.Fatalf("first send: %v %v", sent, err)
+	}
+	if _, _, err := identity.RenameMachine(state, "lab-box2", identity.MachineOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	now = now.Add(time.Minute)
+	if sent, _ := Send(o, false); !sent {
+		t.Fatal("a rename was not sent as a change")
+	}
+	ps := outboxRecords(t, state)
+	if len(ps) != 2 || ps[0].Name != "lab-box" || ps[1].Name != "lab-box2" {
+		t.Fatalf("names: %+v", ps)
 	}
 }
 
