@@ -101,3 +101,24 @@ test('lifetime: an owner link lifetime in words (pairing.md 4)', () => {
   assert.equal(F.lifetime(0), '');
   assert.equal(F.lifetime(undefined), '');
 });
+
+test('deviceLabel: later twins get their place, the first and unique names stay', () => {
+  const all = [
+    { id: 'dev_b', name: 'pixel 9 · chrome', created_at: '2026-10-12T09:00:00.000Z' },
+    { id: 'dev_a', name: 'Pixel 9 · Chrome', created_at: '2026-10-10T09:00:00.000Z' },
+    { id: 'dev_c', name: 'iPhone · Safari', created_at: '2026-10-11T09:00:00.000Z' },
+    { id: 'dev_d', name: 'Pixel 9 · Chrome', created_at: '2026-10-14T09:00:00.000Z' },
+  ];
+  assert.equal(F.deviceLabel(all[1], all), 'Pixel 9 · Chrome');
+  assert.equal(F.deviceLabel(all[0], all), 'pixel 9 · chrome · 2');
+  assert.equal(F.deviceLabel(all[3], all), 'Pixel 9 · Chrome · 3');
+  assert.equal(F.deviceLabel(all[2], all), 'iPhone · Safari');
+  assert.equal(F.deviceLabel(all[1], null), 'Pixel 9 · Chrome');
+});
+
+test('subtitleOf: a session named after its folder does not repeat it', () => {
+  assert.equal(F.subtitleOf({ project: 'infra', name: 'infra' }, 'infra'), '');
+  assert.equal(F.subtitleOf({ project: 'infra', title: 'Infra ' }, 'infra'), '');
+  assert.equal(F.subtitleOf({ project: 'api', title: 'fix the login', name: 'api' }, 'api'), 'fix the login');
+  assert.equal(F.subtitleOf({ project: 'api' }, 'api'), '');
+});

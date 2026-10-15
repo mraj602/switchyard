@@ -12,7 +12,7 @@ import { getSelf, getRules, getPushConfig, patchDevice, addTarget, deleteTarget,
 import { pwa, isStandalone, canInstall, promptInstall, checkForUpdate, updateReady, applyUpdate } from '../pwa.js';
 import { pushStatus, turnOn, sendTest } from '../push.js';
 import { isIOS, isMobile, ntfyLink, installHint } from '../platform.js';
-import { day, clock, agoLabel, humanKey, plural } from '../format.js';
+import { day, clock, agoLabel, humanKey, plural, deviceLabel } from '../format.js';
 
 const st = { self: null, push: null, config: null, hub: null, devices: null, test: null, ntfy: null, busy: false, updateNote: '', error: null };
 const again = () => window.dispatchEvent(new Event('sy-rerender'));
@@ -114,14 +114,14 @@ function appRows() {
     text = app.map((d) => {
       const l = d.link;
       const when = l && (l.last_seen_at || l.connected_at);
-      return `${d.name}: ${l && l.connected ? 'connected' : `paired, not connected now${when ? ` (last seen ${agoLabel(when)})` : ''}`}`;
+      return `${deviceLabel(d, st.devices)}: ${l && l.connected ? 'connected' : `paired, not connected now${when ? ` (last seen ${agoLabel(when)})` : ''}`}`;
     }).join(' · ');
   }
   const others = notifiable(st.devices).filter((x) => !x.device.current && !x.targets.some((t) => t.kind === 'link'));
   return [
     h('div', { class: 'row status-row', 'data-key': 'app-status' }, h('span', { class: 'row-text' }, h('b', {}, 'Android app'), h('span', {}, text))),
     others.length ? h('div', { class: 'row status-row' }, h('span', { class: 'row-text' }, h('b', {}, 'Other devices'),
-      h('span', {}, `${plural(others.length, 'device')} with notifications on: ${others.map((x) => x.device.name).join(', ')}`))) : null,
+      h('span', {}, `${plural(others.length, 'device')} with notifications on: ${others.map((x) => deviceLabel(x.device, st.devices)).join(', ')}`))) : null,
   ];
 }
 

@@ -11,7 +11,7 @@ import { toggle, select, section, toast, moreTabs } from '../components/ui.js';
 import { quietHours } from '../components/quiet.js';
 import { seatIndex, seatName } from '../components/seat.js';
 import { notifiable, targetKindText } from '../components/targets.js';
-import { clock, day } from '../format.js';
+import { clock, day, deviceLabel } from '../format.js';
 import { isOwner, canPush } from '../store.js';
 import {
   getRules, getSelf, patchDevice, putRule, addRule, deleteRule, putPushSettings, getAlerts, listDevices, testTarget,
@@ -292,7 +292,7 @@ function statusLine(mode) {
           h('a', { href: '#/more/settings' }, 'turn them on in this browser'), '.']
         : ['This device gets no notifications yet. ', h('a', { href: '#/more/settings', 'data-key': 'setup-receiver' }, 'Turn them on in Settings'), '.']);
   }
-  const names = list.map((x) => x.device.name);
+  const names = list.map((x) => deviceLabel(x.device, state.devices));
   return h('p', { class: 'notice', role: 'status', 'data-key': 'receivers' },
     mode === 'owner' ? `Notifications go to ${list.length === 1 ? names[0] : `${list.length} devices: ${names.join(', ')}`}.` : 'This device gets notifications.');
 }
@@ -306,7 +306,7 @@ function phones() {
       h('a', { class: 'btn btn-primary', href: '#/more/devices?add=phone', 'data-key': 'add-phone' }, 'Add phone')),
     h('div', { class: 'card' }, h('h2', {}, 'Devices that can get notifications'),
       list.length ? h('ul', { class: 'plain receivers' }, list.map(({ device: d, targets }) => h('li', { class: 'row', 'data-key': `receiver-${d.id}` },
-        h('span', { class: 'row-text' }, h('span', {}, d.name),
+        h('span', { class: 'row-text' }, h('span', {}, deviceLabel(d, state.devices)),
           h('span', { class: 'muted small' }, [[...new Set(targets.map(targetKindText))].join(', '), d.created_at ? `added ${day(d.created_at)}` : ''].filter(Boolean).join(' · '))),
         h('button', {
           type: 'button', class: 'linkish', 'data-key': `test-${targets[0].id}`,

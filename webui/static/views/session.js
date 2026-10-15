@@ -4,7 +4,7 @@ import { h } from '../components/dom.js';
 import { dot, copyButton, ask } from '../components/cards.js';
 import { seatIndex, sessionSeat } from '../components/seat.js';
 import { stateTag, stateInfo, isEnded, isHistory } from '../components/state.js';
-import { ago, agoLabel, dateTime, timeOfDay, day, pct, projectOf, compact, humanKey, httpsUrl } from '../format.js';
+import { ago, agoLabel, dateTime, timeOfDay, day, pct, projectOf, compact, humanKey, httpsUrl, subtitleOf } from '../format.js';
 import { openDetail } from '../store.js';
 import { alertButtons, alertLine, alertText } from '../components/alerts.js';
 import { getAlert } from '../api.js';
@@ -82,7 +82,7 @@ export function render({ store, route, now }) {
   const t = s.tokens && s.tokens.replies ? s.tokens : null;
   const node = h('div', { class: 'page' }, back,
     h('header', { class: 'page-head col' },
-      h('h1', {}, name, s.title || s.name ? h('span', { class: 'muted' }, ` · ${s.title || s.name}`) : null),
+      h('h1', {}, name, subtitleOf(s, name) ? h('span', { class: 'muted' }, ` · ${subtitleOf(s, name)}`) : null),
       h('div', { class: 'head-meta' }, stateTag(s, true),
         since ? h('span', { class: 'muted' }, isEnded(s) ? (since === 'just now' ? ' just now' : ` ${since} ago`) : ` for ${since}`) : null,
         s.stale ? h('span', { class: 'flag' }, ' · stale: no events for 12 h') : null,

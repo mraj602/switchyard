@@ -206,7 +206,24 @@ async function phoneFlow(sizeName, w, hgt) {
   if (/s=|c=/.test(addr)) fail(page.tag(`pairing left the secret in the address bar: ${addr}`));
   await shot(page, `${sizeName}-pair-done`);
   if (!(await page.cookies()).some((c) => c.name === 'sy_session')) fail(page.tag('claim did not set the sy_session cookie'));
-  await page.click('[data-key=pair-continue]');
+  // The name is editable once paired (two Android phones both guess "Pixel 9 · Chrome").
+  const typed = `Pixel 9 · Chrome (${sizeName})`;
+  await page.$eval('[data-key=paired-name]', (e) => { e.value = ''; e.dispatchEvent(new Event('input')); });
+  await page.type('[data-key=paired-name]', typed);
+  await page.click('[data-key=save-name]');
+  await page.waitForFunction(async (n) => (await (await fetch('/v1/devices/self')).json()).name === n, { timeout: 4000 }, typed)
+    .catch(() => fail(page.tag('the Paired screen did not save the device name')));
+  await page.waitForFunction((n) => (document.querySelector('[data-key=paired-as]') || {}).textContent === `Paired as ${n}`, { timeout: 4000 }, typed)
+    .catch(() => fail(page.tag('"Paired as" did not follow the new name')));
+  if (w < 600) {
+    // Leaving before "Open the app" starts the app where asked, not back on #/pair.
+    await page.evaluate(() => { location.hash = '#/sessions'; });
+    try { await page.waitForSelector('.sessions-table', { timeout: 6000 }); } catch (e) { fail(page.tag('leaving the Paired screen bounced back to pairing')); }
+    if (!/^#\/sessions/.test(await page.evaluate(() => location.hash))) fail(page.tag('not on #/sessions after leaving the Paired screen'));
+    await page.evaluate(() => { location.hash = '#/'; });
+  } else {
+    await page.click('[data-key=pair-continue]');
+  }
   await page.waitForSelector('.needs-card');
   const who = await page.evaluate(async () => (await (await fetch('/v1/me')).json()));
   if (who.owner || !who.device.scopes.includes('push')) fail(page.tag(`claimed device has wrong scopes: ${JSON.stringify(who.device.scopes)}`));
