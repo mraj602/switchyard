@@ -80,6 +80,7 @@ type Server struct {
 	uiBuild  string // build hash of cfg.WebUI, "" without one
 
 	actionLim ipLimiter // POST /v1/actions/{token}, per client IP
+	streams   streamSet // open GET /v1/stream responses, so a revoke ends them at once
 }
 
 // HTTPServer is the http.Server `sy hub serve` runs s.Handler() on. It sets no ReadTimeout

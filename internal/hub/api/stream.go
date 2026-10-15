@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mraj602/switchyard/internal/hub/auth"
@@ -122,6 +123,8 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	}
 	ch, resume, cancel := s.Broker.SubscribeFrom(last, resumeFrom)
 	defer cancel()
+	kicked := s.streams.add(dev.ID)
+	defer s.streams.remove(dev.ID, kicked)
 
 	h := w.Header()
 	h.Set("Content-Type", "text/event-stream")
@@ -170,6 +173,8 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 			return
 		case <-s.done:
 			return
+		case <-kicked:
+			return // the device was revoked
 		case e, ok := <-ch:
 			if !ok {
 				return // too slow; the client reconnects with Last-Event-ID
@@ -195,5 +200,47 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 			}
 			flusher.Flush()
 		}
+	}
+}
+
+// streamSet is the open event streams per device id.
+type streamSet struct {
+	mu sync.Mutex
+	m  map[string]map[chan struct{}]struct{}
+}
+
+// add registers a stream of the device; the channel closes when the device is kicked.
+func (t *streamSet) add(device string) chan struct{} {
+	c := make(chan struct{})
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.m == nil {
+		t.m = map[string]map[chan struct{}]struct{}{}
+	}
+	if t.m[device] == nil {
+		t.m[device] = map[chan struct{}]struct{}{}
+	}
+	t.m[device][c] = struct{}{}
+	return c
+}
+
+func (t *streamSet) remove(device string, c chan struct{}) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	delete(t.m[device], c)
+	if len(t.m[device]) == 0 {
+		delete(t.m, device)
+	}
+}
+
+// kick ends every open stream of the devices.
+func (t *streamSet) kick(devices ...string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for _, d := range devices {
+		for c := range t.m[d] {
+			close(c)
+		}
+		delete(t.m, d)
 	}
 }
