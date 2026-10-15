@@ -1,7 +1,8 @@
-// Alerts and rules (PhoneAlerts / DeskAlerts): which pushes fire, quiet hours, and the log of
-// recent pushes with their outcome.
+// Alerts and rules (PhoneAlerts / DeskAlerts): which notifications go out, quiet hours, and the
+// log of recent alerts with their outcome. "Alert" is the item on the board; "notification"
+// is what reaches a device (G10).
 //
-// - An owner session edits the hub's rules (switches and delays) and overrides.
+// - An owner session edits the hub's rules (switches and waits) and overrides.
 // - A push-scoped device (a paired phone) edits only its own mute list and quiet hours.
 // - A plain board login sees everything read-only.
 
@@ -9,7 +10,8 @@ import { h } from '../components/dom.js';
 import { toggle, select, section, toast, moreTabs } from '../components/ui.js';
 import { quietHours } from '../components/quiet.js';
 import { seatIndex, seatName } from '../components/seat.js';
-import { clock } from '../format.js';
+import { notifiable, targetKindText } from '../components/targets.js';
+import { clock, day } from '../format.js';
 import { isOwner, canPush } from '../store.js';
 import {
   getRules, getSelf, patchDevice, putRule, addRule, deleteRule, putPushSettings, getAlerts, listDevices, testTarget,
@@ -36,9 +38,10 @@ export function delayText(s) {
   if (s < 3600) return `${Math.round(s / 60)} min`;
   return `${Math.round(s / 3600)} h`;
 }
-const delayOptions = (cur) => [...new Set([...DELAYS, cur])].sort((a, b) => a - b).map((s) => [s, s ? delayText(s) : 'at once']);
+const waitText = (s) => (s ? `after ${delayText(s)}` : 'at once');
+const delayOptions = (cur) => [...new Set([...DELAYS, cur])].sort((a, b) => a - b).map((s) => [s, waitText(s)]);
 
-const OUTCOME = { fired: 'open', seen: 'seen', snoozed: 'snoozed', cancelled: 'cancelled', closed: 'closed', pending: 'waiting', skipped: 'skipped' };
+const OUTCOME = { fired: 'notified', seen: 'seen', snoozed: 'snoozed', cancelled: 'cancelled', closed: 'closed', pending: 'waiting', skipped: 'not sent' };
 
 const state = { rules: null, settings: null, self: null, alerts: null, devices: null, error: null, loaded: false };
 const again = () => window.dispatchEvent(new Event('sy-rerender'));
@@ -77,7 +80,7 @@ function ruleRows(mode) {
     const rules = g.triggers.map(base).filter(Boolean);
     if (!rules.length) return null;
     const first = rules[0];
-    const delay = g.delay ? delayText(first.delay_s) : '';
+    const delay = g.delay ? waitText(first.delay_s) : '';
     const label = delay && mode !== 'owner' ? `${g.label} · ${delay}` : g.label;
     if (mode === 'owner') {
       return h('div', { class: 'row rule-row' },
@@ -86,7 +89,7 @@ function ruleRows(mode) {
           onChange: async (v) => { for (const r of rules) await saveRule(r, { enabled: v }); again(); },
         }),
         g.delay ? select({
-          label: `${g.label} delay`, value: first.delay_s, options: delayOptions(first.delay_s), key: `delay-${g.id}`,
+          label: `${g.label}: how long to wait before notifying`, value: first.delay_s, options: delayOptions(first.delay_s), key: `delay-${g.id}`,
           onChange: async (v) => { await saveRule(first, { delay_s: Number(v) }); again(); },
         }) : null);
     }
@@ -107,11 +110,11 @@ function overrides(mode, idx) {
   const scopeText = (r) => {
     const s = r.scope || {};
     const parts = [...(s.seats || []).map(seatLabel), ...(s.projects || []), ...(s.machines || []), ...(s.windows || [])];
-    return parts.length ? parts.join(', ') : 'everything';
+    return parts.length ? parts.join(', ') : 'all accounts';
   };
   const rows = list.map((r) => h('div', { class: 'row' },
     h('span', { class: 'row-text' }, h('span', {}, `${TRIGGER_LABEL[r.trigger] || r.trigger} · ${scopeText(r)}`),
-      h('span', { class: 'muted small' }, r.enabled ? (r.delay_s ? `after ${delayText(r.delay_s)}` : 'at once') : 'off')),
+      h('span', { class: 'muted small' }, r.enabled ? `notify ${waitText(r.delay_s)}` : 'do not notify')),
     mode === 'owner' ? h('button', {
       type: 'button', class: 'btn btn-sm', 'data-key': `del-${r.id}`,
       onclick: async (e) => {
@@ -121,61 +124,105 @@ function overrides(mode, idx) {
     }, 'Remove') : null));
   if (!rows.length && mode !== 'owner') return null;
   const seats = [...idx.values()].map((x) => x.seat);
-  const form = mode === 'owner' ? addOverride(seats) : null;
-  return section('Overrides', h('div', { class: 'panel' }, rows.length ? rows : h('p', { class: 'muted pad-s' }, 'No overrides.')), form);
+  const form = mode === 'owner' ? addOverride(seats, list) : null;
+  return section('Overrides',
+    h('p', { class: 'muted small section-help' }, 'Exceptions to the rules for one account, such as a longer wait or no notification at all. An override wins over its rule.'),
+    h('div', { class: 'panel' }, rows.length ? rows : h('p', { class: 'muted pad-s' }, 'No overrides.')), form);
 }
 
-function addOverride(seats) {
-  let trigger = 'asked', seat = '', enabled = 'on', delay = 300;
-  const sel = (label, opts, cur, set, key) => h('label', { class: 'field' }, label,
-    h('select', { 'data-key': key, onchange: (e) => set(e.target.value) }, opts.map(([v, t]) => h('option', { value: v, selected: String(v) === String(cur) }, t))));
-  const form = h('form', {
+// The same trigger for the same accounts (projects, machines, windows) twice would only
+// conflict; the hub may refuse it as well (AL3).
+const keyOf = (scope, k) => JSON.stringify([...(((scope || {})[k]) || [])].sort());
+const sameScope = (a, b) => ['seats', 'projects', 'machines', 'windows'].every((k) => keyOf(a, k) === keyOf(b, k));
+
+// The form keeps its choices across re-renders (the Wait field comes and goes).
+const form = { trigger: 'asked', seat: '', enabled: 'on', delay: 300 };
+
+function addOverride(seats, existing) {
+  const sel = (label, opts, key, field) => h('label', { class: 'field' }, label,
+    h('select', { 'data-key': key, onchange: (e) => { form[field] = e.target.value; if (field === 'enabled') again(); } },
+      opts.map(([v, t]) => h('option', { value: v, selected: String(v) === String(form[field]) }, t))));
+  const el = h('form', {
     class: 'panel override-form',
     onsubmit: async (e) => {
       e.preventDefault();
-      const b = form.querySelector('button[type=submit]');
+      const { trigger, seat, enabled, delay } = form;
+      const scope = seat ? { seats: [seat] } : {};
+      if (existing.some((r) => r.trigger === trigger && sameScope(r.scope, scope))) {
+        toast('There is already an override for that. Remove it first to change it.');
+        return;
+      }
+      const b = el.querySelector('button[type=submit]');
       b.disabled = true;
       try {
-        const r = await addRule({ trigger, enabled: enabled === 'on', delay_s: Number(delay), scope: seat ? { seats: [seat] } : {} });
+        const r = await addRule({ trigger, enabled: enabled === 'on', delay_s: enabled === 'on' ? Number(delay) : 0, scope });
         state.rules = [...state.rules, r];
         again();
       } catch (ex) { toast(ex.message); } finally { b.disabled = false; }
     },
   },
     h('div', { class: 'form-row' },
-      sel('When', Object.entries(TRIGGER_LABEL), trigger, (v) => { trigger = v; }, 'ov-trigger'),
-      sel('For', [['', 'All accounts'], ...seats.map((s) => [s.id, seatName(s)])], seat, (v) => { seat = v; }, 'ov-seat'),
-      sel('Then', [['on', 'Notify'], ['off', 'Do not notify']], enabled, (v) => { enabled = v; }, 'ov-enabled'),
-      sel('After', delayOptions(300), delay, (v) => { delay = v; }, 'ov-delay')),
+      sel('When', Object.entries(TRIGGER_LABEL), 'ov-trigger', 'trigger'),
+      sel('For', [['', 'All accounts'], ...seats.filter((s) => !s.hidden).map((s) => [s.id, seatName(s)])], 'ov-seat', 'seat'),
+      sel('Then', [['on', 'Notify'], ['off', 'Do not notify']], 'ov-enabled', 'enabled'),
+      // A wait means nothing when nothing is sent (AL3).
+      form.enabled === 'on' ? sel('Wait', delayOptions(300), 'ov-delay', 'delay') : null),
     h('button', { type: 'submit', class: 'btn', 'data-key': 'ov-add' }, 'Add override'));
-  return form;
+  return el;
 }
 
 function recent() {
   const list = state.alerts;
-  return section('Recent pushes',
+  const cancelled = (list || []).some((a) => a.status === 'cancelled');
+  return section('Recent alerts',
     !list ? h('p', { class: 'muted' }, state.error || 'Loading…')
       : list.length === 0 ? h('p', { class: 'calm' }, 'No alerts yet. They appear here when something needs you.')
       : h('ul', { class: 'panel log' }, list.map((a) => h('li', { class: 'log-row' },
         h('time', { class: 'mono small log-time', datetime: a.fired_at || a.created_at }, clock(a.fired_at || a.created_at)),
-        h('a', { class: 'log-title', href: a.url || '#/' }, a.title || a.trigger),
+        h('a', { class: 'log-title', href: a.url || '#/' }, a.title || TRIGGER_LABEL[a.trigger] || a.trigger),
         h('span', { class: `log-outcome out-${a.status}`, title: reasonText(a.reason) }, OUTCOME[a.status] || a.status)))),
-    h('p', { class: 'muted small' }, '"Cancelled": you answered in the terminal before the delay ran out, so nothing was sent.'));
+    cancelled ? h('p', { class: 'muted small' }, '“Cancelled”: you answered in the terminal before the wait ran out, so no notification was sent.') : null);
+}
+
+// Who can get a notification right now (AL2): the owner sees every device, a paired device
+// only itself. Null while that is not known yet.
+function receivers() {
+  if (isOwner()) return state.devices ? notifiable(state.devices) : null;
+  if (state.self) return notifiable([state.self]);
+  return null;
+}
+
+function statusLine(mode) {
+  const list = receivers();
+  if (!list || mode === 'read') return null;
+  if (!list.length) {
+    return h('p', { class: 'notice notice-warn', role: 'status', 'data-key': 'no-receivers' },
+      mode === 'owner'
+        ? ['No device can receive notifications yet, so alerts only show here on the board. ',
+          h('a', { href: '#/more/devices?add=phone', 'data-key': 'setup-receiver' }, 'Pair the Android app'), ' or ',
+          h('a', { href: '#/more/settings' }, 'turn them on in this browser'), '.']
+        : ['This device gets no notifications yet. ', h('a', { href: '#/more/settings', 'data-key': 'setup-receiver' }, 'Turn them on in Settings'), '.']);
+  }
+  const names = list.map((x) => x.device.name);
+  return h('p', { class: 'notice', role: 'status', 'data-key': 'receivers' },
+    mode === 'owner' ? `Notifications go to ${list.length === 1 ? names[0] : `${list.length} devices: ${names.join(', ')}`}.` : 'This device gets notifications.');
 }
 
 function phones() {
   if (!isOwner() || !state.devices) return null;
-  const phones = state.devices.filter((d) => d.kind === 'phone' || d.kind === 'browser').filter((d) => !d.revoked_at);
+  const list = notifiable(state.devices);
   return h('div', { class: 'cards-2 desk-only' },
     h('div', { class: 'card' }, h('h2', {}, 'Add a phone'),
-      h('p', { class: 'muted' }, 'Scan with the phone camera to open the web app, or type the code shown.'),
+      h('p', { class: 'muted' }, 'Pair the Switchyard Android app, or a phone’s browser: scan the QR code or type the 6-digit code.'),
       h('a', { class: 'btn btn-primary', href: '#/more/devices?add=phone', 'data-key': 'add-phone' }, 'Add phone')),
-    h('div', { class: 'card' }, h('h2', {}, 'Paired phones'),
-      phones.length ? h('ul', { class: 'plain' }, phones.map((d) => h('li', { class: 'row' }, h('span', {}, d.name),
-        (d.targets || []).filter((t) => t.status !== 'gone').slice(0, 1).map((t) => h('button', {
-          type: 'button', class: 'linkish', 'data-key': `test-${t.id}`,
-          onclick: async () => { try { const r = await testTarget(t.id); toast(r.outcome === 'sent' ? 'Test push sent' : `Test push: ${r.outcome}${r.error ? ' · ' + r.error : ''}`); } catch (ex) { toast(ex.message); } },
-        }, 'Test push')))))
+    h('div', { class: 'card' }, h('h2', {}, 'Devices that can get notifications'),
+      list.length ? h('ul', { class: 'plain receivers' }, list.map(({ device: d, targets }) => h('li', { class: 'row', 'data-key': `receiver-${d.id}` },
+        h('span', { class: 'row-text' }, h('span', {}, d.name),
+          h('span', { class: 'muted small' }, [[...new Set(targets.map(targetKindText))].join(', '), d.created_at ? `added ${day(d.created_at)}` : ''].filter(Boolean).join(' · '))),
+        h('button', {
+          type: 'button', class: 'linkish', 'data-key': `test-${targets[0].id}`,
+          onclick: async () => { try { const r = await testTarget(targets[0].id); toast(r.outcome === 'sent' ? 'Test notification sent' : `Test notification: ${r.outcome}${r.error ? ' · ' + r.error : ''}`); } catch (ex) { toast(ex.message); } },
+        }, 'Send a test'))))
         : h('p', { class: 'muted' }, 'None yet.'),
       h('a', { href: '#/more/devices' }, 'All devices')));
 }
@@ -197,11 +244,16 @@ export function render({ store }) {
     : null;
 
   const node = h('div', { class: 'page' },
-    h('header', { class: 'page-head' }, h('h1', {}, 'Alerts'),
-      h('p', { class: 'muted small head-meta' }, mode === 'owner' ? 'Rules apply to every device.' : mode === 'device' ? 'Switches choose what this phone gets; the hub sets the delays.' : 'Read-only: sign in as owner (sy hub owner-link) to change rules.')),
-    moreTabs('alerts', { owner }),
+    h('header', { class: 'page-head col' }, h('h1', {}, 'Alerts'), moreTabs('alerts', { owner }),
+      h('p', { class: 'muted small' }, 'An alert is something that needs you. It shows on the board, and a notification can go to your devices.')),
+    statusLine(mode),
     phones(),
     section('Rules',
+      h('p', { class: 'muted small section-help' }, mode === 'owner'
+        ? 'What sends a notification, for every device, and how long to wait first so you can answer at the terminal before anything is sent.'
+        : mode === 'device'
+          ? 'What sends a notification. The switches choose what this device gets; the hub sets the waits.'
+          : 'What sends a notification. Read-only: sign in as the owner (sy hub owner-link) to change them.'),
       !state.rules ? h('p', { class: 'muted' }, state.error || 'Loading…')
         : h('div', { class: 'panel' }, ruleRows(mode), quiet ? h('div', { class: 'row' }, quiet) : null)),
     state.rules ? overrides(mode, idx) : null,
