@@ -441,7 +441,10 @@ if phase_on 10; then
   sleep 3
   api DELETE "/v1/devices/$PHONE_ID" >/dev/null
   check "10.1 the hub revoked: the service stops (4403)" 30 svc_down
-  check "10.2 the notification says the phone was removed" 20 note_posted sy_needs_you "This phone was removed from the hub"
+  check "10.2 the notification says the phone was removed" 20 note_posted sy_needs_you "This phone was removed from the hub" || {
+    adbx shell dumpsys notification --noredact >"$T/notifications-revoke.txt" 2>&1
+    save_diag removed
+  }
   check "10.3 no orphaned connection notification is left" 10 no_conn_note
   launch
   if check "10.4 the app shows the Pair screen and says why" 30 ui_has "unpaired on the hub"; then :; else save_diag revoke; fi
@@ -463,6 +466,11 @@ fi
 if phase_on 11; then
   echo "== 11 claude.ai account tabs (P17): one WebView profile per seat, never signed in"
   # Never types or taps anything inside claude.ai: the page is only loaded and looked at.
+  if ! has_phone; then # phase 10 leaves the phone revoked: pair again
+    pair_by_link
+    wait_until 30 ui_has "Pair with 10.0.2.2:$PORT" && tap_pair
+    check "11.0 the phone is paired again" 60 link_connected
+  fi
   EA="alice-e2e@example.com"
   EB="bob-e2e@example.com"
   SA_SESS="$(sid 11)"
@@ -483,7 +491,7 @@ if phase_on 11; then
   [ "$(api GET "/v1/sessions/$SB_SESS" | python3 -I "$LIB" json seat)" = "$SEAT_B" ] && pass "11.3 the hub attributes session B to seat B" || fail "11.3 the hub attributes session B to seat B"
 
   ONLINE=0
-  adbx shell ping -c 1 -W 4 claude.ai >/dev/null 2>&1 && ONLINE=1
+  wait_until 45 adbx shell ping -c 1 -W 3 claude.ai && ONLINE=1
   [ "$ONLINE" = 1 ] && note "the emulator reaches claude.ai" || note "the emulator has no internet (ping claude.ai failed): the page-load checks are SKIPped"
 
   profiles_has() { ui_has "id=tabrow-$1"; }
@@ -564,7 +572,9 @@ if phase_on 11; then
 
   # ---- Open in Claude on B's session
   go_bar Now
-  check "11.13 B's session shows Open in Claude on Now" 30 ui_has "id=open-$SB_SESS"
+  wait_until 30 ui_has "Needs you"
+  scroll_to "id=open-$SB_SESS"
+  check "11.13 B's session shows Open in Claude on Now" 10 ui_has "id=open-$SB_SESS" || save_diag nowopen
   ui_tap "id=open-$SB_SESS"
   check "11.14 Open in Claude (B's session) opens a tab screen" 20 ui_has "id=tab-close"
   if ui_has "bob-e2e" && ! ui_has "alice-e2e"; then pass "11.14b its title is B's account (the route is /tabs/<seatB>)"; else fail "11.14b its title is B's account"; save_diag openin; fi
