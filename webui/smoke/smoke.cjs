@@ -108,21 +108,57 @@ async function checkSidebar(page, sizeName) {
 
 async function resetHub() { await fetch(BASE + '/_dev/reset', { method: 'POST' }); }
 
+// ---- fixes from the UI audit: not found, imported history, open sessions, live badge ----------
+
+async function auditChecks(page, sizeName) {
+  const t = (m) => page.tag(`audit fixes: ${m}`);
+  const text = (sel) => page.$eval(sel, (e) => e.textContent).catch(() => '');
+  // G6: an unknown route says so.
+  await page.evaluate(() => { location.hash = '#/nonsense/page'; });
+  try { await page.waitForSelector('[data-key=not-found]', { timeout: 4000 }); } catch (e) { fail(t('unknown route shows no "not found"')); }
+  // G14: the Now title.
+  await page.evaluate(() => { location.hash = '#/'; });
+  await page.waitForSelector('.page-now');
+  if (!/^\(\d+\) Now · Switchyard$/.test(await page.title())) fail(t(`Now title is "${await page.title()}"`));
+  // G1/G3: imported history folds into one line, and Open leaves it out.
+  await fetch(BASE + '/_dev/scenario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ names: ['history'] }) });
+  await page.evaluate(() => { location.hash = '#/sessions?filter=ended'; });
+  try { await page.waitForSelector('[data-key=history-toggle]', { timeout: 6000 }); } catch (e) { fail(t('ended sessions show no folded history')); }
+  if (!/24 older sessions/.test(await text('[data-key=history]'))) fail(t(`history line: ${await text('[data-key=history]')}`));
+  await page.click('[data-key=history-toggle]');
+  try { await page.waitForSelector('[data-key=history] .sessions-table', { timeout: 3000 }); } catch (e) { fail(t('Show did not open the history')); }
+  await shot(page, `${sizeName}-sessions-history`);
+  await page.evaluate(() => { location.hash = '#/sessions'; });
+  await page.waitForSelector('[data-key=f-open][aria-pressed=true]');
+  if (await page.$('[data-key=history]')) fail(t('Open shows imported history'));
+  if (!/Open 11/.test(await text('[data-key=f-open]'))) fail(t(`Open chip: ${await text('[data-key=f-open]')}`));
+  // G4: no internal detail code in the last line.
+  if (/repaired|permission_prompt|rate_limit/.test(await text('.sessions-table'))) fail(t('an internal detail code shows in the table'));
+  await resetHub();
+  await page.waitForFunction(() => !document.querySelector('[data-key=history]'), { timeout: 6000 }).catch(() => {});
+}
+
 // ---- the board login flow (phase 2 checks) -------------------------------------------------
 
 async function boardFlow(sizeName, w, hgt) {
   const ctx = await browser.createBrowserContext();
   const page = await newPage(ctx, sizeName, w, hgt, { ua: undefined, label: 'board', mobile: false });
   await page.goto(BASE + '/#/login', { waitUntil: 'networkidle2' });
-  await page.waitForSelector('form.login-card');
+  // The login leads with sy hub owner-link; the token form is behind a disclosure (L1).
+  await page.waitForSelector('.login-card [data-key=owner-link-cmd]');
   await shot(page, `${sizeName}-login`);
+  await page.click('[data-key=token-login] summary');
+  await page.waitForSelector('#token', { visible: true });
   await page.type('#token', 'sy_b_wrong');
   await page.click('button[type=submit]');
   await page.waitForSelector('.form-error:not([hidden])');
   await page.evaluate(() => { document.getElementById('token').value = ''; });
   await page.type('#token', TOKEN);
+  // Typing clears the old error (L2).
+  if (await page.$('.form-error:not([hidden])')) fail(page.tag('the login error stayed while the token was retyped'));
   await Promise.all([page.waitForSelector('#nav a[aria-current=page]'), page.click('button[type=submit]')]);
   for (const [name, hash, sel] of BOARD_PAGES) await visit(page, sizeName, name, hash, sel);
+  await auditChecks(page, sizeName);
   for (const [name, hash, sel] of [['more', '#/more', '.more-list'], ['alerts-readonly', '#/more/alerts', '.log'], ['settings-readonly', '#/more/settings', '[data-key=build]'], ['devices-readonly', '#/more/devices', '.calm']]) {
     await visit(page, sizeName, name, hash, sel);
   }
@@ -224,7 +260,9 @@ async function ownerFlow(sizeName, w, hgt) {
   const ctx = await browser.createBrowserContext();
   const page = await newPage(ctx, sizeName, w, hgt, { label: 'owner', mobile: false });
   await page.goto(`${BASE}/#/owner?s=${OWNER}`, { waitUntil: 'networkidle2' });
-  try { await page.waitForSelector('[data-key=hub-address]', { timeout: 6000 }); } catch (e) { fail(page.tag('owner link did not land on Settings')); }
+  // An owner link lands on Now with a toast (O3).
+  try { await page.waitForSelector('.page-now', { timeout: 6000 }); } catch (e) { fail(page.tag('owner link did not land on Now')); }
+  if (!/signed in as the owner/.test(await page.evaluate(() => (document.getElementById('toasts') || {}).textContent || ''))) fail(page.tag('owner sign-in showed no toast'));
   if (/s=/.test(await page.evaluate(() => location.hash))) fail(page.tag('owner secret left in the address'));
   await visit(page, sizeName, 'o-settings', '#/more/settings', '[data-key=hub-address]');
   await visit(page, sizeName, 'o-alerts', '#/more/alerts', '[data-key=rule-asked]');
@@ -258,14 +296,14 @@ async function machinesFlow(page, sizeName) {
   const text = (sel) => page.$eval(sel, (e) => e.textContent.trim()).catch(() => null);
   await visit(page, sizeName, 'o-machines', '#/machines', '[data-key="pull-m_vps"]');
   const want = async (sel, re, what) => { const t = await text(sel); if (!t || !re.test(t)) fail(page.tag(`machines: ${what}: got ${JSON.stringify(t)}`)); };
-  await want('[data-key="reach-m_laptop"]', /^Direct$/, 'direct chip');
-  await want('[data-key="reach-m_gpu"]', /^via laptop SSH$/, 'forward chip');
-  await want('[data-key="reach-m_vps"]', /^pulled by hub every 1 min$/, 'pull chip');
-  await want('#machine-m_gpu .kv', /1.240 queued, oldest \d\d:\d\d/, 'backlog with its age');
+  await want('[data-key="reach-m_laptop"]', /^Connects directly$/, 'direct chip');
+  await want('[data-key="reach-m_gpu"]', /^Through your laptop$/, 'forward chip');
+  await want('[data-key="reach-m_vps"]', /^Collected by the hub every 1 min$/, 'pull chip');
+  await want('#machine-m_gpu .kv', /1,240 waiting to send \(oldest \d+ h\)/, 'backlog with its age');
   await want('#machine-m_gpu .kv', /0\.4\.2 . older than hub 0\.5\.0/, 'older version');
-  await want('#machine-m_oci .kv', /holding 37 records: hub too old/, 'held records');
-  await want('[data-key="pull-state-m_vps"]', /^Pull: Failing: ssh: connect/, 'failing pull');
-  await want('[data-key="alert-m_vps"]', /^Silent alert sent/, 'silent alert');
+  await want('#machine-m_oci .kv', /holding 37 updates: the hub is too old/, 'held records');
+  await want('[data-key="pull-state-m_vps"]', /^Collecting · failing: ssh: connect/, 'failing pull');
+  await want('[data-key="alert-m_vps"]', /^Quiet-machine notification sent/, 'silent alert');
   await want('[data-key="status-m_vps"]', /^Quiet /, 'quiet status');
   // Silent machines sort first.
   const first = await page.$eval('.grid-machines .machine', (e) => e.dataset.machine);
@@ -352,7 +390,7 @@ async function peersChecks(page, sizeName, who, owner) {
     self: document.querySelectorAll('[data-key=matrix] .mx-self').length,
   }));
   if (g.cols !== 4 || g.rows !== 4 || g.btns !== 12 || g.self !== 4) fail(t(`grid is ${JSON.stringify(g)}`));
-  if (!/^Matrix version \d+ · signed by hub/.test((await txt('[data-key=matrix-version]')) || '')) fail(t('matrix version line missing'));
+  if (!/^Version \d+ · signed by hub/.test((await page.$eval('[data-key=matrix-version]', (e) => e.textContent).catch(() => '')) || '')) fail(t('matrix version line missing'));
   // The page must not scroll sideways (visit checks); the grid may scroll inside its own container.
   const wrap = await page.$eval('.mx-wrap', (e) => e.offsetWidth);
   const vw = await page.evaluate(() => document.documentElement.clientWidth);
@@ -374,7 +412,7 @@ async function peersChecks(page, sizeName, who, owner) {
       try { await page.waitForFunction(() => /Thread resumed: 2 machines were told/.test((document.getElementById('toasts') || {}).textContent || ''), { timeout: 4000 }); } catch (e) { fail(t('resume showed no success toast')); }
       try { await page.waitForFunction((k) => !document.querySelector(k), { timeout: 4000 }, resumeSel); } catch (e) { fail(t('Resume thread button is still there after resuming')); }
       if (!(await page.evaluate(async () => (await (await fetch('/v1/peers/audit')).json()).entries.some((e) => e.event === 'thread_resume')))) fail(t('audit has no thread_resume entry'));
-      try { await page.waitForFunction(() => /gpu-box kept the stop: hub_may_widen is off/.test((document.querySelector('.audit-list') || {}).textContent || ''), { timeout: 4000 }); } catch (e) { fail(t('audit list does not show the machine that kept the stop')); }
+      try { await page.waitForFunction(() => /gpu-box kept the stop: it does not let the hub reopen threads/.test((document.querySelector('.audit-list') || {}).textContent || ''), { timeout: 4000 }); } catch (e) { fail(t('audit list does not show the machine that kept the stop')); }
       await settle();
       await shot(page, `${sizeName}-${who}-peers-resumed`);
     }
@@ -456,7 +494,7 @@ async function peersFlow(sizeName, w, hgt) {
   const octx = await browser.createBrowserContext();
   const opage = await newPage(octx, sizeName, w, hgt, { label: 'peers-owner', mobile: false });
   await opage.goto(`${BASE}/#/owner?s=${OWNER}`, { waitUntil: 'networkidle2' });
-  await opage.waitForSelector('[data-key=hub-address]');
+  await opage.waitForSelector('.page-now');
   await peersChecks(opage, sizeName, 'owner', true);
   await octx.close();
 
