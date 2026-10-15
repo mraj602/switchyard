@@ -438,3 +438,60 @@ export interface PeerMessage {
   created_at: Iso;
   final_at?: Iso | null;
 }
+
+/** api.yaml AnalyticsTokens: counters and the API-equivalent price (analytics.md). */
+export interface AnalyticsTokens {
+  input: number;
+  output: number;
+  cache_5m: number;
+  cache_1h: number;
+  cache_read: number;
+  replies: number;
+  api_usd: number;
+  unpriced_replies: number;
+}
+
+export interface AnalyticsHead {
+  report: string;
+  from: string;
+  to: string;
+  tz: string;
+  seat: string | null;
+}
+
+/** GET /v1/analytics/daily. */
+export interface AnalyticsDaily extends AnalyticsHead {
+  totals: AnalyticsTokens;
+  days: (AnalyticsTokens & { day: string; source: 'transcripts' | 'history'; total_tokens: number })[];
+  seats: (AnalyticsTokens & { seat: string | null; name: string })[];
+}
+
+/** GET /v1/analytics/models. */
+export interface AnalyticsModels extends AnalyticsHead {
+  models: (AnalyticsTokens & { model: string; label: string; priced: boolean })[];
+}
+
+/** GET /v1/analytics/projects. */
+export interface AnalyticsProjects extends AnalyticsHead {
+  projects: (AnalyticsTokens & { project: string; name: string; sessions: number; last_ts: Iso | null })[];
+}
+
+/** GET /v1/analytics/hits. */
+export interface AnalyticsHits extends AnalyticsHead {
+  hits: { ts: Iso; seat: string | null; seat_name: string; session_id: string; type: string | null; status: string | null; resets_at: Iso | null; wait_s: number | null }[];
+}
+
+/** The reports the phone shows (the heatmap, sessions and limits are on the board). */
+export interface AnalyticsReplies {
+  daily: AnalyticsDaily;
+  models: AnalyticsModels;
+  projects: AnalyticsProjects;
+  hits: AnalyticsHits;
+}
+
+export interface AnalyticsQuery {
+  /** The last N days ending today in the hub's zone (1-366, default 30). */
+  days?: number;
+  /** One seat id, or "unattributed". */
+  seat?: string;
+}

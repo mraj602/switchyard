@@ -8,3 +8,4 @@ export * from './windows';
 export * from './alerts';
 export * from './machines';
 export * from './peers';
+export * from './analytics';

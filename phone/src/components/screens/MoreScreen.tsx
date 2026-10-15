@@ -1,5 +1,5 @@
-// More (PhoneNow's fourth tab): Alerts, Machines, Settings. Owner-only PWA screens (Devices,
-// Add phone, rule editing, Analytics) are not in the app (P4).
+// More (PhoneNow's fourth tab): Alerts, Machines, Peers, Analytics, Settings. Owner-only PWA
+// screens (Devices, Add phone, rule editing) are not in the app (P4).
 import { Pressable, Text, View } from 'react-native';
 import { plural } from '../../lib/format';
 import { useHubApi } from '../hub-api';
@@ -26,7 +26,6 @@ function Item({ label, sub, onPress, testID }: { label: string; sub: string; onP
 
 export default function MoreScreen() {
   const api = useHubApi();
-  const t = useTheme();
   const machines = api.data.overview?.machines.length ?? 0;
   return (
     <Page title="More">
@@ -34,10 +33,7 @@ export default function MoreScreen() {
       <Item testID="more-machines" label="Machines" sub={`${plural(machines, 'machine')} reporting to this hub`} onPress={() => go.machines()} />
       <Item testID="more-peers" label="Peers" sub="Which accounts may message each other, and Pause all peers" onPress={go.peers} />
       <Item testID="more-settings" label="Settings" sub="Notifications, this phone, app version" onPress={go.settings} />
-      <Card>
-        <Text style={{ fontWeight: '600', fontSize: 16, color: t.muted }}>Analytics</Text>
-        <Muted>Coming later</Muted>
-      </Card>
+      <Item testID="more-analytics" label="Analytics" sub="Tokens and API-equivalent cost by day, model and project" onPress={go.analytics} />
       <Muted>Devices, Add phone and rule editing are on the web board and the desktop app.</Muted>
     </Page>
   );
