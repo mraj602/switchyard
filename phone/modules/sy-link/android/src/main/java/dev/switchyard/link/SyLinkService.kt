@@ -300,7 +300,7 @@ class SyLinkService : Service(), LinkEvents {
         "revoked" -> {
           store.setEnabled(false)
           Watchdog.cancel(ctx)
-          notifier.stopped("This phone was removed from the hub")
+          notifier.stopped(CloseCodes.REMOVED_NOTICE)
           SyLinkModule.emit("revoked", null)
         }
         "upgrade" -> {
