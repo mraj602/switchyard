@@ -40,7 +40,7 @@ type Server struct {
 	mu   sync.Mutex
 	data *Data
 	id   int
-	subs map[chan event]struct{}
+	subs map[chan event]*sub // open streams and whose token they belong to
 	mux  *http.ServeMux
 
 	// Phase 4 state (p4.go); all guarded by mu.
@@ -51,6 +51,12 @@ type Server struct {
 	seq       int
 
 	peerState *peersState // peers.go; made on first use
+}
+
+// sub is one open /v1/stream: a revoke closes end, as on the real hub.
+type sub struct {
+	token string
+	end   chan struct{}
 }
 
 type event struct {
@@ -70,7 +76,7 @@ func New(o Options) *Server {
 	if o.PingEvery == 0 {
 		o.PingEvery = 25 * time.Second
 	}
-	s := &Server{opts: o, data: Fixtures(o.Now()), id: 4100, subs: map[chan event]struct{}{}, mux: http.NewServeMux(),
+	s := &Server{opts: o, data: Fixtures(o.Now()), id: 4100, subs: map[chan event]*sub{}, mux: http.NewServeMux(),
 		revoked: map[string]bool{}, lastTest: map[string]time.Time{}}
 	s.routes()
 	return s
@@ -116,7 +122,7 @@ func (s *Server) routes() {
 		writeJSON(w, 200, M{"accounts": s.data.Seats})
 	}))
 	s.mux.HandleFunc("GET /v1/machines", read(s.listMachines))
-	s.mux.HandleFunc("GET /v1/stream", read(s.stream))
+	s.mux.HandleFunc("GET /v1/stream", s.guard(s.stream, "read"))
 	s.phase4Routes()
 	s.phase5Routes()
 	s.phase6Routes()
@@ -179,7 +185,7 @@ func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, M{"sessions": out, "next": nil})
 }
 
-func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
+func (s *Server) stream(w http.ResponseWriter, r *http.Request, c *caller) {
 	fl, ok := w.(http.Flusher)
 	if !ok {
 		writeErr(w, 500, "internal", "streaming unsupported")
@@ -189,8 +195,9 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("X-Accel-Buffering", "no")
 	ch := make(chan event, 32)
+	me := &sub{token: c.token, end: make(chan struct{})}
 	s.mu.Lock()
-	s.subs[ch] = struct{}{}
+	s.subs[ch] = me
 	s.id++
 	hello := event{s.id, "hello", mustJSON(M{"version": "0.2.0-dev", "schema": 1})}
 	s.mu.Unlock()
@@ -203,6 +210,8 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-r.Context().Done():
+			return
+		case <-me.end:
 			return
 		case e := <-ch:
 			write(e)
@@ -221,6 +230,16 @@ func (s *Server) Emit(name string, payload any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.emitLocked(name, payload)
+}
+
+// endStreamsLocked closes every open stream of token (a revoked device).
+func (s *Server) endStreamsLocked(token string) {
+	for ch, x := range s.subs {
+		if x.token == token {
+			close(x.end)
+			delete(s.subs, ch)
+		}
+	}
 }
 
 func (s *Server) emitLocked(name string, payload any) {

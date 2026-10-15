@@ -252,6 +252,19 @@ async function phoneFlow(sizeName, w, hgt) {
   await sleep(300);
   await shot(page, `${sizeName}-p-now-snoozed`);
 
+  if (w < 600) {
+    // Revoked elsewhere (here: a bare DELETE, as the owner's Devices page would): the hub ends
+    // the stream, the board asks /v1/me at once and opens the pair screen well before its
+    // 15 s poll.
+    await page.evaluate(() => { location.hash = '#/'; });
+    await page.waitForSelector('.needs-card');
+    await page.evaluate(() => fetch('/v1/devices/self', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: '{}' }));
+    try { await page.waitForSelector('.pair-screen', { timeout: 4000 }); } catch (e) { fail(page.tag('a revoke did not sign the board out at once')); }
+    await shot(page, `${sizeName}-pair`);
+    await ctx.close();
+    await resetHub();
+    return;
+  }
   // Unpair returns to the pair screen.
   await page.evaluate(() => { window.confirm = () => true; location.hash = '#/more/settings'; });
   await page.waitForSelector('[data-key=unpair]');

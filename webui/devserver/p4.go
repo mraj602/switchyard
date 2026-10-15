@@ -716,6 +716,7 @@ func (s *Server) revokeDevice(w http.ResponseWriter, r *http.Request, c *caller)
 	s.removeTargetsOf(d["id"].(string))
 	if tok := s.tokenOfDevice(d["id"].(string)); tok != "" {
 		s.revoked[tok] = true
+		s.endStreamsLocked(tok)
 	}
 	if self {
 		clearCookie(w)
