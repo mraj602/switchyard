@@ -124,9 +124,16 @@ async function auditChecks(page, sizeName) {
   await fetch(BASE + '/_dev/scenario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ names: ['history'] }) });
   await page.evaluate(() => { location.hash = '#/sessions?filter=ended'; });
   try { await page.waitForSelector('[data-key=history-toggle]', { timeout: 6000 }); } catch (e) { fail(t('ended sessions show no folded history')); }
+  await page.waitForFunction(() => /24 older sessions/.test(document.querySelector('[data-key=history]')?.textContent || ''), { timeout: 6000 }).catch(() => {});
   if (!/24 older sessions/.test(await text('[data-key=history]'))) fail(t(`history line: ${await text('[data-key=history]')}`));
-  await page.click('[data-key=history-toggle]');
-  try { await page.waitForSelector('[data-key=history] .sessions-table', { timeout: 3000 }); } catch (e) { fail(t('Show did not open the history')); }
+  // The scenario's stream updates can redraw the list under a click, so click the current
+  // toggle in the page and retry until the history opens.
+  const opened = await page.waitForFunction(() => {
+    if (document.querySelector('[data-key=history] .sessions-table')) return true;
+    document.querySelector('[data-key=history-toggle]')?.click();
+    return false;
+  }, { timeout: 6000, polling: 500 }).then(() => true, () => false);
+  if (!opened) fail(t('Show did not open the history'));
   await shot(page, `${sizeName}-sessions-history`);
   await page.evaluate(() => { location.hash = '#/sessions'; });
   await page.waitForSelector('[data-key=f-open][aria-pressed=true]');
