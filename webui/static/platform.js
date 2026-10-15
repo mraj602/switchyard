@@ -93,7 +93,7 @@ export function ntfyLink(server, topic) {
   try { return `ntfy://${new URL(server).host}/${topic}`; } catch (_) { return ''; }
 }
 
-// ---- the Switchyard phone app (Expo) ------------------------------------------------------
+// ---- installing the board, and the Switchyard phone app -----------------------------------
 
 // How to install the board as an app in this browser (SE3), or '' when the page itself can
 // offer the install prompt. `ios` and `standalone` come from the page.
@@ -108,13 +108,6 @@ export function installHint(ua = '', { ios = false, standalone = false } = {}) {
   return 'Optional: if your browser can install web apps, look for Install in its menu.';
 }
 
-// "Old phone app (iPhone), version 0.8.0" for an expo push target (platform ios|android,
-// app_version): plain words, no service names (G15).
-export function expoTargetLabel(t) {
-  const plat = t && t.platform === 'ios' ? 'iPhone' : t && t.platform === 'android' ? 'Android' : '';
-  return `Old phone app${plat ? ` (${plat})` : ''}${t && t.app_version ? `, version ${t.app_version}` : ''}`;
-}
-
 // The link that opens the installed app on its pairing screen: switchyard://pair?u=&s=&c=&h=&k=
 // (phone.md P2). `c`, `h` and `k` are left out when absent. `h` (the hub key's fingerprint) and `k`
 // (the registration seal key) are the QR's keys.md 7 pins: without them the app claims a secret
@@ -124,15 +117,4 @@ export function appPairLink(origin, secret, code, hubFp, sealKey) {
   const digits = codeDigits(code);
   return `switchyard://pair?u=${encodeURIComponent(origin)}&s=${encodeURIComponent(secret)}${digits ? `&c=${encodeURIComponent(digits)}` : ''}` +
     `${hubFp ? `&h=${encodeURIComponent(hubFp)}` : ''}${sealKey ? `&k=${encodeURIComponent(sealKey)}` : ''}`;
-}
-
-// The body of PUT /v1/push/channels/expo (push.md 12.5). The access token is write-only: an empty
-// `token` leaves the stored one alone, `clear` removes it, and access_token_set is never sent back.
-export function expoChannelBody({ enabled, baseUrl, token, clear }) {
-  const settings = {};
-  const base = String(baseUrl || '').trim().replace(/\/+$/, '');
-  if (base) settings.base_url = base;
-  if (clear) settings.access_token = '';
-  else if (String(token || '').trim()) settings.access_token = String(token).trim();
-  return { enabled: !!enabled, settings };
 }

@@ -7,7 +7,6 @@ import { qrSvg } from '../components/qr.js';
 import { copyButton } from '../components/cards.js';
 import { targetKindText, usable } from '../components/targets.js';
 import { isOwner } from '../store.js';
-import { expoTargetLabel } from '../platform.js';
 import { listDevices, patchDevice, revokeDevice, testTarget, makePairCode, getPairCode, cancelPairCode } from '../api.js';
 import { agoLabel, day, dateTime, clock } from '../format.js';
 
@@ -174,7 +173,7 @@ function testButton(dev) {
 const STATUS = { ok: 'working', gone: 'no longer valid', failing: 'failing', new: 'not used yet', disabled: 'off' };
 
 function targetText(t) {
-  const what = t.kind === 'ntfy' ? `ntfy ${t.topic || ''}`.trim() : t.kind === 'expo' ? expoTargetLabel(t)
+  const what = t.kind === 'ntfy' ? `ntfy ${t.topic || ''}`.trim()
     : t.kind === 'webpush' ? `${targetKindText(t)}${t.endpoint_host ? ` (${t.endpoint_host})` : ''}` : targetKindText(t);
   const bits = [what, STATUS[t.status] || t.status];
   if (t.status !== 'ok' && t.last_error) bits.push(t.last_error);

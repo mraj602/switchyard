@@ -141,13 +141,6 @@ test('format: untilShort style countdown helpers stay stable', async () => {
   assert.equal(f.pct(61.6), '62%');
 });
 
-test('platform: expo target label', async () => {
-  const p = await mod('platform.js');
-  assert.equal(p.expoTargetLabel({ kind: 'expo', platform: 'ios', app_version: '0.8.0' }), 'Old phone app (iPhone), version 0.8.0');
-  assert.equal(p.expoTargetLabel({ kind: 'expo', platform: 'android', app_version: null }), 'Old phone app (Android)');
-  assert.equal(p.expoTargetLabel({ kind: 'expo' }), 'Old phone app');
-});
-
 test('platform: app pair link encodes origin, secret and code', async () => {
   const p = await mod('platform.js');
   assert.equal(p.appPairLink('https://hub.example.ts.net', 'sec/ret+1', '482-913'),
@@ -157,17 +150,6 @@ test('platform: app pair link encodes origin, secret and code', async () => {
   // the QR's keys.md 7 pins ride along, so the app can seal its keys into the claim
   assert.equal(p.appPairLink('https://h', 'abc', '482913', 'a2b3c4d5e6f7g2h3i4j5k6l7', 'k/ey+1'),
     'switchyard://pair?u=https%3A%2F%2Fh&s=abc&c=482913&h=a2b3c4d5e6f7g2h3i4j5k6l7&k=k%2Fey%2B1');
-});
-
-test('platform: expo channel payload keeps the token write-only', async () => {
-  const p = await mod('platform.js');
-  const j = (o) => JSON.parse(JSON.stringify(o));
-  assert.deepEqual(j(p.expoChannelBody({ enabled: true, baseUrl: ' https://exp.host/ ', token: '' })),
-    { enabled: true, settings: { base_url: 'https://exp.host' } });
-  assert.deepEqual(j(p.expoChannelBody({ enabled: true, baseUrl: 'https://exp.host', token: ' tok ' })),
-    { enabled: true, settings: { base_url: 'https://exp.host', access_token: 'tok' } });
-  assert.deepEqual(j(p.expoChannelBody({ enabled: false, baseUrl: '', token: 'x', clear: true })),
-    { enabled: false, settings: { access_token: '' } });
 });
 
 test('format: one style for numbers and dates', async () => {

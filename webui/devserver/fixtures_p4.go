@@ -17,7 +17,6 @@ const (
 
 	targetPixel = "pt_pixel"
 	targetIPad  = "pt_ipad"
-	targetApp   = "pt_app"
 )
 
 var briefKeys = []string{"id", "trigger", "status", "reason", "due_at", "fired_at", "fire_count", "snoozed_until", "seen_at"}
@@ -37,16 +36,16 @@ func defaultPrefs() M {
 
 func defaultSettings() M {
 	return M{
-		"quiet_hours":      M{"enabled": false, "start": "23:00", "end": "08:00", "tz": "Asia/Kolkata", "critical": true},
-		"private":          false,
-		"skip_remote":      false,
-		"snooze_min":       15,
-		"max_age_s":        900,
-		"batch_s":          2,
-		"flood":            M{"max": 6, "per_s": 600},
-		"vapid_subject":    "https://hub.example.ts.net",
-		"webpush_hosts":    []string{"fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com", "wns2-par02p.notify.windows.com"},
-		"expo_refresh_min": 15,
+		"quiet_hours":   M{"enabled": false, "start": "23:00", "end": "08:00", "tz": "Asia/Kolkata", "critical": true},
+		"private":       false,
+		"skip_remote":   false,
+		"snooze_min":    15,
+		"max_age_s":     900,
+		"batch_s":       2,
+		"flood":         M{"max": 6, "per_s": 600},
+		"vapid_subject": "https://hub.example.ts.net",
+		"webpush_hosts": []string{"fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com", "wns2-par02p.notify.windows.com"},
+		"refresh_min":   15,
 	}
 }
 
@@ -65,8 +64,7 @@ func (d *Data) phase4(now time.Time) {
 	min, hour := time.Minute, time.Hour
 
 	d.Settings = defaultSettings()
-	d.Channels = []M{{"kind": "webpush", "enabled": true}, {"kind": "ntfy", "enabled": true},
-		{"kind": "expo", "enabled": true, "settings": M{"base_url": "https://exp.host", "access_token_set": false}}}
+	d.Channels = []M{{"kind": "webpush", "enabled": true}, {"kind": "ntfy", "enabled": true}}
 
 	// ---- rules
 	rule := func(trigger string, enabled bool, delay int, bypass bool, scope M) M {
@@ -94,7 +92,6 @@ func (d *Data) phase4(now time.Time) {
 	pixel := newDevice(now, devPixel, "phone", "Pixel 9 · Chrome", "sy_p_…k3Qz", []string{"read", "push"}, 6*24*hour, "pair:pc_01JA0003")
 	ipad := newDevice(now, devIPad, "phone", "iPad · Safari", "sy_p_…m7Lw", []string{"read", "push"}, 3*24*hour, "pair:pc_01JA0004")
 	ipad["last_used_at"] = ago(30 * hour)
-	ipad["prefs"] = M{"mute": []string{}, "quiet_hours": nil, "private": nil, "tap": "auto", "tz": nil, "widgets": true}
 	d.Devices = []M{lap, gpu, pixel, ipad}
 
 	d.Targets = []M{
@@ -104,9 +101,6 @@ func (d *Data) phase4(now time.Time) {
 		{"id": targetIPad, "kind": "webpush", "device": devIPad, "name": "iPad · Safari", "endpoint_host": "web.push.apple.com",
 			"endpoint": "https://web.push.apple.com/dev-ipad-endpoint", "server": nil, "topic": nil, "token_set": false,
 			"enabled": true, "status": "gone", "last_ok_at": ago(40 * hour), "last_error": "410 Gone", "last_error_at": ago(30 * hour), "created_at": ago(3 * 24 * hour)},
-		{"id": targetApp, "kind": "expo", "platform": "ios", "app_version": "0.8.0", "device": devIPad, "name": "iPhone · app", "endpoint_host": "exp.host",
-			"endpoint": "ExponentPushToken[devfixture0000000000aa]", "server": nil, "topic": nil, "token_set": false,
-			"enabled": true, "status": "ok", "last_ok_at": ago(5 * min), "last_error": nil, "last_error_at": nil, "created_at": ago(2 * 24 * hour)},
 	}
 
 	// ---- alerts, one in every status
