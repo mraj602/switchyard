@@ -21,7 +21,7 @@ function paramString(v: string | string[] | undefined): string | undefined {
 
 export default function PairScreen() {
   const hub = useHub();
-  const params = useLocalSearchParams<{ origin?: string; secret?: string; code?: string }>();
+  const params = useLocalSearchParams<{ origin?: string; secret?: string; code?: string; hub?: string; key?: string }>();
   const [permission, requestPermission] = useCameraPermissions();
   const [typed, setTyped] = useState(false);
   const [address, setAddress] = useState('');
@@ -82,14 +82,22 @@ export default function PairScreen() {
   const origin = paramString(params.origin);
   const secret = paramString(params.secret);
   const code = paramString(params.code);
-  const linkKey = origin ? `${origin}|${secret ?? ''}|${code ?? ''}` : null;
+  const hubFp = paramString(params.hub);
+  const sealKey = paramString(params.key);
+  const linkKey = origin ? `${origin}|${secret ?? ''}|${code ?? ''}|${hubFp ?? ''}|${sealKey ?? ''}` : null;
   const parsedLink = useMemo(() => {
     if (!origin) return null;
-    const q = [`u=${encodeURIComponent(origin)}`, secret ? `s=${encodeURIComponent(secret)}` : '', code ? `c=${encodeURIComponent(code)}` : '']
+    const q = [
+      `u=${encodeURIComponent(origin)}`,
+      secret ? `s=${encodeURIComponent(secret)}` : '',
+      code ? `c=${encodeURIComponent(code)}` : '',
+      hubFp ? `h=${encodeURIComponent(hubFp)}` : '',
+      sealKey ? `k=${encodeURIComponent(sealKey)}` : '',
+    ]
       .filter(Boolean)
       .join('&');
     return parsePairInput(`switchyard://pair?${q}`, { dev: hub.dev });
-  }, [origin, secret, code, hub.dev]);
+  }, [origin, secret, code, hubFp, sealKey, hub.dev]);
   // The link card is shown until the person taps Pair or Cancel on it (then this link is done).
   const [doneLink, setDoneLink] = useState<string | null>(null);
   const linkOpen = hub.status !== 'loading' && linkKey !== null && doneLink !== linkKey;

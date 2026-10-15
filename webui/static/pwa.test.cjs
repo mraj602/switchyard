@@ -150,6 +150,9 @@ test('platform: app pair link encodes origin, secret and code', async () => {
     'switchyard://pair?u=https%3A%2F%2Fhub.example.ts.net&s=sec%2Fret%2B1&c=482913');
   assert.equal(p.appPairLink('http://100.64.0.7:7777', 'abc', ''), 'switchyard://pair?u=http%3A%2F%2F100.64.0.7%3A7777&s=abc');
   assert.equal(p.appPairLink('https://h', '', '482913'), '');
+  // the QR's keys.md 7 pins ride along, so the app can seal its keys into the claim
+  assert.equal(p.appPairLink('https://h', 'abc', '482913', 'a2b3c4d5e6f7g2h3i4j5k6l7', 'k/ey+1'),
+    'switchyard://pair?u=https%3A%2F%2Fh&s=abc&c=482913&h=a2b3c4d5e6f7g2h3i4j5k6l7&k=k%2Fey%2B1');
 });
 
 test('platform: expo channel payload keeps the token write-only', async () => {

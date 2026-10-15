@@ -10,6 +10,7 @@ const FILTERS: readonly string[] = ['needs_you', 'working', 'done', 'all', 'ende
 const BY = /^[a-z_]{1,20}$/;
 const SECRET = /^[A-Za-z0-9_-]{22}$/;
 const CODE = /^\d{6}$/;
+const HUB_FP = /^[a-z2-7]{24}$/i;
 const ALERT_ID = /^al_[A-Za-z0-9_.:-]{1,77}$/;
 
 /** An id from a link: the P7 pattern, and never a dot segment. */
@@ -118,9 +119,15 @@ function pairRoute(query: Record<string, string>): AppRoute {
   const u = query.u;
   // Origin only: https, a plain host, no user info, path, query or backslash (parsePairInput
   // checks it again before anything is claimed).
-  if (u && /^https:\/\/[A-Za-z0-9.-]{1,253}(:\d{1,5})?\/?$/.test(u)) r.origin = u.replace(/\/$/, '');
+  // http is let through to the pair screen, whose parsePairInput refuses it in a build that is
+  // not a development one (phone.md P2).
+  if (u && /^https?:\/\/[A-Za-z0-9.-]{1,253}(:\d{1,5})?\/?$/.test(u)) r.origin = u.replace(/\/$/, '');
   if (query.s && SECRET.test(query.s)) r.secret = query.s;
   if (query.c && CODE.test(query.c)) r.code = query.c;
+  // keys.md 7: the QR's hub fingerprint and registration seal key. Without them a secret claim
+  // would pair with no instant delivery, so a link that has them must carry them.
+  if (query.h && HUB_FP.test(query.h)) r.hubFp = query.h.toLowerCase();
+  if (query.k && SECRET.test(query.k)) r.sealKey = query.k;
   return r;
 }
 
@@ -166,8 +173,8 @@ export function routeToHref(route: AppRoute): string {
     case 'alert':
       return `/alerts/${encodeURIComponent(route.id)}`;
     case 'pair':
-      // The names app/pair.tsx reads with useLocalSearchParams (not the link's u/s/c).
-      return ROUTE_PATHS.pair + qs({ origin: route.origin, secret: route.secret, code: route.code });
+      // The names app/pair.tsx reads with useLocalSearchParams (not the link's u/s/c/h/k).
+      return ROUTE_PATHS.pair + qs({ origin: route.origin, secret: route.secret, code: route.code, hub: route.hubFp, key: route.sealKey });
     default:
       return ROUTE_PATHS[route.name];
   }

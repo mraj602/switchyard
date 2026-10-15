@@ -126,13 +126,16 @@ optional React 19.3 peers); they are expected and do not fail the install.
 - **`parsePairInput(text)`** (pure) accepts:
   - `https://<host>[:port]/#/pair?s=<22 base64url>&c=<6 digits>[&h=<24 base32>&k=<22 base64url>]`,
     the QR of pairing.md 2.2 with keys.md 7's hub fingerprint and registration seal;
-  - `switchyard://pair?u=<https origin>&s=…&c=…`, the "Open in app" link the web pair page
-    gains in wave 2;
+  - `switchyard://pair?u=<https origin>&s=…&c=…[&h=…&k=…]`, the "Open in app" link the web pair
+    page gains in wave 2; `h` and `k` are the QR's pins and are carried through the link route
+    to the Pair screen (without them the claim sends no keys and the phone gets no link);
   - typed input: an address plus `482-913`, `482913` or `482 913`.
 
   It returns `{origin, secret?, code?}` or a reason. The origin must be `https://`, with no
-  user info, path, query or fragment kept. Only `__DEV__` builds accept `http://` for
-  loopback and RFC 1918 addresses (pairing.md 2.3's `--insecure` hubs, for local testing).
+  user info, path, query or fragment kept. Only `__DEV__` builds, and bundled builds made with
+  `SY_APP_VARIANT=development` (`extra.cleartext`, the same switch as cleartext traffic in the
+  manifest), accept `http://` for loopback and RFC 1918 addresses (pairing.md 2.3's
+  `--insecure` hubs, for local testing, `test/e2e/android`).
   It refuses a `javascript:` URL, an origin with a backslash and a host over 253 characters.
 - **Claim:** `POST <origin>/v1/pair/claim` with `{secret | code, name: "<model> · app",
   expect_kind: "phone", cookie: false, client: "app/<version>+<build>"}`. On 200 it keeps
@@ -385,7 +388,7 @@ then gets the 401 that shows Pair, P3).
   - `switchyard://accounts[?seat=<id>]`
   - `switchyard://machines[?machine=<id>]`
   - `switchyard://alerts/<al_…>`
-  - `switchyard://pair?u=…&s=…&c=…`
+  - `switchyard://pair?u=…&s=…&c=…[&h=…&k=…]`
   - `switchyard://settings/notifications` (N1: the link's persistent notification, push.md
     14.4; `switchyard://settings` alone stays off the list)
 

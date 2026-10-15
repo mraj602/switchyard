@@ -22,7 +22,7 @@ export type AppRoute =
   /** P6.7 (N1): Settings → Notifications; the link's persistent notification opens it. */
   | { name: 'notify-settings' }
   | { name: 'alert'; id: string }
-  | { name: 'pair'; origin?: string; secret?: string; code?: string };
+  | { name: 'pair'; origin?: string; secret?: string; code?: string; hubFp?: string; sealKey?: string };
 
 /** expo-router paths of each route (P4 table). */
 export const ROUTE_PATHS = {
