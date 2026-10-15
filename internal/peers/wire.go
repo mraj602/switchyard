@@ -30,9 +30,12 @@ type PeerResultUp struct {
 	HumanAt string `json:"human_at,omitempty"`
 }
 
-// PeerLogUp is a same-machine delivery's metadata (link.md 6.2 peer_log).
+// PeerLogUp is a same-machine delivery's metadata (link.md 6.2 peer_log). With Event set it is
+// instead an event of this machine about one thread (Event, Thread, Detail, At; the message
+// fields empty): EventThreadResumeRefused.
 type PeerLogUp struct {
 	T           string `json:"t"`
+	Event       string `json:"event,omitempty"`
 	Msg         string `json:"msg"`
 	Thread      string `json:"thread"`
 	FromSession string `json:"from_session"`
@@ -43,6 +46,15 @@ type PeerLogUp struct {
 	Size        int    `json:"size"`
 	At          string `json:"at"`
 }
+
+// EventThreadResumeRefused is the peer_log event of a machine that refused the owner's
+// peer_thread_resume (peers.md 6.3) and keeps its loop-guard stop; Detail is the reason,
+// ResumeRefusedReason.
+const EventThreadResumeRefused = "thread_resume_refused"
+
+// ResumeRefusedReason is why a machine refuses a relayed thread resume: peers.hub_may_widen
+// is false (keys.md 5.4).
+const ResumeRefusedReason = "hub_may_widen"
 
 // PeersListUp asks for the session directory.
 type PeersListUp struct {

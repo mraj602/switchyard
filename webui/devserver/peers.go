@@ -83,11 +83,14 @@ func (s *Server) resumeThread(w http.ResponseWriter, r *http.Request, c *caller)
 	wasPaused := false
 	for _, e := range p.audit {
 		if e["thread"] == id {
-			wasPaused = e["event"] == "loop_guard"
+			wasPaused = e["event"] == "loop_guard" || e["event"] == "thread_resume_refused"
 			break
 		}
 	}
 	p.logThread(s.opts.Now(), c.kind, "thread_resume", id, M{"was_paused": wasPaused, "machines": 2})
+	// One pretend machine keeps hub_may_widen off: it refuses and tells the hub, which marks
+	// the thread paused again (peers.md 6.3).
+	p.logThread(s.opts.Now(), "dev_gpu", "thread_resume_refused", id, M{"machine": "gpu-box"})
 	writeJSON(w, 200, M{"thread": id, "was_paused": wasPaused, "machines": 2})
 }
 

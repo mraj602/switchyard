@@ -96,4 +96,21 @@ test('Resume thread: the newest loop-guard stop of each thread not resumed since
   assert.equal(P.eventLabel('loop_guard'), 'Loop guard stopped a thread');
   assert.match(P.resumeText({ machines: 2 }), /^Thread resumed: 2 machines were told\./);
   assert.match(P.resumeText({ machines: 1 }), /1 machine was told/);
+  assert.match(P.resumeText({ machines: 2 }), /the audit names each machine that refuses/);
+});
+
+test('a machine that refused the resume: named when the hub says which', () => {
+  assert.equal(P.eventLabel('thread_resume_refused', { machine: 'gpu-box' }), 'gpu-box kept the stop: hub_may_widen is off');
+  assert.equal(P.eventLabel('thread_resume_refused', {}), 'A machine kept the stop: hub_may_widen is off');
+  assert.equal(P.eventLabel('thread_resume_refused', { machine: { x: 1 } }), 'A machine kept the stop: hub_may_widen is off');
+  assert.equal(P.eventLabel('thread_resume_refused'), 'A machine kept the stop: hub_may_widen is off');
+  assert.equal(P.eventLabel('thread_resume', { machine: 'gpu-box' }), 'Thread resumed');
+  assert.equal(P.detailText({ machine: 'gpu-box' }), '');
+  // The refusal does not bring the button back: a resume would be refused again until a prompt.
+  const t1 = 't_0123456789abcdef';
+  assert.equal(P.resumableStops([
+    { id: 3, event: 'thread_resume_refused', thread: t1 },
+    { id: 2, event: 'thread_resume', thread: t1 },
+    { id: 1, event: 'loop_guard', thread: t1 },
+  ]).size, 0);
 });

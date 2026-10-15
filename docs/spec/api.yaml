@@ -1575,7 +1575,9 @@ paths:
         cleared), writes a `thread_resume` audit row and queues `peer_thread_resume` (link.md
         6.4) to the agent of each machine in the thread, offline ones included. The hub signs
         it, so it widens: a machine with `hub_may_widen = false` refuses it (keys.md 5.4) and
-        keeps its own stop until a human prompt in either session.
+        keeps its own stop until a human prompt in either session. Such a machine reports the
+        refusal (link.md 6.2 `peer_log` event); the hub then writes a `thread_resume_refused`
+        audit row (detail `machine`) and marks the thread paused again.
       x-scopes: [owner]
       parameters:
         - {name: id, in: path, required: true, schema: {type: string, pattern: "^t_[0-9a-f]{16}$"}}
@@ -3036,7 +3038,12 @@ components:
         id: {type: integer}
         at: {type: string, format: date-time}
         actor: {type: string}
-        event: {type: string}
+        event:
+          type: string
+          description: >-
+            matrix, pause, resume, loop_guard, rejected, thread_resume, or
+            thread_resume_refused (a machine refused a thread resume and keeps its stop; detail
+            `machine`, peers.md 6.3). Clients show an unknown event by its name.
         thread: {type: [string, "null"]}
         msg: {type: [string, "null"]}
         detail: {type: object, additionalProperties: true}
