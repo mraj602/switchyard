@@ -226,6 +226,15 @@ const (
 	VersionUnknown = "unknown"
 )
 
+// bareVersion is v without spaces, a leading "v" and build metadata ("+abc").
+func bareVersion(v string) string {
+	v = strings.TrimPrefix(strings.TrimSpace(v), "v")
+	if i := strings.IndexByte(v, '+'); i >= 0 {
+		v = v[:i]
+	}
+	return v
+}
+
 // semver parses "v1.2.3" / "1.2.3" (build metadata ignored); ok is false for anything else,
 // pre-releases ("0.5.0-rc.1") and "dev" included.
 func semver(v string) ([3]int, bool) {
@@ -251,6 +260,12 @@ func semver(v string) ([3]int, bool) {
 // VersionStatus compares a machine's sy version with the hub's by semver (machines.md 6.1):
 // same, older, newer, or unknown when either is missing, a pre-release or a dev build.
 func VersionStatus(machine, hub string) string {
+	// The same build string is the same version, semver or not: builds from a commit
+	// without a tag are named by the commit ("104cd7f", UI audit M1). "dev" (a build
+	// without version stamping) and an empty string say nothing.
+	if a, b := bareVersion(machine), bareVersion(hub); a == b && a != "" && a != "dev" {
+		return VersionSame
+	}
 	m, ok1 := semver(machine)
 	h, ok2 := semver(hub)
 	if !ok1 || !ok2 {
@@ -282,7 +297,7 @@ type machineInfoFlags struct {
 func (s *Store) MachineList(ctx context.Context, q MachineQuery, now time.Time) ([]MachineView, error) {
 	args := []any{now.Add(-LiveWithin).UnixMilli()}
 	sqlq := `SELECT m.id, m.name, m.os, m.arch, m.sy_version, coalesce(m.last_seen, 0), coalesce(m.last_record, 0), m.backlog,
-		(SELECT count(*)` + sessionFrom + ` WHERE s.machine_id = m.id AND ` + liveCondition + ` AND ` + activityExpr + ` >= ?),
+		(SELECT count(*)` + sessionFrom + ` WHERE s.machine_id = m.id AND ` + liveNowCondition + `),
 		(SELECT count(*)` + sessionFrom + ` WHERE s.machine_id = m.id AND ` + sessionStateExpr + ` IN (` + activeStatesSQL + `)),
 		m.reach, m.record_v, m.held, coalesce(m.backlog_oldest, 0), coalesce(m.backlog_at, 0), m.info, coalesce(m.removed_at, 0)
 		FROM machine m WHERE 1 = 1`

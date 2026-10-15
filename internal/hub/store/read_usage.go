@@ -222,7 +222,7 @@ func (s *Store) seatExtras(ctx context.Context, r *SeatRow, now time.Time) error
 	if err := rows.Err(); err != nil {
 		return err
 	}
-	return s.r.QueryRowContext(ctx, `SELECT count(*)`+sessionFrom+` WHERE s.seat_id = ? AND `+liveCondition+` AND `+activityExpr+` >= ?`,
+	return s.r.QueryRowContext(ctx, `SELECT count(*)`+sessionFrom+` WHERE s.seat_id = ? AND `+liveNowCondition,
 		r.ID, now.Add(-LiveWithin).UnixMilli()).Scan(&r.LiveSessions)
 }
 

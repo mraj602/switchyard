@@ -655,7 +655,7 @@ skipped as stale. That is the only known duplicate path, and it needs a badly wr
 | `backlog_oldest` | time \| null | Ts of the oldest unanswered record: `X-Sy-Backlog-Oldest` (new, sent with `X-Sy-Backlog` when the backlog is more than one batch), drain `hello.oldest`, or `machine_info` |
 | `backlog_at` | time \| null | When `backlog` was reported |
 | `sy_version` | string \| null | Unchanged |
-| `version_status` | `same` \| `older` \| `newer` \| `unknown` | `sy_version` compared with the hub's version by semver (pre-release and `dev` → `unknown`) |
+| `version_status` | `same` \| `older` \| `newer` \| `unknown` | `sy_version` compared with the hub's version: the same string (after a leading `v` and `+build` are dropped) is `same`, so two builds of one untagged commit (`104cd7f`) match; otherwise by semver (pre-release, commit names and `dev` → `unknown`; `dev` never matches itself) |
 | `record_v` | integer \| null | Highest record `v` the machine writes (`machine_info`) |
 | `held` | integer | Records the machine holds back because the hub is too old (7.2), from `machine_info`; 0 normally |
 | `os`, `arch` | string \| null | Now filled, from `machine_info` |
