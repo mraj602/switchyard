@@ -1,11 +1,11 @@
 // Analytics (More; analytics.md): tokens and API-equivalent cost over 7, 30 or 90 days, one
 // account or all: totals, daily cost bars, by model, by project and limit hits. Read-only. The
-// dollar figure is what the same tokens cost at API list prices, a yardstick, not a bill. The
-// weekday by hour heatmap is on the board.
+// dollar figure is what the same tokens cost at API list prices, a yardstick, not a bill. Also
+// the weekday by hour heatmap, the dearest sessions and the limit windows (peak and final %).
 import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import type { AnalyticsReplies } from '../../contract/api';
-import { barPercents, cacheHit, dateTime, hitText, plural, seatName, shortDay, tokens, tokenSum, usd } from '../../lib/format';
+import { barPercents, cacheHit, dateTime, heatLevel, hitText, pct, plural, projectName, seatName, shortDay, tokens, tokenSum, usd, WEEKDAYS } from '../../lib/format';
 import { useHubApi } from '../hub-api';
 import { useTheme } from '../theme';
 import { Calm, Card, Chip, Muted, Page, Section } from '../ui';
@@ -17,6 +17,61 @@ interface Data {
   models: AnalyticsReplies['models'];
   projects: AnalyticsReplies['projects'];
   hits: AnalyticsReplies['hits'];
+  heatmap: AnalyticsReplies['heatmap'];
+  sessions: AnalyticsReplies['sessions'];
+  limits: AnalyticsReplies['limits'];
+}
+
+const TOP_SESSIONS = 5;
+const RECENT_WINDOWS = 8;
+const HEAT_OPACITY = [0, 0.25, 0.45, 0.7, 1];
+
+/** Weekday rows by 24 hour cells, shaded against the busiest hour. */
+function Heatmap({ grid, label }: { grid: number[][]; label: string }) {
+  const t = useTheme();
+  const max = Math.max(0, ...grid.flat());
+  return (
+    <Card>
+      <View testID="heatmap" accessibilityRole="image" accessibilityLabel={label} style={{ gap: 2 }}>
+        <View style={{ flexDirection: 'row', gap: 1 }}>
+          <View style={{ width: 30 }} />
+          {Array.from({ length: 24 }, (_, hr) => (
+            <View key={hr} style={{ flex: 1, alignItems: 'center' }}>
+              <Text numberOfLines={1} style={{ color: t.muted, fontSize: 9, width: 20, textAlign: 'center' }}>{hr % 6 === 0 ? String(hr) : ''}</Text>
+            </View>
+          ))}
+        </View>
+        {grid.map((row, wd) => (
+          <View key={wd} style={{ flexDirection: 'row', gap: 1, alignItems: 'center' }}>
+            <Text style={{ width: 30, color: t.muted, fontSize: 11 }}>{WEEKDAYS[wd]}</Text>
+            {row.map((v, hr) => {
+              const lvl = heatLevel(v, max);
+              return <View key={hr} testID={lvl ? `heat-${wd}-${hr}` : undefined} style={{ flex: 1, height: 16, borderRadius: 2, backgroundColor: lvl ? t.accent : t.track, opacity: lvl ? HEAT_OPACITY[lvl] : 0.6 }} />;
+            })}
+          </View>
+        ))}
+      </View>
+    </Card>
+  );
+}
+
+/** A thin bar: the faint part is the peak, the solid part is where the window ended. */
+function LimitWindow({ w, testID }: { w: AnalyticsReplies['limits']['windows'][number]; testID: string }) {
+  const t = useTheme();
+  const clamp = (n: number | null) => Math.max(0, Math.min(100, n ?? 0));
+  return (
+    <View testID={testID} style={{ gap: 4 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+        <Text style={{ color: t.text, fontWeight: '600', flexShrink: 1 }}>{`${w.seat_name} · ${w.label}`}</Text>
+        <Text style={{ color: t.text }}>{`${pct(w.peak_pct)} peak · ${pct(w.final_pct)} final`}</Text>
+      </View>
+      <View style={{ height: 8, borderRadius: 4, backgroundColor: t.track, overflow: 'hidden' }}>
+        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${clamp(w.peak_pct)}%`, backgroundColor: t.warn, opacity: 0.45 }} />
+        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${clamp(w.final_pct)}%`, backgroundColor: t.accent }} />
+      </View>
+      <Muted>{`resets ${dateTime(w.resets_at)}`}</Muted>
+    </View>
+  );
 }
 
 function Tile({ label, value, sub, testID }: { label: string; value: string; sub?: string; testID: string }) {
@@ -65,10 +120,10 @@ export default function AnalyticsScreen() {
     if (!client) return;
     let live = true;
     const q = { days, seat: seat || undefined };
-    void Promise.all([client.analytics('daily', q), client.analytics('models', q), client.analytics('projects', q), client.analytics('hits', q)])
-      .then(([daily, models, projects, hits]) => {
+    void Promise.all([client.analytics('daily', q), client.analytics('models', q), client.analytics('projects', q), client.analytics('hits', q), client.analytics('heatmap', q), client.analytics('sessions', q), client.analytics('limits', q)])
+      .then(([daily, models, projects, hits, heatmap, sessions, limits]) => {
         if (!live) return;
-        setData({ daily, models, projects, hits });
+        setData({ daily, models, projects, hits, heatmap, sessions, limits });
         setError(null);
       })
       .catch((e: unknown) => {
@@ -106,7 +161,7 @@ export default function AnalyticsScreen() {
     );
   }
 
-  const { daily, models, projects, hits } = data;
+  const { daily, models, projects, hits, heatmap, sessions, limits } = data;
   const tot = daily.totals;
   const hit = cacheHit(tot);
   const heights = barPercents(daily.days.map((d) => d.api_usd));
@@ -140,6 +195,10 @@ export default function AnalyticsScreen() {
         </Card>
       </Section>
 
+      <Section title="When you work">
+        <Heatmap grid={heatmap.api_usd} label="API-equivalent cost by weekday and hour" />
+      </Section>
+
       <Section title="By model">
         {models.models.length ? (
           <Rows
@@ -169,6 +228,37 @@ export default function AnalyticsScreen() {
           />
         ) : (
           <Muted>No token data in this range.</Muted>
+        )}
+      </Section>
+
+      <Section title="Top sessions">
+        {sessions.sessions.length ? (
+          <Rows
+            testID="session"
+            items={sessions.sessions.slice(0, TOP_SESSIONS).map((x) => ({
+              key: x.session_id,
+              name: projectName(x.project),
+              sub: `${tokens(tokenSum(x))} tokens · ${x.seat_name} · ${shortDay(x.last_ts.slice(0, 10))}`,
+              usd: x.api_usd,
+            }))}
+          />
+        ) : (
+          <Muted>No token data in this range.</Muted>
+        )}
+      </Section>
+
+      <Section title="Limit windows">
+        {limits.windows.length ? (
+          <Card style={{ gap: 12 }}>
+            {limits.windows
+              .slice(-RECENT_WINDOWS)
+              .reverse()
+              .map((w) => (
+                <LimitWindow key={`${w.seat}-${w.key}-${w.resets_at}`} w={w} testID="limit-window" />
+              ))}
+          </Card>
+        ) : (
+          <Muted>No limit windows in this range.</Muted>
         )}
       </Section>
 

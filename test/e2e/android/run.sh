@@ -628,6 +628,7 @@ if phase_on 12; then
   ui_has '$3.00' && pass "12.5 API-equivalent cost reads \$3.00" || { fail "12.5 API-equivalent cost reads \$3.00"; save_diag ana; }
   ui_has "1.1M" && pass "12.6 Tokens reads 1.1M" || fail "12.6 Tokens reads 1.1M"
   ui_has "id=day-bars" && pass "12.7 the daily bars are drawn" || fail "12.7 the daily bars are drawn"
+  ui_has "id=heatmap" && pass "12.8 the weekday by hour heatmap is drawn" || fail "12.8 the weekday by hour heatmap is drawn"
   adbx shell input keyevent KEYCODE_BACK
 fi
 

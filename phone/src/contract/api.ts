@@ -481,12 +481,31 @@ export interface AnalyticsHits extends AnalyticsHead {
   hits: { ts: Iso; seat: string | null; seat_name: string; session_id: string; type: string | null; status: string | null; resets_at: Iso | null; wait_s: number | null }[];
 }
 
-/** The reports the phone shows (the heatmap, sessions and limits are on the board). */
+/** GET /v1/analytics/heatmap: 7 weekdays (0 = Sunday) by 24 hours of the hub's zone. */
+export interface AnalyticsHeatmap extends AnalyticsHead {
+  api_usd: number[][];
+  replies: number[][];
+}
+
+/** GET /v1/analytics/sessions: the 50 dearest. */
+export interface AnalyticsSessions extends AnalyticsHead {
+  sessions: (AnalyticsTokens & { session_id: string; seat: string | null; seat_name: string; project: string; models: string[]; first_ts: Iso; last_ts: Iso })[];
+}
+
+/** GET /v1/analytics/limits: limit windows that reset inside the range, oldest first. */
+export interface AnalyticsLimits extends AnalyticsHead {
+  windows: { seat: string; seat_name: string; key: string; label: string; started_at: Iso | null; resets_at: Iso; peak_pct: number | null; final_pct: number | null; unused_pct: number | null; samples: number }[];
+}
+
+/** The reports the phone shows. */
 export interface AnalyticsReplies {
   daily: AnalyticsDaily;
   models: AnalyticsModels;
   projects: AnalyticsProjects;
   hits: AnalyticsHits;
+  heatmap: AnalyticsHeatmap;
+  sessions: AnalyticsSessions;
+  limits: AnalyticsLimits;
 }
 
 export interface AnalyticsQuery {

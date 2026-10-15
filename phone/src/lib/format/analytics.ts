@@ -49,6 +49,19 @@ export function shortDay(day: string): string {
   return `${Number(m[2])} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(m[1]) - 1]}`;
 }
 
+export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+
+/** Heatmap shade 0-4 of a cell against the busiest cell (0 = nothing). */
+export function heatLevel(v: number, max: number): number {
+  if (!(v > 0) || !(max > 0)) return 0;
+  return Math.min(4, 1 + Math.floor((v / max) * 4 - 1e-9));
+}
+
+/** "/home/me/code/alpha" -> "alpha"; an empty path -> "No project". */
+export function projectName(path: string): string {
+  return path.split(/[\\/]/).filter(Boolean).pop() ?? 'No project';
+}
+
 /** "5-hour limit, back in 2 h" from a hits row. */
 export function hitText(hit: { type: string | null; wait_s: number | null }): string {
   const kind = hit.type === 'five_hour' ? '5-hour' : hit.type === 'seven_day' ? '7-day' : hit.type ? hit.type.replace(/_/g, ' ') : '';

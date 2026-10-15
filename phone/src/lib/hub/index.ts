@@ -87,7 +87,7 @@ export interface HubClient {
   peerAudit(q?: { limit?: number }): Promise<{ entries: PeerAuditEntry[] }>;
   /** GET /v1/peers/messages: who messaged whom, size and outcome; the hub may not serve it yet (404, 501). */
   peerMessages(q?: { limit?: number }): Promise<{ messages: PeerMessage[] }>;
-  /** GET /v1/analytics/{report} (analytics.md): tokens, API-equivalent cost, models, projects, limit hits. */
+  /** GET /v1/analytics/{report} (analytics.md): tokens, API-equivalent cost, models, projects, heatmap, sessions, limit windows and hits. */
   analytics<R extends keyof AnalyticsReplies>(report: R, q?: AnalyticsQuery): Promise<AnalyticsReplies[R]>;
 }
 
