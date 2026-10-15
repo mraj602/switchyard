@@ -18,6 +18,11 @@ import (
 func TestPostUpdateStepsAreRegisteredInOrder(t *testing.T) {
 	var names []string
 	for _, s := range update.PostUpdateSteps() {
+		// "probe" is registered (and never removed) by the update command test in this package;
+		// with -count>1 it is already there when this test runs again.
+		if s.Name == "probe" {
+			continue
+		}
 		names = append(names, s.Name)
 	}
 	if got := strings.Join(names, ","); got != "plugin,timer,hub service,agent service,machine_info,doctor" {
