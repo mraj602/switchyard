@@ -131,7 +131,8 @@ async function auditChecks(page, sizeName) {
   await page.evaluate(() => { location.hash = '#/sessions'; });
   await page.waitForSelector('[data-key=f-open][aria-pressed=true]');
   if (await page.$('[data-key=history]')) fail(t('Open shows imported history'));
-  if (!/Open 11/.test(await text('[data-key=f-open]'))) fail(t(`Open chip: ${await text('[data-key=f-open]')}`));
+  // 10: the fixtures' stale working session is not open (the hub's dormant rule, states.md 5).
+  if (!/Open 10/.test(await text('[data-key=f-open]'))) fail(t(`Open chip: ${await text('[data-key=f-open]')}`));
   // G4: no internal detail code in the last line.
   if (/repaired|permission_prompt|rate_limit/.test(await text('.sessions-table'))) fail(t('an internal detail code shows in the table'));
   await resetHub();

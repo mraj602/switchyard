@@ -8,6 +8,7 @@ import (
 
 	"github.com/mraj602/switchyard/internal/hub/state"
 	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/switchyard/internal/hub/usage"
 	"github.com/mraj602/switchyard/internal/record"
 )
 
@@ -33,8 +34,20 @@ func hookInput(id string, ts time.Time, r *record.Record) (state.Input, error) {
 	return in, nil
 }
 
-func listInput(id string, ts time.Time, complete, listed bool, status string) state.Input {
-	return state.Input{ID: id, TS: ts, List: &state.ListObs{Complete: complete, Listed: listed, Status: status}}
+func listInput(id string, ts time.Time, complete, listed bool, status string, lastActive int64) state.Input {
+	return state.Input{ID: id, TS: ts, List: &state.ListObs{Complete: complete, Listed: listed, Status: status,
+		LastActive: tm(lastActive)}}
+}
+
+// listLastActive is ListObs.LastActive for a session in a list taken at (ms): the newer of
+// its newest transcript row at or before at (lastRow) and the start the list item reports
+// (when it is not after at). Never the list's own time.
+func listLastActive(it listItem, at, lastRow int64) int64 {
+	started := usage.ParseTime(it.StartedAt).UnixMilli()
+	if started <= 0 || started > at {
+		started = 0
+	}
+	return max(started, lastRow)
 }
 
 func ms(t time.Time) int64 {
@@ -113,8 +126,12 @@ func (t *typer) fold(sessionID string, in state.Input) error {
 }
 
 // transcript folds a transcript observation (token_rows) into a session. It only matters
-// for a session no hook event or list has seen (states.md 5.1), so it never refolds: a
-// session with a live state ignores it, and a history session only moves forward.
+// for a session no hook event or list has seen (states.md 5.1): a session with a live state
+// ignores it, and a history session only moves forward. The one exception: a session a list
+// made done (done:repaired) refolds when it now has a transcript row after its state_since
+// but not after that list, so the list's backdating (ListObs.LastActive) sees rows that
+// arrived after the list (the first list on a machine usually beats the import of its
+// transcripts). The caller stores the rows first.
 func (t *typer) transcript(sessionID string, at time.Time, recordID string) error {
 	f, ok, err := t.tx.GetFold(sessionID)
 	if err != nil {
@@ -123,6 +140,9 @@ func (t *typer) transcript(sessionID string, at time.Time, recordID string) erro
 	var s state.Session
 	if ok {
 		s = sessionFrom(f)
+		if s.State == state.Done && s.Detail == "repaired" {
+			return t.relistDone(sessionID, f)
+		}
 		if !s.IsHistory() || !at.After(s.EndedAt) {
 			return nil
 		}
@@ -136,6 +156,20 @@ func (t *typer) transcript(sessionID string, at time.Time, recordID string) erro
 		return err
 	}
 	return t.tx.AppendTransitions(sessionID, transitionsOf(s.History, recordID), false)
+}
+
+// relistDone refolds a session a list made done when a transcript row now lies between its
+// state_since and that list (f.LastRecord): the list's LastActive has moved (transcript).
+func (t *typer) relistDone(sessionID string, f store.FoldRow) error {
+	listTS, ok, err := t.tx.RecordTS(f.LastRecord)
+	if err != nil || !ok {
+		return err
+	}
+	row, err := t.tx.LastTokenRowAt(sessionID, listTS)
+	if err != nil || row <= f.Since {
+		return err
+	}
+	return t.refold(sessionID)
 }
 
 // refold rebuilds a session's fold from its hook_event records and the session_list
@@ -159,6 +193,7 @@ func loadInputs(tx *store.Tx, sessionID string) ([]state.Input, error) {
 		return nil, err
 	}
 	var inputs []state.Input
+	var rows []int64 // the session's transcript activity, loaded with the first list that lists it
 	from := sess.StartedAt
 	for _, h := range hooks {
 		var r record.Record
@@ -190,18 +225,27 @@ func loadInputs(tx *store.Tx, sessionID string) ([]state.Input, error) {
 			if json.Unmarshal(l.Body, &r) != nil {
 				continue
 			}
-			listed, status := false, ""
+			listed, status, active := false, "", int64(0)
 			for _, raw := range r.Payload.Sessions {
 				var it listItem
 				if json.Unmarshal(raw, &it) == nil && it.SessionID == sessionID {
+					if rows == nil {
+						if rows, err = tx.TokenRowTimes(sessionID); err != nil {
+							return nil, err
+						}
+						if rows == nil {
+							rows = []int64{}
+						}
+					}
 					listed, status = true, it.Status
+					active = listLastActive(it, l.TS, lastAtOrBefore(rows, l.TS))
 					break
 				}
 			}
 			if !listed && !r.Payload.Complete {
 				continue
 			}
-			inputs = append(inputs, listInput(l.ID, tm(l.TS), r.Payload.Complete, listed, status))
+			inputs = append(inputs, listInput(l.ID, tm(l.TS), r.Payload.Complete, listed, status, active))
 		}
 	}
 	return inputs, nil
@@ -247,4 +291,13 @@ func persistFold(tx *store.Tx, sessionID string, inputs []state.Input) error {
 		}
 	}
 	return nil
+}
+
+// lastAtOrBefore is the newest of the sorted times that is at or before at, 0 if none.
+func lastAtOrBefore(sorted []int64, at int64) int64 {
+	i := sort.Search(len(sorted), func(i int) bool { return sorted[i] > at })
+	if i == 0 {
+		return 0
+	}
+	return sorted[i-1]
 }

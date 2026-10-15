@@ -264,3 +264,38 @@ func (tx *Tx) EachRecordOfKind(kind string, fn func(RecordRef) error) error {
 	}
 	return rows.Err()
 }
+
+// TokenRowTimes returns the ts of every token_row of a session, oldest first: the
+// session's transcript activity, for the fold's list inputs (states.md 4).
+func (tx *Tx) TokenRowTimes(sessionID string) ([]int64, error) {
+	rows, err := tx.QueryContext(tx.ctx, `SELECT ts FROM token_row WHERE session_id = ? ORDER BY ts`, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []int64
+	for rows.Next() {
+		var t int64
+		if err := rows.Scan(&t); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
+// LastTokenRowAt is the ts of a session's newest token_row at or before at (ms), 0 if none.
+func (tx *Tx) LastTokenRowAt(sessionID string, at int64) (int64, error) {
+	var t int64
+	err := tx.queryRow(`SELECT coalesce(max(ts), 0) FROM token_row WHERE session_id = ? AND ts <= ?`, sessionID, at).Scan(&t)
+	return t, err
+}
+
+// RecordTS is a stored record's ts (ms); ok is false when there is no such record.
+func (tx *Tx) RecordTS(id string) (ts int64, ok bool, err error) {
+	err = tx.queryRow(`SELECT ts FROM record WHERE id = ?`, id).Scan(&ts)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, false, nil
+	}
+	return ts, err == nil, err
+}

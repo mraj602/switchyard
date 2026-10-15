@@ -47,6 +47,12 @@ type ListObs struct {
 	Complete bool   // the list is every live session of the slot
 	Listed   bool   // the session is in it
 	Status   string // busy, idle, waiting, or "" (when Listed)
+	// LastActive is the session's newest sign of life the hub has at or before the list's
+	// ts, apart from lists: its newest transcript row, else the start the list reports (zero
+	// when neither is known). A list that makes the session done backdates state_since to
+	// it, so a session first seen idle by a list (an import, or a slot without hooks) is not
+	// "done since the list ran" (states.md 4).
+	LastActive time.Time
 }
 
 type hookPayload struct {
