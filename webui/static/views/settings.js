@@ -6,7 +6,7 @@ import { h } from '../components/dom.js';
 import { section, select, toggle, toast, moreTabs, details } from '../components/ui.js';
 import { quietHours } from '../components/quiet.js';
 import { liveBadge } from '../components/nav.js';
-import { notifiable, appPaired } from '../components/targets.js';
+import { notifiable, appPaired, isApp } from '../components/targets.js';
 import { store, isOwner, canPush } from '../store.js';
 import { getSelf, getRules, getPushConfig, patchDevice, addTarget, deleteTarget, revokeDevice, listDevices } from '../api.js';
 import { pwa, isStandalone, canInstall, promptInstall, checkForUpdate, updateReady, applyUpdate } from '../pwa.js';
@@ -107,7 +107,7 @@ function browserRow() {
 // The Android app's own connection, and every other device (owner only: it needs the list).
 function appRows() {
   if (!isOwner() || !st.devices) return null;
-  const app = st.devices.filter((d) => !d.revoked_at && (d.link || (d.targets || []).some((t) => t.kind === 'link')));
+  const app = st.devices.filter(isApp);
   let text;
   if (!appPaired(st.devices)) text = ['Not paired. ', h('a', { href: '#/more/devices?add=phone', 'data-key': 'pair-app' }, 'Pair the app'), ' to get notifications over its own connection to your hub.'];
   else {

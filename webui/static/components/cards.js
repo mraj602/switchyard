@@ -31,7 +31,11 @@ export function copyButton(text, label, key) {
 }
 
 // What the session wants from you, as one line of text. Never the internal `detail` code.
+// A session waiting on a permission says what Claude Code asked (its notification text) or at
+// least which tool; its last Stop message is older than the wait, so it is not used.
 export function ask(s) {
+  if (s.state === 'needs_permission') return s.notification || (s.tool_name ? `Permission to use ${s.tool_name}` : '');
+  if (s.state === 'asked' && !s.question && s.tool_name === 'ExitPlanMode') return s.notification || 'A plan is ready for your review.';
   return s.question || s.last_message || '';
 }
 

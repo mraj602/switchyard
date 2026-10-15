@@ -29,6 +29,7 @@ export function stateInfo(session) {
   const d = session.detail;
   if (session.state === 'done' && d === 'started') return { ...base, label: 'New', long: 'New session' };
   if (session.state === 'done' && d === 'resumed') return { ...base, label: 'Resumed', long: 'Resumed' };
+  if (session.state === 'asked' && session.tool_name === 'ExitPlanMode') return { ...base, label: 'Plan', long: 'Plan ready' };
   if (session.state === 'failed') {
     const f = FAILURES[d] || (d ? humanKey(d) : 'Failed');
     return { ...base, label: f, long: f, cls: session.needs_you ? 'failed' : 'ended' };

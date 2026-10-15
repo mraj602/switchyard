@@ -92,3 +92,33 @@ func TestMachineLiveCountsArePerMachine(t *testing.T) {
 		}
 	}
 }
+
+// A session waiting on a permission carries the tool and Claude Code's notification text
+// (sessionWaitExpr), so the board can say what it waits on; once it moves on, both are null.
+func TestSessionWaitsOnToolAndNotification(t *testing.T) {
+	f := newFixture(t)
+	m := "m_" + record.NewID(t0)
+	d := f.device("laptop", m)
+	sid := "eeeeeeee-0000-4000-8000-000000000011"
+	at := t0
+	ev := func(payload string) {
+		at = at.Add(time.Second)
+		f.now = at
+		f.ingest(d, hook(t, m, at, `{"session_id":"`+sid+`","cwd":"/home/me/x",`+payload+`}`))
+	}
+	ev(`"hook_event_name":"UserPromptSubmit","prompt":"go"`)
+	ev(`"hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"rm -rf build"}`)
+	ev(`"hook_event_name":"Notification","message":"Claude needs your permission to use Bash"`)
+	v := f.session(sid)
+	if v.State != "needs_permission" {
+		t.Fatalf("state %s", v.State)
+	}
+	if v.ToolName == nil || *v.ToolName != "Bash" || v.Notification == nil || *v.Notification != "Claude needs your permission to use Bash" {
+		t.Fatalf("tool %v notification %v", v.ToolName, v.Notification)
+	}
+	ev(`"hook_event_name":"UserPromptSubmit","prompt":"ok"`)
+	v = f.session(sid)
+	if v.ToolName != nil || v.Notification != nil {
+		t.Fatalf("after answer: tool %v notification %v", v.ToolName, v.Notification)
+	}
+}
