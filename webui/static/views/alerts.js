@@ -112,21 +112,84 @@ function scopeWords(scope, idx) {
   return parts.length ? parts.join(', ') : 'all accounts';
 }
 
+// The override being changed in place (its row shows For / Then / Wait), or null.
+let edit = null;
+
+function overrideRow(r, mode, idx, seats) {
+  const text = h('span', { class: 'row-text' }, h('span', {}, `${TRIGGER_LABEL[r.trigger] || r.trigger} · ${scopeWords(r.scope, idx)}`),
+    h('span', { class: 'muted small' }, r.enabled ? `notify ${waitText(r.delay_s)}` : 'do not notify'));
+  if (mode !== 'owner') return h('div', { class: 'row', 'data-key': `ov-${r.id}` }, text);
+  if (edit && edit.id === r.id) return h('div', { class: 'row ov-edit', 'data-key': `ov-${r.id}` }, editOverride(r, seats));
+  return h('div', { class: 'row', 'data-key': `ov-${r.id}` }, text,
+    h('span', { class: 'row-actions' },
+      h('button', {
+        type: 'button', class: 'btn btn-sm', 'data-key': `edit-${r.id}`, 'aria-label': `Change ${TRIGGER_LABEL[r.trigger] || r.trigger} · ${scopeWords(r.scope, idx)}`,
+        onclick: () => {
+          const seat = ((r.scope || {}).seats || [])[0] || '';
+          edit = { id: r.id, seat, enabled: r.enabled ? 'on' : 'off', delay: r.enabled ? r.delay_s : 300 };
+          again();
+          requestAnimationFrame(() => { const el = document.querySelector(`[data-key="ov-${r.id}"] select`); if (el) el.focus(); });
+        },
+      }, 'Change'),
+      h('button', {
+        type: 'button', class: 'btn btn-sm', 'data-key': `del-${r.id}`,
+        onclick: async (e) => {
+          e.currentTarget.disabled = true;
+          try { await deleteRule(r.id); state.rules = state.rules.filter((x) => x.id !== r.id); again(); } catch (ex) { toast(ex.message); e.currentTarget.disabled = false; }
+        },
+      }, 'Remove')));
+}
+
+// A select bound to a field of obj; changing `enabled` redraws (the Wait field comes and goes).
+function fieldSelect(obj, label, opts, key, field) {
+  return h('label', { class: 'field' }, label,
+    h('select', { 'data-key': key, onchange: (e) => { obj[field] = e.target.value; if (field === 'enabled') again(); } },
+      opts.map(([v, t]) => h('option', { value: v, selected: String(v) === String(obj[field]) }, t))));
+}
+
+const seatOptions = (seats, cur) => [['', 'All accounts'],
+  ...seats.filter((s) => !s.hidden || s.id === cur).map((s) => [s.id, seatName(s)])];
+
+// Change an override in place (For, Then, Wait); its trigger stays (PUT /v1/rules/{id}).
+function editOverride(r, seats) {
+  const el = h('form', {
+    class: 'override-form override-edit',
+    onsubmit: async (e) => {
+      e.preventDefault();
+      const { seat, enabled, delay } = edit;
+      const scope = { ...(r.scope || {}) };
+      if (seat) scope.seats = [seat]; else delete scope.seats;
+      const dup = (state.rules || []).find((x) => x.id !== r.id && x.trigger === r.trigger && sameScope(x.scope, scope));
+      if (dup) { duplicateToast(dup.id, seats); return; }
+      const b = el.querySelector('button[type=submit]');
+      b.disabled = true;
+      try {
+        await saveRule(r, { enabled: enabled === 'on', delay_s: enabled === 'on' ? Number(delay) : r.delay_s, scope });
+        edit = null;
+        again();
+      } catch (ex) {
+        if (ex.status === 409 && ex.code === 'duplicate_rule') duplicateToast(ex.rule, seats);
+        else toast(ex.message);
+      } finally { b.disabled = false; }
+    },
+  },
+    h('p', { class: 'ov-edit-title' }, TRIGGER_LABEL[r.trigger] || r.trigger),
+    h('div', { class: 'form-row' },
+      fieldSelect(edit, 'For', seatOptions(seats, edit.seat), `ov-${r.id}-seat`, 'seat'),
+      fieldSelect(edit, 'Then', [['on', 'Notify'], ['off', 'Do not notify']], `ov-${r.id}-enabled`, 'enabled'),
+      edit.enabled === 'on' ? fieldSelect(edit, 'Wait', delayOptions(Number(edit.delay)), `ov-${r.id}-delay`, 'delay') : null),
+    h('div', { class: 'row-actions' },
+      h('button', { type: 'submit', class: 'btn btn-sm btn-primary', 'data-key': `save-${r.id}` }, 'Save'),
+      h('button', { type: 'button', class: 'btn btn-sm', 'data-key': `cancel-${r.id}`, onclick: () => { edit = null; again(); } }, 'Cancel')));
+  return el;
+}
+
 function overrides(mode, idx) {
   const list = (state.rules || []).filter((r) => !r.base);
-  const scopeText = (r) => scopeWords(r.scope, idx);
-  const rows = list.map((r) => h('div', { class: 'row', 'data-key': `ov-${r.id}` },
-    h('span', { class: 'row-text' }, h('span', {}, `${TRIGGER_LABEL[r.trigger] || r.trigger} · ${scopeText(r)}`),
-      h('span', { class: 'muted small' }, r.enabled ? `notify ${waitText(r.delay_s)}` : 'do not notify')),
-    mode === 'owner' ? h('button', {
-      type: 'button', class: 'btn btn-sm', 'data-key': `del-${r.id}`,
-      onclick: async (e) => {
-        e.currentTarget.disabled = true;
-        try { await deleteRule(r.id); state.rules = state.rules.filter((x) => x.id !== r.id); again(); } catch (ex) { toast(ex.message); e.currentTarget.disabled = false; }
-      },
-    }, 'Remove') : null));
-  if (!rows.length && mode !== 'owner') return null;
   const seats = [...idx.values()].map((x) => x.seat);
+  if (edit && !list.some((r) => r.id === edit.id)) edit = null;
+  const rows = list.map((r) => overrideRow(r, mode, idx, seats));
+  if (!rows.length && mode !== 'owner') return null;
   const form = mode === 'owner' ? addOverride(seats, list) : null;
   return section('Overrides',
     h('p', { class: 'muted small section-help' }, 'Exceptions to the rules for one account, such as a longer wait or no notification at all. An override wins over its rule.'),
@@ -166,9 +229,7 @@ function duplicateToast(id, seats) {
 const form = { trigger: 'asked', seat: '', enabled: 'on', delay: 300 };
 
 function addOverride(seats, existing) {
-  const sel = (label, opts, key, field) => h('label', { class: 'field' }, label,
-    h('select', { 'data-key': key, onchange: (e) => { form[field] = e.target.value; if (field === 'enabled') again(); } },
-      opts.map(([v, t]) => h('option', { value: v, selected: String(v) === String(form[field]) }, t))));
+  const sel = (label, opts, key, field) => fieldSelect(form, label, opts, key, field);
   const el = h('form', {
     class: 'panel override-form',
     onsubmit: async (e) => {
@@ -191,7 +252,7 @@ function addOverride(seats, existing) {
   },
     h('div', { class: 'form-row' },
       sel('When', Object.entries(TRIGGER_LABEL), 'ov-trigger', 'trigger'),
-      sel('For', [['', 'All accounts'], ...seats.filter((s) => !s.hidden).map((s) => [s.id, seatName(s)])], 'ov-seat', 'seat'),
+      sel('For', seatOptions(seats, ''), 'ov-seat', 'seat'),
       sel('Then', [['on', 'Notify'], ['off', 'Do not notify']], 'ov-enabled', 'enabled'),
       // A wait means nothing when nothing is sent (AL3).
       form.enabled === 'on' ? sel('Wait', delayOptions(300), 'ov-delay', 'delay') : null),

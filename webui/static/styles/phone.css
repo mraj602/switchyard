@@ -136,6 +136,10 @@ dialog.dialog[open] { display: flex; flex-direction: column; gap: 14px; }
 .out-cancelled, .out-skipped { font-style: italic; }
 .out-seen { color: var(--ok-ink); }
 .override-form { padding: 14px 16px; gap: 12px; }
+.row-actions { display: flex; gap: 8px; flex: none; flex-wrap: wrap; }
+.ov-edit { display: block; }
+.override-edit { display: flex; flex-direction: column; gap: 10px; padding: 0; }
+.ov-edit-title { margin: 0; font-size: 14px; color: var(--ink); }
 
 .dev-list { overflow: hidden; }
 .dev-row { display: flex; justify-content: space-between; gap: 14px; padding: 14px 16px; border-top: 1px solid var(--hair-soft); flex-wrap: wrap; }

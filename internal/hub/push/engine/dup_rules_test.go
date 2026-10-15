@@ -32,6 +32,7 @@ func TestAPIDuplicateRules(t *testing.T) {
 		{"narrower scope", "POST", "/v1/rules", `{"trigger":"asked","scope":{"projects":["api"]}}`, 201, ""},
 		{"put onto another's scope", "PUT", "/v1/rules/" + other.ID, `{"scope":{"projects":["api","web"]}}`, 409, api.ID},
 		{"put own scope again", "PUT", "/v1/rules/" + api.ID, `{"delay_s":30,"scope":{"projects":["web","api"]}}`, 200, ""},
+		{"put an override onto every account", "PUT", "/v1/rules/" + other.ID, `{"enabled":false,"scope":{}}`, 409, "rule_asked"},
 		{"put without scope", "PUT", "/v1/rules/" + other.ID, `{"delay_s":30}`, 200, ""},
 		{"base windows onto an override's", "PUT", "/v1/rules/rule_limit_80", `{"scope":{"windows":["seven_day_opus"]}}`, 409, limit.ID},
 	} {

@@ -117,7 +117,10 @@ Rules on the phone (`PhoneAlerts`): one row per base trigger with its global del
 ("· 30 s") and a switch. For a push-scoped device the switch edits `prefs.mute`
 (`PATCH /v1/devices/self`); for an owner session it edits the global rule (`PUT
 /v1/rules/{id}`), and the delay is editable. Overrides are listed (owner: add/remove with a
-seat/project picker and on/off + delay).
+seat/project picker and on/off + delay). The owner changes an override in place: "Change"
+turns its row into For (account), Then (notify / do not notify) and Wait, saved with `PUT
+/v1/rules/{id}`; its trigger stays. A choice that matches another rule of the trigger is
+caught before saving, and a `409 duplicate_rule` from the hub names that rule (push.md 3.7).
 
 ### 3.1 Peers (`#/more/peers`, PE3)
 

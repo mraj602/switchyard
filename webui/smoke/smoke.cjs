@@ -282,6 +282,13 @@ async function ownerFlow(sizeName, w, hgt) {
   await page.waitForSelector('[data-key=delay-asked]');
   await page.select('[data-key=delay-asked]', '120');
   await page.waitForFunction(async () => (await (await fetch('/v1/rules')).json()).rules.find((r) => r.id === 'rule_asked').delay_s === 120, { timeout: 4000 }).catch(() => fail(page.tag('owner delay change did not save')));
+  // An override changes in place: Change, pick Wait 10 min, Save (PUT /v1/rules/{id}).
+  await page.click('[data-key=edit-rule_o1]');
+  await page.waitForSelector('[data-key=ov-rule_o1-delay]');
+  await page.select('[data-key=ov-rule_o1-delay]', '600');
+  await page.click('[data-key=save-rule_o1]');
+  await page.waitForFunction(async () => (await (await fetch('/v1/rules')).json()).rules.find((r) => r.id === 'rule_o1').delay_s === 600, { timeout: 4000 }).catch(() => fail(page.tag('override change did not save')));
+  await page.waitForFunction(() => /after 10 min/.test((document.querySelector('[data-key=ov-rule_o1]') || {}).textContent || ''), { timeout: 4000 }).catch(() => fail(page.tag('override row did not show the new wait')));
   // Add phone dialog.
   await page.evaluate(() => { location.hash = '#/more/devices'; });
   await page.waitForSelector('[data-key=add-phone]');
