@@ -293,11 +293,13 @@ func renderAnalytics(w io.Writer, report string, raw json.RawMessage) error {
 			break
 		}
 		fmt.Fprintln(tw, "SESSION\tSEAT\tPROJECT\tREPLIES\tTOKENS\tAPI USD\tLAST")
-		for _, s := range r.Sessions {
-			id := s.SessionID
-			if len(id) > 8 {
-				id = id[:8]
-			}
+		ids := make([]string, len(r.Sessions))
+		for i, s := range r.Sessions {
+			ids[i] = s.SessionID
+		}
+		short := shortIDs(ids, 8)
+		for i, s := range r.Sessions {
+			id := short[i]
 			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", id, s.SeatName, baseName(s.Project), num(s.Replies), human(s.total()), usd(s.APIUSD), at(s.LastTS))
 		}
 	case "limits":
@@ -442,4 +444,30 @@ func secondsDuration(s int64) string {
 		return fmt.Sprintf("%dm", s/60)
 	}
 	return fmt.Sprintf("%ds", s)
+}
+
+// shortIDs cuts each id to min characters, longer where two would read the same, so every
+// row's prefix still names one session (sy resume and the board take any unique prefix).
+func shortIDs(ids []string, min int) []string {
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		n := min
+		for ; n < len(id); n++ {
+			clash := false
+			for j, o := range ids {
+				if j != i && o != id && len(o) >= n && o[:n] == id[:n] {
+					clash = true
+					break
+				}
+			}
+			if !clash {
+				break
+			}
+		}
+		if n > len(id) {
+			n = len(id)
+		}
+		out[i] = id[:n]
+	}
+	return out
 }

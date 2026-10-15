@@ -115,7 +115,7 @@ export function render({ store, route, now }) {
             showAll ? 'State changes only' : `Show all ${tl.length} events`) : null),
         events.length === 0 ? h('p', { class: 'muted', 'data-key': noHooks ? 'no-hooks' : null }, noHooks
           ? 'This session started before Switchyard was set up, so the hub only sees that it is running: no messages or events. Start a new session, or resume this one (claude --resume), to see its timeline and last message.'
-          : 'No events yet.')
+          : imported ? 'No events: the hub only has this session\'s history (times, tokens), not what happened in it.' : 'No events yet.')
           : h('ol', { class: 'timeline' }, [...events].reverse().map((e) => h('li', { class: 'tl-item' },
             h('time', { datetime: e.ts, class: 'tl-time mono small', title: dateTime(e.ts) }, `${day(e.ts, now)} ${timeOfDay(e.ts)}`),
             h('span', { class: 'tl-what' }, EVENT_NAMES[e.event] || humanKey(e.event),
