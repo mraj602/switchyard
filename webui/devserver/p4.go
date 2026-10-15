@@ -362,7 +362,7 @@ func (s *Server) ownerSignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if b.Secret != OwnerSecret {
-		writeErr(w, 401, "unauthorized", "invalid or expired code")
+		writeErr(w, 401, "link_unknown", "this hub does not know that sign-in link") // api.yaml ownerSignIn
 		return
 	}
 	s.mu.Lock()

@@ -110,7 +110,14 @@ func pairSessionCheck(s *Server, w http.ResponseWriter, r *http.Request, cookie 
 func pairFail(w http.ResponseWriter, err error) {
 	var le *pair.LimitError
 	var ce *pair.ClaimError
+	var lk *pair.LinkError
 	switch {
+	case errors.As(err, &lk):
+		body := map[string]any{"error": lk.Error(), "code": lk.Code}
+		if lk.At != 0 {
+			body["at"] = store.Time(lk.At)
+		}
+		writeJSON(w, http.StatusUnauthorized, body)
 	case errors.As(err, &le):
 		w.Header().Set("Retry-After", strconv.Itoa(int(le.RetryAfter.Seconds())+1))
 		auth.WriteError(w, http.StatusTooManyRequests, "rate_limited", le.Error())

@@ -39,11 +39,12 @@ async function request(path, init, opts = {}) {
   if (res.status === 401 && !opts.anon) { clearCachedData(); throw new AuthError(); }
   if (!res.ok) {
     let msg = `Hub answered ${res.status}`;
-    let code = '';
-    try { const j = await res.json(); msg = j.error || msg; code = j.code || ''; } catch (_) { /* not JSON */ }
+    let code = '', at = null;
+    try { const j = await res.json(); msg = j.error || msg; code = j.code || ''; at = j.at || null; } catch (_) { /* not JSON */ }
     const err = new Error(code === 'offline' ? 'Cannot reach the hub' : msg);
     err.status = res.status;
     err.code = code;
+    err.at = at; // when a refused owner link was used / expired (api.yaml ownerSignIn)
     throw err;
   }
   if (!init || !init.method || init.method === 'GET') {
