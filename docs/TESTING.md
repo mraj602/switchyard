@@ -37,7 +37,7 @@ run as a user service, is `journalctl --user -u switchyard-hub -n 100`.
 mkdir -p ~/sy-backup && for d in ~/.claude ~/.claude-[0-9]*; do
   n=$(basename "$d"); mkdir -p ~/sy-backup/$n
   for f in settings.json CLAUDE.md; do [ -e "$d/$f" ] && cp -L "$d/$f" ~/sy-backup/$n/; done
-done; ls -R ~/sy-backup
+done; ls -RA ~/sy-backup
 ```
 
 `cp -L` copies what a symlinked `settings.json` points at. **Pass:** one folder per config dir,
@@ -60,7 +60,8 @@ make build && ./dist/sy version
 ./dist/sy doctor
 ```
 
-**Pass:** it prints checks and fixes and changes nothing (do not pass `--rebaseline`). Warnings
+**Pass:** it prints checks and fixes and changes nothing in your Claude folders (do not pass
+`--rebaseline`); it only creates Switchyard's own state folder (`sy paths`). Warnings
 about "not set up yet" are normal. **Report:** anything that crashes or names a folder you do not have.
 
 ### T0.4 `sy setup --detect`, then a dry run
