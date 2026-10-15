@@ -51,16 +51,17 @@ export function backlogText(m, now, f) {
 // The version line: {text, cls} with cls '' | 'warn' | 'bad'.
 export function versionLine(m, hubVersion) {
   const v = m.sy_version;
-  if (!v) return { text: 'not reported', cls: '' };
-  if (m.held > 0) return { text: `${v} · holding ${grouped(m.held)} updates: the hub is too old for them`, cls: 'bad' };
+  const out = (version, note, cls) => ({ text: note ? `${version} · ${note}` : version, version, note, cls });
+  if (!v) return out('not reported', '', '');
+  if (m.held > 0) return out(v, `holding ${grouped(m.held)} updates because the hub is too old for them`, 'bad');
   // The same version string is the same version, whatever the hub could compare (M1).
-  if (hubVersion && v === hubVersion) return { text: `${v} · same as hub`, cls: '' };
+  if (hubVersion && v === hubVersion) return out(v, 'same as hub', '');
   const hub = hubVersion ? ` hub ${hubVersion}` : ' the hub';
   switch (m.version_status) {
-    case 'same': return { text: `${v} · same as hub`, cls: '' };
-    case 'older': return { text: `${v} · older than${hub}`, cls: 'warn' };
-    case 'newer': return { text: `${v} · newer than${hub}`, cls: 'warn' };
-    default: return { text: v, cls: '' };
+    case 'same': return out(v, 'same as hub', '');
+    case 'older': return out(v, `older than${hub}`, 'warn');
+    case 'newer': return out(v, `newer than${hub}`, 'warn');
+    default: return out(v, '', '');
   }
 }
 

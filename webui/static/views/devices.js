@@ -9,7 +9,7 @@ import { targetKindText, usable } from '../components/targets.js';
 import { isOwner } from '../store.js';
 import { expoTargetLabel } from '../platform.js';
 import { listDevices, patchDevice, revokeDevice, testTarget, makePairCode, getPairCode, cancelPairCode } from '../api.js';
-import { agoLabel, day, clock } from '../format.js';
+import { agoLabel, day, dateTime, clock } from '../format.js';
 
 const st = { devices: null, error: null, dialog: null, results: {} };
 const again = () => window.dispatchEvent(new Event('sy-rerender'));
@@ -199,7 +199,7 @@ function deviceRow(d, now) {
   return h('li', { class: `dev-row${d.revoked_at ? ' is-revoked' : ''}`, 'data-device': d.id },
     h('div', { class: 'dev-main' },
       h('div', { class: 'strong' }, d.name, d.current ? h('span', { class: 'tag' }, 'this device') : null),
-      h('div', { class: 'muted small' }, [kindText(d), d.created_at ? `added ${day(d.created_at)}` : '',
+      h('div', { class: 'muted small' }, [kindText(d), d.created_at ? `added ${dateTime(d.created_at)}` : '',
         d.last_used_at ? `last used ${agoLabel(d.last_used_at, now)}` : 'never used', d.last_used_ip ? `from ${d.last_used_ip}` : '',
         d.expires_at && !d.revoked_at ? `signed in until ${day(d.expires_at)}` : '', d.revoked_at ? `revoked ${clock(d.revoked_at)}` : ''].filter(Boolean).join(' · ')),
       targets.length ? h('ul', { class: 'dev-targets small' }, targets.map((t) => h('li', { class: t.status === 'gone' || t.status === 'failing' ? 'status-warn' : 'muted' }, targetText(t)))) : null),

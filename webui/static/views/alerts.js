@@ -104,15 +104,18 @@ function ruleRows(mode) {
   });
 }
 
+// "Work, api" or "all accounts": what a rule or override covers, in words.
+function scopeWords(scope, idx) {
+  const s = scope || {};
+  const seatLabel = (id) => (idx.get(id) ? seatName(idx.get(id).seat) : id);
+  const parts = [...(s.seats || []).map(seatLabel), ...(s.projects || []), ...(s.machines || []), ...(s.windows || [])];
+  return parts.length ? parts.join(', ') : 'all accounts';
+}
+
 function overrides(mode, idx) {
   const list = (state.rules || []).filter((r) => !r.base);
-  const seatLabel = (id) => (idx.get(id) ? seatName(idx.get(id).seat) : id);
-  const scopeText = (r) => {
-    const s = r.scope || {};
-    const parts = [...(s.seats || []).map(seatLabel), ...(s.projects || []), ...(s.machines || []), ...(s.windows || [])];
-    return parts.length ? parts.join(', ') : 'all accounts';
-  };
-  const rows = list.map((r) => h('div', { class: 'row' },
+  const scopeText = (r) => scopeWords(r.scope, idx);
+  const rows = list.map((r) => h('div', { class: 'row', 'data-key': `ov-${r.id}` },
     h('span', { class: 'row-text' }, h('span', {}, `${TRIGGER_LABEL[r.trigger] || r.trigger} · ${scopeText(r)}`),
       h('span', { class: 'muted small' }, r.enabled ? `notify ${waitText(r.delay_s)}` : 'do not notify')),
     mode === 'owner' ? h('button', {
@@ -135,6 +138,30 @@ function overrides(mode, idx) {
 const keyOf = (scope, k) => JSON.stringify([...(((scope || {})[k]) || [])].sort());
 const sameScope = (a, b) => ['seats', 'projects', 'machines', 'windows'].every((k) => keyOf(a, k) === keyOf(b, k));
 
+// The hub refuses a second rule with the same trigger and scope (409 duplicate_rule, with the id of
+// the one that exists). Say which one in words, and offer to go to it (R3).
+function duplicateToast(id, seats) {
+  const r = (state.rules || []).find((x) => x.id === id);
+  if (!r) { toast('A rule for that already exists. Change it instead of adding another.'); return; }
+  const trig = TRIGGER_LABEL[r.trigger] || r.trigger;
+  const sc = scopeWords(r.scope, new Map(seats.map((x) => [x.id, { seat: x }])));
+  const group = GROUPS.find((g) => g.triggers.includes(r.trigger));
+  const where = r.base ? `the rule “${trig}” (${sc}) in Rules` : `the override “${trig} · ${sc}”`;
+  toast(`That is already covered by ${where}. Change that one instead.`, {
+    label: r.base ? 'Edit that rule' : 'Show it',
+    run: () => {
+      const el = document.querySelector(r.base ? `[data-key="rule-${group ? group.id : ''}"]` : `[data-key="ov-${r.id}"]`);
+      const row = el && (el.closest('.row') || el);
+      if (!row) return;
+      row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      row.classList.add('flash');
+      setTimeout(() => row.classList.remove('flash'), 2500);
+      const ctl = row.querySelector('select') || row.querySelector('input,button');
+      if (ctl) ctl.focus({ preventScroll: true });
+    },
+  });
+}
+
 // The form keeps its choices across re-renders (the Wait field comes and goes).
 const form = { trigger: 'asked', seat: '', enabled: 'on', delay: 300 };
 
@@ -148,17 +175,18 @@ function addOverride(seats, existing) {
       e.preventDefault();
       const { trigger, seat, enabled, delay } = form;
       const scope = seat ? { seats: [seat] } : {};
-      if (existing.some((r) => r.trigger === trigger && sameScope(r.scope, scope))) {
-        toast('There is already an override for that. Remove it first to change it.');
-        return;
-      }
+      const dup = existing.find((r) => r.trigger === trigger && sameScope(r.scope, scope));
+      if (dup) { duplicateToast(dup.id, seats); return; }
       const b = el.querySelector('button[type=submit]');
       b.disabled = true;
       try {
         const r = await addRule({ trigger, enabled: enabled === 'on', delay_s: enabled === 'on' ? Number(delay) : 0, scope });
         state.rules = [...state.rules, r];
         again();
-      } catch (ex) { toast(ex.message); } finally { b.disabled = false; }
+      } catch (ex) {
+        if (ex.status === 409 && ex.code === 'duplicate_rule') duplicateToast(ex.rule, seats);
+        else toast(ex.message);
+      } finally { b.disabled = false; }
     },
   },
     h('div', { class: 'form-row' },

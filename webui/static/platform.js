@@ -3,6 +3,8 @@
 
 // Guess "iPhone · Safari" or "Pixel 9 · Chrome" for the device name sent when pairing.
 export function deviceName(ua = '', uaData = null) {
+  // A scripted browser says so in its user agent; name it for what it is (DV1).
+  if (/HeadlessChrome\//.test(ua)) return 'Headless Chrome';
   const brand = (() => {
     if (/Edg(e|A|iOS)?\//.test(ua)) return 'Edge';
     if (/(OPR|Opera)\//.test(ua)) return 'Opera';
@@ -106,10 +108,11 @@ export function installHint(ua = '', { ios = false, standalone = false } = {}) {
   return 'Optional: if your browser can install web apps, look for Install in its menu.';
 }
 
-// "App · iPhone · 0.8.0" for an expo push target (platform ios|android, app_version).
+// "Old phone app (iPhone), version 0.8.0" for an expo push target (platform ios|android,
+// app_version): plain words, no service names (G15).
 export function expoTargetLabel(t) {
   const plat = t && t.platform === 'ios' ? 'iPhone' : t && t.platform === 'android' ? 'Android' : '';
-  return ['App', plat, t && t.app_version].filter(Boolean).join(' · ');
+  return `Old phone app${plat ? ` (${plat})` : ''}${t && t.app_version ? `, version ${t.app_version}` : ''}`;
 }
 
 // The link that opens the installed app on its pairing screen: switchyard://pair?u=&s=&c=&h=&k=

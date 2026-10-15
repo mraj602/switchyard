@@ -161,7 +161,9 @@ export function usageMoney(seat) {
     else if (x.is_enabled) out.push('Extra usage is on.');
   }
   const sp = seat.spend;
-  if (sp && typeof sp === 'object' && sp.month_to_date_usd != null) out.push(`${money(Math.round(sp.month_to_date_usd * 100), 'USD')} spent this month.`);
+  // One sentence when both say the same amount (R4).
+  const same = x && typeof x === 'object' && x.used_credits != null && String(x.currency || 'USD').toUpperCase() === 'USD' && sp && Math.round(sp.month_to_date_usd * 100) === Math.round(Number(x.used_credits));
+  if (sp && typeof sp === 'object' && sp.month_to_date_usd != null && !same) out.push(`${money(Math.round(sp.month_to_date_usd * 100), 'USD')} spent this month.`);
   return out;
 }
 
