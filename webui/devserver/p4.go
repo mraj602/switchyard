@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1143,6 +1144,51 @@ func (in *ruleInput) scopeM() M {
 	return m
 }
 
+// scopeKey is a rule scope as a comparable string: lists as sorted sets, windows only for
+// window triggers with empty meaning five_hour+seven_day (push.md 3.7, rules.SameScope).
+func scopeKey(trigger string, sc M) string {
+	list := func(k string) string {
+		var v []string
+		switch x := sc[k].(type) {
+		case []string:
+			v = append(v, x...)
+		case []any:
+			for _, e := range x {
+				v = append(v, fmt.Sprint(e))
+			}
+		}
+		if k == "windows" && len(v) == 0 {
+			v = []string{"five_hour", "seven_day"}
+		}
+		sort.Strings(v)
+		v = slices.Compact(v)
+		return strings.Join(v, ",")
+	}
+	key := list("seats") + "|" + list("projects") + "|" + list("machines")
+	if trigger == "limit_80" || trigger == "limit_95" || trigger == "reset" {
+		key += "|" + list("windows")
+	}
+	return key
+}
+
+// duplicateRule answers 409 when another rule of trigger has scope sc.
+func (s *Server) duplicateRule(w http.ResponseWriter, self, trigger string, sc M) bool {
+	key := scopeKey(trigger, sc)
+	for _, o := range s.data.Rules {
+		osc, _ := o["scope"].(M)
+		if o["id"] != self && o["trigger"] == trigger && scopeKey(trigger, osc) == key {
+			id, _ := o["id"].(string)
+			msg := "an override with this trigger and scope already exists (" + id + "); change that one instead"
+			if o["base"] == true {
+				msg = "this override has the same scope as the base rule; change the base rule (" + id + ") instead"
+			}
+			writeJSON(w, 409, M{"error": msg, "code": "duplicate_rule", "rule": id})
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Server) addRule(w http.ResponseWriter, r *http.Request, c *caller) {
 	var in ruleInput
 	if !decode(w, r, &in) {
@@ -1162,6 +1208,9 @@ func (s *Server) addRule(w http.ResponseWriter, r *http.Request, c *caller) {
 		"bypass_quiet": in.BypassQuiet != nil && *in.BypassQuiet, "scope": in.scopeM(), "updated_at": ts(s.opts.Now())}
 	if in.DelayS != nil {
 		rule["delay_s"] = *in.DelayS
+	}
+	if s.duplicateRule(w, "", *in.Trigger, in.scopeM()) {
+		return
 	}
 	s.data.Rules = append(s.data.Rules, rule)
 	writeJSON(w, 201, rule)
@@ -1187,6 +1236,16 @@ func (s *Server) putRule(w http.ResponseWriter, r *http.Request, c *caller) {
 	if base && in.Trigger != nil && *in.Trigger != rule["trigger"] {
 		writeErr(w, 400, "bad_request", "a base rule's trigger cannot change")
 		return
+	}
+	if in.Scope != nil && !base {
+		t, _ := rule["trigger"].(string)
+		if in.Trigger != nil {
+			t = *in.Trigger
+		}
+		id, _ := rule["id"].(string)
+		if s.duplicateRule(w, id, t, in.scopeM()) {
+			return
+		}
 	}
 	if in.Enabled != nil {
 		rule["enabled"] = *in.Enabled

@@ -245,7 +245,13 @@ transaction per pass.
 `PUT /v1/rules/{id}`, `DELETE /v1/rules/{id}` (owner) manage overrides and base-rule
 switches; `PUT /v1/push/settings` (owner) replaces `push.settings`. Shapes in api.yaml
 (`Rule`, `PushSettings`). Validation: `delay_s` 0–86400; ids of seats and machines must
-exist; `projects` 1–100 characters each; at most 200 rules.
+exist; `projects` 1–100 characters each; at most 200 rules. An override may not have the
+same scope as another rule of its trigger, the base rule included (the same seats, projects
+and machines as sets; for limit and reset triggers the same windows, empty meaning
+`["five_hour", "seven_day"]`): only one of them could ever be picked (3.4). `POST` or a
+`PUT` that would make one answers 409 with code `duplicate_rule` and `rule`, the id of the
+rule to change instead. An override for every subject is the base rule: change the base
+rule. Rows that already break this (from before the check) still load and match as 3.4 says.
 
 ### 3.8 First start (baseline)
 
