@@ -159,7 +159,7 @@ offers **Test push** (push.md). Closing the dialog does not cancel the code;
 | Field | Rule |
 | --- | --- |
 | `secret` or `code` | Exactly one. `code` accepts `482913`, `482-913`, `482 913`. |
-| `name` | 1–60 characters after trimming; control characters removed. A code made with a `name` (`sy hub pair --name`) names the device whatever the claimer sends; otherwise this `name`, else `"<kind> <yyyy-mm-dd>"`. The web app sends the name the person typed on the pair screen, prefilled with a guess from the user agent ("iPhone · Safari", "Pixel 9 · Chrome"). |
+| `name` | 1–60 characters after trimming; control characters removed. A code made with a `name` (`sy hub pair --name`) names the device whatever the claimer sends; otherwise this `name`, else `"<kind> <yyyy-mm-dd>"`. The web app sends a name prefilled with a guess from the user agent ("iPhone · Safari", "Pixel 9 · Chrome"): the typed-code form has it as an editable field, and a QR link claims at once with the guess and lets the person change it on the Paired screen (5.1). |
 | `machine` | Required for `machine` and `desktop` codes (400 `bad_request` "machine is required" without consuming the code); must match the record envelope pattern. Ignored for other kinds. |
 | `expect_kind` | Optional. When it differs from the code's kind the reply is 409 `conflict` and the code is **not** consumed (`sy connect` sends `machine`; the web app sends `phone` or `browser`). |
 | `cookie` | Only for `phone` and `browser` codes. When true the token is not returned in the body; it is set as the `sy_session` cookie instead (3.2). |
@@ -301,6 +301,13 @@ sy hub owner-link [--url U] [--ttl 10m] [--json]
 3. It offers **Install app** (the saved `beforeinstallprompt` event) and **Turn on
    notifications** (pwa.md 6). Chrome's installed app (WebAPK) shares Chrome's cookies, so
    the order does not matter.
+4. **Name of this device**: an editable field prefilled with the name the hub gave (the
+   guess, or the code's `--name`) and **Save** (`PATCH /v1/devices/self {name}`). Every
+   Android phone in Chrome guesses "Pixel 9 · Chrome", so this is where a second one gets a
+   name of its own. The typed-code form (5.2, 5.3) has the same field before **Pair**.
+5. Leaving the screen before **Open the app** (a link, the back button, a typed address)
+   does not bounce back to `#/pair`: the session cookie is set, so the app starts on the page
+   asked for.
 
 ### 5.2 iPhone and iPad (Safari, iOS/iPadOS 16.4+)
 
@@ -345,6 +352,9 @@ handled as in 5.3.
 | `PATCH /v1/devices/{id}` | owner; push-scoped devices for `self` | `{name?, prefs?}` (prefs: push.md 5.4). |
 | `DELETE /v1/devices/{id}` | owner; push-scoped devices for `self` ("Unpair this phone") | Sets `revoked_at`, disables and deletes its push targets, cancels its pending deliveries, revokes board/owner sessions made from it (`created_by = login:<id>`). 204. Revoking `self` also clears the cookie. |
 
+- Lists (Devices, Alerts' receivers, Settings → Notifications) tell apart devices that share
+  a name: the first one paired keeps it, later ones get their place ("Pixel 9 · Chrome · 2",
+  by `created_at`); a unique name shows as it is.
 - Revocation takes effect on the next request: there is no auth cache (tokens.md 4). An
   open `/v1/stream` of a revoked device is closed within 30 seconds (the stream re-checks
   its device on each ping).

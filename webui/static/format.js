@@ -145,6 +145,15 @@ export function sameTz(a, b, at = Date.now()) {
 // Last path segment of a working directory, for when the hub has no project name.
 export const projectOf = (s) => s.project || (s.cwd ? s.cwd.split('/').filter(Boolean).pop() : '') || '(no project)';
 
+// subtitleOf is the session's title or name shown after its folder ("api · fix the login"),
+// or '' when there is none or it only repeats the folder (a session named after its folder
+// would read "infra · infra").
+export function subtitleOf(s, main) {
+  const t = String((s && (s.title || s.name)) || '').trim();
+  if (!t) return '';
+  return t.toLowerCase() === String(main || '').trim().toLowerCase() ? '' : t;
+}
+
 // A URL from the hub that is safe to put in an href: https only (never javascript: or
 // data:), else null.
 export function httpsUrl(u) {
@@ -166,4 +175,19 @@ export function lifetime(ttlS) {
   if (s % 3600 === 0) return unit(s / 3600, 'hour');
   if (s % 60 === 0) return unit(s / 60, 'minute');
   return unit(s, 'second');
+}
+
+// deviceLabel is a device's name as lists show it. Two Android phones in Chrome both guess
+// "Pixel 9 · Chrome", so when devices of `all` share a name, the first one paired keeps it
+// and the later ones get their place: "Pixel 9 · Chrome · 2". A unique name shows as it is.
+export function deviceLabel(d, all) {
+  const name = (d && d.name) || '';
+  if (!d || !Array.isArray(all)) return name;
+  const key = name.trim().toLowerCase();
+  const twins = all.filter((x) => x && (x.name || '').trim().toLowerCase() === key);
+  if (twins.length < 2) return name;
+  const order = (x) => `${x.created_at || ''}\u0000${x.id || ''}`;
+  twins.sort((a, b) => (order(a) < order(b) ? -1 : order(a) > order(b) ? 1 : 0));
+  const i = twins.findIndex((x) => x === d || (x.id && x.id === d.id));
+  return i > 0 ? `${name} · ${i + 1}` : name;
 }

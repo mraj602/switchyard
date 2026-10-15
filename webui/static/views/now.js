@@ -7,7 +7,7 @@ import { stateTag, isLive, liveCounts } from '../components/state.js';
 import { liveBadge } from '../components/nav.js';
 import { ringRow } from '../components/rings.js';
 import { ensureSessions, canPush } from '../store.js';
-import { agoLabel, ago, plural, projectOf } from '../format.js';
+import { agoLabel, ago, plural, projectOf, subtitleOf } from '../format.js';
 
 export const load = () => ensureSessions();
 
@@ -31,7 +31,7 @@ export function render({ store, now }) {
     const seat = sessionSeat(s, idx);
     return h('li', { class: `line${cls}` },
       stateTag(s),
-      h('span', { class: 'line-main' }, sessionLink(s, h('b', {}, projectOf(s))), s.title || s.name ? h('span', { class: 'muted' }, ` · ${s.title || s.name}`) : null),
+      h('span', { class: 'line-main' }, sessionLink(s, h('b', {}, projectOf(s))), subtitleOf(s, projectOf(s)) ? h('span', { class: 'muted' }, ` · ${subtitleOf(s, projectOf(s))}`) : null),
       h('span', { class: 'line-meta muted small' }, dot(seat.colour), `${seat.label}${s.machine_name ? ' · ' + s.machine_name : ''} · ${ago(s.state_since, now) || '–'}`));
   };
 

@@ -8,7 +8,7 @@ import { copyButton } from '../components/cards.js';
 import { targetKindText, usable } from '../components/targets.js';
 import { isOwner } from '../store.js';
 import { listDevices, patchDevice, revokeDevice, testTarget, makePairCode, getPairCode, cancelPairCode } from '../api.js';
-import { agoLabel, day, dateTime, clock } from '../format.js';
+import { agoLabel, day, dateTime, clock, deviceLabel } from '../format.js';
 
 const st = { devices: null, error: null, dialog: null, results: {} };
 const again = () => window.dispatchEvent(new Event('sy-rerender'));
@@ -187,8 +187,9 @@ function kindText(d) {
   return KIND_TEXT[d.kind] || d.kind;
 }
 
-function deviceRow(d, now) {
+function deviceRow(d, now, all) {
   const targets = d.targets || [];
+  const label = deviceLabel(d, all);
   const rename = () => {
     const name = prompt('Name for this device', d.name);
     if (!name || name === d.name) return;
@@ -197,7 +198,7 @@ function deviceRow(d, now) {
   // Created time and address tell apart two devices with the same name (DV1).
   return h('li', { class: `dev-row${d.revoked_at ? ' is-revoked' : ''}`, 'data-device': d.id },
     h('div', { class: 'dev-main' },
-      h('div', { class: 'strong' }, d.name, d.current ? h('span', { class: 'tag' }, 'this device') : null),
+      h('div', { class: 'strong', 'data-key': `dev-name-${d.id}` }, label, d.current ? h('span', { class: 'tag' }, 'this device') : null),
       h('div', { class: 'muted small' }, [kindText(d), d.created_at ? `added ${dateTime(d.created_at)}` : '',
         d.last_used_at ? `last used ${agoLabel(d.last_used_at, now)}` : 'never used', d.last_used_ip ? `from ${d.last_used_ip}` : '',
         d.expires_at && !d.revoked_at ? `signed in until ${day(d.expires_at)}` : '', d.revoked_at ? `revoked ${clock(d.revoked_at)}` : ''].filter(Boolean).join(' · ')),
@@ -208,7 +209,7 @@ function deviceRow(d, now) {
       d.current ? null : h('button', {
         type: 'button', class: 'linkish danger', 'data-key': `revoke-${d.id}`,
         onclick: async () => {
-          if (!confirm(`Revoke ${d.name}? It stops working at once.`)) return;
+          if (!confirm(`Revoke ${label}? It stops working at once.`)) return;
           try { await revokeDevice(d.id); st.devices = (await listDevices()).devices; again(); } catch (ex) { toast(ex.message); }
         },
       }, 'Revoke')));
@@ -230,7 +231,7 @@ export function render({ now }) {
   const node = h('div', { class: 'page' }, head,
     !list ? h('p', { class: 'muted' }, st.error || 'Loading…')
       : list.length === 0 ? h('p', { class: 'calm' }, 'No devices yet.')
-      : h('ul', { class: 'panel dev-list' }, list.map((d) => deviceRow(d, now))),
+      : h('ul', { class: 'panel dev-list' }, list.map((d) => deviceRow(d, now, list))),
     dialog());
   return { title: 'Devices · Switchyard', node };
 }

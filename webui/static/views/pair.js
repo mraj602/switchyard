@@ -4,12 +4,12 @@
 
 import { h } from '../components/dom.js';
 import { toast, brandRow } from '../components/ui.js';
-import { claimPair } from '../api.js';
+import { claimPair, patchDevice } from '../api.js';
 import { deviceName, isIOS, isMobile, normalizeCode, codeDigits, validCode, appPairLink } from '../platform.js';
 import { pwa, isStandalone, canInstall, promptInstall } from '../pwa.js';
 import { turnOn } from '../push.js';
 
-const st = { phase: 'idle', error: '', name: '', secret: '', hubFp: '', sealKey: '', code: '', typed: false, scanning: false, other: '', busy: false, notif: '', startedAt: 0 };
+const st = { phase: 'idle', error: '', name: '', devName: '', nameNote: '', secret: '', hubFp: '', sealKey: '', code: '', typed: false, scanning: false, other: '', busy: false, notif: '', startedAt: 0 };
 let stream = null;
 let scanTimer = null;
 let ctxRef = null;
@@ -19,12 +19,19 @@ const ua = () => navigator.userAgent;
 const ios = () => isIOS(ua(), navigator.maxTouchPoints, navigator.platform);
 const mobile = () => isMobile(ua(), navigator.maxTouchPoints, navigator.platform);
 const kindGuess = () => (mobile() ? 'phone' : 'browser');
+// The name the hub gets: what the person typed, prefilled with a guess from the browser.
+// Two Android phones in Chrome both guess "Pixel 9 · Chrome", so the field is there to change it.
+const guessName = () => deviceName(ua(), navigator.userAgentData || null);
+
+// paired: this page claimed a code and set the session cookie, but "Open the app" has not
+// started the app yet. The router signs in instead of sending the person back here.
+export const paired = () => st.phase === 'done';
 
 export function load(ctx) {
   ctxRef = ctx;
   stopScan();
   const q = ctx.route.query;
-  Object.assign(st, { phase: 'idle', error: '', secret: q.get('s') || '', hubFp: q.get('h') || '', sealKey: q.get('k') || '', code: normalizeCode(q.get('c') || ''), typed: false, busy: false, notif: '', startedAt: Date.now(), other: '' });
+  Object.assign(st, { phase: 'idle', error: '', secret: q.get('s') || '', hubFp: q.get('h') || '', sealKey: q.get('k') || '', code: normalizeCode(q.get('c') || ''), typed: false, busy: false, notif: '', startedAt: Date.now(), other: '', devName: guessName(), nameNote: '' });
   if (st.secret) {
     // iPhone in Safari: the Home Screen app has its own storage, so claiming here would pair the wrong app.
     if (ios() && !isStandalone()) { st.phase = 'ios-steps'; return; }
@@ -38,7 +45,7 @@ async function claim(creds) {
   st.phase = 'claiming';
   st.error = '';
   again();
-  const name = deviceName(ua(), navigator.userAgentData || null);
+  const name = (st.devName || '').trim().slice(0, 60) || guessName();
   const first = kindGuess();
   const tryKind = (kind) => claimPair({ ...creds, name, expect_kind: kind, client: `pwa/${pwa.build || 'dev'}` });
   try {
@@ -50,6 +57,7 @@ async function claim(creds) {
     }
     st.phase = 'done';
     st.name = reply.name || name;
+    st.devName = st.name;
     history.replaceState(null, '', '#/pair'); // drop s and c from the address bar
   } catch (e) {
     st.phase = 'error';
@@ -134,6 +142,7 @@ function done() {
   const kids = [
     h('h1', {}, 'Paired'),
     h('p', { class: 'strong', 'data-key': 'paired-as' }, `Paired as ${st.name}`),
+    nameForm(),
     mobile() ? h('p', { class: 'muted small', 'data-key': 'app-hint' }, 'On Android, the Switchyard app gets notifications over its own connection to your hub. Pair the app from Devices › Add phone on your computer. In this browser, you can turn on notifications here.') : null,
     canInstall() ? h('button', { type: 'button', class: 'btn btn-primary', 'data-key': 'install-app', onclick: promptInstall }, 'Install app') : null,
     h('button', {
@@ -158,6 +167,31 @@ function done() {
 
 const WAITING = 'Waiting for permission… Answer the browser’s prompt.';
 
+// The device's name, editable once paired (PATCH /v1/devices/self): the QR link pairs at
+// once with the browser's guess, so this is where a second "Pixel 9 · Chrome" gets its own name.
+function nameForm() {
+  return h('form', {
+    class: 'col pair-form', 'data-key': 'paired-name-form',
+    onsubmit: async (e) => {
+      e.preventDefault();
+      const name = (st.devName || '').trim();
+      if (!name || name === st.name) return;
+      try {
+        const d = await patchDevice('self', { name });
+        st.name = d.name || name;
+        st.devName = st.name;
+        st.nameNote = 'Name saved.';
+      } catch (ex) { st.nameNote = ex.message; }
+      again();
+    },
+  },
+    h('label', { for: 'paired-name' }, 'Name of this device'),
+    h('div', { class: 'name-row' },
+      h('input', { id: 'paired-name', type: 'text', maxlength: 60, 'data-key': 'paired-name', value: st.devName, oninput: (e) => { st.devName = e.target.value; st.nameNote = ''; } }),
+      h('button', { type: 'submit', class: 'btn', 'data-key': 'save-name' }, 'Save')),
+    h('p', { class: 'muted small', role: 'status', 'data-key': 'name-note' }, st.nameNote || 'Shown in Devices and in alerts on your other devices.'));
+}
+
 function typedForm() {
   const input = h('input', {
     id: 'pair-code', name: 'code', type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code', placeholder: '482-913',
@@ -174,6 +208,8 @@ function typedForm() {
   },
     h('label', { for: 'pair-code' }, 'Code'),
     input,
+    h('label', { for: 'pair-name' }, 'Name of this device'),
+    h('input', { id: 'pair-name', name: 'name', type: 'text', maxlength: 60, 'data-key': 'pair-name', value: st.devName, oninput: (e) => { st.devName = e.target.value; } }),
     h('p', { class: 'muted small' }, 'Pairs with the hub at ', h('span', { class: 'mono', 'data-key': 'pair-address' }, location.origin), '.'),
     h('button', { type: 'submit', class: 'btn btn-primary', 'data-key': 'pair-submit', disabled: st.phase === 'claiming' }, 'Pair'));
 }

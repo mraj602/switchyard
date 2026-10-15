@@ -5,7 +5,7 @@ import { h } from '../components/dom.js';
 import { dot, sessionLink, askText } from '../components/cards.js';
 import { seatIndex, sessionSeat } from '../components/seat.js';
 import { stateTag, isLive, isHistory, isEnded } from '../components/state.js';
-import { pct, ago, plural, projectOf } from '../format.js';
+import { pct, ago, plural, projectOf, subtitleOf } from '../format.js';
 import { ensureSessions } from '../store.js';
 import { alertLine } from '../components/alerts.js';
 
@@ -151,7 +151,7 @@ function sessionRow(s, now, idx) {
   return h('tr', { class: `srow${s.needs_you ? ' srow-needs' : ''}${s.alert && s.alert.status === 'seen' ? ' is-seen' : ''}`, onclick: (e) => { if (!e.target.closest('a')) location.hash = href; } },
     h('td', { class: 'c-state', 'data-label': 'State' }, stateTag(s), s.stale ? h('span', { class: 'flag', title: 'No events for 12 hours' }, ' stale')
       : !isEnded(s) && !isLive(s, now) ? h('span', { class: 'flag', title: 'Not used for 12 hours' }, ' idle') : null, s.machine_stale ? h('span', { class: 'flag' }, ' machine quiet') : null),
-    h('td', { class: 'c-session', 'data-label': 'Session' }, sessionLink(s, h('b', {}, projectOf(s))), s.title || s.name ? h('span', { class: 'muted' }, ` · ${s.title || s.name}`) : null),
+    h('td', { class: 'c-session', 'data-label': 'Session' }, sessionLink(s, h('b', {}, projectOf(s))), subtitleOf(s, projectOf(s)) ? h('span', { class: 'muted' }, ` · ${subtitleOf(s, projectOf(s))}`) : null),
     h('td', { class: `c-machine${empty(s.machine_name)}`, 'data-label': 'Machine' }, h('span', { class: 'machine-chip', title: s.machine_name || undefined }, s.machine_name || '–')),
     h('td', { class: `c-last${s.state === 'needs_permission' ? ' mono' : ''}${empty(last || (s.alert && s.needs_you))}`, 'data-label': 'Last line' }, h('span', { class: 'clamp' }, last || '–'), s.alert && s.needs_you ? h('span', { class: 'alert-meta' }, alertLine(s.alert, now)) : null),
     h('td', { class: `c-ctx${empty(ctx != null)}`, 'data-label': 'Context' }, ctx == null ? h('span', { class: 'muted' }, '–') : h('span', { class: `ctx${ctx >= 85 ? ' hot' : ''}` },

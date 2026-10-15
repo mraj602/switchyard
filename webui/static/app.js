@@ -98,7 +98,13 @@ async function render() {
     const route = parseRoute(location.hash);
     renderBanners();
     if (!authed && booting && !PUBLIC_VIEWS.has(route.view)) return;
-    if (!authed && !PUBLIC_VIEWS.has(route.view)) { go(unauthRoute()); return; }
+    if (!authed && !PUBLIC_VIEWS.has(route.view)) {
+      // Paired on the pair screen, then went elsewhere before "Open the app": the cookie is
+      // set, so start the app on the page asked for rather than bouncing back to #/pair.
+      if (pair.paired()) { boot(); return; }
+      go(unauthRoute());
+      return;
+    }
     if (authed && route.view === 'login') { go('#/'); return; }
     // The owner view opens Settings after a sign-in; the board lands on Now instead (O3).
     if (authed && ownerSignedIn && route.view === 'settings') {
