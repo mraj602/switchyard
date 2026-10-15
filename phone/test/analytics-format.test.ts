@@ -1,5 +1,5 @@
 // The Analytics helpers (src/lib/format/analytics.ts), on the same cases as webui/static/analytics-fmt.test.cjs.
-import { barPercents, cacheHit, hitText, shortDay, tokens, tokenSum, usd } from '../src/lib/format';
+import { barPercents, cacheHit, heatLevel, hitText, projectName, shortDay, tokens, tokenSum, usd, WEEKDAYS } from '../src/lib/format';
 
 describe('usd', () => {
   it.each<[number | null | undefined, string]>([
@@ -51,5 +51,29 @@ describe('days and hits', () => {
     expect(hitText({ type: 'five_hour', wait_s: 10 })).toBe('5-hour limit, back in 1 min');
     expect(hitText({ type: 'seven_day', wait_s: null })).toBe('7-day limit');
     expect(hitText({ type: null, wait_s: null })).toBe('limit');
+  });
+});
+
+describe('heatmap, sessions and limits', () => {
+  it('heatLevel shades 0-4 against the busiest cell (as webui/static/components/analytics-fmt.js)', () => {
+    expect(heatLevel(0, 10)).toBe(0);
+    expect(heatLevel(5, 0)).toBe(0);
+    expect(heatLevel(0.1, 10)).toBe(1);
+    expect(heatLevel(2.5, 10)).toBe(1);
+    expect(heatLevel(5, 10)).toBe(2);
+    expect(heatLevel(7.5, 10)).toBe(3);
+    expect(heatLevel(10, 10)).toBe(4);
+  });
+
+  it('WEEKDAYS starts on Sunday', () => {
+    expect(WEEKDAYS).toHaveLength(7);
+    expect(WEEKDAYS[0]).toBe('Sun');
+  });
+
+  it('projectName is the last path segment', () => {
+    expect(projectName('/home/me/code/alpha')).toBe('alpha');
+    expect(projectName('/home/me/code/alpha/')).toBe('alpha');
+    expect(projectName('C:\\code\\beta')).toBe('beta');
+    expect(projectName('')).toBe('No project');
   });
 });
