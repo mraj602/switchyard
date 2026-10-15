@@ -1,4 +1,4 @@
--- Switchyard hub schema, version 9.
+-- Switchyard hub schema, version 10.
 --
 -- One SQLite file (WAL mode). Applied by the hub at start (phase 2) inside one transaction
 -- after `PRAGMA foreign_keys = ON`. Later versions add numbered migrations
@@ -16,6 +16,7 @@
 --   v8  N1: the link channel (channel and push_target recreated with 'link'), delivery.delivered_at
 --       (push.md 13.8).
 --   v9  PE1-PE3: matrix_doc, peer_thread, peer_message, peer_audit (peers.md 10).
+--   v10 PE3: link_queue recreated with the 'peer_thread_resume' type (peers.md 6.3, link.md 6.4).
 --
 -- Conventions
 --   * Times are INTEGER milliseconds since the Unix epoch, UTC (`*_at`, `ts`).
@@ -40,7 +41,7 @@ CREATE TABLE schema_version (
 ) STRICT;
 
 INSERT INTO schema_version (version, applied_at, sy_version)
-VALUES (9, CAST(unixepoch('subsec') * 1000 AS INTEGER), 'spec');
+VALUES (10, CAST(unixepoch('subsec') * 1000 AS INTEGER), 'spec');
 
 -- Hub-wide settings that are not secrets (retention days, last-message policy, …).
 CREATE TABLE setting (
@@ -617,7 +618,7 @@ CREATE TABLE link_state (
 CREATE TABLE link_queue (
   device_id     TEXT    NOT NULL REFERENCES device(id) ON DELETE CASCADE,
   seq           INTEGER NOT NULL,
-  type          TEXT    NOT NULL CHECK (type IN ('alert', 'refresh', 'peer_msg', 'peer_status', 'matrix', 'revoke')),
+  type          TEXT    NOT NULL CHECK (type IN ('alert', 'refresh', 'peer_msg', 'peer_status', 'matrix', 'revoke', 'peer_thread_resume')),
   tag           TEXT    NOT NULL DEFAULT '' CHECK (length(tag) <= 64 AND tag NOT GLOB '*[^A-Za-z0-9_:.-]*'),   -- collapse key; '' never collapses
   body          BLOB    NOT NULL,                  -- sealed to the device (link.md 4)
   sig           BLOB    NOT NULL CHECK (length(sig) = 64),   -- hub signature, made at enqueue
