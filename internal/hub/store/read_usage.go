@@ -223,7 +223,7 @@ func (s *Store) seatExtras(ctx context.Context, r *SeatRow, now time.Time) error
 		return err
 	}
 	return s.r.QueryRowContext(ctx, `SELECT count(*)`+sessionFrom+` WHERE s.seat_id = ? AND `+liveNowCondition,
-		r.ID, now.Add(-LiveWithin).UnixMilli()).Scan(&r.LiveSessions)
+		append([]any{r.ID}, liveArgs(now)...)...).Scan(&r.LiveSessions)
 }
 
 // SlotView is a machine's slot (api.yaml Machine.slots).
