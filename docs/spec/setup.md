@@ -622,7 +622,12 @@ run, and restoring it would undo a login refresh.
    `config.toml`.
 4. Any failure in step 3 → roll back everything done so far from the journal (7.5), mark the
    set `rolled-back`, exit 1 (or 4 for a precondition change).
-5. Hub step (`connect` / `service`). Failure → report, keep the local steps, exit 6.
+5. Hub step (`connect` / `service`). Failure → report, keep the local steps, exit 6. The
+   report says `partly applied` (JSON `mode: "partly-applied"`), not `applied`: the Hub
+   section adds `✗ not done: <step>: <error>` and a `fix:` line (check `<url>/health` or
+   the service, make a new code with `sy hub pair --kind machine`, rerun `sy setup --hub
+   …`); `hub` in the JSON carries `step` and `fix`. The backup set is still `applied` (its
+   local steps are done and undoable).
 6. Prototype removal, only if requested and the hub answered `/health` with the token
    accepted in step 5 (or was already connected and healthy).
 7. Logins (interactive only), one folder at a time.
@@ -664,7 +669,8 @@ changed and logins touched (always 0). Example: section 11.
 }
 ```
 
-After an apply, `mode` is `applied` (or `rolled-back`), and the object adds `"backup":
+After an apply, `mode` is `applied` (or `partly-applied` when only the hub step failed,
+exit 6; or `rolled-back`), and the object adds `"backup":
 "<id>"`, `"applied": [action ids]`, `"hub": {...}` and `"doctor": <sy doctor --json>`.
 
 `plan_id` = `p_` + the first 12 hex characters of SHA-256 over the canonical JSON of

@@ -230,6 +230,8 @@ const (
 	ModeDryRun     = "dry-run"
 	ModeApplied    = "applied"
 	ModeRolledBack = "rolled-back"
+	// ModePartial: the local steps applied but the hub step failed (exit 6, setup.md 6.2).
+	ModePartial = "partly-applied"
 )
 
 // Report is the `--json` object of setup.md 6.3: the plan's fields inline, plus the envelope.
@@ -267,4 +269,8 @@ type HubResult struct {
 	URL     string `json:"url,omitempty"`
 	Healthy bool   `json:"healthy"`
 	Error   string `json:"error,omitempty"` // set when the hub step failed (exit 6)
+	// Step is the op of the failed hub step ("service" or "connect"); Fix says what to do
+	// next. Both only with Error.
+	Step string `json:"step,omitempty"`
+	Fix  string `json:"fix,omitempty"`
 }

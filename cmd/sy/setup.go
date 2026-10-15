@@ -477,8 +477,14 @@ func setupMain(ctx context.Context, e *setupEnv, args []string) error {
 	}
 
 	in.Mode = model.ModeApplied
-	if res.Status == model.StatusRolledBack {
+	switch {
+	case res.Status == model.StatusRolledBack:
 		in.Mode = model.ModeRolledBack
+	case res.Hub != nil && res.Hub.Error != "":
+		// The local steps stay; only the hub step is missing (exit 6): say so, and how
+		// to finish it, instead of "applied".
+		in.Mode = model.ModePartial
+		res.Hub.Fix = hubFix(c.Hub, c.Listen, *res.Hub)
 	}
 	in.Backup, in.Applied, in.Hub = res.Backup, res.Applied, res.Hub
 	rep := e.doctorReport(ctx)
@@ -505,6 +511,32 @@ func setupMain(ctx context.Context, e *setupEnv, args []string) error {
 		return exitWith(code, aerr)
 	}
 	return nil
+}
+
+// hubFix is the next step after a failed hub step (setup.md 6.2 step 5): what to check,
+// then the command that finishes the hub part without redoing the local steps.
+func hubFix(hub model.HubChoice, listen string, r model.HubResult) string {
+	url := strings.TrimRight(r.URL, "/")
+	if url == "" {
+		url = strings.TrimRight(hub.URL, "/")
+	}
+	if r.Step == string(model.OpService) || (hub.Mode == model.HubHere && url == "") {
+		ln := listen
+		if ln == "" {
+			ln = service.DefaultListen
+		}
+		return "check the hub service (sy doctor; systemctl --user status switchyard-hub on Linux), then rerun: sy setup --hub here --listen " + ln
+	}
+	if hub.Mode == model.HubHere {
+		return "check that " + url + "/health answers (sy doctor), then rerun: sy setup --hub here"
+	}
+	if strings.Contains(r.Error, "no hub token") {
+		return "make a code on the hub (sy hub pair --kind machine), then rerun: sy setup --hub join:" + url + " --code <code>"
+	}
+	if strings.Contains(r.Error, "/health") {
+		return "check that " + url + "/health answers from this machine (sy doctor), then: sy flush"
+	}
+	return "check that " + url + " is reachable and the code or token is fresh (sy hub pair --kind machine on the hub), then rerun: sy setup --hub join:" + url + " --code <code>"
 }
 
 // mergeTerminal plans the --terminal pieces from the same State and folds them into the

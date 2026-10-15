@@ -314,7 +314,7 @@ func (r *runner) nonLocalFailure(ctx context.Context, a model.Action, cause erro
 	code := ExitHub
 	switch a.Step {
 	case model.StepHub:
-		r.res.Hub = &model.HubResult{URL: a.URL, Error: cause.Error()}
+		r.res.Hub = &model.HubResult{URL: a.URL, Error: cause.Error(), Step: string(a.Op)}
 	default:
 		code = ExitFailed
 	}
@@ -761,6 +761,7 @@ func (r *runner) connect(ctx context.Context, a model.Action) error {
 	}
 	if !res.Healthy {
 		r.res.Hub.Error = "the hub did not answer /health"
+		r.res.Hub.Step = string(model.OpConnect)
 		return nil // entry stays; reported as exit 6 at the end
 	}
 	r.hubOK = true
