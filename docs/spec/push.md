@@ -43,10 +43,17 @@ One JSON object in `setting` key `push.settings` (owner: `PUT /v1/push/settings`
 | `vapid_subject` | the hub's public URL | VAPID `sub` claim (6.2). |
 | `webpush_hosts` | see 6.6 | Push service hosts a subscription endpoint may point at. |
 
-Other settings: `hub.public_url` (pairing.md 2.3), `hub.tz` (IANA name; default the `TZ`
-environment variable of `sy hub serve`, else UTC; used for hub-wide quiet hours and for
-times in push text when a device has no `prefs.tz`), `push.vapid_public` (6.2),
-`push.baseline_done` (3.8).
+Other settings: `hub.public_url` (pairing.md 2.3), `hub.tz` (IANA name; used for hub-wide
+quiet hours, for times in push text when a device has no `prefs.tz`, and for analytics days),
+`push.vapid_public` (6.2), `push.baseline_done` (3.8).
+
+**The hub's time zone** is `hub.tz` when it names a zone the hub can load; else the hub
+machine's own zone: `$TZ` of `sy hub serve` when it names one (a leading `:` is dropped),
+else the zone `/etc/localtime` links to (the part after `zoneinfo/`); else UTC. A hub run as a
+systemd user service has no `$TZ`, so `/etc/localtime` is what makes an Asia/Kolkata machine's
+hub keep Asia/Kolkata and not UTC. `GET /v1/overview` returns it as `tz`, with `tz_source`
+`setting`, `system` or `utc`; every time a client shows as "hub time" is in this zone and names
+it.
 
 ## 3. Rules
 

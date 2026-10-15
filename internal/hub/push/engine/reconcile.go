@@ -25,7 +25,7 @@ type work struct {
 	evs   []events.Event
 }
 
-// hubTZ is the hub.tz setting, else Config.TZ, else UTC.
+// hubTZ is the hub.tz setting, else Config.TZ (the machine's zone, rules.SystemZone), else UTC.
 func (e *Engine) hubTZ(tx *store.Tx) string {
 	if raw, ok, err := tx.AlertSetting(store.AlertKeyHubTZ); err == nil && ok {
 		var v string

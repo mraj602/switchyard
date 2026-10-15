@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -247,19 +246,6 @@ func (s *Server) hubURL(r *http.Request) string {
 		}
 	}
 	return scheme + "://" + r.Host
-}
-
-func hubTZ(s *store.Store, ctx context.Context) string {
-	if raw, err := s.PushSetting(ctx, "hub.tz"); err == nil {
-		var z string
-		if json.Unmarshal(raw, &z) == nil && z != "" {
-			return z
-		}
-	}
-	if z := os.Getenv("TZ"); z != "" {
-		return z
-	}
-	return "UTC"
 }
 
 // ---- GET /v1/push/config --------------------------------------------------------------

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -42,15 +41,16 @@ func (s *Server) alertService() model.AlertService {
 	return as
 }
 
-// alertHubTZ is the hub.tz setting, else $TZ, else UTC (push.md 2).
+// alertHubTZ is the hub's zone: the hub.tz setting, else the machine's zone, else UTC
+// (push.md 2, rules.HubZone).
 func (s *Server) alertHubTZ(r *http.Request) string {
-	if v := s.store.AlertSettingString(r.Context(), store.AlertKeyHubTZ); v != "" {
-		return v
-	}
-	if v := os.Getenv("TZ"); v != "" {
-		return v
-	}
-	return "UTC"
+	z, _ := s.hubZone(r)
+	return z
+}
+
+// hubZone is the hub's zone and where it came from (setting, system or utc).
+func (s *Server) hubZone(r *http.Request) (string, string) {
+	return rules.HubZone(s.store.AlertSettingString(r.Context(), store.AlertKeyHubTZ))
 }
 
 // alertRender fills the text fields as rendered for a non-private target.
