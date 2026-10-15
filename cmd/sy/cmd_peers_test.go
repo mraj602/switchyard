@@ -201,7 +201,7 @@ func TestPeersSendExitCodes(t *testing.T) {
 	}
 	// Not enabled: 5.
 	w.startPID, w.enabled = 501, false
-	if code, out, _ = runPeersSy("peers", "send", "worker", "hi"); code != 5 || !strings.Contains(out, "not enabled") {
+	if code, out, _ = runPeersSy("peers", "send", "worker", "hi"); code != 5 || !strings.Contains(out, "not enabled") || !strings.Contains(out, "sy peers enable.") {
 		t.Errorf("disabled: %d %q", code, out)
 	}
 	if len(w.b.All()) != 0 {
