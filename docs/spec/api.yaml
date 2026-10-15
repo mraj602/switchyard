@@ -226,6 +226,8 @@ paths:
           schema: {type: string, format: date-time}
         - name: days
           in: query
+          description: Only sessions with activity (activity_at) or a listing in the last `days` days.
+            Needs-you sessions are always included.
           schema: {type: integer, minimum: 1, maximum: 365, default: 2}
         - name: limit
           in: query
@@ -1955,7 +1957,7 @@ components:
         stale: {type: boolean, description: "Working with no event for 12 h and no session lists (states.md 5)."}
         machine_stale: {type: boolean, description: "Machine silent for 15 min (states.md 5)."}
         dormant: {type: boolean, description: "Open, not needing you, and done with no activity for 12 h or working and stale (states.md 5): not counted in counts.live."}
-        activity_at: {type: [string, "null"], format: date-time, description: "Newest of last event, last listing, start and end: what `days` and the order use. Null when nothing is known."}
+        activity_at: {type: [string, "null"], format: date-time, description: "Newest of last event, state_since, start and end (not the last listing): what `dormant`, `days` and the order use. Null when nothing is known."}
         alert:
           description: "The open alert of this session's current episode, if any (phase 4, push.md 4)."
           oneOf:

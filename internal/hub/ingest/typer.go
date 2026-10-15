@@ -404,7 +404,11 @@ func (t *typer) sessionList(c *ctx) error {
 		if s.SlotID != c.slotID {
 			continue // listed by another slot than the one it belongs to: not its list
 		}
-		if err := t.fold(it.SessionID, listInput(c.r.ID, c.ts, p.Complete, true, it.Status)); err != nil {
+		row, err := t.tx.LastTokenRowAt(it.SessionID, c.at)
+		if err != nil {
+			return err
+		}
+		if err := t.fold(it.SessionID, listInput(c.r.ID, c.ts, p.Complete, true, it.Status, listLastActive(it, c.at, row))); err != nil {
 			return err
 		}
 	}
@@ -422,7 +426,7 @@ func (t *typer) sessionList(c *ctx) error {
 		if err := t.touch(id, false); err != nil {
 			return err
 		}
-		if err := t.fold(id, listInput(c.r.ID, c.ts, true, false, "")); err != nil {
+		if err := t.fold(id, listInput(c.r.ID, c.ts, true, false, "", 0)); err != nil {
 			return err
 		}
 	}
@@ -611,9 +615,6 @@ func (t *typer) tokenRows(c *ctx) error {
 		}
 		facts = append(facts, s.SessionID)
 	}
-	if err := t.transcripts(c, ext, facts); err != nil {
-		return err
-	}
 	seats := map[string]string{}
 	seatOf := func(sid string) (string, error) {
 		if s, ok := seats[sid]; ok {
@@ -647,6 +648,10 @@ func (t *typer) tokenRows(c *ctx) error {
 		if err := t.tx.MergeTokenRow(in); err != nil {
 			return err
 		}
+	}
+	// After the rows: a list-repaired session's refold reads them (typer.transcript).
+	if err := t.transcripts(c, ext, facts); err != nil {
+		return err
 	}
 	for _, raw := range p.LimitHits {
 		var h struct {

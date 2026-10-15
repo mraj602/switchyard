@@ -4,7 +4,7 @@
 import { h } from '../components/dom.js';
 import { dot, sessionLink, askText } from '../components/cards.js';
 import { seatIndex, sessionSeat } from '../components/seat.js';
-import { stateTag, isLive, isHistory } from '../components/state.js';
+import { stateTag, isLive, isHistory, isEnded } from '../components/state.js';
 import { pct, ago, plural, projectOf } from '../format.js';
 import { ensureSessions } from '../store.js';
 import { alertLine } from '../components/alerts.js';
@@ -21,7 +21,8 @@ const FILTERS = [
   { id: 'working', label: 'Working', test: (s) => s.state === 'working' && isLive(s), empty: 'No sessions are working.' },
   { id: 'done', label: 'Done', test: (s, now) => s.state === 'done' && isLive(s, now), empty: 'No session finished a turn recently.',
     title: 'Claude finished its turn and is waiting for your next prompt' },
-  { id: 'ended', label: 'Ended', test: (s, now) => !isLive(s, now), empty: 'No sessions ended in the last 2 days.',
+  // Not open: ended, or idle for 12 h (a row there says which: Ended, or its state and "idle").
+  { id: 'ended', label: 'Ended or idle', test: (s, now) => !isLive(s, now), empty: 'No sessions ended or went idle in the last 2 days.',
     title: 'Sessions that ended, or that have been idle for more than 12 hours' },
   // Not a chip: #/sessions?filter=all shows everything, ended included.
   { id: 'all', label: 'All', test: () => true, empty: 'No sessions in the last 2 days.', hidden: true },
@@ -147,7 +148,8 @@ function sessionRow(s, now, idx) {
   const age = ago(s.state_since, now);
   const empty = (v) => (v ? '' : ' is-empty');
   return h('tr', { class: `srow${s.needs_you ? ' srow-needs' : ''}${s.alert && s.alert.status === 'seen' ? ' is-seen' : ''}`, onclick: (e) => { if (!e.target.closest('a')) location.hash = href; } },
-    h('td', { class: 'c-state', 'data-label': 'State' }, stateTag(s), s.stale ? h('span', { class: 'flag', title: 'No events for 12 hours' }, ' stale') : null, s.machine_stale ? h('span', { class: 'flag' }, ' machine quiet') : null),
+    h('td', { class: 'c-state', 'data-label': 'State' }, stateTag(s), s.stale ? h('span', { class: 'flag', title: 'No events for 12 hours' }, ' stale')
+      : !isEnded(s) && !isLive(s, now) ? h('span', { class: 'flag', title: 'Not used for 12 hours' }, ' idle') : null, s.machine_stale ? h('span', { class: 'flag' }, ' machine quiet') : null),
     h('td', { class: 'c-session', 'data-label': 'Session' }, sessionLink(s, h('b', {}, projectOf(s))), s.title || s.name ? h('span', { class: 'muted' }, ` · ${s.title || s.name}`) : null),
     h('td', { class: `c-machine${empty(s.machine_name)}`, 'data-label': 'Machine' }, h('span', { class: 'machine-chip', title: s.machine_name || undefined }, s.machine_name || '–')),
     h('td', { class: `c-last${s.state === 'needs_permission' ? ' mono' : ''}${empty(last || (s.alert && s.needs_you))}`, 'data-label': 'Last line' }, h('span', { class: 'clamp' }, last || '–'), s.alert && s.needs_you ? h('span', { class: 'alert-meta' }, alertLine(s.alert, now)) : null),
