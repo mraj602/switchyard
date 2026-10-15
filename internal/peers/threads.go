@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -45,6 +46,11 @@ type Thread struct {
 	// thread): this machine cannot see it end, so only idleness closes such a thread.
 	Remote string `json:"remote,omitempty"`
 }
+
+var threadIDRE = regexp.MustCompile(`^t_[0-9a-f]{16}$`)
+
+// ValidThreadID reports whether id has a thread id's form (6.1, api.yaml): "t_" + 16 lowercase hex.
+func ValidThreadID(id string) bool { return threadIDRE.MatchString(id) }
 
 // ThreadID is "t_" + the first 16 hex of SHA-256(a ‖ "\n" ‖ b ‖ "\n" ‖ decimal(opened_at ms)).
 func ThreadID(a, b string, openedAt time.Time) string {

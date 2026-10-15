@@ -534,10 +534,6 @@ func (r *Relay) MatrixChanged(ctx context.Context, d keys.Doc) error {
 
 // ---- thread resume (peers.md 6.3) ----
 
-// TTLThreadResume is how long a peer_thread_resume waits for an offline machine: a thread
-// with no message for 24 h is closed anyway (6.1).
-const TTLThreadResume = peers.ThreadIdle
-
 // ErrThreadClosed: the thread to resume is closed (a new message opens a new one).
 var ErrThreadClosed = errors.New("the thread is closed")
 
@@ -586,7 +582,7 @@ func (r *Relay) ResumeThread(ctx context.Context, id, by string) (ResumeResult, 
 			if !ok || dev == "" || slices.Contains(res.Devices, dev) {
 				continue
 			}
-			_, err = r.Link.EnqueueTx(tx, dev, link.TypePeerThreadResume, "tr:"+id, TTLThreadResume, body, "")
+			_, err = r.Link.EnqueueTx(tx, dev, link.TypePeerThreadResume, "tr:"+id, peers.ThreadIdle, body, "")
 			switch {
 			case errors.Is(err, hublink.ErrNoLink):
 				continue // revoked or without keys: nothing to tell

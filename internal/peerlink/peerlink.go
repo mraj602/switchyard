@@ -463,7 +463,7 @@ func (r *Remote) Queued(ctx context.Context, t string, seq int64, body []byte) e
 // An error (threads.json not written) leaves the frame unacked for a replay.
 func (r *Remote) threadResume(body []byte) error {
 	var b peers.ThreadResumeBody
-	if err := json.Unmarshal(body, &b); err != nil || !validThreadID(b.Thread) {
+	if err := json.Unmarshal(body, &b); err != nil || !peers.ValidThreadID(b.Thread) {
 		r.Logger.Printf("peers: a peer_thread_resume body does not parse; dropped")
 		return nil
 	}
@@ -483,19 +483,6 @@ func (r *Remote) threadResume(body []byte) error {
 		r.Logger.Printf("peers: the hub asked to resume thread %s, which is not open here; nothing to do", b.Thread)
 	}
 	return nil
-}
-
-// validThreadID is peers.md 6.1's form: "t_" + 16 lowercase hex.
-func validThreadID(id string) bool {
-	if len(id) != 18 || id[:2] != "t_" {
-		return false
-	}
-	for _, c := range id[2:] {
-		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
-			return false
-		}
-	}
-	return true
 }
 
 // seen is <state>/peers/seen.json: message ids handled, with the result reported (8.4).
