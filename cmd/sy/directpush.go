@@ -19,6 +19,7 @@ import (
 	"github.com/mraj602/switchyard/internal/config"
 	"github.com/mraj602/switchyard/internal/directpush"
 	"github.com/mraj602/switchyard/internal/identity"
+	"github.com/mraj602/switchyard/internal/localtime"
 	"github.com/mraj602/switchyard/internal/paths"
 	"github.com/mraj602/switchyard/internal/version"
 )
@@ -323,7 +324,7 @@ func directPushStatus(args []string, stdout, stderr io.Writer) error {
 		fmt.Fprintln(stdout, "Policy: none cached; using the defaults (30 s permission, 60 s question, failures at once)")
 	}
 	if st.LastContact != nil {
-		fmt.Fprintf(stdout, "Last hub contact: %s\n", *st.LastContact)
+		fmt.Fprintf(stdout, "Last hub contact: %s\n", localtime.String(*st.LastContact))
 	} else {
 		fmt.Fprintln(stdout, "Last hub contact: none recorded")
 	}
@@ -332,10 +333,10 @@ func directPushStatus(args []string, stdout, stderr io.Writer) error {
 		if p.Blocked != "" {
 			state = "not pushed: " + p.Blocked
 		}
-		fmt.Fprintf(stdout, "  %s %s since %s, due %s: %s\n", p.Session, p.Trigger, p.Since, p.DueAt, state)
+		fmt.Fprintf(stdout, "  %s %s since %s, due %s: %s\n", p.Session, p.Trigger, localtime.String(p.Since), localtime.String(p.DueAt), state)
 	}
 	for _, m := range st.Recent {
-		fmt.Fprintf(stdout, "  pushed %s %s at %s: %s\n", m.Session, m.Trigger, m.At, m.Outcome)
+		fmt.Fprintf(stdout, "  pushed %s %s at %s: %s\n", m.Session, m.Trigger, localtime.String(m.At), m.Outcome)
 	}
 	return nil
 }

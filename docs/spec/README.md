@@ -33,6 +33,11 @@ Implementation notes that apply everywhere:
 
 - Go 1.27, standard library first. SQLite through `modernc.org/sqlite` (pure Go, no cgo), so
   `sy` stays one static binary for Linux, macOS and Windows.
+- Times in the text output of `sy` commands (`sy analytics`, `sy hub pull list`, `sy agent
+  status`, `sy peers log` and `audit`, `sy direct-push status`, `sy hub token list`, ...) are
+  `YYYY-MM-DD HH:MM <zone>` in the local time zone, the zone always written
+  (`internal/localtime`); `sy analytics` uses the zone its range line names. `--json` output
+  keeps RFC 3339 UTC (record.md 1).
 - Words marked **uncertain** are behaviours of Claude Code or claude.ai that were not
   verified against a capture. Each one has a fallback, and the fixtures in `testdata/`
   should settle them.

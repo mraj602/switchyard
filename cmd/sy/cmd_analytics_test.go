@@ -29,7 +29,7 @@ var anReplies = map[string]string{
 	  "sessions":[{"session_id":"abcdef0123456789","seat":"s1","seat_name":"work","project":"/home/me/switchyard","models":["claude-opus-4-6"],"first_ts":"2026-10-15T09:00:00Z","last_ts":"2026-10-15T10:00:00Z","input":1,"output":2,"cache_5m":0,"cache_1h":0,"cache_read":0,"replies":9,"api_usd":3.2,"unpriced_replies":0}]}`,
 	"limits": `{"report":"limits","from":"2026-10-14","to":"2026-10-15","tz":"UTC","seat":null,
 	  "windows":[{"seat":"s1","seat_name":"work","key":"five_hour","label":"5 hour","started_at":null,"resets_at":"2026-10-15T12:00:00Z","peak_pct":91.4,"final_pct":null,"unused_pct":8.6,"samples":5}]}`,
-	"hits": `{"report":"hits","from":"2026-10-14","to":"2026-10-15","tz":"UTC","seat":null,
+	"hits": `{"report":"hits","from":"2026-10-14","to":"2026-10-15","tz":"Asia/Kolkata","seat":null,
 	  "hits":[{"ts":"2026-10-15T11:00:00Z","seat":"s1","seat_name":"work","session_id":"x","type":"five_hour","status":"rejected","resets_at":"2026-10-15T12:00:00Z","wait_s":3600},
 	          {"ts":"2026-10-15T11:30:00Z","seat":null,"seat_name":"Unattributed","session_id":"y","type":null,"status":null,"resets_at":null,"wait_s":null}]}`,
 	"heatmap": `{"report":"heatmap","from":"2026-10-14","to":"2026-10-15","tz":"UTC","seat":null,"api_usd":[` +
@@ -139,10 +139,10 @@ func TestAnalyticsEachReport(t *testing.T) {
 	anSandbox(t, hub.URL, true)
 	cases := map[string][]string{
 		"models":   {"Opus 4.6", "unpriced", "$1.50"},
-		"projects": {"switchyard", "SESSIONS", "$3.20", "2026-10-15T10:00:00Z"},
+		"projects": {"switchyard", "SESSIONS", "$3.20", "2026-10-15 10:00 UTC"},
 		"sessions": {"abcdef01", "work", "switchyard", "seat s1"},
 		"limits":   {"5 hour", "91%", "9%", "-"},
-		"hits":     {"five_hour", "1h00m", "Unattributed"},
+		"hits":     {"five_hour", "1h00m", "Unattributed", "2026-10-15 16:30 IST", "2026-10-15 17:30 IST"},
 		"heatmap":  {"Mon", "Sun", "█", "darkest cell $10.00"},
 	}
 	for report, wants := range cases {

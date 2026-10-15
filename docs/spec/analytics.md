@@ -81,7 +81,8 @@ sy analytics [daily|models|projects|heatmap|sessions|limits|hits] [--days N] [--
 Read only; the default report is `daily`. `--days`, `--from`, `--to` and `--seat` are the query
 of section 2. Text mode prints the range line (`from`, `to`, `tz`, seat), then plain aligned
 tables of the hub's numbers (nothing is recomputed, cost included): `daily` a totals line, one
-row per day and one per seat; `heatmap` a 7 by 24 block of shade characters. `--json` prints
+row per day and one per seat; `heatmap` a 7 by 24 block of shade characters. Times (`LAST`,
+`RESETS`, `WHEN`) print as `YYYY-MM-DD HH:MM <zone>` in the range line's `tz`, not raw UTC. `--json` prints
 the hub's reply, indented.
 
 It needs the `read` scope. This machine's own token (`sy connect`, kind `machine`) has `write`

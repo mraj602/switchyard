@@ -52,6 +52,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store"
 	"github.com/mraj602/switchyard/internal/hub/store/importproto"
 	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/switchyard/internal/localtime"
 	"github.com/mraj602/switchyard/internal/paths"
 	"github.com/mraj602/switchyard/internal/service"
 	"github.com/mraj602/switchyard/internal/version"
@@ -584,7 +585,7 @@ func ms(v int64) string {
 	if v == 0 {
 		return "-"
 	}
-	return time.UnixMilli(v).UTC().Format("2006-01-02 15:04Z")
+	return localtime.MS(v)
 }
 
 func tokenList(args []string, stdout, stderr io.Writer) error {
@@ -814,7 +815,7 @@ func prune(args []string, stdout, stderr io.Writer) error {
 		verb = "would remove"
 	}
 	fmt.Fprintf(stdout, "before %s: %s %d records (%d hook events), %d limit samples, %d web usage responses, %d token rows, %d limit hits\n",
-		cut.UTC().Format(time.RFC3339), verb, res.Records, res.HookEvents, res.LimitSamples, res.WebUsage, res.TokenRows, res.LimitHits)
+		localtime.Format(cut), verb, res.Records, res.HookEvents, res.LimitSamples, res.WebUsage, res.TokenRows, res.LimitHits)
 	fmt.Fprintln(stdout, "kept: seats, machines, slots, sessions and their states, usage windows, history days, devices")
 	return nil
 }

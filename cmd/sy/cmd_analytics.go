@@ -16,10 +16,12 @@ import (
 	"strconv"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/mraj602/switchyard/internal/board"
 	"github.com/mraj602/switchyard/internal/client"
 	"github.com/mraj602/switchyard/internal/config"
+	"github.com/mraj602/switchyard/internal/localtime"
 )
 
 // `sy analytics [report] [--days N] [--from D] [--to D] [--seat S] [--json]` shows the hub's
@@ -183,6 +185,13 @@ func renderAnalytics(w io.Writer, report string, raw json.RawMessage) error {
 		return fmt.Errorf("the hub's reply is not JSON: %w", err)
 	}
 	fmt.Fprintln(w, head.line(report))
+	// Times print in the zone the header names (the hub's, which also cuts the days), with
+	// the zone written; --json keeps RFC 3339 UTC.
+	loc, lerr := time.LoadLocation(head.TZ)
+	if lerr != nil || head.TZ == "" {
+		loc = nil // localtime.Zone
+	}
+	at := func(s string) string { return localtime.StringIn(s, loc) }
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	var err error
 	switch report {
@@ -266,7 +275,7 @@ func renderAnalytics(w io.Writer, report string, raw json.RawMessage) error {
 		for _, p := range r.Projects {
 			last := "-"
 			if p.LastTS != nil {
-				last = *p.LastTS
+				last = at(*p.LastTS)
 			}
 			fmt.Fprintf(tw, "%s\t%d\t%s\t%s\t%s\t%s\n", p.Name, p.Sessions, num(p.Replies), human(p.total()), usd(p.APIUSD), last)
 		}
@@ -289,7 +298,7 @@ func renderAnalytics(w io.Writer, report string, raw json.RawMessage) error {
 			if len(id) > 8 {
 				id = id[:8]
 			}
-			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", id, s.SeatName, baseName(s.Project), num(s.Replies), human(s.total()), usd(s.APIUSD), s.LastTS)
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", id, s.SeatName, baseName(s.Project), num(s.Replies), human(s.total()), usd(s.APIUSD), at(s.LastTS))
 		}
 	case "limits":
 		var r struct {
@@ -307,7 +316,7 @@ func renderAnalytics(w io.Writer, report string, raw json.RawMessage) error {
 		}
 		fmt.Fprintln(tw, "SEAT\tWINDOW\tRESETS\tPEAK\tFINAL\tUNUSED")
 		for _, x := range r.Windows {
-			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", x.SeatName, x.Label, x.ResetsAt, pct(x.PeakPct), pct(x.FinalPct), pct(x.UnusedPct))
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", x.SeatName, x.Label, at(x.ResetsAt), pct(x.PeakPct), pct(x.FinalPct), pct(x.UnusedPct))
 		}
 	case "hits":
 		var r struct {
@@ -329,12 +338,12 @@ func renderAnalytics(w io.Writer, report string, raw json.RawMessage) error {
 				typ = *h.Type
 			}
 			if h.ResetsAt != nil {
-				resets = *h.ResetsAt
+				resets = at(*h.ResetsAt)
 			}
 			if h.WaitS != nil {
 				wait = secondsDuration(*h.WaitS)
 			}
-			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", h.TS, h.SeatName, typ, resets, wait)
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", at(h.TS), h.SeatName, typ, resets, wait)
 		}
 	case "heatmap":
 		var r struct {

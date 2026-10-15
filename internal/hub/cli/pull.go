@@ -20,6 +20,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/ingest"
 	"github.com/mraj602/switchyard/internal/hub/pull"
 	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/switchyard/internal/localtime"
 	"github.com/mraj602/switchyard/internal/version"
 )
 
@@ -312,7 +313,7 @@ func printRows(stdout io.Writer, rows []pullRow, asJSON bool) error {
 		return *p
 	}
 	for _, r := range rows {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", r.Name, r.Target, r.State, str(r.LastOK), str(r.NextAt), str(r.LastError))
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", r.Name, r.Target, r.State, localtime.Ptr(r.LastOK), localtime.Ptr(r.NextAt), str(r.LastError))
 	}
 	return tw.Flush()
 }
