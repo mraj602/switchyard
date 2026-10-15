@@ -21,19 +21,19 @@ const f = { ago: F.ago, agoLabel: F.agoLabel, clock: F.clock };
 const NOW = Date.parse('2026-10-12T14:30:00Z');
 const at = (min) => new Date(NOW - min * 60e3).toISOString();
 
-test('thousands are spaced as the spec writes them', () => {
-  assert.equal(M.spaced(1240), '1\u00a0240');
-  assert.equal(M.spaced(12), '12');
-  assert.equal(M.spaced(1234567), '1\u00a0234\u00a0567');
+test('thousands are grouped like every other count', () => {
+  assert.equal(M.grouped(1240), '1,240');
+  assert.equal(M.grouped(12), '12');
+  assert.equal(M.grouped(1234567), '1,234,567');
 });
 
 test('reach chip: the three modes and unknown', () => {
-  assert.equal(M.reachChip({ reach: 'direct' }).text, 'Direct');
-  assert.equal(M.reachChip({ reach: 'forward' }).text, 'via laptop SSH');
-  assert.equal(M.reachChip({ reach: 'pull', pull: { interval_s: 60 } }).text, 'pulled by hub every 1 min');
-  assert.equal(M.reachChip({ reach: 'pull', pull: { interval_s: 15 } }).text, 'pulled by hub every 15 s');
-  assert.equal(M.reachChip({ reach: 'pull', pull: { interval_s: 3600 } }).text, 'pulled by hub every 1 h');
-  assert.equal(M.reachChip({ reach: 'pull' }).text, 'pulled by hub');
+  assert.equal(M.reachChip({ reach: 'direct' }).text, 'Connects directly');
+  assert.equal(M.reachChip({ reach: 'forward' }).text, 'Through your laptop');
+  assert.equal(M.reachChip({ reach: 'pull', pull: { interval_s: 60 } }).text, 'Collected by the hub every 1 min');
+  assert.equal(M.reachChip({ reach: 'pull', pull: { interval_s: 15 } }).text, 'Collected by the hub every 15 s');
+  assert.equal(M.reachChip({ reach: 'pull', pull: { interval_s: 3600 } }).text, 'Collected by the hub every 1 h');
+  assert.equal(M.reachChip({ reach: 'pull' }).text, 'Collected by the hub');
   assert.equal(M.reachChip({ reach: null }), null);
 });
 
@@ -45,11 +45,13 @@ test('status line: live, quiet, seen, never', () => {
   assert.equal(M.statusOf({}, NOW, f).text, 'Never seen');
 });
 
-test('backlog shows only above zero, with the age of the oldest', () => {
+test('backlog shows only when it piles up', () => {
   assert.equal(M.backlogText({ backlog: 0 }, NOW, f), '');
   assert.equal(M.backlogText({ backlog: null }, NOW, f), '');
-  assert.match(M.backlogText({ backlog: 1240, backlog_oldest: at(40) }, NOW, f), /^1\u00a0240 queued, oldest \d\d:\d\d$/);
-  assert.equal(M.backlogText({ backlog: 3 }, NOW, f), '3 queued');
+  assert.equal(M.backlogText({ backlog: 1240, backlog_oldest: at(40) }, NOW, f), '1,240 waiting to send (oldest 40 min)');
+  assert.equal(M.backlogText({ backlog: 8, backlog_oldest: at(1) }, NOW, f), '', 'a few in flight are normal');
+  assert.equal(M.backlogText({ backlog: 3 }, NOW, f), '', 'small count of unknown age');
+  assert.equal(M.backlogText({ backlog: 212 }, NOW, f), '212 waiting to send');
 });
 
 test('version line: same, older, newer, held, unknown', () => {
@@ -57,10 +59,13 @@ test('version line: same, older, newer, held, unknown', () => {
   assert.deepEqual({ ...M.versionLine({ sy_version: '0.4.2', version_status: 'older' }, '0.5.0') }, { text: '0.4.2 · older than hub 0.5.0', cls: 'warn' });
   assert.equal(M.versionLine({ sy_version: '0.6.0', version_status: 'newer' }, '0.5.0').text, '0.6.0 · newer than hub 0.5.0');
   const held = M.versionLine({ sy_version: '0.6.0', version_status: 'newer', held: 37 }, '0.5.0');
-  assert.equal(held.text, '0.6.0 · holding 37 records: hub too old');
+  assert.equal(held.text, '0.6.0 · holding 37 updates: the hub is too old for them');
   assert.equal(held.cls, 'bad');
   assert.equal(M.versionLine({ sy_version: 'dev', version_status: 'unknown' }, '0.5.0').cls, '');
   assert.equal(M.versionLine({}, '0.5.0').text, 'not reported');
+  // M1: an equal string is the same version even when the hub said "unknown"
+  assert.equal(M.versionLine({ sy_version: '104cd7f', version_status: 'unknown' }, '104cd7f').text, '104cd7f · same as hub');
+  assert.equal(M.versionLine({ sy_version: 'dev', version_status: 'unknown' }, '0.5.0').text, 'dev');
 });
 
 test('pull state per state; host key and refused cannot be pulled now', () => {
@@ -83,6 +88,6 @@ test('cards sort silent first, then by name, removed last', () => {
 
 test('silent alert sentence', () => {
   assert.equal(M.alertText(null, NOW, f), '');
-  assert.equal(M.alertText({ status: 'fired', fired_at: at(165) }, NOW, f), 'Silent alert sent 3 h ago');
-  assert.equal(M.alertText({ status: 'snoozed' }, NOW, f), 'Silent alert snoozed');
+  assert.equal(M.alertText({ status: 'fired', fired_at: at(165) }, NOW, f), 'Quiet-machine notification sent 3 h ago');
+  assert.equal(M.alertText({ status: 'snoozed' }, NOW, f), 'Quiet-machine notification snoozed');
 });
