@@ -1,6 +1,8 @@
-// Login: paste a token, the hub answers with a session cookie.
+// Login on a computer. The usual way in is an owner link from `sy hub owner-link`; pasting an
+// access token (read-only) is the fallback.
 
 import { h } from '../components/dom.js';
+import { brandRow } from '../components/ui.js';
 import { login, AuthError } from '../api.js';
 
 export function render({ onLoggedIn }) {
@@ -8,11 +10,13 @@ export function render({ onLoggedIn }) {
   const input = h('input', {
     id: 'token', name: 'token', type: 'password', autocomplete: 'off', spellcheck: 'false',
     required: true, 'aria-describedby': 'token-help', placeholder: 'sy_b_…',
+    // An old error must not sit under a field that is being retyped (L2).
+    oninput: () => { err.hidden = true; },
   });
-  const submit = h('button', { type: 'submit', class: 'btn btn-primary' }, 'Sign in');
+  const submit = h('button', { type: 'submit', class: 'btn' }, 'Sign in with the token');
 
   const form = h('form', {
-    class: 'login-card card', onsubmit: async (e) => {
+    class: 'col login-token', onsubmit: async (e) => {
       e.preventDefault();
       err.hidden = true;
       submit.disabled = true;
@@ -30,13 +34,19 @@ export function render({ onLoggedIn }) {
       }
     },
   },
-    h('h1', {}, 'Switchyard'),
-    h('p', { class: 'muted' }, 'Paste an access token to open the board.'),
     h('label', { for: 'token' }, 'Access token'),
     input,
-    h('p', { id: 'token-help', class: 'muted small' }, 'Make one on the hub machine with: sy hub token create --kind browser --name "my browser"'),
-    err, submit,
-    h('p', { class: 'small' }, h('a', { href: '#/pair', 'data-key': 'to-pair' }, 'Pair with a code instead')));
+    h('p', { id: 'token-help', class: 'muted small' }, 'A token only lets this browser read the board. Make one on the hub with ',
+      h('code', {}, 'sy hub token create --kind browser'), '.'),
+    err, submit);
 
-  return { title: 'Sign in · Switchyard', node: h('div', { class: 'login-wrap' }, form) };
+  const card = h('div', { class: 'login-card card' },
+    h('h1', {}, 'Sign in'),
+    h('p', {}, 'On the hub machine, run'),
+    h('pre', { class: 'cmd mono', 'data-key': 'owner-link-cmd' }, 'sy hub owner-link'),
+    h('p', {}, 'and open the link it prints in this browser. That signs you in as the owner, with every setting.'),
+    h('details', { class: 'login-more', 'data-key': 'token-login' }, h('summary', {}, 'Use an access token instead'), form),
+    h('p', { class: 'small' }, h('a', { href: '#/pair', 'data-key': 'to-pair' }, 'Pair with a 6-digit code instead')));
+
+  return { title: 'Sign in · Switchyard', node: h('div', { class: 'login-wrap' }, h('div', { class: 'login-col' }, brandRow(), card)) };
 }
