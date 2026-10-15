@@ -51,7 +51,10 @@ test('parseRoute covers every screen', async () => {
   assert.deepEqual(r('#/owner?s=xyz'), ['owner', 'owner', '']);
   assert.deepEqual(r('#/alerts/al_9'), ['alertRedirect', 'alerts', 'al_9']);
   assert.deepEqual(r('#/login'), ['login', 'login', '']);
-  assert.deepEqual(r('#/nonsense'), ['now', 'now', '']);
+  // Unknown routes show "page not found" instead of quietly showing Now (G6).
+  assert.deepEqual(r('#/nonsense'), ['notfound', 'notfound', '']);
+  assert.deepEqual(r('#/nonsense/page'), ['notfound', 'notfound', '']);
+  assert.deepEqual(r('#/more/nonsense'), ['notfound', 'notfound', '']);
 });
 
 test('public views and tabs', async () => {
@@ -164,4 +167,103 @@ test('platform: expo channel payload keeps the token write-only', async () => {
     { enabled: true, settings: { base_url: 'https://exp.host', access_token: 'tok' } });
   assert.deepEqual(j(p.expoChannelBody({ enabled: false, baseUrl: '', token: 'x', clear: true })),
     { enabled: false, settings: { access_token: '' } });
+});
+
+test('format: one style for numbers and dates', async () => {
+  const f = await mod('format.js');
+  assert.equal(f.num(141816), '141,816');
+  assert.equal(f.num(null), '–');
+  assert.equal(f.plural(1240, 'record'), '1,240 records');
+  assert.equal(f.plural(1, 'reply', 'replies'), '1 reply');
+  assert.equal(f.compact(24_100_000_000), '24.1B');
+  const now = new Date(2026, 9, 15, 20, 0).getTime(); // Thu 15 Oct 2026, local time
+  assert.equal(f.clock(new Date(2026, 9, 15, 9, 5).toISOString(), now), '09:05');
+  assert.equal(f.clock(new Date(2026, 9, 13, 9, 5).toISOString(), now), 'Tue 09:05');
+  assert.equal(f.clock(new Date(2026, 10, 14, 9, 5).toISOString(), now), '14 Nov 09:05');
+  assert.equal(f.dateTime(new Date(2026, 9, 15, 19, 51, 54).toISOString()), 'Thu 15 Oct, 19:51');
+  assert.equal(f.day(new Date(2026, 10, 14, 20, 33).toISOString(), now), '14 Nov');
+  assert.equal(f.day(new Date(2027, 0, 2).toISOString(), now), '2 Jan 2027');
+  assert.equal(f.timeOfDay(new Date(2026, 9, 15, 19, 51, 54).toISOString()), '19:51:54');
+  assert.equal(f.agoLabel(new Date(now - 5 * 36e5).toISOString(), now), '5 h ago');
+  assert.equal(f.until(new Date(now + 2 * 36e5 + 10 * 6e4).toISOString(), now), 'in 2 h 10 min');
+  assert.equal(f.projectOf({ cwd: '/home/u/switchyard/' }), 'switchyard');
+  assert.equal(f.projectOf({}), '(no project)');
+});
+
+test('format: time zones for people', async () => {
+  const f = await mod('format.js');
+  assert.equal(f.tzLabel('UTC'), 'UTC');
+  assert.equal(f.tzLabel('Etc/UTC'), 'UTC');
+  assert.equal(f.tzLabel('Asia/Kolkata'), 'Kolkata (GMT+5:30)');
+  assert.equal(f.tzLabel(''), '');
+  assert.equal(f.sameTz('UTC', 'Etc/UTC'), true);
+  assert.equal(f.sameTz('UTC', 'Asia/Kolkata'), false);
+  assert.equal(f.sameTz('', 'Asia/Kolkata'), true);
+});
+
+test('live: old done, ended and bare imported sessions are not open', async () => {
+  const L = await mod('components/live.js');
+  const now = Date.parse('2026-10-15T12:00:00Z');
+  const at = (h) => new Date(now - h * 36e5).toISOString();
+  const s = (x) => ({ project: 'p', state: 'done', last_event_at: at(1), ...x });
+  assert.equal(L.isLive(s({}), now), true);
+  assert.equal(L.isLive(s({ state: 'working', last_event_at: at(40) }), now), true);
+  assert.equal(L.isLive(s({ last_event_at: at(13) }), now), false);
+  assert.equal(L.isLive(s({ stale: true }), now), false);
+  assert.equal(L.isLive(s({ state: 'ended' }), now), false);
+  assert.equal(L.isLive(s({ state: 'gone' }), now), false);
+  assert.equal(L.isLive(s({ state: 'asked', needs_you: true, last_event_at: at(30) }), now), true);
+  const bare = { state: 'done', last_event_at: at(1) };
+  assert.equal(L.isHistory(bare), true);
+  assert.equal(L.isLive(bare, now), false);
+  assert.equal(L.isHistory({ ...bare, cwd: '/x' }), false);
+  assert.equal(L.isHistory({ state: 'working' }), false);
+  const c = L.liveCounts([s({ machine: 'm1', seat: 'a' }), s({ machine: 'm1', seat: 'b' }), s({ machine: 'm2', state: 'ended' })], now);
+  assert.equal(c.total, 2);
+  assert.equal(c.machine.get('m1'), 2);
+  assert.equal(c.machine.get('m2'), undefined);
+  assert.equal(L.liveCounts(null), null);
+});
+
+test('seat names: short, and told apart when they collide', async () => {
+  const S = await mod('components/seat.js');
+  const seats = [
+    { id: 'a', email: 'you@work.example' },
+    { id: 'b', email: 'you@example.com' },
+    { id: 'c', email: 'mraj602@gmail.com' },
+    { id: 'd', label: 'work', email: 'w@x.io' },
+  ];
+  const names = S.displayNames(seats);
+  assert.equal(names.get('c'), 'mraj602');
+  assert.equal(names.get('d'), 'work');
+  assert.notEqual(names.get('a'), names.get('b'));
+  assert.match(names.get('a'), /workco/);
+  assert.match(names.get('b'), /gmail/);
+});
+
+test('targets: who can get a notification', async () => {
+  const T = await mod('components/targets.js');
+  const devs = [
+    { id: 'd1', name: 'Pixel', targets: [{ id: 't1', kind: 'link', status: 'ok', enabled: true }] },
+    { id: 'd2', name: 'iPad', targets: [{ id: 't2', kind: 'webpush', status: 'gone', enabled: true }] },
+    { id: 'd3', name: 'Old', revoked_at: '2026-10-01T00:00:00Z', targets: [{ id: 't3', kind: 'webpush', status: 'ok' }] },
+    { id: 'd4', name: 'Laptop', targets: [] },
+  ];
+  assert.deepEqual(T.notifiable(devs).map((x) => x.device.id), ['d1']);
+  assert.equal(T.appPaired(devs), true);
+  assert.equal(T.appPaired(devs.slice(1)), false);
+  assert.equal(T.notifiable(null).length, 0);
+  assert.equal(T.targetKindText({ kind: 'link' }), 'Android app');
+  assert.equal(T.targetKindText({ kind: 'webpush' }), 'browser notifications');
+});
+
+test('platform: install copy per browser', async () => {
+  const { installHint } = await mod('platform.js');
+  assert.match(installHint(UA.linuxChrome), /install icon/);
+  assert.doesNotMatch(installHint(UA.linuxChrome), /Dock/);
+  assert.match(installHint(UA.mac), /Add to Dock/);
+  assert.match(installHint(UA.pixel), /Install app/);
+  assert.match(installHint(UA.iphone, { ios: true }), /Add to Home Screen/);
+  assert.match(installHint('Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0'), /Firefox/);
+  assert.match(installHint(UA.pixel, { standalone: true }), /^Installed/);
 });

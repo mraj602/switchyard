@@ -8,7 +8,7 @@ import { store, subscribe, start, stop, setAuthLostHandler, refreshAll, canPush 
 import { logout, getJSON } from './api.js';
 import { renderNav } from './components/nav.js';
 import { h } from './components/dom.js';
-import { untilShort } from './components/alerts.js';
+import { pendingText } from './components/alerts.js';
 import { parseRoute, PUBLIC_VIEWS } from './route.js';
 import { isMobile } from './platform.js';
 import { pwa, initPwa, subscribe as onPwa, updateReady, applyUpdate, isStandalone } from './pwa.js';
@@ -28,8 +28,11 @@ import * as analytics from './views/analytics.js';
 import * as pair from './views/pair.js';
 import * as owner from './views/owner.js';
 import * as alertRedirect from './views/alert-redirect.js';
+import * as notfound from './views/not-found.js';
+import { toast } from './components/ui.js';
+import { clock } from './format.js';
 
-const VIEWS = { now, sessions, session, accounts, machines, login, more, alerts, settings, devices, peers, analytics, pair, owner, alertRedirect };
+const VIEWS = { now, sessions, session, accounts, machines, login, more, alerts, settings, devices, peers, analytics, pair, owner, alertRedirect, notfound };
 const navEl = document.getElementById('nav');
 const mainEl = document.getElementById('main');
 const announceEl = document.getElementById('announce');
@@ -39,6 +42,7 @@ const bannersEl = document.getElementById('banners');
 let authed = false;
 let lastRouteKey = '';
 let lastNeeds = null;
+let ownerSignedIn = false; // an owner link just worked: land on Now with a toast
 
 export { parseRoute };
 
@@ -96,10 +100,18 @@ async function render() {
     if (!authed && booting && !PUBLIC_VIEWS.has(route.view)) return;
     if (!authed && !PUBLIC_VIEWS.has(route.view)) { go(unauthRoute()); return; }
     if (authed && route.view === 'login') { go('#/'); return; }
+    // The owner view opens Settings after a sign-in; the board lands on Now instead (O3).
+    if (authed && ownerSignedIn && route.view === 'settings') {
+      ownerSignedIn = false;
+      location.replace('#/');
+      toast('You are signed in as the owner.');
+      return;
+    }
     const view = VIEWS[route.view];
-    const key = `${route.view}/${route.id || ''}`;
+    const key = routeKey(route, lastRouteKey);
     const changed = key !== lastRouteKey;
-    const ctx = { store, route, now: Date.now(), onLoggedIn: boot, onLogout: doLogout, rerender: render };
+    const onLoggedIn = route.view === 'owner' ? () => { ownerSignedIn = true; return boot(); } : boot;
+    const ctx = { store, route, now: Date.now(), onLoggedIn, onLogout: doLogout, rerender: render };
 
     if (changed) lastRouteKey = key;
     if (changed && view.load) view.load(ctx);
@@ -113,7 +125,10 @@ async function render() {
     }
 
     const focusKey = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.key;
+    // A redraw must not close a disclosure the reader opened (keyed <details>).
+    const opened = changed ? [] : [...mainEl.querySelectorAll('details[data-key][open]')].map((d) => d.dataset.key);
     const { title, node } = view.render(ctx);
+    for (const k of opened) { const d = node.querySelector(`details[data-key="${CSS.escape(k)}"]`); if (d) d.open = true; }
     mainEl.replaceChildren(node);
     document.title = title;
     appEl.dataset.page = route.page;
@@ -128,6 +143,17 @@ async function render() {
     rendering = false;
     if (again) { again = false; render(); }
   }
+}
+
+// What makes a page load again. A one-time link (#/owner?s=…, #/pair?s=…&c=…) loads again
+// for every new secret or code, even in the same tab (G13); once the page drops the secret
+// from the address bar the key stays, so the result stays on screen.
+function routeKey(route, last = '') {
+  const base = `${route.view}/${route.id || ''}`;
+  if (route.view !== 'owner' && route.view !== 'pair') return base;
+  const s = route.query.get('s') || '', c = route.query.get('c') || '';
+  if (!s && !c) return last.startsWith(`${base}?`) ? last : base;
+  return `${base}?${s}&${c}`;
 }
 
 function announceNeeds() {
@@ -145,8 +171,7 @@ function announceNeeds() {
 function renderBanners() {
   const kids = [];
   if (store.offline) {
-    const t = new Date(store.offline.since);
-    const hm = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+    const hm = clock(new Date(store.offline.since).toISOString());
     kids.push(h('div', { class: 'banner banner-offline', role: 'status' }, `Offline · showing ${hm}`));
   }
   if (updateReady()) {
@@ -169,12 +194,21 @@ const schedule = () => { if (!frame) frame = requestAnimationFrame(() => { frame
 subscribe(schedule);
 onPwa(schedule);
 window.addEventListener('hashchange', render);
+// The skip links move focus; following their href would change the hash route.
+for (const a of document.querySelectorAll('a.skip')) {
+  a.addEventListener('click', (e) => {
+    e.preventDefault();
+    const target = document.getElementById(a.dataset.target);
+    const el = target && (a.dataset.target === 'nav' ? target.querySelector('a') : target);
+    if (el) el.focus();
+  });
+}
 window.addEventListener('sy-rerender', render);
 // "5 min ago" labels move even when no data arrives.
 setInterval(() => { if (authed) render(); }, 30e3);
-// A pending alert's "push in 40 s" counts down between redraws.
+// A pending alert's "notifies in 40 s" counts down between redraws.
 setInterval(() => {
-  for (const el of document.querySelectorAll('[data-due]')) el.textContent = `push ${untilShort(el.dataset.due)}`;
+  for (const el of document.querySelectorAll('[data-due]')) el.textContent = pendingText(el.dataset.due);
 }, 5e3);
 
 // The service worker forwards pushes and routes taps to an open window.

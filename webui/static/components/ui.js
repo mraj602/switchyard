@@ -59,7 +59,20 @@ export const pillNav = (items, current) =>
   h('nav', { class: 'pills phone-only', 'aria-label': 'More' }, items.map(([page, href, label]) =>
     h('a', { class: 'pill', href, 'aria-current': page === current ? 'page' : undefined }, label)));
 
-// Pill row shown under the title of the screens behind the More tab.
+// The Switchyard mark and name, for the screens without the sidebar (sign-in, pairing).
+export const brandRow = () => h('div', { class: 'brand-row' },
+  svg('svg', { viewBox: '0 0 22 22', width: 26, height: 26, 'aria-hidden': 'true' },
+    svg('path', { d: 'M3 18 L11 4 L19 18', fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }),
+    svg('path', { d: 'M7 18 L11 11 L15 18', fill: 'none', stroke: '#E8B04B', 'stroke-width': 2 })),
+  h('span', { class: 'brand-name' }, 'Switchyard'));
+
+// Technical details behind a disclosure: versions, ids, limits.
+// `summary` may be a string or {text, key}; a key keeps it open across redraws (app.js).
+export const details = (summary, ...kids) => h('details', { class: 'tech', 'data-key': summary.key },
+  h('summary', {}, summary.text || summary), h('div', { class: 'tech-body' }, ...kids));
+
+// Pill row shown right under the title of the screens behind the More tab. The pills wrap
+// onto a second line on a narrow phone, so none hides off the edge.
 export function moreTabs(current, { owner } = {}) {
   const items = [['alerts', '#/more/alerts', 'Alerts'], ['machines', '#/machines', 'Machines'], ['settings', '#/more/settings', 'Settings'], ['peers', '#/more/peers', 'Peers'], ['analytics', '#/more/analytics', 'Analytics']];
   if (owner) items.push(['devices', '#/more/devices', 'Devices']);
