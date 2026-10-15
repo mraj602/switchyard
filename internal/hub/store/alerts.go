@@ -478,8 +478,10 @@ func (tx *Tx) AlertTargetResult(id string, r model.Result, now int64) error {
 
 func alertErrText(r model.Result) string {
 	s := r.Err
-	if r.HTTPStatus != 0 {
-		s = strings.TrimSpace(strconv.Itoa(r.HTTPStatus) + " " + s)
+	// The senders already name the status ("410 <reply>" for Web Push, "HTTP 401" for ntfy,
+	// push.md 5.6 and 7.3): prefix it only when the text does not, or it reads "410 410".
+	if code := strconv.Itoa(r.HTTPStatus); r.HTTPStatus != 0 && !strings.HasPrefix(s, code) && !strings.HasPrefix(s, "HTTP "+code) {
+		s = strings.TrimSpace(code + " " + s)
 	}
 	if len(s) > 200 {
 		s = s[:200]

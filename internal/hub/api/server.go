@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -214,6 +215,12 @@ func (s *Server) Handler() http.Handler {
 		mux.Handle(rt.Method+" "+rt.Path, h)
 	}
 	mux.Handle("/v1/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// push.md 8: a GET (a link preview, a prefetch) of an action URL is 405, never an action.
+		if strings.HasPrefix(r.URL.Path, "/v1/actions/") && r.Method != http.MethodPost {
+			w.Header().Set("Allow", http.MethodPost)
+			auth.WriteError(w, http.StatusMethodNotAllowed, "method_not_allowed", "action tokens are POST only")
+			return
+		}
 		auth.WriteError(w, http.StatusNotFound, "not_found", "no such endpoint")
 	}))
 	if s.cfg.WebUI != nil {
