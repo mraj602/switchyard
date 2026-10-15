@@ -654,6 +654,9 @@ func peersStatus(args []string, stdout, stderr io.Writer) error {
 	}
 	var keep []localAuditLine
 	for _, l := range lines {
+		if l.Msg == "" {
+			continue // a thread resume (peers.md 6.3), not a message; `sy peers audit` shows it
+		}
 		if session != "" && l.From != session && l.To != session {
 			continue
 		}
