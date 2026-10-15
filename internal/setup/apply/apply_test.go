@@ -432,12 +432,15 @@ func TestServiceUndoUninstallsAndRestoresUnit(t *testing.T) {
 	d.Service = svc
 	unit := b.Abs("units/hub.service")
 	start := testtree.Take(t, b.Root, testtree.Opts{Ignore: ignoreState})
-	p := plan(model.Action{Op: model.OpService, Name: "switchyard-hub", Unit: unit, Step: model.StepHub})
+	p := plan(model.Action{Op: model.OpService, Name: "switchyard-hub", Unit: unit, Listen: "127.0.0.1:19100", Step: model.StepHub})
 	if _, err := apply.Run(ctx, p, o, d); err != nil {
 		t.Fatal(err)
 	}
 	if len(svc.Installed()) != 1 {
 		t.Fatal("not installed")
+	}
+	if got := svc.Spec("switchyard-hub").Listen; got != "127.0.0.1:19100" {
+		t.Errorf("service installed with listen %q, want the plan's 127.0.0.1:19100", got)
 	}
 	ur, err := backup.Undo(ctx, o.StateDir, "", backup.Deps{Sharer: &fakes.Sharer{}, Service: svc}, backup.Options{})
 	if err != nil || ur.ExitCode != 0 || len(svc.Installed()) != 0 {

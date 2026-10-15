@@ -593,7 +593,7 @@ func (r *runner) exec(ctx context.Context, a model.Action) error {
 	case model.OpService:
 		spec := backup.Spec{Name: a.Name, Paths: append(ancestors(a.Unit), backup.PathSpec{Path: a.Unit, Save: backup.SaveCopy})}
 		err := r.journaled(a, spec, func(*backup.Tx) error {
-			return r.d.Service.Install(ctx, model.ServiceSpec{Name: a.Name, Unit: a.Unit})
+			return r.d.Service.Install(ctx, model.ServiceSpec{Name: a.Name, Unit: a.Unit, Listen: a.Listen})
 		})
 		if err == nil {
 			r.serviceRan = true
