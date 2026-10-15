@@ -102,14 +102,33 @@ describe('incomingToRoute (switchyard:// allow-list)', () => {
     expect(incomingToRoute(url)).toEqual(want);
   });
 
-  it('keeps only a plain https origin from a pair link, and well-formed secret and code', () => {
+  it('keeps only a plain http(s) origin from a pair link, and well-formed secret and code', () => {
     const q = (u: string, s = secret, c = '123456') =>
       `switchyard://pair?u=${encodeURIComponent(u)}&s=${s}&c=${c}`;
-    expect(incomingToRoute(q('http://hub.ts.net'))).toEqual({ name: 'pair', secret, code: '123456' });
+    // http reaches the pair screen; parsePairInput refuses it there unless the build is a development one
+    expect(incomingToRoute(q('http://10.0.2.2:18787'))).toEqual({ name: 'pair', origin: 'http://10.0.2.2:18787', secret, code: '123456' });
+    expect(incomingToRoute(q('ftp://hub.ts.net'))).toEqual({ name: 'pair', secret, code: '123456' });
     expect(incomingToRoute(q('https://u:p@evil.example'))).toEqual({ name: 'pair', secret, code: '123456' });
     expect(incomingToRoute(q('https://hub.ts.net/path'))).toEqual({ name: 'pair', secret, code: '123456' });
     expect(incomingToRoute(q('https://hub.ts.net:8443/'))).toEqual({ name: 'pair', origin: 'https://hub.ts.net:8443', secret, code: '123456' });
     expect(incomingToRoute(q('https://h.ts.net', 'short', '12'))).toEqual({ name: 'pair', origin: 'https://h.ts.net' });
+  });
+});
+
+describe('pair link keys (keys.md 7)', () => {
+  const secret = 'abcdefghijklmnopqrstuv';
+  const h = 'a2b3c4d5e6f7g2h3i4j5k6l7';
+  const k = 'AbCdEfGhIjKlMnOpQrStUv';
+  it('carries the QR hub fingerprint and seal key to the Pair screen', () => {
+    const url = `switchyard://pair?u=${encodeURIComponent('http://10.0.2.2:18787')}&s=${secret}&c=482913&h=${h}&k=${k}`;
+    expect(incomingToRoute(url)).toEqual({ name: 'pair', origin: 'http://10.0.2.2:18787', secret, code: '482913', hubFp: h, sealKey: k });
+    expect(nativeIntentToHref(url)).toBe(
+      `/pair?origin=${encodeURIComponent('http://10.0.2.2:18787')}&secret=${secret}&code=482913&hub=${h}&key=${k}`,
+    );
+  });
+  it('drops a malformed h or k', () => {
+    const url = `switchyard://pair?u=${encodeURIComponent('https://h.ts.net')}&s=${secret}&h=SHORT&k=x`;
+    expect(incomingToRoute(url)).toEqual({ name: 'pair', origin: 'https://h.ts.net', secret });
   });
 });
 

@@ -99,12 +99,15 @@ export function expoTargetLabel(t) {
   return ['App', plat, t && t.app_version].filter(Boolean).join(' · ');
 }
 
-// The link that opens the installed app on its pairing screen: switchyard://pair?u=&s=&c=
-// (phone.md P2). `c` is left out when there is no code. Never log the result: it carries the secret.
-export function appPairLink(origin, secret, code) {
+// The link that opens the installed app on its pairing screen: switchyard://pair?u=&s=&c=&h=&k=
+// (phone.md P2). `c`, `h` and `k` are left out when absent. `h` (the hub key's fingerprint) and `k`
+// (the registration seal key) are the QR's keys.md 7 pins: without them the app claims a secret
+// with no keys and gets no instant delivery. Never log the result: it carries the secret.
+export function appPairLink(origin, secret, code, hubFp, sealKey) {
   if (!origin || !secret) return '';
   const digits = codeDigits(code);
-  return `switchyard://pair?u=${encodeURIComponent(origin)}&s=${encodeURIComponent(secret)}${digits ? `&c=${encodeURIComponent(digits)}` : ''}`;
+  return `switchyard://pair?u=${encodeURIComponent(origin)}&s=${encodeURIComponent(secret)}${digits ? `&c=${encodeURIComponent(digits)}` : ''}` +
+    `${hubFp ? `&h=${encodeURIComponent(hubFp)}` : ''}${sealKey ? `&k=${encodeURIComponent(sealKey)}` : ''}`;
 }
 
 // The body of PUT /v1/push/channels/expo (push.md 12.5). The access token is write-only: an empty

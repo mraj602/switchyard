@@ -9,7 +9,7 @@ import { deviceName, isIOS, isMobile, normalizeCode, codeDigits, validCode, appP
 import { pwa, isStandalone, canInstall, promptInstall } from '../pwa.js';
 import { turnOn } from '../push.js';
 
-const st = { phase: 'idle', error: '', name: '', secret: '', code: '', typed: false, scanning: false, other: '', busy: false, notif: '', startedAt: 0 };
+const st = { phase: 'idle', error: '', name: '', secret: '', hubFp: '', sealKey: '', code: '', typed: false, scanning: false, other: '', busy: false, notif: '', startedAt: 0 };
 let stream = null;
 let scanTimer = null;
 let ctxRef = null;
@@ -23,7 +23,7 @@ export function load(ctx) {
   ctxRef = ctx;
   stopScan();
   const q = ctx.route.query;
-  Object.assign(st, { phase: 'idle', error: '', secret: q.get('s') || '', code: normalizeCode(q.get('c') || ''), typed: false, busy: false, notif: '', startedAt: Date.now(), other: '' });
+  Object.assign(st, { phase: 'idle', error: '', secret: q.get('s') || '', hubFp: q.get('h') || '', sealKey: q.get('k') || '', code: normalizeCode(q.get('c') || ''), typed: false, busy: false, notif: '', startedAt: Date.now(), other: '' });
   if (st.secret) {
     // iPhone in Safari: the Home Screen app has its own storage, so claiming here would pair the wrong app.
     if (ios() && !isStandalone()) { st.phase = 'ios-steps'; return; }
@@ -110,7 +110,7 @@ const note = () => h('p', { class: 'pair-note' }, 'The phone gets its own read-o
 
 // "Have the Switchyard app? Open in app": the link carries the one-time secret, so it is only put in the page.
 function appLink() {
-  const href = appPairLink(location.origin, st.secret, st.code);
+  const href = appPairLink(location.origin, st.secret, st.code, st.hubFp, st.sealKey);
   if (!href) return null;
   return h('p', { class: 'small', 'data-key': 'open-in-app' }, 'Have the Switchyard app? ',
     h('a', { href, class: 'strong', 'data-key': 'open-in-app-link' }, 'Open in app'));
