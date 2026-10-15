@@ -709,3 +709,26 @@ func TestAlertStreamEvents(t *testing.T) {
 		t.Fatalf("%q", changes)
 	}
 }
+
+// push.md 5.5: titles use the board's account name. Two accounts whose emails share a local
+// part each get their domain ("alex · gmail"), as on the board; a label wins.
+func TestTitleUsesTheBoardsAccountName(t *testing.T) {
+	h := newHarness(t)
+	h.hookOn(sid(2), "alex@acme.dev", "UserPromptSubmit", 0, map[string]any{"prompt": "go"})
+	h.hookOn(s1, "alex@gmail.com", "PermissionRequest", 0, map[string]any{"tool_name": "Bash"})
+	h.advanceTo(30 * time.Second)
+	if got := h.expectSends(1); got[0].Msg.Payload.Title != "alex · gmail · api · needs permission" {
+		t.Fatalf("title %q", got[0].Msg.Payload.Title)
+	}
+	h.exec(`UPDATE seat SET label = 'home' WHERE account_uuid = 'acc-alex@gmail.com'`)
+	h.hookOn(sid(2), "alex@acme.dev", "Stop", 31*time.Second, map[string]any{"last_assistant_message": "Hi.\n\nShip it?"})
+	h.advanceTo(91 * time.Second)
+	if got := h.expectSends(2); got[1].Msg.Payload.Title != "alex · api · asked a question" {
+		t.Fatalf("title %q", got[1].Msg.Payload.Title)
+	}
+	h.hookOn(sid(3), "alex@gmail.com", "PermissionRequest", 100*time.Second, map[string]any{"tool_name": "Bash"})
+	h.advanceTo(130 * time.Second)
+	if got := h.expectSends(3); got[2].Msg.Payload.Title != "home · api · needs permission" {
+		t.Fatalf("title %q", got[2].Msg.Payload.Title)
+	}
+}

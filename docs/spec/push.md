@@ -380,8 +380,10 @@ with the global switches and delays editable (`DeskAlerts`).
 
 ### 5.5 What a push says (text and privacy)
 
-Labels: `seat` = the seat's label, else the account email's local part, else
-"Unattributed"; `project` = `session.project`; `machine` = machine name; times in the
+Labels: `seat` = the board's name for the account (webui `components/seat.js` `seatName`; hub `store.SeatDisplayNames`): the seat's label,
+else the account email's local part; when two shown seats would read alike (compared
+lowercase with only letters and digits kept, so "you" and "you" collide), each
+gets the first part of its email domain too ("alex · gmail"); no seat = "Unattributed"; `project` = `session.project`; `machine` = machine name; times in the
 target's `tz`, else `hub.tz`, as `HH:MM` today, `Thu 17:00` within a week. Every field is cut
 to fit (title 80, body 180 characters, with `…`).
 
