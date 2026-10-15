@@ -2074,7 +2074,7 @@ components:
       required: [id, name]
       properties:
         id: {type: string}
-        name: {type: string}
+        name: {type: string, description: "The owner's rename on the board, or the machine's own name once `sy machine rename` changes it (machine_info.name, record.md 4.8)."}
         os: {type: [string, "null"]}
         arch: {type: [string, "null"]}
         sy_version: {type: [string, "null"]}

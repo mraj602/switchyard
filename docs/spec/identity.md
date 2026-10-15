@@ -36,7 +36,8 @@ joined by the login they carry at a point in time.
   folder, which is what we want (`sy hub export` / reinstall keep it; a fresh state folder is
   a new machine).
 - WSL has its own state folder, so it is its own machine (plan section 4).
-- `sy machine rename <name>` changes `name` and sends a `slot_info` so the hub follows.
+- `sy machine rename <name>` changes `name` and sends a `slot_info` and a `machine_info`
+  carrying the new `name` (record.md 4.8), so the hub follows with the next flush.
 - The hub creates the `machine` row on the first accepted record (or at
   `sy hub token create --machine`).
 

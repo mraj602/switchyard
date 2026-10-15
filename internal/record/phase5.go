@@ -147,7 +147,10 @@ type MachineInfoPayload struct {
 	Timer         *TimerState     `json:"timer,omitempty"`
 	ClaudeVersion string          `json:"claude_version,omitempty"`
 	Update        *UpdateState    `json:"update,omitempty"`
-	Extra         Extra           `json:"-"`
+	// Name is the machine's own name (<state>/machine.json, `sy machine rename`). Optional:
+	// older clients leave it out and a hub that does not know it keeps it in info only.
+	Name  string `json:"name,omitempty"`
+	Extra Extra  `json:"-"`
 }
 
 type machineInfoAlias MachineInfoPayload
