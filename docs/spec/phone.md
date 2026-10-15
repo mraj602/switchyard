@@ -710,9 +710,9 @@ dependency, `androidx.webkit:webkit` (the profile API).
 
 - **Profile name:** `sy-tab-` + the hub seat id (`^seat_[0-9A-HJKMNP-TV-Z]{26}$`), never an
   email or label. Other names (and `Default`) are never listed or deleted.
-- **`onTabState`** `{state, url, status?, height?}`: `loading` (main frame started), `loaded`
+- **`onTabState`** `{state, url?, status?, height?, code?, reason?}`: `loading` (main frame started), `loaded`
   (main frame finished, `height` = content height 3 s later), `http` (main-frame HTTP error,
-  `status`), `error` (main-frame network error), `crashed` (renderer gone; the view drops its
+  `status`), `error` (main-frame network error, `code`; or `reason` `unsupported` / `profile` when no tab could be made), `crashed` (renderer gone; the view drops its
   WebView), `download` (a download was refused), `external` (a link went to the browser).
 - **Lifecycle:** the screen mounts one `TabView` at a time. Cookies are flushed when the view
   is detached and when the app pauses; profiles are on disk in the app's data folder, so they
@@ -753,8 +753,8 @@ into `ok`, `waiting`, `refused` (a main-frame `http` 401, 403, 429 or 451 not fo
 `loaded` page with content within 10 s: Cloudflare's challenge also starts with a 403),
 `blank` (`loaded` with `height` 0, or `about:blank`), `failed` (`error`, `crashed`) or
 `timeout` (no `loaded` within 20 s). On anything but `ok` and `waiting` the screen shows
-"claude.ai did not load in this tab" with the reason and **Open in browser** (the same URL
-through `Linking.openURL`). It does not switch on its own, so a slow page is not lost.
+"claude.ai did not load in this tab" with the reason and **Open in browser** (the tab's current
+claude.ai URL through `Linking.openURL`). It does not switch on its own, so a slow page is not lost.
 
 ### P17.5 Security
 
