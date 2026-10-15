@@ -50,6 +50,7 @@ func commands() map[string]command {
 		"scan":        {summary: "Read token rows from transcripts", run: runScan},
 		"agents":      {summary: "Record the live session list of each folder", run: runAgents},
 		"status":      {summary: "Show local sessions", run: runStatus},
+		"analytics":   {summary: "Show the hub's usage reports (daily, models, projects, heatmap, sessions, limits, hits)", run: runAnalytics},
 		"doctor":      {summary: "Check the installation and print fixes", run: runDoctor},
 		"paths":       {summary: "Print the config, state and data folders", run: runPaths},
 		"config":      {summary: "Read and change config.toml (get, set)", run: runConfig},

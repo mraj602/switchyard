@@ -70,3 +70,21 @@ split by counter and no usage in dollars. Every other day has `source: "transcri
 The prototype also had pace and "which account next" (that is the overview's `pace` and the
 Accounts screen), per-day limit consumption, credits, surface splits and hook activity. They
 are not in these reports.
+
+## 6. The `sy analytics` command
+
+```
+sy analytics [daily|models|projects|heatmap|sessions|limits|hits] [--days N] [--from D] [--to D] [--seat S] [--json]
+```
+
+Read only; the default report is `daily`. `--days`, `--from`, `--to` and `--seat` are the query
+of section 2. Text mode prints the range line (`from`, `to`, `tz`, seat), then plain aligned
+tables of the hub's numbers (nothing is recomputed, cost included): `daily` a totals line, one
+row per day and one per seat; `heatmap` a 7 by 24 block of shade characters. `--json` prints
+the hub's reply, indented.
+
+It needs the `read` scope. This machine's own token (`sy connect`, kind `machine`) has `write`
+only (tokens.md 3) and is never sent to this endpoint; the command uses the board token that
+`sy board connect` saves (terminal.md T3), and says so when there is none. Exit codes: 0; 1 any
+other failure (a 400 or 404 shows the hub's message); 2 usage; 3 the hub refused the token (401,
+403); 4 no `hub.url` or no board token; 5 hub unreachable.
