@@ -370,7 +370,7 @@ re-pairing.
 | `action` | `id`, `token` | A notification action tapped on the phone: `token` is the action token from the alert (push.md 8). The hub applies it exactly as `POST /v1/actions/{token}` (same checks, same rate limit) and answers `action_result` with the same `id`. |
 | `peer_msg` | `doc` (peers.md 8.2) | A signed envelope, body sealed to the target machine, from a session on this machine to a session on another machine; the hub answers `peer_ack`. |
 | `peer_result` | `msg`, `status`, `detail?`, `human_at?` | The receiving agent's verdict on a `peer_msg` it got (peers.md 8.4). |
-| `peer_log` | `msg`, `thread`, `from_session`, `to_session`, `kind`, `status`, `detail?`, `size`, `at` | Metadata of a same-machine delivery, for the audit (peers.md 10). |
+| `peer_log` | `msg`, `thread`, `from_session`, `to_session`, `kind`, `status`, `detail?`, `size`, `at`; or `event`, `thread`, `detail`, `at` | Metadata of a same-machine delivery, for the audit (peers.md 10). With `event` it is instead this machine's event about a thread: `thread_resume_refused` (`detail` `hub_may_widen`): it refused a `peer_thread_resume` and keeps its stop (peers.md 6.3). The hub records it only when a session of the thread runs on this device's machine. |
 | `peers_list` | `id` | Ask for the session directory (peers.md 3); the hub answers `peers` with the same `id`. |
 
 Unknown `t` → the hub answers `notice` `{"code":"unknown_type"}` and carries on (forward

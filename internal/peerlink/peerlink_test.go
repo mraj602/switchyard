@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"os"
 	"strings"
@@ -98,6 +99,59 @@ func TestThreadResumeRefusedWithoutHubMayWiden(t *testing.T) {
 	}
 	if got := auditStatuses(t, r); len(got) != 1 || got[0] != stopped+" "+peers.ResumeRefused {
 		t.Fatalf("audit %v", got)
+	}
+}
+
+// sentLogs is a Sender that records peer_log frames, or fails while down.
+type sentLogs struct {
+	down bool
+	got  []peers.PeerLogUp
+}
+
+func (s *sentLogs) Send(_ context.Context, v any) error {
+	if s.down {
+		return errors.New("link down")
+	}
+	if up, ok := v.(peers.PeerLogUp); ok {
+		s.got = append(s.got, up)
+	}
+	return nil
+}
+
+// A refused resume is reported to the hub (peer_log thread_resume_refused, peers.md 6.3); while
+// the link is down it waits in the spool and goes out with the next report. A resume taken
+// sends nothing.
+func TestThreadResumeRefusalReported(t *testing.T) {
+	r, _, _ := resumeSetup(t, false)
+	link1 := &sentLogs{down: true}
+	r.Link = link1
+	if err := r.Queued(context.Background(), link.TypePeerThreadResume, 7, resumeFrame(stopped)); err != nil {
+		t.Fatal(err)
+	}
+	if b, err := os.ReadFile(r.spoolPath()); err != nil || !strings.Contains(string(b), `"event":"thread_resume_refused"`) {
+		t.Fatalf("spool %q %v", b, err)
+	}
+	link1.down = false
+	if err := r.Queued(context.Background(), link.TypePeerThreadResume, 8, resumeFrame(stopped)); err != nil {
+		t.Fatal(err)
+	}
+	want := peers.PeerLogUp{T: link.TypePeerLog, Event: peers.EventThreadResumeRefused, Thread: stopped,
+		Detail: peers.ResumeRefusedReason, At: "2026-10-15T12:00:00Z"}
+	if len(link1.got) != 2 || link1.got[0] != want || link1.got[1] != want {
+		t.Fatalf("sent %+v", link1.got)
+	}
+	if _, err := os.Stat(r.spoolPath()); !os.IsNotExist(err) {
+		t.Fatalf("spool left: %v", err)
+	}
+
+	taken, _, _ := resumeSetup(t, true)
+	link2 := &sentLogs{}
+	taken.Link = link2
+	if err := taken.Queued(context.Background(), link.TypePeerThreadResume, 1, resumeFrame(stopped)); err != nil {
+		t.Fatal(err)
+	}
+	if len(link2.got) != 0 {
+		t.Fatalf("a taken resume sent %+v", link2.got)
 	}
 }
 

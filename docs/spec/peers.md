@@ -334,7 +334,7 @@ machine can lie about which of its own sessions is which account, but no other m
 | --- | --- | --- |
 | Allow a pair, `same_account` on, resume, raise `max_turns` (widening, keys.md 5.2) | You: owner key at a terminal, or an owner session on the board or desktop app | `sy peers allow …`, `sy peers resume` (owner key, signing guard); Settings → Peers (board, desktop): hub-signed |
 | Deny a pair, pause, lower `max_turns` (narrowing) | Any paired device, phones included, or the owner key | `sy peers deny …`, `sy peers pause`; Settings → Peers or the pause switch on any screen |
-| Resume one thread the loop guard stopped (widening, 6.3) | An owner session on the board, or a human prompt in either session | Settings → Peers → Audit, "Resume thread": hub-signed, so machines with `hub_may_widen = false` keep their stop |
+| Resume one thread the loop guard stopped (widening, 6.3) | An owner session on the board, or a human prompt in either session | Settings → Peers → Audit, "Resume thread": hub-signed, so machines with `hub_may_widen = false` keep their stop (and say so in the audit) |
 
 The hub accepts a new version, stores it (`matrix_doc`), writes a `peer_audit` row and queues
 a `matrix` frame to every machine with an agent. A machine applies it on receipt (keys.md 5.4
@@ -401,9 +401,20 @@ message of a thread passes through both sessions' agents, so both always see the
      `hub_may_widen = false` the agent refuses it (a log line and a `refused` line in its
      `audit.jsonl`) and keeps its own `turns` and `paused_at` until a human prompt, so the
      next message is still refused there (`rejected` `loop_guard` as the receiver, or
-     `loop_guard` as the sender). Otherwise it resets the open thread exactly as a human
-     prompt would (`turns` 0, `paused_at` cleared, `human_at` kept) and writes a `resumed`
-     line. A thread it does not know, or that is closed, is left alone (`unknown_thread`).
+     `loop_guard` as the sender). It tells the hub with a `peer_log` event
+     `{"event":"thread_resume_refused","thread","detail":"hub_may_widen","at"}` (link.md 6.2;
+     spooled like any `peer_log` while the hub is unreachable). The hub takes it only from the
+     agent device of a machine one of the thread's two sessions runs on (anything else is
+     dropped), writes a `thread_resume_refused` row to `peer_audit` (actor: that device; detail
+     `machine`, the machine's name) and sets its thread's `paused_at` again if it was clear,
+     leaving `turns` at 0: the hub itself does not refuse, but the thread no longer reads as
+     resumed, and a later resume reports `was_paused`. The board and the phone show the row as
+     "<machine> kept the stop: hub_may_widen is off", and offer no new "Resume thread" for it
+     (the machine would refuse again; a human prompt lifts its stop). Otherwise (`hub_may_widen`
+     on) the agent resets the open thread exactly as a human prompt would (`turns` 0,
+     `paused_at` cleared, `human_at` kept) and writes a `resumed` line; it reports nothing to
+     the hub (the `thread_resume` row already says so). A thread it does not know, or that is
+     closed, is left alone (`unknown_thread`).
   3. There is no `sy` command for it: a resume at a terminal is a human prompt in either
      session.
 - All three parties evaluate it with `peers.LoopGuard` and the same inputs; the first that
@@ -720,7 +731,7 @@ The hub stores **metadata only** (plan addendum H5):
 | `matrix_doc` | Every matrix version: body, signer, fingerprint, signature, `widens`, who asked. |
 | `peer_thread` | Session pair, accounts, open/last/human times, `turns`, `paused_at`, `closed_at`. |
 | `peer_message` | Ids, thread, sender and receiver session/device/account, `kind`, `size`, `local`, `status`, `detail`, times. No text, no hash of the text. |
-| `peer_audit` | Matrix changes, pause/resume, loop-guard stops (`loop_guard`) and thread resumes (`thread_resume`, 6.3), refusals at machines, `off`/`on`, revocations. |
+| `peer_audit` | Matrix changes, pause/resume, loop-guard stops (`loop_guard`) and thread resumes (`thread_resume`, 6.3) and the machines that refused one (`thread_resume_refused`, 6.3), refusals at machines, `off`/`on`, revocations. |
 
 - Remote messages: the hub writes rows as it relays (8.3). Same-machine messages: the agent
   reports them with `peer_log` (link.md 6.2), `local = 1`.
@@ -881,4 +892,4 @@ captured on reply sockets.
   → rejected; hub-signed widening refused under `hub_may_widen = false`; pause stops a queued
   message; `sy peers off` with the hub down; "Resume thread" through the hub's endpoint after
   the loop guard (one machine offline, then delivered), and refused by a machine with
-  `hub_may_widen = false`, which keeps its stop.
+  `hub_may_widen = false`, which keeps its stop and reports it to the hub's audit.
