@@ -470,7 +470,8 @@ section 13).
   | summary | `/#/` (Now) |
   | private (any) | `/#/alerts/<alert id>` (the app looks the alert up and redirects) |
 
-  ntfy needs absolute URLs: the hub prefixes `hub.public_url`.
+  ntfy needs absolute URLs: the hub prefixes `hub.public_url`. Without one, ntfy messages
+  carry no `click` and no Snooze/Seen actions (7.2).
 
 ## 6. Web Push
 
@@ -644,6 +645,8 @@ An ntfy target is `{server, topic, token?, name?, private?}`:
 - The web app's Settings shows how to subscribe: the server and topic, and an
   `ntfy://<host>/<topic>` link (**uncertain** whether every ntfy app version handles it;
   the server/topic text always works).
+- Setup note: set `hub.public_url` first. Without it ntfy alerts have no click link and no
+  Snooze/Seen buttons (7.2).
 
 ### 7.2 Message
 
@@ -677,6 +680,10 @@ UTF-8 titles intact:
 - Private: title and body as 5.5, `click` = `/#/alerts/<id>` deep link, no Remote Control
   action (ntfy sees the text, unlike Web Push), Snooze and Seen kept (their URLs reveal only
   the hub's host name).
+- **Without `hub.public_url`** (`sy hub serve --public-url https://…`, pairing.md 2.3) the hub
+  has no absolute address to put in a message: ntfy alerts carry **no `click` link and no
+  Snooze/Seen buttons**, only the title, the body and "Open in Claude" when the session has a
+  Remote Control link. Set the public URL to get the tap-through and the buttons.
 - Messages are at most 4 096 bytes (ntfy's limit); the builder cuts the body first.
 - **iOS caveat.** Tapping a link from the ntfy app opens Safari, which on iOS is not the
   installed web app and has no pairing cookie: the deep link lands on the pair screen. On
