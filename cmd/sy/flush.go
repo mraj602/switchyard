@@ -111,6 +111,10 @@ func runFlush(args []string, stdout, stderr io.Writer) error {
 	return nil
 }
 
+// hookFlushDebounce is internal/hook's flushEvery: the age of flush.stamp below which a
+// hook does not start a flush.
+const hookFlushDebounce = 2 * time.Second
+
 // directWaitMax is how far ahead a hook-started flush waits for a due direct push
 // (machines.md 5.4); later ones are left to `sy tick`.
 const directWaitMax = 90 * time.Second
@@ -211,6 +215,11 @@ func flushOnce(ctx context.Context, d paths.Dirs, cfg config.Config, cl *client.
 		Budget:   a.timeout,
 		CapBytes: int64(cfg.Outbox.MaxMB) << 20,
 		KeepDays: cfg.Outbox.KeepDays,
+	}
+	if a.fromHook {
+		// sy hook starts no flush of its own while flush.stamp is younger than this (its
+		// flushEvery); this run picks up what those hooks wrote.
+		o.Linger = hookFlushDebounce
 	}
 	if !a.quiet {
 		o.Logf = func(format string, args ...any) { fmt.Fprintf(stderr, "sy flush: "+format+"\n", args...) }

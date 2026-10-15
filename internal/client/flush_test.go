@@ -571,6 +571,46 @@ func TestSecondFlusherBacksOff(t *testing.T) {
 	}
 }
 
+// A hook that writes while flush.stamp is young starts no flush (it is debounced), so the
+// hook-started flush lingers until the stamp is old and sends what such hooks wrote.
+func TestLingerSendsRecordsWrittenDuringTheDebounce(t *testing.T) {
+	ob := outbox.New(filepath.Join(t.TempDir(), "outbox"))
+	ids := fill(t, ob, 2, "2026-10-12")
+	h := newHub(t)
+	clk := newClock()
+	o := opts(ob, h.client(), clk)
+	o.Linger = 2 * time.Second
+	late := rid(7)
+	var slept []time.Duration
+	o.Sleep = func(ctx context.Context, d time.Duration) error {
+		slept = append(slept, d)
+		if len(slept) == 1 {
+			// The debounced hook: appended after the first drain, before the stamp aged.
+			fh, err := os.OpenFile(filepath.Join(ob.Dir, "2026-10-12.jsonl"), os.O_APPEND|os.O_WRONLY, 0o600)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fmt.Fprintln(fh, line(late, "2026-10-12T10:00:01.000Z"))
+			fh.Close()
+		}
+		return clk.sleep(ctx, d)
+	}
+	res := Flush(context.Background(), o)
+	if res.Err != nil || !res.Drained {
+		t.Fatalf("%+v", res)
+	}
+	assertDelivered(t, h, append(ids, late))
+	if len(slept) != 1 || slept[0] != 2*time.Second {
+		t.Fatalf("slept %v, want one wait of 2s (until the stamp is 2s old)", slept)
+	}
+
+	// Without Linger (the timer, sy flush by hand) a drained run returns at once.
+	o.Linger, slept = 0, nil
+	if res := Flush(context.Background(), o); !res.Drained || len(slept) != 0 {
+		t.Fatalf("no linger: %+v slept %v", res, slept)
+	}
+}
+
 func TestHousekeepingRunsEvenWhenHubIsDown(t *testing.T) {
 	ob := outbox.New(filepath.Join(t.TempDir(), "outbox"))
 	fill(t, ob, 2, "2026-01-01")
