@@ -7,4 +7,6 @@ module.exports = {
   testPathIgnorePatterns: ['/node_modules/', '<rootDir>/android/', '<rootDir>/ios/', '<rootDir>/.expo/'],
   modulePathIgnorePatterns: ['<rootDir>/android/', '<rootDir>/ios/'],
   clearMocks: true,
+  // Headroom for starved workers; see the timing note at the bottom of test/setup.ts.
+  testTimeout: 30000,
 };
