@@ -3,6 +3,8 @@ package statusline
 import (
 	"bytes"
 	"io"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -61,5 +63,25 @@ func TestBadFlagStillPrintsWrappedOutput(t *testing.T) {
 	_ = Run([]string{"--bogus"}, bytes.NewReader(nil), &out, io.Discard, sb.getenv)
 	if strings.TrimSpace(plain(out.String())) == "" {
 		t.Errorf("empty line: %q", out.String())
+	}
+}
+
+func TestShowOffPrintsOnlyTheWrappedLineAndStillSamples(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	sb := newSandbox(t)
+	cfg := filepath.Join(sb.home, "sy", "config", "config.toml")
+	if err := os.MkdirAll(filepath.Dir(cfg), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfg, []byte("[statusline]\nshow = false\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := sb.run(fixture(t, "full.json"), "--wrap", "echo mine"); got != "mine\n" {
+		t.Errorf("want the wrapped line alone, got %q", got)
+	}
+	if len(sb.samples()) != 1 {
+		t.Errorf("show = false must still record the limit sample, got %d", len(sb.samples()))
 	}
 }

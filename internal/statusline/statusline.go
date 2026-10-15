@@ -63,19 +63,21 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(s
 		go func() { ch <- runWrapped(*wrap, in, getenv) }()
 	}
 
-	part := switchyardPart(in, getenv)
+	part, show := switchyardPart(in, getenv)
 
 	var out []byte
 	if wrapped != nil {
 		out = trimNewlines(<-wrapped)
 	}
-	if len(out) > 0 {
+	switch {
+	case !show: // statusline.show = false: the wrapped line alone
+		out = append(out, '\n')
+	case len(out) > 0:
 		out = append(out, reset+" "+dim+"│ "...)
-	} else {
-		out = append(out, dim...)
+		out = append(out, part+reset+"\n"...)
+	default:
+		out = append(out, dim+part+reset+"\n"...)
 	}
-	out = append(out, part...)
-	out = append(out, reset+"\n"...)
 	if _, err := stdout.Write(out); err != nil {
 		return err
 	}
@@ -252,13 +254,13 @@ func Format(label string, v Values) string {
 	return strings.Join(parts, " · ")
 }
 
-// switchyardPart computes the text and, as a side effect, records a limit_sample when the
-// rules say so.
-func switchyardPart(in []byte, getenv func(string) string) string {
+// switchyardPart computes the text and whether to show it (statusline.show) and, as a side
+// effect, records a limit_sample when the rules say so.
+func switchyardPart(in []byte, getenv func(string) string) (string, bool) {
 	v := ParseValues(in)
 	env, err := clientenv.Load(getenv)
 	if err != nil {
-		return Format(defaultLabel(getenv("CLAUDE_CONFIG_DIR")), v)
+		return Format(defaultLabel(getenv("CLAUDE_CONFIG_DIR")), v), true
 	}
 	label := env.Config.Slots.Labels[env.Slot.Name]
 	if label == "" {
@@ -267,7 +269,7 @@ func switchyardPart(in []byte, getenv func(string) string) string {
 	if len(in) > 0 {
 		sample(env, in, v, time.Now())
 	}
-	return Format(label, v)
+	return Format(label, v), env.Config.Statusline.Show
 }
 
 // defaultLabel is the folder name without its leading dot: "~/.claude-2" -> "claude-2".

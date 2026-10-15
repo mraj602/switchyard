@@ -223,6 +223,7 @@ tool_events = false                          # decision 6: PreToolUse/PostToolUs
 
 [statusline]
 wrap = "bash ~/.claude/statusline.sh"        # the user's original status line command
+show = true                                  # false: print only the wrapped line (samples are still recorded)
 
 [outbox]
 fsync = true
