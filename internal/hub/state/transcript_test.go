@@ -28,7 +28,9 @@ func TestTranscript(t *testing.T) {
 		{"live session ignores it", []Input{hk(0, "UserPromptSubmit"), tr(time.Hour)}, "working:", -1, 0},
 		{"ended session keeps its reason", []Input{hk(0, "SessionEnd"), tr(time.Hour)}, "ended:other", 0, 0},
 		{"a hook brings history back", []Input{tr(time.Hour), hk(2*time.Hour, "UserPromptSubmit")}, "working:", -1, 2 * time.Hour},
-		{"a listing brings history back", []Input{tr(time.Hour), ls(2*time.Hour, "idle")}, "done:repaired", -1, 2 * time.Hour},
+		// Done since its last activity (the history's since), not since the list ran.
+		{"a listing brings history back", []Input{tr(time.Hour), ls(2*time.Hour, "idle")}, "done:repaired", -1, time.Hour},
+		{"busy listing brings history back now", []Input{tr(time.Hour), ls(2*time.Hour, "busy")}, "working:repaired", -1, 2 * time.Hour},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

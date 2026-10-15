@@ -133,6 +133,19 @@ Notes on the table:
   a `session_list` reports it `idle` (repair rows above), or an `idle_prompt` arrives.
 - **`idle` repair** never clears `needs_permission` or `asked`, because an idle prompt
   showing a permission dialog or a question is exactly what those states mean.
+- **`since` of a list repair to `done`.** A list only says the session is idle *now*, not
+  since when. When a list makes a session `done` (`idle` repair of `working`, a session with
+  no state yet, or `ended:history` coming back), `since` is the session's newest sign of
+  life at or before the list's `ts`: the newest of its newest transcript row (`token_row`),
+  the `startedAt` the list item reports, its `last_event_at` and its current `since`;
+  the list's `ts` only when none is known. So an idle process from last week, first listed
+  when `sy` is set up (or listed on a slot without hooks), reads "done for 7 days", never
+  "done since the list (or the import) ran". A session that ended or went `gone` and is
+  listed again comes back at the list's `ts`; `busy` repairs use the list's `ts`. When a
+  transcript row that is newer than `since` but not newer than that list arrives later
+  (the first list on a machine usually beats the import of its transcripts), the engine
+  refolds the session, so arrival order does not change the result. `sy hub refold`
+  applies the rule to sessions folded before it.
 - **SessionEnd then SessionStart with the same id** (`claude --resume`): the session comes
   back (`·` column). **Uncertain** whether resume keeps the id in 2.1.296; both cases work.
 - **`/clear`** ends the old session id (SessionEnd `clear`) and starts a new one
@@ -215,13 +228,18 @@ alone, because a quiet session (a long build, a person reading) is normal.
 - **Done sessions with no list:** nothing happens; `done` is a resting state.
 
 - **Dormant.** An open session (not `ended`/`gone`) that does not need you is reported with
-  `dormant = true` (read time, not a state) when it is `done` with no activity (hook event,
-  listing, start or end) for **12 hours**, or `working` and `stale` (above). Any other open
-  state (`failed`, a fresh `working`) is not dormant however old. `counts.live`, the
-  machines' and accounts' live counts and the overview leave dormant sessions out; the
-  session list still shows them inside its `days` window. The board's "open" filter is the
-  same rule. A session on a slot with complete lists is listed every 5 minutes while it runs,
-  so only a slot without lists (or a machine that stopped sending) can have dormant sessions.
+  `dormant = true` (read time, not a state) when it is `done` with no activity for
+  **12 hours**, or `working` and `stale` (above). Activity (`activity_at`) is the newest of
+  `last_event_at`, `state_since`, `started_at` and `ended_at`. A listing is **not**
+  activity: `claude agents` lists an idle session every 5 minutes for as long as its
+  process runs, so a terminal left open on a finished session for days is dormant although
+  it is listed. Any other open state (`failed`, a fresh `working`) is not dormant however
+  old. `counts.live`, the machines' and accounts' live counts and the overview leave
+  dormant sessions out; the session list still shows them inside its `days` window (a
+  session listed in the window counts as in it). The board's "Open" filter is the same
+  rule, and its other filter, "Ended or idle", holds exactly the sessions that are not
+  open: ended, gone and dormant ones (marked "idle"), so a `done` badge there is no
+  contradiction.
 
 The timer interval and both thresholds are hub settings (`setting` table), with these
 defaults.

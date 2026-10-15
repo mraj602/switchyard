@@ -262,6 +262,28 @@ func elicitation(cur State) rule {
 	return rule{to: Asked, detail: "elicitation"}
 }
 
+// doneAt is when a session a list (taken at ts) finds idle became done: its newest sign of
+// life before the list (the list's lastActive, its last hook event, the current state's
+// since), capped at ts. A list only sees that the session is idle now, not since when; the
+// newest activity is the best bound the hub has, and never the time the list (or an import
+// of old transcripts) happened to run. A session that ended or went gone and is listed
+// again comes back now, at ts.
+func (s *Session) doneAt(ts, lastActive time.Time) time.Time {
+	if s.closed() && !s.IsHistory() {
+		return ts
+	}
+	at := lastActive
+	for _, t := range []time.Time{s.LastEventAt, s.Since} {
+		if t.After(at) {
+			at = t
+		}
+	}
+	if at.IsZero() || at.After(ts) {
+		return ts
+	}
+	return at
+}
+
 func (s *Session) applyList(ts time.Time, l *ListObs) {
 	if l.Listed {
 		s.LastListedAt = ts
@@ -280,10 +302,10 @@ func (s *Session) applyList(ts time.Time, l *ListObs) {
 		case l.Status == "busy" && cur == Done:
 			s.set(ts, Working, "repaired", "session_list")
 		case l.Status == "idle" && cur == Working:
-			s.set(ts, Done, "repaired", "session_list")
+			s.set(s.doneAt(ts, l.LastActive), Done, "repaired", "session_list")
 		}
 		if s.closed() || s.State == "" { // busy/idle handled above; waiting or unknown: back as done
-			s.set(ts, Done, "repaired", "session_list")
+			s.set(s.doneAt(ts, l.LastActive), Done, "repaired", "session_list")
 		}
 		return
 	}

@@ -210,7 +210,13 @@ test('live: old done, ended and bare imported sessions are not open', async () =
   assert.equal(L.isLive(s({}), now), true);
   assert.equal(L.isLive(s({ state: 'working', last_event_at: at(40) }), now), true);
   assert.equal(L.isLive(s({ last_event_at: at(13) }), now), false);
-  assert.equal(L.isLive(s({ stale: true }), now), false);
+  assert.equal(L.isLive(s({ stale: true }), now), true);
+  // A stale working session is not open (the hub's dormant), however its state reads.
+  assert.equal(L.isLive(s({ state: 'working', stale: true, last_event_at: at(13) }), now), false);
+  // activity_at wins: a listed but idle session whose turn ended 3 days ago is not open, and
+  // a done one with a recent state change is.
+  assert.equal(L.isLive(s({ last_event_at: null, state_since: at(1), activity_at: at(72) }), now), false);
+  assert.equal(L.isLive(s({ last_event_at: at(40), activity_at: at(2) }), now), true);
   assert.equal(L.isLive(s({ state: 'ended' }), now), false);
   assert.equal(L.isLive(s({ state: 'gone' }), now), false);
   assert.equal(L.isLive(s({ state: 'asked', needs_you: true, last_event_at: at(30) }), now), true);

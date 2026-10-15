@@ -41,7 +41,8 @@ var scenarios = map[string]func(d *Data, now time.Time){
 			"name": nil, "title": "old-merge", "kind": "interactive", "model": "claude-opus-4-7", "context_pct": 40.0,
 			"started_at": ts(now.Add(-28 * time.Hour)), "last_event_at": ts(now.Add(-26 * time.Hour)), "ended_at": nil,
 			"remote_url": nil, "resume": "claude --resume c41e0000-0000-4000-8000-1000000000ff", "focus_url": nil,
-			"stale": true, "machine_stale": false, "alert": nil,
+			// The hub marks only a working session stale; an idle done one is dormant (R11).
+			"stale": false, "machine_stale": false, "dormant": true, "alert": nil,
 		})
 	},
 	// Long account and machine names: nothing may wrap to many lines or scroll sideways.

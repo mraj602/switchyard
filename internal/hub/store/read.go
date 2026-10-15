@@ -49,12 +49,15 @@ func (t Time) MarshalJSON() ([]byte, error) {
 
 // Thresholds from states.md 5.
 const (
-	StaleAfter       = 12 * time.Hour
-	MachineSilent    = 15 * time.Minute
-	LiveWithin       = 12 * time.Hour // a done session idle this long is dormant (states.md 5)
-	TimelineMax      = 500
-	activeStatesSQL  = `'working', 'needs_permission', 'asked'`
-	activityExpr     = `max(coalesce(s.last_event_at, 0), coalesce(s.last_listed_at, 0), coalesce(s.started_at, 0), coalesce(s.ended_at, 0))`
+	StaleAfter      = 12 * time.Hour
+	MachineSilent   = 15 * time.Minute
+	LiveWithin      = 12 * time.Hour // a done session idle this long is dormant (states.md 5)
+	TimelineMax     = 500
+	activeStatesSQL = `'working', 'needs_permission', 'asked'`
+	// activityExpr is a session's last sign of life (states.md 5): its newest hook event,
+	// state change, start or end. Not its last listing: `claude agents` lists an idle
+	// session every 5 minutes for as long as its process runs, which says nothing about use.
+	activityExpr     = `max(coalesce(s.last_event_at, 0), coalesce(st.since_at, 0), coalesce(s.started_at, 0), coalesce(s.ended_at, 0))`
 	sessionStateExpr = `coalesce(st.state, 'done')`
 	sessionNeedsExpr = `coalesce(st.needs_you, 0)`
 	sessionSinceExpr = `coalesce(st.since_at, s.started_at, s.last_event_at, 0)`
@@ -113,9 +116,9 @@ type SessionView struct {
 	// Dormant: open (not ended or gone), not needing you, and no activity for LiveWithin
 	// (states.md 5): computed at read time, not a state. Not counted in counts.live.
 	Dormant bool `json:"dormant"`
-	// Activity is the newest of last_event_at, last listing, started_at and ended_at: what
-	// the days window and the order use. Null when nothing is known (imported history with
-	// no times).
+	// Activity is the newest of last_event_at, state_since, started_at and ended_at: what
+	// the open rule, the days window and the order use. Null when nothing is known
+	// (imported history with no times).
 	Activity Time `json:"activity_at"`
 	// Alert is the open alert of this session's current episode (phase 4), or null.
 	Alert *model.AlertBrief `json:"alert"`
@@ -304,8 +307,10 @@ func (s *Store) Sessions(ctx context.Context, f SessionFilter, now time.Time) (o
 		where = append(where, in("s.machine_id", f.Machines, &args))
 	}
 	cut := f.Cut(now)
-	where = append(where, "("+activityExpr+" >= ? OR "+sessionNeedsExpr+" = 1)")
-	args = append(args, cut.UnixMilli())
+	// The days window also keeps a session listed in it (a running but idle process), so it
+	// can still be found; it is dormant, not open.
+	where = append(where, "("+activityExpr+" >= ? OR coalesce(s.last_listed_at, 0) >= ? OR "+sessionNeedsExpr+" = 1)")
+	args = append(args, cut.UnixMilli(), cut.UnixMilli())
 	limit := f.Limit
 	if limit <= 0 {
 		limit = 200
