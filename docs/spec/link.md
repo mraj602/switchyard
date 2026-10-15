@@ -407,9 +407,10 @@ accepted only under `hub_may_widen` (keys.md 5.4).
 
 ## 7. Revocation and timing
 
-- `DELETE /v1/devices/{id}` (or `sy hub token revoke`, or an owner-signed revocation) deletes the
-  device's queue and `link_state`, closes its link at once with **4403**, and queues `revoke` to
-  every machine. The phone, on 4403, stops the service and shows "This phone was removed from
+- `DELETE /v1/devices/{id}` (or an owner-signed revocation) deletes the device's queue and
+  `link_state`, closes its link at once with **4403**, and queues `revoke` to every machine.
+  `sy hub token revoke` runs in its own process and only writes the database: the running hub
+  closes that link at its next sweep (within a minute, so still inside one ping). The phone, on 4403, stops the service and shows "This phone was removed from
   the hub" (push.md 14.4). An agent on 4403 stops and `sy agent status` says why.
 - A connected machine receives new `matrix` and `revoke` frames immediately; one that is
   reconnecting receives them when it logs in, and `known` (3.2) catches anything missed.
