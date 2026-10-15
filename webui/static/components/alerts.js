@@ -6,13 +6,13 @@ import { clock } from '../format.js';
 import { store, markSeen, snooze, canPush, actionable } from '../store.js';
 
 const REASONS = {
-  remote_control: 'Claude app already notifies', rule_off: 'rule is off', stale: 'too old to push',
+  remote_control: 'the Claude app already notifies', rule_off: 'rule is off', stale: 'too old to send',
   superseded: 'replaced by a later alert', baseline: 'existing at first start', answered: 'you answered first',
   ended: 'session ended', recovered: 'recovered', reset_passed: 'window reset', seen: 'seen',
 };
 export const reasonText = (r) => REASONS[r] || (r ? String(r).replace(/_/g, ' ') : '');
 
-// "push in 40 s" counts down; the app refreshes [data-due] every few seconds.
+// "notifies in 40 s" counts down; the app refreshes [data-due] every few seconds.
 export function untilShort(ts, now = Date.now()) {
   const d = Math.round((Date.parse(ts) - now) / 1000);
   if (Number.isNaN(d)) return '';
@@ -21,15 +21,22 @@ export function untilShort(ts, now = Date.now()) {
   return `in ${Math.round(d / 60)} min`;
 }
 
+// "Notifies in 19 s", then "Notifying now…" once it is due.
+export function pendingText(due, now = Date.now()) {
+  if (!due) return 'notification waiting';
+  const u = untilShort(due, now);
+  return !u || u === 'now' ? 'notifying now…' : `notifies ${u}`;
+}
+
 // One line for a session's alert brief, or ''.
 export function alertText(a, now = Date.now()) {
   if (!a) return '';
   switch (a.status) {
-    case 'pending': return a.due_at ? `push ${untilShort(a.due_at, now)}` : 'push waiting';
-    case 'fired': return `pushed ${clock(a.fired_at, now)}`;
+    case 'pending': return pendingText(a.due_at, now);
+    case 'fired': return `notified ${clock(a.fired_at, now)}`;
     case 'snoozed': return `snoozed until ${clock(a.snoozed_until, now)}`;
     case 'seen': return a.seen_at ? `seen ${clock(a.seen_at, now)}` : 'seen';
-    case 'skipped': return `no push · ${reasonText(a.reason) || 'skipped'}`;
+    case 'skipped': return `not notified · ${reasonText(a.reason) || 'skipped'}`;
     case 'cancelled': return `cancelled · ${reasonText(a.reason) || 'answered'}`;
     default: return a.status;
   }

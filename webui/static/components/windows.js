@@ -38,7 +38,7 @@ export function paceInfo(w, now = Date.now()) {
   const b = BAND[p.band] || { cls: 'ok', text: humanKey(p.band) };
   const proj = p.projected_pct != null ? Math.round(p.projected_pct) : null;
   let text;
-  if (p.band === 'runaway' && p.full_at) text = `At this pace: 100% ${clock(p.full_at, now)}`;
+  if (p.band === 'runaway' && p.full_at) text = `At this pace: 100% by ${clock(p.full_at, now)}`;
   else if (proj != null) text = `${b.text}: ~${proj}% at reset`;
   else text = b.text;
   return { cls: b.cls, text, band: p.band, projected: p.projected_pct || 0 };
@@ -64,7 +64,7 @@ export function windowRow(w, { seatName, full = false, now = Date.now() } = {}) 
   const used = w.used_pct;
   const hot = used != null && used >= 90;
   const label = windowLabel(w);
-  const value = used == null ? 'no data' : `${pct(used)}${w.resets_at ? ` · ${clock(w.resets_at, now)}` : ''}`;
+  const value = used == null ? 'no data' : `${pct(used)}${w.resets_at && !full ? ` · resets ${clock(w.resets_at, now)}` : ''}`;
   const pace = full ? paceInfo(w, now) : null;
   return h('div', { class: 'win' },
     h('div', { class: 'win-head' },
@@ -78,6 +78,6 @@ export function windowRow(w, { seatName, full = false, now = Date.now() } = {}) 
     full && w.resets_at ? h('div', { class: 'win-sub' },
       `resets ${until(w.resets_at, now)}`, ' (', clock(w.resets_at, now), ')',
       w.peak_pct != null ? ` · peak ${pct(w.peak_pct)}` : '',
-      w.source ? ` · from ${w.source === 'both' ? 'status line and web' : w.source === 'web' ? 'claude.ai' : 'status line'}` : '') : null,
+      w.source ? ` · from ${w.source === 'both' ? 'the status line and claude.ai' : w.source === 'web' ? 'claude.ai' : 'the status line'}` : '') : null,
     pace ? h('div', { class: `win-pace pace-${pace.cls}` }, pace.text) : null);
 }
