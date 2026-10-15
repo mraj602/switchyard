@@ -82,6 +82,20 @@ type Server struct {
 	actionLim ipLimiter // POST /v1/actions/{token}, per client IP
 }
 
+// HTTPServer is the http.Server `sy hub serve` runs s.Handler() on. It sets no ReadTimeout
+// and no WriteTimeout on purpose: in net/http both bound the whole request, so either would
+// cut /v1/stream (a server-sent event response that stays open for hours) at that age. The
+// stream bounds each write itself (streamWriteTimeout, armed before every write) and sends a
+// ping every PingEvery, so a dead client still frees its goroutine.
+func (s *Server) HTTPServer(addr string) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           s.Handler(),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+}
+
 // New builds a server over an open store.
 func New(cfg Config) *Server {
 	if cfg.Now == nil {
