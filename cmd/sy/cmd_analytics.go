@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"slices"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -56,7 +57,7 @@ func runAnalytics(args []string, stdout, stderr io.Writer) error {
 	}
 	if len(pos) == 1 {
 		report = pos[0]
-		if !containsStr(analyticsReports, report) {
+		if !slices.Contains(analyticsReports, report) {
 			fmt.Fprintf(stderr, "sy analytics: unknown report %q (want %s)\n", report, strings.Join(analyticsReports, ", "))
 			return errUsage
 		}
@@ -125,15 +126,6 @@ func runAnalytics(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 	return renderAnalytics(stdout, report, raw)
-}
-
-func containsStr(list []string, s string) bool {
-	for _, x := range list {
-		if x == s {
-			return true
-		}
-	}
-	return false
 }
 
 // analyticsError turns a client error into the message and exit code described above.
