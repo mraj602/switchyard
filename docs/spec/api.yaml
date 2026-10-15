@@ -2303,7 +2303,7 @@ components:
                     properties:
                       model: {type: string, description: 'Model id; "" when the row had none.'}
                       label: {type: string, description: '"Opus 5.5"; unknown ids unchanged.'}
-                      priced: {type: boolean}
+                      priced: {type: boolean, description: "false: no list price is known for the model, so api_usd is 0 and means unknown, not free; show it as a dash (UI audit AN6)."}
 
     AnalyticsProjects:
       allOf:
