@@ -176,6 +176,7 @@ type AlertSessionRow struct {
 	NeedsYou                                bool
 	SinceAt                                 int64
 	SeatID, SeatLabel, Email                string
+	SeatName                                string // the board's name of the seat (SeatDisplayNames)
 	Project, MachineID, MachineName, Remote string
 	Tool, Message, LastMessage              string
 	LimitResetsAt                           int64 // newest limit_hit resets_at of the session
@@ -209,6 +210,13 @@ func (tx *Tx) AlertSession(id string) (AlertSessionRow, bool, error) {
 	r.SeatID, r.SeatLabel, r.Email, r.Project = seat.String, label.String, email.String, project.String
 	r.MachineID, r.MachineName, r.Tool, r.Message, r.LastMessage = machine.String, mname.String, tool.String, msg.String, lm.String
 	r.LimitResetsAt = limitResets.Int64
+	if r.SeatID != "" {
+		names, err := tx.alertSeatNames(r.SeatID)
+		if err != nil {
+			return r, false, err
+		}
+		r.SeatName = names[r.SeatID]
+	}
 	if v := claudeURL(remote); v != nil {
 		r.Remote = *v
 	}
@@ -225,6 +233,7 @@ type AlertWindowRow struct {
 // AlertSeatRow is a seat's labels and current windows (resets_at > now, newest per key).
 type AlertSeatRow struct {
 	ID, Label, Email string
+	Name             string // the board's name of the seat (SeatDisplayNames)
 	Hidden           bool
 	Windows          []AlertWindowRow
 }
@@ -243,6 +252,11 @@ func (tx *Tx) AlertSeat(id string, now int64) (AlertSeatRow, bool, error) {
 		return r, false, err
 	}
 	r.Label, r.Email, r.Hidden = label.String, email.String, hidden == 1
+	names, err := tx.alertSeatNames(id)
+	if err != nil {
+		return r, false, err
+	}
+	r.Name = names[id]
 	rows, err := tx.QueryContext(tx.ctx, `SELECT window_key, resets_at, updated_at, peak_pct, final_pct FROM usage_window w
 		WHERE seat_id = ? AND resets_at > ? AND resets_at = (SELECT max(resets_at) FROM usage_window x WHERE x.seat_id = w.seat_id AND x.window_key = w.window_key)
 		ORDER BY window_key`, id, now)
@@ -265,6 +279,7 @@ func (tx *Tx) AlertSeat(id string, now int64) (AlertSeatRow, bool, error) {
 // AlertRoomRow is another seat's current window of one key (push.md 5.7).
 type AlertRoomRow struct {
 	Seat, Label, Email string
+	Name               string // the board's name of the seat (SeatDisplayNames)
 	Hidden             bool
 	Used               float64
 	UpdatedAt          int64
@@ -272,6 +287,10 @@ type AlertRoomRow struct {
 
 // AlertRoom lists every seat's current window of key with a known used %.
 func (tx *Tx) AlertRoom(key string, now int64) ([]AlertRoomRow, error) {
+	names, err := tx.alertSeatNames()
+	if err != nil {
+		return nil, err
+	}
 	rows, err := tx.QueryContext(tx.ctx, `SELECT se.id, se.label, a.email, se.hidden, w.final_pct, w.updated_at
 		FROM usage_window w JOIN seat se ON se.id = w.seat_id LEFT JOIN account a ON a.uuid = se.account_uuid
 		WHERE w.window_key = ? AND w.resets_at > ? AND w.final_pct IS NOT NULL ORDER BY se.id`, key, now)
@@ -288,6 +307,7 @@ func (tx *Tx) AlertRoom(key string, now int64) ([]AlertRoomRow, error) {
 			return nil, err
 		}
 		r.Label, r.Email, r.Hidden = label.String, email.String, hidden == 1
+		r.Name = names[r.Seat]
 		out = append(out, r)
 	}
 	return out, rows.Err()

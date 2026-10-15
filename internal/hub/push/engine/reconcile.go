@@ -169,6 +169,15 @@ func sessionNow(id string, r store.AlertSessionRow, found bool) rules.SessionNow
 	}
 }
 
+// seatName is the board's name of a seat (store.SeatDisplayNames), else its label or email
+// local part (push.md 5.5).
+func seatName(name, label, email string) string {
+	if name != "" {
+		return name
+	}
+	return rules.SeatLabel(label, email)
+}
+
 // sessionFacts are the text inputs of a session alert (push.md 5.5).
 func sessionFacts(r store.AlertSessionRow) model.Facts {
 	f := model.Facts{
@@ -179,7 +188,7 @@ func sessionFacts(r store.AlertSessionRow) model.Facts {
 		f.Machine = r.MachineID
 	}
 	if r.SeatID != "" {
-		f.Seat = rules.SeatLabel(r.SeatLabel, r.Email)
+		f.Seat = seatName(r.SeatName, r.SeatLabel, r.Email)
 	}
 	switch {
 	case r.State == "needs_permission" || r.Detail == "elicitation":
@@ -213,7 +222,7 @@ func (w *work) seatNow(id string) (rules.SeatNow, bool, error) {
 	if err != nil || !found {
 		return rules.SeatNow{ID: id}, found, err
 	}
-	cur := rules.SeatNow{ID: id, Facts: model.Facts{Seat: rules.SeatLabel(r.Label, r.Email)}}
+	cur := rules.SeatNow{ID: id, Facts: model.Facts{Seat: seatName(r.Name, r.Label, r.Email)}}
 	for _, x := range r.Windows {
 		wn := rules.WindowNow{Key: x.Key, ResetsMS: x.ResetsAt, UpdatedMS: x.UpdatedAt}
 		if x.Peak != nil {
