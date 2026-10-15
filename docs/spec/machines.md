@@ -651,7 +651,7 @@ skipped as stale. That is the only known duplicate path, and it needs a badly wr
 | `reach` | `direct` \| `forward` \| `pull` \| null | Last `machine_info.reach`, or `pull` after a pull |
 | `last_seen` | time | Unchanged: last request from it, **or the last drain `hello`** |
 | `last_record` | time | Unchanged |
-| `backlog` | integer \| null | Unchanged: `X-Sy-Backlog` or drain `hello`/`batch` |
+| `backlog` | integer \| null | Records still queued: `X-Sy-Backlog` or the drain `batch` count minus the batch's own records (they are answered by that ingest, so a flush that sent everything leaves 0), or drain `hello` |
 | `backlog_oldest` | time \| null | Ts of the oldest unanswered record: `X-Sy-Backlog-Oldest` (new, sent with `X-Sy-Backlog` when the backlog is more than one batch), drain `hello.oldest`, or `machine_info` |
 | `backlog_at` | time \| null | When `backlog` was reported |
 | `sy_version` | string \| null | Unchanged |

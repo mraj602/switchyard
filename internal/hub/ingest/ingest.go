@@ -224,6 +224,14 @@ func (g *Ingester) IngestWith(ctx context.Context, dev store.Device, body []byte
 		}
 	}
 	more := opt.More || (backlog != nil && *backlog > int64(len(b.Records)))
+	// The client counts this batch in its backlog; once the batch is answered (this
+	// transaction) it is no longer queued, so the stored backlog is what is left after it.
+	// Otherwise `sy machine` shows the last batch's size right after a flush that sent
+	// everything (machines.md 6.1).
+	if backlog != nil {
+		left := max(0, *backlog-int64(len(b.Records)))
+		backlog = &left
+	}
 	ch := Changes{Sessions: map[string]SessionChange{}, Seats: map[string]bool{}, Machines: map[string]bool{}, More: map[string]bool{}}
 	var logs []string
 	err := g.Store.Write(ctx, func(tx *store.Tx) error {

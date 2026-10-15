@@ -266,7 +266,16 @@ func TestIngestBacklogOldest(t *testing.T) {
 		t.Fatalf("%s", body)
 	}
 	m := list.Machines[0]
-	if m.Backlog == nil || *m.Backlog != 900 || m.BacklogOldest == nil || *m.BacklogOldest != "2026-10-12T08:00:00.000Z" || m.BacklogAt == nil {
+	// 900 queued with this one-record batch: 899 left once it is answered.
+	if m.Backlog == nil || *m.Backlog != 899 || m.BacklogOldest == nil || *m.BacklogOldest != "2026-10-12T08:00:00.000Z" || m.BacklogAt == nil {
 		t.Fatalf("%s", body)
+	}
+	// The last batch of a flush (backlog = its own size) leaves nothing queued.
+	if code, body := h.do("POST", "/v1/ingest", tok, batch(machineInfoRec(t, h.machine)), "X-Sy-Backlog", "1"); code != 200 {
+		t.Fatalf("%d %s", code, body)
+	}
+	_, body = h.do("GET", "/v1/machines", owner, nil)
+	if json.Unmarshal(body, &list) != nil || len(list.Machines) != 1 || list.Machines[0].Backlog == nil || *list.Machines[0].Backlog != 0 {
+		t.Fatalf("after the last batch: %s", body)
 	}
 }

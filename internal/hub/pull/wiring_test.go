@@ -75,8 +75,8 @@ func TestSessionBatchesCarryMoreAndReach(t *testing.T) {
 	if err := e.st.R().QueryRowContext(context.Background(), `SELECT coalesce(backlog, -1), backlog_oldest FROM machine WHERE id = ?`, machineID).Scan(&backlog, &oldest); err != nil {
 		t.Fatal(err)
 	}
-	if backlog != 50 || oldest != nil {
-		t.Errorf("after the last batch: backlog %d (want the batch's 50), backlog_oldest %v (want none)", backlog, oldest)
+	if backlog != 0 || oldest != nil {
+		t.Errorf("after the last batch: backlog %d (want 0: the last batch is answered), backlog_oldest %v (want none)", backlog, oldest)
 	}
 }
 
