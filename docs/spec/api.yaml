@@ -1062,6 +1062,16 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
+        "409":
+          description: "duplicate_rule: another rule of the trigger has the same scope (push.md 3.7); `rule` is its id."
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: "#/components/schemas/Error"}
+                  - type: object
+                    properties:
+                      rule: {type: string, description: The id of the rule with that scope.}
 
   /v1/rules/{id}:
     put:
@@ -1087,6 +1097,16 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+        "409":
+          description: "duplicate_rule: another rule of the trigger has the same scope (push.md 3.7); `rule` is its id."
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: "#/components/schemas/Error"}
+                  - type: object
+                    properties:
+                      rule: {type: string, description: The id of the rule with that scope.}
     delete:
       tags: [alerts]
       operationId: deleteRule
@@ -1777,7 +1797,7 @@ components:
         code:
           type: string
           enum: [bad_request, unauthorized, forbidden, machine_mismatch, not_found, conflict, gone, too_large, rate_limited, unavailable, not_implemented, internal,
-            link_used, link_expired, link_cancelled, link_unknown]
+            link_used, link_expired, link_cancelled, link_unknown, duplicate_rule]
 
     Health:
       type: object

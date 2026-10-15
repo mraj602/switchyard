@@ -34,6 +34,34 @@ func (e errRuleInput) Error() string { return e.msg }
 
 func ruleBad(format string, a ...any) error { return errRuleInput{fmt.Sprintf(format, a...)} }
 
+// errDuplicateRule is a 409: another rule of the trigger already has the same scope
+// (push.md 3.4, 3.7). Rule is its id.
+type errDuplicateRule struct {
+	Rule string
+	Base bool
+}
+
+func (e errDuplicateRule) Error() string {
+	if e.Base {
+		return "this override has the same scope as the base rule; change the base rule (" + e.Rule + ") instead"
+	}
+	return "an override with this trigger and scope already exists (" + e.Rule + "); change that one instead"
+}
+
+// ruleDuplicate finds a rule other than self with r's trigger and the same scope.
+func ruleDuplicate(tx *store.Tx, r model.Rule) error {
+	rs, err := tx.RuleList()
+	if err != nil {
+		return err
+	}
+	for _, o := range rs {
+		if o.ID != r.ID && o.Trigger == r.Trigger && rules.SameScope(r.Trigger, o.Scope, r.Scope) {
+			return errDuplicateRule{Rule: o.ID, Base: o.Base}
+		}
+	}
+	return nil
+}
+
 // rulePoke wakes the engine when it has a scheduler.
 func (s *Server) rulePoke() {
 	if p, ok := s.cfg.Engine.(interface{ Poke() }); ok && s.cfg.Engine != nil {
@@ -116,9 +144,15 @@ func ruleCheckDelay(d *int) error {
 // ruleWriteErr answers a failed rule transaction.
 func ruleWriteErr(w http.ResponseWriter, err error) {
 	var bad errRuleInput
+	var dup errDuplicateRule
 	switch {
 	case errors.As(err, &bad):
 		auth.WriteError(w, http.StatusBadRequest, "bad_request", bad.msg)
+	case errors.As(err, &dup):
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusConflict)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": dup.Error(), "code": "duplicate_rule", "rule": dup.Rule})
 	case errors.Is(err, store.ErrNotFound):
 		auth.WriteError(w, http.StatusNotFound, "not_found", "no such rule")
 	case errors.Is(err, model.ErrConflict):
@@ -178,6 +212,9 @@ func (s *Server) ruleAdd(w http.ResponseWriter, r *http.Request) {
 		}
 		if in.BypassQuiet != nil {
 			rule.BypassQuiet = *in.BypassQuiet
+		}
+		if err := ruleDuplicate(tx, rule); err != nil {
+			return err
 		}
 		return tx.RulePut(rule)
 	})
@@ -243,6 +280,9 @@ func (s *Server) rulePut(w http.ResponseWriter, r *http.Request) {
 					return ruleBad("a base rule's scope may only set windows")
 				}
 				cur.Scope = model.RuleScope{Windows: sc.Windows}
+				if err := ruleDuplicate(tx, cur); err != nil {
+					return err
+				}
 			} else {
 				if err := tx.RuleScopeCheck(sc); err != nil {
 					if strings.HasPrefix(err.Error(), "unknown ") {
@@ -251,6 +291,9 @@ func (s *Server) rulePut(w http.ResponseWriter, r *http.Request) {
 					return err
 				}
 				cur.Scope = sc
+				if err := ruleDuplicate(tx, cur); err != nil {
+					return err
+				}
 			}
 		}
 		cur.UpdatedAt = model.Time(s.now().UnixMilli())

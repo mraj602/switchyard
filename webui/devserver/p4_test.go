@@ -426,6 +426,14 @@ func TestRules(t *testing.T) {
 	owner.want(400, "PUT", "/v1/rules/rule_asked", M{"delay_s": 999999})
 	owner.want(409, "DELETE", "/v1/rules/rule_asked", nil)
 	n := owner.want(201, "POST", "/v1/rules", M{"trigger": "limit_80", "delay_s": 0, "scope": M{"seats": []string{"seat_client"}}})
+	// Duplicate scopes are refused as the hub does (push.md 3.7).
+	if e := owner.want(409, "POST", "/v1/rules", M{"trigger": "limit_80", "scope": M{"seats": []string{"seat_client"}}}); e["code"] != "duplicate_rule" || e["rule"] != n["id"] {
+		t.Errorf("duplicate = %v", e)
+	}
+	if e := owner.want(409, "POST", "/v1/rules", M{"trigger": "asked", "delay_s": 300}); e["rule"] != "rule_asked" {
+		t.Errorf("base duplicate = %v", e)
+	}
+	owner.want(409, "PUT", "/v1/rules/rule_o1", M{"scope": M{}})
 	owner.want(204, "DELETE", "/v1/rules/"+n["id"].(string), nil)
 	owner.want(404, "DELETE", "/v1/rules/"+n["id"].(string), nil)
 	s := owner.want(200, "PUT", "/v1/push/settings", M{"snooze_min": 20, "private": true})
