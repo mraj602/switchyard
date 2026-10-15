@@ -131,6 +131,11 @@ func (tx *Tx) AlertsDue(until int64) ([]model.Alert, error) {
 		AND status IN ('pending', 'snoozed') ORDER BY due_at, created_at, id`, until))
 }
 
+// AlertsPending lists the alerts that wait to fire for the first time (status pending).
+func (tx *Tx) AlertsPending() ([]model.Alert, error) {
+	return alertRows(tx.QueryContext(tx.ctx, `SELECT `+alertCols+` FROM alert WHERE status = 'pending' ORDER BY created_at, id`))
+}
+
 // AlertNextDue is the earliest due_at of a pending or snoozed alert.
 func (tx *Tx) AlertNextDue() (int64, bool, error) {
 	var v sql.NullInt64

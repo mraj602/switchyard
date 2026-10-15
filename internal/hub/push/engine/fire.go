@@ -2,7 +2,9 @@ package engine
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -69,10 +71,11 @@ func (e *Engine) pass() {
 	var pushes []*push
 	var evs []events.Event
 	frozen := false
+	newSig := ""
 	txCtx, cancelTx := context.WithTimeout(context.Background(), time.Minute)
 	defer cancelTx()
 	err := e.st.Write(txCtx, func(tx *store.Tx) error {
-		pushes, evs = nil, nil
+		pushes, evs, newSig = nil, nil, ""
 		var err error
 		if frozen, err = tx.HubIsFrozen(); err != nil {
 			return err
@@ -95,6 +98,14 @@ func (e *Engine) pass() {
 			// sent (deliveries stay pending), so an old and a new hub never both push.
 			evs = w.evs
 			return nil
+		}
+		// A rule turned off (or an override that now says do not notify) cancels its pending
+		// alerts at once (push.md 3.6 step 1b); fired and snoozed ones are left alone.
+		if sig := rulesSig(w.env.Rules); sig != e.rulesSig {
+			if err := w.cancelRuleOff(); err != nil {
+				return err
+			}
+			newSig = sig
 		}
 		if sweep {
 			if err := w.sweepMachines(); err != nil {
@@ -146,6 +157,9 @@ func (e *Engine) pass() {
 	if sweep {
 		e.nextSweep = now.UnixMilli() + e.cfg.SweepEvery.Milliseconds()
 	}
+	if newSig != "" {
+		e.rulesSig = newSig
+	}
 	cancelTx()
 	e.publish(evs)
 	if max := e.cfg.MaxPushesPerPass; len(pushes) > max {
@@ -156,6 +170,35 @@ func (e *Engine) pass() {
 	}
 	e.sendAll(pushes)
 	e.finish(pushes)
+}
+
+// rulesSig changes whenever a rule is added, removed, switched or rescoped.
+func rulesSig(rs []model.Rule) string {
+	var b strings.Builder
+	for _, r := range rs {
+		sc, _ := json.Marshal(r.Scope)
+		fmt.Fprintf(&b, "%s|%s|%t|%s;", r.ID, r.Trigger, r.Enabled, sc)
+	}
+	return b.String()
+}
+
+// cancelRuleOff cancels every pending (not yet fired) alert whose rule is now off: the
+// rule that matches its subject today is disabled, or none matches (push.md 3.6 step 1b).
+func (w *work) cancelRuleOff() error {
+	pend, err := w.tx.AlertsPending()
+	if err != nil {
+		return err
+	}
+	for _, a := range pend {
+		rule, ok := rules.Match(w.env.Rules, a.Trigger, rules.SubjectOf(a, a.Facts.Project))
+		if ok && rule.Enabled {
+			continue
+		}
+		if err := w.end(a, model.StatusCancelled, model.ReasonRuleOff); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // fireDue fires every alert that is due (push.md 3.6 step 3): when at least one alert is

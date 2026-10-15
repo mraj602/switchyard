@@ -213,6 +213,13 @@ changes, an API action). Nothing is held only in memory: every timer is a column
 guard). On wake-up:
 
 1. Wall-clock jump check (3.3).
+   1b. Rule off: when the rules changed since the last pass (a rule or override added,
+   removed, switched or rescoped), every `pending` alert (waiting, never fired) is matched
+   again (3.4); if the rule that matches it now is off, or none matches, it is **cancelled**
+   with reason `rule_off` at once, so turning a rule off (or adding a "do not notify"
+   override) never leaves alerts "waiting" until their due time (a reset alert waits for the
+   window's reset). Alerts already fired, snoozed or seen are left as they are; a snoozed
+   one meets the rule check of step 3 when its re-push is due.
 2. Silence sweep: machines with a live session (3.1) and `max(last_seen, awake_at) + delay
    <= now` and no alert with their current key → create `machine_silent` (due now).
 3. Due alerts: every alert with `due_at <= now + batch_s` in status `pending` or `snoozed`.
@@ -222,7 +229,7 @@ guard). On wake-up:
 4. Fan out the batch to targets (section 5).
 5. Due deliveries: retries and held deliveries with `next_at <= now` (5.2, 5.6).
 
-While the setting `hub.frozen` is set (a hub move, machines.md 8.1) the scheduler skips steps
+While the setting `hub.frozen` is set (a hub move, machines.md 8.1) the scheduler skips steps 1b and
 2–5: nothing is created by the sweep and nothing is sent, so an old and a new hub never both
 push. Unfreezing resumes, subject to the stale guard; it also counts as waking up
 (`awake_at` = the unfreeze), so machines that kept queueing while the hub was frozen are not
@@ -984,7 +991,7 @@ moves; "expect" lists sends and final alert status.
 | 23 | Batch | 3 sessions asked within 1 s | One summary push "3 sessions need you" with 3 deliveries in one batch |
 | 24 | Flood cap | 10 limit alerts in one minute | 6 pushes, then one summary when the window frees |
 | 25 | Muted trigger | device mutes `limit_80` | Delivery `skipped` / `muted` for that device only |
-| 26 | Rule off during delay | asked at 0; owner disables `asked` at 30 s | `cancelled` / `rule_off` at 60 s |
+| 26 | Rule off during delay | asked at 0; owner disables `asked` at 30 s | `cancelled` / `rule_off` at once (3.6 step 1b), nothing at 60 s |
 | 27 | Override | override `asked` delay 300 for project `infra` | `infra` pushes at 5 min, others at 1 min |
 | 28 | Remote Control skip | `skip_remote` on; session with `remote_url` asks | `skipped` / `remote_control` |
 | 29 | Hub restart mid-delay | asked at 0; engine stopped at 20 s, restarted at 40 s | Push at 60 s (timer from the table) |

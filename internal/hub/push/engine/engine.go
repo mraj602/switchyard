@@ -127,7 +127,8 @@ type Engine struct {
 	lastMono  time.Duration
 	nextSweep int64
 	wakeIn    time.Duration
-	frozen    bool // the last pass found hub.frozen set
+	frozen    bool   // the last pass found hub.frozen set
+	rulesSig  string // the rules (ids, on/off, scope) the last pass checked pending alerts against
 }
 
 // backlogReport is what a machine's latest batch said about its queue.
