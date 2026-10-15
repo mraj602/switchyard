@@ -11,6 +11,8 @@
 #   make e2e-machines  sy machine add / pull / remove against an sshd container (SY_E2E_RUNTIME=podman|docker;
 #                    skips when no container runtime works)
 #   make e2e-terminal  sy board / term / open / ssh end to end (test/e2e/terminal; fake opener, temp HOME)
+#   make e2e-android the Android app against a real local hub on the emulator (test/e2e/android; ~15 min,
+#                    builds the APK once, ~6 min; skips without the SDK/AVD/KVM; never part of check)
 #   make pane-check  the Claude Code pane mod gate (scripts/pane-check.sh and its --self-test; needs claude)
 #   make release-check  a release build of sy contains no test seams (fakeclock, fakeopen)
 #   make app-test    the desktop app (app/): npm ci --ignore-scripts, lint, unit tests (no display)
@@ -39,7 +41,7 @@ LDFLAGS  := -s -w \
 GOFILES   = $(shell git ls-files --cached --others --exclude-standard -- '*.go')
 
 .PHONY: all build test lint fmt spec-check fixtures check clean e2e-setup e2e-setup-fedora e2e-setup-ubuntu e2e-machines \
-	e2e-terminal pane-check release-check app-deps app-test app-smoke app-dist app-e2e \
+	e2e-terminal e2e-android pane-check release-check app-deps app-test app-smoke app-dist app-e2e \
 	phone-deps phone-check phone-prebuild phone-android-debug phone-apk-release
 
 all: check build
@@ -98,6 +100,11 @@ e2e-setup-ubuntu:
 # -v so a skip says why; the test picks podman, else docker, unless SY_E2E_RUNTIME is set.
 e2e-machines:
 	$(GO) test -count=1 -v -timeout 15m ./test/e2e/machines
+
+# The Android app on the emulator against a real hub on this host (test/e2e/android/README.md).
+# Not in `make check`: it needs the Android SDK, an AVD, KVM and minutes.
+e2e-android:
+	test/e2e/android/run.sh
 
 # The desktop app (docs/phases/6.md). npm runs in app/ only; the root prototype is never touched.
 # Smoke and e2e use temp HOME / SY_HOME / user data folders; on Linux they run under xvfb-run
