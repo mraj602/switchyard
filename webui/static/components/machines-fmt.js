@@ -1,8 +1,8 @@
 // Text of the Machines screen (docs/spec/machines.md 6.1), as pure functions so node --test
 // can check every sentence. No imports: the caller passes the formatters it uses (format.js).
 
-// 1240 -> "1 240" (a no-break space, as the spec writes it).
-export const spaced = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+// 1240 -> "1,240", grouped the way format.js num() writes every count on the board.
+export const grouped = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
 const intervalText = (s) => {
   if (!s || s <= 0) return '';
@@ -11,20 +11,20 @@ const intervalText = (s) => {
   return s % 3600 === 0 ? `${s / 3600} h` : `${Math.round(s / 60)} min`;
 };
 
-// The reach chip: {text, title, cls} or null when the hub does not know.
+// How the machine reaches the hub: {text, title, cls} or null when the hub does not know.
 export function reachChip(m) {
   switch (m.reach) {
-    case 'direct': return { text: 'Direct', title: 'Sends to the hub itself (Tailscale or HTTPS)', cls: 'reach-direct' };
-    case 'forward': return { text: 'via laptop SSH', title: 'Sends through an SSH forward from your laptop; records wait while the laptop is away', cls: 'reach-forward' };
+    case 'direct': return { text: 'Connects directly', title: 'Sends its updates to the hub itself (over Tailscale or HTTPS)', cls: 'reach-direct' };
+    case 'forward': return { text: 'Through your laptop', title: 'Sends through an SSH forward from your laptop; updates wait while the laptop is away', cls: 'reach-forward' };
     case 'pull': {
       const every = m.pull && m.pull.interval_s ? ` every ${intervalText(m.pull.interval_s)}` : '';
-      return { text: `pulled by hub${every}`, title: 'The hub connects over SSH and collects its records', cls: 'reach-pull' };
+      return { text: `Collected by the hub${every}`, title: 'The hub connects over SSH and collects its updates', cls: 'reach-pull' };
     }
     default: return null;
   }
 }
 
-// The status line: Live / Quiet 1 h 12 min / Seen 3 min ago / Never seen.
+// The status line: Live / Quiet 1 h / Seen 3 min ago / Never seen.
 export function statusOf(m, now, f) {
   const at = m.last_record || m.last_seen || '';
   const seen = Date.parse(at);
@@ -34,24 +34,33 @@ export function statusOf(m, now, f) {
   return { cls: 'muted', text: `Seen ${f.agoLabel(at, now)}` };
 }
 
-// "1 240 queued, oldest 14:02", or '' when nothing is queued.
+// Updates on their way are normal for a minute or two; the line shows only when they pile
+// up: the oldest is older than 2 min, or (age unknown) there are 50 or more.
+export const BACKLOG_AGE_MS = 2 * 60e3;
+export const BACKLOG_MIN = 50;
+
+// "1,240 waiting to send (oldest 40 min)", or '' while nothing is stuck.
 export function backlogText(m, now, f) {
   if (!(m.backlog > 0)) return '';
-  const oldest = m.backlog_oldest ? `, oldest ${f.clock(m.backlog_oldest, now)}` : '';
-  return `${spaced(m.backlog)} queued${oldest}`;
+  const t = Date.parse(m.backlog_oldest || '');
+  if (Number.isNaN(t)) return m.backlog >= BACKLOG_MIN ? `${grouped(m.backlog)} waiting to send` : '';
+  if (now - t < BACKLOG_AGE_MS) return '';
+  return `${grouped(m.backlog)} waiting to send (oldest ${f.ago(m.backlog_oldest, now)})`;
 }
 
 // The version line: {text, cls} with cls '' | 'warn' | 'bad'.
 export function versionLine(m, hubVersion) {
   const v = m.sy_version;
   if (!v) return { text: 'not reported', cls: '' };
-  if (m.held > 0) return { text: `${v} · holding ${spaced(m.held)} records: hub too old`, cls: 'bad' };
+  if (m.held > 0) return { text: `${v} · holding ${grouped(m.held)} updates: the hub is too old for them`, cls: 'bad' };
+  // The same version string is the same version, whatever the hub could compare (M1).
+  if (hubVersion && v === hubVersion) return { text: `${v} · same as hub`, cls: '' };
   const hub = hubVersion ? ` hub ${hubVersion}` : ' the hub';
   switch (m.version_status) {
     case 'same': return { text: `${v} · same as hub`, cls: '' };
     case 'older': return { text: `${v} · older than${hub}`, cls: 'warn' };
     case 'newer': return { text: `${v} · newer than${hub}`, cls: 'warn' };
-    default: return { text: `${v} · cannot compare with the hub`, cls: '' };
+    default: return { text: v, cls: '' };
   }
 }
 
@@ -77,15 +86,15 @@ export function sortMachines(list) {
   return [...list].sort((a, b) => (!!a.removed_at - !!b.removed_at) || (!!b.silent - !!a.silent) || String(a.name).localeCompare(String(b.name)));
 }
 
-// The silent alert as a sentence, or ''.
+// The "machine went quiet" alert as a sentence, or ''.
 export function alertText(a, now, f) {
   if (!a) return '';
   const when = a.fired_at ? ` ${f.agoLabel(a.fired_at, now)}` : '';
   switch (a.status) {
-    case 'fired': return `Silent alert sent${when}`;
-    case 'pending': return 'Silent alert is about to go out';
-    case 'snoozed': return 'Silent alert snoozed';
-    case 'seen': return 'Silent alert seen';
-    default: return `Silent alert ${a.status}`;
+    case 'fired': return `Quiet-machine notification sent${when}`;
+    case 'pending': return 'Quiet-machine notification about to go out';
+    case 'snoozed': return 'Quiet-machine notification snoozed';
+    case 'seen': return 'Quiet-machine notification seen';
+    default: return `Quiet-machine alert ${a.status}`;
   }
 }
