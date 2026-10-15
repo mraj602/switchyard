@@ -55,6 +55,9 @@ export function render({ store, route, now }) {
   const since = ago(s.state_since, now);
   // An imported session cannot be reopened in the Claude app (D3).
   const remote = imported ? null : httpsUrl(s.remote_url);
+  // Open but never sent a hook event: Claude Code loads hooks when a session starts, so a
+  // session that was already running when Switchyard was set up only shows up in listings.
+  const noHooks = !imported && !isEnded(s) && tl.length === 0 && !s.last_event_at;
 
   const facts = [
     ['Account', h('span', {}, dot(seat.colour), seat.label)],
@@ -104,7 +107,9 @@ export function render({ store, route, now }) {
           tl.length > events.length || showAll ? h('button', { type: 'button', class: 'linkish', 'data-key': 'tl-toggle',
             onclick: () => { showAll = !showAll; window.dispatchEvent(new Event('sy-rerender')); } },
             showAll ? 'State changes only' : `Show all ${tl.length} events`) : null),
-        events.length === 0 ? h('p', { class: 'muted' }, 'No events yet.')
+        events.length === 0 ? h('p', { class: 'muted', 'data-key': noHooks ? 'no-hooks' : null }, noHooks
+          ? 'This session started before Switchyard was set up, so the hub only sees that it is running: no messages or events. Start a new session, or resume this one (claude --resume), to see its timeline and last message.'
+          : 'No events yet.')
           : h('ol', { class: 'timeline' }, [...events].reverse().map((e) => h('li', { class: 'tl-item' },
             h('time', { datetime: e.ts, class: 'tl-time mono small', title: dateTime(e.ts) }, `${day(e.ts, now)} ${timeOfDay(e.ts)}`),
             h('span', { class: 'tl-what' }, EVENT_NAMES[e.event] || humanKey(e.event),
