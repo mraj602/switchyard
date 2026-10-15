@@ -48,7 +48,8 @@ export function render({ store, route, now }) {
   const machineFilter = route.query.get('machine') || '';
 
   const node = h('div', { class: 'page' });
-  const counts = (f) => (all || []).filter((s) => f.test(s, now)).length;
+  // Chip counts follow the machine filter, like the rows under them.
+  const counts = (f) => (all || []).filter((s) => f.test(s, now) && (!machineFilter || s.machine === machineFilter)).length;
 
   node.append(h('header', { class: 'page-head' },
     h('h1', {}, 'Sessions'),

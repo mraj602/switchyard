@@ -36,8 +36,10 @@ func (s *Server) linkRoute(serve func(Link, http.ResponseWriter, *http.Request))
 	})
 }
 
-// linkRevoked tells the link that devices were revoked (nil-safe).
+// linkRevoked tells the link that devices were revoked (nil-safe), and ends their open
+// event streams: a revoked board must not keep getting live updates until the next ping.
 func (s *Server) linkRevoked(ctx context.Context, ids ...string) {
+	s.streams.kick(ids...)
 	if s.cfg.Link == nil {
 		return
 	}
