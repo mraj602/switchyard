@@ -16,6 +16,7 @@
 #   7  force-stop stays stopped; opening the app restarts it and replays what was queued
 #   8  task removed (swipe away from Recents): the service keeps running
 #   9  adb reboot: BOOT_COMPLETED restarts the service, the link reconnects
+#  11  claude.ai account tabs (P17): two seats, a WebView profile each, Open in Claude, sign out
 #  10  revoke from the hub API (DELETE /v1/devices/{id}): 4403, service stops, UI says so, and no
 #      orphaned notification is left; then `sy hub token revoke` (CLI) the same way
 #
@@ -456,6 +457,142 @@ if phase_on 10; then
   # minute) or when the phone's next request answers 401.
   check "10.7 CLI revoke: the service stops within the sweep" 120 svc_down
   check "10.8 no orphaned connection notification is left" 10 no_conn_note
+fi
+
+# ================================================================ 11 claude.ai account tabs
+if phase_on 11; then
+  echo "== 11 claude.ai account tabs (P17): one WebView profile per seat, never signed in"
+  # Never types or taps anything inside claude.ai: the page is only loaded and looked at.
+  EA="alice-e2e@example.com"
+  EB="bob-e2e@example.com"
+  SA_SESS="$(sid 11)"
+  SB_SESS="$(sid 12)"
+  ask_as() { # ask_as SESSION N EMAIL REMOTE: a session of account N (the hub makes one seat_<ULID> per account+org)
+    "$T/bin/fakemachine" -hub "$(hub_origin)" -token "$MTOKEN" -machine "$MACHINE" -session "$1" \
+      -account "acc-e2e-$2" -org "org-e2e-$2" -email "$3" -remote-url "$4" ask >>"$T/fakemachine.log" 2>&1
+  }
+  seat_of() { api GET /v1/accounts | python3 -I "$LIB" seat "$1"; }
+  ok_seat() { [[ "$(seat_of "$1")" =~ ^seat_[0-9A-HJKMNP-TV-Z]{26}$ ]]; }
+  ask_as "$SA_SESS" a "$EA" "https://claude.ai/code/session_e2eA"
+  ask_as "$SB_SESS" b "$EB" "https://claude.ai/code/session_e2eB"
+  check "11.1 the hub made seat_<ULID> ids for account A" 20 ok_seat "$EA"
+  check "11.1b and for account B" 20 ok_seat "$EB"
+  SEAT_A="$(seat_of "$EA")"
+  SEAT_B="$(seat_of "$EB")"
+  if [ -n "$SEAT_A" ] && [ "$SEAT_A" != "$SEAT_B" ]; then pass "11.2 the two seats differ" "A=$SEAT_A B=$SEAT_B"; else fail "11.2 the two seats differ" "A=$SEAT_A B=$SEAT_B"; fi
+  [ "$(api GET "/v1/sessions/$SB_SESS" | python3 -I "$LIB" json seat)" = "$SEAT_B" ] && pass "11.3 the hub attributes session B to seat B" || fail "11.3 the hub attributes session B to seat B"
+
+  ONLINE=0
+  adbx shell ping -c 1 -W 4 claude.ai >/dev/null 2>&1 && ONLINE=1
+  [ "$ONLINE" = 1 ] && note "the emulator reaches claude.ai" || note "the emulator has no internet (ping claude.ai failed): the page-load checks are SKIPped"
+
+  profiles_has() { ui_has "id=tabrow-$1"; }
+  profiles_not() { ui_dump && ! python3 -I "$LIB" has "id=tabrow-$1" <"$T/ui.xml"; }
+  go_bar() { # go_bar LABEL: the bottom bar entry (not a screen's own title)
+    local xy
+    ui_dump || return 1
+    xy="$(python3 -I "$LIB" tapbar "$1" <"$T/ui.xml")" || return 1
+    adbx shell input tap $xy
+  }
+  scroll_to() { # scroll_to TEXT: swipe up until a node with TEXT is on screen
+    local i
+    for i in 1 2 3 4 5 6 7 8; do
+      ui_has "$1" && return 0
+      adbx shell input swipe 540 1700 540 600 300
+      sleep 1
+    done
+    ui_has "$1"
+  }
+  webview_loaded() { # a WebView with rendered text and no fallback strip
+    ui_dump || return 1
+    python3 -I "$LIB" has "claude.ai did not load" <"$T/ui.xml" && return 1
+    python3 -I "$LIB" webcontent <"$T/ui.xml" >"$T/web.txt"
+  }
+  open_settings() {
+    go_bar More
+    wait_until 15 ui_has "Settings" && ui_tap "Settings"
+    wait_until 15 ui_has "Unpair"
+  }
+
+  adbx logcat -c
+  launch
+  wait_until 30 ui_has "Needs you" || save_diag t0
+  go_bar Accounts
+  check "11.4 Accounts shows an Open claude.ai button for seat B" 40 ui_has "id=tab-$SEAT_B"
+  ui_has "id=tab-$SEAT_A" && pass "11.4b and for seat A" || fail "11.4b and for seat A"
+
+  # ---- A
+  ui_tap "id=tab-$SEAT_A"
+  check "11.5 Open claude.ai (A) opens the tab screen" 20 ui_has "id=tab-close"
+  ui_has "alice-e2e" && pass "11.5a its title is alice-e2e" || fail "11.5a its title is alice-e2e"
+  ui_has "id=tab-close" && ui_has "Open in browser" && pass "11.5b it is the tab screen (Open in browser, Close)" || fail "11.5b it is the tab screen"
+  ui_has "id=tab-view" && pass "11.5c the native tab view is mounted" || fail "11.5c the native tab view is mounted"
+  if [ "$ONLINE" = 1 ]; then
+    if wait_until 60 webview_loaded; then pass "11.6 the WebView loads a claude.ai page" "$(head -c 160 "$T/web.txt")"
+    else fail "11.6 the WebView loads a claude.ai page"; save_diag tabA; fi
+  else
+    echo "SKIP  11.6 the WebView loads a claude.ai page  [no internet on the emulator]"
+  fi
+  sleep 3
+  [ -n "$(app_pid)" ] && pass "11.7 the app is still running with the tab open" || fail "11.7 the app is still running with the tab open"
+  if adbx logcat -d | grep -q "FATAL EXCEPTION"; then fail "11.7b no crash in logcat" "$(adbx logcat -d | grep -A3 'FATAL EXCEPTION' | head -4)"; else pass "11.7b no crash in logcat"; fi
+  ui_tap "id=tab-close"
+  check "11.8 Close returns to Accounts" 15 ui_has "id=tab-$SEAT_A"
+
+  # ---- B
+  ui_tap "id=tab-$SEAT_B"
+  check "11.9 Open claude.ai (B) opens the tab screen" 20 ui_has "id=tab-close"
+  ui_has "bob-e2e" && pass "11.9a its title is bob-e2e" || fail "11.9a its title is bob-e2e"
+  ui_has "alice-e2e" && fail "11.9b B's tab does not show A's name" || pass "11.9b B's tab does not show A's name"
+  if [ "$ONLINE" = 1 ]; then
+    if wait_until 60 webview_loaded; then pass "11.10 B's WebView loads a claude.ai page" "$(head -c 160 "$T/web.txt")"
+    else fail "11.10 B's WebView loads a claude.ai page"; save_diag tabB; fi
+  else
+    echo "SKIP  11.10 B's WebView loads a claude.ai page  [no internet on the emulator]"
+  fi
+  ui_tap "id=tab-close"
+  wait_until 15 ui_has "id=tab-$SEAT_A"
+
+  # ---- profiles, in Settings
+  open_settings || save_diag settings
+  scroll_to "id=tabrow-$SEAT_A" || save_diag profiles
+  if profiles_has "$SEAT_A"; then pass "11.11 profile sy-tab-<A> exists (Settings > Claude tabs lists it)"; else fail "11.11 profile sy-tab-<A> exists"; fi
+  scroll_to "id=tabrow-$SEAT_B"
+  if profiles_has "$SEAT_B"; then pass "11.12 profile sy-tab-<B> exists, separate from A"; else fail "11.12 profile sy-tab-<B> exists, separate from A"; fi
+  adbx shell input keyevent KEYCODE_BACK
+  adbx shell input keyevent KEYCODE_BACK
+
+  # ---- Open in Claude on B's session
+  go_bar Now
+  check "11.13 B's session shows Open in Claude on Now" 30 ui_has "id=open-$SB_SESS"
+  ui_tap "id=open-$SB_SESS"
+  check "11.14 Open in Claude (B's session) opens a tab screen" 20 ui_has "id=tab-close"
+  if ui_has "bob-e2e" && ! ui_has "alice-e2e"; then pass "11.14b its title is B's account (the route is /tabs/<seatB>)"; else fail "11.14b its title is B's account"; save_diag openin; fi
+  ui_tap "id=tab-close"
+
+  # ---- sign out A
+  open_settings
+  scroll_to "id=tab-signout-$SEAT_A"
+  ui_tap "id=tab-signout-$SEAT_A"
+  check "11.15 sign out asks for confirmation" 10 ui_has "Sign out of alice-e2e?"
+  ui_tap "Sign out" || ui_tap "SIGN OUT"
+  sleep 1
+  for toast in "Signed out" "Close the tab first, then try again" "Could not clear the tab"; do ui_has "$toast" && note "the app says: $toast"; done
+  check "11.16 sign out (A) removes profile sy-tab-<A>" 20 profiles_not "$SEAT_A" || save_diag signout
+  scroll_to "id=tabrow-$SEAT_B"
+  profiles_has "$SEAT_B" && pass "11.17 B's profile is untouched" || fail "11.17 B's profile is untouched"
+  adbx shell input keyevent KEYCODE_BACK
+  adbx shell input keyevent KEYCODE_BACK
+  # a new process: the sign-out holds, and B still has its profile
+  adbx shell am force-stop "$PKG"
+  launch
+  wait_until 40 ui_has "Needs you"
+  open_settings
+  scroll_to "id=tabrow-$SEAT_B"
+  if profiles_has "$SEAT_B" && profiles_not "$SEAT_A"; then pass "11.18 after an app restart A's profile is still gone and B's is kept"; else fail "11.18 after an app restart A's profile is still gone and B's is kept"; save_diag restart; fi
+  adbx shell input keyevent KEYCODE_BACK
+
+  echo "SKIP  11.19 a non-claude link goes to the browser  [the hub drops any remote_url outside https://claude.ai/, so no session carries one; nothing on screen is a non-claude link]"
 fi
 
 # ================================================================ summary

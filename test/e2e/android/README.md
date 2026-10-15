@@ -27,6 +27,7 @@ The whole run takes about 8 minutes once the APK exists.
 | 8 | swiped out of Recents (task removed): the service and link survive (not conclusive when the launcher ignores the gesture; it says so) |
 | 9 | `adb reboot`: `BOOT_COMPLETED` restarts the service without opening the app, the link reconnects |
 | 10 | revoke via `DELETE /v1/devices/{id}`: 4403, service stops, "This phone was removed from the hub" stays, no orphaned connection notification, the app shows Pair and says why; then re-pair and `sy hub token revoke` (the running hub notices at its next sweep) |
+| 11 | claude.ai account tabs (P17): two seats with hub-made `seat_<ULID>` ids; Accounts > Open claude.ai opens each seat's tab, the WebView loads a claude.ai page (SKIP when the emulator has no internet), no crash; Settings > Claude tabs lists one profile per seat; Open in Claude on B's session opens B's tab; Sign out (A) removes A's profile only, also after an app restart. Never signs in or types into claude.ai. The "non-claude link goes to the browser" check is a SKIP: the hub drops any `remote_url` outside `https://claude.ai/`, so only a link tapped inside the page could do it |
 
 ## How it is built
 
@@ -58,6 +59,7 @@ that plays a machine.
 3. `switchyard://pair` dropped the QR's `h` and `k`, so "Open in app" paired without instant delivery.
 4. Stopping the service left an orphaned "Not connected" connection notification.
 5. The "This phone was removed from the hub" notice was wiped by the app's own unpair cleanup.
+6. Claude tabs: Sign out failed with "Close the tab first" after any tab had been opened in the process, with no tab open (WebView keeps a closed tab's profile in use until the process ends).
 
 ## Not covered
 

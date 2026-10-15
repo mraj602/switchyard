@@ -6,7 +6,9 @@
   lib.py tap TEXT         uiautomator dump xml             ->  "x y" of the first node whose text or
                           content-desc equals TEXT (exit 1 when there is none)
   lib.py has TEXT         uiautomator dump xml             ->  exit 0 when some node's text or
-                          content-desc contains TEXT
+                          content-desc contains TEXT; "id=X" a resource-id (RN testID) equal to X,
+                          "cls=X" a node of class X (also accepted by tap as "id=X")
+  lib.py count TEXT       the number of nodes `has` would match
   lib.py phone PATH       GET /v1/devices JSON on stdin ->  PATH inside the first phone that is not revoked
   lib.py json PATH        JSON on stdin                    ->  the value at a dotted path (a.0.b), or "" when absent
 """
@@ -48,9 +50,24 @@ def _center(bounds: str):
     return (x1 + x2) // 2, (y1 + y2) // 2
 
 
+def _is(n, text: str) -> bool:
+    """TEXT equals a node's text or content-desc; "id=X" matches its resource-id (a testID) instead."""
+    if text.startswith("id="):
+        return n.get("resource-id") == text[3:]
+    return n.get("text") == text or n.get("content-desc") == text
+
+
+def _has(n, text: str) -> bool:
+    if text.startswith("id="):
+        return n.get("resource-id") == text[3:]
+    if text.startswith("cls="):
+        return n.get("class") == text[4:]
+    return text in (n.get("text") or "") or text in (n.get("content-desc") or "")
+
+
 def tap(text: str) -> int:
     for n in _nodes(sys.stdin.read()):
-        if n.get("text") == text or n.get("content-desc") == text:
+        if _is(n, text):
             print("%d %d" % _center(n.get("bounds")))
             return 0
     return 1
@@ -58,9 +75,59 @@ def tap(text: str) -> int:
 
 def has(text: str) -> int:
     for n in _nodes(sys.stdin.read()):
-        if text in (n.get("text") or "") or text in (n.get("content-desc") or ""):
+        if _has(n, text):
             return 0
     return 1
+
+
+def seat(email: str) -> int:
+    """GET /v1/accounts JSON on stdin -> the id of the seat whose email is EMAIL ("" when none)."""
+    try:
+        d = json.load(sys.stdin)
+    except ValueError:
+        print("")
+        return 0
+    rows = d.get("accounts", d.get("seats", [])) if isinstance(d, dict) else d
+    print(next((r.get("id", "") for r in rows if r.get("email") == email), ""))
+    return 0
+
+
+def tapbar(label: str) -> int:
+    """Center of the bottom bar entry LABEL: the lowest clickable node whose text or content-desc is it or ends with ", LABEL" (the bar renders "⏷, Now")."""
+    best = None
+    for n in _nodes(sys.stdin.read()):
+        t = (n.get("text") or "") + "|" + (n.get("content-desc") or "")
+        if n.get("clickable") == "true" and any(x == label or x.endswith(", " + label) for x in t.split("|")):
+            xy = _center(n.get("bounds"))
+            if best is None or xy[1] > best[1]:
+                best = xy
+    if best is None:
+        return 1
+    print("%d %d" % best)
+    return 0
+
+
+def webcontent() -> int:
+    """exit 0 when a WebView has at least one descendant with text (a page rendered)."""
+    text = sys.stdin.read()
+    try:
+        root = ET.fromstring(text[text.find("<hierarchy"):])
+    except ET.ParseError:
+        return 1
+    for wv in root.iter("node"):
+        if wv.get("class") == "android.webkit.WebView":
+            texts = [(n.get("text") or n.get("content-desc") or "") for n in wv.iter("node") if n is not wv]
+            texts = [t for t in texts if t.strip()]
+            if texts or (wv.get("text") or "").strip():
+                print(" | ".join(texts)[:300] or wv.get("text"))
+                return 0
+    return 1
+
+
+def count(text: str) -> int:
+    """How many nodes match TEXT (as in `has`)."""
+    print(sum(1 for n in _nodes(sys.stdin.read()) if _has(n, text)))
+    return 0
 
 
 def jpath(path: str, phone: bool = False) -> int:
@@ -91,6 +158,14 @@ if __name__ == "__main__":
         sys.exit(tap(sys.argv[2]))
     elif cmd == "has":
         sys.exit(has(sys.argv[2]))
+    elif cmd == "seat":
+        sys.exit(seat(sys.argv[2]))
+    elif cmd == "tapbar":
+        sys.exit(tapbar(sys.argv[2]))
+    elif cmd == "webcontent":
+        sys.exit(webcontent())
+    elif cmd == "count":
+        sys.exit(count(sys.argv[2]))
     elif cmd == "phone":
         sys.exit(jpath(sys.argv[2], phone=True))
     elif cmd == "json":
