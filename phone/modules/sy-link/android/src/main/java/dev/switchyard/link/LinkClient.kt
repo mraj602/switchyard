@@ -15,6 +15,7 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -81,10 +82,16 @@ class LinkClient(
     connect()
   }
 
-  fun stop() = exec.execute {
+  /**
+   * Stops the link and reports "off", unless the link already stopped itself for good (4403,
+   * 4426, a changed hub key): that status says why alerts stopped, and the service shutting the
+   * client down right after [LinkEvents.stopped] (onDestroy) must not overwrite it. The app's
+   * unpair reads "revoked" to leave the "removed from the hub" notice (CloseCodes.noticeAfterReset).
+   */
+  fun stop(): Future<*> = exec.submit {
     running = false
     drop()
-    setState("off", null, null)
+    if (store.status !in TERMINAL) setState("off", null, null)
   }
 
   /** "Reconnect now" and a network change: drop the socket, reset the backoff, connect at once. */
@@ -400,6 +407,9 @@ class LinkClient(
 
   companion object {
     const val TAG = "SyLink"
+
+    /** The statuses [stopAll] leaves behind: only a start or the unpair's reset clears them. */
+    val TERMINAL = setOf("revoked", "upgrade", "error")
     const val SUBPROTOCOL = "sy-link.1"
     const val ACK_MS = 500L
     const val ACK_EVERY = 16
