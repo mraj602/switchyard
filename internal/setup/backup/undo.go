@@ -34,7 +34,7 @@ type StackError struct {
 }
 
 func (e *StackError) Error() string {
-	return fmt.Sprintf("setup: backup %s is older than %s, which is still applied; undo that first or use --force",
+	return fmt.Sprintf("backup %s is older than %s, which is still applied: undo that first, or use --force",
 		e.ID, strings.Join(e.Newer, ", "))
 }
 

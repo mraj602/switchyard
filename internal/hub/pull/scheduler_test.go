@@ -172,7 +172,7 @@ func TestSchedulerBackoffLadder(t *testing.T) {
 		if row.State != store.PullStateFailing || row.FailCount != i+1 {
 			t.Fatalf("step %d: %+v", i, row)
 		}
-		if !strings.Contains(row.LastError, "Connection refused") {
+		if !strings.Contains(row.LastError, "Connection refused") || strings.Contains(row.LastError, "ssh: ssh:") {
 			t.Fatalf("last_error %q", row.LastError)
 		}
 		if d := nextIn(e); d != w {

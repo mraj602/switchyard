@@ -791,7 +791,7 @@ func undoCmd(ctx context.Context, e *setupEnv, f setupFlags, w io.Writer) error 
 		fmt.Fprintln(w, "Nothing to undo.")
 		return nil
 	case errors.As(err, &se):
-		return exitWith(backup.ExitStack, fmt.Errorf("%v (newer sets: %s; undo those first, or --force)", err, strings.Join(se.Newer, ", ")))
+		return exitWith(backup.ExitStack, se) // printed once as "sy setup: backup … or use --force"
 	case err != nil:
 		return err
 	}
