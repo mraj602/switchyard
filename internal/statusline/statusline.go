@@ -286,6 +286,25 @@ type seen struct {
 	SevenDay *float64 `json:"seven_day_pct"`
 }
 
+// alertMarks are the percentages the hub alerts on (push.md: limit_80, limit_95) and the
+// limit itself. A sample that reaches one of them for the first time is written at once.
+var alertMarks = []float64{80, 95, 100}
+
+// crosses reports whether cur reached an alert mark that prev was below. Without this a
+// session whose last status lines of a turn go from 81% to 96% within the minute would leave
+// the hub at 81% (and no 95% alert) until it next draws its status line.
+func crosses(prev, cur *float64) bool {
+	if prev == nil || cur == nil {
+		return false
+	}
+	for _, m := range alertMarks {
+		if *prev < m && *cur >= m {
+			return true
+		}
+	}
+	return false
+}
+
 func equal(a, b *float64) bool {
 	if a == nil || b == nil {
 		return a == b
@@ -310,7 +329,8 @@ func sample(env *clientenv.Env, in []byte, v Values, now time.Time) {
 	prev, known := last[id]
 	if known {
 		at, err := time.Parse(time.RFC3339Nano, prev.At)
-		if err == nil && now.Sub(at) < SampleEvery && now.Sub(at) >= 0 {
+		crossed := crosses(prev.FiveHour, v.FiveHour) || crosses(prev.SevenDay, v.SevenDay)
+		if err == nil && now.Sub(at) < SampleEvery && now.Sub(at) >= 0 && !crossed {
 			return
 		}
 		if equal(prev.FiveHour, v.FiveHour) && equal(prev.SevenDay, v.SevenDay) {
