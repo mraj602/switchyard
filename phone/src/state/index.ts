@@ -7,4 +7,4 @@ export type { HubProviderProps, ProviderDeps } from './provider';
 export { stateHooks } from './hooks';
 export type { StateHooks } from './hooks';
 export { bridge } from './bridge';
-export { HubGlue, installStateHooks, loadTaskHub, systemGluePlatform, taskRefresh } from './glue';
+export { HubGlue, installStateHooks, systemGluePlatform } from './glue';

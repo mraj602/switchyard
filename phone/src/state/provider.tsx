@@ -29,7 +29,7 @@ export interface ProviderDeps {
   app: AppInfo;
   /** expo-notifications (dismissing a notification after Snooze or Seen, P6.4). */
   notifications: NotificationsLike;
-  /** The sy-link module (self-hosted profile, Android): the claim carries keys (P2). */
+  /** The sy-link module (Android): the claim carries keys (P2). */
   link?: ClaimLink | null;
 }
 
@@ -289,9 +289,8 @@ export function HubProvider({ deps: initialDeps, navigate, openUrl, children }: 
       setMe(null);
       const c = adopt(hub);
       setStatus('paired');
-      // An unconfirmed unpairing from this same hub first: its push target still holds this
-      // phone's Expo token, and POST /v1/push/targets would conflict with it. Others in the
-      // background (that hub may be unreachable).
+      // An unconfirmed unpairing from this same hub first, so it is settled before the new
+      // pairing is used. Others in the background (that hub may be unreachable).
       const same = normalizeOrigin(hub.origin);
       await flushRevokes((r) => normalizeOrigin(r.origin) === same);
       void flushRevokes();

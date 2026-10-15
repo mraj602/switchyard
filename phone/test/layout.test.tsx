@@ -1,4 +1,4 @@
-// app/_layout.tsx (phone.md P3, P6.4, P6.5, P11): the task, the Android widget handler, the
+// app/_layout.tsx (phone.md P3, P6.4, P11): the Android widget handler, the
 // state hooks and initNotifications once at module scope; unpaired goes to Pair; paired stays
 // where it is. expo-router and WP-N's initNotifications are mocked.
 import { act, render } from '@testing-library/react-native';
@@ -47,12 +47,10 @@ beforeEach(() => {
 
 describe('RootLayout', () => {
   it('registers notifications once at module scope with the bridge', async () => {
-    let fakes!: typeof import('./fakes');
     let hooks!: typeof import('../src/state').stateHooks;
     jest.isolateModules(() => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       require('../app/_layout');
-      fakes = jest.requireActual('./fakes');
       hooks = (jest.requireActual('../src/state') as typeof import('../src/state')).stateHooks;
     });
     expect(mockInit).toHaveBeenCalledTimes(1);
@@ -60,9 +58,7 @@ describe('RootLayout', () => {
     expect(typeof deps.run).toBe('function');
     expect(typeof deps.onReceived).toBe('function');
     expect(deps.notifications).toBeTruthy();
-    // the self-hosted profile (the default) defines no silent-push task (P6.5, P13); the state
-    // hooks are filled at module scope
-    expect(fakes.taskState.tasks.has('SY_NOTIFY_TASK')).toBe(false);
+    // the state hooks are filled at module scope
     expect(typeof hooks.afterRefresh).toBe('function');
     expect(typeof hooks.onCleared).toBe('function');
     expect(typeof hooks.onPaired).toBe('function');

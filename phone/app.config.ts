@@ -1,15 +1,12 @@
-// Expo app config (docs/spec/phone.md P13). Reads only non-secret environment values:
+// Expo app config (docs/spec/phone.md P13). The self-hosted build: pushes arrive over the app's
+// own link to the hub (push.md 13-14), with no Firebase, no Google push service and no EAS
+// project. Reads only non-secret environment values:
 //   SY_APP_ID                bundle id and package name (default dev.switchyard.app.local)
-//   SY_PUSH                  "link" (default, the self-hosted profile: the app's own link to the
-//                            hub, push.md 13-14) or "expo" (the phase 8 Expo/FCM path)
-//   EAS_PROJECT_ID           extra.eas.projectId, only with SY_PUSH=expo (P6.3)
-//   SY_GOOGLE_SERVICES_JSON  path OUTSIDE the repository to google-services.json, only with
-//                            SY_PUSH=expo; with link it is refused (P13 self-hosted profile)
 //   SY_APP_VARIANT           "development" allows cleartext traffic (loopback hubs, P2)
 // Never put a credential here (phone.md P13).
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 
 const APP_ID = process.env.SY_APP_ID || 'dev.switchyard.app.local';
 const GROUP_ID = `group.${APP_ID}`;
@@ -22,27 +19,9 @@ export const VERSION_CODE = (() => {
   return major * 10000 + minor * 100 + patch;
 })();
 
-/** The delivery path (phone.md P13 self-hosted profile). Anything but "expo" is link. */
-export const PUSH: 'link' | 'expo' = process.env.SY_PUSH === 'expo' ? 'expo' : 'link';
-
 // Assets are added by the screens WP (phone/assets/**); the config works without them.
 const asset = (rel: string): string | undefined =>
   existsSync(join(__dirname, rel)) ? `./${rel}` : undefined;
-
-function googleServicesFile(): string | undefined {
-  const p = process.env.SY_GOOGLE_SERVICES_JSON;
-  if (!p) return undefined;
-  if (PUSH === 'link') {
-    // No Firebase in the self-hosted profile: a set path is a mistake, not a fallback.
-    throw new Error('SY_GOOGLE_SERVICES_JSON is set but SY_PUSH is link: the self-hosted build has no Firebase config');
-  }
-  const abs = resolve(p);
-  // The file must live outside the repository (hard rule 1); check-no-secrets.mjs also refuses it.
-  if (abs.startsWith(resolve(__dirname) + '/')) {
-    throw new Error('SY_GOOGLE_SERVICES_JSON must point outside phone/ (never commit google-services.json)');
-  }
-  return abs;
-}
 
 /** Widgets of P11, shared by expo-widgets (iOS) and react-native-android-widget (Android). */
 export const IOS_WIDGETS = [
@@ -94,9 +73,6 @@ export const ANDROID_WIDGETS = [
 export default ({ config }: ConfigContext): ExpoConfig => {
   const notificationIcon = asset('assets/notification-icon.png');
   const icon = asset('assets/icon.png');
-  // The self-hosted profile has no EAS project: EAS_PROJECT_ID is ignored there (P13).
-  const projectId = PUSH === 'expo' ? process.env.EAS_PROJECT_ID || undefined : undefined;
-  const googleServices = googleServicesFile();
 
   return {
     ...config,
@@ -116,7 +92,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       package: APP_ID,
       versionCode: VERSION_CODE,
-      ...(googleServices ? { googleServicesFile: googleServices } : {}),
       // Never back up the app's data (the keychain token, P3); with-sy-native.js also sets it.
       allowBackup: false,
       // Listed explicitly so the prebuilt manifest shows them (expo-notifications would also
@@ -130,9 +105,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ],
     },
     extra: {
-      ...(projectId ? { eas: { projectId } } : {}),
       appGroup: GROUP_ID,
-      push: PUSH,
       // SY_APP_VARIANT=development: the pair screen also accepts http:// loopback / LAN hubs in a
       // bundled (non-__DEV__) build, matching usesCleartextTraffic above (phone.md P2).
       cleartext: DEV,
@@ -140,7 +113,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     plugins: [
       'expo-router',
       // Before expo-notifications: mods run in reverse order, so this one sees its FCM meta-data.
-      ...(PUSH === 'link' ? ['./plugins/with-sy-no-firebase.js'] : []),
+      './plugins/with-sy-no-firebase.js',
       ['expo-notifications', { color: '#0E7C76', ...(notificationIcon ? { icon: notificationIcon } : {}) }],
       ['expo-secure-store', { faceIDPermission: false, configureAndroidBackup: false }],
       [
@@ -155,8 +128,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         'expo-build-properties',
         {
-          // 31 in the self-hosted profile: Keystore key agreement (push.md 14.2).
-          android: { minSdkVersion: PUSH === 'link' ? 31 : 24, usesCleartextTraffic: DEV },
+          // 31: Keystore key agreement (push.md 14.2).
+          android: { minSdkVersion: 31, usesCleartextTraffic: DEV },
         },
       ],
       [

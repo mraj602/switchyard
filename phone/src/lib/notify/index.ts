@@ -2,7 +2,7 @@
 // Pure: takes a Notifications-shaped object (expo-notifications' API surface it uses), fetch
 // and a clock. No token, title, body or response body ever reaches an error or a log (hard
 // rule 3): failures are reported as states and status codes only.
-import type { ActionReply, Device, DevicePrefs, ExpoTargetNew, PushTarget } from '../../contract/api';
+import type { ActionReply, DevicePrefs } from '../../contract/api';
 import {
   ACTED_KEY,
   ACTION_OPEN,
@@ -11,7 +11,6 @@ import {
   ACTION_TOKEN,
   ALERT_CATEGORY,
   ANDROID_CHANNELS,
-  BACKGROUND_BUDGET_MS,
   REQUEST_TIMEOUT_MS,
 } from '../../contract/constants';
 import type { Clock, FetchLike, AppInfo, KVStore } from '../../contract/platform';
@@ -42,7 +41,6 @@ export interface NotificationsLike {
   ): Promise<unknown>;
   getPermissionsAsync(): Promise<{ granted: boolean; status: string }>;
   requestPermissionsAsync(req?: unknown): Promise<{ granted: boolean; status: string }>;
-  getExpoPushTokenAsync(opts: { projectId: string }): Promise<{ data: string; type: string }>;
   setBadgeCountAsync(n: number): Promise<boolean>;
   dismissNotificationAsync(id: string): Promise<void>;
   /** Unpairing removes the old hub's notifications, so their buttons can't be pressed later. */
@@ -77,13 +75,11 @@ export type Decision =
 export type RegisterState =
   | 'registered'
   | 'blocked' // "Blocked in system settings"
-  | 'no-project' // "This build can't receive pushes"
   | 'error';
 
 export interface RegisterDeps {
   notifications: NotificationsLike;
   app: AppInfo;
-  addTarget(body: ExpoTargetNew): Promise<PushTarget>;
   patchSelf(prefs: Partial<DevicePrefs>): Promise<unknown>;
   tz: string;
   /**
@@ -142,76 +138,33 @@ async function knownPrefs(deps: RegisterDeps, known?: DevicePrefs | null): Promi
   }
 }
 
-async function postTarget(deps: RegisterDeps, token: string, known?: DevicePrefs | null): Promise<void> {
-  const prefs = await knownPrefs(deps, known);
-  const body: ExpoTargetNew = {
-    kind: 'expo',
-    expo_token: token,
-    name: `${deps.app.model} · app`,
-    platform: deps.app.platform,
-    app: { version: deps.app.version, build: deps.app.build },
-  };
-  await deps.addTarget(body);
-  await deps.patchSelf(registrationPrefs(deps.tz, prefs));
-}
-
-/** Android channels before any permission call, then permission, token, target (P6.3). */
+/**
+ * Android channels before any permission call, then the permission, then the prefs PATCH (P6.3).
+ * The link target itself comes from pairing (push.md 13.7): nothing is registered here.
+ */
 export async function registerForPush(deps: RegisterDeps): Promise<RegisterState> {
   const n = deps.notifications;
   try {
     await setupChannels(n, deps.app.platform);
-    const link = linkMode(deps.app);
-    if (!link && !deps.app.projectId) return 'no-project';
     let perm = await n.getPermissionsAsync();
     if (!perm.granted) {
       perm = await n.requestPermissionsAsync({ ios: { allowAlert: true, allowBadge: true, allowSound: true } });
     }
     if (!perm.granted) return 'blocked';
-    if (link) {
-      // The link target comes from pairing (push.md 13.7): only the prefs PATCH, never an Expo token.
-      await deps.patchSelf(registrationPrefs(deps.tz, await knownPrefs(deps)));
-      return 'registered';
-    }
-    const tok = await n.getExpoPushTokenAsync({ projectId: deps.app.projectId! });
-    await postTarget(deps, tok.data);
+    await deps.patchSelf(registrationPrefs(deps.tz, await knownPrefs(deps)));
     return 'registered';
   } catch {
     return 'error';
   }
 }
 
-/** The self-hosted profile (P6.3, P13): the app's own link to the hub instead of Expo push. */
-export function linkMode(app: AppInfo): boolean {
-  return app.push === 'link';
-}
-
-export interface SyncDeps extends RegisterDeps {
-  deviceSelf(): Promise<Device>;
-}
-
 /**
- * On every start with permission granted (P6.3): get the token again; if it changed, or the
- * device has no live expo target with it (gone or deleted), register again silently. Never
- * asks for permission. 'unchanged' = nothing to do.
+ * On every start (P6.3): the link target is the hub's (push.md 13.7), so there is nothing to
+ * register again; this only reports whether the permission is still granted. Never asks.
  */
-export async function syncRegistration(deps: SyncDeps): Promise<RegisterState | 'unchanged'> {
-  const n = deps.notifications;
+export async function syncRegistration(deps: RegisterDeps): Promise<RegisterState | 'unchanged'> {
   try {
-    if (linkMode(deps.app)) {
-      // Nothing to re-register: the link target is the hub's (push.md 13.7).
-      return (await n.getPermissionsAsync()).granted ? 'unchanged' : 'blocked';
-    }
-    if (!deps.app.projectId) return 'no-project';
-    const perm = await n.getPermissionsAsync();
-    if (!perm.granted) return 'blocked';
-    const tok = await n.getExpoPushTokenAsync({ projectId: deps.app.projectId! });
-    const me = await deps.deviceSelf();
-    const live = (me.targets ?? []).some(
-      (t) => t.kind === 'expo' && t.endpoint === tok.data && t.status !== 'gone' && t.status !== 'disabled',
-    );
-    if (live) return 'unchanged';
-    await postTarget(deps, tok.data, me.prefs ?? {});
-    return 'registered';
+    return (await deps.notifications.getPermissionsAsync()).granted ? 'unchanged' : 'blocked';
   } catch {
     return 'error';
   }
@@ -359,8 +312,7 @@ const actingNow = new Set<string>();
 
 /**
  * True the first time a "<notification id>|<action>" is seen, false after: within this JS
- * runtime at once (the listener and a task running side by side), and across runtimes (the
- * Android background task, then the app) through `kv`. A failing store never blocks an act.
+ * runtime at once (two handlers side by side), and across runtimes through `kv`. A failing store never blocks an act.
  */
 export async function claimAct(kv: KVStore | undefined, key: string): Promise<boolean> {
   if (actingNow.has(key)) return false;
@@ -519,114 +471,6 @@ export function initNotifications(deps: InitDeps): () => void {
     disposed = true;
     subs.forEach((s) => s.remove());
   };
-}
-
-// ------------------------------------------------------------------ background task
-
-/** The parts of the hub entry the background task needs. */
-export interface TaskHub {
-  origin: string;
-  token: string;
-  /** When this pairing was made (ms; StoredHub.paired_at), or null when unknown (P6.4). */
-  pairedAt?: number | null;
-}
-
-export type TaskResult = 'ok' | 'locked' | 'no-hub' | 'ignored' | 'failed';
-
-export interface TaskDeps {
-  notifications: NotificationsLike;
-  fetch: FetchLike;
-  clock: Clock;
-  /** Reads the keychain entry. Rejects while the store is locked (before first unlock). */
-  loadHub(): Promise<TaskHub | null>;
-  /**
-   * Refreshes overview and accounts, rebuilds the widget timeline and the Live Activity
-   * (WP-P and WP-W code) and returns the needs-you count, or null when it could not.
-   */
-  refresh(hub: TaskHub): Promise<number | null>;
-  /** AsyncStorage: the acts already done (ACTED_KEY), shared with the response listener. */
-  acted?: KVStore;
-}
-
-interface TaskBody {
-  data?: unknown;
-  error?: unknown;
-}
-
-/** A NotificationResponse inside a task body, whatever the platform wraps it in. */
-function responseOf(body: unknown): NotificationResponseLike | null {
-  const b = body as TaskBody | null;
-  const d = b?.data as Record<string, unknown> | undefined;
-  if (!d || typeof d !== 'object') return null;
-  const cand = (typeof d.actionIdentifier === 'string' ? d : (d.response as Record<string, unknown> | undefined)) as
-    | Record<string, unknown>
-    | undefined;
-  if (!cand || typeof cand.actionIdentifier !== 'string') return null;
-  const req = (cand.notification as { request?: unknown } | undefined)?.request as
-    | { identifier?: unknown; content?: { data?: unknown } }
-    | undefined;
-  if (!req) return null;
-  const date = (cand.notification as { date?: unknown }).date;
-  return {
-    actionIdentifier: cand.actionIdentifier,
-    notification: {
-      ...(typeof date === 'number' ? { date } : {}),
-      request: { identifier: String(req.identifier ?? ''), content: { data: req.content?.data } },
-    },
-  };
-}
-
-/** Runs refresh within the P6.5 budget; null when it overran or failed. */
-async function withinBudget(deps: TaskDeps, hub: TaskHub): Promise<number | null> {
-  let timer: unknown;
-  const timeout = new Promise<null>((resolve) => {
-    timer = deps.clock.setTimeout(() => resolve(null), BACKGROUND_BUDGET_MS);
-  });
-  try {
-    return await Promise.race([deps.refresh(hub).catch(() => null), timeout]);
-  } finally {
-    deps.clock.clearTimeout(timer);
-  }
-}
-
-/**
- * The body of SY_NOTIFY_TASK (P6.5). For an Android action tap it does the same act as
- * P6.4; for everything else (a refresh push) it refreshes within about 20 s and sets the
- * badge from needs_you. It never throws: while the keychain is locked it does nothing.
- */
-export async function runNotifyTask(deps: TaskDeps, body: unknown): Promise<TaskResult> {
-  let hub: TaskHub | null;
-  try {
-    hub = await deps.loadHub();
-  } catch {
-    return 'locked';
-  }
-  if (!hub) return 'no-hub';
-
-  try {
-    const resp = responseOf(body);
-    if (resp) {
-      const d = decideResponse(resp, null);
-      if (d.kind !== 'act') return 'ignored'; // Open and taps are the UI's (P6.4)
-      await performDecision(
-        {
-          ...deps,
-          origin: async () => hub.origin,
-          pairedAt: async () => hub.pairedAt ?? null,
-          openUrl: async () => {},
-          navigate: () => {},
-        },
-        d,
-        resp.notification.request.identifier,
-      );
-    }
-    const needsYou = await withinBudget(deps, hub);
-    if (needsYou === null) return 'failed';
-    await deps.notifications.setBadgeCountAsync(Math.max(0, Math.trunc(needsYou)));
-    return 'ok';
-  } catch {
-    return 'failed';
-  }
 }
 
 export * from './makers';

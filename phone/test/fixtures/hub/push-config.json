@@ -7,14 +7,6 @@
     {
       "enabled": true,
       "kind": "ntfy"
-    },
-    {
-      "enabled": true,
-      "kind": "expo",
-      "settings": {
-        "access_token_set": false,
-        "base_url": "https://exp.host"
-      }
     }
   ],
   "ntfy_default_server": "https://ntfy.sh",

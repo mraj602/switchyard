@@ -3,7 +3,6 @@
 // devserver fixtures, and by the app on data it did not make (push data, cached replies).
 
 import { PAYLOAD_KEYS } from './payload';
-import { EXPO_TOKEN } from './constants';
 import { SNAPSHOT_LABEL_MAX, SNAPSHOT_MAX_SEATS } from './snapshot';
 
 type Problems = string[];
@@ -80,8 +79,8 @@ export function validatePayload(x: unknown, path = 'payload', exact = false): Pr
     field(p, actions, 'seen', 'string', `${path}.actions`, true);
   }
   const priv = field(p, o, 'private', 'boolean', path);
-  if (priv === true && o.remote_url !== undefined && path.startsWith('expo')) {
-    p.push(`${path}.remote_url: present in a private expo push (push.md 12.2)`);
+  if (priv === true && o.remote_url !== undefined) {
+    p.push(`${path}.remote_url: present in a private payload (push.md 6.5)`);
   }
   field(p, o, 'ts', 'iso?', path);
   if (exact) {
@@ -93,7 +92,7 @@ export function validatePayload(x: unknown, path = 'payload', exact = false): Pr
   return p;
 }
 
-/** push.md 12.9 refresh data. */
+/** The `refresh` payload of a widget refresh frame over the link (push.md 12.9). */
 export function validateRefresh(x: unknown, path = 'refresh'): Problems {
   const p: Problems = [];
   const o = root(x, path, p);
@@ -104,37 +103,6 @@ export function validateRefresh(x: unknown, path = 'refresh'): Problems {
   field(p, o, 'ts', 'iso', path);
   const extra = Object.keys(o).filter((k) => !['v', 'type', 'needs_you', 'ts'].includes(k));
   if (extra.length) p.push(`${path}: unexpected keys ${extra.join(',')}`);
-  return p;
-}
-
-/** push.md 12.2 Expo message, alert or refresh. */
-export function validateExpoMessage(x: unknown, path = 'expo'): Problems {
-  const p: Problems = [];
-  const o = root(x, path, p);
-  if (!o) return p;
-  const to = field(p, o, 'to', 'string', path);
-  if (typeof to === 'string' && !EXPO_TOKEN.test(to)) p.push(`${path}.to: not an Expo push token`);
-  const data = o.data;
-  const refresh = isObj(data) && data.type === 'refresh';
-  oneOf(p, field(p, o, 'priority', 'string', path), ['high', 'normal'], `${path}.priority`);
-  field(p, o, 'ttl', 'int', path);
-  if (refresh) {
-    p.push(...validateRefresh(data, `${path}.data`));
-    if (o.contentAvailable !== true) p.push(`${path}.contentAvailable: want true for refresh`);
-    for (const k of ['title', 'body', 'sound', 'categoryId', 'badge']) {
-      if (o[k] !== undefined) p.push(`${path}.${k}: not allowed in a refresh`);
-    }
-  } else {
-    p.push(...validatePayload(data, `${path}.data`));
-    field(p, o, 'title', 'string', path);
-    field(p, o, 'body', 'string', path, true);
-    oneOf(p, field(p, o, 'channelId', 'string', path), ['sy_needs_you', 'sy_limits', 'sy_machines', 'sy_test'], `${path}.channelId`);
-    const hasActions = isObj(data) && isObj(data.actions);
-    if (hasActions && o.categoryId !== 'sy_alert') p.push(`${path}.categoryId: want sy_alert with actions`);
-    if (!hasActions && o.categoryId !== undefined) p.push(`${path}.categoryId: only with actions`);
-    field(p, o, 'badge', 'int', path, true);
-  }
-  if (new TextEncoder().encode(JSON.stringify(o)).length > 4096) p.push(`${path}: over 4096 bytes`);
   return p;
 }
 
@@ -290,11 +258,9 @@ export function validatePushTarget(x: unknown, path = 'target'): Problems {
   const o = root(x, path, p);
   if (!o) return p;
   field(p, o, 'id', 'string', path);
-  oneOf(p, field(p, o, 'kind', 'string', path), ['webpush', 'ntfy', 'expo'], `${path}.kind`);
+  oneOf(p, field(p, o, 'kind', 'string', path), ['webpush', 'ntfy', 'link'], `${path}.kind`);
   field(p, o, 'enabled', 'boolean', path);
   oneOf(p, field(p, o, 'status', 'string', path), ['ok', 'failing', 'gone', 'disabled', 'new'], `${path}.status`);
-  oneOf(p, field(p, o, 'platform', 'string?', path, true), ['ios', 'android', null], `${path}.platform`);
-  field(p, o, 'app_version', 'string?', path, true);
   return p;
 }
 

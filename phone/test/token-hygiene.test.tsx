@@ -55,13 +55,12 @@ describe('the token stays in the keychain', () => {
       if (url.endsWith('/v1/accounts')) return response(200, accountsFx);
       if (url.includes('/v1/alerts')) return response(200, alertsFx);
       if (url.endsWith('/v1/rules')) return response(200, rulesFx);
-      if (url.endsWith('/v1/push/targets')) return response(201, { id: 'pt_app', kind: 'expo', status: 'active' });
       if (init.method === 'DELETE') return response(204);
       const device = { ...meFx.device, prefs: { ...meFx.device.prefs, widgets: true } };
       if (url.endsWith('/v1/devices/self')) return response(200, device);
       return response(200, { ...meFx, device });
     });
-    const app = { version: '1', build: '1', model: 'P', platform: 'android' as const, projectId: 'proj', dev: false };
+    const app = { version: '1', build: '1', model: 'P', platform: 'android' as const, dev: false };
     const clock = manualClock();
     const glue = createGlue(systemGluePlatform(app, clock));
     installStateHooks(glue);
@@ -92,7 +91,7 @@ describe('the token stays in the keychain', () => {
       await flush(80);
     });
     expect(await AsyncStorage.getItem('sy.widget.v1')).toBeTruthy(); // the widgets ran
-    expect(f.calls.some((c) => c.url.endsWith('/v1/push/targets'))).toBe(true); // and the registration
+    expect(f.calls.some((c) => c.init.method === 'PATCH' && c.url.endsWith('/v1/devices/self'))).toBe(true); // and the registration
 
     // paired and polled: the cache and every AsyncStorage key are token-free
     expect(secureMem.dump()['sy.hub.v1']).toContain(TOKEN);

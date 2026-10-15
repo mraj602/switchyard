@@ -23,7 +23,7 @@ describe('alignWorkVersions', () => {
   });
 });
 
-describe('stripFirebase (self-hosted profile, P13)', () => {
+describe('stripFirebase (P13)', () => {
   const manifest = () => ({
     manifest: {
       $: {},

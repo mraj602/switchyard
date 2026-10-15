@@ -8,7 +8,6 @@ jest.mock('expo-widgets', () => jest.requireActual('./fakes').widgets);
 jest.mock('@expo/ui/swift-ui', () => jest.requireActual('./fakes').swiftUI);
 jest.mock('@expo/ui/swift-ui/modifiers', () => jest.requireActual('./fakes').swiftUIModifiers);
 jest.mock('react-native-android-widget', () => jest.requireActual('./fakes').androidWidget);
-jest.mock('expo-task-manager', () => jest.requireActual('./fakes').taskManager);
 jest.mock('../modules/sy-link', () => jest.requireActual('./fakes').syLink);
 jest.mock('../modules/sy-tabs', () => jest.requireActual('./fakes').syTabs);
 jest.mock('@react-native-async-storage/async-storage', () =>

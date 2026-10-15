@@ -10,7 +10,7 @@ coverage/
 /ios/
 /android/
 
-# Credentials (hard rule 1). They live in EAS or outside the repository.
+# Credentials (hard rule 1). They live outside the repository.
 *.p8
 *.p12
 *.mobileprovision

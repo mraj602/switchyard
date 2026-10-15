@@ -24,7 +24,6 @@ const ENDPOINTS: [string, (c: HubClient) => Promise<unknown>][] = [
   ['snooze', (c) => c.snooze('al_1', 30)],
   ['deviceSelf', (c) => c.deviceSelf()],
   ['patchSelf', (c) => c.patchSelf({ private: true })],
-  ['addTarget', (c) => c.addTarget({ kind: 'expo', expo_token: 'ExponentPushToken[abcdefgh12345678]', platform: 'ios' })],
   ['testTarget', (c) => c.testTarget('pt_1')],
   ['matrix', (c) => c.matrix()],
   ['editMatrix', (c) => c.editMatrix({ base_version: 2, deny: [['a', 'b']] })],
@@ -74,13 +73,11 @@ describe('HubClient requests', () => {
     await c.pausePeers(true);
     await c.snooze('al_1', 30);
     await c.patchSelf({ private: true, widgets: true });
-    await c.addTarget({ kind: 'expo', expo_token: 'ExponentPushToken[abcdefgh12345678]', platform: 'android', name: 'Pixel · app', app: { version: '1', build: '2' } });
     expect(f.calls.map((x) => JSON.parse(x.init.body!))).toEqual([
       { edit: { base_version: 2, deny: [['a', 'b']] } },
       { paused: true },
       { minutes: 30 },
       { prefs: { private: true, widgets: true } },
-      { kind: 'expo', expo_token: 'ExponentPushToken[abcdefgh12345678]', platform: 'android', name: 'Pixel · app', app: { version: '1', build: '2' } },
     ]);
     expect(f.calls.every((x) => x.init.headers?.['Content-Type'] === 'application/json')).toBe(true);
   });

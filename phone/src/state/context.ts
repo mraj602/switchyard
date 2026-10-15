@@ -71,7 +71,7 @@ export function HubTestProvider(props: { value?: Partial<HubState>; children: Re
     claimDeps: {
       fetch: () => Promise.reject(new Error('no network in tests')),
       clock: { now: () => 0, setTimeout: () => null, clearTimeout: () => {} },
-      app: { version: '0.8.0', build: '1', model: 'Pixel', platform: 'android', projectId: null, dev: true },
+      app: { version: '0.8.0', build: '1', model: 'Pixel', platform: 'android', dev: true },
     },
     dev: true,
   };

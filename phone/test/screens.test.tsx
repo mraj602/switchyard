@@ -15,7 +15,7 @@ import SessionsScreen from '../src/components/screens/SessionsScreen';
 import SettingsScreen from '../src/components/screens/SettingsScreen';
 import { clock, isLive, mostRoom } from '../src/lib/format';
 import { HubError } from '../src/lib/hub';
-import type { Device, Session } from '../src/contract/api';
+import type { Session } from '../src/contract/api';
 import { NOW, fakeClient, freshData, fx, makeHarness, routerMock } from './screen-harness';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -272,11 +272,6 @@ describe('Alerts', () => {
 });
 
 describe('Settings', () => {
-  const expoDevice = (): Device => ({
-    ...(structuredClone(fx.me.device) as unknown as Device),
-    targets: [{ id: 'pt_app', kind: 'expo', enabled: true, status: 'ok', name: 'Pixel · app' }],
-  });
-
   it('private, tap and widgets switches PATCH the right prefs', async () => {
     const p = await show(<SettingsScreen />);
     await screen.findByTestId('private-on');
@@ -315,26 +310,16 @@ describe('Settings', () => {
     expect(p.client.patchSelf.mock.calls[1]![0].quiet_hours).toBeNull();
   });
 
-  it('Send test push goes to the expo target and reports the outcome', async () => {
-    const client = fakeClient({ deviceSelf: jest.fn(async () => expoDevice()) });
-    const p = await show(<SettingsScreen />, { client });
-    await waitFor(() => expect(screen.getByTestId('test-push').props.accessibilityState.disabled).toBe(false));
-    await fireEvent.press(screen.getByTestId('test-push'));
-    expect(p.client.testTarget).toHaveBeenCalledWith('pt_app');
-    expect(await screen.findByText('Sent. It should arrive in a moment.')).toBeTruthy();
-  });
-
-  it('test push is disabled offline', async () => {
-    const client = fakeClient({ deviceSelf: jest.fn(async () => expoDevice()) });
-    await show(<SettingsScreen />, { client, data: { offline: true } });
-    await screen.findByText(/^Offline/, { exact: false }).catch(() => undefined);
-    expect(screen.getByTestId('test-push').props.accessibilityState.disabled).toBe(true);
-  });
-
   it('says why notifications are off, and offers to turn them on', async () => {
-    const p = await show(<SettingsScreen />, { api: { pushState: null } });
+    const p = await show(<SettingsScreen />, { api: { pushState: null, link: {} as never } });
     await fireEvent.press(screen.getByTestId('turn-on'));
     expect(p.api.enablePush).toHaveBeenCalled();
+  });
+
+  it('without the link module there is no push path to turn on', async () => {
+    await show(<SettingsScreen />, { api: { pushState: null } });
+    expect(screen.queryByTestId('turn-on')).toBeNull();
+    expect(screen.getByText(/own connection to your hub/)).toBeTruthy();
   });
 
   it('Auto countdown (iOS): a local switch, shown only when the app core offers it', async () => {
@@ -349,7 +334,7 @@ describe('Settings', () => {
     expect(p.client.patchSelf).not.toHaveBeenCalled(); // not a hub pref
   });
 
-  it('blocked and no-project states', async () => {
+  it('the blocked state', async () => {
     await show(<SettingsScreen />, { api: { pushState: 'blocked' } });
     expect(screen.getByTestId('notif-state').props.children).toMatch(/^Blocked in system settings/);
     expect(screen.queryByTestId('turn-on')).toBeNull();

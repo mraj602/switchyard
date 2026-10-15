@@ -62,13 +62,7 @@ export interface AppInfo {
   build: string;
   model: string; // "iPhone 15"
   platform: 'ios' | 'android';
-  projectId: string | null; // extra.eas.projectId
   dev: boolean; // __DEV__
-  /**
-   * The delivery path (phone.md P13): 'link' is the self-hosted profile (the sy-link module,
-   * no Expo token); 'expo' the phase 8 Expo/FCM path. Absent: 'expo' (phase 8 behaviour).
-   */
-  push?: 'link' | 'expo';
   /** Build.MANUFACTURER ("samsung"), for the battery guide (P6.7); absent when unknown. */
   maker?: string;
 }

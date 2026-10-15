@@ -8,16 +8,15 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import type { ReactNode } from 'react';
 import { HubApiProvider, type HubApi } from '../components/hub-api';
 import type { AppInfo, Clock } from '../contract/platform';
-import { backgroundRefresh, type Glue, type GluePlatform } from '../lib/integrate';
-import type { NotificationsLike, TaskHub } from '../lib/notify';
+import type { Glue, GluePlatform } from '../lib/integrate';
+import type { NotificationsLike } from '../lib/notify';
 import { hostOf } from '../lib/pair';
 import { createUpdater } from '../lib/update';
-import { registerNotifyTask } from '../tasks/notify-task';
 import { clearAndroidWidgets, updateAndroidWidgets } from '../../widgets/android/task-handler';
 import { clearIos, startCountdown, syncCountdown, updateTimelines } from '../../widgets/ios/adapter';
 import { useHub } from './context';
 import { stateHooks } from './hooks';
-import { systemCache, systemClock, systemFetch, systemLink, systemSecureHub } from './platform';
+import { systemClock, systemLink, systemSecureHub } from './platform';
 
 /** The ticking `now` of the screens. */
 export const NOW_TICK_MS = 30_000;
@@ -44,7 +43,6 @@ export function systemGluePlatform(app: AppInfo, clock: Clock = systemClock): Gl
     startCountdown: (props, seatId) => startCountdown(props, seatId),
     clearIos: (now) => clearIos(now),
     clearAndroidWidgets: () => clearAndroidWidgets(),
-    registerNotifyTask,
     link: systemLink(app),
   };
 }
@@ -56,28 +54,10 @@ export function installStateHooks(glue: Glue): void {
   stateHooks.onPaired = (client) => glue.onPaired(client);
 }
 
-/** defineNotifyTask's `loadHub`: the keychain entry narrowed to what the task needs. */
-export async function loadTaskHub(): Promise<TaskHub | null> {
-  const s = await systemSecureHub().load(); // rejects while the keychain is locked
-  if (!s) return null;
-  const pairedAt = Date.parse(s.paired_at);
-  return { origin: s.origin, token: s.token, pairedAt: Number.isFinite(pairedAt) ? pairedAt : null };
-}
-
-/** defineNotifyTask's `refresh`: overview, accounts, prefs and settings; cache, widgets, badge. */
-export function taskRefresh(hub: TaskHub): Promise<number | null> {
-  return backgroundRefresh(
-    {
-      notifications: Notifications as unknown as NotificationsLike,
-      fetch: systemFetch,
-      clock: systemClock,
-      cache: systemCache,
-      updateTimelines: (snap, now) => updateTimelines(snap, now),
-      updateAndroidWidgets: (snap) => updateAndroidWidgets(snap),
-      syncCountdown: (snap, now, wantStart) => syncCountdown(snap, now, wantStart),
-    },
-    hub,
-  );
+/** The updater's `loadHub`: the keychain entry narrowed to the origin and token. */
+async function loadUpdaterHub(): Promise<{ origin: string; token: string } | null> {
+  const s = await systemSecureHub().load();
+  return s ? { origin: s.origin, token: s.token } : null;
 }
 
 /** Derives the screens' HubApi from the app core and the integration, and provides it. */
@@ -109,17 +89,14 @@ export function HubGlue({ glue, clock = systemClock, children }: { glue: Glue; c
     glue.setContext({ me, origin, client, kick: () => void refresh(), reloadMe: () => void reloadMe() });
   }, [glue, me, origin, client, refresh, reloadMe]);
 
-  // The updater (phone.md P16.3): only where the sy-link module is (Android, self-hosted profile).
+  // The updater (phone.md P16.3): only where the sy-link module is (Android).
   const appBuild = Number(hub.claimDeps.app.build) || 0;
   const updater = useMemo(
     () =>
       glue.link
         ? createUpdater({
             link: glue.link,
-            loadHub: async () => {
-              const h = await loadTaskHub();
-              return h ? { origin: h.origin, token: h.token } : null;
-            },
+            loadHub: loadUpdaterHub,
             kv: AsyncStorage,
             clock,
             installedBuild: appBuild,

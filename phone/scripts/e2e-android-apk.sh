@@ -20,7 +20,7 @@ export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
 [ -d "$ANDROID_HOME" ] || { echo "e2e-android-apk: no Android SDK at $ANDROID_HOME" >&2; exit 1; }
 [ -d node_modules ] || npm ci
-export SY_APP_VARIANT=development SY_PUSH=link CI=1 EXPO_NO_TELEMETRY=1
+export SY_APP_VARIANT=development CI=1 EXPO_NO_TELEMETRY=1
 if [ -z "${SY_SKIP_PREBUILD:-}" ]; then
   npx expo prebuild --platform android --no-install --clean
 fi

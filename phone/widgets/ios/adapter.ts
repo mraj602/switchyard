@@ -1,6 +1,6 @@
-// App-side adapter for the iOS widgets and the Live Activity (phone.md P11, P12). The app (and
-// the background notification task) calls these after every refresh; nothing here reads the
-// keychain or the hub. iOS only: on other platforms every function is a no-op.
+// App-side adapter for the iOS widgets and the Live Activity (phone.md P11, P12). The app calls
+// these after every refresh; nothing here reads the keychain or the hub. iOS only: on other
+// platforms every function is a no-op.
 import { Platform } from 'react-native';
 import { after, createLiveActivity, createWidget } from 'expo-widgets';
 

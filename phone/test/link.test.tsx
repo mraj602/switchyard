@@ -1,5 +1,5 @@
-// The self-hosted profile (phone.md P6.3, P6.7, P11, P13; push.md 13-14) on the JS side: the
-// registration without an Expo token, the glue driving the sy-link module, the widgets merging
+// The link (phone.md P6.3, P6.7, P11, P13; push.md 13-14) on the JS side: the
+// registration (the prefs PATCH only), the glue driving the sy-link module, the widgets merging
 // the link's refresh frames, the words, the maker guides and Settings → Notifications. The
 // module is the recording fake of test/fakes.ts (`linkState`, `emitLink`).
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
@@ -41,53 +41,40 @@ import { flush, memoryKV } from './hubfake';
 jest.mock('expo-router', () => require('./screen-harness').routerMock);
 
 const N = ExpoNotifications as unknown as NotificationsLike;
-const LINK_APP: AppInfo = { ...APP, projectId: null, push: 'link' };
+const LINK_APP: AppInfo = { ...APP };
 const H = 3_600_000;
 
 const state = (over: Partial<LinkState> = {}): LinkState => ({ ...linkState.state, ...over });
 
 // ------------------------------------------------------------------ registration (P6.3)
 
-describe('registration in the self-hosted profile', () => {
+describe('registration over the link', () => {
   const deps = () => {
     const patched: unknown[] = [];
-    const added: unknown[] = [];
     return {
       patched,
-      added,
       deps: {
         notifications: N,
         app: LINK_APP,
         tz: 'Europe/London',
-        addTarget: async (b: unknown) => {
-          added.push(b);
-          return {} as never;
-        },
         patchSelf: async (p: unknown) => {
           patched.push(p);
           return {};
         },
         currentPrefs: async () => ({}),
-        deviceSelf: async () => ({}) as Device,
       },
     };
   };
 
-  it('creates the channels, asks for permission and PATCHes the prefs; never an Expo token or target', async () => {
+  it('creates the channels, asks for permission and PATCHes the prefs; no target is registered', async () => {
     notificationsState.permission = 'undetermined';
     const d = deps();
     notificationsState.permission = 'granted';
     await expect(registerForPush(d.deps)).resolves.toBe('registered');
     expect(callsOf('notifications.setNotificationChannelAsync').length).toBeGreaterThan(0);
-    expect(callsOf('notifications.getExpoPushTokenAsync')).toHaveLength(0);
-    expect(d.added).toEqual([]);
     expect(d.patched).toEqual([{ tz: 'Europe/London', widgets: true }]);
     const order = calls.map((c) => c.fn);
     expect(order.indexOf('notifications.setNotificationChannelAsync')).toBeLessThan(order.indexOf('notifications.getPermissionsAsync'));
-  });
-
-  it('works without an EAS project (no "no-project" state)', async () => {
-    await expect(registerForPush({ ...deps().deps, app: { ...LINK_APP, projectId: null } })).resolves.toBe('registered');
   });
 
   it('is blocked when the permission is refused', async () => {
@@ -102,14 +89,13 @@ describe('registration in the self-hosted profile', () => {
     await expect(syncRegistration(d.deps)).resolves.toBe('unchanged');
     notificationsState.permission = 'denied';
     await expect(syncRegistration(d.deps)).resolves.toBe('blocked');
-    expect(callsOf('notifications.getExpoPushTokenAsync')).toHaveLength(0);
-    expect(d.added).toEqual([]);
+    expect(d.patched).toEqual([]);
   });
 });
 
 // ------------------------------------------------------------------ the glue
 
-function platform(over: Partial<GluePlatform> = {}): GluePlatform & { registerNotifyTask: jest.Mock } {
+function platform(over: Partial<GluePlatform> = {}): GluePlatform {
   return {
     notifications: N,
     app: LINK_APP,
@@ -122,10 +108,9 @@ function platform(over: Partial<GluePlatform> = {}): GluePlatform & { registerNo
     startCountdown: jest.fn(async () => {}),
     clearIos: jest.fn(async () => {}),
     clearAndroidWidgets: jest.fn(async () => {}),
-    registerNotifyTask: jest.fn(async () => {}),
     link: SyLink,
     ...over,
-  } as GluePlatform & { registerNotifyTask: jest.Mock };
+  };
 }
 
 const client = (snoozeMin = 20) =>
@@ -135,15 +120,13 @@ const configure = () =>
   SyLink.configure({ origin: 'https://hub.example.ts.net', device: 'dev_phone', urls: ['wss://hub.example.ts.net/v1/link'], pingS: 180, hubKey: { pub: 'P', fp: 'f'.repeat(24) }, reg: 'qr' });
 
 describe('the glue with the link', () => {
-  it('on pairing: registers without a token, sends snooze_min, starts the link, defines no task', async () => {
+  it('on pairing: registers, sends snooze_min and starts the link', async () => {
     await configure();
     const p = platform();
     const glue = createGlue(p);
     await glue.onPaired(client(20));
     expect(callsOf('link.setSnoozeMinutes').map((c) => c.args[0])).toEqual([20]);
     expect(callsOf('link.start')).toHaveLength(1);
-    expect(p.registerNotifyTask).not.toHaveBeenCalled();
-    expect(callsOf('notifications.getExpoPushTokenAsync')).toHaveLength(0);
     expect(glue.view().pushState).toBe('registered');
     expect(glue.link).toBe(SyLink);
   });
@@ -186,21 +169,18 @@ describe('the glue with the link', () => {
     expect(kick).toHaveBeenCalledTimes(2);
   });
 
-  it('the Expo profile ignores the module and keeps the task', async () => {
-    const p = platform({ app: { ...APP, push: 'expo' } });
-    const glue = createGlue(p);
+  it('without the module there is no link to drive', async () => {
+    const glue = createGlue(platform({ link: null }));
     await glue.onPaired(client());
     expect(callsOf('link.')).toHaveLength(0);
-    expect(p.registerNotifyTask).toHaveBeenCalled();
     expect(glue.link).toBeNull();
   });
 
-  it('systemLink: the module only in the self-hosted Android build', () => {
-    expect(systemLink({ ...APP, push: 'link', platform: 'android' })).toBe(SyLink);
-    expect(systemLink({ ...APP, push: 'expo', platform: 'android' })).toBeNull();
-    expect(systemLink({ ...APP, push: 'link', platform: 'ios' })).toBeNull();
+  it('systemLink: the module only on Android', () => {
+    expect(systemLink({ ...APP, platform: 'android' })).toBe(SyLink);
+    expect(systemLink({ ...APP, platform: 'ios' })).toBeNull();
     linkState.available = false;
-    expect(systemLink({ ...APP, push: 'link', platform: 'android' })).toBeNull();
+    expect(systemLink({ ...APP, platform: 'android' })).toBeNull();
   });
 });
 
@@ -446,7 +426,7 @@ describe('Settings → Notifications', () => {
     expect(screen.getByText(/Instant delivery is part of the Android app/)).toBeTruthy();
   });
 
-  it('Settings links to it in the self-hosted profile, and hides the Expo test push', async () => {
+  it('Settings links to it, and offers no test push of its own', async () => {
     const h = makeHarness({ api: { link: SyLink, app: LINK_APP } });
     await render(<SettingsScreen />, { wrapper: h.Wrapper });
     await act(async () => {

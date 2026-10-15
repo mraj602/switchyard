@@ -1,29 +1,27 @@
 # Switchyard phone app (`phone/`)
 
-The phase 8 store app: the hub's screens (Now, Sessions, Session, Accounts, More) as an Expo
-app for iPhone and Android, native pushes with **Open**, **Snooze 15 min** and **Seen**, small
-and medium home-screen widgets, and an iOS Lock Screen countdown to a limit reset. It is a
-`phone` device on your hub (scopes `read` and `push`): it reads, snoozes and marks seen,
-nothing else. Unofficial; not affiliated with Anthropic.
+The hub's screens (Now, Sessions, Session, Accounts, More) as an Expo / React Native app,
+native notifications with **Open**, **Snooze 15 min** and **Seen**, and small and medium
+home-screen widgets. It is a `phone` device on your hub (scopes `read` and `push`): it reads,
+snoozes and marks seen, nothing else. Unofficial; not affiliated with Anthropic.
 
-Specs: `docs/spec/phone.md` (the app, P1 to P15), `docs/spec/push.md` section 12 (the hub's
-Expo channel), `docs/phases/8.md` (work split, tests, decisions, risks, manual steps).
+Specs: `docs/spec/phone.md` (the app, P1 to P15), `docs/spec/push.md` sections 13 and 14 (the
+link), `docs/phases/8.md` (work split, tests, decisions, risks, manual steps).
 
-**Nothing in this repository signs, builds for a store or uploads.** Accounts, credentials,
-EAS builds, TestFlight and every check on a real phone are the manual steps below, done by
-you. No credential file ever goes into the repo (`scripts/check-no-secrets.mjs` fails the
-check if one appears).
+**Nothing in this repository signs, builds for a store or uploads.** Your keystore, the build
+and every check on a real phone are the manual steps below, done by you. No credential file
+ever goes into the repo (`scripts/check-no-secrets.mjs` fails the check if one appears).
 
-## Self-hosted Android build (N1, the default)
+## The Android build (link only)
 
-Since N1 the Android app delivers notifications over its own connection to your hub (the
-`sy-link` module in `modules/sy-link`, `docs/spec/push.md` sections 13 and 14): no Expo account,
-no EAS, no Firebase project and no Google push service. `SY_PUSH` defaults to `link`; in that
-profile `app.config.ts` sets no EAS project id, refuses `SY_GOOGLE_SERVICES_JSON`, sets
-`minSdkVersion` 31 and drops expo-notifications' FCM entry point. `eas.json` is gone. Pair the
-phone by scanning the hub's QR (its keys go in sealed), then check Settings → Notifications
-(battery optimisation, the maker guide, "Verified by QR"). Build the APK yourself with
-`expo prebuild` and Gradle (phone.md P13); nothing here signs or uploads it.
+The app delivers notifications over its own connection to your hub, the `link` (the `sy-link`
+module in `modules/sy-link`, `docs/spec/push.md` sections 13 and 14). That is its only push
+path, so pushes are Android only: there is no Expo account, no EAS, no Firebase project and no
+Google push service, and the hub needs no outbound access to any push service. `app.config.ts`
+sets `minSdkVersion` 31 and drops expo-notifications' FCM entry point (`plugins/with-sy-native.js`).
+Pair the phone by scanning the hub's QR (its keys go in sealed), then check Settings →
+Notifications (battery optimisation, the maker guide, "Verified by QR"). Build the APK yourself
+with `expo prebuild` and Gradle (phone.md P13); nothing here signs or uploads it.
 
 ### Release build and updates (N2): you run it
 
@@ -64,45 +62,16 @@ P16.2; the app installs it after checking the checksum and that the signing key 
 `MAJOR*10000 + MINOR*100 + PATCH` of the app version, so bump `version` in `app.config.ts` and
 `package.json` for each release.
 
-The steps below are the phase 8 Expo profile (`SY_PUSH=expo`) and the iPhone.
-
-## What you need, in order (Expo profile)
-
-1. **An Expo account.** In `phone/`: `npx eas-cli@24.8.0 login`, then
-   `npx eas-cli@24.8.0 init`, which creates the EAS project. Put its id in `EAS_PROJECT_ID`
-   (a build without it can show the hub but cannot receive pushes: Settings says "This
-   build can't receive pushes").
-2. **Apple Developer Program** (USD 99 a year), for the iPhone. Register the bundle id
-   (`SY_APP_ID`) with the Push Notifications and App Groups capabilities, the App Group
-   `group.<SY_APP_ID>`, and the widget extension's id `<SY_APP_ID>.widgets` with the same
-   App Group. `eas build` can create these for you when you let it manage credentials.
-3. **Firebase**, for Android pushes: a Firebase project with an Android app for `SY_APP_ID`.
-   Download `google-services.json` **outside this repository** and point
-   `SY_GOOGLE_SERVICES_JSON` at it (the config refuses a path inside `phone/`).
-4. Optional: a Google Play developer account (USD 25), only for Play internal testing. The
-   sideloaded APK needs none.
-5. **Push credentials, once.** They live in EAS, never on the hub and never in git:
-   - APNs: let `eas credentials` create and manage the key, or upload your own `.p8`.
-   - FCM v1: create a service-account key in Firebase, upload it with `eas credentials` →
-     Android → FCM V1, then delete the local JSON.
-6. **The hub**: deploy the phase 8 hub (schema v6 is applied at start) and allow outbound
-   HTTPS to `exp.host` (`deploy/README.md`). Then follow "Device checks" in
-   `docs/phases/8.md`.
-
 ## Environment (read by `app.config.ts`; none of them is a secret)
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `SY_PUSH` | `link` | `link`: the self-hosted Android build (no Expo token, no Firebase, minSdk 31); `expo`: the phase 8 Expo/FCM path |
-| `SY_APP_ID` | `dev.switchyard.app.local` | Bundle id and Android package. Use your own reverse-DNS id; the App Group is `group.<SY_APP_ID>`, the widget extension `<SY_APP_ID>.widgets` |
-| `EAS_PROJECT_ID` | unset | `SY_PUSH=expo` only: `extra.eas.projectId`, the Expo push token is issued for this project |
-| `SY_GOOGLE_SERVICES_JSON` | unset | `SY_PUSH=expo` only (refused with `link`): path (outside `phone/`) to `google-services.json`; omitted when unset |
+| `SY_APP_ID` | `dev.switchyard.app.local` | Android package (and bundle id). Use your own reverse-DNS id |
 | `SY_APP_VARIANT` | release | `development` allows cleartext `http://` to loopback and LAN hubs (`--insecure-lan` testing); anything else is a release config |
 
 ## Develop
 
-Node 22.13 or newer. Expo Go cannot receive remote pushes on Android, so use a development
-build.
+Node 22.13 or newer. Expo Go does not have the `sy-link` module, so use a development build.
 
 ```
 cd phone
@@ -128,51 +97,27 @@ Layout (phone.md P1): `app/` (expo-router routes, thin), `src/contract/` (TypeSc
 of the hub's JSON), `src/lib/` (all decisions, pure and tested; no React Native or Expo
 import), `src/state/` (the app state: keychain, client, poller, cache; `glue.tsx` binds
 notifications, widgets and the Live Activity to it, with the logic in `src/lib/integrate/`), `src/components/` (screens and UI),
-`src/tasks/` (the background notification task), `widgets/` (iOS `expo-widgets` and Android
+`widgets/` (iOS `expo-widgets` and Android
 `react-native-android-widget` components).
 
-## Builds (you, with EAS)
+## Builds (you)
 
-These run on Expo's build servers with your credentials. Agents never run them.
-
-```
-npx eas-cli@24.8.0 build --profile development --platform all     # development builds
-npx eas-cli@24.8.0 build -p android --profile preview             # an APK to sideload
-npx eas-cli@24.8.0 build -p ios --profile production              # then:
-npx eas-cli@24.8.0 submit -p ios                                  # TestFlight (internal testers need no review)
-```
-
-On a Mac you can also build locally: `npx expo run:ios` / `npx expo run:android`.
+Build locally, with your own toolchain (`ANDROID_HOME`, JDK 17+): `npx expo run:android` for a
+development build, `make phone-apk-release` for the signed APK above. Agents never run them.
 
 For the APK: install it on the phone and allow installs from unknown sources for the app
 you open it with.
 
-## Expo's enhanced push security (recommended)
-
-Without it, anyone who learns a phone's Expo push token can send it a push through your EAS
-project. To turn it on:
-
-1. EAS dashboard → your project → Credentials (or Settings) → turn on **Enhanced security
-   for push notifications**.
-2. Create an access token (account settings → Access tokens).
-3. Paste it into the board: Settings → Channels → App → Access token. The hub keeps it as a
-   secret, never shows it again (only "set"), and sends it as a bearer token to Expo.
-
-`sy doctor` on the hub shows the App channel, its live targets, whether a token is set, the
-last receipt error, and a warning when push tickets older than an hour have no receipt.
-
 ## When pushes stop
 
-| Symptom (Settings test push, `sy doctor`, board) | Fix |
-| --- | --- |
-| "Expo has no push credentials for this app (see phone/README)" (`InvalidCredentials`) | Upload the APNs key / FCM v1 service account again with `eas credentials`; check the bundle id matches `SY_APP_ID` |
-| "Expo access token missing or wrong" | Enhanced security is on: paste a valid access token in the board (above) |
-| The app's target shows **gone** | The phone uninstalled the app or the token changed (`DeviceNotRegistered`); open the app, it registers again |
-| Tickets without receipts (`sy doctor`) | The hub cannot reach `exp.host`; check the egress policy |
+Open Settings → Notifications. It shows the link's state and last error in words (hub
+unreachable, key changed, Android blocked a background start), the battery guide for your
+phone's maker, and "Send test notification". The hub's board shows the phone's link target and
+whether it is connected.
 
 ## Privacy
 
-Push text goes through Expo, Apple and Google, who can read it (push.md 5.5). Turn on
-**Private pushes** in the app's Settings (or the hub default) and pushes say only "1 session
-needs you"; the details load from your hub when you open them. The device token stays in the
-OS keychain and never appears in logs, widgets, pushes or links.
+Notifications travel over the app's own encrypted connection to your hub: no third party sees
+them. Turn on **Private pushes** in the app's Settings (or the hub default) and pushes say only
+"1 session needs you"; the details load from your hub when you open them. The device token stays
+in the OS keychain and never appears in logs, widgets, pushes or links.

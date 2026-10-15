@@ -221,7 +221,7 @@ export interface QuietHours {
 
 export type TapMode = 'auto' | 'session' | 'claude';
 
-/** api.yaml DevicePrefs (push.md 5.4); `widgets` is phase 8 (push.md 12.9). */
+/** api.yaml DevicePrefs (push.md 5.4); `widgets` turns widget refresh frames over the link on. */
 export interface DevicePrefs {
   mute?: Trigger[] | string[];
   quiet_hours?: QuietHours | null;
@@ -231,18 +231,16 @@ export interface DevicePrefs {
   widgets?: boolean;
 }
 
-export type ChannelKind = 'webpush' | 'ntfy' | 'expo' | 'link';
+export type ChannelKind = 'webpush' | 'ntfy' | 'link';
 
-export type Platform = 'ios' | 'android';
-
-/** api.yaml PushTarget; `platform` and `app_version` are phase 8 (expo targets only). */
+/** api.yaml PushTarget. */
 export interface PushTarget {
   id: string;
   kind: ChannelKind;
   device?: string | null;
   name?: string | null;
   endpoint_host?: string;
-  endpoint?: string | null; // expo: the Expo push token (owning device and owner only)
+  endpoint?: string | null;
   server?: string | null;
   topic?: string | null;
   token_set?: boolean;
@@ -253,19 +251,8 @@ export interface PushTarget {
   last_error_at?: Iso | null;
   prefs?: DevicePrefs;
   created_at?: Iso;
-  platform?: Platform | null;
-  app_version?: string | null;
   /** push.md 13.7: link targets only (link.md 9). */
   link?: { connected: boolean; last_seen_at?: Iso | null; queued?: number } | null;
-}
-
-/** POST /v1/push/targets body for the app (push.md 12.7). */
-export interface ExpoTargetNew {
-  kind: 'expo';
-  expo_token: string;
-  name?: string;
-  platform: Platform;
-  app?: { version: string; build: string };
 }
 
 /** api.yaml Device. */
@@ -346,7 +333,7 @@ export interface PairClaimReply {
   reg?: 'qr' | 'tofu' | 'ssh' | 'local';
 }
 
-/** api.yaml PushSettings (in GET /v1/rules `settings`); `expo_refresh_min` is phase 8. */
+/** api.yaml PushSettings (in GET /v1/rules `settings`). */
 export interface PushSettings {
   quiet_hours?: QuietHours;
   private?: boolean;
@@ -354,7 +341,8 @@ export interface PushSettings {
   snooze_min?: number;
   max_age_s?: number;
   batch_s?: number;
-  expo_refresh_min?: number;
+  /** Least minutes between two widget refresh frames to one link device (10-240, default 15). */
+  refresh_min?: number;
 }
 
 /** api.yaml Rule (the app shows rules read-only; mute is a device pref). */

@@ -23,7 +23,7 @@ import sessions from './fixtures/hub/sessions.json';
 export const NOW = meta.now_ms;
 export const fx = { accounts, alert, alerts, machines, me, overview, peersAudit, peersMatrix, rules, session, sessions };
 
-export const APP: AppInfo = { version: '0.8.0', build: '12', model: 'Pixel 9', platform: 'android', projectId: 'proj', dev: false };
+export const APP: AppInfo = { version: '0.8.0', build: '12', model: 'Pixel 9', platform: 'android', dev: false };
 
 export function freshData(patch: Partial<HubData> = {}): HubData {
   return {
@@ -80,7 +80,6 @@ export function fakeClient(over: Partial<Record<keyof HubClient, unknown>> = {})
     deviceSelf: jest.fn(async () => structuredClone(device)),
     patchSelf: jest.fn(async (prefs: object) => ({ ...device, prefs })),
     unpairSelf: jest.fn(async () => undefined),
-    addTarget: jest.fn(),
     testTarget: jest.fn(async () => ({ outcome: 'sent' })),
     patchTarget: jest.fn(async (id: string, patch: object) => ({ id, kind: 'link', status: 'ok', enabled: true, ...patch })),
     matrix: jest.fn(async () => structuredClone(peersMatrix)),
