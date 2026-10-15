@@ -215,6 +215,18 @@ func (tx *Tx) OpenPeerThread(x, y string) (PeerThreadRow, bool, error) {
 	return r, err == nil, err
 }
 
+// PeerThread reads one thread, open or closed; ErrNotFound when there is none.
+func (tx *Tx) PeerThread(id string) (PeerThreadRow, error) {
+	var r PeerThreadRow
+	err := tx.queryRow(`SELECT id, a_session, b_session, a_account, b_account, opened_at, last_at, coalesce(human_at, 0), turns,
+		coalesce(paused_at, 0), coalesce(closed_at, 0) FROM peer_thread WHERE id = ?`, id).Scan(
+		&r.ID, &r.A, &r.B, &r.AAccount, &r.BAccount, &r.OpenedAt, &r.LastAt, &r.HumanAt, &r.Turns, &r.PausedAt, &r.ClosedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return r, ErrNotFound
+	}
+	return r, err
+}
+
 // PutPeerThread inserts or replaces a thread row.
 func (tx *Tx) PutPeerThread(r PeerThreadRow) error {
 	_, err := tx.exec(`INSERT INTO peer_thread (id, a_session, b_session, a_account, b_account, opened_at, last_at, human_at, turns,
