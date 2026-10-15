@@ -22,7 +22,7 @@ Every machine runs the same small `sy` tool, which Claude Code itself starts on 
 | --- | --- | --- | --- |
 | **Core:** `sy` + hub | Account setup and sharing, hooks and status line, outbox, the hub with its web dashboard | Yes, the only required part | One binary (Linux, macOS, Windows), plus a Docker image for the hub |
 | **Desktop app** | All claude.ai accounts in one window, web usage without Claude Code, every setting in one place | Optional; for claude.ai users | Electron app that bundles `sy` |
-| **Phone app** | Needs-you inbox, every account's usage, every session, pushes and widgets | Optional; recommended | Phase 1: the hub's installable web app. Phase 2: Expo app |
+| **Phone app** | Needs-you inbox, every account's usage, every session, pushes and widgets | Optional; recommended | Phase 1: the hub's installable web app. Phase 2: native app (built with Expo) |
 | **Switchyard Terminal** | A terminal whose sidebar lists every Claude session, grouped by account, with live state and context | Separate, optional | Fork of the open-source Warp client, plus a lighter pane that works inside Claude Code in any terminal (section 14) |
 
 **Screens:** every screen named in this doc is drawn in the companion canvas [Switchyard screens](https://claude.ai/artifact/ExUAQtHWibGTetRzTjtQ9y): installer, desktop app, phone, terminal.
@@ -425,12 +425,12 @@ The hub decides and sends every push; phones only receive. Sending a push is an 
 | --- | --- | --- | --- | --- |
 | ntfy | Hub → an ntfy topic → ntfy app | Yes | A self-hosted ntfy relays through ntfy.sh for instant delivery; ntfy.sh sees only a hash and a message id | Works today, nothing to build; the fallback for direct push from SSH servers |
 | Web Push | Hub signs with its own keys → Apple / Google / Mozilla push service → the installed web app | Yes, no relay | Home-screen install, iOS 16.4+; reportedly not in the EU | Phase 1, along with the web app |
-| Switchyard phone app | Hub → Expo's push service → APNs / FCM → app | Yes, through Expo (see below) | Reliable, action buttons, widgets | Phase 2 |
+| Switchyard phone app | Hub → the app's own connection (the link, Android) | Yes, no third party (see below) | Reliable, action buttons, widgets | Phase 2 |
 | Desktop | Hub's live stream → desktop app → OS notification | Yes |  | Always, when the app runs |
 
-**Native pushes without a project-run server, at first.** The phone app registers its Expo push token with your hub, and the hub posts straight to Expo's push API. That needs no Switchyard-run relay, and Expo accepts up to 600 pushes a second per project. If abuse ever forces Expo's access-token protection on, the project adds a small relay that holds that token and rate-limits each installation (Home Assistant allows 500 a day per device), the Bitwarden and Nextcloud pattern.
+**Native pushes without a project-run server.** The Android app keeps its own connection to your hub and the hub queues each push on it (the link, push.md 13). That needs no Switchyard-run relay and no push service. An earlier plan sent them through Expo's push service; that path was removed before any release (schema v11).
 
-**What a push carries.** By default: account label, project and what happened, plus the first line of Claude's question if you allowed last messages (section 13). Apple, Google and Expo can read that text. **Private pushes** (one switch) send only "1 session needs you" plus an id, and the app fetches the details from the hub when you open it, the same trick ntfy uses on iOS. Every push also carries the Remote Control link when the session has one, so tapping works even when the hub isn't reachable.
+**What a push carries.** By default: account label, project and what happened, plus the first line of Claude's question if you allowed last messages (section 13). Apple, Google (Web Push, sealed per RFC 8291) and ntfy's server see only what each channel exposes (push.md 5.5). **Private pushes** (one switch) send only "1 session needs you" plus an id, and the app fetches the details from the hub when you open it, the same trick ntfy uses on iOS. Every push also carries the Remote Control link when the session has one, so tapping works even when the hub isn't reachable.
 
 **Rules** (all adjustable, per account and per project)
 
@@ -472,7 +472,7 @@ Pushes show **Open**, **Snooze 15 min** and **Seen**. Widgets show the next-rese
 **How it gets built, in two steps**
 
 1. **Phase 1, installable web app.** The hub's web UI already installs to the home screen. It gets the screens above plus Web Push, and costs no app store work. It proves the screens and the data first.
-2. **Phase 2, Expo app** (React Native, the same choice as Happy). It adds reliable native pushes with buttons, widgets, QR scanning with the camera, and a lock-screen countdown (Live Activity) for a limit reset. It ships through TestFlight and the Play Store, plus a sideloadable APK.
+2. **Phase 2, native app** (React Native with Expo, the same choice as Happy). It adds reliable native pushes with buttons, widgets, QR scanning with the camera, and a lock-screen countdown (Live Activity) for a limit reset. It ships through TestFlight and the Play Store, plus a sideloadable APK.
 
 **All your claude.ai accounts on the phone?** It is possible but deliberately not in the first version.
 
@@ -527,7 +527,7 @@ For your own hub, last messages are on by default. For any hub you don't run you
 - **Transport.** HTTPS whenever the hub isn't on `127.0.0.1` (Caddy or `tailscale serve`). Plain HTTP to a non-local address is refused unless `--insecure-lan` is passed.
 - **At rest.** The hub file holds project names, emails and, if allowed, message snippets. Keep it on an encrypted disk. `sy hub backup --encrypt` encrypts backup copies with a passphrase.
 - **Supply chain.** Release binaries come with SHA-256 sums and GitHub build attestations. The install script verifies them. The Claude Code plugin is pinned to a version and updated by `sy update`, not silently.
-- **Pushes.** By default push text passes through Apple, Google, Expo or ntfy. Private pushes (section 11) keep it to "1 session needs you".
+- **Pushes.** By default push text passes through Apple, Google or ntfy (Web Push is sealed end to end). Private pushes (section 11) keep it to "1 session needs you".
 
 ## 14. Switchyard Terminal
 
@@ -933,7 +933,7 @@ No hub yet: everything is written to the local outbox and read back locally.
 
 An addendum (Oct 2026; the full text lives with the plan's working drafts, outside the repo)
 adds three tracks after phases 0–8 have been tested by hand. Android only, fully self-hosted:
-no Firebase, Expo account, EAS, Play Store or other third-party account.
+no Firebase, EAS, Play Store or other third-party account.
 
 | Track | Phases | Spec |
 | --- | --- | --- |
@@ -943,7 +943,7 @@ no Firebase, Expo account, EAS, Play Store or other third-party account.
 
 Changes to sections above: section 1 gains the optional `sy agent` user service; section 10's
 QR carries the hub key fingerprint and a registration seal; section 13 gains the matrix gate
-and "machine tokens still only write"; the Expo channel is off in the self-hosted profile.
+and "machine tokens still only write"; no third-party push service is used.
 
 ### Before going public
 
@@ -966,7 +966,7 @@ Confirmed on 12 October 2026. Decision 1 differs from the earlier recommendation
 | 4 | `sy` language | Go: one static binary, easy on SSH servers | Node would reuse prototype code but needs Node everywhere |
 | 5 | Claude's last message to the hub (\~200 characters) | On for your own hub, off elsewhere | Needed for plain-text question detection and useful push text |
 | 6 | PreToolUse / PostToolUse hooks | Off; "needs permission" clears at the next prompt or Stop | On means instant clearing, at one process per tool call |
-| 7 | First phone channel | Installable web app + Web Push and ntfy, then the Expo app | The Expo app needs store accounts and an Apple developer fee |
+| 7 | First phone channel | Installable web app + Web Push and ntfy, then the native app | The native app needs store accounts and an Apple developer fee |
 | 8 | Phone account tabs (claude.ai on the phone) | Phase "later", after question 2 | App store and terms risk |
 | 9 | Switchyard Terminal: build the Claude Code pane first, then the Warp fork? | Yes (section 14) | The pane works in every terminal, Warp included, at a fraction of the cost. Warp has no plugin API, so anything inside Warp means a fork that is rebased weekly onto a fast-moving 1.46M-line repo, with AGPL duties. The fork waits until the pane and the no-fork hookups have been used for real |
 | 10 | The product name and site | Keep "Switchyard"; no "Claude" in any name | Trademark rule in the terms |
@@ -988,7 +988,7 @@ Confirmed on 12 October 2026. Decision 1 differs from the earlier recommendation
 
 - Install and enrolment: [Beszel agent install](https://beszel.dev/guide/agent-installation), [Komodo connect servers](https://komo.do/docs/setup/connect-servers), [Tailscale auth keys](https://tailscale.com/kb/1085/auth-keys), [Netdata install](https://learn.netdata.cloud/docs/netdata-agent/installation/linux), [uv install](https://docs.astral.sh/uv/getting-started/installation/), [GitHub artifact attestations](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds)
 - Networking: [tailscale serve](https://tailscale.com/kb/1242/tailscale-serve), [userspace networking](https://tailscale.com/kb/1112/userspace-networking), [Cloudflare quick tunnels](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/), [Caddy automatic HTTPS](https://caddyserver.com/docs/automatic-https), [ssh\_config](https://man.openbsd.org/ssh_config)
-- Push: [ntfy iOS instant notifications](https://docs.ntfy.sh/config/#ios-instant-notifications), [Home Assistant notifications](https://companion.home-assistant.io/docs/notifications/notification-details), [Bitwarden push relay](https://bitwarden.com/help/configure-push-relay/), [Nextcloud push](https://nextcloud.com/pushnotifications), [Expo push sending](https://docs.expo.dev/push-notifications/sending-notifications/)
+- Push: [ntfy iOS instant notifications](https://docs.ntfy.sh/config/#ios-instant-notifications), [Home Assistant notifications](https://companion.home-assistant.io/docs/notifications/notification-details), [Bitwarden push relay](https://bitwarden.com/help/configure-push-relay/), [Nextcloud push](https://nextcloud.com/pushnotifications), [Expo sending docs](https://docs.expo.dev/push-notifications/sending-notifications/)
 
 **Mobile**
 

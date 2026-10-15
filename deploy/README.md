@@ -203,9 +203,8 @@ The board is also an installable phone app that gets pushes when a session needs
 3. **Outbound HTTPS to the push services.** Pushes leave the hub as HTTPS POSTs to the
    phone's push service (`fcm.googleapis.com`, `*.push.apple.com`,
    `*.push.services.mozilla.com`, `*.notify.windows.com`) and, if you add an ntfy topic, to
-   the ntfy server (`ntfy.sh` by default). The phone store app (phase 8) gets its pushes
-   through Expo's push service, so the hub also POSTs to `exp.host` (sends, and receipts
-   every 5 minutes). No inbound port is needed for pushes, but a firewall or egress policy
+   the ntfy server (`ntfy.sh` by default). The Android app's own connection (the `link`
+   channel) needs no outbound push service. No inbound port is needed for pushes, but a firewall or egress policy
    must allow these on 443. The phone itself only needs the
    tailnet to open the app, tap a push or use Snooze/Seen.
 

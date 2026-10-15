@@ -1,6 +1,6 @@
 # Alerts and pushes
 
-Status: spec v1, phase 4; section 12 (the Expo channel) phase 8; sections 13 (the link
+Status: spec v1, phase 4; section 12 is a tombstone (the Expo channel, removed in schema v11); sections 13 (the link
 channel) and 14 (the Android `sy-link` module) N0, built in N1. Implemented in `internal/hub/push/...` (rules, engine, channels),
 `internal/hub/store` (alerts, rules, targets), `internal/hub/api` (handlers). The web app
 side (service worker, permission, subscription) is in [pwa.md](pwa.md); pairing and devices
@@ -18,8 +18,8 @@ do anything: snooze and seen change only the hub's own alert rows.
 | **Rule** | Whether, and after how long, a trigger notifies, for which seats/projects/machines/windows. Global, owned by the owner (section 3). |
 | **Episode** | One continuous occurrence of a condition: one session sitting in one needs-you state, one window instance crossing 80%, one silence of one machine. Identified by its **episode key** (3.2). |
 | **Alert** | The hub's row for one episode (`alert` table): due time, status, snooze, seen. At most one per episode (unique key): this is the dedupe. |
-| **Target** | One place a push goes: one browser's Web Push subscription, one ntfy topic, one phone app's Expo push token, or one phone's link (`push_target`). |
-| **Channel** | A kind of target, `webpush`, `ntfy`, `expo` (the phone app, section 12; phase 8) or `link` (the Android app's own connection, section 13; N1), with a hub-wide on/off switch (`channel`). |
+| **Target** | One place a push goes: one browser's Web Push subscription, one ntfy topic, or one phone's link (`push_target`). |
+| **Channel** | A kind of target, `webpush`, `ntfy` or `link` (the Android app's own connection, section 13; N1), with a hub-wide on/off switch (`channel`). |
 | **Delivery** | One attempt to bring one alert to one target (`delivery`): pending, held, sent, failed, skipped, gone. |
 | **Device prefs** | Per-device choices: muted triggers, own quiet hours, private, tap behaviour (5.4). They decide whether *this device* receives an alert, never whether the alert exists. |
 
@@ -414,10 +414,10 @@ Who can read push text:
 | Web Push | Only the subscribed browser: RFC 8291 encrypts the payload end to end; Apple, Google and Mozilla see a ciphertext, its size and timing | The lock screen and notification history only |
 | ntfy, self-hosted | Your ntfy server; for iOS instant delivery your server forwards a hash of the topic and a message id (not the text) to ntfy.sh's upstream | The lock screen, and the ntfy server if it is not yours |
 | ntfy.sh | ntfy.sh, and anyone who learns the topic name (topics are open; the random name is the only secret) | Content in transit and at rest on ntfy.sh. **Private is forced on** for ntfy.sh targets unless the owner explicitly unchecks it on that target |
-| Expo (phone app, section 12) | Expo, Apple and Google: the title, body and `data` are not end-to-end encrypted | The text everywhere, and the Remote Control link: an Expo push in private mode carries no `remote_url` (12.2) |
+| Link (Android app, section 13) | Only the app: sealed per RFC 8291 to a Keystore key; the hub and your tailnet carry ciphertext | The lock screen and notification history only |
 
 This corrects plan section 11's "Apple, Google … can read that text" for Web Push; it remains
-true for ntfy and for the phase 8 Expo channel.
+true for ntfy.
 
 ### 5.6 Retries and dead targets
 
@@ -581,7 +581,7 @@ holds the Go type.
 
 | Field | Meaning |
 | --- | --- |
-| `type` | `alert`, `summary` or `test`; `refresh` only in an Expo push's `data` (12.9: silent, never shown, not this object's other fields). |
+| `type` | `alert`, `summary` or `test`; `refresh` only in a link `refresh` frame (13.5: never shown, not this object's other fields). |
 | `alert` / `alerts` | The alert (for `summary`: the first) and the alerts in the push, at most 20 ids: a larger summary lists the first ones (and fewer if the payload would not fit 3 000 bytes); the app refetches the list. |
 | `tag` | Notification tag: `sy-s-<session>`, `sy-l-<seat>-<window>`, `sy-r-<seat>-<window>`, `sy-m-<machine>`, `sy-summary`, `sy-test`. The same tag replaces the earlier notification. |
 | `url` | Deep link, relative to the hub origin. Private: `/#/alerts/<alert>`. Summary: `/#/`. |
@@ -766,7 +766,7 @@ CREATE INDEX pair_code_live ON pair_code(code_hash) WHERE claimed_at IS NULL AND
 
 -- Channel kinds with a hub-wide switch.
 CREATE TABLE channel (
-  kind          TEXT    NOT NULL PRIMARY KEY CHECK (kind IN ('webpush', 'ntfy', 'expo')),
+  kind          TEXT    NOT NULL PRIMARY KEY CHECK (kind IN ('webpush', 'ntfy')),
   enabled       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
   settings      TEXT    NOT NULL DEFAULT '{}' CHECK (json_valid(settings)),
   updated_at    INTEGER NOT NULL
@@ -1031,217 +1031,34 @@ phone (pairing.md), register a webpush target, ingest a Stop(question) through
 and check it against 6.5; then repeat with a UserPromptSubmit at 40 s and check nothing
 arrives; then cross 80% with three `limit_sample` records and check exactly one push.
 
-## 12. The Expo channel (phase 8)
+## 12. (Removed) The Expo channel
 
-The phone app ([phone.md](phone.md)) receives native pushes through Expo's push service. This
-section is the hub side: the `expo` sender, receipts, credentials, registration and silent
-widget refresh pushes. Web Push and ntfy do not change. Code: `internal/hub/push/expo`,
-`internal/hub/push/expotest` (the fake service), `internal/hub/store/expo.go`.
-
-### 12.1 Choice
-
-Expo's push service (`https://exp.host/--/api/v2/push/send`), for the
-reasons in phases/8.md decision 2. Compared:
-
-| | Expo push service (chosen) | Direct APNs + FCM v1 | Project-run relay |
-| --- | --- | --- | --- |
-| Credentials on the hub | None, or an optional Expo access token | An APNs `.p8` key, team and key ids, and an FCM service account, all from the app publisher | A relay token per hub |
-| Works for a store-installed app on any self-hosted hub | Yes | Only if the hub owner builds and signs their own app | Yes |
-| Who can read the text | Expo (in memory only, per its FAQ), Apple, Google | Apple, Google | The relay, Apple, Google |
-| Reliability | Expo, then APNs/FCM; receipts give `DeviceNotRegistered`; 600 pushes/s per project | Fewest hops; HTTP/2 and OAuth to manage | An extra service to run |
-| Live Activity remote updates | No | Yes (`apns-push-type: liveactivity`) | Possible |
-
-The sender takes a base URL (channel setting `base_url`, default `https://exp.host`), so a
-relay that speaks Expo's API can replace it later without a schema change.
-
-### 12.2 Message
-
-One message per target per push. Expo accepts up to 100 per request, but
-the engine sends per target and volumes are tiny:
-
-```json
-{
-  "to": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
-  "title": "work · api · asked a question",
-  "body": "Should I also update the migration?",
-  "data": { "v": 1, "type": "alert", "alert": "al_01JA3B…", "...": "6.5 exactly" },
-  "categoryId": "sy_alert",
-  "channelId": "sy_needs_you",
-  "sound": "default",
-  "badge": 3,
-  "priority": "high",
-  "ttl": 21600
-}
-```
-
-| Field | Rule |
-| --- | --- |
-| `data` | The 6.5 payload as built for this target, except that the Expo channel always drops `remote_url` when `private` is true. Expo, Apple and Google can read `data`, unlike Web Push. |
-| `categoryId` | `sy_alert` when `data.actions` is present; omitted otherwise |
-| `channelId` | phone.md P6.1 by trigger; `sy_test` for tests |
-| `priority` / `ttl` | `high` / `normal` / `normal` for the Web Push urgencies `high` / `normal` / `low`; `ttl` = 6.4 TTL in seconds |
-| `badge` | `needs_you` |
-| size | At most 4096 bytes in total (Expo's limit, `MessageTooBig`). The builder cuts `body`, then `alerts`, then `title`, never `actions` |
-| **refresh** (12.9) | `{"to", "data": {"v": 1, "type": "refresh", "needs_you": n, "ts"}, "contentAvailable": true, "priority": "normal", "ttl": 900}`: no title, body, sound or category (Android data-only, iOS background). Expo's docs name the field `contentAvailable`; `_contentAvailable` is its deprecated alias, so do not send that |
-
-Headers: `Content-Type: application/json`, `Accept: application/json`, and
-`Authorization: Bearer <access token>` only when one is set (12.5).
-
-### 12.3 Response mapping
-
-(to `model.Result`; `Err` never contains message text):
-
-| Expo answer | Outcome | Notes |
-| --- | --- | --- |
-| 200, `data[0].status = "ok"` | `sent` | `Ref` = `data[0].id` (the ticket) |
-| 200, `status = "error"`, `details.error = "DeviceNotRegistered"` | `gone` | Target disabled, as for Web Push 410 |
-| 200, `MessageRateExceeded` | `retry` | `RetryAfter` 60 s |
-| 200, `MessageTooBig` | `failed` | Should be impossible (12.2); logged as a bug |
-| 200, `InvalidCredentials` / `MismatchSenderId` | `failed` | `Err`: "Expo has no push credentials for this app (see phone/README)" |
-| 200 with top-level `errors[]` (`PUSH_TOO_MANY_*`, `TOO_MANY_REQUESTS`) | `retry` | Backoff of 5.6 |
-| 401 / 403 (`UNAUTHORIZED`: enhanced security on, token missing or wrong) | `failed` | `Err`: "Expo access token missing or wrong" |
-| 429, 500–599, timeout, connection error | `retry` | `Retry-After` honoured as in 5.6 |
-| 400, 413, other | `failed` | `Err` = `HTTP <status>` plus Expo's error code, never the body |
-
-### 12.4 Receipts
-
-A poller in `internal/hub/push/expo` runs every 5 minutes (one goroutine,
-started by `sy hub serve`, stopped on shutdown):
-
-- It takes deliveries with `ticket IS NOT NULL AND receipt_at IS NULL` sent between 24 h
-  and 15 min ago, and POSTs up to 1000 ids per request to `/--/api/v2/push/getReceipts`.
-- `ok` → `receipt_at = now`.
-- `DeviceNotRegistered` → the target becomes gone (`ApplyTargetResult` with `gone`) and
-  `delivery.last_error = "DeviceNotRegistered"`.
-- Any other error → the target's `last_error` (shown in Settings), with the same text as
-  the send path (12.3): `InvalidCredentials` / `MismatchSenderId` give the "no push
-  credentials" text, `MessageTooBig` stays bare, anything else is `Expo: <code>`.
-- Ids missing from the answer after 24 h → `receipt_at = now` (Expo clears receipts after
-  24 hours).
-
-### 12.5 Credentials and settings
-
-- `PUT /v1/push/channels/expo` (owner) takes `settings: {base_url?, access_token?}`. The
-  access token is stored in `hub_secret` key `expo_access_token`, never returned (the
-  channel shows `access_token_set`) and never logged. `base_url` must be `https://` on
-  port 443. The token is Expo's credential for that host: a PUT that changes the base
-  host (the default host counts as `exp.host`) deletes the stored token unless a new
-  `access_token` comes in the same request.
-- APNs and FCM credentials never touch the hub: you upload them to EAS (manual steps).
-
-### 12.6 Network
-
-The sender uses `netguard.NewClient()` (public addresses only, no
-redirects, 10 s timeout). The test hook `SY_TEST_EXPO_DIAL=<host:port>` (build tag
-`fakeclock` only, like `SY_TEST_WEBPUSH_DIAL`) sends every request to the fake service.
-`scripts/ci/check-release-seams.sh` already refuses `fakeclock` in a release build.
-
-### 12.7 Registration
-
-`POST /v1/push/targets {kind: "expo", expo_token, name?, platform,
-app?}`:
-
-- `expo_token` must match `^Expo(nent)?PushToken\[[A-Za-z0-9_-]{8,200}\]$` (else 400).
-- `platform` is `ios` or `android`; `app` is `{version, build}`, strings of at most 32
-  characters each.
-- Stored as `endpoint = expo_token`, `meta = {"platform", "app_version", "app_build"}`.
-- It upserts by `(kind, endpoint)` and re-binds to the caller, as for Web Push. The cap of
-  10 targets per device applies.
-- A token held by another device is not taken over (409) unless that device is revoked or
-  has not been seen for 30 days (a phone that unpaired while offline). A device seen
-  within 30 days keeps its token, so one live phone cannot redirect another's pushes.
-- `PushTarget` adds `platform` and `app_version` for `expo` targets. `endpoint` (the token)
-  goes only to the owning device and the owner, as for Web Push.
-
-### 12.8 API and schema (v6)
-
-**api.yaml** (every change additive; no new path):
-
-- `/v1/push/channels/{kind}` path enum and `Channel.kind`: add `expo`. `Channel.settings`
-  for `expo`: `{base_url, access_token_set}` out, and `{base_url?, access_token?}` in (the
-  token is write-only).
-- `PushTargetNew.kind` and `PushTarget.kind`: add `expo`. `PushTargetNew` gains
-  `expo_token`, `platform` (`ios` | `android`) and `app` (`{version, build}`).
-  `PushTarget` gains `platform` and `app_version`.
-- `DevicePrefs.widgets`: boolean, default false.
-- `PushSettings.expo_refresh_min`: integer, 10–240, default 15.
-- 6.5 `type` gains `refresh` (Expo only, never shown).
-
-**Migration** `internal/hub/store/migrations/0006_expo.sql`, and `docs/spec/schema.sql`
-becomes v6 with a `v6 phase 8` header line:
-
-```sql
--- Version 6 (phase 8): the Expo channel for the store app. push.md 12.
-
--- channel.kind has allowed 'expo' since v3; the row was never seeded.
-INSERT INTO channel (kind, enabled, settings, updated_at) VALUES ('expo', 1, '{}', 0);
-
--- Per-target facts that are not secrets: {"platform": "ios", "app_version": "0.8.0", "app_build": "12"}.
-ALTER TABLE push_target ADD COLUMN meta TEXT CHECK (meta IS NULL OR json_valid(meta));
-
--- Expo answers with a ticket; the receipt comes later (push.md 12.4).
-ALTER TABLE delivery ADD COLUMN ticket TEXT;
-ALTER TABLE delivery ADD COLUMN receipt_at INTEGER;
-CREATE INDEX delivery_ticket_open ON delivery(created_at) WHERE ticket IS NOT NULL AND receipt_at IS NULL;
-```
-
-**Go model** (`internal/hub/push/model`):
-
-- `KindExpo = "expo"`, `TypeRefresh = "refresh"`;
-- `Result.Ref string` (a ticket id, empty for other senders);
-- `Prefs.Widgets *bool`;
-- `Settings.ExpoRefreshMin int` (default 15).
-
-The engine writes `Result.Ref` into `delivery.ticket` in the same transaction that writes
-the result.
-
-Wave 0 also: `Delivery.kind` in api.yaml gains `expo`; `TargetMeta{Platform, AppVersion,
-AppBuild}` is `Target.Meta`; `model.PlatformIOS` / `PlatformAndroid`; `Prefs.WidgetsOn()`.
-`Settings.Validate` refuses `expo_refresh_min` outside 10–240. `store.DeliveryRow.Ticket` is
-read and written with the rest of the row; `receipt_at` belongs to the receipts poller.
-The store still refuses `expo` targets (`UpsertTarget`) and the API refuses `PUT
-/v1/push/channels/expo` until WP-H adds those branches.
-
-### 12.9 Widget refresh pushes
-
-- `expo.Refresher` subscribes to the `events.Broker`, with session and usage changes
-  debounced 10 s. For each enabled `expo` target whose device has `prefs.widgets = true` and
-  is not revoked, it computes a digest: the needs-you count, the `used_pct` of each seat ×
-  watched window bucketed to 5 points, and the next `resets_at`. When the digest differs from
-  the last one sent to that target, and the last refresh is at least `expo_refresh_min`
-  (default 15, 10–240) ago, it sends one `refresh` message (12.2).
-- It also sends one when a watched window passes its `resets_at`, still subject to the
-  minimum.
-- Refreshes ignore quiet hours (they are silent), are not alerts and write no `delivery`
-  rows. A `gone` result disables the target as usual. Digests live in memory, so a restart
-  sends at most one refresh per target.
-- It sends nothing while the hub is frozen (`hub.frozen`); a skipped pass looks again
-  10 s later.
-- It logs one line per refresh pass with the count, never the digest.
+It carried the phase 8 store app's pushes through Expo's push service. It was removed in schema
+v11, before any release; nothing of it remains in the hub. Widget refresh moved to the link
+(13.5).
 
 ## 13. The link channel (N1)
 
-Status: spec v1, N0. The Android app's native notifications without Google, Expo or any
+Status: spec v1, N0. The Android app's native notifications without Google or any
 account: the hub queues each push on the device's **link** ([link.md](link.md)) and the app's
-own service (14) posts it. Web Push and ntfy do not change; the `expo` channel stays in the
-code and is turned off in the self-hosted profile (13.6). Code: `internal/hub/push/link` (the
+own service (14) posts it. Web Push and ntfy do not change. Code: `internal/hub/push/link` (the
 sender), `internal/hub/link` (queue and transport). Schema v8.
 
 ### 13.1 Choice
 
-| | Link (chosen) | Expo push (section 12) | Web Push from the installed web app |
-| --- | --- | --- | --- |
-| Third parties | None: hub → phone over Tailscale (optionally Funnel) | Expo, Google (FCM) | Google's push service carries ciphertext; no account |
-| Account needed | No | Expo account, Firebase project, EAS | No |
-| Offline phone | Durable queue, replayed in order from the last ack (link.md 5) | FCM store-and-forward | Push service TTL |
-| Encryption | RFC 8291 to a Keystore key, hub-signed | TLS to Expo only; Expo and Google can read `data` | RFC 8291 |
-| Cost on the phone | A foreground service and one idle socket (battery measured in N1) | None beyond FCM | None beyond FCM |
+| | Link (chosen) | Web Push from the installed web app |
+| --- | --- | --- |
+| Third parties | None: hub → phone over Tailscale (optionally Funnel) | Google's push service carries ciphertext; no account |
+| Account needed | No | No |
+| Offline phone | Durable queue, replayed in order from the last ack (link.md 5) | Push service TTL |
+| Encryption | RFC 8291 to a Keystore key, hub-signed | RFC 8291 |
+| Cost on the phone | A foreground service and one idle socket (battery measured in N1) | None beyond FCM |
 
 Web Push in the installed web app stays the backup (plan addendum H1); a phone can have both.
 
 ### 13.2 Sender
 
-`internal/hub/push/link` implements the same sender interface as `webpush`, `ntfy` and `expo`.
+`internal/hub/push/link` implements the same sender interface as `webpush` and `ntfy`.
 
 - The payload is 6.5's object built for the target exactly as for Web Push (the same `private`
   handling; `remote_url` is kept, since the body is sealed end to end), plus one field `origin`
@@ -1253,8 +1070,7 @@ Web Push in the installed web app stays the backup (plan addendum H1); a phone c
   `Topic` (6.3), and dismissals (13.3) use the same mapping. Sealing is RFC 8291 with the
   certificate's box key (`p256dh` = the phone's `box_pub`) and the target's `auth` through
   `webpush.Encrypt`, the function of 6.3, `padMultiple` 128.
-- Results: enqueued → `sent` (`Ref` empty: `delivery.ticket` is Expo's receipt id and stays
-  NULL for link deliveries); no `device_key`, or the device revoked →
+- Results: enqueued → `sent`; no `device_key`, or the device revoked →
   `gone` (target disabled, as for Web Push 410); `ErrQueueFull` → `retry` (5.6's backoff).
 - `sent` means queued for the phone, not on it: `delivery.delivered_at` (13.4) says that.
 
@@ -1277,22 +1093,27 @@ with `delivered_at IS NULL` and `last_error` not `collapsed`, is a miss.
 
 ### 13.5 Widget refresh
 
-`refresh` frames replace 12.9's silent Expo pushes for link targets: the same `Refresher`
-(digest, debounce, minimum interval `expo_refresh_min`), but it calls `link.Enqueue(device,
-"refresh", "refresh", 900 s, snapshot)` for link targets whose device has `prefs.widgets =
-true`. The tag keeps only the newest. The body (link.md 6.4) is enough to redraw the widgets
-with no network call (phone.md P11).
+The widgets redraw from `refresh` frames over the link. `refresh.Refresher` (`internal/hub/push/refresh`)
+subscribes to the `events.Broker`, with session and usage changes debounced 10 s. For each
+enabled link target whose device has `prefs.widgets = true` and is not revoked, it computes a
+digest: the needs-you count, the `used_pct` of each seat x watched window bucketed to 5 points,
+and the next `resets_at`. When the digest differs from the last one sent to that target, and
+the last refresh is at least `refresh_min` (default 15, 10-240) ago, it calls
+`link.Enqueue(device, "refresh", "refresh", 900 s, snapshot)`. The tag keeps only the newest.
+The body (link.md 6.4) is enough to redraw the widgets with no network call (phone.md P11).
 
-### 13.6 Settings and the self-hosted profile
+- It also sends one when a watched window passes its `resets_at`, still subject to the minimum.
+- Refreshes ignore quiet hours, are not alerts and write no `delivery` rows. A `gone` result
+  disables the target as usual. Digests live in memory, so a restart sends at most one refresh
+  per target.
+- It sends nothing while the hub is frozen (`hub.frozen`); a skipped pass looks again 10 s later.
+- It logs one line per refresh pass with the count, never the digest.
+
+### 13.6 Settings
 
 - `PUT /v1/push/channels/link` (owner) takes `settings: {urls?: [string], ping_s?: integer}`:
   the URLs devices try (default `[wss://<hub.public_url host>/v1/link]`) and the default ping
   (180, range 60–900). They reach devices in the claim reply and in `welcome` (link.md 3.3).
-- **Self-hosted profile** (plan addendum A): at the first `sy hub serve` of N1 the hub turns the
-  `expo` channel off once (`channel.enabled = 0`) and records setting
-  `push.self_hosted_applied = true`, so turning it on again by hand sticks. `ntfy` is left as it
-  is (with no targets nothing is sent). Migration 0008 changes no switch, so a v6 test hub keeps
-  its behaviour.
 
 ### 13.7 Registration
 
@@ -1300,7 +1121,7 @@ A phone's `link` target is made by the hub, never posted by the app:
 
 - At a claim with keys (keys.md 7.1) by a phone: `push_target {kind: "link", device_id,
   endpoint: "link:" + device id, keys: {"p256dh": b64u(box_pub), "auth": b64u(auth)}, name:
-  "<model> · app", meta: {"platform": "android", "app_version", "app_build"}}`, in the claim's
+  "<model> · app"}`, in the claim's
   transaction.
 - A phone paired before N1 sends `PUT /v1/devices/self/keys` with the claim's `keys` object
   (`reg = tofu`), which makes the certificate and the target.
@@ -1331,7 +1152,7 @@ enabled; `delivery.delivered_at INTEGER` is added.
 - A dismiss collapses an unacked alert with the same tag (the test phone client sees only the
   dismiss); Seen on one device enqueues dismisses for the other link devices.
 - `delivered_at` is set on ack, not on enqueue; the N1 miss query.
-- The self-hosted switch is applied once; a hand-enabled `expo` channel survives a restart.
+- The widget refresher sends to link targets only, at most one frame per `refresh_min`.
 
 ## 14. The Android `sy-link` module (N1)
 

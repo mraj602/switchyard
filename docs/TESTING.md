@@ -331,8 +331,8 @@ Needs T2.3 (app installed and paired) and K1. In the app: Settings → Notificat
    says "Verified by QR" (paired by QR) or shows the 8-character check code, which must equal the one
    on the board's Devices list.
 2. **Battery:** tap Fix and allow the exemption (your phone maker's guide shows if needed).
-3. **Send test notification.** **Pass:** it arrives in seconds (the self-hosted profile has no Expo
-   or Google push at all; confirm Settings → Channels on the board shows Expo off).
+3. **Send test notification.** **Pass:** it arrives in seconds (the app uses no Expo or Google push
+   at all; Settings → Channels on the board lists only Web Push, ntfy and the Android app's own link).
 4. **Real alert with the app swiped away:** make a session ask for a permission. **Pass:** the
    notification arrives with Open, Snooze and Seen; Seen clears it on the phone and on other devices,
    without opening the app.
