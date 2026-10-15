@@ -1,5 +1,5 @@
 // Pairing input and claim (phone.md P2). Owner: WP-P.
-import { DEVICE_KIND, HEALTH_TIMEOUT_MS, REQUEST_TIMEOUT_MS } from '../../contract/constants';
+import { DEVICE_KIND, PAIR_PROBE_TIMEOUT_MS, REQUEST_TIMEOUT_MS } from '../../contract/constants';
 import type { DeviceKeysNew, PairClaim, PairClaimReply } from '../../contract/api';
 import type { ClaimLink, LinkConfig } from '../../contract/link';
 import { LINK_ERR_HUB_KEY, LINK_ERR_TAMPERED } from '../../contract/link';
@@ -301,7 +301,7 @@ function redirected(res: ResponseLike, origin: string): boolean {
  */
 async function probeOrigin(deps: ClaimDeps, origin: string, host: string): Promise<void> {
   const ctl = new AbortController();
-  const timer = deps.clock.setTimeout(() => ctl.abort(), HEALTH_TIMEOUT_MS);
+  const timer = deps.clock.setTimeout(() => ctl.abort(), PAIR_PROBE_TIMEOUT_MS);
   let res: ResponseLike;
   try {
     res = await deps.fetch(`${origin}/health`, { method: 'GET', headers: { Accept: 'application/json' }, signal: ctl.signal, redirect: 'error' });

@@ -57,6 +57,11 @@ export const POLL_MS = 15_000;
 /** Hub request timeout, and the /health probe's (P3). */
 export const REQUEST_TIMEOUT_MS = 10_000;
 export const HEALTH_TIMEOUT_MS = 1_500;
+/**
+ * Pairing's /health probe: the first contact with a hub, often on a cold or busy phone, where a
+ * hub that answers in 2-3 s must not read as unreachable. Route checks keep HEALTH_TIMEOUT_MS.
+ */
+export const PAIR_PROBE_TIMEOUT_MS = 6_000;
 
 /** Action tokens (push.md 8; the same check as sw-lib.js actionToken). */
 export const ACTION_TOKEN = /^a1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;

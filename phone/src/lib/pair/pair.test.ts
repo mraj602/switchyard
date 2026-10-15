@@ -185,6 +185,22 @@ describe('claim', () => {
     expect((await p).reason).toBe('unreachable');
   });
 
+  it('waits for a slow /health (a cold phone, a busy hub) instead of calling the hub unreachable', async () => {
+    const clock = manualClock();
+    const f = fakeFetch((u, init) =>
+      u.endsWith('/health')
+        ? new Promise((r, rej) => {
+            clock.setTimeout(() => r(response(200, {})), 3_000);
+            init.signal?.addEventListener('abort', () => rej(new Error('aborted')));
+          })
+        : response(200, ok),
+    );
+    const p = claim({ fetch: f, clock, app }, { origin: 'https://hub.test.ts.net', code: '482913' });
+    await clock.advance(3_000);
+    await expect(p).resolves.toBeTruthy();
+    expect(f.calls.map((c) => c.url)).toEqual(['https://hub.test.ts.net/health', 'https://hub.test.ts.net/v1/pair/claim']);
+  });
+
   it('probes GET /health without credentials and without following redirects before sending the secret (finding 6)', async () => {
     const f = fakeFetch(() => response(200, ok));
     await claim({ fetch: f, clock: manualClock(), app }, { origin: 'https://hub.test.ts.net', secret: S });
