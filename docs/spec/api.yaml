@@ -1531,16 +1531,32 @@ paths:
       tags: [peers]
       operationId: resumePeerThread
       summary: Clear a thread's loop-guard stop (owner)
-      x-reserved: "PE3"
+      description: >-
+        peers.md 6.3. Resets the hub's own loop guard for the thread (turns 0, paused_at
+        cleared), writes a `thread_resume` audit row and queues `peer_thread_resume` (link.md
+        6.4) to the agent of each machine in the thread, offline ones included. The hub signs
+        it, so it widens: a machine with `hub_may_widen = false` refuses it (keys.md 5.4) and
+        keeps its own stop until a human prompt in either session.
       x-scopes: [owner]
       parameters:
         - {name: id, in: path, required: true, schema: {type: string, pattern: "^t_[0-9a-f]{16}$"}}
       responses:
-        "204": {description: Resumed.}
+        "200":
+          description: Resumed at the hub; the machines are told.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [thread, was_paused, machines]
+                properties:
+                  thread: {type: string}
+                  was_paused: {type: boolean, description: "The hub's loop guard had stopped the thread."}
+                  machines: {type: integer, minimum: 0, description: "Agents the resume was queued for."}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
-        "501": {$ref: "#/components/responses/NotImplemented"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "503": {$ref: "#/components/responses/Unavailable"}
 
   /v1/peers/messages:
     get:
