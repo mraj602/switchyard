@@ -133,6 +133,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...(projectId ? { eas: { projectId } } : {}),
       appGroup: GROUP_ID,
       push: PUSH,
+      // SY_APP_VARIANT=development: the pair screen also accepts http:// loopback / LAN hubs in a
+      // bundled (non-__DEV__) build, matching usesCleartextTraffic above (phone.md P2).
+      cleartext: DEV,
     },
     plugins: [
       'expo-router',
