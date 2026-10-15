@@ -154,7 +154,8 @@ func peersList(args []string, stdout, stderr io.Writer) error {
 		if le.MayAsk && can != "none" {
 			can += " (may ask for approval)"
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", le.Handle, le.AccountLabel, le.Project, le.State, can)
+		// Local entries carry the full folder, remote ones its base name: show the base name for both.
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", le.Handle, le.AccountLabel, baseName(le.Project), le.State, can)
 	}
 	return tw.Flush()
 }
