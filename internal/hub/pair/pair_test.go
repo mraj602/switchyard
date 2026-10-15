@@ -366,7 +366,7 @@ func TestClaimFields(t *testing.T) {
 		t.Error("malformed codes locked the IP out")
 	}
 
-	// name: default from the code, else "<kind> <date>"; trimmed; control characters removed;
+	// name: the code's when it has one, else the claimer's, else "<kind> <date>"; trimmed; control characters removed;
 	// longer than 60 is a 400 that leaves the code live.
 	named := f.code("phone", func(r *CreateRequest) { r.Name = "Suggested" })
 	var ce *ClaimError
@@ -375,6 +375,11 @@ func TestClaimFields(t *testing.T) {
 	}
 	if r := claimOK(t, f, "1.1.1.1", ClaimRequest{Secret: named.Secret}); r.Device.Name != "Suggested" {
 		t.Errorf("default name %q", r.Device.Name)
+	}
+	// The code's name (sy hub pair --name) wins over the claimer's (sy connect sends the host).
+	nm := f.code("machine", func(r *CreateRequest) { r.Name = "lab-machine" })
+	if r := claimOK(t, f, "1.1.1.1", ClaimRequest{Code: nm.Digits, Machine: testMachine, Name: "lab-box"}); r.Device.Name != "lab-machine" {
+		t.Errorf("code name lost to the claimer's: %q", r.Device.Name)
 	}
 	if r := claimOK(t, f, "1.1.1.1", ClaimRequest{Secret: c.Secret, Name: "  iPhone\x00 · \x07Safari \n"}); r.Device.Name != "iPhone · Safari" {
 		t.Errorf("cleaned name %q", r.Device.Name)

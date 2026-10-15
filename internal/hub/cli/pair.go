@@ -29,7 +29,7 @@ const PairUsage = `Usage: sy hub pair --kind phone|browser|machine|desktop [flag
 Makes a one-time pairing code (10 minutes, single use) on this hub and shows it with a QR.
 
   --kind K      what is being paired (required)
-  --name N      suggested device name
+  --name N      the device name (wins over the name the claimer sends)
   --machine ID  machine and desktop codes: the machine id (optional; sy machine prints it)
   --url U       the hub address the phone opens (default: the hub.public_url setting)
   --ttl D       lifetime, 1m to 1h (default 10m)
@@ -58,7 +58,7 @@ func pairCmd(name, kind string, wait bool, args []string, stdout, stderr io.Writ
 		fs.StringVar(&kind, "kind", "", "phone, browser, machine or desktop")
 		fs.BoolVar(&wait, "wait", false, "wait until the code is claimed")
 	}
-	pname := fs.String("name", "", "suggested device name")
+	pname := fs.String("name", "", "the device name")
 	machine := fs.String("machine", "", "machine id")
 	url := fs.String("url", "", "hub address")
 	ttl := fs.Duration("ttl", 0, "lifetime")
