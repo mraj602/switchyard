@@ -65,9 +65,29 @@ test('days and query', () => {
 });
 
 test('limit hit sentence', () => {
-  assert.equal(A.hitText({ type: 'five_hour', wait_s: 7200 }), '5-hour limit, back in 2 h');
-  assert.equal(A.hitText({ type: 'seven_day', wait_s: 3 * 86400 }), '7-day limit, back in 3 d');
-  assert.equal(A.hitText({ type: 'five_hour', wait_s: 10 }), '5-hour limit, back in 1 min');
-  assert.equal(A.hitText({ type: 'seven_day', wait_s: null }), '7-day limit');
-  assert.equal(A.hitText({ type: null, wait_s: null }), 'limit');
+  assert.equal(A.hitText({ type: 'five_hour', wait_s: 7200 }), 'Hit the 5-hour limit · waited 2 h');
+  assert.equal(A.hitText({ type: 'seven_day', wait_s: 3 * 86400 }), 'Hit the 7-day limit · waited 3 d');
+  assert.equal(A.hitText({ type: 'five_hour', wait_s: 10 }), 'Hit the 5-hour limit · waited 1 min');
+  assert.equal(A.hitText({ type: 'seven_day', wait_s: null }), 'Hit the 7-day limit');
+  assert.equal(A.hitText({ type: null, wait_s: null }), 'Hit the limit');
+});
+
+test('projects: subagent folders fold into one row, top 10 then the rest', () => {
+  const rows = [
+    { name: 'switchyard', sessions: 3, api_usd: 40, input: 1 },
+    { name: '/home/u/x/agent-a3f9c1d2', sessions: 1, api_usd: 10, input: 5 },
+    { name: 'agent-0011223344', sessions: 2, api_usd: 12, input: 7 },
+    ...Array.from({ length: 12 }, (_, i) => ({ name: `p${i}`, sessions: 1, api_usd: i })),
+  ];
+  const g = A.groupProjects(rows, 10);
+  assert.equal(g.shown.length, 10);
+  assert.equal(g.shown[0].name, 'switchyard');
+  assert.equal(g.shown[1].name, 'Subagent folders');
+  assert.equal(g.shown[1].folders, 2);
+  assert.equal(g.shown[1].sessions, 3);
+  assert.equal(g.shown[1].api_usd, 22);
+  assert.equal(g.rest.length, 4);
+  assert.equal(A.groupProjects([], 10).shown.length, 0);
+  assert.equal(A.cacheSum({ cache_5m: 1, cache_1h: 2, cache_read: 3, input: 9 }), 6);
+  assert.equal(A.tokens(1234.6), '1.2k');
 });
