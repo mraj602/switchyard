@@ -9,14 +9,21 @@ import (
 	"strings"
 
 	"github.com/mraj602/switchyard/internal/hub/auth"
+	"github.com/mraj602/switchyard/internal/service"
 )
 
 // ErrNoURL is returned when no hub address could be found (pairing.md 2.3, step 4).
 var ErrNoURL = errors.New("pass --url https://<your hub address> (the address your phone opens)")
 
-// ErrNeedsHTTPS is returned for phone, browser and owner links over plain http.
-var ErrNeedsHTTPS = errors.New("a phone needs an https address (service workers, install and Web Push need a secure context): " +
-	"run `tailscale serve --bg 8787` on the hub and use its https address")
+// ErrNeedsHTTPS is returned (wrapped, with the fix for that address) for phone, browser and
+// owner links over plain http.
+var ErrNeedsHTTPS = errors.New("a phone needs an https address (service workers, install and Web Push need a secure context)")
+
+// needsHTTPS is ErrNeedsHTTPS with the `tailscale serve` command for the hub's own http
+// address: its port (not a fixed 8787), run on the hub itself.
+func needsHTTPS(httpURL string) error {
+	return fmt.Errorf("%w: run `%s` on the hub and use its https address", ErrNeedsHTTPS, service.ServeHintFor(httpURL))
+}
 
 // ResolveURL picks the hub's public address in the order of pairing.md 2.3: the explicit
 // one (--url, or url in the request), the hub.public_url setting, the origin the request
@@ -62,11 +69,11 @@ func NormalizeURL(raw, kind string, insecure bool) (origin string, plainHTTP boo
 	switch kind {
 	case "phone", "browser":
 		if !insecure {
-			return "", false, ErrNeedsHTTPS
+			return "", false, needsHTTPS(origin)
 		}
 	case "owner":
 		if !insecure && !loopbackHost(u.Hostname()) {
-			return "", false, ErrNeedsHTTPS
+			return "", false, needsHTTPS(origin)
 		}
 	}
 	return origin, kind == "phone" || kind == "browser", nil

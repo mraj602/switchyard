@@ -53,6 +53,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store/importproto"
 	"github.com/mraj602/switchyard/internal/keys"
 	"github.com/mraj602/switchyard/internal/paths"
+	"github.com/mraj602/switchyard/internal/service"
 	"github.com/mraj602/switchyard/internal/version"
 	"github.com/mraj602/switchyard/webui"
 )
@@ -384,7 +385,7 @@ func serve(args []string, stdout, stderr io.Writer) error {
 		if u, _, _ := st.PairSetting(ctx, store.AlertKeyPublicURL); u != "" {
 			logger.Printf("public address %s (hub.public_url)", u)
 		} else {
-			logger.Printf("no public address set: phones need one (tailscale serve --bg 8787, then --public-url https://<name>.ts.net)")
+			logger.Printf("no public address set: phones need one (%s, then --public-url https://<name>.ts.net)", service.ServeHint(ln.Addr().String()))
 		}
 	}
 	if fr, err := st.Frozen(ctx); err == nil && fr != nil {

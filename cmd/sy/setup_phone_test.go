@@ -120,7 +120,7 @@ func TestPhoneStepMessages(t *testing.T) {
 	}
 	for _, c := range cases {
 		e, out := phoneEnv("y\n", never)
-		e.phoneStep(c.st, c.hub, c.offer)
+		e.phoneStep(c.st, c.hub, "", c.offer)
 		if !strings.Contains(out.String(), c.want) {
 			t.Errorf("%s: got %q, want %q", c.name, out.String(), c.want)
 		}
@@ -132,7 +132,7 @@ func TestPhoneStepInteractive(t *testing.T) {
 
 	// No: nothing runs.
 	e, out := phoneEnv("n\n", func([]string, io.Writer, io.Writer) error { t.Error("pair ran after no"); return nil })
-	e.phoneStep(model.State{}, here, true)
+	e.phoneStep(model.State{}, here, "", true)
 	if !strings.Contains(out.String(), "Pair a phone now? [y/N]") || !strings.Contains(out.String(), "sy phone pair") {
 		t.Errorf("no: %q", out.String())
 	}
@@ -140,21 +140,28 @@ func TestPhoneStepInteractive(t *testing.T) {
 	// Yes: runs the phone pair path with the data dir's database.
 	var args []string
 	e, out = phoneEnv("y\n", func(a []string, w, _ io.Writer) error { args = a; io.WriteString(w, "CODE 482-913\n"); return nil })
-	e.phoneStep(model.State{}, here, true)
+	e.phoneStep(model.State{}, here, "", true)
 	if len(args) != 2 || args[0] != "--db" || args[1] != filepath.Join("/data", "hub.db") || !strings.Contains(out.String(), "CODE 482-913") {
 		t.Errorf("yes: args %v out %q", args, out.String())
 	}
 
 	// No https address: guidance, not a failure.
 	e, out = phoneEnv("y\n", func([]string, io.Writer, io.Writer) error { return pair.ErrNoURL })
-	e.phoneStep(model.State{}, here, true)
+	e.phoneStep(model.State{}, here, "", true)
 	if !strings.Contains(out.String(), "tailscale serve --bg 8787") || !strings.Contains(out.String(), "sy phone pair --url https://<name>.ts.net") {
 		t.Errorf("no url: %q", out.String())
 	}
 
+	// A hub on another port (--listen): the hint names that port, not 8787.
+	e, out = phoneEnv("y\n", func([]string, io.Writer, io.Writer) error { return pair.ErrNoURL })
+	e.phoneStep(model.State{}, here, "127.0.0.1:19100", true)
+	if !strings.Contains(out.String(), "tailscale serve --bg 19100") || strings.Contains(out.String(), "8787") {
+		t.Errorf("listen: %q", out.String())
+	}
+
 	// Another failure is reported and setup carries on.
 	e, out = phoneEnv("y\n", func([]string, io.Writer, io.Writer) error { return errors.New("boom") })
-	e.phoneStep(model.State{}, here, true)
+	e.phoneStep(model.State{}, here, "", true)
 	if !strings.Contains(out.String(), "could not pair now (boom)") {
 		t.Errorf("failure: %q", out.String())
 	}

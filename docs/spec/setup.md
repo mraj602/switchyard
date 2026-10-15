@@ -236,7 +236,7 @@ The hub step runs after all local steps and its failure never rolls them back (6
 Phone: when the hub is on this machine (`--hub here`, or a kept hub on a loopback address)
 and a person is at the terminal, the step asks "Pair a phone now? [y/N]" and on yes runs `sy
 phone pair` (a phone needs an https address; without a `hub.public_url` it prints "run
-`tailscale serve --bg 8787`, then `sy phone pair --url https://<name>.ts.net`" instead of
+`tailscale serve --bg <port>`, then `sy phone pair --url https://<name>.ts.net`" (`<port>` from `--listen`, default 8787) instead of
 failing). With `--yes`, `--json` or no terminal it only prints "run `sy phone pair` on this
 machine" and never blocks. A remote hub prints "open <url> → Settings → Add phone, or run
 `sy phone pair` on the hub"; with no hub, "later (connect a hub first, then `sy phone
