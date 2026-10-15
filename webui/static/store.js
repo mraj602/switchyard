@@ -40,7 +40,9 @@ async function guarded(fn) {
   } catch (e) {
     if (e instanceof AuthError) { store.unauthorized = true; stop(); onAuthLost(); return undefined; }
     store.error = e.message;
-    if (store.live === 'live') store.live = 'connecting';
+    // The live badge belongs to the stream alone (openStream's onStatus): a read that failed
+    // (a 404 for a deleted session, a 403) says nothing about the stream, and nothing would
+    // set the badge back to live while the stream stays open (UI audit G5).
     emit();
     return undefined;
   }

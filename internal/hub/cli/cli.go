@@ -388,12 +388,7 @@ func serve(args []string, stdout, stderr io.Writer) error {
 		refresh.Start()
 		hooks.AttachExpo(receipts, refresh)
 	}
-	hs := &http.Server{
-		Addr:              *listen,
-		Handler:           srv.Handler(),
-		ReadHeaderTimeout: 10 * time.Second,
-		IdleTimeout:       120 * time.Second,
-	}
+	hs := srv.HTTPServer(*listen)
 	hs.RegisterOnShutdown(srv.Close)
 	pushNote := "pushes on"
 	if eng == nil {

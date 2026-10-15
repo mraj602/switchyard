@@ -487,7 +487,10 @@ paths:
           sends `reset`, and the client refetches `/v1/overview`.
         - `ping` every 25 seconds keeps proxies from closing the connection. The hub checks
           the device on every ping and closes the stream when it was revoked (or its board
-          session expired).
+          session expired). Otherwise the hub never ends a stream: its HTTP server has no
+          read or write timeout, each write has its own 30-second deadline.
+        - The live status of a client is the stream's alone: a failed read (a 404 for a
+          deleted session) says nothing about it.
         - Browsers cannot set headers on `EventSource`, so the token may also be given as
           `?token=` on this endpoint only (the web board uses its `sy_session` cookie instead, see `/v1/session/login`).
         - `focus_url` in `session` events is sent only to desktop devices on the same
