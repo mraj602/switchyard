@@ -89,6 +89,9 @@ func TestRenderGolden(t *testing.T) {
 		{"machine_silent", model.Alert{AlertBrief: model.AlertBrief{ID: "al_3", Trigger: model.TriggerMachineSilent},
 			Machine: sp("m-old"), Facts: model.Facts{Machine: "old-vps", Sessions: 3,
 				LastSeen: ms(textNow.Add(-58 * time.Minute))}}, TextOptions{}},
+		{"machine_silent_minutes", model.Alert{AlertBrief: model.AlertBrief{ID: "al_4", Trigger: model.TriggerMachineSilent},
+			Machine: sp("m-old"), Facts: model.Facts{Machine: "old-vps", Sessions: 1,
+				LastSeen: ms(textNow.Add(-20*time.Minute - 30*time.Second))}}, TextOptions{}},
 		{"repush", sessionAlert(model.TriggerAsked, with(work, func(f *model.Facts) {
 			f.State, f.Detail, f.Question = "asked", "question", "Ship it?"
 		})), TextOptions{Repush: true}},

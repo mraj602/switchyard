@@ -288,7 +288,12 @@ func silentFor(a model.Alert, now time.Time) string {
 	if from == 0 {
 		from = a.SinceAt
 	}
-	h := int(now.Sub(from.Std()) / time.Hour)
+	d := now.Sub(from.Std())
+	if from != 0 && d < 55*time.Minute {
+		// A machine_silent rule may wait less than the default hour (delay_s).
+		return fmt.Sprintf("%d min", max(1, int(d/time.Minute)))
+	}
+	h := int(d / time.Hour)
 	if from == 0 || h < 1 {
 		h = 1
 	}
