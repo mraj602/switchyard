@@ -142,6 +142,23 @@ func LoopGuard(t *Thread, human time.Time, maxTurns int, now time.Time) (refuse 
 	return false
 }
 
+// Resume lifts a loop-guard stop the way a new human prompt does (6.3): the turn count goes
+// back to 0 and the pause is cleared. HumanAt is left as it is (no prompt was typed).
+func (t *Thread) Resume() {
+	t.Turns = 0
+	t.PausedAt = nil
+}
+
+// Find returns the thread with this id, open or closed, or nil.
+func (s *ThreadSet) Find(id string) *Thread {
+	for i := range s.Threads {
+		if s.Threads[i].ID == id {
+			return &s.Threads[i]
+		}
+	}
+	return nil
+}
+
 // RecordMessage counts one delivered message.
 func (t *Thread) RecordMessage(now time.Time) {
 	t.Turns++

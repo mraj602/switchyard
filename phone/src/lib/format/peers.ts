@@ -85,7 +85,10 @@ const EVENTS: Record<string, string> = {
   pause: 'All peers paused',
   resume: 'Peers resumed',
   loop_stop: 'Loop guard stopped a thread',
+  loop_guard: 'Loop guard stopped a thread',
+  thread_resume: 'Thread resumed',
   refused: 'Message refused',
+  rejected: 'Message rejected by a machine',
   off: 'Peers turned off on a machine',
   on: 'Peers turned on on a machine',
 };

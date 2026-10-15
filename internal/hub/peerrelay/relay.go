@@ -1,7 +1,8 @@
 // Package peerrelay is the hub's half of peer messages across machines (docs/spec/peers.md
 // 8.3, 9.2, 10, 11; PE2): it answers `peers_list` with the session directory, checks and
 // queues `peer_msg` envelopes for the target machine, turns `peer_result` and expiry into
-// `peer_status` for the sender, and records `peer_log` lines. It stores metadata only: the
+// `peer_status` for the sender, records `peer_log` lines, and relays the owner's thread
+// resume (`peer_thread_resume`, peers.md 6.3) to both machines. It stores metadata only: the
 // message text exists at the hub only sealed, inside link_queue, while it is queued.
 package peerrelay
 
@@ -13,6 +14,7 @@ import (
 	"io"
 	"log"
 	"path"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -528,6 +530,75 @@ func (r *Relay) MatrixChanged(ctx context.Context, d keys.Doc) error {
 		}
 		return nil
 	})
+}
+
+// ---- thread resume (peers.md 6.3) ----
+
+// TTLThreadResume is how long a peer_thread_resume waits for an offline machine: a thread
+// with no message for 24 h is closed anyway (6.1).
+const TTLThreadResume = peers.ThreadIdle
+
+// ErrThreadClosed: the thread to resume is closed (a new message opens a new one).
+var ErrThreadClosed = errors.New("the thread is closed")
+
+// ResumeResult is what ResumeThread did: whether the hub's thread was stopped, and the
+// agent devices the resume was queued for (one per machine of the thread's two sessions).
+type ResumeResult struct {
+	WasPaused bool
+	Devices   []string
+}
+
+// ResumeThread is the owner's "Resume thread": the hub's own loop guard for the thread is
+// reset (turns 0, paused_at cleared), a peer_audit row is written, and a peer_thread_resume
+// is queued to the agent of each machine in the thread, which applies it only under
+// hub_may_widen (keys.md 5.4). by is the asking device. store.ErrNotFound: no such thread.
+func (r *Relay) ResumeThread(ctx context.Context, id, by string) (ResumeResult, error) {
+	var res ResumeResult
+	agents, err := r.Store.AgentDevices(ctx)
+	if err != nil {
+		return res, err
+	}
+	now := r.Now()
+	body, err := json.Marshal(peers.ThreadResumeBody{V: 1, Thread: id, By: by, At: now.UTC().Format(time.RFC3339Nano)})
+	if err != nil {
+		return res, err
+	}
+	err = r.Store.Write(ctx, func(tx *store.Tx) error {
+		res = ResumeResult{}
+		th, err := tx.PeerThread(id)
+		if err != nil {
+			return err
+		}
+		if th.ClosedAt != 0 {
+			return ErrThreadClosed
+		}
+		res.WasPaused = th.PausedAt != 0
+		th.Turns, th.PausedAt = 0, 0
+		if err := tx.PutPeerThread(th); err != nil {
+			return err
+		}
+		for _, s := range []string{th.A, th.B} {
+			ps, ok, err := tx.PeerSession(s)
+			if err != nil {
+				return err
+			}
+			dev := agents[ps.MachineID]
+			if !ok || dev == "" || slices.Contains(res.Devices, dev) {
+				continue
+			}
+			_, err = r.Link.EnqueueTx(tx, dev, link.TypePeerThreadResume, "tr:"+id, TTLThreadResume, body, "")
+			switch {
+			case errors.Is(err, hublink.ErrNoLink):
+				continue // revoked or without keys: nothing to tell
+			case err != nil:
+				return err
+			}
+			res.Devices = append(res.Devices, dev)
+		}
+		d, _ := json.Marshal(map[string]any{"was_paused": res.WasPaused, "machines": len(res.Devices)})
+		return tx.InsertPeerAudit(store.PeerAuditRow{At: now.UnixMilli(), Actor: by, Event: "thread_resume", Thread: id, Detail: d})
+	})
+	return res, err
 }
 
 // peerLog records a same-machine delivery an agent reports (peers.md 10, local = 1).

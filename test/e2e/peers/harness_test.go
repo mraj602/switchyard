@@ -90,6 +90,10 @@ type testHub struct {
 	srv   *httptest.Server
 	owner ed25519.PrivateKey
 
+	// mayWiden is peers.hub_may_widen per machine name (default false), set before the
+	// machines are made.
+	mayWiden map[string]bool
+
 	mu    sync.Mutex
 	rogue intercept
 }
@@ -485,6 +489,7 @@ func (h *testHub) newMachineWith(pair func(*testHub, *machine, auth.Created, key
 	quiet := log.New(io.Discard, "", 0)
 	m.remote = peerlink.New(m.env(), quiet)
 	m.remote.Fresh = -1
+	m.remote.HubMayWiden = h.mayWiden[name]
 	m.lc = linkclient.New(linkclient.Config{State: m.state, URL: h.url(), Peers: m.remote, Now: h.clk.Now, Log: quiet,
 		Backoff: []time.Duration{20 * time.Millisecond}})
 	m.remote.Link = m.lc
@@ -630,8 +635,10 @@ type world struct {
 
 // newWorld: laptop runs api (work); worker runs worker (personal) and side (other). Both
 // links are connected.
-func newWorld(t *testing.T, maxTurns int) *world {
-	h := newHub(t, maxTurns)
+func newWorld(t *testing.T, maxTurns int) *world { return newWorldOn(newHub(t, maxTurns)) }
+
+// newWorldOn is newWorld on a hub the test prepared (mayWiden).
+func newWorldOn(h *testHub) *world {
 	w := &world{h: h,
 		laptop: h.newMachine("laptop", laptopID, sessionSpec{slot: ".claude-2", label: "work", account: accWork, pid: 500, id: "sess-api", name: "api"}),
 		worker: h.newMachine("worker", workerID,

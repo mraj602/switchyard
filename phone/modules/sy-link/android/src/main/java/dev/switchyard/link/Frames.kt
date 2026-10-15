@@ -13,7 +13,7 @@ data class Frame(val t: String, val seq: Long, val exp: Long, val tag: String, v
 
 object Frames {
   /** link.md 6.4: queued, sealed, seq > 0. */
-  val QUEUED = setOf("alert", "refresh", "peer_msg", "peer_status", "matrix", "revoke")
+  val QUEUED = setOf("alert", "refresh", "peer_msg", "peer_status", "matrix", "revoke", "peer_thread_resume")
 
   /** link.md 6.3: ephemeral, seq 0, signed with the login nonce as context. */
   val EPHEMERAL = setOf("welcome", "action_result", "peers", "peer_ack", "notice")

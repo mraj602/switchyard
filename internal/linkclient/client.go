@@ -35,7 +35,8 @@ import (
 	"github.com/mraj602/switchyard/internal/link"
 )
 
-// PeerHandler is the PE2 seam: queued peer frames (peer_msg, peer_status) and the hub's
+// PeerHandler is the PE2 seam: queued peer frames (peer_msg, peer_status,
+// peer_thread_resume; their hub signature already checked) and the hub's
 // ephemeral answers to peer requests (peers, peer_ack, notices) go to it.
 type PeerHandler interface {
 	// Queued handles a queued frame's opened body. nil: processed durably (delivered or the
@@ -457,7 +458,7 @@ func (c *Client) frame(ctx context.Context, ws *websocket.Conn, cr creds, nonce 
 		c.storeMatrix(pt)
 	case link.TypeRevoke:
 		c.storeRevocations(pt)
-	case link.TypePeerMsg, link.TypePeerStatus:
+	case link.TypePeerMsg, link.TypePeerStatus, link.TypePeerThreadResume:
 		if c.cfg.Peers == nil {
 			c.log.Printf("link: %s frame %d dropped: this agent does not handle peer messages yet", f.T, f.Seq)
 			break

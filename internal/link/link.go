@@ -43,6 +43,8 @@ const (
 	TypePeerStatus = "peer_status"
 	TypeMatrix     = "matrix"
 	TypeRevoke     = "revoke"
+	// TypePeerThreadResume clears a thread's loop-guard stop on a machine (peers.md 6.3).
+	TypePeerThreadResume = "peer_thread_resume"
 )
 
 // Device→hub frame types (link.md 6.2). peer_msg is both a device→hub frame and a queued
@@ -59,7 +61,7 @@ const (
 
 // Queued and Ephemeral list the hub→device types (link.md 6.3, 6.4).
 var (
-	Queued    = []string{TypeAlert, TypeRefresh, TypePeerMsg, TypePeerStatus, TypeMatrix, TypeRevoke}
+	Queued    = []string{TypeAlert, TypeRefresh, TypePeerMsg, TypePeerStatus, TypeMatrix, TypeRevoke, TypePeerThreadResume}
 	Ephemeral = []string{TypeWelcome, TypeActionResult, TypePeers, TypePeerAck, TypeNotice}
 )
 

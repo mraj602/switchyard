@@ -211,6 +211,38 @@ func TestMachineGetsDocsAndPeerFrames(t *testing.T) {
 	}
 }
 
+// A peer_thread_resume (peers.md 6.3) reaches the peer handler only when its hub signature
+// checks: one whose signature was changed after the hub signed it (anyone with write access to
+// the hub's queue but not its key) is rejected and never handed over.
+func TestThreadResumeNeedsTheHubSignature(t *testing.T) {
+	hb := newHub(t)
+	state, id := hb.machine("a-machine")
+	if _, err := hb.h.Enqueue(hb.ctx, id, link.TypePeerThreadResume, "tr:t_aaaaaaaaaaaaaaaa", time.Hour,
+		[]byte(`{"v":1,"thread":"t_aaaaaaaaaaaaaaaa"}`), ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := hb.st.Write(hb.ctx, func(tx *store.Tx) error {
+		_, err := tx.ExecContext(hb.ctx, `UPDATE link_queue SET sig = randomblob(64) WHERE device_id = ?`, id)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := hb.h.Enqueue(hb.ctx, id, link.TypePeerThreadResume, "tr:t_bbbbbbbbbbbbbbbb", time.Hour,
+		[]byte(`{"v":1,"thread":"t_bbbbbbbbbbbbbbbb"}`), ""); err != nil {
+		t.Fatal(err)
+	}
+	p := &peers{}
+	start(t, Config{State: state, URL: hb.url(), Peers: p})
+	waitFor(t, "good frame", func() bool { return len(p.calls()) >= 1 })
+	waitFor(t, "queue drained", func() bool { return hb.queued(id) == 0 })
+	if got := p.calls(); len(got) != 1 || got[0] != `peer_thread_resume {"v":1,"thread":"t_bbbbbbbbbbbbbbbb"}` {
+		t.Fatalf("handed over %q", got)
+	}
+	if hb.h.Rejected(id) != 1 {
+		t.Fatalf("rejected %d, want 1", hb.h.Rejected(id))
+	}
+}
+
 // A frame the handler cannot process is not acked: the client reconnects and the hub
 // replays it; a processed frame is never handed over twice (link.json survives restarts).
 func TestReplayAfterFailureAndRestart(t *testing.T) {

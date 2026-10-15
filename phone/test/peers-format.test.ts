@@ -45,6 +45,8 @@ describe('audit sentences', () => {
   it('show metadata only', () => {
     expect(eventLabel('pause')).toBe('All peers paused');
     expect(eventLabel('some_new_event')).toBe('some new event');
+    expect(eventLabel('loop_guard')).toBe('Loop guard stopped a thread');
+    expect(eventLabel('thread_resume')).toBe('Thread resumed');
     expect(detailText({ version: 3, widens: true, paused: false, pairs: 1, text: 'secret', nested: { a: 1 } })).toBe('v3 · widened · not paused · 1 pair');
     expect(detailText({ size: 2400, status: 'refused' })).toBe('2.4 KB · refused');
     expect(detailText(null)).toBe('');

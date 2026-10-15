@@ -62,7 +62,7 @@ func TestPeersMatrixPauseAudit(t *testing.T) {
 		check(t, schemas, "PeerAuditEntry", "audit", e)
 		events = append(events, e.(map[string]any)["event"].(string))
 	})
-	want := []string{"resume", "pause", "matrix", "matrix", "matrix"} // newest first
+	want := []string{"resume", "pause", "matrix", "matrix", "loop_guard", "matrix"} // newest first
 	if len(events) != len(want) {
 		t.Fatalf("audit events %v, want %v", events, want)
 	}
@@ -72,4 +72,32 @@ func TestPeersMatrixPauseAudit(t *testing.T) {
 		}
 	}
 	board.want(200, "GET", "/v1/peers/audit", nil)
+}
+
+// "Resume thread" (peers.md 6.3): owner only, 404 for an unknown thread, an audit row.
+func TestPeersThreadResume(t *testing.T) {
+	_, ts := newServer(t)
+	owner := newClient(t, ts)
+	owner.cookie(OwnerToken)
+	phone := newClient(t, ts)
+	phone.cookie(PhoneToken)
+	board := newClient(t, ts)
+	board.cookie(DefaultToken)
+	path := "/v1/peers/threads/" + mockThread + "/resume"
+
+	phone.want(403, "POST", path, nil)
+	board.want(403, "POST", path, nil)
+	owner.want(404, "POST", "/v1/peers/threads/t_ffffffffffffffff/resume", nil)
+	m := owner.want(200, "POST", path, nil)
+	if m["thread"] != mockThread || m["was_paused"] != true || m["machines"] != float64(2) {
+		t.Fatalf("resume: %v", m)
+	}
+	a := owner.want(200, "GET", "/v1/peers/audit", nil)
+	first := a["entries"].([]any)[0].(map[string]any)
+	if first["event"] != "thread_resume" || first["thread"] != mockThread {
+		t.Fatalf("newest audit entry %v", first)
+	}
+	if m := owner.want(200, "POST", path, nil); m["was_paused"] != false {
+		t.Fatalf("second resume: %v", m)
+	}
 }
