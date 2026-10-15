@@ -13,6 +13,7 @@ import (
 
 	"github.com/mraj602/switchyard/internal/hub/pair"
 	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/switchyard/internal/service"
 )
 
 // ErrExpired is returned by `sy hub pair --wait` when the code ended (expired or cancelled)
@@ -164,7 +165,7 @@ func printCode(w io.Writer, c pair.Code, qr bool) {
 		fmt.Fprintf(w, "  Link: %s\n", c.URL)
 	}
 	if c.PlainHTTP {
-		fmt.Fprintln(w, "  Note: this address is plain http, so the app can pair but cannot be installed or receive pushes.\n  Run `tailscale serve --bg 8787` on the hub and use its https address for the full app.")
+		fmt.Fprintf(w, "  Note: this address is plain http, so the app can pair but cannot be installed or receive pushes.\n  Run `%s` on the hub and use its https address for the full app.\n", service.ServeHintFor(c.Hub))
 	}
 	fmt.Fprintln(w)
 }

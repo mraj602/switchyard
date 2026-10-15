@@ -27,6 +27,7 @@ import (
 	"github.com/mraj602/switchyard/internal/doctor"
 	"github.com/mraj602/switchyard/internal/hub/cli"
 	"github.com/mraj602/switchyard/internal/hub/pair"
+	"github.com/mraj602/switchyard/internal/service"
 	"github.com/mraj602/switchyard/internal/setup/apply"
 	"github.com/mraj602/switchyard/internal/setup/backup"
 	"github.com/mraj602/switchyard/internal/setup/ledger"
@@ -490,7 +491,7 @@ func setupMain(ctx context.Context, e *setupEnv, args []string) error {
 		}
 	} else {
 		fmt.Fprint(e.stdout, render.Text(in))
-		e.summary(ctx, st, res, rep, c.Hub, interactive && aerr == nil)
+		e.summary(ctx, st, res, rep, c.Hub, c.Listen, interactive && aerr == nil)
 		termOn := st.Ledger != nil && st.Ledger.Terminal != nil && !st.Ledger.Terminal.Empty()
 		if interactive && aerr == nil && !f.term.Any() && !termOn && warp.Detect(e.termEnv(), "").Present {
 			fmt.Fprintln(e.stdout, "Warp is here: sy term setup adds the board pane, tab titles and a coloured tab per account.")
@@ -561,7 +562,7 @@ func printNeeds(w io.Writer, needs []model.Need) {
 }
 
 // summary is the end of screen SetupDone (setup.md 3 step 5).
-func (e *setupEnv) summary(ctx context.Context, st model.State, res apply.Result, rep doctor.Report, hub model.HubChoice, offerPhone bool) {
+func (e *setupEnv) summary(ctx context.Context, st model.State, res apply.Result, rep doctor.Report, hub model.HubChoice, listen string, offerPhone bool) {
 	w := e.stdout
 	if res.Backup != "" {
 		fmt.Fprintf(w, "\nBackup %s (undo with: sy setup --undo %s)\n", res.Backup, res.Backup)
@@ -583,7 +584,7 @@ func (e *setupEnv) summary(ctx context.Context, st model.State, res apply.Result
 	if open > 0 {
 		fmt.Fprintf(w, "%d Claude sessions are open: restart them to start reporting.\n", open)
 	}
-	e.phoneStep(st, hub, offerPhone)
+	e.phoneStep(st, hub, listen, offerPhone)
 	fmt.Fprintln(w, "Next machine: sy machine add user@host (phase 5).")
 	if st.Hub.URL != nil {
 		fmt.Fprintln(w, "Dashboard: "+*st.Hub.URL)
@@ -593,14 +594,18 @@ func (e *setupEnv) summary(ctx context.Context, st model.State, res apply.Result
 // phoneStep is step 5's phone line (setup.md 3 step 5): offer to pair when the hub is on
 // this machine and a person is at the terminal, otherwise say what to run. It never fails
 // setup.
-func (e *setupEnv) phoneStep(st model.State, hub model.HubChoice, offer bool) {
+// listen is --listen of --hub here ("" = the service default).
+func (e *setupEnv) phoneStep(st model.State, hub model.HubChoice, listen string, offer bool) {
 	w := e.stdout
 	url := ""
 	switch {
 	case hub.Mode == model.HubJoin:
 		url = hub.URL
 	case hub.Mode == model.HubHere:
-		url = "http://127.0.0.1:8787"
+		if listen == "" {
+			listen = service.DefaultListen
+		}
+		url = "http://" + listen
 	case st.Hub.URL != nil:
 		url = *st.Hub.URL
 	}
@@ -627,7 +632,7 @@ func (e *setupEnv) phoneStep(st model.State, hub model.HubChoice, offer bool) {
 	switch {
 	case err == nil:
 	case errors.Is(err, pair.ErrNoURL):
-		fmt.Fprintln(w, "Phone: a phone needs an https address. Run `tailscale serve --bg 8787` on this machine, then `sy phone pair --url https://<name>.ts.net`")
+		fmt.Fprintf(w, "Phone: a phone needs an https address. Run `%s` on this machine, then `sy phone pair --url https://<name>.ts.net`\n", service.ServeHint(url))
 	default:
 		fmt.Fprintf(w, "Phone: could not pair now (%v). Later: `sy phone pair`\n", err)
 	}

@@ -705,7 +705,7 @@ func TestURLResolutionAndRules(t *testing.T) {
 			t.Errorf("NormalizeURL(%q, %s, %v) = %q, %v, %v", c.raw, c.kind, c.insecure, got, plain, err)
 		}
 	}
-	if _, _, err := NormalizeURL("http://x.example.com", "phone", false); !errors.Is(err, ErrNeedsHTTPS) || !strings.Contains(err.Error(), "tailscale serve --bg 8787") {
+	if _, _, err := NormalizeURL("http://x.example.com:19200", "phone", false); !errors.Is(err, ErrNeedsHTTPS) || !strings.Contains(err.Error(), "tailscale serve --bg 19200") {
 		t.Errorf("http refusal must say how to fix it: %v", err)
 	}
 	if got := PairURL("https://h", "Q2xhdWRlIGlzIG5vdCBoZXJl", "482913"); got != "https://h/#/pair?s=Q2xhdWRlIGlzIG5vdCBoZXJl&c=482913" {

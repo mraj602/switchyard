@@ -75,6 +75,9 @@ type Options struct {
 	CertProbe func(ctx context.Context) (CertInfo, error)
 	// Rebaseline re-records which settings.json files are symlinks instead of warning.
 	Rebaseline bool
+	// HubListen is the hub's listen address for hints; "" = the installed hub service's
+	// --listen (service.InstalledListen). Tests set it.
+	HubListen string
 }
 
 func (o *Options) now() time.Time {

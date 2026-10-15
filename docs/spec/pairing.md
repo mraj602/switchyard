@@ -102,7 +102,8 @@ The phone must be given the address it will use, which the hub cannot always see
 
 For `phone` and `browser` codes the URL must be `https://` (service workers, install and Web
 Push need a secure context). `http://` is refused with the fix ("run `tailscale serve --bg
-8787` on the hub and use its https address") unless `--insecure` is given, in which case the
+<port>` on the hub and use its https address", with the port of that http address, so a hub
+on `--listen 127.0.0.1:19100` reads `--bg 19100`) unless `--insecure` is given, in which case the
 pairing works but the web app cannot install or receive pushes, and the CLI says so. Machine
 codes follow `sy connect`'s rule (tokens.md 4: loopback, tailnet or `--insecure-lan`).
 

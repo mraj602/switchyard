@@ -121,7 +121,20 @@ func TestPushHTTPURL(t *testing.T) {
 	e := newFakeHome(t, `{}`)
 	seedConfigured(t, e, "http://box:8787")
 	c := pcheck(t, runPush(t, e), "push url")
-	if c.Level != Warn || !strings.Contains(c.Detail, "not https") {
+	if c.Level != Warn || !strings.Contains(c.Detail, "not https") || !strings.Contains(c.Fix, "tailscale serve --bg 8787") {
+		t.Fatalf("%+v", c)
+	}
+}
+
+// The fix names the port the hub service listens on, not a fixed 8787.
+func TestPushFixUsesTheHubsListenPort(t *testing.T) {
+	e := newFakeHome(t, `{}`)
+	seedConfigured(t, e, "http://127.0.0.1:19100")
+	o := e.opts(nil)
+	o.HubListen = "127.0.0.1:19100"
+	var rep Report
+	checkPush(context.Background(), &rep, o)
+	if c := pcheck(t, rep, "push url"); !strings.Contains(c.Fix, "tailscale serve --bg 19100") {
 		t.Fatalf("%+v", c)
 	}
 }

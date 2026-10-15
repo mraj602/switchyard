@@ -8,9 +8,11 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
+	"github.com/mraj602/switchyard/internal/service"
 	_ "modernc.org/sqlite" // the driver; the hub database is opened read-only here
 )
 
@@ -57,7 +59,7 @@ func checkPush(ctx context.Context, rep *Report, o Options) {
 			Fix: "restart the hub to migrate: sy hub serve"})
 		return
 	}
-	if err := pushChecks(ctx, rep, db, o.now()); err != nil {
+	if err := pushChecks(ctx, rep, db, o.now(), hubListen(o)); err != nil {
 		rep.add(Check{Name: "push", Level: Warn, Detail: "cannot read the push settings: " + err.Error(),
 			Fix: "check " + path + " is readable and not locked"})
 	}
@@ -67,6 +69,18 @@ func checkPush(ctx context.Context, rep *Report, o Options) {
 				Fix: "check " + path + " is readable and not locked"})
 		}
 	}
+}
+
+// hubListen is the installed hub service's --listen, else the default.
+func hubListen(o Options) string {
+	if o.HubListen != "" {
+		return o.HubListen
+	}
+	getenv := o.Getenv
+	if getenv == nil {
+		getenv = os.Getenv
+	}
+	return service.InstalledListen(service.Env{GOOS: runtime.GOOS, Home: o.Home, Getenv: getenv})
 }
 
 func openReadOnly(path string) (*sql.DB, error) {
@@ -86,7 +100,9 @@ func openReadOnly(path string) (*sql.DB, error) {
 	return db, nil
 }
 
-func pushChecks(ctx context.Context, rep *Report, db *sql.DB, now time.Time) error {
+// pushChecks: listen is the address the hub on this machine listens on (its service unit's
+// --listen), for the `tailscale serve` fix.
+func pushChecks(ctx context.Context, rep *Report, db *sql.DB, now time.Time, listen string) error {
 	// 1. public URL
 	var raw sql.NullString
 	if err := db.QueryRowContext(ctx, `SELECT value FROM setting WHERE key = ?`, settingPublicURL).Scan(&raw); err != nil && err != sql.ErrNoRows {
@@ -96,7 +112,7 @@ func pushChecks(ctx context.Context, rep *Report, db *sql.DB, now time.Time) err
 	if raw.Valid {
 		_ = json.Unmarshal([]byte(raw.String), &pub)
 	}
-	const urlFix = "run `tailscale serve --bg 8787` and restart with `sy hub serve --public-url https://<name>.ts.net`"
+	urlFix := "run `" + service.ServeHint(listen) + "` and restart with `sy hub serve --public-url https://<name>.ts.net`"
 	switch {
 	case pub == "":
 		rep.add(Check{Name: "push url", Level: Warn, Detail: "phones cannot pair or get pushes without the hub's https address", Fix: urlFix})
