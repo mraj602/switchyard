@@ -93,6 +93,19 @@ export function ntfyLink(server, topic) {
 
 // ---- the Switchyard phone app (Expo) ------------------------------------------------------
 
+// How to install the board as an app in this browser (SE3), or '' when the page itself can
+// offer the install prompt. `ios` and `standalone` come from the page.
+export function installHint(ua = '', { ios = false, standalone = false } = {}) {
+  if (standalone) return 'Installed: you are running the app.';
+  if (ios) return 'Tap Share, then Add to Home Screen. Open Switchyard from your Home Screen.';
+  if (isAndroid(ua)) return 'Open the browser menu and choose Install app (or Add to Home screen).';
+  if (/(Firefox|FxiOS)\//.test(ua)) return 'Optional: Firefox does not install web apps on a computer. The board works the same in a tab.';
+  if (/Edg\//.test(ua)) return 'Optional: open the browser menu, then Apps, then Install this site as an app.';
+  if (/(Chrome|Chromium)\//.test(ua)) return 'Optional: use the install icon at the right end of the address bar, or the browser menu, then Cast, save and share, then Install page as app.';
+  if (/Macintosh/.test(ua) && /Safari\//.test(ua)) return 'Optional: choose File, then Add to Dock.';
+  return 'Optional: if your browser can install web apps, look for Install in its menu.';
+}
+
 // "App · iPhone · 0.8.0" for an expo push target (platform ios|android, app_version).
 export function expoTargetLabel(t) {
   const plat = t && t.platform === 'ios' ? 'iPhone' : t && t.platform === 'android' ? 'Android' : '';

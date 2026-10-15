@@ -3,7 +3,7 @@
 // installed app. Also a typed-code form and in-app QR scanning where the browser can.
 
 import { h } from '../components/dom.js';
-import { svg, toast } from '../components/ui.js';
+import { toast, brandRow } from '../components/ui.js';
 import { claimPair } from '../api.js';
 import { deviceName, isIOS, isMobile, normalizeCode, codeDigits, validCode, appPairLink } from '../platform.js';
 import { pwa, isStandalone, canInstall, promptInstall } from '../pwa.js';
@@ -17,7 +17,8 @@ const again = () => window.dispatchEvent(new Event('sy-rerender'));
 
 const ua = () => navigator.userAgent;
 const ios = () => isIOS(ua(), navigator.maxTouchPoints, navigator.platform);
-const kindGuess = () => (isMobile(ua(), navigator.maxTouchPoints, navigator.platform) ? 'phone' : 'browser');
+const mobile = () => isMobile(ua(), navigator.maxTouchPoints, navigator.platform);
+const kindGuess = () => (mobile() ? 'phone' : 'browser');
 
 export function load(ctx) {
   ctxRef = ctx;
@@ -52,7 +53,9 @@ async function claim(creds) {
     history.replaceState(null, '', '#/pair'); // drop s and c from the address bar
   } catch (e) {
     st.phase = 'error';
-    st.error = e.status === 401 ? 'That code is not valid any more. Codes work once, for 10 minutes: make a new one on the hub.'
+    st.error = e.status === 401 ? (creds.code
+      ? 'That code didn’t work. Check the 6 digits, or make a new code (codes last 10 minutes and work once).'
+      : 'This pairing link didn’t work. It may have been used already or expired: make a new code (codes last 10 minutes and work once).')
       : e.status === 429 ? 'Too many tries. Wait a few minutes and try again.' : e.message;
   }
   again();
@@ -102,17 +105,14 @@ async function startScan(video) {
 
 // ---- screen ---------------------------------------------------------------------------------
 
-const logo = () => svg('svg', { viewBox: '0 0 22 22', width: 26, height: 26, 'aria-hidden': 'true' },
-  svg('path', { d: 'M3 18 L11 4 L19 18', fill: 'none', stroke: '#ECEEEF', 'stroke-width': 2 }),
-  svg('path', { d: 'M7 18 L11 11 L15 18', fill: 'none', stroke: '#E8B04B', 'stroke-width': 2 }));
-
-const note = () => h('p', { class: 'pair-note' }, 'The phone gets its own read-only key. It can see your sessions and usage, and it can never control a session or see your Claude logins. Remove it any time from Devices.');
+// What a paired device may do (P4): read, and manage its own notifications; never type.
+const note = () => h('p', { class: 'pair-note' }, `This ${mobile() ? 'phone' : 'browser'} gets its own key. It can see sessions and usage and manage its own notifications (Seen, Snooze, mute, quiet hours); it can’t type into a session or see your Claude logins. Remove it any time from Devices.`);
 
 // "Have the Switchyard app? Open in app": the link carries the one-time secret, so it is only put in the page.
 function appLink() {
   const href = appPairLink(location.origin, st.secret, st.code, st.hubFp, st.sealKey);
   if (!href) return null;
-  return h('p', { class: 'small', 'data-key': 'open-in-app' }, 'Have the Switchyard app? ',
+  return h('p', { class: 'small', 'data-key': 'open-in-app' }, 'Using the Switchyard Android app? ',
     h('a', { href, class: 'strong', 'data-key': 'open-in-app-link' }, 'Open in app'));
 }
 
@@ -134,24 +134,29 @@ function done() {
   const kids = [
     h('h1', {}, 'Paired'),
     h('p', { class: 'strong', 'data-key': 'paired-as' }, `Paired as ${st.name}`),
+    mobile() ? h('p', { class: 'muted small', 'data-key': 'app-hint' }, 'On Android, the Switchyard app gets notifications over its own connection to your hub. Pair the app from Devices › Add phone on your computer. In this browser, you can turn on notifications here.') : null,
     canInstall() ? h('button', { type: 'button', class: 'btn btn-primary', 'data-key': 'install-app', onclick: promptInstall }, 'Install app') : null,
     h('button', {
-      type: 'button', class: 'btn', 'data-key': 'turn-on-notifications',
+      type: 'button', class: 'btn', 'data-key': 'turn-on-notifications', disabled: st.notif === WAITING,
       onclick: async (e) => {
         e.currentTarget.disabled = true;
+        st.notif = WAITING;
+        again();
         try {
           const r = await turnOn();
           st.notif = r.state === 'on' ? 'Notifications are on.' : r.state === 'install-first' ? 'Install the app first, then turn notifications on in Settings.'
             : r.state === 'blocked' ? 'Notifications are blocked in system settings.' : 'Notifications are off. You can turn them on in Settings.';
-        } catch (ex) { st.notif = ex.name === 'AbortError' ? 'The browser could not reach its push service.' : ex.message; }
+        } catch (ex) { st.notif = ex.name === 'AbortError' ? 'The browser could not reach its notification service.' : ex.message; }
         again();
       },
-    }, 'Turn on notifications'),
+    }, st.notif === WAITING ? 'Waiting for permission…' : 'Turn on notifications in this browser'),
     st.notif ? h('p', { role: 'status', class: 'small', 'data-key': 'notif-result' }, st.notif) : null,
     h('button', { type: 'button', class: 'btn btn-primary', 'data-key': 'pair-continue', onclick: () => { ctxRef.onLoggedIn().then(() => { location.hash = '#/'; }); } }, 'Open the app'),
   ];
   return h('div', { class: 'col' }, kids);
 }
+
+const WAITING = 'Waiting for permission… Answer the browser’s prompt.';
 
 function typedForm() {
   const input = h('input', {
@@ -167,24 +172,22 @@ function typedForm() {
       claim({ code: codeDigits(st.code) });
     },
   },
-    h('label', { for: 'pair-address' }, 'Hub address'),
-    h('input', { id: 'pair-address', type: 'text', readonly: true, value: location.origin, 'aria-describedby': 'pair-addr-help' }),
-    h('p', { id: 'pair-addr-help', class: 'muted small' }, 'This app can only pair with the hub it was opened from.'),
     h('label', { for: 'pair-code' }, 'Code'),
     input,
+    h('p', { class: 'muted small' }, 'Pairs with the hub at ', h('span', { class: 'mono', 'data-key': 'pair-address' }, location.origin), '.'),
     h('button', { type: 'submit', class: 'btn btn-primary', 'data-key': 'pair-submit', disabled: st.phase === 'claiming' }, 'Pair'));
 }
 
 // One <video> for the life of the page, so a redraw does not drop the camera stream.
 const videoEl = h('video', { class: 'camera-video', playsinline: true, muted: true, 'aria-label': 'Camera view' });
 
+// Only where this browser can read a QR code itself (P2); otherwise the phone's camera app
+// opens the QR's link, and this page is just the typed code.
 function camera() {
-  const supported = canScan();
+  if (!canScan() || !mobile()) return null;
   return h('div', { class: 'camera' },
     h('div', { class: `camera-frame${st.scanning ? ' is-live' : ''}` }, videoEl),
-    supported
-      ? h('button', { type: 'button', class: 'btn btn-amber', 'data-key': 'scan', disabled: st.scanning, onclick: () => startScan(videoEl) }, st.scanning ? 'Scanning…' : 'Scan the QR code')
-      : h('span', { class: 'camera-label' }, 'Use your camera app to scan the code'));
+    h('button', { type: 'button', class: 'btn btn-amber', 'data-key': 'scan', disabled: st.scanning, onclick: () => startScan(videoEl) }, st.scanning ? 'Scanning…' : 'Scan the QR code'));
 }
 
 export function render() {
@@ -193,20 +196,26 @@ export function render() {
   else if (st.phase === 'done') body = done();
   else if (st.phase === 'claiming') body = h('div', { class: 'col' }, h('h1', {}, 'Pairing…'), h('p', { class: 'muted' }, 'Checking the code with your hub.'));
   else {
+    const cam = camera();
     body = h('div', { class: 'col' },
-      h('h1', {}, 'Pair with your hub'),
-      h('p', { class: 'pair-lead' }, 'On your computer, open Add phone (desktop app, hub page, or ', h('code', {}, 'sy phone pair'), ') and point the camera at the code.'),
-      camera(),
+      h('h1', {}, mobile() ? 'Pair this phone' : 'Pair this browser'),
+      mobile()
+        ? h('p', { class: 'pair-lead' }, 'On your computer, open Devices › Add phone on the board (or run ', h('code', {}, 'sy phone pair'), ' on the hub). Scan the QR code with this phone’s camera, or type the 6-digit code below.')
+        : h('p', { class: 'pair-lead' }, 'Enter the 6-digit code from Devices › Add phone on a board where you are signed in as the owner, or from ', h('code', {}, 'sy phone pair'), ' on the hub.'),
       st.other ? h('p', { class: 'form-error', role: 'alert' }, 'That code is for another hub: ', h('a', { href: `${st.other}/#/pair` }, `open ${st.other}`), ' and install the app from there.') : null,
       st.error ? h('p', { class: 'form-error', role: 'alert', 'data-key': 'pair-error' }, st.error) : null,
-      st.typed || !canScan() ? typedForm() : h('button', { type: 'button', class: 'linkish amber', 'data-key': 'type-code', onclick: () => { st.typed = true; again(); } }, 'Type a code and address instead'),
+      !cam || st.typed ? typedForm() : null,
+      cam,
+      cam && !st.typed ? h('button', { type: 'button', class: 'linkish', 'data-key': 'type-code', onclick: () => { st.typed = true; again(); } }, 'Type the code instead') : null,
       h('div', { class: 'grow' }),
       note(),
-      h('p', { class: 'pair-alt' }, h('a', { href: '#/login', 'data-key': 'to-login' }, 'Sign in with an access token instead')));
+      h('p', { class: 'pair-alt' }, mobile()
+        ? h('a', { href: '#/login', 'data-key': 'to-login' }, 'Sign in with an access token instead')
+        : h('a', { href: '#/login', 'data-key': 'to-login' }, 'Sign in as the owner instead')));
   }
   return {
     title: 'Pair · Switchyard',
-    node: h('div', { class: 'pair-screen' }, h('div', { class: 'pair-inner' }, h('div', { class: 'brand-row' }, logo(), h('span', { class: 'brand-name' }, 'Switchyard')), body)),
+    node: h('div', { class: 'pair-screen' }, h('div', { class: 'pair-inner' }, brandRow(), body)),
   };
 }
 

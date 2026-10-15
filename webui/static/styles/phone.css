@@ -28,7 +28,7 @@ code { font-family: var(--mono); font-size: 0.92em; background: var(--hair-soft)
 .row-value { text-align: right; overflow-wrap: anywhere; }
 .panel > .col > .row, .panel.pad-s > .row { padding-left: 0; padding-right: 0; }
 .kv-row { padding: 6px 0; border-top: 0; }
-.cards-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.cards-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 14px; }
 .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
 .col-field { display: flex; flex-direction: column; align-items: stretch; gap: 4px; color: var(--ink); }
 .col-field input { width: 100%; }
@@ -49,7 +49,8 @@ input.sw:disabled { cursor: default; }
 .rule-row .field, .rule-row select { flex: none; }
 
 /* ---- pills (More sub-navigation) ----------------------------------------------------------- */
-.pills { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin-top: -8px; }
+/* The pills wrap rather than scroll, so none hides off the right edge (G11). */
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
 .pill { border: 1px solid var(--btn-border); border-radius: 18px; padding: 6px 14px; min-height: 36px; display: inline-flex; align-items: center; text-decoration: none; color: var(--ink); background: var(--panel); white-space: nowrap; font-size: 14px; }
 .pill[aria-current="page"] { background: var(--ink); color: var(--ground); border-color: var(--ink); }
 
@@ -66,21 +67,25 @@ input.sw:disabled { cursor: default; }
 
 /* ---- Now: rings, needs cards with Seen / Snooze --------------------------------------------- */
 .rings { display: flex; justify-content: space-between; background: var(--panel); border: 1px solid var(--hair); border-radius: 14px; padding: 12px 10px; }
-.ring { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 25%; color: var(--ink); text-decoration: none; }
+.ring { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 25%; min-width: 0; color: var(--ink); text-decoration: none; }
 .ring-track { stroke: var(--track); }
 .ring-num { fill: var(--ink); font-family: var(--mono); }
 .ring-num.hot { fill: var(--failed); }
-.ring-name { font-size: 12px; font-weight: 600; }
+/* At most two lines (a told-apart name like "mayank.raj · gmail" needs the second), then cut (LN1). */
+.ring-name { font-size: 12px; font-weight: 600; max-width: 100%; text-align: center; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
 .ring-reset { font-size: 11px; color: var(--muted); }
 .swipe-note { margin-left: auto; }
 
 .swipe { position: relative; border-radius: var(--radius); min-width: 0; }
 .swipe-hint { display: none; }
 .needs-card { cursor: pointer; }
-.needs-card.is-seen { opacity: 0.62; }
+/* A seen card fades only its badge and border, so its text keeps full contrast (N8, DK1). */
+.needs-card.is-seen { border-left-color: var(--hair); }
+.needs-card.is-seen .badge { opacity: 0.6; }
+.seen-tag { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); border: 1px solid var(--hair); border-radius: 6px; padding: 1px 6px; }
 .menu-btn { display: none; margin-left: 4px; background: none; border: 0; font-size: 22px; line-height: 1; padding: 2px 8px; border-radius: 8px; cursor: pointer; color: var(--muted); }
 .card-top { align-items: center; }
-.alert-meta { font-size: 12.5px; }
+.alert-meta { font-size: 12.5px; font-family: var(--sans); }
 .alert-line { font-weight: 500; }
 .alert-pending { color: var(--warn-ink); }
 .alert-fired { color: var(--ok-ink); }
@@ -129,32 +134,32 @@ dialog.dialog[open] { display: flex; flex-direction: column; gap: 14px; }
 .test-cell { display: inline-flex; gap: 4px; align-items: baseline; }
 
 .room { background: var(--ok-bg); color: var(--ok-ink); border-radius: 12px; padding: 10px 14px; }
-.cmd { margin: 0; background: #17191B; color: #ECEEEF; border-radius: 10px; padding: 12px 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.session-actions .copy, .session-actions .btn { flex: 1 1 auto; }
+.cmd { margin: 0; background: #17191B; color: #ECEEEF; border: 1px solid var(--hair); border-radius: 10px; padding: 12px 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.session-actions .copy, .session-actions .btn { flex: 0 0 auto; }
 
-/* ---- the pair screen (always dark, like PhonePair) ---------------------------------------------- */
+/* ---- the pair screen: the same light/dark tokens as every other page (P1, P6) ------------------ */
 .pair-screen {
-  --ground: #121416; --panel: #1B1E21; --ink: #ECEEEF; --muted: #9AA1A8; --hair: #2C3034;
-  --hair-soft: #25292C; --btn-border: #40454A; --failed: #F0877D; --failed-bg: #3A1B19; --link: #E8B04B;
-  color-scheme: dark; min-height: 100vh; min-height: 100dvh; background: var(--ground); color: var(--ink);
+  min-height: 100vh; min-height: 100dvh; background: var(--ground); color: var(--ink);
   padding: calc(22px + env(safe-area-inset-top)) 22px calc(22px + env(safe-area-inset-bottom));
 }
 .pair-inner { max-width: 440px; margin: 0 auto; min-height: calc(100vh - 44px); display: flex; flex-direction: column; gap: 16px; }
 .pair-inner > .col { flex: 1; }
+/* On a computer the note follows the form instead of sitting at the bottom of the window. */
+@media (min-width: 821px) {
+  .pair-inner { min-height: 0; padding-top: 6vh; }
+  .pair-inner > .col { flex: none; }
+}
 .brand-row { display: flex; align-items: center; gap: 10px; }
 .brand-name { font-weight: 700; font-size: 18px; }
 .pair-screen h1 { font-size: 28px; font-weight: 700; }
-.pair-lead { color: #B8BEC4; font-size: 16px; line-height: 1.5; }
-.pair-screen .btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.pair-screen .btn { background: var(--panel); }
-.pair-screen .btn-primary:hover { opacity: 0.9; }
-.pair-note { background: var(--panel); border-radius: 14px; padding: 16px; font-size: 13.5px; color: #B8BEC4; line-height: 1.5; }
+.pair-lead { color: var(--muted); font-size: 16px; line-height: 1.5; }
+.pair-note { background: var(--panel); border: 1px solid var(--hair); border-radius: 14px; padding: 16px; font-size: 13.5px; color: var(--muted); line-height: 1.5; }
 .pair-alt { text-align: center; font-size: 14px; }
 .pair-form label { font-weight: 600; font-size: 14px; }
 .pair-form input { width: 100%; min-height: 48px; font-size: 18px; background: var(--panel); color: var(--ink); }
 #pair-code { font-family: var(--mono); letter-spacing: 0.1em; }
 .steps { padding-left: 22px; list-style: decimal; display: flex; flex-direction: column; gap: 8px; font-size: 16px; }
-.camera { background: var(--panel); border-radius: 20px; padding: 22px 16px 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.camera { background: var(--panel); border: 1px solid var(--hair); border-radius: 20px; padding: 22px 16px 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .camera-frame { width: 208px; height: 208px; border: 3px solid var(--accent); border-radius: 22px; overflow: hidden; position: relative; }
 .camera-video { width: 100%; height: 100%; object-fit: cover; display: none; }
 .camera-frame.is-live .camera-video { display: block; }
@@ -168,8 +173,9 @@ dialog.dialog[open] { display: flex; flex-direction: column; gap: 14px; }
   .needs-block { gap: 10px; }
   .block-head h2 { font-size: 18px; font-weight: 600; }
   .grid-needs { grid-template-columns: 1fr; gap: 12px; }
-  .grid-mini { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .machine-mini { flex-direction: column; align-items: flex-start; padding: 10px 12px; gap: 2px; }
+  /* One full-width row per machine (N5). */
+  .grid-mini { grid-template-columns: 1fr; gap: 8px; }
+  .machine-mini { padding: 12px 14px; }
 
   .badge { background: none; padding: 0; text-transform: uppercase; font-size: 12px; letter-spacing: 0.04em; }
   .card-age { margin-left: auto; font-size: 13px; }
@@ -188,8 +194,10 @@ dialog.dialog[open] { display: flex; flex-direction: column; gap: 14px; }
   .swipe .needs-card.swipe-settle { transition: transform 0.2s ease; }
 
   .page-head { flex-direction: column; align-items: stretch; }
-  .filters { flex-wrap: nowrap; width: 100%; min-width: 0; max-width: 100%; }
-  .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  /* Chips wrap, so every filter (Ended too) is in view at 320 px (S2). */
+  .filters { flex-wrap: wrap; width: 100%; min-width: 0; max-width: 100%; }
+  .chips { flex-wrap: wrap; gap: 6px; }
+  .chip-btn { padding: 5px 11px; min-height: 34px; }
   .chip-btn { white-space: nowrap; }
 
   .session-actions { flex-direction: column; }

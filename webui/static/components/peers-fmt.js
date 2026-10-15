@@ -2,8 +2,9 @@
 // Pure, so node can test it (peers-fmt.test.cjs): no imports.
 
 // The accounts that make the rows and columns: the board's visible seats, then any account the
-// matrix names that no seat does (a pair or a label from another time).
-export function peerAccounts(seats, matrix) {
+// matrix names that no seat does (a pair or a label from another time). `nameOf` gives a seat's
+// short name (the board's seatName); by default its label or email.
+export function peerAccounts(seats, matrix, nameOf = (s) => s.label || s.email) {
   const out = [];
   const seen = new Set();
   const add = (account, label) => {
@@ -11,7 +12,7 @@ export function peerAccounts(seats, matrix) {
     seen.add(account);
     out.push({ account, label: label || (matrix && matrix.accounts && matrix.accounts[account]) || account.slice(0, 8) });
   };
-  for (const s of seats || []) if (!s.hidden) add(s.account, s.label || s.email);
+  for (const s of seats || []) if (!s.hidden) add(s.account, nameOf(s));
   for (const p of (matrix && matrix.allow) || []) { add(p[0]); add(p[1]); }
   return out;
 }
@@ -25,7 +26,13 @@ export function cellState(allow, from, to) {
   return out && back ? 'both' : out ? 'out' : back ? 'in' : 'none';
 }
 
-export const CELL_GLYPH = { none: '·', out: '→', in: '←', both: '⇄' };
+export const CELL_GLYPH = { none: '—', out: '→', in: '←', both: '⇄' };
+
+// The legend under the grid (PE3), one line each.
+export const LEGEND = [
+  ['⇄', 'both ways'], ['→', 'the row may start a thread with the column'], ['←', 'only the column may start one'],
+  ['—', 'none (the default)'], ['=', 'same account'],
+];
 export const CELL_WORD = { none: 'none', out: 'one way', in: 'one way, back', both: 'both ways' };
 
 export function cellLabel(state, from, to) {
@@ -77,13 +84,13 @@ export function sizeLabel(n) {
 }
 
 const EVENTS = {
-  matrix: 'Matrix changed',
+  matrix: 'Who may message whom changed',
   pause: 'All peers paused',
   resume: 'Peers resumed',
-  loop_stop: 'Loop guard stopped a thread',
-  loop_guard: 'Loop guard stopped a thread',
+  loop_stop: 'Stopped a thread that went back and forth too often',
+  loop_guard: 'Stopped a thread that went back and forth too often',
   thread_resume: 'Thread resumed',
-  thread_resume_refused: 'A machine kept the stop: hub_may_widen is off',
+  thread_resume_refused: 'A machine kept the stop: it does not let the hub reopen threads',
   refused: 'Message refused',
   rejected: 'Message rejected by a machine',
   off: 'Peers turned off on a machine',
@@ -92,11 +99,15 @@ const EVENTS = {
 
 // The label of an audit event; detail names the machine of a thread_resume_refused (a machine
 // that refused the owner's "Resume thread" because hub_may_widen is off, peers.md 6.3).
+// The first matrix (version 1, made by the hub) is "Peers set up (defaults)" (PE5).
 export function eventLabel(e, detail) {
   const machine = detail && typeof detail.machine === 'string' ? detail.machine.slice(0, 60) : '';
-  if (e === 'thread_resume_refused' && machine) return `${machine} kept the stop: hub_may_widen is off`;
+  if (e === 'thread_resume_refused' && machine) return `${machine} kept the stop: it does not let the hub reopen threads`;
+  if (e === 'matrix' && isSetup(detail)) return 'Peers set up (defaults)';
   return EVENTS[e] || String(e || '').replace(/_/g, ' ');
 }
+
+export const isSetup = (detail) => !!detail && Number(detail.version) === 1;
 
 const THREAD_ID = /^t_[0-9a-f]{16}$/;
 
@@ -120,7 +131,7 @@ export function resumableStops(entries) {
 export function resumeText(r) {
   const n = r && Number.isFinite(r.machines) ? r.machines : 0;
   const told = n === 1 ? '1 machine was told' : `${n} machines were told`;
-  return `Thread resumed: ${told}. A machine with hub_may_widen off keeps its stop until someone types in either session; the audit names each machine that refuses.`;
+  return `Thread resumed: ${told}. A machine that does not let the hub reopen threads (hub_may_widen off) keeps its stop until someone types in either session; the audit names each machine that refuses.`;
 }
 
 // The audit is metadata only. Only these detail keys are shown, in this order, and only when
