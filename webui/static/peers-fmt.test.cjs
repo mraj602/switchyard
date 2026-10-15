@@ -76,3 +76,24 @@ test('audit sentences show metadata only', () => {
   assert.equal(P.sizeLabel(12), '12 B');
   assert.equal(P.sizeLabel(34000), '34 KB');
 });
+
+test('Resume thread: the newest loop-guard stop of each thread not resumed since', () => {
+  const t1 = 't_0123456789abcdef', t2 = 't_fedcba9876543210';
+  const entries = [ // newest first
+    { id: 9, event: 'loop_guard', thread: t1 },
+    { id: 8, event: 'thread_resume', thread: t1 },
+    { id: 7, event: 'loop_guard', thread: t1 },
+    { id: 6, event: 'loop_guard', thread: t2 },
+    { id: 5, event: 'loop_guard', thread: t2 },
+    { id: 4, event: 'thread_resume', thread: 't_1111111111111111' },
+    { id: 3, event: 'loop_guard', thread: 't_1111111111111111' },
+    { id: 2, event: 'loop_guard', thread: 'th_bad' },
+    { id: 1, event: 'matrix', thread: null },
+  ];
+  assert.deepEqual([...P.resumableStops(entries)].sort(), [6, 9]);
+  assert.equal(P.resumableStops(null).size, 0);
+  assert.equal(P.eventLabel('thread_resume'), 'Thread resumed');
+  assert.equal(P.eventLabel('loop_guard'), 'Loop guard stopped a thread');
+  assert.match(P.resumeText({ machines: 2 }), /^Thread resumed: 2 machines were told\./);
+  assert.match(P.resumeText({ machines: 1 }), /1 machine was told/);
+});

@@ -1,16 +1,17 @@
-// Settings → Peers (peers.md 5, 10, 11): the account matrix (rows send, columns receive), the
-// matrix version, Pause all peers, and the audit list (metadata only, never text).
+// Settings → Peers (peers.md 5, 6.3, 10, 11): the account matrix (rows send, columns receive),
+// the matrix version, Pause all peers, and the audit list (metadata only, never text) with
+// "Resume thread" on loop-guard stops for an owner session.
 // Narrowing works from any sign-in that can write; widening needs the owner session, and the
 // hub signs it only then. A control that is not available says why.
 
 import { h } from '../components/dom.js';
 import { section, toggle, toast, moreTabs } from '../components/ui.js';
 import { store, isOwner, canPush } from '../store.js';
-import { getMatrix, editMatrix, pausePeers, getPeerAudit, getPeerMessages } from '../api.js';
+import { getMatrix, editMatrix, pausePeers, getPeerAudit, getPeerMessages, resumePeerThread } from '../api.js';
 import { agoLabel, dateTime } from '../format.js';
 import {
   peerAccounts, cellState, cellLabel, cellEdit, editBody, whyNot, detailText, eventLabel, auditWho,
-  messageWho, outcomeLabel, sizeLabel, CELL_GLYPH, CELL_WORD,
+  messageWho, outcomeLabel, sizeLabel, resumableStops, resumeText, CELL_GLYPH, CELL_WORD,
 } from '../components/peers-fmt.js';
 
 const st = { matrix: null, audit: null, messages: null, error: null, pick: null, busy: false };
@@ -146,15 +147,40 @@ function matrixBlock() {
 
 // ---- audit --------------------------------------------------------------------------------
 
+// "Resume thread" (peers.md 6.3): owner session only; the hub resets its loop guard and tells
+// both machines, which take it only with hub_may_widen on.
+async function resumeThread(thread) {
+  st.busy = true;
+  again();
+  try {
+    toast(resumeText(await resumePeerThread(thread)));
+    await refreshAudit();
+  } catch (ex) {
+    toast(ex.status === 409 ? 'That thread has closed; a new message starts a new one.' : ex.message || 'Could not resume the thread');
+  }
+  st.busy = false;
+  again();
+}
+
 function auditBlock(label) {
   const list = st.audit;
   const rows = [];
   if (list) {
+    const owner = isOwner(), offline = !!store.offline;
+    const stops = resumableStops(list);
     for (const e of list) {
+      const resume = stops.has(e.id) && owner
+        ? h('button', {
+          type: 'button', class: 'btn btn-sm', 'data-key': `resume-${e.thread}`, disabled: st.busy || offline,
+          title: offline ? 'Offline: the thread cannot be resumed now.' : undefined,
+          onclick: () => resumeThread(e.thread),
+        }, 'Resume thread')
+        : null;
       rows.push(h('li', { class: 'row audit-row', 'data-key': `audit-${e.id}` },
         h('span', { class: 'row-text' },
           h('span', {}, eventLabel(e.event)),
           h('span', { class: 'muted small' }, [auditWho(e, label), detailText(e.detail)].filter(Boolean).join(' · '))),
+        resume,
         h('time', { class: 'muted small', datetime: e.at, title: dateTime(e.at) }, agoLabel(e.at, Date.now()))));
     }
   }
@@ -190,6 +216,6 @@ export function render() {
     matrixBlock(),
     auditBlock(label),
     messagesBlock(label),
-    !owner ? h('p', { class: 'muted small' }, 'Widening, and resuming after a pause, need an owner sign-in: run sy hub owner-link on the hub.') : null);
+    !owner ? h('p', { class: 'muted small' }, 'Widening, and resuming after a pause or a loop-guard stop, need an owner sign-in: run sy hub owner-link on the hub.') : null);
   return { title: 'Peers · Switchyard', node };
 }
