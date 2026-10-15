@@ -16,17 +16,15 @@ import (
 	"time"
 
 	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/push/expo"
 	"github.com/mraj602/switchyard/internal/hub/push/model"
 	"github.com/mraj602/switchyard/internal/hub/push/ntfy"
 	"github.com/mraj602/switchyard/internal/hub/push/webpush"
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
 
-// Push channel and target endpoints (push.md 6, 7, 12; api.yaml tag push). The sender side is
-// in hub/push/webpush, hub/push/ntfy and hub/push/expo; this file only validates, stores and
-// shapes JSON. Secrets (the ntfy token, the Expo access token) go in and never come out: the
-// API shows token_set and access_token_set.
+// Push channel and target endpoints (push.md 6, 7, 13; api.yaml tag push). The sender side is
+// in hub/push/webpush, hub/push/ntfy and hub/push/link; this file only validates, stores and
+// shapes JSON. The ntfy token goes in and never comes out: the API shows token_set.
 
 func init() {
 	Register("GET", "/v1/push/config", func(s *Server) http.Handler {
@@ -66,12 +64,10 @@ const (
 // ---- shapes ---------------------------------------------------------------------------
 
 // pushTargetJSON is api.yaml PushTarget. There is no secret field: the ntfy token is
-// reported as token_set only. Platform and AppVersion are set for expo targets only.
+// reported as token_set only.
 type pushTargetJSON struct {
 	ID           string       `json:"id"`
 	Kind         string       `json:"kind"`
-	Platform     *string      `json:"platform"`
-	AppVersion   *string      `json:"app_version"`
 	Device       *string      `json:"device"`
 	Name         *string      `json:"name"`
 	EndpointHost string       `json:"endpoint_host"`
@@ -124,11 +120,6 @@ func targetJSON(t model.Target) pushTargetJSON {
 		if u, err := url.Parse(server); err == nil {
 			out.EndpointHost = u.Host
 		}
-	case model.KindExpo:
-		out.EndpointHost = expoHost
-		if t.Meta != nil {
-			out.Platform, out.AppVersion = strPtr(t.Meta.Platform), strPtr(t.Meta.AppVersion)
-		}
 	default:
 		if u, err := url.Parse(t.Endpoint); err == nil {
 			out.EndpointHost = u.Hostname()
@@ -156,20 +147,6 @@ func channelOf(c store.Channel) channelJSON {
 	if len(set) == 0 {
 		set = json.RawMessage(`{}`)
 	}
-	return channelJSON{Kind: c.Kind, Enabled: c.Enabled, Settings: set}
-}
-
-// expoHost is the endpoint_host of expo targets: where their pushes go.
-var expoHost = strings.TrimPrefix(expo.DefaultBaseURL, "https://")
-
-// expoChannelOf is the expo channel as the API shows it (push.md 12.5): the base URL (the
-// default when none is stored) and whether an access token is set, never the token.
-func expoChannelOf(c store.Channel, tokenSet bool) channelJSON {
-	base := store.ExpoBaseURL(c.Settings)
-	if base == "" {
-		base = expo.DefaultBaseURL
-	}
-	set, _ := json.Marshal(map[string]any{"base_url": base, "access_token_set": tokenSet})
 	return channelJSON{Kind: c.Kind, Enabled: c.Enabled, Settings: set}
 }
 
@@ -274,13 +251,6 @@ func (s *Server) pushConfig(w http.ResponseWriter, r *http.Request) {
 		switch c.Kind {
 		case model.KindWebPush, model.KindNtfy:
 			out = append(out, channelOf(c))
-		case model.KindExpo:
-			set, err := s.store.ExpoTokenSet(ctx)
-			if err != nil {
-				s.fail(w, err)
-				return
-			}
-			out = append(out, expoChannelOf(c, set))
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"vapid_public_key": key, "channels": out, "ntfy_default_server": ntfy.DefaultServer})
@@ -290,8 +260,8 @@ func (s *Server) pushConfig(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) putChannel(w http.ResponseWriter, r *http.Request) {
 	kind := r.PathValue("kind")
-	if kind != model.KindWebPush && kind != model.KindNtfy && kind != model.KindExpo && kind != "link" {
-		badRequest(w, "kind must be webpush, ntfy, expo or link")
+	if kind != model.KindWebPush && kind != model.KindNtfy && kind != model.KindLink {
+		badRequest(w, "kind must be webpush, ntfy or link")
 		return
 	}
 	var body struct {
@@ -319,11 +289,7 @@ func (s *Server) putChannel(w http.ResponseWriter, r *http.Request) {
 		}
 		settings = body.Settings
 	}
-	if kind == model.KindExpo {
-		s.putExpoChannel(w, r, *body.Enabled, settings)
-		return
-	}
-	if kind == "link" {
+	if kind == model.KindLink {
 		if err := checkLinkSettings(settings); err != nil {
 			badRequest(w, err.Error())
 			return
@@ -335,71 +301,6 @@ func (s *Server) putChannel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, channelOf(c))
-}
-
-// maxExpoAccessToken bounds the Expo access token; Expo's are about 40 characters.
-const maxExpoAccessToken = 512
-
-// putExpoChannel is PUT /v1/push/channels/expo (push.md 12.5): settings {base_url?,
-// access_token?}; an absent key keeps the stored value, "" removes it. The token is stored
-// in hub_secret and never returned or logged; the expo sender is told to reload both.
-func (s *Server) putExpoChannel(w http.ResponseWriter, r *http.Request, enabled bool, settings json.RawMessage) {
-	var baseURL, token *string
-	if settings != nil {
-		var in map[string]json.RawMessage
-		_ = json.Unmarshal(settings, &in)
-		for k, v := range in {
-			var str string
-			switch k {
-			case "access_token_set": // read-only; a client may send back what it read
-				continue
-			case "base_url", "access_token":
-				if json.Unmarshal(v, &str) != nil {
-					badRequest(w, "settings."+k+" must be a string")
-					return
-				}
-			default:
-				badRequest(w, "settings."+k+" is not an expo setting (base_url, access_token)")
-				return
-			}
-			if k == "base_url" {
-				if str != "" {
-					norm, err := expo.ValidBaseURL(str)
-					if err != nil {
-						badRequest(w, err.Error())
-						return
-					}
-					if norm == expo.DefaultBaseURL {
-						norm = ""
-					}
-					str = norm
-				}
-				baseURL = &str
-				continue
-			}
-			str = strings.TrimSpace(str)
-			if len(str) > maxExpoAccessToken || strings.ContainsFunc(str, func(c rune) bool { return c <= ' ' || c > '~' }) {
-				badRequest(w, "access_token must be at most 512 printable characters")
-				return
-			}
-			token = &str
-		}
-	}
-	ctx := r.Context()
-	c, err := s.store.SetExpoChannel(ctx, enabled, baseURL, token)
-	if err != nil {
-		s.fail(w, err)
-		return
-	}
-	if rl, ok := s.cfg.Senders[model.KindExpo].(interface{ Reload() }); ok {
-		rl.Reload()
-	}
-	set, err := s.store.ExpoTokenSet(ctx)
-	if err != nil {
-		s.fail(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, expoChannelOf(c, set))
 }
 
 // ---- GET /v1/push/targets -------------------------------------------------------------
@@ -436,17 +337,7 @@ type newTargetBody struct {
 	Topic   string `json:"topic"`
 	Token   string `json:"token"`
 	Private *bool  `json:"private"`
-	// expo (push.md 12.7)
-	ExpoToken string `json:"expo_token"`
-	Platform  string `json:"platform"`
-	App       *struct {
-		Version string `json:"version"`
-		Build   string `json:"build"`
-	} `json:"app"`
 }
-
-// maxAppField bounds app.version and app.build (push.md 12.7).
-const maxAppField = 32
 
 func (s *Server) addTarget(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -514,33 +405,11 @@ func (s *Server) addTarget(w http.ResponseWriter, r *http.Request) {
 		if !owner { // a phone's topic belongs to it; the owner's is the hub's
 			t.DeviceID = d.ID
 		}
-	case model.KindExpo:
-		if !expo.ValidToken(b.ExpoToken) {
-			badRequest(w, "expo_token must look like ExponentPushToken[…]")
-			return
-		}
-		if b.Platform != model.PlatformIOS && b.Platform != model.PlatformAndroid {
-			badRequest(w, "platform must be ios or android")
-			return
-		}
-		meta := &model.TargetMeta{Platform: b.Platform}
-		if b.App != nil {
-			meta.AppVersion, meta.AppBuild = strings.TrimSpace(b.App.Version), strings.TrimSpace(b.App.Build)
-			if len([]rune(meta.AppVersion)) > maxAppField || len([]rune(meta.AppBuild)) > maxAppField {
-				badRequest(w, "app.version and app.build are at most 32 characters")
-				return
-			}
-		}
-		name := b.Name
-		if name == "" {
-			name = "App"
-		}
-		t = model.Target{Kind: model.KindExpo, DeviceID: d.ID, Name: name, Endpoint: b.ExpoToken, Meta: meta}
-	case "link":
+	case model.KindLink:
 		badRequest(w, "link targets are made by pairing")
 		return
 	default:
-		badRequest(w, "kind must be webpush, ntfy or expo")
+		badRequest(w, "kind must be webpush or ntfy")
 		return
 	}
 
@@ -548,11 +417,7 @@ func (s *Server) addTarget(w http.ResponseWriter, r *http.Request) {
 	// push-scoped caller: that would let one phone redirect another's pushes.
 	old, err := s.store.TargetByEndpoint(ctx, t.Kind, t.Endpoint)
 	if err == nil {
-		live := s.deviceAlive(ctx, old.DeviceID)
-		if t.Kind == model.KindExpo {
-			live = s.expoHolderLive(ctx, old.DeviceID)
-		}
-		if !owner && old.DeviceID != d.ID && live {
+		if !owner && old.DeviceID != d.ID && s.deviceAlive(ctx, old.DeviceID) {
 			auth.WriteError(w, http.StatusConflict, "conflict", "this endpoint is registered by another device")
 			return
 		}
@@ -583,35 +448,12 @@ func (s *Server) addTarget(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, targetJSON(stored))
 }
 
-// expoStaleAfter is how long a phone may go unseen before its Expo token can be rebound by
-// another device. A phone that unpaired while offline never revoked itself, so its device
-// and target would otherwise hold the token for good and a re-pair would get 409. Every
-// authenticated request touches the device, so 30 days of silence means nobody is using it.
-const expoStaleAfter = 30 * 24 * time.Hour
-
 func (s *Server) deviceAlive(ctx context.Context, id string) bool {
 	if id == "" {
 		return true // the owner's own target
 	}
 	d, err := s.store.DeviceByID(ctx, id)
 	return err == nil && d.RevokedAt == 0
-}
-
-// expoHolderLive is deviceAlive for an Expo token's holder: also not unseen for
-// expoStaleAfter (last use, or its creation when never used).
-func (s *Server) expoHolderLive(ctx context.Context, id string) bool {
-	if id == "" {
-		return true
-	}
-	d, err := s.store.DeviceByID(ctx, id)
-	if err != nil || d.RevokedAt != 0 {
-		return false
-	}
-	seen := d.LastUsedAt
-	if seen == 0 {
-		seen = d.CreatedAt
-	}
-	return s.now().Sub(time.UnixMilli(seen)) < expoStaleAfter
 }
 
 // ---- PATCH /v1/push/targets/{id} ------------------------------------------------------

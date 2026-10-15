@@ -478,19 +478,15 @@ type DeliveryRow struct {
 	HTTPStatus           int
 	LastError            string
 	CreatedAt, UpdatedAt int64
-	// Ticket is the push service's id for the sent message (model.Result.Ref; the Expo
-	// ticket, push.md 12.4); empty (NULL) for other kinds. receipt_at belongs to the expo
-	// receipts poller and is not part of this row.
-	Ticket string
 }
 
 const deliveryCols = `id, alert_id, target_id, target_kind, fire, coalesce(batch, ''), status, coalesce(reason, ''), tries,
-	coalesce(next_at, 0), coalesce(http_status, 0), coalesce(last_error, ''), created_at, updated_at, coalesce(ticket, '')`
+	coalesce(next_at, 0), coalesce(http_status, 0), coalesce(last_error, ''), created_at, updated_at`
 
 func deliveryScan(sc interface{ Scan(...any) error }) (DeliveryRow, error) {
 	var d DeliveryRow
 	err := sc.Scan(&d.ID, &d.AlertID, &d.TargetID, &d.TargetKind, &d.Fire, &d.Batch, &d.Status, &d.Reason, &d.Tries,
-		&d.NextAt, &d.HTTPStatus, &d.LastError, &d.CreatedAt, &d.UpdatedAt, &d.Ticket)
+		&d.NextAt, &d.HTTPStatus, &d.LastError, &d.CreatedAt, &d.UpdatedAt)
 	return d, err
 }
 
@@ -512,13 +508,12 @@ func (tx *Tx) DeliveryInsert(d *DeliveryRow) (bool, error) {
 	return true, err
 }
 
-// DeliverySave writes a delivery's mutable columns back (ticket included: the engine sets
-// it in the same transaction that records the send result).
+// DeliverySave writes a delivery's mutable columns back.
 func (tx *Tx) DeliverySave(d DeliveryRow) error {
 	_, err := tx.exec(`UPDATE delivery SET batch = ?, status = ?, reason = ?, tries = ?, next_at = ?, http_status = ?,
-		last_error = ?, updated_at = ?, ticket = ? WHERE id = ?`,
+		last_error = ?, updated_at = ? WHERE id = ?`,
 		nullStr(d.Batch), d.Status, nullStr(d.Reason), d.Tries, nullInt(d.NextAt), nullInt(int64(d.HTTPStatus)),
-		nullStr(d.LastError), d.UpdatedAt, nullStr(d.Ticket), d.ID)
+		nullStr(d.LastError), d.UpdatedAt, d.ID)
 	return err
 }
 

@@ -188,7 +188,7 @@ func TestLinkSenderOutcomes(t *testing.T) {
 		t.Fatalf("no device: %+v", res)
 	}
 	p := r.phone(4, "pixel-d")
-	if res := s.Send(r.ctx, model.Target{Kind: model.KindLink, DeviceID: p.ID}, m); res.Outcome != model.OutcomeSent || res.Ref != "" {
+	if res := s.Send(r.ctx, model.Target{Kind: model.KindLink, DeviceID: p.ID}, m); res.Outcome != model.OutcomeSent {
 		t.Fatalf("sent: %+v", res)
 	}
 	// a peer_msg-full queue is not this sender's; the hub-wide cap answers retry

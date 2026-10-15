@@ -407,24 +407,3 @@ func (tx *Tx) LinkDismissTargets(alertID string) ([][2]string, error) {
 	}
 	return out, rows.Err()
 }
-
-// SettingSelfHostedApplied records that the self-hosted profile turned the expo channel off
-// once (push.md 13.6).
-const SettingSelfHostedApplied = "push.self_hosted_applied"
-
-// ApplySelfHosted turns the expo channel off the first time it runs on a hub and records it,
-// so a channel turned on again by hand stays on (push.md 13.6). applied reports this call
-// did it.
-func (s *Store) ApplySelfHosted(ctx context.Context) (applied bool, err error) {
-	err = s.Write(ctx, func(tx *Tx) error {
-		if _, ok, err := tx.AlertSetting(SettingSelfHostedApplied); err != nil || ok {
-			return err
-		}
-		if _, err := tx.exec(`UPDATE channel SET enabled = 0, updated_at = ? WHERE kind = 'expo'`, tx.NowMS()); err != nil {
-			return err
-		}
-		applied = true
-		return tx.PutAlertSetting(SettingSelfHostedApplied, []byte("true"), tx.NowMS())
-	})
-	return applied, err
-}

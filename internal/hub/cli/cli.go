@@ -3,9 +3,9 @@
 //
 // Phase 2; phase 4 adds pair, owner-link and the alert engine and push senders in serve;
 // phase 5 adds pull, export, import, unfreeze and machine, and the pull scheduler in serve;
-// phase 8 adds the expo sender, its receipts poller and the widget refresher in serve.
+// N1 adds the link sender and the widget refresher in serve.
 // Depends on: paths, hub/store, hub/auth, hub/api, hub/ingest, hub/pair, hub/pull,
-// hub/push/{clock,engine,model,webpush,ntfy,expo}, hub/store/importproto, webui.
+// hub/push/{clock,engine,model,webpush,ntfy,link,refresh}, hub/store/importproto, webui.
 package cli
 
 import (
@@ -43,10 +43,10 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/pull"
 	"github.com/mraj602/switchyard/internal/hub/push/clock"
 	"github.com/mraj602/switchyard/internal/hub/push/engine"
-	"github.com/mraj602/switchyard/internal/hub/push/expo"
 	pushlink "github.com/mraj602/switchyard/internal/hub/push/link"
 	"github.com/mraj602/switchyard/internal/hub/push/model"
 	"github.com/mraj602/switchyard/internal/hub/push/ntfy"
+	"github.com/mraj602/switchyard/internal/hub/push/refresh"
 	"github.com/mraj602/switchyard/internal/hub/push/rules"
 	"github.com/mraj602/switchyard/internal/hub/push/webpush"
 	"github.com/mraj602/switchyard/internal/hub/store"
@@ -320,25 +320,15 @@ func serve(args []string, stdout, stderr io.Writer) error {
 			logger.Printf("link: publishing the matrix: %v", err)
 		}
 	}
-	// The self-hosted profile (push.md 13.6): the expo channel is turned off once.
-	if applied, err := st.ApplySelfHosted(ctx); err != nil {
-		return err
-	} else if applied {
-		logger.Printf("self-hosted profile: the expo channel is off (turn it on again with PUT /v1/push/channels/expo)")
-	}
 	var eng *engine.Engine
-	var expoSender *expo.Sender
 	var linkSender *pushlink.Sender
 	if !*noPush {
 		senders, err := pushSenders(ctx, st, pub, hooks)
 		if err != nil {
 			return err
 		}
-		// The third channel (push.md 12): the base URL and access token are read from the
-		// store and reloaded when the owner PUTs the channel (the API calls Reload).
-		expoSender = expo.New(expo.Options{Store: st, Log: logger, Client: hooks.ExpoClient, Now: clk.Now})
 		linkSender = pushlink.New(lk) // the Android app's channel (push.md 13)
-		senders = append(senders, expoSender, linkSender)
+		senders = append(senders, linkSender)
 		cfg.Senders = map[string]model.Sender{}
 		list := make([]model.Sender, 0, len(senders))
 		for _, s := range senders {
@@ -370,24 +360,18 @@ func serve(args []string, stdout, stderr io.Writer) error {
 			Logf: func(f string, a ...any) { logger.Printf("pull: "+f, a...) }})
 		ref.set(sched)
 	}
-	var (
-		receipts *expo.Receipts
-		refresh  *expo.Refresher
-	)
+	var refresher *refresh.Refresher
 	if eng != nil {
 		eng.SetBroker(srv.Broker)
 		if err := eng.Start(ctx); err != nil {
 			return fmt.Errorf("alert engine: %w", err)
 		}
 		hooks.Attach(eng)
-		// After the engine (push.md 12.4, 12.9): Expo's receipts every 5 minutes, and
-		// silent widget refreshes on session and usage changes.
-		receipts = expo.NewReceipts(expo.ReceiptsOptions{Store: st, Sender: expoSender, Clock: clk, Log: logger})
-		refresh = expo.NewRefresher(expo.RefresherOptions{Store: st, Sender: expoSender, Link: linkSender, Broker: srv.Broker,
+		// After the engine (push.md 13.5): widget refresh frames on session and usage changes.
+		refresher = refresh.NewRefresher(refresh.RefresherOptions{Store: st, Sender: linkSender, Broker: srv.Broker,
 			Clock: clk, Log: logger})
-		receipts.Start()
-		refresh.Start()
-		hooks.AttachExpo(receipts, refresh)
+		refresher.Start()
+		hooks.AttachRefresh(refresher)
 	}
 	hs := srv.HTTPServer(*listen)
 	hs.RegisterOnShutdown(srv.Close)
@@ -442,11 +426,8 @@ func serve(args []string, stdout, stderr io.Writer) error {
 		sched.Stop()
 		ref.set(nil)
 	}
-	if refresh != nil {
-		refresh.Stop()
-	}
-	if receipts != nil {
-		receipts.Stop()
+	if refresher != nil {
+		refresher.Stop()
 	}
 	if eng != nil {
 		eng.Stop()
@@ -506,7 +487,7 @@ func logPullStart(ctx context.Context, st *store.Store, logger *log.Logger) {
 	}
 }
 
-// pushSenders builds the Web Push and ntfy senders (serve adds the expo sender). Both read the push settings on every
+// pushSenders builds the Web Push and ntfy senders (serve adds the link sender). Both read the push settings on every
 // send (vapid_subject, webpush_hosts, snooze_min), so a settings change needs no restart.
 func pushSenders(ctx context.Context, st *store.Store, pub string, hooks serveHooks) ([]model.Sender, error) {
 	keys, err := webpush.LoadVAPID(ctx, st)

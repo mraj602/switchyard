@@ -286,7 +286,7 @@ func (s *Service) RegisterTx(tx *store.Tx, d store.Device, k keys.DeviceKeysNew,
 		if name == "" {
 			name = "phone · app"
 		}
-		if err := tx.UpsertLinkTarget(store.NewID("pt_", now), d.ID, name, tk, nil, tx.NowMS()); err != nil {
+		if err := tx.UpsertLinkTarget(store.NewID("pt_", now), d.ID, name, tk, tx.NowMS()); err != nil {
 			return keys.Doc{}, err
 		}
 	}

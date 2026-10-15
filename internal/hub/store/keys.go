@@ -180,20 +180,13 @@ func (tx *Tx) SetDeviceOwnerSig(id, fp string, sig []byte, now int64) error {
 
 // UpsertLinkTarget makes or refreshes a phone's link push target (push.md 13.7) in the
 // transaction that registers its keys.
-func (tx *Tx) UpsertLinkTarget(id, deviceID, name string, keys, meta json.RawMessage, now int64) error {
-	_, err := tx.exec(`INSERT INTO push_target (id, kind, device_id, name, endpoint, keys, meta, enabled, created_at, updated_at)
-		VALUES (?, 'link', ?, ?, ?, ?, ?, 1, ?, ?)
+func (tx *Tx) UpsertLinkTarget(id, deviceID, name string, keys json.RawMessage, now int64) error {
+	_, err := tx.exec(`INSERT INTO push_target (id, kind, device_id, name, endpoint, keys, enabled, created_at, updated_at)
+		VALUES (?, 'link', ?, ?, ?, ?, 1, ?, ?)
 		ON CONFLICT (kind, endpoint) DO UPDATE SET device_id = excluded.device_id, keys = excluded.keys,
-			meta = coalesce(excluded.meta, meta), updated_at = excluded.updated_at, gone_at = NULL`,
-		id, deviceID, nullStr(name), "link:"+deviceID, string(keys), nullJSON(meta), now, now)
+			updated_at = excluded.updated_at, gone_at = NULL`,
+		id, deviceID, nullStr(name), "link:"+deviceID, string(keys), now, now)
 	return err
-}
-
-func nullJSON(b json.RawMessage) any {
-	if len(b) == 0 {
-		return nil
-	}
-	return string(b)
 }
 
 // DropLink deletes a device's link queue and state (link.md 7), on revocation.

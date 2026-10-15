@@ -173,7 +173,7 @@ func TestPushConfig(t *testing.T) {
 		t.Fatalf("%v", cfg)
 	}
 	chans := cfg["channels"].([]any)
-	if len(chans) != 3 { // webpush, ntfy, expo (phases/8.md WP-H)
+	if len(chans) != 2 { // webpush, ntfy (link is not listed here)
 		t.Fatalf("channels %v", chans)
 	}
 	for _, c := range chans {
@@ -269,7 +269,7 @@ func TestAddWebPushTargetValidation(t *testing.T) {
 		"short p256dh": {"kind": "webpush", "endpoint": good, "keys": map[string]string{"p256dh": "AAAA", "auth": keys["auth"]}},
 		"short auth":   {"kind": "webpush", "endpoint": good, "keys": map[string]string{"p256dh": keys["p256dh"], "auth": "AAAA"}},
 		"no kind":      {"endpoint": good, "keys": keys},
-		"bad kind":     {"kind": "expo", "endpoint": good, "keys": keys},
+		"bad kind":     {"kind": "carrier", "endpoint": good, "keys": keys},
 		"long name":    {"kind": "webpush", "endpoint": good, "keys": keys, "name": strings.Repeat("n", 61)},
 	} {
 		st, _, b := r.do("POST", "/v1/push/targets", r.phone, body)

@@ -14,7 +14,7 @@ cd "$root"
 
 # Strings owned by the test-seam build tags (fakeclock: internal/hub/cli/hooks_fakeclock.go;
 # fakeopen: internal/termctl/fakeopen.go; peerstest: internal/peers/matrix_peerstest.go).
-markers=(SY_FAKE_CLOCK SY_TEST_WEBPUSH_DIAL SY_TEST_EXPO_DIAL SY_TEST_OPENER SY_PEERS_TEST_ALLOW)
+markers=(SY_FAKE_CLOCK SY_TEST_WEBPUSH_DIAL SY_TEST_OPENER SY_PEERS_TEST_ALLOW)
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT

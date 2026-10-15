@@ -1,4 +1,8 @@
-package expo
+// Package refresh sends widget refresh frames to the Android app over its link (push.md
+// 13.5): on session and usage changes, debounced, only when what a widget shows changed, and
+// no more often than push.settings.refresh_min per target. It reaches the rest of the hub
+// only through hub/store, hub/events and hub/push/{model,clock}.
+package refresh
 
 import (
 	"context"
@@ -17,7 +21,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
 
-// Refresh timing of push.md 12.9.
+// Refresh timing of push.md 13.5.
 const (
 	RefreshDebounce = 10 * time.Second
 	refreshSendTime = 10 * time.Second
@@ -29,11 +33,8 @@ const (
 // RefresherOptions configure a Refresher. Store, Sender and Broker are required.
 type RefresherOptions struct {
 	Store *store.Store
-	// Sender sends the refresh messages (the expo Sender; a fake in tests).
+	// Sender queues the `refresh` frames for link targets (the link Sender; a fake in tests).
 	Sender model.Sender
-	// Link sends `refresh` frames to link targets (push.md 13.5) with the same digest,
-	// debounce and minimum interval. Nil: link targets get none.
-	Link model.Sender
 	// Broker is the hub's event broker; session and usage events start a pass.
 	Broker *events.Broker
 	// Clock is the time source; nil is clock.Real{}.
@@ -45,9 +46,8 @@ type RefresherOptions struct {
 	Log *log.Logger
 }
 
-// Refresher sends silent widget refresh pushes to expo targets whose devices asked for
-// them (push.md 12.9). Digests live in memory: a restart sends at most one refresh per
-// target.
+// Refresher sends widget refresh frames to link targets whose devices asked for them
+// (push.md 13.5). Digests live in memory: a restart sends at most one refresh per target.
 type Refresher struct {
 	o RefresherOptions
 
@@ -216,12 +216,12 @@ func (r *Refresher) maybePass() {
 	ctx, cancel := context.WithTimeout(context.Background(), refreshPassTime)
 	defer cancel()
 	if err := r.pass(ctx, now); err != nil {
-		r.o.Log.Printf("expo refresh: %v", err)
+		r.o.Log.Printf("widget refresh: %v", err)
 		r.wakeAt = now.Add(time.Minute) // try again later
 	}
 }
 
-// pass is one refresh pass at now (push.md 12.9).
+// pass is one refresh pass at now (push.md 13.5).
 func (r *Refresher) pass(ctx context.Context, now time.Time) error {
 	r.debounceAt, r.wakeAt = time.Time{}, time.Time{}
 	nowMS := now.UnixMilli()
@@ -234,22 +234,15 @@ func (r *Refresher) pass(ctx context.Context, now time.Time) error {
 		return nil
 	}
 	minGap := time.Duration(r.refreshMin(ctx)) * time.Minute
-	targets, err := r.o.Store.ExpoRefreshTargets(ctx, nowMS)
+	targets, err := r.o.Store.LinkRefreshTargets(ctx, nowMS)
 	if err != nil {
 		return err
 	}
-	if r.o.Link != nil {
-		lt, err := r.o.Store.LinkRefreshTargets(ctx, nowMS)
-		if err != nil {
-			return err
-		}
-		targets = append(targets, lt...)
-	}
-	state, err := r.o.Store.ExpoWidgetState(ctx, nowMS)
+	state, err := r.o.Store.WidgetState(ctx, nowMS)
 	if err != nil {
 		return err
 	}
-	snapshot := LinkSnapshot(state, nowMS)
+	snapshot := Snapshot(state, nowMS)
 	digest, nextReset := Digest(state)
 	wake := time.Time{}
 	later := func(t time.Time) {
@@ -274,16 +267,12 @@ func (r *Refresher) pass(ctx context.Context, now time.Time) error {
 			continue
 		}
 		msg := model.Message{Payload: model.Payload{V: model.PayloadVersion, Type: model.TypeRefresh,
-			NeedsYou: state.NeedsYou, TS: model.Time(nowMS)}, TTL: RefreshTTL, Urgency: "normal"}
-		s := r.o.Sender
-		if t.Kind == model.KindLink {
-			s, msg.Data = r.o.Link, snapshot
-		}
+			NeedsYou: state.NeedsYou, TS: model.Time(nowMS)}, Urgency: "normal", Data: snapshot}
 		sctx, cancel := context.WithTimeout(ctx, refreshSendTime)
-		res := s.Send(sctx, t, msg)
+		res := r.o.Sender.Send(sctx, t, msg)
 		cancel()
 		if err := r.o.Store.ApplyTargetResult(context.WithoutCancel(ctx), t.ID, res); err != nil {
-			r.o.Log.Printf("expo refresh: record result: %v", err)
+			r.o.Log.Printf("widget refresh: record result: %v", err)
 		}
 		switch res.Outcome {
 		case model.OutcomeSent:
@@ -306,12 +295,12 @@ func (r *Refresher) pass(ctx context.Context, now time.Time) error {
 	}
 	r.wakeAt = wake
 	if len(targets) > 0 {
-		r.o.Log.Printf("expo refresh: %d targets, %d sent, %d deferred, %d failed", len(targets), sent, deferred, failedN)
+		r.o.Log.Printf("widget refresh: %d targets, %d sent, %d deferred, %d failed", len(targets), sent, deferred, failedN)
 	}
 	return nil
 }
 
-// refreshMin is push.settings.expo_refresh_min (the default when unset or invalid).
+// refreshMin is push.settings.refresh_min (the default when unset or invalid).
 func (r *Refresher) refreshMin(ctx context.Context) int {
 	var s model.Settings
 	s.Defaults()
@@ -320,12 +309,12 @@ func (r *Refresher) refreshMin(ctx context.Context) int {
 			s = p
 		}
 	}
-	return s.ExpoRefreshMin
+	return s.RefreshMin
 }
 
-// LinkSnapshot is a link `refresh` body (link.md 6.4): {"v":1,"needs_you","seats":[{"seat",
+// Snapshot is a link `refresh` body (link.md 6.4): {"v":1,"needs_you","seats":[{"seat",
 // "window","used_pct","resets_at"}],"ts"}, enough to redraw the widgets offline.
-func LinkSnapshot(s store.ExpoWidgetState, nowMS int64) []byte {
+func Snapshot(s store.WidgetState, nowMS int64) []byte {
 	type seat struct {
 		Seat     string     `json:"seat"`
 		Window   string     `json:"window"`
@@ -340,10 +329,10 @@ func LinkSnapshot(s store.ExpoWidgetState, nowMS int64) []byte {
 	return b
 }
 
-// Digest is what a widget shows, coarsened (push.md 12.9): the needs-you count, each seat ×
+// Digest is what a widget shows, coarsened (push.md 13.5): the needs-you count, each seat ×
 // window's used % in 5-point buckets, and the next reset. It also returns that next reset
 // (ms, 0 when none), when a refresh is due anyway.
-func Digest(s store.ExpoWidgetState) (string, int64) {
+func Digest(s store.WidgetState) (string, int64) {
 	var b strings.Builder
 	fmt.Fprintf(&b, "n=%d", s.NeedsYou)
 	var next int64

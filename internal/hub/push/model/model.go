@@ -241,8 +241,8 @@ type Prefs struct {
 	Private    *bool       `json:"private"`     // nil: hub default
 	Tap        string      `json:"tap"`         // TapAuto when empty
 	TZ         *string     `json:"tz"`
-	// Widgets asks for silent widget refresh pushes to this device's expo targets (push.md
-	// 12.9); nil means false. Omitted when nil, so older prefs encode unchanged.
+	// Widgets asks for widget refresh frames to this device's link target (push.md 13.5);
+	// nil means false. Omitted when nil, so prefs without it encode unchanged.
 	Widgets *bool `json:"widgets,omitempty"`
 }
 
@@ -272,23 +272,8 @@ func (p Prefs) TapMode() string {
 const (
 	KindWebPush = "webpush"
 	KindNtfy    = "ntfy"
-	KindExpo    = "expo" // the store app through Expo's push service (push.md 12)
 	KindLink    = "link" // the Android app over the hub's own link (push.md 13)
 )
-
-// Platforms of an expo target (TargetMeta.Platform).
-const (
-	PlatformIOS     = "ios"
-	PlatformAndroid = "android"
-)
-
-// TargetMeta is push_target.meta (schema v6): facts about an expo target that are not
-// secrets (push.md 12.7). Nil for webpush and ntfy targets.
-type TargetMeta struct {
-	Platform   string `json:"platform,omitempty"`
-	AppVersion string `json:"app_version,omitempty"`
-	AppBuild   string `json:"app_build,omitempty"`
-}
 
 // Keys are a Web Push subscription's keys, base64url (push_target.keys).
 type Keys struct {
@@ -299,25 +284,24 @@ type Keys struct {
 // Target is one place a push goes (push_target row), the engine's and senders' view. It is
 // not the API shape (api.yaml PushTarget has host, status and token_set; WP-C maps it).
 // Secret is the ntfy token and never serialises. For ntfy, Endpoint is "<server>/<topic>";
-// for expo it is the Expo push token ("ExponentPushToken[…]").
+// for link it is "link:" + the device id.
 type Target struct {
-	ID          string      `json:"id"`
-	Kind        string      `json:"kind"`
-	DeviceID    string      `json:"device_id,omitempty"` // empty: a topic the owner added for the hub
-	Name        string      `json:"name,omitempty"`
-	Endpoint    string      `json:"endpoint"`
-	Keys        *Keys       `json:"keys,omitempty"`
-	Secret      string      `json:"-"`
-	Prefs       *Prefs      `json:"prefs,omitempty"` // targets without a device only
-	Meta        *TargetMeta `json:"meta,omitempty"`  // expo only (schema v6)
-	Enabled     bool        `json:"enabled"`
-	CreatedAt   Time        `json:"created_at"`
-	UpdatedAt   Time        `json:"updated_at"`
-	LastOKAt    Time        `json:"last_ok_at"`
-	LastError   string      `json:"last_error,omitempty"`
-	LastErrorAt Time        `json:"last_error_at"`
-	FailCount   int         `json:"fail_count"`
-	GoneAt      Time        `json:"gone_at"`
+	ID          string `json:"id"`
+	Kind        string `json:"kind"`
+	DeviceID    string `json:"device_id,omitempty"` // empty: a topic the owner added for the hub
+	Name        string `json:"name,omitempty"`
+	Endpoint    string `json:"endpoint"`
+	Keys        *Keys  `json:"keys,omitempty"`
+	Secret      string `json:"-"`
+	Prefs       *Prefs `json:"prefs,omitempty"` // targets without a device only
+	Enabled     bool   `json:"enabled"`
+	CreatedAt   Time   `json:"created_at"`
+	UpdatedAt   Time   `json:"updated_at"`
+	LastOKAt    Time   `json:"last_ok_at"`
+	LastError   string `json:"last_error,omitempty"`
+	LastErrorAt Time   `json:"last_error_at"`
+	FailCount   int    `json:"fail_count"`
+	GoneAt      Time   `json:"gone_at"`
 }
 
 // Push types of Payload.Type.
@@ -325,8 +309,8 @@ const (
 	TypeAlert   = "alert"
 	TypeSummary = "summary"
 	TypeTest    = "test"
-	// TypeRefresh is the silent widget refresh of the expo channel (push.md 12.9): never
-	// shown, never an alert, no delivery row. Its data is {"v", "type", "needs_you", "ts"}.
+	// TypeRefresh is the widget refresh frame of the link channel (push.md 13.5): never
+	// shown, never an alert, no delivery row. Message.Data carries the snapshot.
 	TypeRefresh = "refresh"
 	// TypeDismiss clears a notification on link devices when its alert is seen or resolved
 	// (push.md 13.3): {"v":1,"type":"dismiss","tag","alerts"}.
@@ -407,7 +391,4 @@ type Result struct {
 	HTTPStatus int
 	RetryAfter time.Duration // from Retry-After, 0 if none
 	Err        string        // first 200 bytes of the reply or the transport error
-	// Ref is the push service's id for an accepted message: the Expo push ticket id
-	// (push.md 12.3), which the engine stores in delivery.ticket. Empty for other senders.
-	Ref string
 }
