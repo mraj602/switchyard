@@ -32,6 +32,7 @@ import (
 
 	"github.com/mraj602/switchyard/internal/client"
 	"github.com/mraj602/switchyard/internal/config"
+	"github.com/mraj602/switchyard/internal/keys"
 	"github.com/mraj602/switchyard/internal/sshx"
 	"github.com/mraj602/switchyard/internal/update"
 )
@@ -127,6 +128,14 @@ type Env struct {
 	// HubHealth reads the operator's own hub /health (nil: a plain GET of OperatorHub);
 	// used to check who holds a forward port that is already taken.
 	HubHealth func(ctx context.Context) (client.Health, error)
+	// HubPin and OwnerPin are this machine's pins (keys.md 3.5; nil func or nil pin: none):
+	// the hub key the admin channel answers with must be the pinned one, and the owner key
+	// is pinned on the remote over SSH.
+	HubPin, OwnerPin func() *keys.Pin
+	// Certify owner-signs the new machine's certificate in the same run (keys.md 4.2 step 2):
+	// the signing guard, the terminal, the passphrase. It returns the owner fingerprint and
+	// the signature; an error leaves `sy keys certify` as the next step. Nil: never.
+	Certify func(ctx context.Context, name string, c keys.Cert) (fp, sig string, err error)
 }
 
 func (e *Env) now() time.Time {
@@ -163,6 +172,8 @@ type Summary struct {
 	PullID    string   `json:"pull_target,omitempty"`
 	ExitCode  int      `json:"exit_code"`
 	ChangedFw bool     `json:"forward_written,omitempty"`
+	// Keys is the link keys step (nil when it did not run: pull, no admin channel, a failure).
+	Keys *KeysSummary `json:"keys,omitempty"`
 }
 
 // setupReply is the part of the remote `sy setup --json` report (setup.md 6.3) machine add
@@ -290,11 +301,15 @@ func (a *adder) run(ctx context.Context) error {
 	if err := a.directPush(ctx); err != nil {
 		a.warn("direct_push", err.Error())
 	}
+	kerr := a.linkKeys(ctx)
 	if err := a.saveRegistry(ctx, true); err != nil {
 		return err
 	}
 	a.summaryLine()
-	return verr
+	if verr != nil {
+		return verr
+	}
+	return kerr
 }
 
 func (a *adder) warn(step, text string) {
@@ -464,7 +479,11 @@ func (a *adder) dryRun() {
 	default:
 		steps = append(steps, "mint a machine pairing code ("+a.adminName()+")", "sy setup --hub join:<url> --code-stdin (reach "+reach+")")
 	}
-	steps = append(steps, "verify on the hub", "offer logins", "save the registry entry")
+	steps = append(steps, "verify on the hub", "offer logins")
+	if reach != ReachPull {
+		steps = append(steps, "register the link keys over SSH (reg ssh), pin the hub and owner keys there, offer the owner signature")
+	}
+	steps = append(steps, "save the registry entry")
 	for _, s := range steps {
 		a.e.emit("plan", "plan", s, nil)
 	}

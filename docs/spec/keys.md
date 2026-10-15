@@ -171,7 +171,11 @@ Each device keeps the keys it trusts in its state folder (paths.md 3):
 
 A pin changes only by `sy keys trust-owner <fp>` / `sy agent enable --repin-hub` typed on that
 machine, which print the old and the new fingerprint and ask for confirmation (TTY only,
-signing guard 8). Nothing received over the network replaces a pin.
+signing guard 8). Nothing received over the network replaces a pin. A hub key that differs
+from the pin stops `sy agent enable` (and the link) with both fingerprints and the hint to
+run `sy agent enable --repin-hub`; `sy machine add` refuses to hand a remote a hub key other
+than the one the operator's machine pinned, and `sy keys pin-ssh` refuses to replace a
+different hub pin.
 
 **What TOFU trusts.** A machine that pins the owner key from the hub trusts the hub at that
 moment. Edited rows cannot exploit that (3.3 step 3). Anyone who can confirm a key of their own
@@ -280,7 +284,18 @@ Lifecycle:
    the old keys are listed in the next revocation document, 6). `PUT /v1/devices/{id}/keys`
    (bearer only) may replace keys of a `tofu` device that has no owner signature; for a
    `qr`, `ssh` or owner-certified device it is refused (409 "re-pair this device"), so a stolen
-   bearer cannot downgrade a verified device to keys of its own.
+   bearer cannot downgrade a verified device to keys of its own. Registering the keys a
+   device already has is a no-op that returns the stored certificate (so `sy agent enable`
+   and `sy machine add` can run again). Keys on the revocation list are refused (409 "these
+   keys were revoked; make new ones on the machine and register those"); `sy machine add`
+   then has the remote make new keys (`sy keys device --renew`) and registers those.
+4. **Admin registration (`reg = ssh`).** `sy hub keys register <device> --machine <id>
+   --keys-stdin` runs on the hub host (the admin channel `sy machine add` already uses,
+   machines.md 4.4): it needs a machine device of that machine id, may replace keys of any
+   `reg` (the old keys are revoked as in 3: whoever runs commands on the hub host is
+   already trusted), and turns an uncertified `tofu` row with the same keys into `ssh`. `sy
+   hub keys certify <device> --fp <owner fp> --sig-stdin` stores an owner signature made on
+   the owner machine, checked exactly like `POST /v1/devices/{id}/cert`.
 
 Phones are certified by the hub signature only: the hub learned their keys under the QR seal
 (`reg = qr`) or, for a typed code, over TLS (`reg = tofu`, shown as "Not verified" with a
@@ -422,8 +437,9 @@ Hub steps, inside the claim transaction after pairing.md 3 step 3:
    `keys_sealed`, or both fields at once, is 400.
    **No downgrade:** a `secret` claim (the QR path) that carries `keys` in the clear is
    refused the same way: clear keys are for typed codes only. A `secret` claim made without
-   the QR (`sy machine add` passing a code on stdin) therefore sends no keys and registers
-   them afterwards with `PUT /v1/devices/self/keys` (`reg = tofu`). A proxy can still strip the keys
+   the QR (`sy machine add` passing a code on stdin) therefore sends no keys; `sy machine
+   add` then registers the keys it read over SSH through the hub host's admin channel (`sy
+   hub keys register`, `reg = ssh`, machines.md 4.2), not over the network. A proxy can still strip the keys
    altogether; the app then sees a reply without `cert` / `reg = qr` and refuses (7.3).
 2. Check the keys: P-256 points on the curve (`ecdh.P256().NewPublicKey`, `ecdsa` parse),
    Ed25519/X25519 32 bytes, `auth` 16 bytes, algorithms matching the code's kind.
@@ -583,9 +599,20 @@ sy keys passwd                   new passphrase (and iteration count) for owner.
 sy keys recover                  rebuild owner.sealed from the recovery code
 sy keys trust-owner <fp>         replace this machine's owner pin by hand (prints old and new)
 sy keys show-owner               print the owner public key and fp (used by sy machine add)
+sy keys device [--renew] [--json]  this machine's device id, machine id and public link keys,
+                                 made at first use (read over SSH by sy machine add)
+sy keys pin-ssh [--json]         read {hub_key, owner?, cert} on stdin (sy machine add over SSH):
+                                 check the certificate holds this machine's keys, pin the hub
+                                 key (how ssh; a different pin is refused) and the owner key
+                                 (kept when one is already pinned)
+sy agent enable [--repin-hub]    install the agent and register this machine's link keys (3.5,
+                                 peers.md 2.1); --repin-hub replaces a hub pin that no longer
+                                 matches the hub (guard, TTY confirm, how hand)
 
 sy hub keys show [--json]        hub machine: hub key fp, active owner fp, pending proposals
 sy hub keys confirm-owner <fp>   hub machine: activate a pending owner key
+sy hub keys register <device> --machine <id> --keys-stdin [--json]   hub machine: reg ssh (4.2 step 4)
+sy hub keys certify <device> --fp <fp> --sig-stdin   hub machine: store an owner signature (4.2 step 4)
 ```
 
 All of them run the signing guard (8) where 8 says so; every command that changes something

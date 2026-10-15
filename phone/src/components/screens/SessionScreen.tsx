@@ -9,6 +9,8 @@ import {
 import { AlertButtons, useAlertActions } from '../alert-actions';
 import { useHubApi } from '../hub-api';
 import { LinkButtons } from '../needs-card';
+import { useTabsSupported } from '../tabs';
+import { openTarget } from '../../lib/tabs';
 import { useTheme } from '../theme';
 import { Btn, Calm, Card, Dot, KV, Muted, Page, Section, StateTag, useToast, useToneColour } from '../ui';
 
@@ -34,6 +36,7 @@ export default function SessionScreen({ id, alert: alertParam }: { id: string; a
   const [error, setError] = useState('');
   const [linked, setLinked] = useState<Alert | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const tabs = useTabsSupported() === true;
 
   const client = api.client;
   const stamp = api.data.fetchedAt;
@@ -121,7 +124,13 @@ export default function SessionScreen({ id, alert: alertParam }: { id: string; a
       </View>
       {s.alert ? <Muted>{`Alert: ${alertText(s.alert, api.now)}`}</Muted> : null}
       {linked && (!s.alert || s.alert.id !== linked.id) ? <Muted>{`Alert from your push: ${alertText(linked, api.now)}`}</Muted> : null}
-      {url ? <Muted>The Claude app is signed in to one account at a time: if it shows another account, use the resume command.</Muted> : null}
+      {url ? (
+        <Muted>
+          {openTarget(s, { supported: tabs })?.kind === 'tab'
+            ? `Opens in the claude.ai tab of ${seat.label}.`
+            : 'The Claude app is signed in to one account at a time: if it shows another account, use the resume command.'}
+        </Muted>
+      ) : null}
       {s.resume ? <Text selectable style={{ color: t.text, fontFamily: 'Courier', fontSize: 12 }}>{s.resume}</Text> : null}
 
       {text ? (

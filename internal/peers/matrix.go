@@ -26,6 +26,10 @@ type Matrix interface {
 	MaxTurns() int
 }
 
+// pauser is implemented by a matrix that can say "paused" without a pair: the sender checks
+// it first (peers.md 4.2 step 1), before the target, content or any rate token.
+type pauser interface{ Paused() bool }
+
 // NoMatrix is the matrix of a machine that has none configured: it denies every message.
 type NoMatrix struct{}
 

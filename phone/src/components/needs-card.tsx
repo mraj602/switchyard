@@ -6,8 +6,9 @@ import type { Session } from '../contract/api';
 import { alertText, ago, httpsUrl, projectOf, sessionSeat, stateInfo, type SeatIndex } from '../lib/format';
 import { AlertButtons } from './alert-actions';
 import { useHubApi } from './hub-api';
-import { copyText, openRemote } from './links';
+import { copyText } from './links';
 import { go } from './nav';
+import { openInClaude } from './tabs';
 import { useTheme } from './theme';
 import { Btn, Card, Dot, Muted, StateTag, useToneColour } from './ui';
 
@@ -22,7 +23,7 @@ export function LinkButtons({ session, toast }: { session: Session; toast: (m: s
   const url = httpsUrl(session.remote_url);
   return (
     <>
-      {url ? <Btn kind="primary" label="Open in Claude" testID={`open-${session.id}`} onPress={() => void openRemote(url).catch(() => toast('Could not open the link'))} /> : null}
+      {url ? <Btn kind="primary" label="Open in Claude" testID={`open-${session.id}`} onPress={() => void openInClaude(session).catch(() => toast('Could not open the link'))} /> : null}
       {session.resume ? (
         <Btn
           label="Copy resume command"

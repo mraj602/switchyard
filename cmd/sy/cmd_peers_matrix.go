@@ -356,7 +356,7 @@ func peersEnable(args []string, stdout, stderr io.Writer) error {
 		fmt.Fprintf(stderr, "sy peers enable: unexpected argument %q\n", args[0])
 		return errUsage
 	}
-	if err := agentEnable(stdout, stderr); err != nil {
+	if err := agentEnable(stdout, stderr, false); err != nil {
 		return err
 	}
 	m, err := newMatrixRun(stdout, stderr)

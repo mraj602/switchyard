@@ -286,7 +286,7 @@ func peersDeliver(pe peerEnv, caller peerspkg.Caller, to, text string, ttl time.
 		}
 		res := peerspkg.SendResult{Msg: rep.Msg, Thread: rep.Thread, Target: peerspkg.Session{Handle: rep.To}, HeldLikely: rep.HeldLikely}
 		if rep.Status == "queued" {
-			res.Status, res.Offline = "queued", rep.Detail == "offline"
+			res.Status, res.Offline, res.Unconfirmed = "queued", rep.Detail == "offline", rep.Detail == "unconfirmed"
 			res.Expires, _ = time.Parse(time.RFC3339, rep.Expires)
 		}
 		return res, nil, nil

@@ -184,8 +184,13 @@ func ParseEnvelope(raw []byte) (Envelope, error) {
 		e.From.Session == e.To.Session || !safeID.MatchString(e.From.Session) || !safeID.MatchString(e.To.Session) {
 		return Envelope{}, errors.New("malformed envelope")
 	}
-	if _, err := time.Parse(time.RFC3339Nano, e.CreatedAt); err != nil {
+	created, err := time.Parse(time.RFC3339Nano, e.CreatedAt)
+	if err != nil {
 		return Envelope{}, errors.New("envelope created_at")
+	}
+	// peers.md 8.2: exp is at most created_at + 24 h.
+	if e.Exp > created.Add(MaxTTL).Unix() {
+		return Envelope{}, errors.New("envelope exp is more than 24 h after created_at")
 	}
 	return e, nil
 }

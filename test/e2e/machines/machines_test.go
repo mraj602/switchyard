@@ -533,6 +533,124 @@ func TestPullRoundTrip(t *testing.T) {
 	}
 }
 
+// TestForwardAddRegistersLinkKeys: `sy machine add --reach forward` joins the server through
+// an SSH forward to the operator's hub, registers its link keys over the SSH session (reg
+// ssh, keys.md 4.2) and pins the hub key there (how ssh); the server then reaches the hub
+// with its own token through the forward and finds its keys registered.
+func TestForwardAddRegistersLinkKeys(t *testing.T) {
+	r := newRig(t)
+	r.syLocal("", "config", "set", "hub.url", r.hubBase)
+	out, errb := r.syLocal("", "machine", "add", "srv", "--name", "srv2", "--reach", "forward",
+		"--hub-admin", "local", "--binary", r.syLinux, "--yes", "--json")
+	var sum struct {
+		Machine  string `json:"machine"`
+		Reach    string `json:"reach"`
+		Port     int    `json:"port"`
+		Verified bool   `json:"verified"`
+		Keys     *struct {
+			Device      string `json:"device"`
+			SignFP      string `json:"sign_fp"`
+			Reg         string `json:"reg"`
+			OwnerSigned bool   `json:"owner_signed"`
+			HubPin      string `json:"hub_pin"`
+		} `json:"keys"`
+		Warnings []string `json:"warnings"`
+	}
+	for _, ln := range strings.Split(out, "\n") {
+		var w struct {
+			Summary *json.RawMessage `json:"summary"`
+		}
+		if json.Unmarshal([]byte(ln), &w) == nil && w.Summary != nil {
+			_ = json.Unmarshal(*w.Summary, &sum)
+		}
+	}
+	if sum.Reach != "forward" || !sum.Verified || sum.Port == 0 {
+		t.Fatalf("summary: reach %q verified %v port %d\n%s%s", sum.Reach, sum.Verified, sum.Port, out, errb)
+	}
+	if sum.Keys == nil || sum.Keys.Reg != "ssh" || sum.Keys.HubPin != "ssh" || sum.Keys.OwnerSigned || !strings.HasPrefix(sum.Keys.Device, "dev_") {
+		t.Fatalf("keys step: %+v\n%s%s", sum.Keys, out, errb)
+	}
+	// No owner key on this operator, no terminal: the next step is named.
+	if !strings.Contains(strings.Join(sum.Warnings, "\n"), "sy keys certify "+sum.Keys.Device) {
+		t.Errorf("no certify next step in %q", sum.Warnings)
+	}
+
+	// The hub's view: the device's certificate is reg ssh with the server's keys.
+	hk, _ := r.syLocal("", "hub", "keys", "show", "--json")
+	var show struct {
+		HubKey struct {
+			FP string `json:"fp"`
+		} `json:"hub_key"`
+	}
+	if err := json.Unmarshal([]byte(hk), &show); err != nil || show.HubKey.FP == "" {
+		t.Fatalf("hub keys show: %s %v", hk, err)
+	}
+	tok, _ := r.syLocal("", "hub", "token", "create", "--kind", "desktop", "--machine", sum.Machine, "--name", "e2e-keys", "--json")
+	var tk struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal([]byte(tok), &tk); err != nil {
+		t.Fatal(err)
+	}
+	var ki struct {
+		Devices []struct {
+			ID   string `json:"id"`
+			Keys struct {
+				SignFP string `json:"sign_fp"`
+				Reg    string `json:"reg"`
+			} `json:"keys"`
+		} `json:"devices"`
+	}
+	r.api(tk.Token, "/v1/keys", &ki)
+	found := false
+	for _, d := range ki.Devices {
+		if d.ID == sum.Keys.Device {
+			found = d.Keys.Reg == "ssh" && d.Keys.SignFP == sum.Keys.SignFP
+		}
+	}
+	if !found {
+		t.Fatalf("hub does not list %s with reg ssh and sign %s: %+v", sum.Keys.Device, sum.Keys.SignFP, ki.Devices)
+	}
+
+	// The server pins the hub key over SSH, and through the forward its own token sees the
+	// same certificate (sy keys status asks the hub).
+	fwd := fmt.Sprintf("127.0.0.1:%d:%s", sum.Port, strings.TrimPrefix(r.hubBase, "http://"))
+	st, errs, code := runCmd(r.env, "", "ssh", "-F", r.sshCfg, "-o", "ExitOnForwardFailure=yes", "-R", fwd, "srv", ".local/bin/sy", "keys", "status", "--json")
+	if code != 0 {
+		t.Fatalf("remote sy keys status: exit %d: %s", code, errs)
+	}
+	var ks struct {
+		HubPin *struct {
+			FP  string `json:"fp"`
+			How string `json:"how"`
+		} `json:"hub_pin"`
+		Device    *string `json:"device"`
+		SignFP    *string `json:"sign_fp"`
+		Reg       *string `json:"reg"`
+		Certified *bool   `json:"owner_signed"`
+		HubError  *string `json:"hub_error"`
+	}
+	if err := json.Unmarshal([]byte(st), &ks); err != nil {
+		t.Fatalf("remote keys status: %s %v", st, err)
+	}
+	if ks.HubPin == nil || ks.HubPin.How != "ssh" || ks.HubPin.FP != show.HubKey.FP {
+		t.Errorf("remote hub pin %+v, want %s (ssh)", ks.HubPin, show.HubKey.FP)
+	}
+	if ks.Device == nil || *ks.Device != sum.Keys.Device || ks.SignFP == nil || *ks.SignFP != sum.Keys.SignFP {
+		t.Errorf("remote device %v sign %v, want %s %s", ks.Device, ks.SignFP, sum.Keys.Device, sum.Keys.SignFP)
+	}
+	if ks.HubError != nil || ks.Reg == nil || *ks.Reg != "ssh" || ks.Certified == nil || *ks.Certified {
+		t.Errorf("remote view of its certificate: reg %v owner_signed %v hub_error %v\n%s", ks.Reg, ks.Certified, ks.HubError, st)
+	}
+
+	// Again: idempotent, the same device and keys.
+	out, errb = r.syLocal("", "machine", "add", "srv", "--name", "srv2", "--reach", "forward",
+		"--hub-admin", "local", "--binary", r.syLinux, "--yes", "--json")
+	if !strings.Contains(out, sum.Keys.SignFP) {
+		t.Errorf("rerun registered other keys:\n%s%s", out, errb)
+	}
+}
+
 // api GETs a hub path with a bearer token and decodes the JSON reply.
 func (r *rig) api(token, path string, into any) {
 	r.t.Helper()

@@ -591,7 +591,7 @@ func TestRedraw300RowsUnder16ms(t *testing.T) {
 			best = d
 		}
 	}
-	if best > 16*time.Millisecond {
+	if best > raceSlowdown*16*time.Millisecond {
 		t.Errorf("redraw of 300 rows took %v", best)
 	}
 }

@@ -70,6 +70,9 @@ type Options struct {
 	// BoardProbe asks the hub who the board token is (GET /v1/me); nil: the real call, 3 s
 	// timeout, through hub.dial, no redirects. Tests inject a fake.
 	BoardProbe func(ctx context.Context, hubURL, dial, token string) (BoardMe, error)
+	// CertProbe asks the hub for this machine's certificate (GET /v1/devices/self/cert,
+	// ErrNoCert for none); nil: the real call with the machine token, 3 s timeout.
+	CertProbe func(ctx context.Context) (CertInfo, error)
 	// Rebaseline re-records which settings.json files are symlinks instead of warning.
 	Rebaseline bool
 }
