@@ -14,7 +14,8 @@ import {
 } from '../components/analytics-fmt.js';
 
 const RANGES = [7, 30, 90];
-const st = { days: 30, seat: '', data: null, error: null, loading: false, bar: null, allProjects: false };
+const HITS_SHOWN = 5;
+const st = { days: 30, seat: '', data: null, error: null, loading: false, bar: null, allProjects: false, allHits: false };
 const again = () => window.dispatchEvent(new Event('sy-rerender'));
 let gen = 0;
 
@@ -23,10 +24,16 @@ export async function load() {
   st.loading = true;
   st.error = null;
   again();
-  const q = params(st.days, st.seat);
+  const fetchAll = (q) => Promise.all(['daily', 'models', 'projects', 'heatmap', 'hits'].map((r) => getAnalytics(r, q)));
   try {
-    const [daily, models, projects, heatmap, hits] = await Promise.all(
-      ['daily', 'models', 'projects', 'heatmap', 'hits'].map((r) => getAnalytics(r, q)));
+    // The viewer's own zone, so the days and the heatmap read in local time (R8). An
+    // unknown zone is a 400: ask again without it and the hub uses its own.
+    const here = localTz();
+    let all;
+    try { all = await fetchAll(params(st.days, st.seat, here)); } catch (e) {
+      if (here && e.status === 400) all = await fetchAll(params(st.days, st.seat)); else throw e;
+    }
+    const [daily, models, projects, heatmap, hits] = all;
     if (my !== gen) return; // a newer choice is on its way
     st.data = { daily, models, projects, heatmap, hits };
     st.bar = null;
@@ -117,22 +124,30 @@ function heatmap(d) {
       class: `ana-cell lvl-${heatLevel(v, max)}`, title: `${WEEKDAYS[wd]} ${hr}:00 · ${usd(v)} · ${plural(d.replies[wd][hr], 'reply', 'replies')}`,
     })));
   });
-  // The hours are the hub's; say which zone, and when this device is elsewhere (AN3, G9).
+  // Say which zone the hours are in (AN3, G9): this device's when the hub honoured ?tz.
   const tz = d.tz || '';
   const here = localTz();
+  const mine = !tz || !here || sameTz(tz, here);
   return h('div', {},
     h('div', { class: 'ana-heat', role: 'img', 'data-key': 'ana-heat', 'aria-label': 'API-equivalent cost by weekday and hour' }, cells),
     h('div', { class: 'ana-legend muted small', 'aria-hidden': 'true' }, 'Less',
       [0, 1, 2, 3, 4].map((l) => h('span', { class: `ana-cell lvl-${l}` })), 'More'),
-    h('p', { class: 'muted small', 'data-key': 'ana-tz' }, tz ? `Hours in ${tzLabel(tz)}, the hub’s time zone.` : 'Hours in the hub’s time zone.',
-      tz && here && !sameTz(tz, here) ? ` This device is in ${tzLabel(here)}.` : ''));
+    h('p', { class: 'muted small', 'data-key': 'ana-tz' }, tz
+      ? `Hours in ${tzLabel(tz)}${mine ? ', this device’s time zone' : ', the hub’s time zone'}.${mine ? '' : ` This device is in ${tzLabel(here)}.`}`
+      : 'Hours in the hub’s time zone.'));
 }
 
 function hits(d, idx) {
   if (!d.hits.length) return h('p', { class: 'muted small' }, 'No limit hits in this range.');
   const who = (x) => (idx.get(x.seat) ? seatName(idx.get(x.seat).seat) : x.seat_name || 'Unknown account');
-  return h('ul', { class: 'panel ana-list' }, d.hits.slice().reverse().map((x) => h('li', { class: 'ana-row' },
-    h('span', { class: 'ana-name' }, h('span', { class: 'strong' }, hitText(x)), h('span', { class: 'muted small' }, `${who(x)} · ${dateTime(x.ts)}`)))));
+  // The newest first; the rest behind "Show all" (R7).
+  const all = d.hits.slice().reverse();
+  const items = st.allHits ? all : all.slice(0, HITS_SHOWN);
+  return h('div', {},
+    h('ul', { class: 'panel ana-list' }, items.map((x) => h('li', { class: 'ana-row' },
+      h('span', { class: 'ana-name' }, h('span', { class: 'strong' }, hitText(x)), h('span', { class: 'muted small' }, `${who(x)} · ${dateTime(x.ts)}`))))),
+    all.length > HITS_SHOWN ? h('button', { type: 'button', class: 'linkish', 'data-key': 'ana-all-hits', 'aria-expanded': String(st.allHits),
+      onclick: () => { st.allHits = !st.allHits; again(); } }, st.allHits ? `Show the latest ${HITS_SHOWN}` : `Show all ${num(all.length)}`) : null);
 }
 
 export function render({ store }) {

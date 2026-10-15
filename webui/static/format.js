@@ -11,9 +11,13 @@ export const toMs = (ts) => (ts ? Date.parse(ts) : NaN);
 const NUM = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const HM = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 const HMS = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
-const WD = new Intl.DateTimeFormat('en-GB', { weekday: 'short' });
-const DM = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
-const DMY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+// Weekday and month names are written out, not taken from Intl: en-GB gives "Sept" in some
+// engines and "Sep" in others, and every board string must read the same everywhere (R9).
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WD = { format: (d) => DAYS[d.getDay()] };
+const DM = { format: (d) => `${d.getDate()} ${MONTHS[d.getMonth()]}` };
+const DMY = { format: (d) => `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}` };
 
 // 141816 -> "141,816". "–" when unknown.
 export const num = (n) => (n == null || Number.isNaN(Number(n)) ? '–' : NUM.format(Math.round(Number(n))));
@@ -101,6 +105,14 @@ export function compact(n) {
   return String(Math.round(n));
 }
 
+// Older names of zones whose city was renamed; browsers and hubs may report either, so the
+// board shows the current one everywhere (R8).
+const TZ_CITY = {
+  Calcutta: 'Kolkata', Saigon: 'Ho Chi Minh City', Katmandu: 'Kathmandu', Rangoon: 'Yangon', Kiev: 'Kyiv',
+  Dacca: 'Dhaka', Thimbu: 'Thimphu', Ujung_Pandang: 'Makassar', Macao: 'Macau', Ulan_Bator: 'Ulaanbaatar',
+  Buenos_Aires: 'Buenos Aires', Godthab: 'Nuuk', Faeroe: 'Faroe', Asmera: 'Asmara', Reykjavik: 'Reykjavik',
+};
+
 // A time zone for people: "UTC", or "Kolkata (GMT+5:30)". Falls back to the raw name.
 export function tzLabel(tz, at = Date.now()) {
   if (!tz) return '';
@@ -110,7 +122,8 @@ export function tzLabel(tz, at = Date.now()) {
     const part = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(new Date(at)).find((p) => p.type === 'timeZoneName');
     offset = part ? part.value : '';
   } catch (_) { return tz; }
-  const city = String(tz).split('/').pop().replace(/_/g, ' ');
+  const last = String(tz).split('/').pop();
+  const city = (TZ_CITY[last] || last).replace(/_/g, ' ');
   return offset ? `${city} (${offset})` : city;
 }
 

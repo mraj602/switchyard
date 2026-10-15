@@ -50,8 +50,11 @@ export function shortDay(day) {
 }
 
 // Query of a report: the last `days` days (ending today in the hub's zone) and a seat.
-export function params(days, seat) {
-  return seat ? { days: String(days), seat } : { days: String(days) };
+export function params(days, seat, tz) {
+  const q = { days: String(days) };
+  if (seat) q.seat = seat;
+  if (tz) q.tz = tz; // the viewer's zone; the hub answers 400 for one it does not know
+  return q;
 }
 
 // "Hit the 5-hour limit · waited 2 h" from a hits row: a past event, so "waited" (AN5).

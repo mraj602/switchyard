@@ -7,7 +7,7 @@ import (
 )
 
 // GET /v1/analytics/{report} mock (analytics.md): made-up numbers in the hub's shapes, so the
-// board's Analytics screen has something to draw. ?days= and ?seat= are honoured (a seat
+// board's Analytics screen has something to draw. ?days=, ?seat= and ?tz= (echoed) are honoured (a seat
 // scales the numbers down); from/to are not.
 
 func (s *Server) analyticsRoutes() {
@@ -21,6 +21,15 @@ func (s *Server) analyticsRoutes() {
 			}
 			days = n
 		}
+		// ?tz= names the viewer's zone (400 for one the hub does not know); the answer echoes it.
+		tzName := "UTC"
+		if v := r.URL.Query().Get("tz"); v != "" {
+			if _, err := time.LoadLocation(v); err != nil {
+				writeErr(w, 400, "bad_request", "unknown time zone")
+				return
+			}
+			tzName = v
+		}
 		seat := r.URL.Query().Get("seat")
 		scale := 1.0
 		if seat != "" {
@@ -32,7 +41,7 @@ func (s *Server) analyticsRoutes() {
 			if seat != "" {
 				sp = seat
 			}
-			return M{"report": report, "from": now.AddDate(0, 0, 1-days).Format("2006-01-02"), "to": now.Format("2006-01-02"), "tz": "UTC", "seat": sp}
+			return M{"report": report, "from": now.AddDate(0, 0, 1-days).Format("2006-01-02"), "to": now.Format("2006-01-02"), "tz": tzName, "seat": sp}
 		}
 		tok := func(usd float64, replies int) M {
 			return M{"input": int(usd * 90000), "output": int(usd * 12000), "cache_5m": int(usd * 30000), "cache_1h": 0, "cache_read": int(usd * 700000),

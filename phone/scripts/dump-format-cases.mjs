@@ -62,7 +62,7 @@ for (const t of ['2026-09-03T14:02:00Z', '2026-03-01T09:00:00Z', '2026-12-25T09:
 for (const n of [null, undefined, NaN, 'x', 0, 7, 999, 1000, 141816, 1234567.6, -3, -1234]) add('num', n);
 for (const n of [1000, 1234567]) add('plural', n, 'token');
 for (const n of [999.6, 1e9, 24.1e9, NaN]) add('compact', n);
-for (const z of ['', null, 'UTC', 'Etc/UTC', 'GMT', 'Asia/Kolkata', 'America/New_York', 'Asia/Kathmandu', 'No/Such_Zone']) add('tzLabel', z, NOW);
+for (const z of ['', null, 'UTC', 'Etc/UTC', 'GMT', 'Asia/Kolkata', 'Asia/Calcutta', 'Asia/Saigon', 'America/New_York', 'Asia/Kathmandu', 'No/Such_Zone']) add('tzLabel', z, NOW);
 for (const [a, b] of [['UTC', 'Etc/UTC'], ['Asia/Kolkata', 'Asia/Calcutta'], ['UTC', 'Asia/Kolkata'], ['', 'UTC'], ['UTC', ''], ['UTC', 'No/Such_Zone'], ['Europe/London', 'Europe/London']]) add('sameTz', a, b, NOW);
 
 // Cases only the port can answer: clock() in a named zone (format.js reads the device zone).
