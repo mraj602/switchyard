@@ -74,10 +74,13 @@ const (
 )
 
 // LinkError is a 401 of owner sign-in with its reason. At is when the link was used,
-// expired or was cancelled (ms; 0 for LinkUnknown).
+// expired or was cancelled (ms; 0 for LinkUnknown). TTL is the lifetime the link was made
+// with (`sy hub owner-link --ttl`), so an expired link can say how long links last; 0 for
+// LinkUnknown.
 type LinkError struct {
 	Code string
 	At   int64
+	TTL  time.Duration
 }
 
 func (e *LinkError) Error() string {
@@ -105,13 +108,14 @@ func linkError(tx *store.Tx, h []byte, now int64) error {
 	if err != nil {
 		return err
 	}
+	ttl := time.Duration(max(0, row.ExpiresAt-row.CreatedAt)) * time.Millisecond
 	switch {
 	case row.ClaimedAt != 0:
-		return &LinkError{Code: LinkUsed, At: row.ClaimedAt}
+		return &LinkError{Code: LinkUsed, At: row.ClaimedAt, TTL: ttl}
 	case row.CancelledAt != 0:
-		return &LinkError{Code: LinkCancelled, At: row.CancelledAt}
+		return &LinkError{Code: LinkCancelled, At: row.CancelledAt, TTL: ttl}
 	case row.ExpiresAt <= now:
-		return &LinkError{Code: LinkExpired, At: row.ExpiresAt}
+		return &LinkError{Code: LinkExpired, At: row.ExpiresAt, TTL: ttl}
 	}
 	return &LinkError{Code: LinkUnknown}
 }

@@ -156,3 +156,14 @@ export function httpsUrl(u) {
     return null;
   }
 }
+
+// lifetime says a duration given in seconds the way a person would ("1 minute", "10
+// minutes", "1 hour", "90 seconds"); "" for none. Used for the lifetime of an owner link.
+export function lifetime(ttlS) {
+  const s = Math.round(Number(ttlS) || 0);
+  if (s <= 0) return '';
+  const unit = (n, one) => `${n} ${one}${n === 1 ? '' : 's'}`;
+  if (s % 3600 === 0) return unit(s / 3600, 'hour');
+  if (s % 60 === 0) return unit(s / 60, 'minute');
+  return unit(s, 'second');
+}

@@ -272,8 +272,9 @@ sy hub owner-link [--url U] [--ttl 10m] [--json]
   `expires_at` = now + 30 days, `created_by = "owner-link:<pair_code id>"`, name from the
   user agent, and sets it as the `sy_session` cookie (3.2 rules, `Max-Age` 30 days, not
   refreshed). The reply is `204`.
-- A refused link is `401` with a reason in `code`, and `at` (when it was used, expired or
-  was cancelled): `link_used`, `link_expired`, `link_cancelled`, or `link_unknown` (no
+- A refused link is `401` with a reason in `code`, `at` (when it was used, expired or
+  was cancelled) and `ttl_s` (the lifetime the link was made with, so an expired link says
+  "links made this way work for 1 minute" rather than a fixed 10 minutes): `link_used`, `link_expired`, `link_cancelled`, or `link_unknown` (no
   owner link has that secret, including another kind of code's secret). Unlike the one
   answer of a typed code (section 3), this tells nothing to a guesser: knowing a link's
   128-bit secret already means having the link. Every refusal counts against the rate
