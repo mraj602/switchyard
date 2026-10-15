@@ -96,7 +96,7 @@ export default function SessionsScreen({ filter: filterParam, by, machine }: { f
 
 function SessionRow({ s, now }: { s: Session; now: number }) {
   const t = useTheme();
-  const last = s.state === 'asked' || s.state === 'needs_permission' ? ask(s) : s.last_message || s.question || s.detail || '';
+  const last = s.state === 'asked' || s.state === 'needs_permission' ? ask(s) : s.last_message || s.question || '';
   return (
     <Card onPress={() => go.session(s.id, s.alert?.id)} label={`Session ${projectOf(s)}`} dim={s.alert?.status === 'seen'}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>

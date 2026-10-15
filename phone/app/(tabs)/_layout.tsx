@@ -11,7 +11,9 @@ export const TAB_SCREENS = [
 
 export default function TabsLayout() {
   return (
-    <Tabs screenOptions={{ headerShown: false }}>
+    // No icon set ships with the app: without tabBarIcon React Navigation draws its
+    // missing-icon glyph (a box, and "⏷" in the accessibility label). Labels only.
+    <Tabs screenOptions={{ headerShown: false, tabBarIcon: () => null, tabBarIconStyle: { display: 'none' } }}>
       {TAB_SCREENS.map((t) => (
         <Tabs.Screen key={t.name} name={t.name} options={{ title: t.title }} />
       ))}

@@ -17,7 +17,8 @@ const THRESHOLD = 88;
 /** Swipe right = Seen, left = Snooze, past the threshold (as the PWA's swipe.js). */
 export const swipeAction = (dx: number): 'seen' | 'snooze' | null => (dx >= THRESHOLD ? 'seen' : dx <= -THRESHOLD ? 'snooze' : null);
 
-export const ask = (s: Pick<Session, 'question' | 'last_message' | 'detail'>): string => s.question || s.last_message || s.detail || '';
+/** What the session wants from you, as one line. Never the internal `detail` code (the board's ask). */
+export const ask = (s: Pick<Session, 'question' | 'last_message'>): string => s.question || s.last_message || '';
 
 export function LinkButtons({ session, toast }: { session: Session; toast: (m: string) => void }) {
   const url = httpsUrl(session.remote_url);

@@ -53,6 +53,10 @@ export interface SessionsQuery {
   filter?: string;
   limit?: number;
   cursor?: string;
+  /** include_ended: ended sessions too (the hub leaves them out by default). */
+  includeEnded?: boolean;
+  /** days: only sessions with activity in the last N days. */
+  days?: number;
 }
 
 export interface HubClient {
@@ -230,7 +234,7 @@ export function createHubClient(deps: HubClientDeps): HubClient {
     },
     me: () => call<Me>('GET', '/v1/me'),
     overview: () => call<Overview>('GET', '/v1/overview'),
-    sessions: (q = {}) => call<SessionsPage>('GET', `/v1/sessions${query({ filter: q.filter, limit: q.limit, cursor: q.cursor })}`),
+    sessions: (q = {}) => call<SessionsPage>('GET', `/v1/sessions${query({ filter: q.filter, include_ended: q.includeEnded ? 'true' : undefined, days: q.days, limit: q.limit, cursor: q.cursor })}`),
     session: (id) => call<SessionDetail>('GET', `/v1/sessions/${seg(id)}`),
     accounts: () => call<AccountsReply>('GET', '/v1/accounts'),
     machines: () => call<MachinesReply>('GET', '/v1/machines'),
