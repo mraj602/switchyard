@@ -12,15 +12,18 @@ export const isEnded = (s) => s.state === 'ended' || s.state === 'gone';
 export const isHistory = (s) => !s.needs_you && !s.project && !s.cwd && !s.title && !s.name && !s.last_message && !s.question &&
   (s.state === 'done' || isEnded(s));
 
-// Last sign of life: the last event, else when the state began.
-const lastActive = (s) => Date.parse(s.last_event_at || s.state_since || s.started_at || '');
+// Last sign of life: the hub's activity_at (last event, state change, start or end; not a
+// listing, states.md 5), else the last event, else when the state began.
+const lastActive = (s) => Date.parse(s.activity_at || s.last_event_at || s.state_since || s.started_at || '');
 
 // Open: not ended, and not a finished session that has been idle for 12 h (or that is bare
-// imported history). Old `done` rows therefore never count as live or running.
+// imported history), nor a stale working one. Old `done` rows therefore never count as live
+// or running. The same rule as the hub's `dormant` and counts.live.
 export function isLive(s, now = Date.now()) {
   if (isEnded(s)) return false;
-  if (s.needs_you || s.state !== 'done') return true;
-  if (isHistory(s) || s.stale) return false;
+  if (s.needs_you) return true;
+  if (s.state !== 'done' && !s.stale) return true;
+  if (isHistory(s)) return false;
   const t = lastActive(s);
   return Number.isNaN(t) || now - t < IDLE_MS;
 }
