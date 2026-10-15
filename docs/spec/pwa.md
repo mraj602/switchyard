@@ -109,7 +109,10 @@ sidebar Now, Sessions, Accounts, Machines, Alerts, Settings, Peers (+ Devices fo
 flag per item; CSS decides as today.
 
 Start-up: `GET /v1/me`. 401 → pair screen when running installed (`display-mode:
-standalone`) or on a phone, else the login screen. A `read`-only board session shows every
+standalone`) or on a phone, else the login screen. When the live stream (`/v1/stream`) drops,
+the board asks `GET /v1/me` at once: the hub ends a revoked device's streams at revoke, so a
+revoked board signs out (pair or login screen) at once instead of on its next poll; any other
+answer (a network error while the hub restarts) changes nothing. A `read`-only board session shows every
 screen; controls that need `push` or `owner` are hidden or show "Sign in as owner on the hub
 (`sy hub owner-link`)".
 

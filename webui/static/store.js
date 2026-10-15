@@ -71,6 +71,17 @@ export async function refreshMe() {
   return !!m;
 }
 
+// A quiet GET /v1/me: only a 401 matters (sign out, as guarded does); a network error or a
+// 5xx while the hub restarts says nothing new and leaves the page as it is.
+export async function checkSignIn() {
+  try {
+    const m = await getMe();
+    if (m) store.me = m;
+  } catch (e) {
+    if (e instanceof AuthError && !store.unauthorized) { store.unauthorized = true; stop(); onAuthLost(); }
+  }
+}
+
 export async function refreshOverview() {
   const o = await guarded(getOverview);
   if (o) { store.overview = o; store.updatedAt = Date.now(); emit(); }
@@ -220,6 +231,9 @@ export async function start() {
         // A short drop is normal: the badge says "Reconnecting…" only once it lasts (G5).
         clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(emit, RECONNECT_GRACE + 100);
+        // The hub ends a revoked device's stream at once: ask now whether this sign-in still
+        // works, so a revoked board signs out at once rather than on its next poll.
+        checkSignIn();
       }
       if (s === 'live') store.everLive = true;
       store.live = s;
