@@ -230,7 +230,9 @@ Example (Stop, last messages allowed):
 ### 4.2 `limit_sample`
 
 Written by `sy statusline` when the 5-hour or 7-day value changes, at most once a minute per
-session, and always on the first status-line run of a session.
+session, and always on the first status-line run of a session. A value that reaches 80, 95 or
+100 percent from below the last written one is written at once, inside the minute too, so
+the hub's limit alerts (push.md) do not wait for the session's next status line.
 
 - `--wrap <cmd>` runs the user's original command (same stdin) through `sh -c` when `sh` is
   on PATH (Claude Code itself uses a POSIX shell, Git Bash on Windows), else `cmd /c`. Its

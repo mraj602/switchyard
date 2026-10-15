@@ -353,6 +353,14 @@ type Service struct {
 	// RemoveUnit makes Uninstall delete the unit file the way a real service package does.
 	RemoveUnit bool
 	units      map[string]string
+	specs      map[string]model.ServiceSpec
+}
+
+// Spec is the spec the named service was last installed with.
+func (s *Service) Spec(name string) model.ServiceSpec {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.specs[name]
 }
 
 var _ model.Service = (*Service)(nil)
@@ -369,9 +377,9 @@ func (s *Service) Install(_ context.Context, spec model.ServiceSpec) error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		if s.installed == nil {
-			s.installed, s.units = map[string]bool{}, map[string]string{}
+			s.installed, s.units, s.specs = map[string]bool{}, map[string]string{}, map[string]model.ServiceSpec{}
 		}
-		s.installed[spec.Name], s.units[spec.Name] = true, spec.Unit
+		s.installed[spec.Name], s.units[spec.Name], s.specs[spec.Name] = true, spec.Unit, spec
 		return nil
 	})
 }

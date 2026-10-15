@@ -94,6 +94,7 @@ func Run(args []string, stdin io.Reader, getenv func(string) string) {
 		logError(env, getenv, event, err)
 		// Still try the background work: a flush may drain what is already queued.
 	}
+	maybeSlotInfo(env, getenv, eventName(in), time.Now())
 
 	if authStale(env, eventName(in)) {
 		startRefresh(env)
@@ -221,7 +222,9 @@ func refreshStampName(slot string) string {
 }
 
 // startFlush starts `sy flush` in the background, at most once per 2 seconds, debounced on
-// <state>/outbox/flush.stamp (outbox.md section 5), which the flusher touches as well.
+// <state>/outbox/flush.stamp (outbox.md section 5), which the flusher touches as well. The
+// flush it starts lingers until the stamp is 2 s old (step 8), so a record written by a
+// debounced hook still goes out at once (cmd/sy hookFlushDebounce is this flushEvery).
 // --from-hook lets that flush wait for a direct push that is due soon when it fails
 // (machines.md 5.4).
 func startFlush(env *clientenv.Env) {

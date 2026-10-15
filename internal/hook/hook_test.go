@@ -114,6 +114,17 @@ func (sb *sandbox) records() []*record.Record {
 	return out
 }
 
+// ofKind is the outbox records of one kind, in file order.
+func (sb *sandbox) ofKind(kind string) []*record.Record {
+	var out []*record.Record
+	for _, r := range sb.records() {
+		if r.Kind == kind {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 var contentFieldNames = []string{"prompt", "tool_input", "tool_response", "permission_suggestions", "last_assistant_message", "custom_instructions"}
 
 func TestGoldenByEvent(t *testing.T) {
@@ -131,7 +142,7 @@ func TestGoldenByEvent(t *testing.T) {
 			}
 			event := strings.SplitN(name, ".", 2)[0]
 			sb.run(event, in)
-			recs := sb.records()
+			recs := sb.ofKind(record.KindHookEvent) // SessionStart adds a slot_info (slotinfo_test.go)
 			if len(recs) != 1 {
 				t.Fatalf("want 1 record, got %d (errors: %s)", len(recs), sb.errorLog())
 			}

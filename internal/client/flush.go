@@ -52,6 +52,12 @@ type FlushOptions struct {
 	// by hand). The hook-started flush leaves it false.
 	Force bool
 
+	// Linger, when set, keeps a drained run alive until flush.stamp is Linger old, reading
+	// the outbox once more after that (outbox.md section 5, step 8). `sy hook` skips its own
+	// flush while the stamp is younger than its debounce, so the flush it started must pick
+	// up what those later hooks wrote. The hook-started flush sets it to that debounce.
+	Linger time.Duration
+
 	Budget     time.Duration // default DefaultBudget
 	MaxRecords int           // default MaxBatchRecords
 	MaxBytes   int           // default MaxBatchBytes
@@ -236,6 +242,7 @@ func Flush(ctx context.Context, o FlushOptions) FlushResult {
 	deadline := started.Add(o.Budget)
 
 	f.run(ctx, deadline)
+	f.linger(ctx, deadline)
 
 	// Housekeeping runs after failures too: a long outage is exactly when the cap matters.
 	if o.CapBytes > 0 {
@@ -254,12 +261,40 @@ func Flush(ctx context.Context, o FlushOptions) FlushResult {
 	return f.res
 }
 
+// linger is step 8 of outbox.md section 5: after a clean drain, wait until flush.stamp is
+// Linger old and drain again, as long as that keeps finding records. A hook that wrote a
+// record while the stamp was young did not start a flush of its own; the stamp only moves
+// when a flush starts, so a last read at stamp + Linger sees every such record.
+func (f *flusher) linger(ctx context.Context, deadline time.Time) {
+	if f.Linger <= 0 {
+		return
+	}
+	stamp := filepath.Join(f.Outbox.Dir, StampFile)
+	for f.res.Err == nil && f.res.Drained && f.held == 0 {
+		fi, err := os.Stat(stamp)
+		if err != nil {
+			return
+		}
+		until := fi.ModTime().Add(f.Linger)
+		now := f.Now()
+		if !now.Before(until) || until.After(deadline) {
+			return
+		}
+		if err := f.Sleep(ctx, until.Sub(now)); err != nil {
+			return
+		}
+		f.res.Drained = false
+		f.run(ctx, deadline)
+	}
+}
+
 func (f *flusher) touchStamp() {
 	p := filepath.Join(f.Outbox.Dir, StampFile)
 	now := f.Now()
 	if err := os.Chtimes(p, now, now); err != nil {
 		if fh, err := os.OpenFile(p, os.O_CREATE|os.O_WRONLY, 0o600); err == nil {
 			fh.Close()
+			_ = os.Chtimes(p, now, now)
 		}
 	}
 }
