@@ -308,3 +308,12 @@ class ConnectionNoteGateTest {
     assertTrue(g.mayPost())
   }
 }
+
+class RemovedNoticeTest {
+  @Test
+  fun `a reset after a revocation posts the removed notice again, any other reset does not`() {
+    assertEquals("This phone was removed from the hub", CloseCodes.noticeAfterReset("revoked"))
+    for (st in listOf("off", "connected", "backoff", "upgrade", "error")) assertEquals(null, CloseCodes.noticeAfterReset(st))
+    assertEquals(CloseAction.Stop("revoked", CloseCodes.REMOVED_NOTICE), CloseCodes.decide(4403, 1))
+  }
+}

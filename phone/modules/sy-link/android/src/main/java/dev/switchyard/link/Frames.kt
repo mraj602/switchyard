@@ -327,9 +327,20 @@ object CloseCodes {
 
   fun word(code: Int): String = WORDS[code] ?: "closed"
 
+  /** The notice a revoked phone keeps showing after the app unpairs and clears its notifications. */
+  const val REMOVED_NOTICE = "This phone was removed from the hub"
+
+  /**
+   * `reset()` runs after the JS side dismissed every notification (the old pairing's tokens are
+   * dead), which also wiped the 4403 notice the service had just posted: the one message that
+   * says why alerts stopped. A reset that follows a revocation posts it again; any other
+   * (the user's own Unpair, a re-pair) posts nothing.
+   */
+  fun noticeAfterReset(statusBeforeReset: String): String? = if (statusBeforeReset == "revoked") REMOVED_NOTICE else null
+
   /** `streak`: closes with this same code in a row, this one included. */
   fun decide(code: Int, streak: Int): CloseAction = when (code) {
-    4403 -> CloseAction.Stop("revoked", "This phone was removed from the hub")
+    4403 -> CloseAction.Stop("revoked", REMOVED_NOTICE)
     4426 -> CloseAction.Stop("upgrade", "Update the app")
     4409 -> CloseAction.Superseded
     4401 -> if (streak >= 3) CloseAction.Stop("error", "Hub does not recognise this device's key") else CloseAction.Retry

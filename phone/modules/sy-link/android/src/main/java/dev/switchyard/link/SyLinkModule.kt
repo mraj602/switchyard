@@ -157,11 +157,13 @@ class SyLinkModule : Module() {
     AsyncFunction("getRefresh") { store.refresh }
 
     AsyncFunction("reset") {
+      val notice = CloseCodes.noticeAfterReset(store.status)
       SyLinkService.stop(ctx)
       Watchdog.cancel(ctx)
       Keystore.delete()
       store.clear()
       updateAuth = null // the unpaired hub's token
+      notice?.let { Notifier(ctx, store).stopped(it) }
       Unit
     }
 
