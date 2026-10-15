@@ -9,6 +9,7 @@ import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
 import { router, Stack, useSegments } from 'expo-router';
 import { useEffect, useMemo } from 'react';
+import { StatusBar, useColorScheme } from 'react-native';
 import { createGlue } from '../src/lib/integrate';
 import type { Glue } from '../src/lib/integrate';
 import { initNotifications } from '../src/lib/notify';
@@ -50,6 +51,8 @@ function Gate() {
 }
 
 export default function RootLayout() {
+  // Edge to edge: the status bar sits on the app's own background, so its icons follow the theme.
+  const dark = useColorScheme() === 'dark';
   const deps: ProviderDeps = useMemo(
     () => ({
       secure: systemSecureHub(),
@@ -68,6 +71,7 @@ export default function RootLayout() {
   return (
     <HubProvider deps={deps} navigate={navigate} openUrl={openUrl}>
       <HubGlue glue={glue}>
+        <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
         <Gate />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />

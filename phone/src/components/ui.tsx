@@ -1,6 +1,7 @@
 // Shared UI: page frame, cards, chips, buttons, meters, rings, toast, offline banner.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHubApi } from './hub-api';
 import { SPACE, useTheme } from './theme';
 import { clock, pct, seatName, stateInfo, type StateInfo } from '../lib/format';
@@ -35,7 +36,9 @@ export function Page({ title, meta, children, toast }: { title?: string; meta?: 
     setBusy(false);
   }, [api]);
   return (
-    <View style={[s.fill, { backgroundColor: t.bg }]}>
+    // Android 15 draws edge to edge: keep the title clear of the status bar (the tab bar
+    // already pads for the navigation bar).
+    <SafeAreaView style={[s.fill, { backgroundColor: t.bg }]} edges={['top']} testID="page">
       <OfflineBanner />
       <ScrollView
         contentContainerStyle={s.page}
@@ -51,7 +54,7 @@ export function Page({ title, meta, children, toast }: { title?: string; meta?: 
         {children}
       </ScrollView>
       {toast}
-    </View>
+    </SafeAreaView>
   );
 }
 
