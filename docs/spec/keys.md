@@ -310,6 +310,7 @@ requires it.
 | --- | --- | --- | --- |
 | Certify a machine or desktop | Yes | No | No |
 | Widen the matrix, resume after pause, raise the loop limit | Yes | Yes, hub-signed (5.4) | No |
+| Resume one thread after the loop guard (peers.md 6.3) | No (a human prompt in either session does it) | Yes, hub-signed (5.4; `peer_thread_resume`) | No |
 | Narrow the matrix, pause | Yes | Yes | Yes (phones too), hub-signed |
 | Revoke a device | Yes | Yes (Devices → Revoke), hub-signed | Only itself ("Unpair this phone", pairing.md 6) |
 
@@ -347,7 +348,9 @@ hub_may_widen = true` (default, matching H4). With `false`, a machine accepts a 
 document only when `Widens(current, new)` is false for **its own** current document (an agent
 with none starts from peers.md 5.1's version-1 baseline), so nothing that holds the hub key can
 widen what that machine delivers; widening then needs the owner key. Narrowing documents are
-always accepted from either signer.
+always accepted from either signer. The same setting governs `peer_thread_resume` (peers.md
+6.3), which the hub alone signs: with `false` the agent refuses it and the thread stays stopped
+until a human prompt.
 
 This is the one place the H4 default ("board sign-in is enough") trades against the
 addendum's "the hub can only narrow". Who can widen, per setting:
