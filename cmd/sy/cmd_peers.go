@@ -116,7 +116,7 @@ func peersList(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 	if !pe.Enabled {
-		return peersExit(peerspkg.ExitPolicy, errors.New("peers are not enabled on this machine (sy config set peers.enabled true)"))
+		return peersExit(peerspkg.ExitPolicy, errors.New("peers are not enabled on this machine (sy peers enable)"))
 	}
 	entries, asked, rf := peersListEntries(pe, *all)
 	if rf != nil {
@@ -200,7 +200,7 @@ func peersSend(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		return err
 	}
 	if !pe.Enabled {
-		fmt.Fprintln(stdout, "not delivered: peers are not enabled on this machine. The owner enables them with: sy config set peers.enabled true. Do not retry.")
+		fmt.Fprintln(stdout, "not delivered: peers are not enabled on this machine. The owner enables them with: sy peers enable. Do not retry.")
 		return peersExit(peerspkg.ExitPolicy, nil)
 	}
 	caller, rf := pe.Env.Whoami()
