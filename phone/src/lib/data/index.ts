@@ -128,7 +128,8 @@ export function createPoller(deps: PollerDeps): Poller {
     const mine = epoch;
     const results = await Promise.allSettled([
       client.overview(),
-      client.sessions({ limit: SESSIONS_LIMIT }),
+      // Ended sessions of the last 2 days too, for Sessions > Ended or idle (as the board's getSessions).
+      client.sessions({ includeEnded: true, days: 2, limit: SESSIONS_LIMIT }),
       client.accounts(),
       client.alerts({ limit: ALERTS_LIMIT }),
     ]);
