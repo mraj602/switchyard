@@ -29,6 +29,10 @@ object TabPolicy {
     return if (validSeat(seat)) seat else null
   }
 
+  /** The seat ids to list: tab profiles only, minus the ones signed out and waiting for deletion. */
+  fun listed(profiles: List<String>, pending: Set<String>): List<String> =
+    profiles.filter { it !in pending }.mapNotNull(::seatOf).sorted()
+
   fun allowedHost(host: String?): Boolean {
     if (host.isNullOrEmpty()) return false
     val h = host.lowercase().removeSuffix(".")
