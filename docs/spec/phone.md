@@ -171,7 +171,7 @@ optional React 19.3 peers); they are expected and do not fail the install.
   unlock, and it is never restored onto another device. Android: Keystore-backed, and the app
   sets `allowBackup=false` (P13).
 - `HubClient` (pure, `fetch` injected): it prefixes the origin, sends `Authorization: Bearer`,
-  times out after 10 s (1.5 s for the `/health` probe), follows no cross-origin redirect and
+  times out after 10 s (6 s for pairing's `/health` probe, 1.5 s for route checks), follows no cross-origin redirect and
   parses the `Error` schema. On 401 it calls `onUnauthorized` once: the app clears the
   keychain entry, the cache and the widget data, ends Live Activities and shows Pair ("This
   phone was unpaired on the hub"). A 401 from a client of an earlier pairing (after "Unpair
