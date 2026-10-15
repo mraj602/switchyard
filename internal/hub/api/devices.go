@@ -37,8 +37,6 @@ type devTargetJSON struct {
 	LastError    *string    `json:"last_error"`
 	LastErrorAt  store.Time `json:"last_error_at"`
 	CreatedAt    store.Time `json:"created_at"`
-	Platform     *string    `json:"platform"`    // expo only (push.md 12.7)
-	AppVersion   *string    `json:"app_version"` // expo only
 }
 
 // devJSON is api.yaml Device.
@@ -111,9 +109,7 @@ func devPrefs(raw string) model.Prefs {
 
 func devTarget(devID string, t store.DeviceTargetBrief) devTargetJSON {
 	host := ""
-	if t.Kind == model.KindExpo {
-		host = expoHost // the endpoint is the Expo push token
-	} else if u, err := url.Parse(t.Endpoint); err == nil {
+	if u, err := url.Parse(t.Endpoint); err == nil {
 		host = u.Host
 	}
 	status := "ok"
@@ -129,8 +125,7 @@ func devTarget(devID string, t store.DeviceTargetBrief) devTargetJSON {
 	}
 	return devTargetJSON{ID: t.ID, Kind: t.Kind, Device: devID, Name: devStrp(t.Name), EndpointHost: host, Endpoint: t.Endpoint,
 		Enabled: t.Enabled, Status: status, LastOKAt: store.Time(t.LastOKAt), LastError: devStrp(t.LastError),
-		LastErrorAt: store.Time(t.LastErrAt), CreatedAt: store.Time(t.CreatedAt),
-		Platform: devStrp(t.Platform), AppVersion: devStrp(t.AppVersion)}
+		LastErrorAt: store.Time(t.LastErrAt), CreatedAt: store.Time(t.CreatedAt)}
 }
 
 // devView builds the Device of the API. current is the caller's device id.

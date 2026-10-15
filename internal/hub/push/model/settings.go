@@ -17,9 +17,9 @@ type Settings struct {
 	Flood        Flood      `json:"flood"`
 	VapidSubject string     `json:"vapid_subject"` // empty: the hub's public URL (6.2)
 	WebPushHosts []string   `json:"webpush_hosts"`
-	// ExpoRefreshMin is the least time between two silent widget refreshes to one expo
-	// target, in minutes (push.md 12.9; 10-240, default 15).
-	ExpoRefreshMin int `json:"expo_refresh_min"`
+	// RefreshMin is the least time between two widget refresh frames to one link target, in
+	// minutes (push.md 13.5; 10-240, default 15).
+	RefreshMin int `json:"refresh_min"`
 }
 
 // Flood is the per-target push cap (push.md 5.3).
@@ -38,13 +38,13 @@ var DefaultWebPushHosts = []string{
 // ParseSettings fills it with the hub time zone.
 func (s *Settings) Defaults() {
 	*s = Settings{
-		QuietHours:     QuietHours{Enabled: false, Start: "23:00", End: "08:00"},
-		SnoozeMin:      15,
-		MaxAgeS:        900,
-		BatchS:         2,
-		Flood:          Flood{Max: 6, PerS: 600},
-		WebPushHosts:   append([]string(nil), DefaultWebPushHosts...),
-		ExpoRefreshMin: 15,
+		QuietHours:   QuietHours{Enabled: false, Start: "23:00", End: "08:00"},
+		SnoozeMin:    15,
+		MaxAgeS:      900,
+		BatchS:       2,
+		Flood:        Flood{Max: 6, PerS: 600},
+		WebPushHosts: append([]string(nil), DefaultWebPushHosts...),
+		RefreshMin:   15,
 	}
 }
 
@@ -78,8 +78,8 @@ func (s Settings) Validate() error {
 		return fmt.Errorf("batch_s must be 0-30")
 	case s.Flood.Max < 1 || s.Flood.PerS < 60:
 		return fmt.Errorf("flood needs max >= 1 and per_s >= 60")
-	case s.ExpoRefreshMin < 10 || s.ExpoRefreshMin > 240:
-		return fmt.Errorf("expo_refresh_min must be 10-240")
+	case s.RefreshMin < 10 || s.RefreshMin > 240:
+		return fmt.Errorf("refresh_min must be 10-240")
 	}
 	return nil
 }

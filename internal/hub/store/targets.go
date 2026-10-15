@@ -86,25 +86,19 @@ func (s *Store) SetChannel(ctx context.Context, kind string, enabled bool, setti
 // targetCols are the columns scanTarget reads, from push_target aliased t.
 const targetCols = `t.id, t.kind, coalesce(t.device_id, ''), coalesce(t.name, ''), t.endpoint, t.keys, coalesce(t.secret, ''),
 	t.prefs, t.enabled, t.created_at, t.updated_at, coalesce(t.last_ok_at, 0), coalesce(t.last_error, ''),
-	coalesce(t.last_error_at, 0), t.fail_count, coalesce(t.gone_at, 0), t.meta`
+	coalesce(t.last_error_at, 0), t.fail_count, coalesce(t.gone_at, 0)`
 
 func scanTarget(sc interface{ Scan(...any) error }) (model.Target, error) { return scanTargetWith(sc) }
 
 // scanTargetWith scans targetCols followed by extra columns.
 func scanTargetWith(sc interface{ Scan(...any) error }, extra ...any) (model.Target, error) {
 	var t model.Target
-	var keys, prefs, meta sql.NullString
+	var keys, prefs sql.NullString
 	var created, updated, ok, errAt, gone int64
 	err := sc.Scan(append([]any{&t.ID, &t.Kind, &t.DeviceID, &t.Name, &t.Endpoint, &keys, &t.Secret, &prefs, &t.Enabled,
-		&created, &updated, &ok, &t.LastError, &errAt, &t.FailCount, &gone, &meta}, extra...)...)
+		&created, &updated, &ok, &t.LastError, &errAt, &t.FailCount, &gone}, extra...)...)
 	if err != nil {
 		return t, err
-	}
-	if meta.Valid && meta.String != "" {
-		var m model.TargetMeta
-		if json.Unmarshal([]byte(meta.String), &m) == nil {
-			t.Meta = &m
-		}
 	}
 	t.CreatedAt, t.UpdatedAt, t.LastOKAt, t.LastErrorAt, t.GoneAt =
 		model.Time(created), model.Time(updated), model.Time(ok), model.Time(errAt), model.Time(gone)
@@ -167,13 +161,12 @@ func (s *Store) ListTargets(ctx context.Context, deviceID string) ([]model.Targe
 // UpsertTarget stores a target by (kind, endpoint). A new row gets an id and created_at; an
 // existing one is re-bound to t.DeviceID, takes the new keys, secret, name and prefs, and is
 // revived (enabled, not gone, fail_count 0), which is what a re-subscribing browser needs.
-// It returns the stored row. An expo target (push.md 12.7) has the push token as endpoint,
-// no keys and no secret, and its meta (platform, app version) is replaced on every upsert.
+// It returns the stored row. Link targets are made by pairing (Tx.UpsertLinkTarget).
 func (s *Store) UpsertTarget(ctx context.Context, t model.Target) (model.Target, error) {
-	if t.Kind != model.KindWebPush && t.Kind != model.KindNtfy && t.Kind != model.KindExpo {
+	if t.Kind != model.KindWebPush && t.Kind != model.KindNtfy {
 		return model.Target{}, ErrTargetKind
 	}
-	var keys, prefs, meta any
+	var keys, prefs any
 	if t.Keys != nil {
 		b, _ := json.Marshal(t.Keys)
 		keys = string(b)
@@ -182,10 +175,6 @@ func (s *Store) UpsertTarget(ctx context.Context, t model.Target) (model.Target,
 		b, _ := json.Marshal(t.Prefs)
 		prefs = string(b)
 	}
-	if t.Meta != nil && t.Kind == model.KindExpo {
-		b, _ := json.Marshal(t.Meta)
-		meta = string(b)
-	}
 	var id string
 	err := s.Write(ctx, func(tx *Tx) error {
 		now := tx.NowMS()
@@ -193,16 +182,16 @@ func (s *Store) UpsertTarget(ctx context.Context, t model.Target) (model.Target,
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
 			id = NewID("pt_", time.UnixMilli(now))
-			_, err = tx.exec(`INSERT INTO push_target (id, kind, device_id, name, endpoint, keys, secret, prefs, meta, enabled, created_at, updated_at)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-				id, t.Kind, nullStr(t.DeviceID), nullStr(t.Name), t.Endpoint, keys, nullStr(t.Secret), prefs, meta, now, now)
+			_, err = tx.exec(`INSERT INTO push_target (id, kind, device_id, name, endpoint, keys, secret, prefs, enabled, created_at, updated_at)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+				id, t.Kind, nullStr(t.DeviceID), nullStr(t.Name), t.Endpoint, keys, nullStr(t.Secret), prefs, now, now)
 			return err
 		case err != nil:
 			return err
 		}
-		_, err = tx.exec(`UPDATE push_target SET device_id = ?, name = coalesce(?, name), keys = ?, secret = ?, prefs = ?, meta = ?,
+		_, err = tx.exec(`UPDATE push_target SET device_id = ?, name = coalesce(?, name), keys = ?, secret = ?, prefs = ?,
 			enabled = 1, gone_at = NULL, fail_count = 0, last_error = NULL, last_error_at = NULL, updated_at = ? WHERE id = ?`,
-			nullStr(t.DeviceID), nullStr(t.Name), keys, nullStr(t.Secret), prefs, meta, now, id)
+			nullStr(t.DeviceID), nullStr(t.Name), keys, nullStr(t.Secret), prefs, now, id)
 		return err
 	})
 	if err != nil {

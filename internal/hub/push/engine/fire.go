@@ -704,8 +704,7 @@ func (e *Engine) finishOnce(ctx context.Context, ps []*push) error {
 				d.HTTPStatus, d.UpdatedAt, d.NextAt, d.Reason = p.res.HTTPStatus, nowMS, 0, ""
 				switch p.res.Outcome {
 				case model.OutcomeSent:
-					// Ref is the Expo ticket (push.md 12.4); empty, so NULL, for other senders.
-					d.Status, d.LastError, d.Ticket = dSent, "", p.res.Ref
+					d.Status, d.LastError = dSent, ""
 				case model.OutcomeGone:
 					d.Status, d.LastError = dGone, p.res.Err
 				case model.OutcomeRetry:

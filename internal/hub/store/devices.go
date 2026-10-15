@@ -172,15 +172,12 @@ type DeviceTargetBrief struct {
 	LastError                      string
 	FailCount                      int
 	GoneAt                         int64
-	// Platform and AppVersion come from meta (expo targets only, push.md 12.7).
-	Platform, AppVersion string
 }
 
 // DeviceTargets returns the push targets of each device, by device id.
 func (s *Store) DeviceTargets(ctx context.Context) (map[string][]DeviceTargetBrief, error) {
 	rows, err := s.r.QueryContext(ctx, `SELECT device_id, id, kind, coalesce(name, ''), endpoint, enabled, created_at,
-		coalesce(last_ok_at, 0), coalesce(last_error_at, 0), coalesce(last_error, ''), fail_count, coalesce(gone_at, 0),
-		coalesce(json_extract(meta, '$.platform'), ''), coalesce(json_extract(meta, '$.app_version'), '')
+		coalesce(last_ok_at, 0), coalesce(last_error_at, 0), coalesce(last_error, ''), fail_count, coalesce(gone_at, 0)
 		FROM push_target WHERE device_id IS NOT NULL ORDER BY created_at, id`)
 	if err != nil {
 		return nil, err
@@ -192,7 +189,7 @@ func (s *Store) DeviceTargets(ctx context.Context) (map[string][]DeviceTargetBri
 		var t DeviceTargetBrief
 		var en int
 		if err := rows.Scan(&dev, &t.ID, &t.Kind, &t.Name, &t.Endpoint, &en, &t.CreatedAt, &t.LastOKAt, &t.LastErrAt,
-			&t.LastError, &t.FailCount, &t.GoneAt, &t.Platform, &t.AppVersion); err != nil {
+			&t.LastError, &t.FailCount, &t.GoneAt); err != nil {
 			return nil, err
 		}
 		t.Enabled = en == 1

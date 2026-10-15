@@ -11,10 +11,7 @@
 //
 //  3. three limit samples (50, 70, 85 %) → exactly one push (limit_80).
 //
-// expo_test.go adds phase 8's scenarios X1 to X8 (docs/phases/8.md): the same hub with a
-// fake Expo push service (expotest) behind SY_TEST_EXPO_DIAL.
-//
-//	go test ./test/e2e/push            (skipped with -short and on Windows)
+//     go test ./test/e2e/push            (skipped with -short and on Windows)
 package push
 
 import (
@@ -37,7 +34,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/push/expotest"
 	"github.com/mraj602/switchyard/internal/hub/push/ntfytest"
 	"github.com/mraj602/switchyard/internal/hub/push/webpushtest"
 	"github.com/mraj602/switchyard/internal/record"
@@ -60,7 +56,6 @@ type rig struct {
 	mtoken  string
 	wp      *webpushtest.Server
 	nf      *ntfytest.Server
-	ex      *expotest.Server
 }
 
 type syncBuf struct {
@@ -165,12 +160,9 @@ func newRig(t *testing.T) *rig {
 	t.Cleanup(r.wp.Close)
 	r.nf = ntfytest.New()
 	t.Cleanup(r.nf.Close)
-	r.ex = expotest.New() // the expo channel's default https://exp.host is dialled here instead
-	t.Cleanup(r.ex.Close)
 	wpURL, _ := url.Parse(r.wp.URL())
 
-	r.env = append(cleanEnv(home), "SY_FAKE_CLOCK="+sock, "SY_TEST_WEBPUSH_DIAL="+wpURL.Host,
-		"SY_TEST_EXPO_DIAL="+r.ex.Addr())
+	r.env = append(cleanEnv(home), "SY_FAKE_CLOCK="+sock, "SY_TEST_WEBPUSH_DIAL="+wpURL.Host)
 	r.clock = &http.Client{Timeout: 30 * time.Second, Transport: &http.Transport{
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 			return (&net.Dialer{}).DialContext(ctx, "unix", sock)
@@ -386,12 +378,10 @@ func (r *rig) expectPush(n int) map[string]any {
 	return p
 }
 
-func TestEndToEndPush(t *testing.T) { phase4(t, newRig(t), false) }
+func TestEndToEndPush(t *testing.T) { phase4(t, newRig(t)) }
 
-// phase4 is the phase 4 scenario. With withExpo the phone also registers an app (expo)
-// target, and every push must reach it too, without changing a byte of what Web Push and
-// ntfy get (X8).
-func phase4(t *testing.T, r *rig, withExpo bool) {
+// phase4 is the phase 4 scenario.
+func phase4(t *testing.T, r *rig) {
 
 	if code, _, b := r.call("GET", "/health", "", nil); code != 200 || !bytes.Contains(b, []byte(`"ui":"`)) {
 		t.Fatalf("/health: %d %s", code, b)
@@ -447,19 +437,6 @@ func phase4(t *testing.T, r *rig, withExpo bool) {
 		"keys": map[string]string{"p256dh": sub.P256dh, "auth": sub.Auth}, "name": "Pixel"})
 	// The ntfy stub is on loopback, which only the owner may register (push.md 7.1).
 	r.must(201, "POST", "/v1/push/targets", owner, map[string]any{"kind": "ntfy", "server": r.nf.URL(), "topic": "sy-e2e-topic"})
-	expoTrigger := func(int, string) {}
-	if withExpo {
-		r.must(201, "POST", "/v1/push/targets", phone, map[string]any{"kind": "expo", "expo_token": expoToken1,
-			"platform": "ios", "app": map[string]string{"version": "0.8.0", "build": "1"}})
-		expoTrigger = func(n int, trigger string) {
-			t.Helper()
-			msg := r.expectExpo(n)
-			if msg.Data["trigger"] != trigger {
-				t.Errorf("expo message %d trigger %v, want %s", n, msg.Data["trigger"], trigger)
-			}
-		}
-	}
-
 	// ---- a machine token from the hub's shell.
 	r.machine = "m_" + record.NewID(time.Now())
 	var tok struct{ Token string }
@@ -478,7 +455,6 @@ func phase4(t *testing.T, r *rig, withExpo bool) {
 	}
 	at := r.advance(time.Second)
 	p := r.expectPush(1)
-	expoTrigger(1, "asked")
 	if d := at.Sub(asked); d != 60*time.Second {
 		t.Errorf("pushed after %s", d)
 	}
@@ -543,7 +519,6 @@ func phase4(t *testing.T, r *rig, withExpo bool) {
 		r.advance(time.Minute)
 	}
 	p = r.expectPush(nWP + 1)
-	expoTrigger(2, "limit_80")
 	if p["trigger"] != "limit_80" {
 		t.Errorf("limit push trigger %v", p["trigger"])
 	}

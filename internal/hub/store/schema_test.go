@@ -284,79 +284,18 @@ INSERT INTO delivery (alert_id, target_id, target_kind, fire, status, tries, cre
   ('al_1', 'pt_web', 'webpush', 1, 'sent', 1, 1, 2),
   ('al_1', 'pt_ntfy', 'ntfy', 1, 'sent', 1, 1, 2);`
 
-// Schema v6 (push.md 12): migrating a seeded v5 database seeds the expo channel, adds
-// push_target.meta (JSON or NULL) and delivery.ticket / receipt_at, all NULL on old rows, and
-// the open-ticket index. Migrating v1 to v6 equals the spec (TestMigrationsMatchSpec).
-func TestSchemaV6Expo(t *testing.T) {
-	ctx := context.Background()
-	path := filepath.Join(t.TempDir(), "hub.db")
-	seedAt(t, 5, path, v5Push)
-	s, err := Open(ctx, path, Options{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer s.Close()
-	if v, _ := s.SchemaVersion(ctx); v != LatestVersion() || v < 6 {
-		t.Fatalf("schema version %d, want %d (>= 6)", v, LatestVersion())
-	}
-	count := func(q string, args ...any) int {
-		t.Helper()
-		var n int
-		if err := s.R().QueryRowContext(ctx, q, args...).Scan(&n); err != nil {
-			t.Fatalf("%s: %v", q, err)
-		}
-		return n
-	}
-	if n := count(`SELECT count(*) FROM channel WHERE kind = 'expo' AND enabled = 1 AND settings = '{}' AND updated_at = 0`); n != 1 {
-		t.Errorf("expo channel rows: %d, want 1", n)
-	}
-	if n := count(`SELECT count(*) FROM channel`); n != 4 { // v8 adds link (push.md 13)
-		t.Errorf("channels: %d, want 4", n)
-	}
-	if n := count(`SELECT count(*) FROM push_target WHERE meta IS NULL`); n != 2 {
-		t.Errorf("old targets with meta NULL: %d, want 2", n)
-	}
-	if n := count(`SELECT count(*) FROM delivery WHERE ticket IS NULL AND receipt_at IS NULL`); n != 2 {
-		t.Errorf("old deliveries without a ticket: %d, want 2", n)
-	}
-	if n := count(`SELECT count(*) FROM sqlite_schema WHERE type = 'index' AND name = 'delivery_ticket_open'`); n != 1 {
-		t.Error("index delivery_ticket_open missing")
-	}
-
-	// An expo target with meta, and a sent delivery holding a ticket.
-	if _, err := s.w.ExecContext(ctx, `INSERT INTO push_target (id, kind, endpoint, meta, created_at, updated_at)
-		VALUES ('pt_expo', 'expo', 'ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]', '{"platform":"ios","app_version":"0.8.0","app_build":"12"}', 3, 3)`); err != nil {
-		t.Fatalf("expo target refused: %v", err)
-	}
-	if _, err := s.w.ExecContext(ctx, `UPDATE push_target SET meta = 'not json' WHERE id = 'pt_expo'`); err == nil {
-		t.Error("non-JSON meta accepted")
-	}
-	if _, err := s.w.ExecContext(ctx, `INSERT INTO delivery (alert_id, target_id, target_kind, fire, status, tries, created_at, updated_at, ticket)
-		VALUES ('al_1', 'pt_expo', 'expo', 1, 'sent', 1, 3, 3, 't1')`); err != nil {
-		t.Fatal(err)
-	}
-	if n := count(`SELECT count(*) FROM delivery INDEXED BY delivery_ticket_open WHERE ticket IS NOT NULL AND receipt_at IS NULL AND created_at > 0`); n != 1 {
-		t.Errorf("open tickets: %d, want 1", n)
-	}
-	if _, err := s.w.ExecContext(ctx, `UPDATE delivery SET receipt_at = 4 WHERE ticket = 't1'`); err != nil {
-		t.Fatal(err)
-	}
-	if n := count(`SELECT count(*) FROM delivery WHERE ticket IS NOT NULL AND receipt_at IS NULL`); n != 0 {
-		t.Errorf("open tickets after the receipt: %d, want 0", n)
-	}
-}
-
 // Schema v8 (push.md 13.8): migrating a seeded v6 database recreates channel and push_target
 // with 'link' allowed, keeps every target and its columns, keeps each channel's switch and
 // settings, seeds the link channel and adds delivery.delivered_at (NULL on old rows). Schema v7
-// and v9 (keys.md 9, peers.md 10) add the key, link and peer tables with their CHECKs.
+// and v9 (keys.md 9, peers.md 10) add the key, link and peer tables with their CHECKs. (v11
+// then drops the v6 channel this database carries; TestSchemaV11DropsExpo covers that.)
 func TestSchemaV8LinkKeepsTargets(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "hub.db")
 	seedAt(t, 6, path, v5Push,
 		`INSERT INTO push_target (id, kind, endpoint, meta, created_at, updated_at, fail_count, last_error)
 		 VALUES ('pt_expo', 'expo', 'ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]', '{"platform":"android"}', 3, 3, 2, 'HTTP 500')`,
-		`UPDATE channel SET enabled = 0, settings = '{"base_url":"https://exp.host"}' WHERE kind = 'expo'`)
+		`UPDATE channel SET enabled = 0, settings = '{"x":1}' WHERE kind = 'ntfy'`)
 	s, err := Open(ctx, path, Options{})
 	if err != nil {
 		t.Fatal(err)
@@ -373,17 +312,14 @@ func TestSchemaV8LinkKeepsTargets(t *testing.T) {
 		}
 		return n
 	}
-	if n := count(`SELECT count(*) FROM push_target`); n != 3 {
-		t.Errorf("targets after v8: %d, want 3", n)
-	}
-	if n := count(`SELECT count(*) FROM push_target WHERE id = 'pt_expo' AND meta = '{"platform":"android"}' AND fail_count = 2 AND last_error = 'HTTP 500'`); n != 1 {
-		t.Error("expo target columns not kept")
+	if n := count(`SELECT count(*) FROM push_target`); n != 2 {
+		t.Errorf("targets: %d, want 2", n)
 	}
 	if n := count(`SELECT count(*) FROM push_target WHERE id = 'pt_web' AND keys = '{"p256dh":"p","auth":"a"}'`); n != 1 {
 		t.Error("webpush keys not kept")
 	}
-	if n := count(`SELECT count(*) FROM channel WHERE kind = 'expo' AND enabled = 0 AND settings = '{"base_url":"https://exp.host"}'`); n != 1 {
-		t.Error("expo channel switch or settings not kept")
+	if n := count(`SELECT count(*) FROM channel WHERE kind = 'ntfy' AND enabled = 0 AND settings = '{"x":1}'`); n != 1 {
+		t.Error("ntfy channel switch or settings not kept")
 	}
 	if n := count(`SELECT count(*) FROM channel WHERE kind = 'link' AND enabled = 1`); n != 1 {
 		t.Error("link channel not seeded")
@@ -482,5 +418,74 @@ func TestSchemaV10KeepsLinkQueue(t *testing.T) {
 	if _, err := s.w.ExecContext(ctx, `INSERT INTO link_queue (device_id, seq, type, body, sig, exp, created_at)
 	          VALUES ('dev_m', 4, 'chat', x'00', randomblob(64), 10, 1)`); err == nil {
 		t.Error("unknown link frame type accepted")
+	}
+}
+
+// Schema v11: migrating a v10 database that used the expo channel drops it whole: the channel
+// row, its targets and their deliveries, the access token, the self-hosted marker,
+// push_target.meta and delivery.ticket/receipt_at; renames push.settings.expo_refresh_min to
+// refresh_min; and keeps every other target, delivery and setting as it was.
+func TestSchemaV11DropsExpo(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "hub.db")
+	seedAt(t, 10, path, v5Push,
+		`INSERT INTO device (id, kind, name, token_hash, token_hint, scopes, created_at, created_by)
+		 VALUES ('dev_p', 'phone', 'Pixel · app', randomblob(32), 'sy_p_…abcd', '["read","push"]', 0, 'test')`,
+		`INSERT INTO push_target (id, kind, device_id, endpoint, meta, created_at, updated_at, fail_count, last_error)
+		 VALUES ('pt_expo', 'expo', 'dev_p', 'ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]', '{"platform":"android"}', 3, 3, 2, 'HTTP 500'),
+		        ('pt_link', 'link', 'dev_p', 'link:dev_p', NULL, 4, 4, 0, NULL)`,
+		`UPDATE push_target SET keys = '{"p256dh":"p","auth":"a"}' WHERE id = 'pt_link'`,
+		`INSERT INTO delivery (alert_id, target_id, target_kind, fire, status, tries, created_at, updated_at, ticket, receipt_at, delivered_at) VALUES
+		   ('al_1', 'pt_expo', 'expo', 1, 'sent', 1, 3, 3, 't1', NULL, NULL),
+		   ('al_1', 'pt_link', 'link', 1, 'sent', 1, 4, 5, NULL, NULL, 6)`,
+		`UPDATE channel SET enabled = 0, settings = '{"base_url":"https://exp.host"}' WHERE kind = 'expo'`,
+		`UPDATE channel SET enabled = 0 WHERE kind = 'ntfy'`,
+		`INSERT INTO hub_secret (key, value, created_at) VALUES ('expo_access_token', x'00', 1), ('action_key', x'01', 1)`,
+		`INSERT INTO setting (key, value, updated_at) VALUES ('push.self_hosted_applied', 'true', 1),
+		   ('push.settings', '{"snooze_min":20,"expo_refresh_min":30}', 1)`)
+	s, err := Open(ctx, path, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if v, _ := s.SchemaVersion(ctx); v != LatestVersion() || v < 11 {
+		t.Fatalf("schema version %d, want %d (>= 11)", v, LatestVersion())
+	}
+	count := func(q string) int {
+		t.Helper()
+		var n int
+		if err := s.R().QueryRowContext(ctx, q).Scan(&n); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+		return n
+	}
+	for q, want := range map[string]int{
+		`SELECT count(*) FROM channel WHERE kind = 'expo'`:                                                                              0,
+		`SELECT count(*) FROM channel`:                                                                                                  3,
+		`SELECT count(*) FROM channel WHERE kind = 'ntfy' AND enabled = 0`:                                                              1,
+		`SELECT count(*) FROM push_target WHERE kind = 'expo'`:                                                                          0,
+		`SELECT count(*) FROM push_target`:                                                                                              3,
+		`SELECT count(*) FROM push_target WHERE id = 'pt_link' AND keys = '{"p256dh":"p","auth":"a"}'`:                                  1,
+		`SELECT count(*) FROM delivery WHERE target_kind = 'expo'`:                                                                      0,
+		`SELECT count(*) FROM delivery`:                                                                                                 3,
+		`SELECT count(*) FROM delivery WHERE target_id = 'pt_link' AND delivered_at = 6 AND updated_at = 5`:                             1,
+		`SELECT count(*) FROM hub_secret WHERE key = 'expo_access_token'`:                                                               0,
+		`SELECT count(*) FROM hub_secret WHERE key = 'action_key'`:                                                                      1,
+		`SELECT count(*) FROM setting WHERE key = 'push.self_hosted_applied'`:                                                           0,
+		`SELECT count(*) FROM setting WHERE key = 'push.settings' AND value = '{"snooze_min":20,"refresh_min":30}'`:                     1,
+		`SELECT count(*) FROM pragma_table_info('push_target') WHERE name = 'meta'`:                                                     0,
+		`SELECT count(*) FROM pragma_table_info('delivery') WHERE name IN ('ticket', 'receipt_at')`:                                     0,
+		`SELECT count(*) FROM sqlite_schema WHERE type = 'index' AND name = 'delivery_ticket_open'`:                                     0,
+		`SELECT count(*) FROM sqlite_schema WHERE type = 'index' AND name IN ('delivery_next', 'delivery_batch', 'push_target_device')`: 3,
+	} {
+		if n := count(q); n != want {
+			t.Errorf("%s: %d, want %d", q, n, want)
+		}
+	}
+	if _, err := s.w.ExecContext(ctx, `INSERT INTO push_target (id, kind, endpoint, created_at, updated_at) VALUES ('pt_x', 'expo', 'x', 5, 5)`); err == nil {
+		t.Error("expo target accepted")
+	}
+	if _, err := s.w.ExecContext(ctx, `INSERT INTO channel (kind, updated_at) VALUES ('expo', 5)`); err == nil {
+		t.Error("expo channel accepted")
 	}
 }

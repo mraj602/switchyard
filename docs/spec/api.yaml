@@ -884,14 +884,10 @@ paths:
       operationId: putChannel
       summary: Turn a channel kind on or off hub-wide
       description: |
-        `expo` (push.md 12.5) takes `settings: {base_url?, access_token?}`. `base_url` must be
-        `https://` on port 443 (default `https://exp.host`). The access token is stored in
-        `hub_secret` key `expo_access_token`, is never returned (the channel shows
-        `access_token_set`) and never logged; an empty string removes it. `link` (push.md
-        13.6) takes `settings: {urls?, ping_s?}`.
+        `link` (push.md 13.6) takes `settings: {urls?, ping_s?}`.
       x-scopes: [owner]
       parameters:
-        - {name: kind, in: path, required: true, schema: {type: string, enum: [webpush, ntfy, expo, link]}}
+        - {name: kind, in: path, required: true, schema: {type: string, enum: [webpush, ntfy, link]}}
       requestBody:
         required: true
         content:
@@ -930,11 +926,9 @@ paths:
     post:
       tags: [push]
       operationId: addPushTarget
-      summary: Register a Web Push subscription, an ntfy topic or an app's Expo push token
+      summary: Register a Web Push subscription or an ntfy topic
       description: |
-        `expo` (push.md 12.7): `expo_token` must match
-        `^Expo(nent)?PushToken\[[A-Za-z0-9_-]{8,200}\]$`, `platform` is required, `app` is
-        optional. Upsert by token, re-bound to the caller, as for Web Push.
+        Link targets are made by pairing (push.md 13.7), never here.
         `webpush`: upsert by endpoint (a re-subscribing browser re-binds to the caller). The
         endpoint host must be in `webpush_hosts` (push.md 6.6); `p256dh` must be a P-256 point,
         `auth` 16 bytes. `ntfy`: `topic` is generated when omitted; a push-scoped device's
@@ -2633,7 +2627,7 @@ components:
         widgets:
           type: boolean
           default: false
-          description: Silent widget refresh pushes to this device's expo targets (push.md 12.9); phase 8.
+          description: Widget refresh frames to this device's link target (push.md 13.5).
 
     PushSettings:
       type: object
@@ -2654,29 +2648,24 @@ components:
         webpush_hosts:
           type: array
           items: {type: string}
-        expo_refresh_min:
+        refresh_min:
           type: integer
           minimum: 10
           maximum: 240
           default: 15
-          description: Least minutes between two silent widget refreshes to one expo target (push.md 12.9); phase 8.
+          description: Least minutes between two widget refresh frames to one link target (push.md 13.5).
 
     Channel:
       type: object
       required: [kind, enabled]
       properties:
-        kind: {type: string, enum: [webpush, ntfy, expo, link]}
+        kind: {type: string, enum: [webpush, ntfy, link]}
         enabled: {type: boolean}
         settings:
           type: object
           additionalProperties: true
-          description: |
-            Per kind. `expo` (push.md 12.5) answers `{base_url, access_token_set}` and takes
-            `{base_url?, access_token?}`; the access token is write-only.
+          description: Per kind.
           properties:
-            base_url: {type: string, description: "expo: https on port 443; default https://exp.host."}
-            access_token: {type: string, writeOnly: true, description: "expo: Expo access token (enhanced push security); never returned."}
-            access_token_set: {type: boolean, readOnly: true, description: "expo: an access token is stored."}
             urls:
               type: array
               maxItems: 4
@@ -2698,7 +2687,7 @@ components:
       type: object
       required: [kind]
       properties:
-        kind: {type: string, enum: [webpush, ntfy, expo]}
+        kind: {type: string, enum: [webpush, ntfy]}
         name: {type: string, maxLength: 60}
         endpoint: {type: string, description: webpush only.}
         keys:
@@ -2712,32 +2701,18 @@ components:
         topic: {type: string, pattern: "^[-_A-Za-z0-9]{1,64}$", description: ntfy only; generated when omitted.}
         token: {type: string, description: "ntfy access token; stored, never returned."}
         private: {type: boolean, description: ntfy only.}
-        expo_token:
-          type: string
-          pattern: "^Expo(nent)?PushToken\\[[A-Za-z0-9_-]{8,200}\\]$"
-          description: expo only (push.md 12.7); stored as the target's endpoint.
-        platform: {type: string, enum: [ios, android], description: expo only; required for expo.}
-        app:
-          type: object
-          description: expo only. The app's version and build.
-          required: [version, build]
-          properties:
-            version: {type: string, maxLength: 32}
-            build: {type: string, maxLength: 32}
 
     PushTarget:
       type: object
       required: [id, kind, enabled, status]
       properties:
         id: {type: string}
-        kind: {type: string, enum: [webpush, ntfy, expo, link]}
-        platform: {type: [string, "null"], enum: [ios, android, null], description: expo and link only.}
-        app_version: {type: [string, "null"], description: expo and link only.}
+        kind: {type: string, enum: [webpush, ntfy, link]}
         link: {$ref: "#/components/schemas/LinkStatus"}
         device: {type: [string, "null"]}
         name: {type: [string, "null"]}
         endpoint_host: {type: string, description: "web.push.apple.com, ntfy.sh…"}
-        endpoint: {type: [string, "null"], description: "Full endpoint (expo: the Expo push token): only to the owning device and the owner."}
+        endpoint: {type: [string, "null"], description: "Full endpoint: only to the owning device and the owner."}
         server: {type: [string, "null"]}
         topic: {type: [string, "null"]}
         token_set: {type: boolean}
@@ -2838,7 +2813,7 @@ components:
       required: [target, kind, status, fire]
       properties:
         target: {type: string}
-        kind: {type: string, enum: [webpush, ntfy, expo, link]}
+        kind: {type: string, enum: [webpush, ntfy, link]}
         target_name: {type: [string, "null"]}
         fire: {type: integer}
         batch: {type: [string, "null"]}

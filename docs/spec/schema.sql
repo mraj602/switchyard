@@ -1,4 +1,4 @@
--- Switchyard hub schema, version 10.
+-- Switchyard hub schema, version 11.
 --
 -- One SQLite file (WAL mode). Applied by the hub at start (phase 2) inside one transaction
 -- after `PRAGMA foreign_keys = ON`. Later versions add numbered migrations
@@ -17,6 +17,8 @@
 --       (push.md 13.8).
 --   v9  PE1-PE3: matrix_doc, peer_thread, peer_message, peer_audit (peers.md 10).
 --   v10 PE3: link_queue recreated with the 'peer_thread_resume' type (peers.md 6.3, link.md 6.4).
+--   v11 the expo channel removed: its channel row, targets, deliveries and access token;
+--       push_target.meta, delivery.ticket/receipt_at (channel, push_target, delivery recreated).
 --
 -- Conventions
 --   * Times are INTEGER milliseconds since the Unix epoch, UTC (`*_at`, `ts`).
@@ -41,7 +43,7 @@ CREATE TABLE schema_version (
 ) STRICT;
 
 INSERT INTO schema_version (version, applied_at, sy_version)
-VALUES (10, CAST(unixepoch('subsec') * 1000 AS INTEGER), 'spec');
+VALUES (11, CAST(unixepoch('subsec') * 1000 AS INTEGER), 'spec');
 
 -- Hub-wide settings that are not secrets (retention days, last-message policy, …).
 CREATE TABLE setting (
@@ -209,7 +211,7 @@ CREATE INDEX pair_code_live ON pair_code(code_hash) WHERE claimed_at IS NULL AND
 
 -- Channel kinds with a hub-wide switch.
 CREATE TABLE channel (
-  kind          TEXT    NOT NULL PRIMARY KEY CHECK (kind IN ('webpush', 'ntfy', 'expo', 'link')),
+  kind          TEXT    NOT NULL PRIMARY KEY CHECK (kind IN ('webpush', 'ntfy', 'link')),
   enabled       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
   settings      TEXT    NOT NULL DEFAULT '{}' CHECK (json_valid(settings)),
   updated_at    INTEGER NOT NULL
@@ -217,19 +219,17 @@ CREATE TABLE channel (
 INSERT INTO channel (kind, enabled, settings, updated_at) VALUES
   ('webpush', 1, '{}', 0),
   ('ntfy', 1, '{}', 0),
-  ('expo', 1, '{}', 0),
   ('link', 1, '{}', 0);
--- expo: v6 (phase 8, push.md 12): the store app's native pushes through Expo's push service.
 -- link: v8 (N1, push.md 13): the Android app's own connection to the hub. v8 recreated channel and
--- push_target to widen the kind CHECK; the rows were copied unchanged.
+-- push_target to widen the kind CHECK, v11 to narrow it; the other rows were copied unchanged.
 
--- One place a push goes: a browser subscription, an ntfy topic, an Expo token or a link device.
+-- One place a push goes: a browser subscription, an ntfy topic or a link device.
 CREATE TABLE push_target (
   id            TEXT    NOT NULL PRIMARY KEY,      -- 'pt_' + ULID
   kind          TEXT    NOT NULL REFERENCES channel(kind),
   device_id     TEXT    REFERENCES device(id),     -- NULL: an ntfy topic added by the owner for the hub
   name          TEXT,                               -- "iPhone · Safari", "ntfy.sh/sy-4fQx…", "Pixel 9 · app"
-  endpoint      TEXT    NOT NULL,                   -- webpush: endpoint URL; ntfy: server URL + '/' + topic; expo: token; link: 'link:' + device id
+  endpoint      TEXT    NOT NULL,                   -- webpush: endpoint URL; ntfy: server URL + '/' + topic; link: 'link:' + device id
   keys          TEXT    CHECK (keys IS NULL OR json_valid(keys)),     -- webpush and link: {"p256dh": "…", "auth": "…"} base64url
   secret        TEXT,                               -- ntfy access token; never returned by the API
   prefs         TEXT    CHECK (prefs IS NULL OR json_valid(prefs)),   -- only for targets without a device
@@ -241,12 +241,9 @@ CREATE TABLE push_target (
   last_error_at INTEGER,
   fail_count    INTEGER NOT NULL DEFAULT 0,
   gone_at       INTEGER,                            -- push service answered 404/410
-  meta          TEXT    CHECK (meta IS NULL OR json_valid(meta)),     -- expo, link: {"platform", "app_version", "app_build"}
   UNIQUE (kind, endpoint)
 ) STRICT;
 CREATE INDEX push_target_device ON push_target(device_id);
--- meta: v6 (phase 8, push.md 12.7), for expo; link targets (push.md 13.7) use it too. For expo,
--- endpoint is the Expo push token; for link it is 'link:' + device id (one per device).
 
 ---------------------------------------------------------------------------- activity
 
@@ -513,15 +510,13 @@ CREATE TABLE delivery (
   http_status   INTEGER,
   last_error    TEXT,
   created_at    INTEGER NOT NULL,
-  updated_at    INTEGER NOT NULL, ticket TEXT, receipt_at INTEGER, delivered_at INTEGER,
+  updated_at    INTEGER NOT NULL,
+  delivered_at  INTEGER,                            -- link only: when the phone acked the frame that carried it
   UNIQUE (alert_id, target_id, fire)
 ) STRICT;
 CREATE INDEX delivery_next ON delivery(next_at) WHERE next_at IS NOT NULL;
 CREATE INDEX delivery_batch ON delivery(batch);
--- ticket, receipt_at: v6 (phase 8, push.md 12.4). ticket: the Expo push ticket id of a sent expo delivery
--- (NULL for other kinds); receipt_at: when its receipt was read (or given up after 24 h).
--- delivered_at: v8 (N1, push.md 13.4). link only: when the phone acked the frame that carried it.
-CREATE INDEX delivery_ticket_open ON delivery(created_at) WHERE ticket IS NOT NULL AND receipt_at IS NULL;
+-- delivered_at: v8 (N1, push.md 13.4); v11 recreated delivery without its expo columns.
 
 -- One remote the hub pulls over SSH (machines.md 3.4).
 CREATE TABLE pull_target (

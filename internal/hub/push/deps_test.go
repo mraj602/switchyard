@@ -62,22 +62,6 @@ func TestDependencyRule(t *testing.T) {
 					t.Errorf("rules must stay pure (only push/model), imports %s", d)
 				}
 			}
-		case "internal/hub/push/expo":
-			// A sender like webpush and ntfy (phases/8.md WP-H): the engine drives it, it
-			// never drives the engine, and it shares no code with the other channels.
-			for _, d := range ds {
-				for _, f := range []string{"engine", "webpush", "ntfy", "rules", "action"} {
-					if d == "internal/hub/push/"+f {
-						t.Errorf("expo must not import push/%s", f)
-					}
-				}
-			}
-		case "internal/hub/push/expotest":
-			// The fake Expo service restates the wire rules itself, so a bug in expo cannot
-			// make the fake agree with it.
-			if len(ds) > 0 {
-				t.Errorf("expotest must import no module package, imports %v", ds)
-			}
 		}
 	}
 }

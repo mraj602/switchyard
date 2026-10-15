@@ -5,7 +5,7 @@ import (
 
 	"github.com/mraj602/switchyard/internal/hub/push/clock"
 	"github.com/mraj602/switchyard/internal/hub/push/engine"
-	"github.com/mraj602/switchyard/internal/hub/push/expo"
+	"github.com/mraj602/switchyard/internal/hub/push/refresh"
 )
 
 // serveHooks are the seams `sy hub serve` takes from its build: the real clock and nothing
@@ -18,13 +18,10 @@ type serveHooks struct {
 	Fake bool
 	// WebPushClient replaces the guarded client of the Web Push sender (tests only).
 	WebPushClient *http.Client
-	// ExpoClient replaces the guarded client of the Expo sender (tests only).
-	ExpoClient *http.Client
 	// Attach is called with the engine once it is built (nil engine with --no-push).
 	Attach func(*engine.Engine)
-	// AttachExpo is called with the Expo receipts poller and widget refresher once they run
-	// (never with --no-push).
-	AttachExpo func(*expo.Receipts, *expo.Refresher)
+	// AttachRefresh is called with the widget refresher once it runs (never with --no-push).
+	AttachRefresh func(*refresh.Refresher)
 	// Close releases what the hooks opened.
 	Close func()
 }

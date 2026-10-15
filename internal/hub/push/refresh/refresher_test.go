@@ -1,19 +1,78 @@
-package expo_test
+package refresh_test
 
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"log"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/mraj602/switchyard/internal/hub/events"
-	"github.com/mraj602/switchyard/internal/hub/push/expo"
+	"github.com/mraj602/switchyard/internal/hub/push/clock"
+	pushlink "github.com/mraj602/switchyard/internal/hub/push/link"
 	"github.com/mraj602/switchyard/internal/hub/push/model"
+	"github.com/mraj602/switchyard/internal/hub/push/refresh"
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
+
+var gNow = time.Date(2026, 10, 12, 12, 0, 0, 0, time.UTC)
+
+type rig struct {
+	t   *testing.T
+	ctx context.Context
+	st  *store.Store
+	clk *clock.Fake
+}
+
+func newRig(t *testing.T) *rig {
+	t.Helper()
+	clk := clock.NewFake(gNow)
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "hub.db"), store.Options{Now: clk.Now, NoBackupBeforeMigrate: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	return &rig{t: t, ctx: context.Background(), st: st, clk: clk}
+}
+
+func (r *rig) exec(q string, args ...any) {
+	r.t.Helper()
+	if err := r.st.Write(r.ctx, func(tx *store.Tx) error { _, err := tx.ExecContext(r.ctx, q, args...); return err }); err != nil {
+		r.t.Fatal(err)
+	}
+}
+
+// device adds a phone device with prefs (JSON or "").
+func (r *rig) device(id, prefs string) {
+	r.t.Helper()
+	var p any
+	if prefs != "" {
+		p = prefs
+	}
+	r.exec(`INSERT INTO device (id, kind, name, token_hash, token_hint, scopes, created_at, created_by, prefs)
+		VALUES (?, 'phone', ?, randomblob(32), 'h', '["read","push"]', 1, 'test', ?)`, id, id, p)
+}
+
+// target makes the device's link target, as pairing does.
+func (r *rig) target(device string) model.Target {
+	r.t.Helper()
+	id := "pt_" + device
+	err := r.st.Write(r.ctx, func(tx *store.Tx) error {
+		return tx.UpsertLinkTarget(id, device, device+" · app", json.RawMessage(`{"p256dh":"p","auth":"a"}`), tx.NowMS())
+	})
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	tg, err := r.st.TargetByID(r.ctx, id)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	return tg
+}
 
 // recSender records refresh sends and answers scripted results (default sent).
 type recSender struct {
@@ -29,7 +88,7 @@ type recSent struct {
 	Msg    model.Message
 }
 
-func (s *recSender) Kind() string { return model.KindExpo }
+func (s *recSender) Kind() string { return model.KindLink }
 
 func (s *recSender) Send(_ context.Context, t model.Target, m model.Message) model.Result {
 	s.mu.Lock()
@@ -40,7 +99,7 @@ func (s *recSender) Send(_ context.Context, t model.Target, m model.Message) mod
 		s.plan = s.plan[1:]
 		return r
 	}
-	return model.Result{Outcome: model.OutcomeSent, HTTPStatus: 200, Ref: "t"}
+	return model.Result{Outcome: model.OutcomeSent}
 }
 
 func (s *recSender) script(rs ...model.Result) {
@@ -59,7 +118,7 @@ type refreshRig struct {
 	*rig
 	broker *events.Broker
 	fs     *recSender
-	rf     *expo.Refresher
+	rf     *refresh.Refresher
 	tgt    model.Target
 	logs   *bytes.Buffer
 	t0     time.Time
@@ -71,8 +130,8 @@ func newRefreshRig(t *testing.T, sender model.Sender) *refreshRig {
 	h := &refreshRig{rig: r, broker: events.New(r.clk.Now), fs: &recSender{clk: r.clk.Now}, logs: &bytes.Buffer{}, t0: r.clk.Now()}
 	r.device("dev_w", `{"widgets": true}`)
 	r.device("dev_off", `{"widgets": false}`)
-	h.tgt = r.target("dev_w", "ExponentPushToken[wwwwwwwwwwww]")
-	r.target("dev_off", "ExponentPushToken[oooooooooooo]")
+	h.tgt = r.target("dev_w")
+	r.target("dev_off")
 	r.exec(`INSERT INTO account (uuid, first_seen, last_seen) VALUES ('acc', 1, 1)`)
 	r.exec(`INSERT INTO org (uuid, first_seen, last_seen) VALUES ('org', 1, 1)`)
 	r.exec(`INSERT INTO seat (id, account_uuid, org_uuid, created_at) VALUES ('seat_a', 'acc', 'org', 1)`)
@@ -85,7 +144,7 @@ func newRefreshRig(t *testing.T, sender model.Sender) *refreshRig {
 	if sender == nil {
 		sender = h.fs
 	}
-	h.rf = expo.NewRefresher(expo.RefresherOptions{Store: r.st, Sender: sender, Broker: h.broker, Clock: r.clk,
+	h.rf = refresh.NewRefresher(refresh.RefresherOptions{Store: r.st, Sender: sender, Broker: h.broker, Clock: r.clk,
 		Log: log.New(h.logs, "", 0)})
 	h.rf.Start()
 	t.Cleanup(h.rf.Stop)
@@ -145,7 +204,7 @@ func TestRefresherDebounceDigestAndMinimum(t *testing.T) {
 	got := h.expect(1)
 	p := got[0].Msg.Payload
 	if got[0].Target != h.tgt.ID || p.Type != model.TypeRefresh || p.NeedsYou != 1 || p.V != 1 ||
-		p.TS != model.Time(h.t0.Add(time.Hour+10*time.Second).UnixMilli()) || got[0].Msg.TTL != expo.RefreshTTL {
+		p.TS != model.Time(h.t0.Add(time.Hour+10*time.Second).UnixMilli()) || len(got[0].Msg.Data) == 0 {
 		t.Fatalf("%+v", got[0])
 	}
 
@@ -184,8 +243,8 @@ func TestRefresherDebounceDigestAndMinimum(t *testing.T) {
 
 func TestRefresherResetAndSetting(t *testing.T) {
 	h := newRefreshRig(t, nil)
-	// expo_refresh_min 30.
-	if err := h.st.PutPushSetting(h.ctx, store.AlertKeyPushSettings, []byte(`{"expo_refresh_min": 30}`)); err != nil {
+	// refresh_min 30.
+	if err := h.st.PutPushSetting(h.ctx, store.AlertKeyPushSettings, []byte(`{"refresh_min": 30}`)); err != nil {
 		t.Fatal(err)
 	}
 	h.publish("usage")
@@ -207,7 +266,7 @@ func TestRefresherResetAndSetting(t *testing.T) {
 	}
 	// A restart (new refresher, empty digests) sends at most one refresh per target.
 	h.rf.Stop()
-	h.rf = expo.NewRefresher(expo.RefresherOptions{Store: h.st, Sender: h.fs, Broker: h.broker, Clock: h.clk})
+	h.rf = refresh.NewRefresher(refresh.RefresherOptions{Store: h.st, Sender: h.fs, Broker: h.broker, Clock: h.clk})
 	h.rf.Start()
 	t.Cleanup(h.rf.Stop)
 	h.publish("usage")
@@ -233,7 +292,7 @@ func TestRefresherGoneAndFailures(t *testing.T) {
 	h.expect(2)
 	// Gone disables the target; no more refreshes.
 	h.setPct("five_hour", 99)
-	h.fs.script(model.Result{Outcome: model.OutcomeGone, HTTPStatus: 200, Err: "DeviceNotRegistered"})
+	h.fs.script(model.Result{Outcome: model.OutcomeGone, Err: "the device has no link keys or was removed"})
 	h.publish("usage")
 	h.at(31 * time.Minute)
 	h.expect(3)
@@ -265,20 +324,51 @@ func TestRefresherSkipsWhileFrozen(t *testing.T) {
 	h.expect(1)
 }
 
-// TestRefresherThroughFake sends real refresh messages to the fake service, which checks
-// them against push.md 12.2.
-func TestRefresherThroughFake(t *testing.T) {
+// queue records what the link sender enqueues.
+type queue struct {
+	mu  sync.Mutex
+	got []queued
+}
+
+type queued struct {
+	device, typ, tag string
+	body             []byte
+}
+
+func (q *queue) Enqueue(_ context.Context, device, t, tag string, _ time.Duration, body []byte, _ string) (int64, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.got = append(q.got, queued{device, t, tag, append([]byte(nil), body...)})
+	return int64(len(q.got)), nil
+}
+
+// TestRefresherThroughLinkSender sends a real refresh through the link sender: one `refresh`
+// frame for the widgets device carrying the snapshot (link.md 6.4).
+func TestRefresherThroughLinkSender(t *testing.T) {
 	h := newRefreshRig(t, nil)
 	h.rf.Stop()
-	s := expo.New(expo.Options{BaseURL: h.f.URL(), Client: h.f.Client()})
-	h.rf = expo.NewRefresher(expo.RefresherOptions{Store: h.st, Sender: s, Broker: h.broker, Clock: h.clk})
+	q := &queue{}
+	h.rf = refresh.NewRefresher(refresh.RefresherOptions{Store: h.st, Sender: pushlink.New(q), Broker: h.broker, Clock: h.clk})
 	h.rf.Start()
 	t.Cleanup(h.rf.Stop)
 	h.publish("session")
 	h.at(10 * time.Second)
-	got := h.f.Requests()
-	if len(got) != 1 || got[0].Err != nil || got[0].Msg.To != "ExponentPushToken[wwwwwwwwwwww]" || got[0].Msg.Data["type"] != "refresh" ||
-		got[0].Msg.Data["needs_you"] != float64(1) {
-		t.Fatalf("%+v", got)
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if len(q.got) != 1 || q.got[0].device != "dev_w" || q.got[0].typ != "refresh" || q.got[0].tag != "refresh" {
+		t.Fatalf("%+v", q.got)
+	}
+	var snap struct {
+		V        int `json:"v"`
+		NeedsYou int `json:"needs_you"`
+		Seats    []struct {
+			Seat    string  `json:"seat"`
+			Window  string  `json:"window"`
+			UsedPct float64 `json:"used_pct"`
+		} `json:"seats"`
+	}
+	if err := json.Unmarshal(q.got[0].body, &snap); err != nil || snap.V != 1 || snap.NeedsYou != 1 || len(snap.Seats) != 2 ||
+		snap.Seats[0].Seat != "seat_a" || snap.Seats[0].Window != "five_hour" || snap.Seats[0].UsedPct != 62 {
+		t.Fatalf("%s %v", q.got[0].body, err)
 	}
 }

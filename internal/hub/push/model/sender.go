@@ -2,10 +2,10 @@ package model
 
 import "context"
 
-// Sender is implemented by the webpush, ntfy and expo packages (and by fakes in tests). Send
+// Sender is implemented by the webpush, ntfy and link packages (and by fakes in tests). Send
 // must not retry, must honour ctx, and must never put the message text into Result.Err.
 type Sender interface {
-	Kind() string // KindWebPush, KindNtfy or KindExpo
+	Kind() string // KindWebPush, KindNtfy or KindLink
 	Send(ctx context.Context, t Target, m Message) Result
 }
 

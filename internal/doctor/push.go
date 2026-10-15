@@ -61,90 +61,12 @@ func checkPush(ctx context.Context, rep *Report, o Options) {
 		rep.add(Check{Name: "push", Level: Warn, Detail: "cannot read the push settings: " + err.Error(),
 			Fix: "check " + path + " is readable and not locked"})
 	}
-	if ver.Int64 >= 6 {
-		if err := expoChecks(ctx, rep, db, o.now()); err != nil {
-			rep.add(Check{Name: "push expo", Level: Warn, Detail: "cannot read the expo channel: " + err.Error(),
-				Fix: "check " + path + " is readable and not locked"})
-		}
-	}
 	if ver.Int64 >= 4 {
 		if err := pullChecks(ctx, rep, db, o); err != nil {
 			rep.add(Check{Name: "pull", Level: Warn, Detail: "cannot read the pull targets: " + err.Error(),
 				Fix: "check " + path + " is readable and not locked"})
 		}
 	}
-}
-
-// Names copied from internal/hub/store (expo.go) and the expo receipts poller (push.md 12.4).
-const (
-	secretExpoAccessToken = "expo_access_token"
-	expoTicketStale       = time.Hour // receipts are read 15 min after a send, every 5 min
-)
-
-// expoChecks is the `push expo` line (phases/8.md wave 2): the channel switch, the live app
-// targets, whether an Expo access token is set, the newest receipt or send error of an app
-// target, and a warning when tickets older than an hour still have no receipt (the receipts
-// poller is not running, or Expo cannot be reached).
-func expoChecks(ctx context.Context, rep *Report, db *sql.DB, now time.Time) error {
-	var enabled sql.NullBool
-	if err := db.QueryRowContext(ctx, `SELECT enabled FROM channel WHERE kind = 'expo'`).Scan(&enabled); err != nil && err != sql.ErrNoRows {
-		return err
-	}
-	var tokens, live, stale int
-	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM hub_secret WHERE key = ?`, secretExpoAccessToken).Scan(&tokens); err != nil {
-		return err
-	}
-	if err := db.QueryRowContext(ctx, `
-SELECT count(*) FROM push_target t JOIN device d ON d.id = t.device_id
-WHERE t.kind = 'expo' AND t.enabled = 1 AND t.gone_at IS NULL
-  AND d.revoked_at IS NULL AND (d.expires_at IS NULL OR d.expires_at > ?)`, now.UnixMilli()).Scan(&live); err != nil {
-		return err
-	}
-	if err := db.QueryRowContext(ctx, `
-SELECT count(*) FROM delivery WHERE ticket IS NOT NULL AND receipt_at IS NULL AND updated_at <= ?`,
-		now.Add(-expoTicketStale).UnixMilli()).Scan(&stale); err != nil {
-		return err
-	}
-	var errText sql.NullString
-	var errAt sql.NullInt64
-	if err := db.QueryRowContext(ctx, `
-SELECT last_error, last_error_at FROM push_target
-WHERE kind = 'expo' AND last_error IS NOT NULL AND last_error_at IS NOT NULL
-ORDER BY last_error_at DESC LIMIT 1`).Scan(&errText, &errAt); err != nil && err != sql.ErrNoRows {
-		return err
-	}
-
-	if !enabled.Valid || !enabled.Bool {
-		if live == 0 {
-			rep.add(Check{Name: "push expo", Level: OK, Detail: "off (the phone app gets no pushes)"})
-			return nil
-		}
-		rep.add(Check{Name: "push expo", Level: Warn, Detail: fmt.Sprintf("off, with %d app target(s) waiting", live),
-			Fix: "turn the App channel on in the board: Settings, Channels"})
-		return nil
-	}
-	token := "no access token"
-	if tokens > 0 {
-		token = "access token set"
-	}
-	detail := fmt.Sprintf("on, %d app target(s), %s", live, token)
-	switch {
-	case stale > 0:
-		rep.add(Check{Name: "push expo", Level: Warn,
-			Detail: fmt.Sprintf("%s; %d push ticket(s) older than 1 h have no receipt", detail, stale),
-			Fix:    "keep `sy hub serve` running and allow outbound HTTPS to exp.host (deploy/README)"})
-	case errAt.Valid && now.Sub(time.UnixMilli(errAt.Int64)) < pushErrorWindow:
-		fix := "check the app's push setup (phone/README, push credentials in EAS)"
-		if strings.Contains(errText.String, "access token") {
-			fix = "set the Expo access token in the board: Settings, Channels, App"
-		}
-		rep.add(Check{Name: "push expo", Level: Warn,
-			Detail: fmt.Sprintf("%s; last error %s ago: %s", detail, roundAge(now.Sub(time.UnixMilli(errAt.Int64))), trimErr(errText.String, 100)),
-			Fix:    fix})
-	default:
-		rep.add(Check{Name: "push expo", Level: OK, Detail: detail})
-	}
-	return nil
 }
 
 func openReadOnly(path string) (*sql.DB, error) {
