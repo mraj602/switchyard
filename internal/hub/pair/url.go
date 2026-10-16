@@ -17,12 +17,19 @@ var ErrNoURL = errors.New("pass --url https://<your hub address> (the address yo
 
 // ErrNeedsHTTPS is returned (wrapped, with the fix for that address) for phone, browser and
 // owner links over plain http.
-var ErrNeedsHTTPS = errors.New("a phone needs an https address (service workers, install and Web Push need a secure context)")
+var ErrNeedsHTTPS = errors.New("a phone needs the hub's https address (service workers, install and Web Push need a secure context)")
 
-// needsHTTPS is ErrNeedsHTTPS with the `tailscale serve` command for the hub's own http
-// address: its port (not a fixed 8787), run on the hub itself.
+// needsHTTPS is ErrNeedsHTTPS for the plain http address in use: it says what a phone needs,
+// the address that was used, the two ways out (open the board at the hub's https address, or
+// set one) and `tailscale serve` only as one option, with the hub's own port (not a fixed
+// 8787). A loopback address can never be reached by a phone.
 func needsHTTPS(httpURL string) error {
-	return fmt.Errorf("%w: run `%s` on the hub and use its https address", ErrNeedsHTTPS, service.ServeHintFor(httpURL))
+	msg := "but the address in use is " + httpURL + "."
+	if u, err := url.Parse(httpURL); err == nil && loopbackHost(u.Hostname()) {
+		msg += " A loopback address can never be reached by a phone."
+	}
+	msg += " Open the board at the hub's https address, or " + service.HTTPSFixFor(httpURL) + "."
+	return fmt.Errorf("%w, %s", ErrNeedsHTTPS, msg)
 }
 
 // ResolveURL picks the hub's public address in the order of pairing.md 2.3: the explicit

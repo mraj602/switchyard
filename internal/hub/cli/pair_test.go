@@ -138,12 +138,14 @@ func TestHubPairErrorsAndUsage(t *testing.T) {
 	}
 	// http for a phone: refused with the fix, allowed with --insecure (and says what is lost).
 	err = Pair([]string{"--db", db, "--kind", "phone", "--url", "http://hub.example.ts.net:8787"}, &out, &errb)
-	if err == nil || !strings.Contains(err.Error(), "tailscale serve --bg 8787") {
+	if err == nil || !strings.Contains(err.Error(), "tailscale serve --bg 8787") || !strings.Contains(err.Error(), "sy hub serve --public-url https://") {
 		t.Errorf("http phone: %v", err)
 	}
 	out.Reset()
 	if err := Pair([]string{"--db", db, "--kind", "phone", "--url", "http://hub.example.ts.net:8787", "--insecure"}, &out, &errb); err != nil ||
-		!strings.Contains(out.String(), "cannot be installed or receive pushes") {
+		!strings.Contains(out.String(), "cannot be installed or receive pushes") ||
+		!strings.Contains(out.String(), "sy hub serve --public-url https://<hub address>") ||
+		!strings.Contains(out.String(), "if your tailnet supports HTTPS certificates") {
 		t.Errorf("--insecure: %v %s", err, out.String())
 	}
 	// Not the hub machine.
