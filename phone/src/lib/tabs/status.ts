@@ -4,7 +4,7 @@
 // inside the tab (the desktop's reader, desktop.md C5). Matched to seats by account uuid, never
 // by email. Claude Code's side comes from the hub (Seat.places, Seat.signed_out). Pure.
 import type { Seat } from '../../contract/api';
-import { seatName } from '../format';
+import { clock, seatName, seatUse } from '../format';
 import type { TabEventAt } from './index';
 
 /** Phone-12 and Settings → Claude tabs: what the account check does, and does not. */
@@ -166,9 +166,14 @@ const uniq = (xs: (string | null | undefined)[]) => [...new Set(xs.filter((x): x
  * machines with a folder logged in to the seat (Seat.places with a slot), and those with a
  * folder that logged out of it and is not also signed in there (Seat.signed_out).
  */
-export function codeLine(seat: Seat): Line {
+function codeMachines(seat: Seat): { inOn: string[]; outOn: string[] } {
   const inOn = uniq((seat.places ?? []).filter((p) => p.slot).map((p) => p.machine_name || p.machine));
   const outOn = uniq((seat.signed_out ?? []).map((p) => p.machine_name || p.machine)).filter((m) => !inOn.includes(m));
+  return { inOn, outOn };
+}
+
+export function codeLine(seat: Seat): Line {
+  const { inOn, outOn } = codeMachines(seat);
   if (!inOn.length && !outOn.length) return { tone: 'muted', parts: [{ t: 'Claude Code: not signed in on any machine' }] };
   const parts: Part[] = [{ t: 'Claude Code: ' }];
   if (inOn.length) parts.push({ t: 'signed in on ' }, ...names(inOn));
@@ -181,4 +186,29 @@ export function fixChoices(v: PhoneTab, profiles: string[] | null): { signOut: t
   if (v.kind === 'stranger') return { signOut: true, use: null };
   if (v.kind !== 'other') return null;
   return { signOut: true, use: profiles && !profiles.includes(v.seat.id) ? v.seat : null };
+}
+
+/**
+ * The one status line of an Accounts row, only when something needs attention, in this order:
+ * the phone tab signed in as another account, a window near its limit (a runaway 5-hour pace, or
+ * either window at 90% or more), Claude Code signed out on a machine. `more` counts the others.
+ */
+export function attention(seat: Seat, tab: PhoneTab, now: number): { line: Line; more: number } | null {
+  const found: Part[][] = [];
+  if (tab.kind === 'other') found.push([{ t: 'Phone tab is signed in as ' }, { t: seatName(tab.seat), b: true }]);
+  else if (tab.kind === 'stranger') found.push([{ t: 'Phone tab is signed in as an account no seat has' }]);
+  const u = seatUse(seat, now);
+  if (u) {
+    const full = u.fiveW?.pace?.full_at;
+    if (u.five >= 90 || (u.fiveW?.pace?.band === 'runaway' && u.five > 0)) {
+      found.push([{ t: full ? `Near the 5-hour limit: full by ${clock(full, now)}` : 'Near the 5-hour limit' }]);
+    }
+    if (u.seven >= 90) {
+      found.push([{ t: `7-day limit nearly used${u.sevenW?.resets_at ? `, resets ${clock(u.sevenW.resets_at, now)}` : ''}` }]);
+    }
+  }
+  const { outOn } = codeMachines(seat);
+  if (outOn.length) found.push([{ t: 'Claude Code signed out on ' }, ...names(outOn)]);
+  const first = found[0];
+  return first ? { line: { tone: 'warn', parts: first }, more: found.length - 1 } : null;
 }

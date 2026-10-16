@@ -1,7 +1,7 @@
 // Screen tests on the devserver fixtures (phases/8.md WP-S accept list). The hub API is a fake
 // (test/screen-harness.tsx); fetch stays off.
 import { Alert as RNAlert, Linking } from 'react-native';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import AccountsScreen from '../src/components/screens/AccountsScreen';
 import AlertRedirectScreen from '../src/components/screens/AlertRedirectScreen';
 import AlertsScreen from '../src/components/screens/AlertsScreen';
@@ -213,23 +213,40 @@ describe('Session', () => {
 });
 
 describe('Accounts', () => {
-  it('names the account with the most room', async () => {
+  it('names the account with the most room, with both windows', async () => {
     await show(<AccountsScreen />);
     const best = mostRoom(fx.accounts.accounts as never, NOW);
     expect(best).not.toBeNull();
-    expect(screen.getByText(new RegExp(`^Most room right now: ${best!.seat.label} \\(\\d+% of 5h`))).toBeTruthy();
+    expect(screen.getByTestId('most-room')).toHaveTextContent(new RegExp(`^Most room right now: ${best!.seat.label} \\(5 h \\d+% · 7 d \\d+%\\)$`));
   });
 
-  it('shows one card per visible account with its windows', async () => {
-    await show(<AccountsScreen seat="seat_work" />);
+  it('shows one compact row per account, every window only after a tap', async () => {
+    await show(<AccountsScreen />);
     for (const s of fx.accounts.accounts.filter((x) => !x.hidden)) expect(screen.getByTestId(`seat-${s.id}`)).toBeTruthy();
-    expect(screen.getAllByText('5-hour').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/^resets in /).length).toBeGreaterThan(0);
+    expect(screen.queryByText('5-hour')).toBeNull();
+    expect(screen.queryByText(/^resets in /)).toBeNull();
+    expect(screen.getByText('The bar shows the tighter of the 5 h and 7 d limits. Tap an account for everything else.')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('row-seat_work'));
+    expect(within(screen.getByTestId('detail-seat_work')).getAllByText('5-hour').length).toBeGreaterThan(0);
+    expect(within(screen.getByTestId('detail-seat_work')).getAllByText(/^resets in /).length).toBeGreaterThan(0);
+    await fireEvent.press(screen.getByTestId('row-seat_work'));
+    expect(screen.queryByTestId('detail-seat_work')).toBeNull();
+  });
+
+  it('opens the account asked for, and Expand all / Collapse all toggles every row', async () => {
+    await show(<AccountsScreen seat="seat_work" />);
+    expect(screen.getByTestId('detail-seat_work')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Expand all'));
+    const ids = fx.accounts.accounts.filter((x) => !x.hidden).map((x) => x.id);
+    for (const id of ids) expect(screen.getByTestId(`detail-${id}`)).toBeTruthy();
+    await fireEvent.press(screen.getByText('Collapse all'));
+    for (const id of ids) expect(screen.queryByTestId(`detail-${id}`)).toBeNull();
   });
 
   it('offers the Lock Screen countdown only when the app core says a card qualifies', async () => {
     const start = jest.fn(async () => undefined);
     await show(<AccountsScreen />, { api: { countdown: { can: (id) => id === 'seat_work', start } } });
+    await fireEvent.press(screen.getByText('Expand all'));
     expect(screen.getAllByText('Count down on Lock Screen')).toHaveLength(1);
     await fireEvent.press(screen.getByTestId('countdown-seat_work'));
     expect(start).toHaveBeenCalledWith('seat_work');
