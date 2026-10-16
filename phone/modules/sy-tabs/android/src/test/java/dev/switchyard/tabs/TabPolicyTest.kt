@@ -77,4 +77,112 @@ class TabPolicyTest {
     assertFalse(TabPolicy.allowedHost("xclaude.ai"))
     assertFalse(TabPolicy.allowedHost(""))
   }
+
+  // ---- P17.7: moved profiles
+
+  private val b = "seat_01JA2W5N0G8H3Q7S2V6X9Y1Z4M"
+  private val c = "seat_01JA2W5N0G8H3Q7S2V6X9Y1Z4N"
+
+  @Test fun aSecondProfileOfASeatCarriesItsSeat() {
+    assertEquals(seat, TabPolicy.seatOf("sy-tab-$seat.1"))
+    assertEquals(seat, TabPolicy.seatOf("sy-tab-$seat.12"))
+    for (bad in listOf("sy-tab-$seat.0", "sy-tab-$seat.", "sy-tab-$seat.1000", "sy-tab-$seat.x", "sy-tab-$seat.1.2")) {
+      assertNull(bad, TabPolicy.seatOf(bad))
+    }
+  }
+
+  @Test fun aMovedProfileBelongsToItsNewSeat() {
+    val moves = mapOf("sy-tab-$seat" to b)
+    assertEquals(b, TabPolicy.ownerOf("sy-tab-$seat", moves))
+    assertEquals(seat, TabPolicy.ownerOf("sy-tab-$seat", emptyMap()))
+    assertNull(TabPolicy.ownerOf("Default", mapOf("Default" to b)))
+    assertEquals(listOf(b), TabPolicy.listed(listOf("sy-tab-$seat", "Default"), emptySet(), moves))
+  }
+
+  @Test fun moveGivesTheProfileToASeatWithoutOne() {
+    val existing = listOf("sy-tab-$seat")
+    val (moves, err) = TabPolicy.move(seat, b, existing, emptyMap())
+    assertNull(err)
+    assertEquals(mapOf("sy-tab-$seat" to b), moves)
+    // The seat it came from now gets a fresh name, never the one b owns.
+    assertEquals("sy-tab-$seat.1", TabPolicy.profileFor(seat, existing, moves!!))
+    assertEquals("sy-tab-$seat", TabPolicy.profileFor(b, existing, moves))
+    // Moving it back drops the entry.
+    val (back, err2) = TabPolicy.move(b, seat, existing, moves)
+    assertNull(err2)
+    assertEquals(emptyMap<String, String>(), back)
+  }
+
+  @Test fun moveIsRefusedWhenTheOtherSeatHasATabOrThereIsNone() {
+    val existing = listOf("sy-tab-$seat", "sy-tab-$b")
+    assertEquals(TabPolicy.MoveError.TAKEN, TabPolicy.move(seat, b, existing, emptyMap()).second)
+    assertEquals(TabPolicy.MoveError.NONE, TabPolicy.move(c, b, existing, emptyMap()).second)
+    assertEquals(TabPolicy.MoveError.SEAT, TabPolicy.move(seat, "me@example.com", existing, emptyMap()).second)
+    assertEquals(TabPolicy.MoveError.SEAT, TabPolicy.move(seat, seat, existing, emptyMap()).second)
+  }
+
+  @Test fun profileForPrefersTheProfileTheSeatHas() {
+    val moves = mapOf("sy-tab-$seat" to b)
+    // seat's own name went to b; seat signed in again under .1; then b's tab was signed out.
+    assertEquals("sy-tab-$seat.1", TabPolicy.profileFor(seat, listOf("sy-tab-$seat.1"), emptyMap()))
+    assertEquals("sy-tab-$seat.1", TabPolicy.profileFor(seat, listOf("sy-tab-$seat", "sy-tab-$seat.1"), moves))
+    assertEquals("sy-tab-$c", TabPolicy.profileFor(c, emptyList(), moves))
+    assertNull(TabPolicy.profileFor("me@example.com", emptyList(), moves))
+  }
+
+  @Test fun movesRoundTripAndDropBadEntries() {
+    val m = mapOf("sy-tab-$seat" to b, "sy-tab-$c.2" to seat)
+    assertEquals(m, TabPolicy.decodeMoves(TabPolicy.encodeMoves(m)))
+    assertEquals(emptyMap<String, String>(), TabPolicy.decodeMoves(setOf("Default=$b", "sy-tab-$seat=me@example.com", "=x", "junk")))
+    assertEquals(emptyMap<String, String>(), TabPolicy.decodeMoves(null))
+  }
+
+  // ---- P17.7: the account check
+
+  @Test fun readableIsASignedInClaudePage() {
+    for (u in listOf("https://claude.ai/", "https://claude.ai/new", "https://claude.ai/chat/x", "https://www.claude.ai/x", "https://claude.ai/loginx")) {
+      assertTrue(u, TabPolicy.readable(u))
+    }
+    for (u in listOf(
+      "https://claude.ai/login", "https://claude.ai/login/", "https://claude.ai/login?x=1", "https://claude.ai/logout",
+      "https://claude.ai/login/magic", "https://console.anthropic.com/", "http://claude.ai/", "https://claude.ai:8443/",
+      "https://claude.ai.evil.com/", null, "", "about:blank",
+    )) {
+      assertFalse(u.toString(), TabPolicy.readable(u))
+    }
+  }
+
+  @Test fun theCheckRunsOnClaudeAiItselfOnly() {
+    assertTrue(TabPolicy.checkable("https://claude.ai/new"))
+    assertTrue(TabPolicy.checkable("https://CLAUDE.AI./new"))
+    assertFalse(TabPolicy.checkable("https://www.claude.ai/new"))
+    assertFalse(TabPolicy.checkable("https://claude.ai/login"))
+  }
+
+  @Test fun theScriptAsksForTheAccountOnly() {
+    val n = "0123456789abcdef"
+    val s = TabPolicy.accountStart(n)
+    assertTrue(s.contains("fetch('/api/account'"))
+    assertEquals(1, Regex("fetch\\(").findAll(s).count())
+    for (bad in listOf("cookie", "document", "localStorage", "sessionStorage", "indexedDB", "innerHTML", "postMessage", "XMLHttpRequest")) {
+      assertFalse(bad, s.contains(bad, ignoreCase = true))
+      assertFalse(bad, TabPolicy.accountPoll(n).contains(bad, ignoreCase = true))
+    }
+    assertTrue(s.contains("__sy_acct_$n"))
+  }
+
+  @Test(expected = IllegalArgumentException::class)
+  fun theNonceIsHexOnly() {
+    TabPolicy.accountStart("x';alert(1);'")
+  }
+
+  @Test fun parseAccountTakesAUuidOrAStatus() {
+    val u = "3f1c0000-0000-4000-8000-000000000001"
+    assertEquals(TabPolicy.Account(u, null), TabPolicy.parseAccount("\"u:$u\""))
+    assertEquals(TabPolicy.Account(null, 401), TabPolicy.parseAccount("\"s:401\""))
+    assertEquals(TabPolicy.Account(null, 0), TabPolicy.parseAccount("\"s:0\""))
+    for (bad in listOf(null, "null", "\"\"", "\"u:$u", "u:$u", "\"u:me@example.com\"", "\"s:4011\"", "\"u:${u.uppercase()}\"", "{\"uuid\":\"$u\"}")) {
+      assertNull(bad, TabPolicy.parseAccount(bad))
+    }
+  }
 }

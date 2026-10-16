@@ -2099,7 +2099,7 @@ components:
             slot's open slot_login period has no seat and the period just before it had this one
             (identity.md 5.2). A folder that moved to another login is that seat's place instead.
             Machine names and folders only, no email. The phone's Accounts card says "signed out
-            on <machine>" from it (phone.md P17.6).
+            on <machine>" from it (phone.md P17.7).
           items:
             type: object
             required: [machine, machine_name, slot, since]

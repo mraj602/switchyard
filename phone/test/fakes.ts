@@ -487,6 +487,14 @@ export const syTabs = {
     tabsState.profiles = tabsState.profiles.filter((x) => x !== seat);
     return had;
   },
+  async moveProfile(from: string, to: string) {
+    rec('tabs.moveProfile', [from, to]);
+    if (tabsState.inUse.has(from)) throw codedError('ERR_SY_TABS_IN_USE', 'sy-tabs: close the tab first');
+    if (!tabsState.profiles.includes(from)) throw codedError('ERR_SY_TABS_NONE', 'sy-tabs: that seat has no tab');
+    if (tabsState.profiles.includes(to)) throw codedError('ERR_SY_TABS_TAKEN', 'sy-tabs: the other seat has a tab already');
+    tabsState.profiles = [...tabsState.profiles.filter((x) => x !== from), to];
+    return true;
+  },
   TabView(props: TabViewPropsT) {
     tabsState.view = props;
     if (!tabsState.profiles.includes(props.seat)) tabsState.profiles.push(props.seat);

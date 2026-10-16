@@ -1,14 +1,15 @@
 // A claude.ai account tab (phone.md P17.3): the seat's own WebView profile, the sign-in note,
 // Open in browser and Close, and the fallback strip when claude.ai does not load here (P17.4).
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TabView, type TabEvent } from '../../../modules/sy-tabs';
 import { seatIndex, seatName } from '../../lib/format';
-import { assessTab, claudeUrl, SIGN_IN_NOTE, TAB_HOME, validSeat, verdictText, type TabEventAt } from '../../lib/tabs';
+import { assessTab, claudeUrl, nextMemo, SIGN_IN_NOTE, TAB_HOME, validSeat, verdictText, type TabEventAt } from '../../lib/tabs';
 import { useHubApi } from '../hub-api';
 import { openRemote } from '../links';
+import { profilesChanged, updateMemo } from '../tab-memo';
 import { useTabsSupported } from '../tabs';
 import { useTheme } from '../theme';
 import { Btn, Calm, Dot, Muted, s, useToast } from '../ui';
@@ -37,12 +38,22 @@ export default function ClaudeTabScreen({ seat, url: asked }: { seat: string; ur
   const name = known ? seatName(known.seat) : 'Account';
   const browser = () => void openRemote(current).then((ok) => ok || toast.show('Could not open the link'), () => toast.show('Could not open the link'));
 
+  const first = useRef(true);
   const onTabState = ({ nativeEvent: e }: { nativeEvent: TabEvent }) => {
     if (e.state === 'download') toast.show('Downloads are blocked in Claude tabs. Use Open in browser.');
     if (e.state === 'external') toast.show('Opened in the browser');
-    if (e.url && (e.state === 'loading' || e.state === 'loaded') && claudeUrl(e.url)) setCurrent(e.url);
-    setEvents((xs) => [...xs.slice(-30), { ...e, at: Date.now() }]);
-    setNow(Date.now());
+    if (e.url && (e.state === 'loading' || e.state === 'loaded' || e.state === 'url') && claudeUrl(e.url)) setCurrent(e.url);
+    const at = Date.now();
+    setEvents((xs) => [...xs.slice(-30), { ...e, at }]);
+    setNow(at);
+    // P17.7: remember signed in or not, and as which account, for the Accounts screen.
+    if (validSeat(seat)) {
+      void updateMemo(seat, (prev) => nextMemo(prev, e, at));
+      if (first.current) {
+        first.current = false;
+        profilesChanged(); // the view made the profile
+      }
+    }
   };
 
   // Until the first page load the WebView is blank: say so with a spinner.

@@ -121,3 +121,9 @@ Notifications travel over the app's own encrypted connection to your hub: no thi
 them. Turn on **Private pushes** in the app's Settings (or the hub default) and pushes say only
 "1 session needs you"; the details load from your hub when you open them. The device token stays
 in the OS keychain and never appears in logs, widgets, pushes or links.
+
+In a claude.ai account tab (Android), Switchyard asks claude.ai only "which account is this?"
+(the account id, as the desktop app does) so Accounts can say whether the tab matches its
+account. It never reads your chats, the page or the tab's cookies, and sends nothing from the
+tab to your hub; what it remembers (signed in or not, the account id, when) stays on the phone
+(`docs/spec/phone.md` P17.7).

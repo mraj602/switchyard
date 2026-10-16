@@ -663,8 +663,9 @@ The app is sideloaded (no store), so it updates itself, with your confirmation e
 
 Android only (`minSdkVersion` 31). One claude.ai web tab per seat, each its
 own WebView profile, so every account stays signed in at once. **Open in Claude** opens a
-session's Remote Control link in its seat's tab. Switchyard never reads the tabs' cookies,
-storage or usage: the tab is a plain browser view the person signs in to.
+session's Remote Control link in its seat's tab. Switchyard asks claude.ai only for the
+account id in the tab, as the desktop does (desktop.md C5, P17.7); it never reads the tabs'
+chats, page content, cookies, storage or usage, and sends nothing from them to the hub.
 
 ### P17.1 The `sy-tabs` module
 
@@ -677,14 +678,21 @@ dependency, `androidx.webkit:webkit` (the profile API).
 | `isSupported(): Promise<boolean>` | `WebViewFeature.isFeatureSupported(MULTI_PROFILE)` (WebView 110 or later) |
 | `listProfiles(): Promise<string[]>` | The seat ids of `ProfileStore.getAllProfileNames()` that are tab profiles |
 | `deleteProfile(seat): Promise<boolean>` | `ProfileStore.deleteProfile(name)`: cookies, storage and cache of that tab. Rejects `ERR_SY_TABS_IN_USE` while the tab is open, `ERR_SY_TABS_SEAT` on a bad seat id. WebView keeps the profile of a tab that was open in this process "in use" even after the tab is closed and its WebView destroyed, so `deleteProfile` then wipes its cookies and storage, hides it from `listProfiles` and deletes it for real at the next app start (before any WebView exists); opening the tab again cancels that |
+| `moveProfile(from, to): Promise<boolean>` | P17.7 "Use this tab for … instead": the profile `from` has becomes `to`'s (a `moves` entry in the module's preferences; the profile, its sign-in and cookies are not touched, read or copied). Rejects `ERR_SY_TABS_TAKEN` when `to` has a tab, `ERR_SY_TABS_NONE` when `from` has none, `ERR_SY_TABS_IN_USE` while that tab is open, `ERR_SY_TABS_SEAT` on a bad seat id |
 | `<TabView seat url onTabState>` | A `WebView` bound with `WebViewCompat.setProfile` to the seat's profile (made on first use) before anything loads, then `loadUrl(url)` |
 
 - **Profile name:** `sy-tab-` + the hub seat id (`^seat_[0-9A-HJKMNP-TV-Z]{26}$`), never an
-  email or label. Other names (and `Default`) are never listed or deleted.
-- **`onTabState`** `{state, url?, status?, height?, code?, reason?}`: `loading` (main frame started), `loaded`
+  email or label. Other names (and `Default`) are never listed or deleted. A profile belongs
+  to the seat it was moved to (`moves`), else to the seat its name carries; a seat whose own
+  name was moved away gets `sy-tab-<seat>.<n>` (the first free `n`) for its next tab. Deleting
+  a moved profile drops its `moves` entry.
+- **`onTabState`** `{state, url?, status?, height?, code?, reason?, account?}`: `loading` (main frame started), `loaded`
   (main frame finished, `height` = content height 3 s later), `http` (main-frame HTTP error,
   `status`), `error` (main-frame network error, `code`; or `reason` `unsupported` / `profile` when no tab could be made), `crashed` (renderer gone; the view drops its
-  WebView), `download` (a download was refused), `external` (a link went to the browser).
+  WebView), `download` (a download was refused), `external` (a link went to the browser),
+  `url` (an in-page navigation, `doUpdateVisitedHistory`: claude.ai is a single-page app),
+  `account` (P17.7: `account` = the account uuid claude.ai named, or `status` 401 signed out /
+  0 no answer / another HTTP status).
 - **Lifecycle:** the screen mounts one `TabView` at a time. Cookies are flushed when the view
   is detached and when the app pauses; profiles are on disk in the app's data folder, so they
   survive restarts and updates (P16.3: same package, same key) and go with an uninstall or
@@ -711,11 +719,13 @@ opens in B's tab. **Open claude.ai** on an Accounts card opens the seat's tab at
 - `/tabs/[seat]?url=` (`ClaudeTabScreen`): a header with the account's dot and name,
   **Open in browser** and **Close**, then the `TabView`. A strip says: "Sign in with your email
   and the code claude.ai sends. Google sign-in does not work inside apps."
-- Accounts: **Open claude.ai** on each card when tabs are supported.
+- Accounts: each card says where its login is signed in and offers **Open claude.ai**,
+  **Sign in on this phone** or **Fix this tab** (P17.7).
 - Settings → **Claude tabs**: one row per profile (seat name, or "Removed account" for a seat
   the hub no longer lists) with **Sign out (clear this tab)**, which confirms, then
-  `deleteProfile`. Shown only when supported; otherwise "This phone's WebView cannot keep
-  separate claude.ai sign-ins; links open in the browser."
+  `deleteProfile` (and forgets the tab's memo, P17.7). Shown only when supported; otherwise
+  "This phone's WebView cannot keep separate claude.ai sign-ins; links open in the browser."
+  It carries the privacy note of P17.7.
 
 ### P17.4 Fallback
 
@@ -729,11 +739,14 @@ claude.ai URL through `Linking.openURL`). It does not switch on its own, so a sl
 
 ### P17.5 Security
 
-- No `addJavascriptInterface`, no injected script, no `evaluateJavascript`. JavaScript and DOM
-  storage are on (claude.ai needs them); file and content access, geolocation and mixed content
-  are off; Safe Browsing stays on; `setSupportMultipleWindows(false)`.
+- No `addJavascriptInterface` and no script on page load. The one script is the account
+  check of P17.7 (`evaluateJavascript`, on claude.ai itself only): it asks claude.ai only for
+  the account id in the tab, as the desktop does (desktop.md C5), and never reads chats, the
+  page, cookies or storage. JavaScript and DOM storage are on (claude.ai needs them); file and
+  content access, geolocation and mixed content are off; Safe Browsing stays on;
+  `setSupportMultipleWindows(false)`.
 - Switchyard never calls the profile's `CookieManager.getCookie` or `WebStorage` reads; the
-  module only flushes and deletes.
+  module only flushes, deletes and reassigns (P17.7) profiles.
 - **URL allow-list** (main frame, `shouldOverrideUrlLoading` and the first `loadUrl`):
   `https:` only, host `claude.ai`, `anthropic.com`, `claude.com`,
   `challenges.cloudflare.com` or a subdomain of one (desktop.md C2's list) → in the tab. Any
@@ -751,3 +764,60 @@ claude.ai URL through `Linking.openURL`). It does not switch on its own, so a sl
 - Attachments and file uploads do not work in a tab (no file chooser); use the browser.
 - A refusal that claude.ai serves as a normal page with content cannot be told apart without
   reading the page, which the module never does; **Open in browser** is always in the header.
+- The phone tab line of P17.7 is what the tab showed when it was last open; a sign-out made
+  elsewhere (claude.ai's "log out of all devices") shows only at the next visit.
+
+### P17.7 Which account is signed in where
+
+The same rules as the desktop app (desktop.md C5): matched by the **Anthropic account uuid**,
+never by email.
+
+1. **Signed in or not**, from the tab's URL only: a claude.ai page (or a subdomain) whose path
+   is not `/login` or `/logout` is signed in (the desktop's `isReadableUrl`); claude.ai's login
+   or logout page, or a sign-in hop (`anthropic.com`, `claude.com`), is not. Taken from `loaded`
+   (with content) and `url` events.
+2. **Which account.** On a signed-in page of `claude.ai` itself (once per page load, and when an
+   in-page navigation leaves the login page), the view runs one script with
+   `evaluateJavascript`: a same-origin `GET /api/account` with the tab's own credentials,
+   keeping only `uuid` (`^[0-9a-f-]{36}$`); a redirect to the login page counts as 401. The
+   answer waits in a nonce-named `window` property that the view polls (every 300 ms, up to
+   15 s) and deletes; a new page cancels the check. No organizations call is needed: the seat
+   is matched by its account. Only the uuid or the status leaves the page, as an `account`
+   event. Nothing from it is sent to the hub (the desktop's account read sends nothing either;
+   its usage records are a separate feature the phone does not have).
+3. **Memo.** The tab screen keeps, per seat, `{signed_in, account, at}` from those events in
+   AsyncStorage `sy.tabs.v1` (local, never sent; no cookie, email or page content). An
+   `account` answer wins; 401 means signed out; other statuses change nothing. The Accounts
+   screen reads the memo, so it says the state of every tab without opening one. Chosen over a
+   hidden WebView check when Accounts opens: that would load claude.ai in every profile on each
+   visit, and a WebView that has used a profile keeps it "in use" for the rest of the process,
+   which would turn every later sign-out into the deferred delete of P17.1. The line therefore
+   carries "as of the tab's last visit, <ago>".
+4. **Phone tab line** (design Phone-11) and action:
+
+   | State | Line | Action |
+   | --- | --- | --- |
+   | No profile for the seat | Phone tab: not signed in | **Sign in on this phone** |
+   | Profile, no memo yet | Phone tab: not checked yet. Open it to check. | **Open claude.ai** |
+   | Signed out | Phone tab: not signed in | **Sign in on this phone** |
+   | Signed in, account not read | Phone tab: signed in | **Open claude.ai** |
+   | Account = the seat's | Phone tab: signed in, matches this account | **Open claude.ai** |
+   | Account = another seat's | Phone tab: signed in as **<seat>**, not this account | **Fix this tab** |
+   | Account no seat has | Phone tab: signed in as an account no seat has | **Fix this tab** |
+
+   No line and no action where tabs are not supported.
+5. **Claude Code line**, from the hub (`Seat.places` with a `slot`: signed in; `Seat.signed_out`:
+   a folder that logged out of this seat, api.yaml): "Claude Code: signed in on **mraj602**,
+   **worker** · signed out on **x**" (machine names, each once; a machine where it is also
+   signed in is not listed as signed out), or "Claude Code: not signed in on any machine".
+6. **Fix this tab** (design Phone-12), a bottom sheet: "<seat>'s tab is signed in as <other>",
+   the account-id note, the two rows, then:
+   - **Sign out here and sign in as <seat>**: `deleteProfile(seat)`, forget the memo, open the
+     tab at `https://claude.ai/login`.
+   - **Use this tab for <other> instead**, only when the other seat has no tab on this phone:
+     `moveProfile(seat, other)` and the memo moves with it. Not offered for an account no seat
+     has.
+   - The note: 'Switchyard asks claude.ai only "which account is this?" inside the tab. It never
+     reads your chats or sends the page anywhere.' (also in Settings → Claude tabs).
+7. **Never** typed into a login page, never a cookie read into JS or Kotlin, never page content
+   stored or sent.

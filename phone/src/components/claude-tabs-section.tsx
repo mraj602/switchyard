@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert as RNAlert, Text, View } from 'react-native';
 import * as SyTabs from '../../modules/sy-tabs';
-import { SIGN_IN_NOTE, tabRows } from '../lib/tabs';
+import { SIGN_IN_NOTE, TAB_PRIVACY_NOTE, tabRows } from '../lib/tabs';
 import { useHubApi } from './hub-api';
+import { signOutTab } from './tab-memo';
 import { useTabsSupported } from './tabs';
 import { useTheme } from './theme';
 import { Btn, Card, Muted, Section } from './ui';
@@ -33,7 +34,7 @@ export function ClaudeTabsSection({ toast }: { toast: (m: string) => void }) {
         text: 'Sign out',
         style: 'destructive',
         onPress: () =>
-          void SyTabs.deleteProfile(seat).then(
+          void signOutTab(seat).then(
             () => {
               toast('Signed out');
               load();
@@ -51,6 +52,7 @@ export function ClaudeTabsSection({ toast }: { toast: (m: string) => void }) {
         ) : (
           <>
             <Muted>{`One claude.ai tab per account, each with its own sign-in. Open one from Accounts. ${SIGN_IN_NOTE}`}</Muted>
+            <Muted>{TAB_PRIVACY_NOTE}</Muted>
             {rows.length === 0 ? <Muted>No tabs yet.</Muted> : null}
             {rows.map((r) => (
               <View key={r.seat} testID={`tabrow-${r.seat}`} style={{ gap: 4, marginTop: 6 }}>
