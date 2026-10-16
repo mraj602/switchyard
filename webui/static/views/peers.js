@@ -164,7 +164,7 @@ function bulkBlock(accts, m) {
     blockOff ? h('p', { class: 'muted small', 'data-key': 'block-all-why' }, blockOff) : null);
 }
 
-// "Automated turns per thread" (peers.md 5.1, 6.3): raising widens (owner only), lowering narrows.
+// "Replies between two sessions without you" (peers.md 5.1, 6.3): raising widens (owner only), lowering narrows.
 function turnsBlock(m) {
   const owner = isOwner(), offline = !!store.offline;
   const draft = st.turns === null ? String(m.max_turns) : st.turns;
@@ -172,7 +172,7 @@ function turnsBlock(m) {
   const why = next === null || next === m.max_turns ? '' : whyNot({ widens: turnsWidens(m.max_turns, next), owner, push: canPush(), offline, app: inApp() });
   const input = h('input', {
     type: 'number', inputmode: 'numeric', min: String(TURNS_MIN), max: String(TURNS_MAX), step: '1', value: draft,
-    'data-key': 'max-turns', 'aria-label': 'Automated turns per thread', 'aria-describedby': 'max-turns-help', disabled: st.busy ? true : undefined,
+    'data-key': 'max-turns', 'aria-label': 'Replies between two sessions without you', 'aria-describedby': 'max-turns-help', disabled: st.busy ? true : undefined,
   });
   const apply = h('button', {
     type: 'button', class: 'btn btn-sm', 'data-key': 'max-turns-set', disabled: st.busy || next === null || next === m.max_turns || !!why,
@@ -188,7 +188,7 @@ function turnsBlock(m) {
   });
   input.addEventListener('change', () => { st.turns = input.value; again(); });
   return h('div', { class: 'col', 'data-key': 'peers-turns' },
-    h('label', { class: 'actions' }, h('span', { class: 'strong' }, 'Automated turns per thread:'), input, apply),
+    h('label', { class: 'actions' }, h('span', { class: 'strong' }, 'Replies between two sessions without you:'), input, apply),
     h('p', { class: 'muted small', id: 'max-turns-help' }, TURNS_HELP),
     next === null ? h('p', { class: 'muted small', 'data-key': 'max-turns-why' }, `Use a whole number from ${TURNS_MIN} to ${TURNS_MAX}.`) : null,
     why ? h('p', { class: 'muted small', 'data-key': 'max-turns-why' }, why) : null);

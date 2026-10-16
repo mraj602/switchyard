@@ -344,16 +344,16 @@ there is no endpoint of their own:
 | --- | --- | --- | --- |
 | **Allow all** | `allow` every missing ordered pair of the accounts shown (both ways, ⇄) and `same_account: true` | widening | an owner session only; a non-owner sees it disabled or hidden with "Only the owner can allow pairs." Confirm: "Allow every account to message every other account, both ways?" |
 | **Block all** | `deny` every pair in `allow` and `same_account: false` | narrowing | any paired device (phone included). Confirm: "Stop all peer messages between accounts? Threads in progress stop too." Threads in progress stop because their replies need the opener's pair (5.3, rule 4) |
-| **Automated turns per thread** | `max_turns` | raising widens (owner session), lowering narrows (any paired device) | the hub enforces it like any edit (keys.md 5.2); the field accepts 2 to 500 (5.1), the same bound the hub's `Check` applies |
+| **Replies between two sessions without you** | `max_turns` | raising widens (owner session), lowering narrows (any paired device) | the hub enforces it like any edit (keys.md 5.2); the field accepts 2 to 500 (5.1), the same bound the hub's `Check` applies |
 
 Block all is not the pause switch: it changes the matrix (pairs and same-account stay off until
 someone allows them again), while pause keeps the matrix and stops delivery (11). The phone
 offers Block all and shows the turn limit read-only with its explanation; it never offers Allow
 all or a raise (a phone is never an owner session) and points to "Allow pairs from a computer
-(board, Peers)". The turn-limit explanation: "A thread is one conversation between two
-sessions. After this many messages with no one typing in either session, delivery stops until
-you type in one of them (or Resume thread). This stops two agents replying to each other
-forever."
+(board, Peers)". The turn-limit field is labelled "Replies between two sessions without you" and
+explained: "When two sessions message each other on their own, with no one typing, Switchyard
+stops delivering after this many messages, so two agents cannot keep replying to each other
+forever. Typing in either session (or Resume thread) starts the count again."
 
 The hub accepts a new version, stores it (`matrix_doc`), writes a `peer_audit` row and queues
 a `matrix` frame to every machine with an agent. A machine applies it on receipt (keys.md 5.4
