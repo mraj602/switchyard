@@ -399,7 +399,13 @@ async function orderFlow(page, sizeName) {
   const other = [...want].reverse();
   await page.evaluate(async (ids) => { await fetch('/v1/seats/order', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) }); }, other);
   await waitSide(page, other, 'the sidebar did not follow an order set from another device', 5000);
-  const rings = await page.$$eval('a.ring', (els) => els.map((e) => decodeURIComponent(e.getAttribute('href').split('seat=')[1])));
+  // The rings show at phone width, where there is no sidebar to wait on: wait for them too.
+  const ringIds = () => page.$$eval('a.ring', (els) => els.map((e) => decodeURIComponent(e.getAttribute('href').split('seat=')[1])));
+  await page.waitForFunction((w2) => {
+    const r = [...document.querySelectorAll('a.ring')].map((e) => decodeURIComponent(e.getAttribute('href').split('seat=')[1]));
+    return !r.length || JSON.stringify(r) === JSON.stringify(w2.filter((id) => r.includes(id)));
+  }, { timeout: 5000 }, other).catch(() => {});
+  const rings = await ringIds();
   if (rings.length && !sameList(rings, other.filter((id) => rings.includes(id)))) fail(t(`Now rings ${rings} do not follow ${other}`));
 
   // A refused save puts the order back and says so.
