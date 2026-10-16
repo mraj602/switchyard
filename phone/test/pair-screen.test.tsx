@@ -143,10 +143,20 @@ describe('Pair screen', () => {
     expect(screen.getByText('Allow camera')).toBeTruthy();
   });
 
-  it('shows why the app was unpaired', async () => {
-    const { ui } = renderPair(fakeFetch(() => response(500)), { notice: 'This phone was unpaired on the hub' });
+  it('shows why the app was unpaired, with Scan again', async () => {
+    const { ui } = renderPair(fakeFetch(() => response(500)), { notice: 'This phone was removed from the hub' });
     await render(ui);
-    expect(screen.getByText('This phone was unpaired on the hub')).toBeTruthy();
+    expect(screen.getByText('This phone was removed from the hub')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Scan again'));
+    expect(screen.queryByTestId('notice-card')).toBeNull();
+    expect(screen.getByTestId('camera')).toBeTruthy();
+  });
+
+  it('has no CLI or missing-screen wording', async () => {
+    const { ui } = renderPair(fakeFetch(() => response(500)));
+    await render(ui);
+    expect(screen.queryByText(/sy phone pair/)).toBeNull();
+    expect(screen.getByText(/Remove it any time on the board's Devices page\./)).toBeTruthy();
   });
 
   it('a switchyard:// link shows a pre-filled "Pair with <host>" card and claims only on the tap (P7)', async () => {

@@ -1,6 +1,6 @@
 import { fakeFetch, hangingFetch, manualClock, ORIGIN, response, TOKEN } from '../../../test/hubfake';
 import type { FakeFetch } from '../../../test/hubfake';
-import { createHubClient, flushPendingRevokes, HubError, normalizeOrigin, revokeDevice } from './index';
+import { createHubClient, errorText, flushPendingRevokes, HubError, movedOrigin, normalizeOrigin, OWNER_ONLY, revokeDevice } from './index';
 import type { HubClient } from './index';
 
 const BODY_SECRET = 'LEAKED-BODY-TEXT-sy_p_ZZZ';
@@ -278,4 +278,32 @@ describe('errors never carry the token or a body (hard rule 3)', () => {
       expect(dump).not.toContain('Bearer');
     });
   }
+});
+
+describe('moved hub (machines.md 8.1)', () => {
+  it('movedTo reads /health frozen.moved_to without a token', async () => {
+    const f = fakeFetch(() => response(200, { ok: true, frozen: { since: 't', moved_to: 'https://new.example.ts.net/' } }));
+    expect(await client(f).movedTo()).toBe('https://new.example.ts.net');
+    expect(f.calls[0]!.url).toBe(`${ORIGIN}/health`);
+    expect(f.calls[0]!.init.headers?.Authorization).toBeUndefined();
+  });
+
+  it('is null for a live hub, a frozen one without an address, plain http, itself, junk and errors', async () => {
+    expect(await client(fakeFetch(() => response(200, { ok: true }))).movedTo()).toBeNull();
+    expect(await client(fakeFetch(() => response(200, { frozen: { moved_to: null } }))).movedTo()).toBeNull();
+    expect(await client(fakeFetch(() => response(200, { frozen: { moved_to: 'http://new.example.ts.net' } }))).movedTo()).toBeNull();
+    expect(await client(fakeFetch(() => response(200, { frozen: { moved_to: ORIGIN } }))).movedTo()).toBeNull();
+    expect(await client(fakeFetch(() => response(200, 'not json'))).movedTo()).toBeNull();
+    expect(await client(fakeFetch(() => Promise.reject(new Error('down')))).movedTo()).toBeNull();
+    expect(movedOrigin(42, ORIGIN)).toBeNull();
+    expect(movedOrigin('https://user@evil.example', ORIGIN)).toBeNull();
+    expect(movedOrigin('https://New.Example.com:443/x?y', ORIGIN)).toBe('https://new.example.com');
+  });
+
+  it('errorText maps a 403 to the owner-only sentence and never shows "GET /path"', () => {
+    expect(errorText(new HubError('/v1/peers/matrix', 403, 'forbidden', 'GET /v1/peers/matrix: 403 forbidden'), 'x')).toBe(OWNER_ONLY);
+    expect(OWNER_ONLY).toBe('Only the owner can change this, from a computer.');
+    expect(errorText(new HubError('/v1/peers/matrix', 500, null, 'GET /v1/peers/matrix: 500'), 'Could not load')).toBe('Could not load (the hub answered 500).');
+    expect(errorText(new HubError('/x', null, 'timeout', 'GET /x: timed out'), 'x')).toBe('The hub did not answer in time.');
+  });
 });

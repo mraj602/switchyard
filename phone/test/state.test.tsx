@@ -509,3 +509,56 @@ describe('notification bridge', () => {
     expect(h.fetch.calls).toHaveLength(0);
   });
 });
+
+describe('a hub that moved (machines.md 8.1)', () => {
+  const NEW = 'https://new.example.ts.net';
+  const movedHandler = (meStatus = 200): FakeFetch['handler'] => (url, init) => {
+    if (url === `${ORIGIN}/health`) return response(200, { ok: true, frozen: { since: 't', moved_to: NEW } });
+    if (url === `${NEW}/v1/me`) return meStatus === 200 ? response(200, { device: { id: 'dev_phone', prefs: {} }, owner: false, hub: {} }) : response(meStatus, { code: 'unauthorized' });
+    if (url.startsWith(NEW)) return response(200, url.endsWith('/v1/overview') ? overviewFx : url.includes('/v1/sessions') ? sessionsFx : url.endsWith('/v1/accounts') ? accountsFx : alertsFx);
+    return hubReplies(url, init);
+  };
+
+  it('offers the new address and re-points with the same token when it knows this phone', async () => {
+    const h = await mount({ paired: true, handler: movedHandler() });
+    expect(h.api().moved).toEqual({ to: NEW });
+    let r: string | undefined;
+    await act(async () => {
+      r = await h.api().switchToMoved();
+      await flush(60);
+    });
+    expect(r).toBe('switched');
+    expect(h.api().status).toBe('paired');
+    expect(h.api().hub?.origin).toBe(NEW);
+    expect(h.api().moved).toBeNull();
+    const probe = h.fetch.calls.find((c) => c.url === `${NEW}/v1/me`)!;
+    expect(probe.init.headers?.Authorization).toBe(`Bearer ${TOKEN}`);
+    expect(JSON.parse(h.secureMem.dump()[SECURE_HUB_KEY] ?? '{}')).toMatchObject({ origin: NEW, token: TOKEN });
+  });
+
+  it('falls back to Scan again when the new address rejects the token', async () => {
+    const h = await mount({ paired: true, handler: movedHandler(401) });
+    let r: string | undefined;
+    await act(async () => {
+      r = await h.api().switchToMoved();
+      await flush(60);
+    });
+    expect(r).toBe('rescan');
+    expect(h.api().status).toBe('unpaired');
+    expect(h.api().notice).toContain('Your hub moved to new.example.ts.net');
+  });
+
+  it('changes nothing when the new address cannot be reached yet', async () => {
+    const h = await mount({
+      paired: true,
+      handler: (url, init) => (url.startsWith(NEW) ? Promise.reject(new Error('down')) : movedHandler()(url, init)),
+    });
+    let r: string | undefined;
+    await act(async () => {
+      r = await h.api().switchToMoved();
+    });
+    expect(r).toBe('failed');
+    expect(h.api().status).toBe('paired');
+    expect(h.api().hub?.origin).toBe(ORIGIN);
+  });
+});

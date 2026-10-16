@@ -475,7 +475,7 @@ describe('Peers', () => {
     await show(<PeersScreen />, { client });
     expect(await screen.findByText('All peers are paused')).toBeTruthy();
     expect(screen.getByTestId('peers-pause').props.disabled).toBe(true);
-    expect(screen.getByText(/Resuming needs the owner/)).toBeTruthy();
+    expect(screen.getByText('Resume peers from a computer (board Peers page).')).toBeTruthy();
     expect(client.pausePeers).not.toHaveBeenCalled();
   });
 

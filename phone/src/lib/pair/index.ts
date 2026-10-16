@@ -199,6 +199,13 @@ export type ClaimFailure =
   | 'wrong_kind'
   | 'rate_limited'
   | 'unreachable'
+  /** The real kind of a network failure, when the error tells it (TLS, DNS, refused, timeout). */
+  | 'tls'
+  | 'dns'
+  | 'refused'
+  | 'timeout'
+  /** The hub answered, but with a server error (the status is in ClaimError.status). */
+  | 'http'
   /** keys.md 7.3: the reply's hub key is not the QR's `h`. */
   | 'hub_key'
   /** keys.md 7.3: the certificate, the keys in it or `reg` are not what this phone sent. */
@@ -234,8 +241,26 @@ export function hostOf(origin: string): string {
   return origin.replace(/^https?:\/\//, '');
 }
 
+/** A tailnet address (100.x or *.ts.net): the only hosts where "Is Tailscale on?" helps. */
+export function isTailscaleHost(host: string): boolean {
+  const h = host.replace(/:\d+$/, '').toLowerCase();
+  return /^100\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h) || h === 'ts.net' || h.endsWith('.ts.net');
+}
+
+/** What a failed fetch was, from the error the platform threw (React Native gives only text). */
+export function networkKind(e: unknown, timedOut = false): 'tls' | 'dns' | 'refused' | 'timeout' | 'unreachable' {
+  if (timedOut) return 'timeout';
+  const text = e instanceof Error ? `${e.name} ${e.message}` : typeof e === 'string' ? e : '';
+  if (/certificate|ssl|tls|handshake|trust anchor|CertPath|self.signed/i.test(text)) return 'tls';
+  if (/unknown host|UnknownHost|unable to resolve|ENOTFOUND|EAI_AGAIN|getaddrinfo|no address associated|name not resolved|nodename/i.test(text)) return 'dns';
+  if (/refused|ECONNREFUSED|failed to connect/i.test(text)) return 'refused';
+  if (/timed? ?out|ETIMEDOUT|SocketTimeout/i.test(text)) return 'timeout';
+  return 'unreachable';
+}
+
 /** The words shown for a failed claim (P2 error mapping). */
-export function claimMessage(reason: ClaimFailure, host: string, kind?: string): string {
+export function claimMessage(reason: ClaimFailure, host: string, kind?: string, status?: number | null): string {
+  const hint = isTailscaleHost(host) ? ' Is Tailscale on?' : '';
   switch (reason) {
     case 'invalid':
       return 'Invalid or expired code';
@@ -244,7 +269,17 @@ export function claimMessage(reason: ClaimFailure, host: string, kind?: string):
     case 'rate_limited':
       return 'Too many tries, wait 10 minutes';
     case 'unreachable':
-      return `Can't reach ${host}. Is Tailscale on?`;
+      return `Can't reach ${host}.${hint}`;
+    case 'tls':
+      return `The secure connection to ${host} failed: its certificate is not trusted. Check the address.`;
+    case 'dns':
+      return `${host} was not found. Check the address.${hint}`;
+    case 'refused':
+      return `${host} refused the connection. Is the hub running?${hint}`;
+    case 'timeout':
+      return `${host} did not answer in time.${hint}`;
+    case 'http':
+      return status === 503 ? `${host} is not taking phones right now (HTTP 503).` : `${host} answered with an error (HTTP ${status ?? '?'}).`;
     case 'hub_key':
       return "This hub's key does not match the QR code";
     case 'tampered':
@@ -304,12 +339,17 @@ function redirected(res: ResponseLike, origin: string): boolean {
  */
 async function probeOrigin(deps: ClaimDeps, origin: string, host: string): Promise<void> {
   const ctl = new AbortController();
-  const timer = deps.clock.setTimeout(() => ctl.abort(), PAIR_PROBE_TIMEOUT_MS);
+  let timedOut = false;
+  const timer = deps.clock.setTimeout(() => {
+    timedOut = true;
+    ctl.abort();
+  }, PAIR_PROBE_TIMEOUT_MS);
   let res: ResponseLike;
   try {
     res = await deps.fetch(`${origin}/health`, { method: 'GET', headers: { Accept: 'application/json' }, signal: ctl.signal, redirect: 'error' });
-  } catch {
-    throw new ClaimError('unreachable', null, claimMessage('unreachable', host));
+  } catch (e) {
+    const kind = networkKind(e, timedOut);
+    throw new ClaimError(kind, null, claimMessage(kind, host));
   } finally {
     deps.clock.clearTimeout(timer);
   }
@@ -333,7 +373,11 @@ export async function claim(deps: ClaimDeps, input: PairInput): Promise<StoredHu
     ...(keys?.clear !== undefined ? { keys: keys.clear } : {}),
   };
   const ctl = new AbortController();
-  const timer = deps.clock.setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS);
+  let timedOut = false;
+  const timer = deps.clock.setTimeout(() => {
+    timedOut = true;
+    ctl.abort();
+  }, REQUEST_TIMEOUT_MS);
   let res;
   try {
     res = await deps.fetch(`${origin}/v1/pair/claim`, {
@@ -343,8 +387,9 @@ export async function claim(deps: ClaimDeps, input: PairInput): Promise<StoredHu
       signal: ctl.signal,
       redirect: 'error',
     });
-  } catch {
-    throw new ClaimError('unreachable', null, claimMessage('unreachable', host));
+  } catch (e) {
+    const kind = networkKind(e, timedOut);
+    throw new ClaimError(kind, null, claimMessage(kind, host));
   } finally {
     deps.clock.clearTimeout(timer);
   }
@@ -355,6 +400,7 @@ export async function claim(deps: ClaimDeps, input: PairInput): Promise<StoredHu
     throw new ClaimError('wrong_kind', 409, claimMessage('wrong_kind', host, await kindFrom(res)));
   }
   if (res.status === 429) throw new ClaimError('rate_limited', 429, claimMessage('rate_limited', host));
+  if (res.status >= 500) throw new ClaimError('http', res.status, claimMessage('http', host, undefined, res.status));
   if (res.status !== 200) throw new ClaimError('other', res.status, claimMessage('other', host));
   let reply: PairClaimReply;
   try {

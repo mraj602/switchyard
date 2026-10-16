@@ -1,14 +1,15 @@
 // Accounts (PhoneAccounts): one card per login, "most room", every limit window with its
 // reset and pace, "Open claude.ai" (the seat's account tab, P17, Android) and "Count down on
 // Lock Screen" where the Live Activity qualifies (iOS).
-import { Text, View } from 'react-native';
+import { useState } from 'react';
+import { Modal, Pressable, Text, View } from 'react-native';
 import type { Seat, Window } from '../../contract/api';
 import {
   agoLabel, clock, mostRoom, paceInfo, pct, planLabel, plural, seatIndex, seatName, sortWindows, until, windowLabel, worstPace,
 } from '../../lib/format';
 import { useHubApi } from '../hub-api';
 import { go } from '../nav';
-import { useTabsSupported } from '../tabs';
+import { tabProfiles, useTabsSupported } from '../tabs';
 import { useTheme } from '../theme';
 import { Btn, Calm, Card, Meter, Muted, Page, useToast, useToneColour } from '../ui';
 
@@ -37,6 +38,7 @@ export default function AccountsScreen({ seat: focus }: { seat?: string }) {
           {` (${left(best.five)} of 5h${week && week.used_pct != null ? `, ${left(week)} of week` : ''})`}
         </Text>
       ) : null}
+      {tabs ? <AddAccount seats={seats} /> : null}
       {seats.length === 0 ? (
         <Calm>No accounts yet.</Calm>
       ) : (
@@ -54,6 +56,55 @@ export default function AccountsScreen({ seat: focus }: { seat?: string }) {
         ))
       )}
     </Page>
+  );
+}
+
+/**
+ * + Add account: hub accounts this phone has no claude.ai tab for yet. Picking one opens that
+ * seat's tab at claude.ai (the sign-in is the person's, in the tab); the app never signs in or
+ * reads the page. An account the hub does not list has not been used yet on a computer.
+ */
+function AddAccount({ seats }: { seats: Seat[] }) {
+  const t = useTheme();
+  const [open, setOpen] = useState(false);
+  const [profiles, setProfiles] = useState<string[] | null>(null);
+  const show = () => {
+    setProfiles(null);
+    setOpen(true);
+    void tabProfiles().then(setProfiles);
+  };
+  const todo = seats.filter((s) => profiles && !profiles.includes(s.id));
+  return (
+    <>
+      <Btn label="+ Add account" testID="add-account" onPress={show} />
+      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+        <Pressable accessibilityLabel="Close" style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={() => setOpen(false)} />
+        <View testID="add-account-sheet" style={{ backgroundColor: t.bg, padding: 16, gap: 10, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '75%' }}>
+          <Text accessibilityRole="header" style={{ color: t.text, fontSize: 18, fontWeight: '700' }}>Which account?</Text>
+          {profiles === null ? (
+            <Muted>Loading…</Muted>
+          ) : todo.length === 0 ? (
+            <Muted>{seats.length === 0 ? 'No accounts on this hub yet.' : 'Every account on this hub already has a tab on this phone. Open it from its card.'}</Muted>
+          ) : (
+            todo.map((s) => (
+              <Card
+                key={s.id}
+                label={`Add ${seatName(s)}`}
+                onPress={() => {
+                  setOpen(false);
+                  go.tab(s.id);
+                }}
+              >
+                <Text testID={`add-seat-${s.id}`} style={{ color: t.text, fontWeight: '700' }}>{seatName(s)}</Text>
+                <Muted>{[s.email, planLabel(s.plan), s.org_name].filter(Boolean).join(' · ')}</Muted>
+              </Card>
+            ))
+          )}
+          <Muted>Not listed? An account appears after it is used once in Claude Code or the desktop app.</Muted>
+          <Btn label="Close" testID="add-account-close" onPress={() => setOpen(false)} />
+        </View>
+      </Modal>
+    </>
   );
 }
 

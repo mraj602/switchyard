@@ -1,6 +1,6 @@
 import { claims, fakeFetch, manualClock, response } from '../../../test/hubfake';
 import type { AppInfo } from '../../contract/platform';
-import { claim, ClaimError, claimMessage, hostOf, pairInputMessage, parsePairInput } from './index';
+import { claim, ClaimError, claimMessage, hostOf, isTailscaleHost, pairInputMessage, parsePairInput } from './index';
 import type { PairInputError } from './index';
 
 const S = 'Q2xhdWRlIGlzIG5vdCBoZXJl'.slice(0, 22); // 22 base64url characters
@@ -167,7 +167,12 @@ describe('claim', () => {
     ['409 without a kind', () => response(409, { error: 'conflict', code: 'conflict' }), 'wrong_kind', 'That code is for a different kind of device, not a phone'],
     ['429', () => response(429, { error: 'slow down', code: 'rate_limited' }), 'rate_limited', 'Too many tries, wait 10 minutes'],
     ['network', () => Promise.reject(new Error('Network request failed: https://hub.test.ts.net')), 'unreachable', "Can't reach hub.test.ts.net. Is Tailscale on?"],
-    ['500', () => response(500, 'boom'), 'other', 'Pairing failed. Try again'],
+    ['500', () => response(500, 'boom'), 'http', 'hub.test.ts.net answered with an error (HTTP 500).'],
+    ['503', () => response(503, { error: 'frozen', code: 'unavailable' }), 'http', 'hub.test.ts.net is not taking phones right now (HTTP 503).'],
+    ['404', () => response(404, 'nope'), 'other', 'Pairing failed. Try again'],
+    ['certificate', () => Promise.reject(new Error('java.security.cert.CertPathValidatorException: Trust anchor for certification path not found')), 'tls', 'The secure connection to hub.test.ts.net failed: its certificate is not trusted. Check the address.'],
+    ['unknown host', () => Promise.reject(new Error('Unable to resolve host "hub.test.ts.net"')), 'dns', 'hub.test.ts.net was not found. Check the address. Is Tailscale on?'],
+    ['refused', () => Promise.reject(new Error('Failed to connect to hub.test.ts.net/100.64.0.1:443: ECONNREFUSED')), 'refused', 'hub.test.ts.net refused the connection. Is the hub running? Is Tailscale on?'],
     ['200 without a token', () => response(200, { device: 'd' }), 'other', 'Pairing failed. Try again'],
     ['200 with junk', () => response(200, 'not json'), 'other', 'Pairing failed. Try again'],
   ];
@@ -180,12 +185,12 @@ describe('claim', () => {
     expect(err.message).not.toContain('482913');
   });
 
-  it('times out after 10 s as unreachable', async () => {
+  it('times out after 10 s as a timeout', async () => {
     const clock = manualClock();
     const f = fakeFetch((_u, init) => new Promise((_r, rej) => init.signal?.addEventListener('abort', () => rej(new Error('x')))));
     const p = claim({ fetch: f, clock, app }, { origin: 'https://hub.test.ts.net', code: '482913' }).catch((e) => e);
     await clock.advance(10_000);
-    expect((await p).reason).toBe('unreachable');
+    expect((await p).reason).toBe('timeout');
   });
 
   it('waits for a slow /health (a cold phone, a busy hub) instead of calling the hub unreachable', async () => {
@@ -248,7 +253,13 @@ describe('claim', () => {
   });
 
   it('messages and host helper', () => {
-    expect(claimMessage('unreachable', 'h')).toContain('Is Tailscale on?');
+    expect(claimMessage('unreachable', 'h.ts.net')).toContain('Is Tailscale on?');
+    expect(claimMessage('unreachable', '100.101.102.103:443')).toContain('Is Tailscale on?');
+    expect(claimMessage('unreachable', 'hub.example.com')).toBe("Can't reach hub.example.com.");
+    expect(claimMessage('refused', 'hub.example.com')).not.toContain('Tailscale');
+    expect(claimMessage('dns', 'hub.example.com')).toBe('hub.example.com was not found. Check the address.');
+    expect(claimMessage('timeout', 'hub.example.com')).toBe('hub.example.com did not answer in time.');
+    expect(isTailscaleHost('myts.net.example.com')).toBe(false);
     expect(hostOf('https://a.b:1')).toBe('a.b:1');
   });
 });
