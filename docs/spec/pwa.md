@@ -125,6 +125,32 @@ turns its row into For (account), Then (notify / do not notify) and Wait, saved 
 /v1/rules/{id}`; its trigger stays. A choice that matches another rule of the trigger is
 caught before saving, and a `409 duplicate_rule` from the hub names that rule (push.md 3.7).
 
+### 3.0 The order of the accounts
+
+One order, kept by the hub and the same on every device: `seat.sort_order`, shown as `order` on
+`Seat` and set only by the owner with `PUT /v1/seats/order` (api.yaml `putSeatOrder`; a seat
+nobody has ordered sorts after the ordered ones, then by first sight). `GET /v1/overview`,
+`GET /v1/accounts` and the stream list seats by it, so every list of accounts on the board
+(the sidebar, Accounts, the Now cards and rings, Sessions grouped by account, the account
+filters and the Analytics account picker) reads `store.overview.seats` and follows it.
+
+- **Reorder** is on Accounts, for the owner only (a plain board or phone sign-in sees no grip).
+  Each card has a grip: drag it (pointer events: mouse, pen and touch; `touch-action: none` on
+  the grip only, so the page still scrolls), with the dragged card faded and a bar in the accent
+  colour where it will land; the page scrolls near its top and bottom edge. Escape cancels.
+  Keyboard: focus the grip and press the arrow keys, or press Alt+arrow anywhere in a card; focus
+  stays on the grip and a polite status line says "work moved to 2 of 4".
+- The drop logic is `components/order.js` (pure: `applyOrder`, `moveTo`, `moveBy`, `dropTarget`,
+  `dropOrder`), tested in `order.test.cjs`. The list sent is the shown (not hidden) accounts in
+  their new order; the hub puts hidden ones after them.
+- **Optimistic**: `store.reorderSeats` puts the order in `store.overview.seats` at once and sends
+  the PUT. A refusal (or no network) puts the old order back and shows the reason on the page and
+  as a toast.
+- **Live**: the hub publishes a `seats` stream event `{order: [every seat id]}`. A board that did
+  not make the change applies it in place, with no reload (an event is ignored while this board's
+  own save is in flight; the answer settles the order). The terminal board and the desktop app
+  refetch their accounts on it; the phone app (no stream) picks it up on its next 15 s poll.
+
 ### 3.1 Peers (`#/more/peers`, PE3)
 
 `views/peers.js`, with its pure arithmetic and sentences in `components/peers-fmt.js`. It reads

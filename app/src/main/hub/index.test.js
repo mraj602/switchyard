@@ -226,6 +226,17 @@ test('session and usage events refetch the overview (debounced); machine events 
   await t.close();
 });
 
+test('a seats event (the owner reordered the accounts) refetches the accounts', async () => {
+  const t = await harness();
+  await t.h.start();
+  await t.handlers['hub:pair']({});
+  await until(() => t.hub.streamCount() === 1 && lastHub(t).status === 'ok');
+  const base = t.hub.requestsTo('/v1/accounts').length;
+  t.hub.emit('seats', { order: ['s2', 's1'] });
+  await until(() => t.hub.requestsTo('/v1/accounts').length > base);
+  await t.close();
+});
+
 test('reset refetches the overview', async () => {
   const t = await harness();
   await t.h.start();

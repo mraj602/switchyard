@@ -98,6 +98,10 @@ CREATE TABLE seat (
   created_at    INTEGER NOT NULL, look_src TEXT CHECK (look_src IS NULL OR look_src IN ('ui', 'slot', 'import')),
   UNIQUE (account_uuid, org_uuid)
 ) STRICT;
+-- sort_order: the display position (`order` on Seat). PUT /v1/seats/order puts the listed seats
+-- first and renumbers every seat 0..n-1; seats are listed by sort_order, created_at, id, so a
+-- new seat (max + 1) or one nobody ordered sorts after the ordered ones. No migration: the column
+-- is in version 1.
 -- look_src: v5 (phase 6, desktop.md C10). Who set label and colour last: 'ui' (PATCH /v1/accounts/{seat}),
 -- 'slot' (slot_info; applies only while look_src is NULL or 'slot'), 'import' (prototype importer).
 
