@@ -17,8 +17,8 @@ const mod = (f, globals = {}) => {
 };
 
 const HUB_MSG = 'a phone needs the hub\'s https address (service workers, install and Web Push need a secure context), '
-  + 'but the address in use is http://127.0.0.1:8787 (the board was opened over it). A loopback address can never be '
-  + 'reached by a phone. Open the board at the hub\'s https address, or set one: give the hub an https address: ...';
+  + 'but the address in use is http://127.0.0.1:8787. A loopback address can never be '
+  + 'reached by a phone. Open the board at the hub\'s https address, or give the hub an https address: ...';
 
 const fakeFetch = (status, body) => async () => ({
   ok: status < 400, status, headers: { get: () => null },

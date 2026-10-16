@@ -14,7 +14,7 @@ func TestNeedsHTTPSMessage(t *testing.T) {
 	if !errors.Is(err, ErrNeedsHTTPS) {
 		t.Fatalf("%v", err)
 	}
-	for _, want := range []string{"needs the hub's https address", "http://127.0.0.1:19200", "board was opened over",
+	for _, want := range []string{"needs the hub's https address", "http://127.0.0.1:19200",
 		"can never be reached by a phone", "Open the board at the hub's https address", "sy hub serve --public-url https://<hub address>",
 		"hub.public_url", "if your tailnet supports HTTPS certificates, `tailscale serve --bg 19200`"} {
 		if !strings.Contains(err.Error(), want) {
