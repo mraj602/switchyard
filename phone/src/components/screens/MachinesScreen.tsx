@@ -23,7 +23,7 @@ export default function MachinesScreen({ machine: focus }: { machine?: string })
   return (
     <Page back title="Machines" meta={`${plural(list.length, 'machine')} reporting to this hub`}>
       {list.length === 0 ? (
-        <Calm>No machines have connected yet. Run sy connect on one to add it.</Calm>
+        <Calm>{"No machines have connected yet. Add machines from a computer: sy machine add, or the board's Devices."}</Calm>
       ) : (
         list.map((m) => {
           const st = machineStatus(m, api.now);
