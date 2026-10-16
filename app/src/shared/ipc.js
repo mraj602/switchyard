@@ -208,6 +208,7 @@ function check(channel, path, s, v) {
  * @property {HubState} hub
  * @property {Settings} settings
  * @property {{level: 'info'|'warn'|'error', text: string}[]} [banners]  e.g. "sy not found: run sy setup"
+ * @property {{app: string, electron: string, chrome: string, platform: string}} [about]  versions for Settings, About
  *
  * @typedef {object} TabState
  * @property {string} id

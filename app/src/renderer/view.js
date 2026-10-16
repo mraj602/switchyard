@@ -162,7 +162,7 @@ export function hubBanner(hub) {
         level: 'info',
         text: hub.admin || hub.local
           ? 'Pair the app with your hub to see the board here.'
-          : 'Pair the app with your hub: on the board open Devices, Add device, Desktop, and type the code here.',
+          : 'Pair the app with your hub: on the board open More, Devices, Add desktop app, and type the code here.',
         command: null,
         action: hub.admin || hub.local ? 'pair-click' : 'pair',
       };
@@ -180,7 +180,8 @@ export const hubUsable = (hub) => !!hub && hub.status === 'ok';
 export function hubSummary(hub) {
   if (!hub) return 'Hub: unknown';
   switch (hub.status) {
-    case 'ok': return hub.version ? `Connected · v${hub.version}` : 'Connected';
+    // "v0.6.0", but a dev build's version is the word "dev": no "vdev".
+    case 'ok': return hub.version ? `Connected · ${/^\d/.test(hub.version) ? 'v' : ''}${hub.version}` : 'Connected';
     case 'no_sy': return 'sy not found';
     case 'not_connected': return 'sy not connected';
     case 'dial': return 'Forward mode (unsupported)';

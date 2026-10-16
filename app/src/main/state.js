@@ -14,6 +14,7 @@
 // - settings: bus 'settings' (E), else the stored settings (store.get().settings) with
 //   autostart false.
 // - banners: setBanner(key, banner|null), for notices main wants to keep on screen.
+// - about: deps.about (app, Electron and Chromium versions, platform), when boot gives it.
 
 import { WARNING_VERSION, READING_ON, READING_OFF, READING_NEVER_ASKED, STATE_PUSH_DEBOUNCE_MS, TAB_ID_RE } from '../shared/constants.js';
 import { TOAST_LEVELS, SEAT_ID_PATTERN } from '../shared/ipc.js';
@@ -138,6 +139,11 @@ function settingsState(s, stored, hubBackend) {
  *   stop(): void,
  * }}
  */
+/** The About lines, copied by name. */
+export function aboutState(a) {
+  return { app: str(a.app, 40) ?? '', electron: str(a.electron, 40) ?? '', chrome: str(a.chrome, 40) ?? '', platform: str(a.platform, 40) ?? '' };
+}
+
 export function create(deps) {
   const { bus, ipc, window } = deps;
   const timers = deps.timers ?? globalThis;
@@ -169,6 +175,7 @@ export function create(deps) {
       hub: hubState(bus.last('hub'), bus.last('needs_you')),
       settings: settingsState(bus.last('settings'), deps.store?.get?.().settings, bus.last('hub')?.storage_backend),
       banners: [...banners.values()],
+      ...(deps.about ? { about: aboutState(deps.about) } : {}),
     };
   }
 

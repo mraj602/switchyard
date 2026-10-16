@@ -74,6 +74,12 @@ test('snapshot before anything is known', () => {
   });
 });
 
+test('the About versions are copied by name, and only when boot gives them', () => {
+  const { st } = setup({ about: { app: '0.9.1', electron: '33.2.0', chrome: '130.0', platform: 'linux x64', token: 'x' } });
+  assert.deepEqual(st.snapshot().about, { app: '0.9.1', electron: '33.2.0', chrome: '130.0', platform: 'linux x64' });
+  assert.equal('about' in setup().st.snapshot(), false);
+});
+
 test('registers state:get and view:select', async () => {
   const { handlers, st, bus, window } = setup();
   assert.deepEqual([...handlers.keys()], ['state:get', 'view:select']);

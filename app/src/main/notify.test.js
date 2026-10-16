@@ -39,6 +39,28 @@ test('a fired alert gives one notification, a second fired for the same id gives
   assert.equal(fake.notifications.length, 2);
 });
 
+test('a notification carries the app icon when given one, so libnotify shows the logo', () => {
+  const fake = fakeElectron();
+  const bus = createBus();
+  const n = create({
+    electron: fake.electron, bus, log: console, icon: '/app/assets/icon.png',
+    hub: { route: async () => {}, view: () => null, seats: () => [] },
+    window: { isShowing: () => false, showWindow: () => {} },
+    store: { get: () => ({ settings: { notifications: true } }) },
+  });
+  n.start();
+  bus.emit('alert', fired('al9'));
+  assert.equal(fake.notifications[0].options.icon, '/app/assets/icon.png');
+  n.stop();
+  assert.equal('icon' in setupShown().options, false);
+});
+
+function setupShown() {
+  const { fake, bus } = setup();
+  bus.emit('alert', fired('al8'));
+  return fake.notifications[0];
+}
+
 test('a click shows the window and calls hub.route with the deep link', async () => {
   const { fake, bus, routes, shown } = setup();
   bus.emit('alert', fired());

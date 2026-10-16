@@ -28,6 +28,7 @@ test('one window, 1440×940, min 720×500, hidden until ready-to-show, with the 
   assert.equal(opts.minWidth, 720);
   assert.equal(opts.minHeight, 500);
   assert.equal(opts.show, false);
+  assert.equal(opts.autoHideMenuBar, true);
   assert.equal(opts.backgroundColor, BACKGROUND.light);
   assert.deepEqual(opts.webPreferences, { ...SAFE_WEB_PREFERENCES, preload: '/app/src/preload/shell.cjs' });
   await new Promise((r) => setImmediate(r));
@@ -36,6 +37,13 @@ test('one window, 1440×940, min 720×500, hidden until ready-to-show, with the 
   w.win.emit('ready-to-show');
   assert.equal(w.win.isVisible(), true);
   assert.equal(w.shell, w.win.webContents);
+});
+
+test('the window carries the app icon when given one (Linux, Windows), none otherwise', () => {
+  const { fake } = setup({ icon: '/app/assets/icon.png' });
+  assert.equal(fake.callsOf('BrowserWindow.new')[0][0].icon, '/app/assets/icon.png');
+  const plain = setup();
+  assert.equal('icon' in plain.fake.callsOf('BrowserWindow.new')[0][0], false);
 });
 
 test('startHidden keeps the window hidden on ready-to-show; showWindow shows, restores and focuses', () => {

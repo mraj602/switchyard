@@ -6,7 +6,8 @@
 import { notifyText } from '../shared/notify-text.js';
 
 /**
- * @param {{electron: object, bus: object, hub: object, window: object, store: object, log: object}} deps
+ * @param {{electron: object, bus: object, hub: object, window: object, store: object, log: object, icon?: string}} deps
+ *   icon: the app icon's path (assets/icon.png), on Linux and Windows
  * @returns {{start(): void, stop(): void}}
  */
 export function create(deps) {
@@ -47,7 +48,9 @@ export function create(deps) {
     if (!Notification.isSupported()) return;
 
     const { title, body, route } = notifyText({ alert, session, seat: seatOf(alert, session) });
-    const n = new Notification({ title, body, silent: false });
+    // icon: libnotify on Linux otherwise shows a generic icon unless the desktop-entry hint
+    // (the app_id) matches an installed .desktop file; Windows uses the app's own.
+    const n = new Notification({ title, body, silent: false, ...(deps.icon ? { icon: deps.icon } : {}) });
     notified.add(alert.id);
     live.add(n);
     n.on('click', () => {

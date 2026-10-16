@@ -109,6 +109,7 @@ test('hub banners and summaries', () => {
   assert.equal(hubBanner(hub({ status: 'unreachable', local: true })).action, 'service');
   assert.equal(hubBanner(hub({ status: 'something_new' })), null);
   assert.equal(hubSummary(hub()), 'Connected · v0.6.0');
+  assert.equal(hubSummary(hub({ version: 'dev' })), 'Connected · dev'); // not "vdev"
   assert.equal(hubSummary(hub({ status: 'needs_pairing' })), 'Needs pairing');
   assert.equal(hubUsable(hub()), true);
   assert.equal(hubUsable(hub({ status: 'unreachable' })), false);
