@@ -672,7 +672,9 @@ paths:
       description: |
         pairing.md 2. At most 5 live codes; a sixth cancels the oldest. `url` defaults to
         `hub.public_url`, else the origin of this request. Phone and browser codes need an
-        `https` URL.
+        `https` URL: over plain http the answer is 400 with code `needs_https`, whose `error`
+        says what the phone needs, the address in use and how to set an https one (open the
+        board at the hub's https address, or set `hub.public_url`); show it as is.
       x-scopes: [owner]
       requestBody:
         required: true
@@ -693,7 +695,11 @@ paths:
           content:
             application/json:
               schema: {$ref: "#/components/schemas/PairCode"}
-        "400": {$ref: "#/components/responses/BadRequest"}
+        "400":
+          description: Malformed request, or (code `needs_https`) a phone or browser code over plain http.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
 
@@ -1794,7 +1800,7 @@ components:
         code:
           type: string
           enum: [bad_request, unauthorized, forbidden, machine_mismatch, not_found, conflict, gone, too_large, rate_limited, unavailable, not_implemented, internal,
-            link_used, link_expired, link_cancelled, link_unknown, duplicate_rule]
+            link_used, link_expired, link_cancelled, link_unknown, duplicate_rule, needs_https]
 
     Health:
       type: object
