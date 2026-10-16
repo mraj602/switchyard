@@ -158,7 +158,8 @@ not used). Before calling a handler it checks the following.
 
 `ShellState` holds the tabs (id, name, colour, label and seat id from the seat when one is known,
 reading state, the local strip windows, last read, the stop reason), the selected view, the hub
-(url, connected, owner, version, service state, needs-you count) and settings. It never holds
+(url, connected, owner, version, service state, needs-you count), settings and, for Settings, About,
+the app, Electron and Chromium versions. It never holds
 tokens or secrets. The field-level shapes (`ShellState`, `TabState`, `HubState`, `Settings`) are the JSDoc types at the end of `src/shared/ipc.js`.
 
 Wave 0 details fixed by `src/shared/ipc.js`:

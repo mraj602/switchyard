@@ -466,6 +466,7 @@ export function start({ sy, root }) {
     ['hub', 'Hub'],
     ['notify', 'Notifications and background'],
     ['links', 'Hub settings'],
+    ['about', 'About'],
   ];
 
   function settingsPage() {
@@ -486,7 +487,7 @@ export function start({ sy, root }) {
     const main = h('div', { class: 'page-main' },
       h('h1', { text: 'Settings' }),
       banners.length ? h('div', { class: 'banners' }, banners) : null,
-      sectionTabs(), sectionFolders(), sectionHub(hb), sectionNotify(), sectionLinks());
+      sectionTabs(), sectionFolders(), sectionHub(hb), sectionNotify(), sectionLinks(), sectionAbout());
     return h('div', { class: 'page' }, nav, main);
   }
 
@@ -689,7 +690,7 @@ export function start({ sy, root }) {
       h('dt', { text: 'Address' }), h('dd', { text: hub.url || 'none' }),
       h('dt', { text: 'Status' }), h('dd', { text: hubSummary(hub) }),
       h('dt', { text: 'sy connected' }), h('dd', { text: hub.connected ? 'yes' : 'no' }),
-      h('dt', { text: 'Version' }), h('dd', { text: hub.version || '–' }),
+      h('dt', { text: 'Hub version' }), h('dd', { text: hub.version || '–' }),
       h('dt', { text: 'Owner' }), h('dd', {},
         h('span', { text: hub.owner ? 'signed in as owner' : 'read-only' }),
         hub.owner ? null : h('button', { class: 'btn', fk: 'owner-sign-in', text: 'Sign in as owner', disabled: !hubUsable(hub) || busy('owner'), onclick: ownerSignIn })),
@@ -753,6 +754,20 @@ export function start({ sy, root }) {
           if (ok) await select('hub');
         },
       }))));
+  }
+
+  // -- about
+
+  function sectionAbout() {
+    const a = state.about;
+    if (!a) return null;
+    return section('about', 'About', null,
+      h('div', { class: 'card card-pad' }, h('dl', { class: 'kv', fk: 'about' },
+        h('dt', { text: 'Switchyard Desktop' }), h('dd', { text: a.app || '–' }),
+        h('dt', { text: 'Hub' }), h('dd', { text: state.hub?.version || '–' }),
+        h('dt', { text: 'Electron' }), h('dd', { text: a.electron || '–' }),
+        h('dt', { text: 'Chromium' }), h('dd', { text: a.chrome || '–' }),
+        h('dt', { text: 'Platform' }), h('dd', { text: a.platform || '–' }))));
   }
 
   // ---- dialogs
