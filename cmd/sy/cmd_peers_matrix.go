@@ -465,7 +465,15 @@ func printMatrix(w io.Writer, s *keys.Signed[keys.MatrixBody], accts []peerAcct)
 	if b.Paused {
 		pause = "PAUSED"
 	}
-	fmt.Fprintf(w, "matrix v%d · signed by %s · same account: %s · max turns: %d · %s\n", b.Version, signerLine(s), onOff[b.SameAccount], b.MaxTurns, pause)
+	fmt.Fprintf(w, "matrix v%d · signed by %s · same account: %s · replies without you: %s · %s\n", b.Version, signerLine(s), onOff[b.SameAccount], turnLimitText(b.MaxTurns), pause)
+}
+
+// turnLimitText is max_turns as the matrix print says it: a number, or "no limit" for 0.
+func turnLimitText(n int) string {
+	if n == keys.NoTurnLimit {
+		return "no limit"
+	}
+	return strconv.Itoa(n)
 }
 
 // peersAllowDeny is `sy peers allow <from> <to> [--both]` (widening: owner key) and `deny
@@ -556,12 +564,19 @@ func peersSameAccount(args []string, stdout, stderr io.Writer) error {
 }
 
 func peersMaxTurns(args []string, stdout, stderr io.Writer) error {
-	n := 0
-	if len(args) == 1 {
-		n, _ = strconv.Atoi(args[0])
+	n, ok := -1, len(args) == 1
+	if ok {
+		switch strings.ToLower(args[0]) {
+		case "none", "no-limit", "off":
+			n = keys.NoTurnLimit
+		default:
+			var err error
+			n, err = strconv.Atoi(args[0])
+			ok = err == nil && keys.ValidMaxTurns(n)
+		}
 	}
-	if n < keys.MinMaxTurns || n > keys.MaxMaxTurns {
-		fmt.Fprintf(stderr, "usage: sy peers max-turns <%d-%d>\n", keys.MinMaxTurns, keys.MaxMaxTurns)
+	if !ok {
+		fmt.Fprintf(stderr, "usage: sy peers max-turns <%d-%d|none>   (none or 0: no limit)\n", keys.MinMaxTurns, keys.MaxMaxTurns)
 		return errUsage
 	}
 	m, err := newMatrixRun(stdout, stderr)
@@ -569,7 +584,7 @@ func peersMaxTurns(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 	m.sync()
-	return m.change(client.MatrixEdit{MaxTurns: &n}, fmt.Sprintf("max turns %d", n), false)
+	return m.change(client.MatrixEdit{MaxTurns: &n}, "replies without you: "+turnLimitText(n), false)
 }
 
 // peersPauseResume is the kill switch (peers.md 11): pause narrows, any device; resume widens.

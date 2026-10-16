@@ -10,7 +10,7 @@ import (
 // PE3 mock (peers.md 5, 6.3, 10, 11): the account matrix, the kill switch, thread resume and
 // the audit list. The
 // rules are the hub's: an edit that widens (adds a pair, same_account on, resume, more turns)
-// needs an owner caller; narrowing is accepted from owner, push and write callers. The
+// needs an owner caller (no turn limit, max_turns 0, is the most turns); narrowing is accepted from owner, push and write callers. The
 // documents are not signed here (the signature is a fixed placeholder of the right shape).
 
 const (
@@ -37,9 +37,9 @@ type peersState struct {
 const mockThread = "t_3a9e5c7d1b2f4a60"
 
 func newPeersState(d *Data, now time.Time) *peersState {
-	p := &peersState{version: 1, sameAccount: true, maxTurns: 30, allow: [][]string{}, signer: "hub", madeBy: "hub", at: now.Add(-48 * time.Hour), nextAudit: 1,
+	p := &peersState{version: 1, sameAccount: true, maxTurns: 0, allow: [][]string{}, signer: "hub", madeBy: "hub", at: now.Add(-48 * time.Hour), nextAudit: 1,
 		threads: map[string]bool{mockThread: true}}
-	p.log(now.Add(-48*time.Hour), "hub", "matrix", M{"version": 1, "signer": "hub", "widens": false, "paused": false, "same_account": true, "max_turns": 30, "pairs": 0})
+	p.log(now.Add(-48*time.Hour), "hub", "matrix", M{"version": 1, "signer": "hub", "widens": false, "paused": false, "same_account": true, "max_turns": 0, "pairs": 0})
 	p.logThread(now.Add(-30*time.Minute), "hub", "loop_guard", mockThread, M{})
 	return p
 }
@@ -218,12 +218,13 @@ func (s *Server) applyEdit(w http.ResponseWriter, c *caller, e matrixEdit) {
 		widens = widens || (!p.sameAccount && *e.SameAccount)
 	}
 	if e.MaxTurns != nil {
-		if *e.MaxTurns < 2 || *e.MaxTurns > 500 {
-			writeErr(w, 400, "bad_request", "max_turns is 2 to 500")
+		if n := *e.MaxTurns; n != 0 && (n < 2 || n > 500) {
+			writeErr(w, 400, "bad_request", "max_turns is 0 (no limit) or 2 to 500")
 			return
 		}
 		next.maxTurns = *e.MaxTurns
-		widens = widens || *e.MaxTurns > p.maxTurns
+		// 0 is no limit, the highest value: setting it widens, leaving it narrows.
+		widens = widens || (p.maxTurns != 0 && p.maxTurns != *e.MaxTurns && (*e.MaxTurns == 0 || *e.MaxTurns > p.maxTurns))
 	}
 	if widens && !c.has("owner") {
 		writeErr(w, 403, "forbidden", "widening the matrix needs the owner key or an owner session")

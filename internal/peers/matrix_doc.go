@@ -11,10 +11,10 @@ type DocMatrix struct{ B keys.MatrixBody }
 // NewDocMatrix wraps a verified body.
 func NewDocMatrix(b keys.MatrixBody) DocMatrix { return DocMatrix{B: b} }
 
-// MaxTurns is the loop guard limit of the document (2-500).
+// MaxTurns is the loop guard limit of the document: 2-500, or 0 (NoTurnLimit) for none.
 func (m DocMatrix) MaxTurns() int {
-	if m.B.MaxTurns <= 0 {
-		return DefaultMaxTurns
+	if m.B.MaxTurns < 0 {
+		return NoTurnLimit
 	}
 	return m.B.MaxTurns
 }

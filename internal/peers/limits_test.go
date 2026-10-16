@@ -202,14 +202,18 @@ func TestLoopGuardEdges(t *testing.T) {
 	if !LoopGuard(th, t0.Add(-time.Hour), 2, t0) {
 		t.Error("an older human prompt must not reset")
 	}
-	// max_turns 0 means the default of 30.
-	th2 := &Thread{Turns: 29}
-	if LoopGuard(th2, t0, 0, t0) {
-		t.Error("29 turns with the default limit must pass")
+	// max_turns 0 is no limit: any count passes, an earlier stop is lifted, the count is kept.
+	stop := t0
+	th2 := &Thread{Turns: 100_000, PausedAt: &stop, HumanAt: t0}
+	if LoopGuard(th2, t0, NoTurnLimit, t0) {
+		t.Error("no limit must never refuse")
 	}
-	th2.Turns = 30
-	if !LoopGuard(th2, t0, 0, t0) {
-		t.Error("30 turns with the default limit must refuse the next")
+	if th2.PausedAt != nil || th2.Turns != 100_000 {
+		t.Errorf("no limit: turns=%d paused=%v", th2.Turns, th2.PausedAt)
+	}
+	// A limit set later applies to the count kept meanwhile.
+	if !LoopGuard(th2, t0, 500, t0) {
+		t.Error("a limit set after no limit must refuse a thread already past it")
 	}
 }
 

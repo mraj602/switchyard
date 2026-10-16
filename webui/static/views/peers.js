@@ -12,17 +12,18 @@ import { getMatrix, editMatrix, pausePeers, getPeerAudit, getPeerMessages, resum
 import { agoLabel, dateTime } from '../format.js';
 import {
   peerAccounts, allowAllEdit, blockAllEdit, allowedAll, blockedAll, parseTurns, turnsWidens,
-  TURNS_MIN, TURNS_MAX, TURNS_HELP, ALLOW_ALL_CONFIRM, BLOCK_ALL_CONFIRM, OWNER_ONLY_ALLOW, cellState, cellLabel, cellEdit, editBody, whyNot, detailText, eventLabel, auditWho,
+  TURNS_NONE, TURNS_MIN, TURNS_MAX, TURNS_SUGGEST, TURNS_HELP, NO_LIMIT_HELP, turnsLabel, ALLOW_ALL_CONFIRM, BLOCK_ALL_CONFIRM, OWNER_ONLY_ALLOW, cellState, cellLabel, cellEdit, editBody, whyNot, detailText, eventLabel, auditWho,
   messageWho, outcomeLabel, sizeLabel, resumableStops, resumeText, isSetup, CELL_GLYPH, CELL_WORD, LEGEND,
 } from '../components/peers-fmt.js';
 
-const st = { matrix: null, audit: null, messages: null, error: null, pick: null, busy: false, turns: null };
+const st = { matrix: null, audit: null, messages: null, error: null, pick: null, busy: false, turns: null, noLimit: null };
 const again = () => window.dispatchEvent(new Event('sy-rerender'));
 
 export async function load() {
   st.error = null;
   st.pick = null;
   st.turns = null;
+  st.noLimit = null;
   const [m, a, msg] = await Promise.allSettled([getMatrix(), getPeerAudit({ limit: '50' }), getPeerMessages({ limit: '50' })]);
   if (m.status === 'fulfilled') st.matrix = m.value;
   else if (m.reason && m.reason.name !== 'AuthError') st.error = m.reason.message;
@@ -46,6 +47,7 @@ async function change(widens, send) {
     st.matrix = await send();
     st.pick = null;
     st.turns = null;
+  st.noLimit = null;
     await refreshAudit();
   } catch (ex) {
     if (ex.status === 409) { try { st.matrix = await getMatrix(); } catch (_) { /* shown below */ } toast('The matrix changed meanwhile. Check it and try again.'); }
@@ -164,33 +166,48 @@ function bulkBlock(accts, m) {
     blockOff ? h('p', { class: 'muted small', 'data-key': 'block-all-why' }, blockOff) : null);
 }
 
-// "Replies between two sessions without you" (peers.md 5.1, 6.3): raising widens (owner only), lowering narrows.
+// "Replies between two sessions without you" (peers.md 5.1, 6.3): a number, or "No limit" (0,
+// the default). Raising widens (owner only), lowering narrows; no limit is the highest value.
 function turnsBlock(m) {
   const owner = isOwner(), offline = !!store.offline;
-  const draft = st.turns === null ? String(m.max_turns) : st.turns;
-  const next = parseTurns(draft);
-  const why = next === null || next === m.max_turns ? '' : whyNot({ widens: turnsWidens(m.max_turns, next), owner, push: canPush(), offline, app: inApp() });
+  const cur = m.max_turns;
+  const noLimit = st.noLimit === null ? cur === TURNS_NONE : st.noLimit;
+  const draft = st.turns === null ? String(cur === TURNS_NONE ? TURNS_SUGGEST : cur) : st.turns;
+  const nextOf = (none, text) => (none ? TURNS_NONE : parseTurns(text));
+  const whyFor = (n) => (n === null || n === cur ? ''
+    : whyNot({ widens: turnsWidens(cur, n), owner, push: canPush(), offline, app: inApp() }));
+  const next = nextOf(noLimit, draft);
+  const why = whyFor(next);
   const input = h('input', {
     type: 'number', inputmode: 'numeric', min: String(TURNS_MIN), max: String(TURNS_MAX), step: '1', value: draft,
-    'data-key': 'max-turns', 'aria-label': 'Replies between two sessions without you', 'aria-describedby': 'max-turns-help', disabled: st.busy ? true : undefined,
+    'data-key': 'max-turns', 'aria-label': 'Replies between two sessions without you', 'aria-describedby': 'max-turns-help',
+    disabled: st.busy || noLimit ? true : undefined,
+  });
+  const none = h('input', {
+    type: 'checkbox', 'data-key': 'max-turns-none', checked: noLimit ? true : undefined, disabled: st.busy ? true : undefined,
+    'aria-describedby': 'max-turns-none-help',
   });
   const apply = h('button', {
-    type: 'button', class: 'btn btn-sm', 'data-key': 'max-turns-set', disabled: st.busy || next === null || next === m.max_turns || !!why,
+    type: 'button', class: 'btn btn-sm', 'data-key': 'max-turns-set', disabled: st.busy || next === null || next === cur || !!why,
     title: why || undefined,
-    onclick: () => { const n = parseTurns(input.value); if (n !== null) edit({ max_turns: n }, turnsWidens(m.max_turns, n)); },
+    onclick: () => { const n = nextOf(none.checked, input.value); if (n !== null) edit({ max_turns: n }, turnsWidens(cur, n)); },
   }, 'Set');
   // Typing updates the button in place (a re-render would drop the focus); the reasons refresh on change.
   input.addEventListener('input', () => {
     st.turns = input.value;
-    const n = parseTurns(input.value);
-    apply.disabled = st.busy || n === null || n === m.max_turns
-      || !!whyNot({ widens: turnsWidens(m.max_turns, n), owner, push: canPush(), offline, app: inApp() });
+    const n = nextOf(none.checked, input.value);
+    apply.disabled = st.busy || n === null || n === cur || !!whyFor(n);
   });
   input.addEventListener('change', () => { st.turns = input.value; again(); });
+  none.addEventListener('change', () => { st.noLimit = none.checked; st.turns = input.value; again(); });
   return h('div', { class: 'col', 'data-key': 'peers-turns' },
-    h('label', { class: 'actions' }, h('span', { class: 'strong' }, 'Replies between two sessions without you:'), input, apply),
+    h('div', { class: 'actions' },
+      h('label', { class: 'actions' }, h('span', { class: 'strong' }, 'Replies between two sessions without you:'), input),
+      h('label', { class: 'actions' }, none, h('span', {}, 'No limit')),
+      apply),
     h('p', { class: 'muted small', id: 'max-turns-help' }, TURNS_HELP),
-    next === null ? h('p', { class: 'muted small', 'data-key': 'max-turns-why' }, `Use a whole number from ${TURNS_MIN} to ${TURNS_MAX}.`) : null,
+    h('p', { class: 'muted small', id: 'max-turns-none-help' }, NO_LIMIT_HELP),
+    next === null ? h('p', { class: 'muted small', 'data-key': 'max-turns-why' }, `Use a whole number from ${TURNS_MIN} to ${TURNS_MAX}, or tick No limit.`) : null,
     why ? h('p', { class: 'muted small', 'data-key': 'max-turns-why' }, why) : null);
 }
 
@@ -217,7 +234,7 @@ function matrixBlock() {
       turnsBlock(m),
       details({ text: 'Details', key: 'peers-details' },
         h('p', { class: 'muted small', 'data-key': 'matrix-version' },
-          `Version ${m.version} · signed by ${info.signer}${info.created_at ? ` · ${agoLabel(info.created_at, Date.now())}` : ''} · at most ${m.max_turns} turns per thread`))));
+          `Version ${m.version} · signed by ${info.signer}${info.created_at ? ` · ${agoLabel(info.created_at, Date.now())}` : ''} · ${m.max_turns === TURNS_NONE ? 'no turn limit' : `at most ${turnsLabel(m.max_turns)} turns per thread`}`))));
 }
 
 // ---- audit --------------------------------------------------------------------------------

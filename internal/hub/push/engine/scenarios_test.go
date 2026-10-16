@@ -96,6 +96,20 @@ func TestRow06FailureImmediateWithRoom(t *testing.T) {
 	}
 }
 
+// "Who has room" uses effective use (push.md 5.7): an account whose window has reset counts as
+// 0 however old its reading is, so the push names it rather than a busier account.
+func TestRow06RoomNamesTheIdleAccount(t *testing.T) {
+	h := newHarness(t)
+	h.sample("idle@example.com", 0, 30, at(time.Hour), -1, time.Time{})
+	h.advanceTo(7 * time.Hour)
+	h.sample("busy@example.com", 7*time.Hour, 41, at(10*time.Hour), -1, time.Time{})
+	h.failure(s1, "rate_limit", 7*time.Hour)
+	got := h.expectSends(1)
+	if !strings.Contains(got[0].Msg.Payload.Body, "idle has 100% left") {
+		t.Fatalf("%q", got[0].Msg.Payload.Body)
+	}
+}
+
 func TestRow07OverloadedIsNoPush(t *testing.T) {
 	h := newHarness(t)
 	h.failure(s1, "overloaded", 0)

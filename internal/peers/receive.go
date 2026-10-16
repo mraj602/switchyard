@@ -71,11 +71,7 @@ func (e Env) Receive(in Incoming) ReceiveResult {
 	if t, err := time.Parse(time.RFC3339Nano, env.From.HumanAt); err == nil && t.After(human) {
 		human = t
 	}
-	maxTurns := m.MaxTurns()
-	if maxTurns <= 0 {
-		maxTurns = DefaultMaxTurns
-	}
-	if LoopGuard(th, human, maxTurns, now) {
+	if LoopGuard(th, human, m.MaxTurns(), now) {
 		_ = threads.Save(e.ThreadsPath())
 		res.Status, res.Detail = CodeRejected, CodeLoopGuard
 		return res

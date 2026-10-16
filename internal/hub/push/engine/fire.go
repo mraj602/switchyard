@@ -578,7 +578,7 @@ func (w *work) render(ps []*push) error {
 			}
 			for _, r := range rows {
 				cands = append(cands, rules.RoomCandidate{Seat: r.Seat, Label: seatName(r.Name, r.Label, r.Email), Hidden: r.Hidden,
-					UsedPct: r.Used, UpdatedMS: r.UpdatedAt})
+					HasWindow: r.HasWindow, UsedPct: r.Used, ResetsMS: r.ResetsAt, HasReading: r.HasReading})
 			}
 			rooms[key] = cands
 		}

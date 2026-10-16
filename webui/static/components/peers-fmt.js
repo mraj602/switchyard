@@ -78,10 +78,18 @@ export function blockAllEdit(allow, sameAccount) {
 export const allowedAll = (allow, accounts, sameAccount) => !!sameAccount && !allowAllEdit(allow, accounts, sameAccount).widens;
 export const blockedAll = (allow, sameAccount) => !sameAccount && !(allow || []).length;
 
-// The loop-guard limit (peers.md 5.1, 6.3): 2 to 500, the hub's own bound.
+// The loop-guard limit (peers.md 5.1, 6.3): 0 is no limit (the default), else 2 to 500, the
+// hub's own bound.
+export const TURNS_NONE = 0;
 export const TURNS_MIN = 2;
 export const TURNS_MAX = 500;
+// The number the field offers when the limit is off and someone unticks "No limit".
+export const TURNS_SUGGEST = 30;
 export const TURNS_HELP = 'When two sessions message each other on their own, with no one typing, Switchyard stops delivering after this many messages, so two agents cannot keep replying to each other forever. Typing in either session (or Resume thread) starts the count again.';
+export const NO_LIMIT_HELP = 'No limit lets agents keep talking with no one watching; the other limits still apply.';
+
+// max_turns in words: "no limit" for 0, else the number.
+export const turnsLabel = (n) => (n === TURNS_NONE ? 'no limit' : String(n));
 export const ALLOW_ALL_CONFIRM = 'Allow every account to message every other account, both ways?';
 export const BLOCK_ALL_CONFIRM = 'Stop all peer messages between accounts? Threads in progress stop too.';
 export const OWNER_ONLY_ALLOW = 'Only the owner can allow pairs.';
@@ -94,8 +102,12 @@ export function parseTurns(text) {
   return n >= TURNS_MIN && n <= TURNS_MAX ? n : null;
 }
 
-// Raising the limit widens (owner only); lowering narrows.
-export const turnsWidens = (current, next) => next > current;
+// Raising the limit widens (owner only); lowering narrows. No limit (0) counts as the
+// highest value: setting it widens, setting any number from it narrows (keys.md 5.2).
+export function turnsWidens(current, next) {
+  if (current === next || current === TURNS_NONE) return false;
+  return next === TURNS_NONE || next > current;
+}
 
 // The body of PUT /v1/peers/matrix for an edit; base_version makes a stale edit a 409.
 export function editBody(matrix, edit) {
@@ -191,7 +203,7 @@ export function detailText(d) {
   if (d.widens === true) parts.push('widened');
   if (plain('paused')) parts.push(d.paused ? 'paused' : 'not paused');
   if (plain('same_account')) parts.push(`same account ${d.same_account ? 'on' : 'off'}`);
-  if (plain('max_turns')) parts.push(`${d.max_turns} turns`);
+  if (plain('max_turns')) parts.push(d.max_turns === TURNS_NONE ? 'no turn limit' : `${d.max_turns} turns`);
   if (plain('pairs')) parts.push(`${d.pairs} ${Number(d.pairs) === 1 ? 'pair' : 'pairs'}`);
   if (plain('size') && Number.isFinite(Number(d.size))) parts.push(sizeLabel(Number(d.size)));
   for (const k of ['status', 'outcome', 'reason']) if (plain(k)) parts.push(String(d[k]).slice(0, 60));
