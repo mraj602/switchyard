@@ -36,7 +36,7 @@ export function pairError(r, hadCode) {
     case 4:
       return hadCode
         ? 'Pairing is not possible here. Run sy setup first.'
-        : 'Pairing without a code needs the hub on this computer or a working admin channel (machines.hub_admin). Type a code from the board (Devices, Add device, Desktop) or from sy hub pair --kind desktop.';
+        : 'Pairing without a code needs the hub on this computer or a working admin channel (machines.hub_admin). Type a code from the board (More, Devices, Add desktop app) or from sy hub pair --kind desktop.';
     case 5:
       return 'The hub is not reachable.';
     default:
@@ -449,7 +449,8 @@ export function create(deps) {
     if (colour !== undefined) body.colour = colour;
     if (Object.keys(body).length === 0) return { ok: false, error: 'Nothing to change.' };
     if (!state.url) return { ok: false, error: 'Not connected to a hub.' };
-    if (auth && !state.owner) await hubView.sessionLogin().catch(() => {});
+    // A login only when the partition has no cookie: each login is a new board session.
+    if (auth && !state.owner && !(await hubView.hasCookie())) await hubView.sessionLogin().catch(() => {});
     const r = await hubView.sessionFetch('PATCH', `/v1/accounts/${encodeURIComponent(seat)}`, body);
     if (r.ok) {
       refreshOverview();
@@ -509,6 +510,7 @@ export function create(deps) {
       if (refreshTimer) timers.clearTimeout(refreshTimer);
       infoTimer = refreshTimer = null;
       stopStream();
+      await hubView.flushCookies(); // the board session survives the restart (no new login)
     },
   };
 }
