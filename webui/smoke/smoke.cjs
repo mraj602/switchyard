@@ -576,6 +576,55 @@ async function peersChecks(page, sizeName, who, owner) {
 
   await page.evaluate(() => { location.hash = '#/more/peers'; });
   await page.waitForSelector(CELL(1, 11));
+  // Bulk controls and the turn limit (peers.md 5.4): confirm is auto-accepted.
+  await page.evaluate(() => { window.confirm = () => true; });
+  const allCells = (cls) => page.evaluate((c) => { const b = [...document.querySelectorAll('[data-key=matrix] .mx-btn')]; return b.length === 12 && b.every((x) => x.classList.contains(c)); }, cls);
+  const waitAll = (cls, what) => page.waitForFunction((c) => { const b = [...document.querySelectorAll('[data-key=matrix] .mx-btn')]; return b.length === 12 && b.every((x) => x.classList.contains(c)); }, { timeout: 4000 }, cls).catch(() => fail(t(what)));
+  if (!/^Automated turns per thread/.test((await txt('[data-key=peers-turns] label')) || '') || !/A thread is one conversation between two sessions\./.test((await txt('[data-key=peers-turns]')) || '') || !/Resume thread\)\. This stops two agents/.test((await txt('[data-key=peers-turns]')) || '')) fail(t('turn limit label or explanation missing'));
+  if ((await page.$eval('[data-key=max-turns]', (i) => i.value)) !== '30') fail(t('turn limit is not 30'));
+  const setTurns = async (n) => {
+    await page.$eval('[data-key=max-turns]', (i, v) => { i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); }, String(n));
+    await settle();
+  };
+  const turnsLine = () => page.evaluate(() => { const d = document.querySelector('[data-key=peers-details]'); if (d) d.open = true; return (document.querySelector('[data-key=matrix-version]') || {}).textContent || ''; });
+  await setTurns(1);
+  if (!(await page.$eval('[data-key=max-turns-set]', (b) => b.disabled)) || !/2 to 500/.test((await txt('[data-key=max-turns-why]')) || '')) fail(t('turn limit 1 is not refused with the range'));
+  await setTurns(501);
+  if (!(await page.$eval('[data-key=max-turns-set]', (b) => b.disabled))) fail(t('turn limit 501 is not refused'));
+  if (owner) {
+    if (!(await page.$('[data-key=allow-all]')) || (await page.$eval('[data-key=allow-all]', (b) => b.disabled))) fail(t('Allow all is missing or disabled for the owner'));
+    await pressSel('[data-key=allow-all]');
+    await waitAll('mx-both', 'Allow all did not turn every cell to both ways');
+    await settle();
+    await shot(page, `${sizeName}-${who}-peers-allow-all`);
+    await pressSel('[data-key=block-all]');
+    await waitAll('mx-none', 'Block all did not clear every cell');
+    await setTurns(40);
+    if (await page.$eval('[data-key=max-turns-set]', (b) => b.disabled)) fail(t('raising the turn limit is disabled for the owner'));
+    await pressSel('[data-key=max-turns-set]');
+    try { await page.waitForFunction(() => /at most 40 turns/.test((document.querySelector('[data-key=matrix-version]') || {}).textContent || ''), { timeout: 4000 }); } catch (e) { fail(t(`raising the turn limit to 40 did not stick: ${await turnsLine()}`)); }
+    const ev = await page.evaluate(async () => (await (await fetch('/v1/peers/matrix')).json()).matrix);
+    if (ev.max_turns !== 40 || ev.same_account !== false || ev.allow.length !== 0) fail(t(`matrix after bulk edits: ${JSON.stringify(ev)}`));
+    await setTurns(30);
+    await pressSel('[data-key=max-turns-set]');
+    try { await page.waitForFunction(() => /at most 30 turns/.test((document.querySelector('[data-key=matrix-version]') || {}).textContent || ''), { timeout: 4000 }); } catch (e) { fail(t('lowering the turn limit to 30 did not stick')); }
+    await pressSel('[data-key=allow-all]');
+    await waitAll('mx-both', 'second Allow all did not turn every cell to both ways');
+    await pressSel('[data-key=block-all]');
+    await waitAll('mx-none', 'second Block all did not clear every cell');
+    await pressSel('[data-key=same-account]');
+    await sleep(500);
+    if (!(await allCells('mx-none'))) fail(t('cells are not clear after the bulk checks'));
+  } else {
+    if (await page.$('[data-key=allow-all]')) fail(t('a device sees Allow all'));
+    if (!/Only the owner can allow pairs\./.test((await txt('[data-key=allow-all-why]')) || '')) fail(t('device has no "Only the owner can allow pairs." line'));
+    await setTurns(45);
+    if (!(await page.$eval('[data-key=max-turns-set]', (b) => b.disabled)) || !/owner sign-in/.test((await txt('[data-key=max-turns-why]')) || '')) fail(t('device may raise the turn limit, or is not told why not'));
+    await setTurns(20);
+    if (await page.$eval('[data-key=max-turns-set]', (b) => b.disabled)) fail(t('device cannot lower the turn limit'));
+    await pressSel('[data-key=max-turns-set]');
+    try { await page.waitForFunction(() => /at most 20 turns/.test((document.querySelector('[data-key=matrix-version]') || {}).textContent || ''), { timeout: 4000 }); } catch (e) { fail(t('lowering the turn limit to 20 did not stick')); }
+  }
   if (owner) {
     // Widen: personal and work both ways, personal to client one way.
     await pressSel(CELL(1, 11));
@@ -613,6 +662,14 @@ async function peersChecks(page, sizeName, who, owner) {
     await settle();
     await shot(page, `${sizeName}-${who}-peers-dark`);
     await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+    // Block all is a narrowing: any paired device may do it.
+    if (await page.$eval('[data-key=block-all]', (b) => b.disabled)) fail(t('Block all is disabled for a device'));
+    await pressSel('[data-key=block-all]');
+    await page.waitForFunction(() => { const b = [...document.querySelectorAll('[data-key=matrix] .mx-btn')]; return b.length === 12 && b.every((x) => x.classList.contains('mx-none')); }, { timeout: 4000 }).catch(() => fail(t('Block all did not clear every cell')));
+    const mx = await page.evaluate(async () => (await (await fetch('/v1/peers/matrix')).json()).matrix);
+    if (mx.allow.length !== 0 || mx.same_account !== false || mx.max_turns !== 20) fail(t(`matrix after Block all: ${JSON.stringify(mx)}`));
+    await settle();
+    await shot(page, `${sizeName}-${who}-peers-blocked`);
   }
 }
 

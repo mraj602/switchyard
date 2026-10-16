@@ -336,6 +336,25 @@ machine can lie about which of its own sessions is which account, but no other m
 | Deny a pair, pause, lower `max_turns` (narrowing) | Any paired device, phones included, or the owner key | `sy peers deny …`, `sy peers pause`; Settings → Peers or the pause switch on any screen |
 | Resume one thread the loop guard stopped (widening, 6.3) | An owner session on the board, or a human prompt in either session | Settings → Peers → Audit, "Resume thread": hub-signed, so machines with `hub_may_widen = false` keep their stop (and say so in the audit) |
 
+**Bulk actions and the turn limit (board).** Settings → Peers has two buttons above the grid
+and a number field, all plain matrix edits (`PUT /v1/peers/matrix` `edit` with `base_version`);
+there is no endpoint of their own:
+
+| Control | Edit | Kind | Who |
+| --- | --- | --- | --- |
+| **Allow all** | `allow` every missing ordered pair of the accounts shown (both ways, ⇄) and `same_account: true` | widening | an owner session only; a non-owner sees it disabled or hidden with "Only the owner can allow pairs." Confirm: "Allow every account to message every other account, both ways?" |
+| **Block all** | `deny` every pair in `allow` and `same_account: false` | narrowing | any paired device (phone included). Confirm: "Stop all peer messages between accounts? Threads in progress stop too." Threads in progress stop because their replies need the opener's pair (5.3, rule 4) |
+| **Automated turns per thread** | `max_turns` | raising widens (owner session), lowering narrows (any paired device) | the hub enforces it like any edit (keys.md 5.2); the field accepts 2 to 500 (5.1), the same bound the hub's `Check` applies |
+
+Block all is not the pause switch: it changes the matrix (pairs and same-account stay off until
+someone allows them again), while pause keeps the matrix and stops delivery (11). The phone
+offers Block all and shows the turn limit read-only with its explanation; it never offers Allow
+all or a raise (a phone is never an owner session) and points to "Allow pairs from a computer
+(board, Peers)". The turn-limit explanation: "A thread is one conversation between two
+sessions. After this many messages with no one typing in either session, delivery stops until
+you type in one of them (or Resume thread). This stops two agents replying to each other
+forever."
+
 The hub accepts a new version, stores it (`matrix_doc`), writes a `peer_audit` row and queues
 a `matrix` frame to every machine with an agent. A machine applies it on receipt (keys.md 5.4
 for hub-signed widening). New messages see the change at once; messages already queued are
@@ -458,6 +477,8 @@ sy peers audit [--since 24h] [--json]  metadata from the hub (owner) or this mac
   the account's place in the matrix print, which sorts by label, then uuid. The accounts `sy`
   knows are this machine's slots (label = `slots.labels`, else the folder name) and those the
   newest matrix document lists (`accounts`); a document the owner key signs refreshes that list.
+- `sy peers deny '*' '*'` is not accepted; the board's **Block all** (5.4) denies each existing
+  pair in one edit, and **Allow all** adds every missing pair; neither has a `sy` command.
 - Narrowing never asks and never needs the passphrase: `deny`, `same-account off`, `max-turns`
   down and `pause` are edits the hub signs (`PUT /v1/peers/matrix {"edit"}`, `POST
   /v1/peers/pause`). Widening commands run the signing guard before anything else and exit 4
