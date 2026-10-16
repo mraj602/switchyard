@@ -927,7 +927,7 @@ What moves, and what each device has to do:
 | Machine and desktop tokens | Hashes in `device`, machine bindings | **Keep working.** Each machine runs `sy connect <new url> --keep-token` (or the operator runs `sy machine repoint <new url>`), which checks `/health` and proves the token with `slot_info` records (tokens.md 4), then changes only `hub.url`. Until then its records wait (the old hub is frozen). |
 | Pull targets | Rows, pinned host keys, the pull key file | Keep working if the new hub host can reach the remotes over SSH; nothing changes on the remotes. |
 | Phones and browsers | Their device rows and Web Push subscriptions (VAPID keys move) | Their web app and cookie belong to the old origin: **re-pair** (plan section 15), unless the new hub keeps the same public URL (the tailnet name moved with it), in which case nothing changes at all. |
-| Owner sessions | Rows | Cookies are per origin: sign in again with `sy hub owner-link` unless the URL is the same. |
+| Owner sessions | Rows | Cookies are per origin: sign in again unless the URL is the same: an owner device already on the new origin makes a link (More, Devices, Make another device owner), else `sy hub owner-link` on the new hub. |
 | Pairing codes | Rows and the pepper | Live codes keep working at the new address. |
 | Alerts, rules, history | Everything | The engine starts with `awake_at = now` (no silent-machine burst) and the stale guard drops anything overdue by more than 15 minutes. |
 

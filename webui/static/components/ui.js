@@ -1,6 +1,7 @@
 // Small shared controls: switch, select, section card, toast, SVG helper.
 
 import { h } from './dom.js';
+import { ownerHint, OWNER_CLI } from './notif-note.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -85,6 +86,17 @@ export const brandRow = () => h('div', { class: 'brand-row' },
 // `summary` may be a string or {text, key}; a key keeps it open across redraws (app.js).
 export const details = (summary, ...kids) => h('details', { class: 'tech', 'data-key': summary.key },
   h('summary', {}, summary.text || summary), h('div', { class: 'tech-body' }, ...kids));
+
+// How a non-owner becomes the owner (notif-note.js ownerHint): lead, then the owner-link hint;
+// in a browser the CLI is a fold-out "On the hub's computer"; in the desktop app only the Hub
+// tab's button is named (no CLI).
+export function ownerHintNode({ app, lead = '', key = 'owner-hint', cls = 'muted small' } = {}) {
+  return h('div', { class: 'owner-hint col', 'data-key': key },
+    h('p', { class: cls }, lead ? `${lead} ${ownerHint(app)}` : ownerHint(app)),
+    app ? null : h('details', { class: 'login-more small', 'data-key': `${key}-cli` }, h('summary', {}, 'On the hub’s computer'),
+      h('p', { class: 'muted small' }, 'Run this and open the link it prints in this browser:'),
+      h('pre', { class: 'cmd mono' }, OWNER_CLI)));
+}
 
 // Pill row shown right under the title of the screens behind the More tab. One row on a phone; it scrolls sideways when it does not fit.
 export function moreTabs(current, { owner } = {}) {

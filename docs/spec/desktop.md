@@ -317,7 +317,7 @@ account in a hidden or background start until the window is shown.
   such a record, the token is dropped and pairing starts again. A file that cannot be decrypted
   (the keyring locked or not up yet) is kept and tried again later; pairing replaces it.
   Pairing (`hub:pair`): with `admin` set, it is one click. Otherwise the person types the code
-  from the board (Devices → Add device → Desktop, created by WP-H) or from
+  from the board (More → Devices → Add desktop app, created by WP-H) or from
   `sy hub pair --kind desktop`.
 - Requests use Node's `fetch` in main with `Authorization: Bearer`, a 10 s timeout and no
   redirects. Plain `http:` is allowed only for loopback hosts, or when `sy desktop info`

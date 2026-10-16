@@ -34,6 +34,9 @@ const (
 	MaxTTL     = time.Hour
 	// MaxLive is how many typed codes can be live at once; a sixth cancels the oldest.
 	MaxLive = 5
+	// MaxLiveOwnerLinks is how many owner links made on the board (POST /v1/owner-links) can
+	// be live at once; another cancels the oldest. `sy hub owner-link` links do not count.
+	MaxLiveOwnerLinks = 3
 	// MaxNameLen is the longest device name.
 	MaxNameLen = 60
 	// PepperFile is the name of the HMAC key inside the state folder.
@@ -565,6 +568,13 @@ func (s *Service) CreateOwnerLink(ctx context.Context, req OwnerLinkRequest) (Ow
 	var out OwnerLink
 	err = s.Store.Write(ctx, func(tx *store.Tx) error {
 		now := tx.NowMS()
+		if strings.HasPrefix(by, "owner:") {
+			// Made on the board by an owner session: at most MaxLiveOwnerLinks live, a newer
+			// one cancels the oldest (as typed codes, section 2.1).
+			if _, err := tx.CancelOldestLiveBoardOwnerLinks(MaxLiveOwnerLinks-1, now); err != nil {
+				return err
+			}
+		}
 		id := store.NewID("pc_", s.Store.Now())
 		exp := now + ttl.Milliseconds()
 		if err := tx.InsertPairCode(store.PairCodeRow{ID: id, Kind: "owner", SecretHash: sh, URL: origin, CreatedAt: now,
@@ -575,6 +585,28 @@ func (s *Service) CreateOwnerLink(ctx context.Context, req OwnerLinkRequest) (Ow
 		return nil
 	})
 	return out, err
+}
+
+// MintOwnerLink is "Make another device owner" (POST /v1/owner-links, pairing.md 4.1): an
+// owner session makes a one-time owner link for another device. It always lives DefaultTTL
+// (the pair.ttl_s setting does not apply), is rate limited per client IP as claims are (3.3),
+// and at most MaxLiveOwnerLinks made this way are live. The link is consumed by
+// POST /v1/session/owner exactly as one from `sy hub owner-link`. One log line, never the
+// secret.
+func (s *Service) MintOwnerLink(ctx context.Context, ip string, by store.Device, hubURL string) (OwnerLink, error) {
+	if !auth.IsOwnerSession(by) || !by.HasScope("owner") {
+		return OwnerLink{}, &ClaimError{403, "forbidden", "only an owner session can make an owner link"}
+	}
+	if ok, retry := s.Limiter.Allow(ip, false); !ok {
+		s.logf("pair owner-link limited ip=%s by=%s retry=%ds", ip, by.ID, int(retry.Seconds()))
+		return OwnerLink{}, &LimitError{RetryAfter: retry}
+	}
+	l, err := s.CreateOwnerLink(ctx, OwnerLinkRequest{URL: hubURL, TTL: DefaultTTL, CreatedBy: "owner:" + by.ID})
+	if err != nil {
+		return OwnerLink{}, err
+	}
+	s.logf("pair owner-link made code=%s by=%s ip=%s expires=%s", l.ID, by.ID, ip, l.ExpiresAt.Format(time.RFC3339))
+	return l, nil
 }
 
 // ClaimRequest is POST /v1/pair/claim (pairing.md 3).
@@ -841,6 +873,7 @@ func (s *Service) OwnerSignInVia(ctx context.Context, ip, secret, name string, v
 		name = "Owner session"
 	}
 	var out auth.Created
+	var code string
 	err = s.Store.Write(ctx, func(tx *store.Tx) error {
 		now := tx.NowMS()
 		row, err := tx.LivePairCodeBySecretHash(h, now)
@@ -867,7 +900,7 @@ func (s *Service) OwnerSignInVia(ctx context.Context, ip, secret, name string, v
 		if !won {
 			return &LinkError{Code: LinkUsed, At: now} // a concurrent sign-in won
 		}
-		out = p.Created
+		out, code = p.Created, row.ID
 		return nil
 	})
 	if err != nil {
@@ -882,7 +915,7 @@ func (s *Service) OwnerSignInVia(ctx context.Context, ip, secret, name string, v
 		}
 		return auth.Created{}, err
 	}
-	s.logf("pair owner ok device=%s", out.Device.ID)
+	s.logf("pair owner ok device=%s code=%s", out.Device.ID, code)
 	return out, nil
 }
 

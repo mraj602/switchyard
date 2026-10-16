@@ -262,7 +262,7 @@ func (m *matrixRun) signAndPut(next keys.MatrixBody, summary string, yes bool) e
 		return exitWith(peerspkg.ExitGuard, err)
 	}
 	if _, err := os.Stat(env.sealedPath()); err != nil {
-		return exitWith(peerspkg.ExitGuard, fmt.Errorf("there is no owner key on this machine: open Settings → Peers on the board (%s) to make this change", m.hub.BaseURL))
+		return exitWith(peerspkg.ExitGuard, fmt.Errorf("there is no owner key on this machine: open More, Peers on the board (%s), signed in as owner, to make this change", m.hub.BaseURL))
 	}
 	t, err := env.tty()
 	if err != nil {

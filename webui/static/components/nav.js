@@ -5,8 +5,7 @@ import { dot } from './cards.js';
 import { seatIndex, seatName } from './seat.js';
 import { pct, clock } from '../format.js';
 import { TAB_OF } from '../route.js';
-import { liveState } from '../store.js';
-import { meInApp } from './notif-note.js';
+import { liveState, inApp } from '../store.js';
 
 const LIVE_TEXT = {
   live: 'Live',
@@ -80,14 +79,14 @@ export function renderNav(navEl, { page, store, onLogout }) {
   const idx = o ? seatIndex(o.seats) : new Map();
   const owner = !!(store.me && store.me.owner);
   // In the desktop app the app's own bar carries the name, and the app signs the board in.
-  const app = meInApp(store.me);
+  const app = inApp();
   const lit = (it) => it.id === page || (it.id === 'more' && TAB_OF[page] === 'more');
   navEl.replaceChildren(h('div', { class: 'nav-inner' },
     app ? null : h('div', { class: 'brand' }, logo(), h('span', {}, 'Switchyard')),
     h('ul', { class: 'nav-list' }, ITEMS.filter((it) => !it.owner || owner).map((it) => h('li', { class: `nav-${it.where}` },
       h('a', { href: it.href, 'data-key': `nav-${it.id}`, 'aria-current': lit(it) ? 'page' : undefined },
         icon(it.icon),
-        h('span', { class: 'nav-label' }, it.label),
+        h('span', { class: 'nav-label' }, app && it.id === 'settings' ? 'Hub settings' : it.label),
         it.id === 'sessions' && needs > 0 ? h('span', { class: 'count', 'aria-label': `${needs} need you` }, needs) : null)))),
     o && o.seats.length ? h('div', { class: 'nav-accounts' },
       h('div', { class: 'nav-heading' }, 'Accounts'),

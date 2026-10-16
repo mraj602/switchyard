@@ -76,10 +76,10 @@ Commands:
   refold             Rebuild every session's state and times from the stored records [--dry-run]
   prune              Delete raw records and fine-grained rows older than --older-than 90d / --before DATE
   import-prototype   Import the prototype's usage.db (a copy) into the hub database
-  pull               Pull servers over SSH: add|list|run|trust|enable|disable|remove|key (phase 5)
-  export / import    Move the hub: freeze and pack it / unpack it into an empty hub (phase 5)
-  unfreeze           Call off a move: the hub accepts records again (phase 5)
-  machine show ID    One machine's hub-side state, for sy machine add (phase 5)
+  pull               Pull servers over SSH: add|list|run|trust|enable|disable|remove|key
+  export / import    Move the hub: freeze and pack it / unpack it into an empty hub
+  unfreeze           Call off a move: the hub accepts records again
+  machine show ID    One machine's hub-side state, for sy machine add
   keys show          The hub key, the owner key and pending proposals (F1)
   keys confirm-owner FP  Activate a pending owner key proposal (F1)
   keys register / certify  A machine's link keys over SSH, for sy machine add (F1)
@@ -389,6 +389,14 @@ func serve(args []string, stdout, stderr io.Writer) error {
 			logger.Printf("no public address set: phones need one (%s, then --public-url https://<name>.ts.net)", service.ServeHint(ln.Addr().String()))
 		}
 	}
+	// The first-start owner link (pairing.md 4.1): once per start, only while the hub has
+	// never had an owner session, as one block on the log.
+	if block, err := FirstOwnerLink(ctx, st, pair.NewService(st, api.PairPepperPath), serveURL(ctx, st, pub, ln.Addr()), "serve",
+		writerIsTerminal(stderr)); err != nil {
+		logger.Printf("could not make a first owner link (%v): run sy hub owner-link", err)
+	} else if block != "" {
+		fmt.Fprint(stderr, block)
+	}
 	if fr, err := st.Frozen(ctx); err == nil && fr != nil {
 		movedTo := "nowhere set"
 		if fr.MovedTo != nil && *fr.MovedTo != "" {
@@ -444,6 +452,31 @@ func serve(args []string, stdout, stderr io.Writer) error {
 	}
 	fmt.Fprintln(stdout, "hub stopped")
 	return nil
+}
+
+// serveURL is the address the first owner link of serve names: --public-url, else the
+// hub.public_url setting, else the listen address (a wildcard address as 127.0.0.1).
+func serveURL(ctx context.Context, st *store.Store, pub string, addr net.Addr) string {
+	if pub != "" {
+		return pub
+	}
+	if u, _, _ := st.PairSetting(ctx, store.AlertKeyPublicURL); u != "" {
+		return u
+	}
+	host, port, err := net.SplitHostPort(addr.String())
+	if err != nil {
+		return "http://" + addr.String()
+	}
+	if ip := net.ParseIP(host); ip != nil && ip.IsUnspecified() {
+		host = "127.0.0.1"
+	}
+	return "http://" + net.JoinHostPort(host, port)
+}
+
+// writerIsTerminal reports whether w is a terminal (the QR gets black-on-white colour codes).
+func writerIsTerminal(w io.Writer) bool {
+	f, ok := w.(*os.File)
+	return ok && isTerminal(f)
 }
 
 // pullerRef is api.Config.Puller for serve: the scheduler is made after the API (it needs

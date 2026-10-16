@@ -1,7 +1,8 @@
 // More (phone tab): Alerts, Machines, Settings, Peers, Analytics; the owner also gets Devices.
 
 import { h } from '../components/dom.js';
-import { isOwner } from '../store.js';
+import { isOwner, inApp } from '../store.js';
+import { ownerHintNode } from '../components/ui.js';
 import { plural } from '../format.js';
 import { isMobile } from '../platform.js';
 
@@ -23,6 +24,6 @@ export function render({ store }) {
       item('#/more/peers', 'Peers', 'Which accounts’ sessions may message each other, and how to pause them'),
       owner ? item('#/more/devices', 'Devices', 'Phones, browsers and machines paired with this hub; add a phone') : null,
       item('#/more/analytics', 'Analytics', 'Tokens and their cost at API prices, by day, model and project')),
-    owner ? null : h('p', { class: 'muted small' }, 'Devices needs an owner sign-in: run ', h('code', {}, 'sy hub owner-link'), ' on the hub and open the link it prints.'));
+    owner ? null : ownerHintNode({ app: inApp(), lead: 'Devices needs an owner sign-in.', key: 'more-owner-hint' }));
   return { title: 'More · Switchyard', node };
 }
