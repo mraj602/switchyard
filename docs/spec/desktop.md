@@ -281,7 +281,17 @@ full_name, display_name} | {__status}, active_org, fetch_ms}`.
 | `usage:resume` | Clear `stopped`, read now |
 | `usage:set-reading {on: false}` | Clear the timers; mark any read in flight as cancelled, so its result is dropped before the outbox (a sequence number checked after `await`); nothing more is read or appended for that tab |
 
-**Records.** One `web_usage` per org returned by `/api/organizations`, exactly as in record.md
+**Which orgs.** Every claude.ai account has a personal free org beside its Team or paid orgs,
+and the `lastActiveOrg` cookie often points at it. A record makes a seat on the hub, so
+reporting it made a second, free seat for the same person. The app reports (`chooseOrgs`,
+`shared/usage.js`): every org that is not free when the account has one (Team, Enterprise, Max,
+Pro; plan as `planOf`); when all its orgs are free, exactly one: the tab's own seat org if still
+there, else the active org, else the one with the most windows. The org the strip and `tab.seat`
+follow is the active one when reported, else the tab's seat org, else the one with the most
+windows; so a tab whose seat was a stray free org moves to the paid one. A free org that is
+really used in Claude Code gets its seat from the slot's own records, not from the app.
+
+**Records.** One `web_usage` per org chosen above, exactly as in record.md
 4.3:
 `seat = {account, org, email, src: "claude_ai"}`, `payload = {tab_id, org: <six keys>, account:
 <four keys>, active, usage: <raw, whole>, fetch_ms}`. `client`, `machine` (cached from

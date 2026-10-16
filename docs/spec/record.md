@@ -284,7 +284,9 @@ Example:
 ### 4.3 `web_usage`
 
 Written by the desktop app (phase 6) every 5 minutes per signed-in tab, and when a tab opens.
-One record per organisation the account belongs to, so each record names one seat.
+One record per organisation the app reports for the account, so each record names one seat.
+The app leaves out a free organisation when the account has a paid one (desktop.md C5, "Which
+orgs"), because every account has a personal free organisation and it is not a seat of its own.
 
 - No `slot`. `seat` is required (`src: "claude_ai"`).
 - `client` is `switchyard-desktop/<app version>` (desktop.md C1). The app does not post to
