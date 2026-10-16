@@ -121,7 +121,7 @@ export default function NotifySettingsScreen() {
       {noTarget ? (
         <Card>
           <Text testID="link-no-target" style={{ color: t.text }}>
-            This phone has no link on the hub yet. Unpair and pair it again from Add phone to turn on instant delivery.
+            This phone has no link on the hub yet. Unpair and pair it again to turn on instant delivery.
           </Text>
         </Card>
       ) : null}
