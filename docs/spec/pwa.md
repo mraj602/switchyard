@@ -91,7 +91,7 @@ Hash routes (phase 2 had `#/`, `#/sessions`, `#/sessions/<id>`, `#/accounts`, `#
 | `#/` | Now (`PhoneNow`) | Rows get **Seen** and **Snooze** (swipe left/right on touch; two buttons in a row menu for keyboard and screen readers); seen rows dimmed; alert status ("push in 40 s", "pushed 14:04", "snoozed until 14:20"); offline banner (4) |
 | `#/sessions`, `?filter=needs_you|working|done|all`, `?by=machine` | Sessions (`PhoneSessions`) | Filter chips and "By machine" grouping as drawn |
 | `#/sessions/<id>?alert=<al>` | Session (`PhoneSession`) | **Open in Claude** (`remote_url`, with the wrong-account note), **Copy resume command**, **Snooze 15 min** (alert), state history. The heading (and the Now and Sessions rows) is the folder, then ` · <title or name>` unless that only repeats the folder ("infra", not "infra · infra") |
-| `#/accounts?seat=<id>` | Accounts (`PhoneAccounts`) | "Most room right now" line; `seat` scrolls to and highlights a card |
+| `#/accounts?seat=<id>` | Accounts (`PhoneAccounts`) | "Most room right now" line, then one compact row per account (3.0a); `seat` opens, scrolls to and highlights its row |
 | `#/machines?machine=<id>` | Machines | Under More on phones; stays in the desktop sidebar |
 | `#/more` | More (new) | Links: Alerts, Machines, Peers, Settings; owner only: Devices, Add phone; Analytics (`#/more/analytics`) |
 | `#/more/alerts` | Alerts and rules (`PhoneAlerts`) | Rule list (5 below), quiet hours, recent pushes from `GET /v1/alerts` with outcome (open, seen, snoozed, cancelled + the "cancelled means you answered first" note) |
@@ -150,6 +150,35 @@ filters and the Analytics account picker) reads `store.overview.seats` and follo
   not make the change applies it in place, with no reload (an event is ignored while this board's
   own save is in flight; the answer settles the order). The terminal board and the desktop app
   refetch their accounts on it; the phone app (no stream) picks it up on its next 15 s poll.
+
+### 3.0a The Accounts list
+
+`views/accounts.js`, with its pure logic in `components/accounts-fmt.js` (tested in `accounts-fmt.test.cjs`).
+The desktop app's Hub tab shows this same page.
+
+- **One row per account**: grip (owner only; drag and arrow keys as in 3.0), colour dot, name, the
+  plan in muted text; one bar for the tighter of the 5 h and 7 d limits (label "5 h" or "7 d", the
+  percentage, red from 90%) with the reset time of that window beside it ("resets 15:48",
+  "resets Sun 09:00"). A window whose reset has passed counts as 0.
+- **Needs a look**: a line only when something does. Priority: near the limit (runaway pace on 5 h:
+  "Near the 5-hour limit: full by 15:48"; or 7 d at 90% or more: "7-day limit nearly used, resets
+  Sun 09:00") > **Signed out on <machine>** (`Seat.signed_out`, api.yaml; a machine where the
+  account is also signed in is not listed) > other (claude.ai usage reading stopped). More than one
+  shows "+N".
+- **Expand in place**: a click on the row, or its chevron button (`aria-expanded`), opens the row
+  below it: every limit window (label, %, meter, "resets in 2 h 10 min (15:48)", peak, source, pace
+  line), where Claude Code is signed in or out per machine, details (plan, organisation, email,
+  extra usage and spend, open sessions, "claude.ai usage read N min ago") and, for the owner, **Edit
+  label and colour**. Several rows can be open; the open rows are kept per browser in
+  `localStorage` (`sy-accounts-open`, optional). **Expand all / Collapse all** sits at the top.
+- Below the list one muted line: "The bar shows the tighter of the 5 h and 7 d limits. Select an
+  account for everything else."
+- **Most room right now** ("Most room right now: claude-2 (5 h 0% · 7 d 3%)"): among non-hidden
+  accounts, the effective use of a window is 0 when its `resets_at` has passed, or when the account
+  has no reading for that window but has one for another; otherwise its `used_pct` (a reading older
+  than 6 hours counts until its reset). An account with no reading at all is skipped. Score =
+  max(effective 5 h, effective 7 d); the lowest wins; ties go to the lower 7 d, then the lower 5 h,
+  then list order; only when the score is under 80.
 
 ### 3.1 Peers (`#/more/peers`, PE3)
 

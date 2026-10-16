@@ -451,6 +451,11 @@ current window updated within 6 hours, and only if it is under 80%. Wording: "wo
 left". Nothing is said when no seat qualifies. Switchyard never switches accounts (plan
 section 13).
 
+The Accounts page's "Most room right now" line uses a different, idle-friendly rule (pwa.md 3.0a):
+a window counts as 0 when its `resets_at` has passed or when the account has no reading for it but
+has one for another window; an account with no reading at all is skipped; the score is the larger of
+the 5 h and 7 d use, lowest first, under 80%. Seats that are idle are the ones with most room.
+
 ### 5.8 Remote Control link and deep links
 
 - **Remote Control link.** `session.remote_url`, filled by ingest from a hook record's
