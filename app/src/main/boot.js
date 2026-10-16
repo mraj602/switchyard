@@ -36,6 +36,7 @@ import * as state from './state.js';
 import * as sy from './sy/index.js';
 import * as hub from './hub/index.js';
 import * as window from './window.js';
+import { HUB_STRIP_PX } from './window.js';
 import * as tabs from './tabs/index.js';
 import * as usage from './usage/index.js';
 import * as tray from './tray.js';
@@ -198,7 +199,7 @@ export async function boot(electron, opts = {}) {
   });
   made.hub = m.hub.create({
     electron, sy: made.sy, security: made.security, bus, ipc: made.ipc, fs, path, log, platform,
-    tokenFile: made.paths.hubTokenFile, fetch: opts.fetch ?? globalThis.fetch,
+    tokenFile: made.paths.hubTokenFile, fetch: opts.fetch ?? globalThis.fetch, clientVersion: app.getVersion(), hostname: nodeOs.hostname(),
     get window() {
       return made.window;
     },
@@ -223,8 +224,16 @@ export async function boot(electron, opts = {}) {
     claudeOrigin, userData: made.paths.userData,
   });
   await made.tabs.start();
+  // Usage records go to the hub through sy; without sy (or with a sy that has no hub) the app
+  // uploads them itself with its desktop token (hub/direct.js).
+  const recordSink = {
+    machineId: () => (useDirect() ? made.hub.direct.machineId() : made.sy.machineId()),
+    append: (records) => (useDirect() ? made.hub.direct.append(records) : made.sy.append(records)),
+    flushSoon: () => (useDirect() ? made.hub.direct.flushSoon() : made.sy.flushSoon()),
+  };
+  const useDirect = () => made.hub.state().direct === true;
   made.usage = m.usage.create({
-    tabs: made.tabs, sy: made.sy, store: made.store, bus, ipc: made.ipc, log, clientVersion: app.getVersion(),
+    tabs: made.tabs, sy: recordSink, store: made.store, bus, ipc: made.ipc, log, clientVersion: app.getVersion(),
     claudeOrigin, cadenceMs,
   });
   made.usage.start();
@@ -242,6 +251,10 @@ export async function boot(electron, opts = {}) {
   Promise.resolve(made.hub.start())
     .then(ensureHubView)
     .catch((err) => log.warn?.(`hub start: ${err?.message ?? err}`));
+
+  // The shell draws a read-only strip above the board; the board view starts below it.
+  const insetFor = (h) => (h?.status === 'ok' && !h.board_blocked && !h.owner ? HUB_STRIP_PX : 0);
+  bus.on('hub', (h) => made.window.setHubInset?.(insetFor(h)));
 
   made.tray = m.tray.create({
     electron, bus, window: made.window, usage: made.usage, hub: made.hub, platform, assetsDir: ASSETS_DIR, log,
