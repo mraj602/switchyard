@@ -102,6 +102,7 @@ func Fixtures(now time.Time) *Data {
 			},
 			"extra_usage": nil, "spend": nil, "web_raw_at": ago(40 * min),
 			"places": []M{}, "live_sessions": 0,
+			"signed_out": []M{{"machine": "m_gpu", "machine_name": "gpu-box", "slot": "~/.claude-4", "since": ago(2 * hour)}},
 		},
 	}
 

@@ -19,6 +19,7 @@ const DATA = SyLib.DATA_CACHE;
 const ASSETS = [
   'api.js',
   'app.js',
+  'components/accounts-fmt.js',
   'components/alerts.js',
   'components/analytics-fmt.js',
   'components/cards.js',

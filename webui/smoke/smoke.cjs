@@ -39,7 +39,7 @@ const BOARD_PAGES = [
   ['sessions-needs', '#/sessions?filter=needs_you', '.sessions-table'],
   ['sessions-machine', '#/sessions?by=machine', '.sessions-table'],
   ['session', '#/sessions/' + ASKED, '.timeline'],
-  ['accounts', '#/accounts', '.seat-card-full'],
+  ['accounts', '#/accounts', '.acct'],
   ['machines', '#/machines', '.machine'],
 ];
 
@@ -336,6 +336,7 @@ async function ownerFlow(sizeName, w, hgt) {
   await visit(page, sizeName, 'o-settings', '#/more/settings', '[data-key=hub-address]');
   await visit(page, sizeName, 'o-alerts', '#/more/alerts', '[data-key=rule-asked]');
   await visit(page, sizeName, 'o-devices', '#/more/devices', '.dev-list');
+  await accountsFlow(page, sizeName);
   await orderFlow(page, sizeName);
   await machinesFlow(page, sizeName);
   // Owner switches edit the global rule.
@@ -379,13 +380,73 @@ async function ownerFlow(sizeName, w, hgt) {
 
 const sideShown = (page) => page.evaluate(() => { const n = document.querySelector('.nav-accounts'); return !!n && n.offsetParent !== null; });
 const sideOrder = (page) => page.$$eval('.nav-accounts [data-key^="nav-seat-"]', (els) => els.map((a) => a.dataset.key.replace('nav-seat-', '')));
-const cardOrder = (page) => page.$$eval('.grid-accounts > .seat-card', (els) => els.map((a) => a.id.replace('seat-', '')));
+const cardOrder = (page) => page.$$eval('.acct-list > .seat-card', (els) => els.map((a) => a.id.replace('seat-', '')));
 const hubOrder = (page) => page.evaluate(async () => (await (await fetch('/v1/accounts')).json()).accounts.map((a) => a.id));
 const sameList = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-const waitCards = (page, want, what) => page.waitForFunction((w2) => JSON.stringify([...document.querySelectorAll('.grid-accounts > .seat-card')].map((a) => a.id.replace('seat-', ''))) === JSON.stringify(w2), { timeout: 4000 }, want)
+const waitCards = (page, want, what) => page.waitForFunction((w2) => JSON.stringify([...document.querySelectorAll('.acct-list > .seat-card')].map((a) => a.id.replace('seat-', ''))) === JSON.stringify(w2), { timeout: 4000 }, want)
   .catch(() => fail(page.tag(`order: ${what}`)));
 const waitSide = async (page, want, what, timeout = 4000) => !(await sideShown(page)) || page.waitForFunction((w2) => JSON.stringify([...document.querySelectorAll('.nav-accounts [data-key^="nav-seat-"]')].map((a) => a.dataset.key.replace('nav-seat-', ''))) === JSON.stringify(w2), { timeout }, want)
   .catch(() => fail(page.tag(`order: ${what}`)));
+
+// ---- the Accounts list: compact rows, expand in place, expand all, signed out, most room ----------
+async function accountsFlow(page, sizeName) {
+  const t = (m) => page.tag(`accounts: ${m}`);
+  await page.evaluate(() => { try { localStorage.removeItem('sy-accounts-open'); } catch (_) {} });
+  await visit(page, sizeName, 'o-accounts-collapsed', '#/accounts', '.acct');
+  const rows = await page.$$eval('.acct', (els) => els.map((e) => ({ id: e.id, h: Math.round(e.getBoundingClientRect().height), meters: e.querySelectorAll('.acct-row .meter').length,
+    win: (e.querySelector('.acct-win') || {}).textContent || '', pct: (e.querySelector('.acct-pct') || {}).textContent || '', details: e.querySelectorAll('.acct-detail').length })));
+  if (rows.length !== 4) fail(t(`${rows.length} rows, want 4`));
+  for (const r of rows) {
+    if (r.details) fail(t(`${r.id} starts open`));
+    if (r.meters !== 1) fail(t(`${r.id} has ${r.meters} bars in its row`));
+    if (!/^(5 h|7 d)$/.test(r.win) || !/^\d+%$/.test(r.pct)) fail(t(`${r.id} bar label "${r.win}" "${r.pct}"`));
+    if (r.h > (sizeName === 'phone' ? 150 : 80)) fail(t(`${r.id} row is ${r.h}px tall`));
+  }
+  const clientRow = rows.find((r) => r.id === 'seat-seat_client');
+  if (!clientRow || clientRow.win !== '5 h' || clientRow.pct !== '100%') fail(t(`client row ${JSON.stringify(clientRow)}`));
+  const hot = await page.$eval('#seat-seat_client .acct-meter', (e) => e.classList.contains('hot'));
+  if (!hot) fail(t('the bar of a 100% account is not red'));
+  const reset = await page.$eval('[data-key=reset-seat_personal]', (e) => e.textContent);
+  if (!/^resets \d{2}:\d{2}$|^resets \w{3} \d{2}:\d{2}$|^resets \d+ \w{3} \d{2}:\d{2}$/.test(reset)) fail(t(`reset text "${reset}"`));
+  const so = await page.$eval('[data-key=issue-seat_research]', (e) => e.textContent);
+  if (!/Signed out on gpu-box/.test(so)) fail(t(`signed-out line "${so}"`));
+  const quiet = await page.$eval('[data-key=issue-seat_work]', (e) => e.textContent);
+  if (quiet) fail(t(`a calm account shows "${quiet}"`));
+  const room = await page.$eval('[data-key=most-room]', (e) => e.textContent);
+  if (room !== 'Most room right now: research (5 h 8% · 7 d 12%)') fail(t(`most room says "${room}"`));
+  if (await page.$('.page > p.muted.small:not([data-key])')) fail(t('an explanatory paragraph is back'));
+  const note = await page.$eval('[data-key=accounts-note]', (e) => e.textContent);
+  if (note !== 'The bar shows the tighter of the 5 h and 7 d limits. Select an account for everything else.') fail(t(`note "${note}"`));
+  await shot(page, `${sizeName}-o-accounts-collapsed`);
+
+  // Open one row with its chevron: every window with "resets in ... (clock)".
+  await page.click('[data-key=seat-toggle-seat_personal]');
+  await page.waitForSelector('#seat-seat_personal .acct-detail');
+  if ((await page.$eval('[data-key=seat-toggle-seat_personal]', (e) => e.getAttribute('aria-expanded'))) !== 'true') fail(t('aria-expanded not true'));
+  const det = await page.$eval('#seat-seat_personal .acct-detail', (e) => e.textContent);
+  if ((det.match(/resets in [^()]+\(/g) || []).length < 4) fail(t(`detail shows few reset times: ${det.slice(0, 300)}`));
+  if (!/Claude Code signed in/.test(det) || !/Edit label and colour/.test(det) || !/claude\.ai usage read/.test(det)) fail(t('detail lacks sign-in, edit or usage-read lines'));
+  // It stays open after a reload (localStorage), and a click on the row closes it.
+  await page.reload({ waitUntil: 'networkidle2' });
+  await page.waitForSelector('.acct');
+  if (!(await page.$('#seat-seat_personal .acct-detail'))) fail(t('the open row was forgotten after a reload'));
+  await page.click('#seat-seat_personal .acct-who');
+  await page.waitForFunction(() => !document.querySelector('#seat-seat_personal .acct-detail'), { timeout: 3000 }).catch(() => fail(t('clicking the row did not close it')));
+  // The owner's edit form is inside the open row.
+  await page.click('[data-key=seat-toggle-seat_research]');
+  await page.waitForSelector('[data-key=seat-edit-seat_research]');
+  const sout = await page.$eval('[data-key=where-seat_research]', (e) => e.textContent);
+  if (!/gpu-box.*signed out/.test(sout)) fail(t(`where signed in: "${sout}"`));
+  await page.click('[data-key=seat-toggle-seat_research]');
+
+  // Expand all / Collapse all.
+  await page.click('[data-key=accounts-expand-all]');
+  await page.waitForFunction(() => document.querySelectorAll('.acct-detail').length === 4, { timeout: 3000 }).catch(() => fail(t('Expand all did not open every row')));
+  if ((await page.$eval('[data-key=accounts-expand-all]', (e) => e.textContent)) !== 'Collapse all') fail(t('button does not say Collapse all'));
+  await shot(page, `${sizeName}-o-accounts-expanded`);
+  await page.click('[data-key=accounts-expand-all]');
+  await page.waitForFunction(() => document.querySelectorAll('.acct-detail').length === 0, { timeout: 3000 }).catch(() => fail(t('Collapse all did not close every row')));
+}
 
 async function orderFlow(page, sizeName) {
   const t = (m) => page.tag(`order: ${m}`);
