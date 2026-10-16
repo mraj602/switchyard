@@ -662,7 +662,6 @@ func TestAckPastExpiredRow(t *testing.T) {
 		defer mu.Unlock()
 		return len(expired) == 1 && expired[0] == "msg_1"
 	})
-	if q := f.queued(p); len(q) != 0 {
-		t.Fatalf("queue %v", q)
-	}
+	// The expiry callback runs inside the ack's transaction: wait for the commit too.
+	waitFor(t, "the queue to empty", func() bool { return len(f.queued(p)) == 0 })
 }
