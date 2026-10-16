@@ -134,7 +134,7 @@ optional React 19.3 peers); they are expected and do not fail the install.
   It returns `{origin, secret?, code?}` or a reason. The origin must be `https://`, with no
   user info, path, query or fragment kept. Only `__DEV__` builds, and bundled builds made with
   `SY_APP_VARIANT=development` (`extra.cleartext`, the same switch as cleartext traffic in the
-  manifest), accept `http://` for loopback and RFC 1918 addresses (pairing.md 2.3's
+  manifest), accept `http://` for loopback, RFC 1918 and Tailscale (100.64.0.0/10) addresses (pairing.md 2.3's
   `--insecure` hubs, for local testing, `test/e2e/android`).
   It refuses a `javascript:` URL, an origin with a backslash and a host over 253 characters.
 - **Claim:** `POST <origin>/v1/pair/claim` with `{secret | code, name: "<model> · app",
