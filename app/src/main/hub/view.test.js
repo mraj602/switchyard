@@ -12,7 +12,7 @@ function setup({ sessionFetch } = {}) {
   const v = createHubView({
     electron: fake.electron,
     security: { webPreferences: () => ({}), guardSession() {}, guardView() {} },
-    window: { addView() {}, removeView() {}, select() {} },
+    window: { addView() {}, removeView() {}, select() {}, setViewHidden() {} },
     log,
     base: () => BASE,
     auth: () => ({ url: BASE, token: 'sy_d_good' }),

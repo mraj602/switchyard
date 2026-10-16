@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   tabTitle, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds, droppedIds,
-  effectiveView, windowLabel, windowRows, readingStatus, hubBanner, hubSummary, hubUsable, foldersOf,
+  effectiveView, windowLabel, windowRows, readingStatus, hubBanner, hubSummary, hubChip, ownerPill, hubUsable, foldersOf,
   switchState, shareSpec, SHARE_SWITCHES, isPrimary, loginCommand, SHARE_FOLDER_RE,
 } from './view.js';
 import { SHARE_SPEC_PATTERN } from '../shared/ipc.js';
@@ -98,19 +98,51 @@ test('hub banners and summaries', () => {
   assert.equal(hubBanner(hub()), null);
   assert.equal(hubBanner(null), null);
   // an ok hub with an error (a 403): shown, nothing to do about the token
-  assert.deepEqual(hubBanner(hub({ error: 'forbidden (403)' })), { level: 'error', text: 'forbidden (403)', command: null, action: null });
-  assert.equal(hubBanner(hub({ status: 'no_sy' })).command, 'sy setup');
-  assert.equal(hubBanner(hub({ status: 'not_connected' })).command, 'sy setup');
+  assert.deepEqual(hubBanner(hub({ error: 'forbidden (403)' })), { level: 'error', title: null, text: 'forbidden (403)', command: null, action: null });
+  // no hub (no sy, or sy not connected): the Connect card, with the TARGET words and no terminal command
+  for (const status of ['no_sy', 'not_connected']) {
+    const b = hubBanner(hub({ status, url: null }));
+    assert.equal(b.title, 'Connect to a hub.');
+    assert.equal(b.text, "Enter your hub's address. Account tabs work without a hub.");
+    assert.equal(b.action, 'connect');
+    assert.equal(b.command, null);
+  }
   assert.match(hubBanner(hub({ status: 'dial' })).text, /forward mode/i);
   assert.equal(hubBanner(hub({ status: 'needs_pairing' })).action, 'pair');
   assert.equal(hubBanner(hub({ status: 'needs_pairing', admin: 'local' })).action, 'pair-click');
   assert.equal(hubBanner(hub({ status: 'needs_pairing', local: true })).action, 'pair-click');
+  // a removed device: the wording, then the same pair action as a first pairing
+  assert.equal(hubBanner(hub({ status: 'needs_pairing', removed: true })).title, 'This computer was removed from the hub.');
+  assert.match(hubBanner(hub({ status: 'needs_pairing', removed: true })).text, /^Someone removed it in Devices\. Pair again to see the board\./);
+  assert.equal(hubBanner(hub({ status: 'needs_pairing' })).title, 'Pair this computer.');
+  assert.equal(hubBanner(hub({ status: 'needs_pairing', admin: 'local' })).text, "This computer can reach the hub's computer, so pairing needs no code.");
+  assert.match(hubBanner(hub({ status: 'needs_pairing' })).text, /^Get a code on any owner device: More, Devices, Add desktop app\./);
+  assert.equal(hubBanner(hub({ status: 'needs_pairing', removed: true })).action, 'pair');
+  assert.equal(hubBanner(hub({ status: 'needs_pairing', removed: true, admin: 'local' })).action, 'pair-click');
+  assert.doesNotMatch(hubBanner(hub({ status: 'needs_pairing' })).text, /removed/);
+  // the board could not be signed in: our own panel, never the board's login wording
+  assert.equal(hubBanner(hub({ board_blocked: true })).level, 'error');
+  assert.doesNotMatch(hubBanner(hub({ board_blocked: true })).text, /owner-link|browser/i);
+  assert.equal(hubUsable(hub({ board_blocked: true })), false);
   assert.match(hubBanner(hub({ status: 'unreachable' })).text, /hub\.example/);
-  assert.equal(hubBanner(hub({ status: 'unreachable', local: true })).action, 'service');
+  assert.equal(hubBanner(hub({ status: 'unreachable' })).title, "Can't reach the hub.");
+  assert.equal(hubBanner(hub({ status: 'unreachable' })).action, 'retry');
+  assert.equal(hubBanner(hub({ status: 'unreachable', local: true })).action, 'retry-service');
+  assert.match(hubBanner(hub({ status: 'unreachable', last_seen: '2026-10-16T10:00:00Z' }), Date.parse('2026-10-16T10:05:00Z')).text, /Last seen/);
   assert.equal(hubBanner(hub({ status: 'something_new' })), null);
   assert.equal(hubSummary(hub()), 'Connected · v0.6.0');
   assert.equal(hubSummary(hub({ version: 'dev' })), 'Connected · dev'); // not "vdev"
   assert.equal(hubSummary(hub({ status: 'needs_pairing' })), 'Needs pairing');
+  // the top-bar chip and the owner pill
+  assert.deepEqual(hubChip(hub()), { text: 'Hub · Connected', level: 'ok' });
+  assert.equal(hubChip(hub({ status: 'needs_pairing' })).text, 'Hub · Not paired');
+  assert.equal(hubChip(hub({ status: 'needs_pairing', removed: true })).text, 'Hub · Removed');
+  assert.equal(hubChip(hub({ status: 'unreachable' })).level, 'error');
+  assert.equal(hubChip(hub({ status: 'no_sy' })).text, 'Hub · Not connected');
+  assert.deepEqual(ownerPill(hub()), { text: 'Read-only', owner: false });
+  assert.match(ownerPill(hub({ owner: true, owner_until: '2026-11-14T10:00:00Z' })).text, /^Owner · until 14 Nov$/);
+  assert.deepEqual(ownerPill(hub({ owner: true })), { text: 'Owner', owner: true });
+  assert.equal(ownerPill(hub({ status: 'needs_pairing' })), null);
   assert.equal(hubUsable(hub()), true);
   assert.equal(hubUsable(hub({ status: 'unreachable' })), false);
 });

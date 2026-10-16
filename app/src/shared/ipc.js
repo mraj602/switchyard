@@ -78,7 +78,17 @@ export const CHANNELS = Object.freeze({
     kind: INVOKE, fn: 'pair', owner: 'C', returns: '{ok, error?}',
     args: obj({ code: { type: 'string', max: 7, pattern: new RegExp(PAIR_CODE_PATTERN) } }), // {} = local or admin channel
   },
-  'hub:owner-sign-in': { kind: INVOKE, fn: 'ownerSignIn', owner: 'C', args: null, returns: '{ok, error?}' },
+  // {} = through sy (local hub or admin channel); {link} = a pasted owner link (own hub's origin only)
+  'hub:owner-sign-in': { kind: INVOKE, fn: 'ownerSignIn', owner: 'C', returns: '{ok, error?}', args: obj({ link: { type: 'string', min: 8, max: 2048 } }) },
+  'hub:owner-sign-out': { kind: INVOKE, fn: 'ownerSignOut', owner: 'C', args: null, returns: '{ok}' },
+  // Connect to a hub without sy: check the address (/health), remember it, pair with the code when given.
+  'hub:connect': {
+    kind: INVOKE, fn: 'hubConnect', owner: 'C', returns: '{ok, error?}',
+    args: obj({ url: { type: 'string', min: 1, max: 300 }, code: { type: 'string', max: 7, pattern: new RegExp(PAIR_CODE_PATTERN) } }, ['url']),
+  },
+  // Revoke this app's device on the hub, forget the token and the board session; forget also drops the remembered address.
+  'hub:unpair': { kind: INVOKE, fn: 'hubUnpair', owner: 'C', returns: '{ok, revoked, warning?}', args: obj({ forget: BOOL }) },
+  'hub:retry': { kind: INVOKE, fn: 'hubRetry', owner: 'C', args: null, returns: '{ok}' },
   'hub:service': {
     kind: INVOKE, fn: 'hubService', owner: 'C', returns: '{service, health}',
     args: obj({ action: { type: 'string', max: 6, enum: ['status', 'start', 'stop'] } }, ['action']),
@@ -244,6 +254,12 @@ function check(channel, path, s, v) {
  * @property {'running'|'stopped'|'missing'|null} service
  * @property {string|null} admin      admin channel ('local', a command prefix) or null
  * @property {number} needs_you
+ * @property {boolean} removed        the hub refused this app's token (its device was removed): pair again
+ * @property {boolean} direct          the app dials the hub itself (no sy, or sy has no hub)
+ * @property {string|null} owner_until  RFC 3339, when the owner session ends (owner only)
+ * @property {string|null} last_seen    RFC 3339, when the hub was last reached or lost
+ * @property {string} machine           this computer's name
+ * @property {boolean} board_blocked  the board asked for its own sign-in and main could not answer it: the board is hidden
  * @property {'ok'|'no_sy'|'not_connected'|'dial'|'needs_pairing'|'unreachable'} status
  *
  * @typedef {object} Settings
