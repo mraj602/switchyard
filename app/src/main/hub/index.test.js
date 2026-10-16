@@ -630,7 +630,7 @@ test('a claude.ai session link goes to the tab with the matching seat', async ()
   await t.close();
 });
 
-test('no matching seat: openLink gets null (it picks the first signed-in tab); no tab: the system browser', async () => {
+test('no matching seat: openLink gets null (the old first-signed-in-tab fallback); no tab: the system browser', async () => {
   const link = 'https://claude.ai/code/session_ZZZ';
   const t = await harness({ openResult: false });
   await t.h.start();

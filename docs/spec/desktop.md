@@ -25,7 +25,11 @@ pairing.md (desktop codes, owner links), machines.md 4.4 (admin channel).
   {"v": 1,
    "tabs": [{"id": "t_9c1e5f0a7b2d4e68", "name": "work", "last_url": "https://claude.ai/new",
              "reading": "on", "warning_accepted": 1, "send_to_hub": true,
-             "stopped": null, "seat": {"account": "3f1c…", "org": "9b20…"}}],
+             "stopped": null, "seat": {"account": "3f1c…", "org": "9b20…"}},
+            {"id": "t_2b7d0e41c9a35f68", "name": "claude-6", "last_url": "https://claude.ai/new",
+             "reading": "never_asked", "warning_accepted": 0, "send_to_hub": true, "stopped": null,
+             "seat": null,
+             "expect": {"seat": "seat_01J…", "account": "5a2e…", "org": "c41b…", "label": "claude-6"}}],
    "settings": {"keep_running": true, "notifications": true, "start_hidden": false,
                 "close_notice_shown": false}}
   ```
@@ -61,7 +65,7 @@ both enforce it.
   | --- | --- | --- |
   | Shell (`app://shell/`) | nothing (any navigation is prevented) | denied |
   | Account tab | `https://claude.ai`, `https://*.claude.ai`, sign-in hops (`anthropic.com`, `claude.com`, `challenges.cloudflare.com` and their subdomains), `https:` only | Allowed hosts load in the same tab. `https:` and `mailto:` go to `shell.openExternal`. Anything else is dropped. |
-  | Hub view | The hub origin only (scheme + host + port from `sy desktop info`) | `https://claude.ai/code/session_…` opens in the account tab whose seat matches (see C7), else in the system browser. Other `https:` links go to the system browser. |
+  | Hub view | The hub origin only (scheme + host + port from `sy desktop info`) | `https://claude.ai/code/session_…` opens in the account tab of the session's account (see C7), else in a new tab for that account; with no known seat, the first signed-in tab, else the system browser. Other `https:` links go to the system browser. |
 
 - Permissions are handled per session (`setPermissionRequestHandler`, `setPermissionCheckHandler`,
   `setDevicePermissionHandler` → deny, `setDisplayMediaRequestHandler` → deny):
@@ -136,7 +140,7 @@ not used). Before calling a handler it checks the following.
 | `state:get` | — | `ShellState` | A |
 | `view:select` | `{view: "hub" \| "settings" \| <tab id>}` | — | A |
 | `hub:route` | `{route: string}` (must start `#/`, ≤ 200 chars) | — | C |
-| `tab:add` | `{name: string ≤ 24}` | `{id}` | B |
+| `tab:add` | `{name: string ≤ 24, seat?: seat id}` | `{id}` | B |
 | `tab:update` | `{id, name?}` | — | B |
 | `tab:remove` | `{id}` (clears that partition's storage) | — | B |
 | `tab:reorder` | `{ids: [id…]}` (account tab ids in the new display order; ids not listed keep their order after the listed ones, unknown ids are dropped) | — | B |
@@ -363,9 +367,29 @@ account in a hidden or background start until the window is shown.
 - `hub:route` loads `<hub>/<route>` (for example `#/sessions/<id>`). Notification clicks and
   tray items use it.
 - Account-tab handoff: a `https://claude.ai/code/session_[A-Za-z0-9]+` link from the board goes
-  to the tab whose `seat` equals the session's seat (from `/v1/sessions/{id}`). If there is no
-  such tab, it goes to the first signed-in tab. If there is none, it goes to the system browser.
+  to the tab of the session's seat (from `/v1/sessions/{id}`), matched by account uuid: the tab
+  whose learned `seat.account` is that account, else the tab made for it (`expect.account`). It
+  never goes to a tab of another account: claude.ai answers "session does not exist" there. If
+  no tab has that account, the app makes one (named by the seat's label, `expect` set, starting
+  at the link) and opens the link there; the person signs in there if the tab is signed out.
+  Only a link whose seat is unknown (no session record, no hub) keeps the old fallback: the
+  first signed-in tab, else the system browser. `openLink(url, seat)` is therefore async.
   This replaces the prototype's `openCode`.
+- Accounts with no tab: the hub's accounts (`/v1/accounts`, one per account uuid, hidden ones
+  left out) that no tab is signed in as or was made for are `ShellState.missing`
+  (`[{seat, label}]`). While any exist, the Hub tab's top line (the same 44 px strip as the
+  read-only line, also shown to an owner) says "claude-6 and claude-7 have no tab here. Add
+  tabs", and so does the "More tabs" menu. **+** then offers "Add a tab for claude-6" for each of
+  them above the blank "New tab" form. `tab:add` with `seat` makes the tab named by the label
+  with `expect = {seat, account, org, label}`; a second add for an account that already has a
+  tab returns that tab. Tabs are only ever made by that click (or by a handoff above), never
+  silently.
+- Wrong account in a tab: `TabState.expected` is the label in `expect`; `TabState.mismatch`
+  (`{expected, actual}`) is set when the tab is signed in and the account uuid its usage reader
+  learned (`tab.seat.account`) is not `expect.account` (never by email; `actual` is the hub's
+  label for that account, else null). The strip then says "This tab is signed in as claude-1,
+  not claude-6. Sign out here and sign in as claude-6", and the tab keeps its own name (not the
+  other account's label, colour or seat). The phone has the same check (phone.md P17.7).
 
 ## C8. Shell layout (WP-D, design `DeskAccountTab`, `DeskHome`)
 
@@ -401,9 +425,11 @@ account in a hidden or background start until the window is shown.
 - There are no Snooze or Seen buttons, because the desktop token has no `push` scope. The
   board's buttons work with an owner session.
 - Tray: a monochrome chevron glyph (no tile) from committed PNGs under `assets/tray/{dark,light}/`
-  (16, 22, 24, 32 px with `@2x`; the dark ink for light bars, the light ink for dark bars, chosen
-  by `nativeTheme.shouldUseDarkColors` and swapped on theme change; macOS uses the
-  `trayTemplate` template images). "Needs you" is a small dot at the top-right of the glyph; the
+  (16, 22, 24, 32 px with `@2x`; the dark ink for light bars, the light ink for dark bars. Linux
+  always uses the light ink: GNOME, KDE and most panels are dark even under a light system theme
+  (black on black was invisible), and `SWITCHYARD_TRAY_ICON=dark|light` overrides it for an odd
+  panel. Windows follows `nativeTheme.shouldUseDarkColors` and swaps on theme change; macOS uses
+  the `trayTemplate` template images). "Needs you" is a small dot at the top-right of the glyph; the
   count is in the tooltip ("2 sessions need you") and the first menu line. macOS also sets
   `app.dock.setBadge`; Windows uses `win.setOverlayIcon` (a dot); Linux uses `app.setBadgeCount`
   where supported. Icons are rendered by `scripts/gen-icons.sh` from `build/icons-src/`. Menu: Open Switchyard;

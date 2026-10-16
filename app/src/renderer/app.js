@@ -11,7 +11,7 @@
 import { WARNING_VERSION } from '../shared/constants.js';
 import { barWidth, pct, bytes, plural } from '../shared/format.js';
 import {
-  tabTitle, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds, droppedIds,
+  tabTitle, missingNotice, mismatchNotice, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds, droppedIds,
   effectiveView, windowRows, readingStatus, lastReadTitle, hubBanner, hubUsable, hubSummary, hubChip, ownerPill, fitTabs, progressText,
   SHARE_SWITCHES, foldersOf, isPrimary, switchState, shareSpec, loginCommand, COLOUR_RE, PAIR_CODE_RE,
 } from './view.js';
@@ -280,8 +280,9 @@ export function start({ sy, root }) {
         class: 'btn more-item', role: 'menuitem', fk: `more-${t.id}`, onclick: () => { ui.dialog.close('selected'); select(t.id); },
       }, h('span', { class: 'dot', style: { background: tabColour(t, i) } }), h('span', { class: 'tab-name', text: tabTitle(t) })));
     });
+    const gone = missingNotice(state.missing);
     openDialog({
-      title: 'More tabs', body: list,
+      title: 'More tabs', body: gone ? h('div', {}, list, h('p', { class: 'hint', fk: 'more-missing' }, `${gone} `, h('button', { class: 'linkish', fk: 'more-add', text: 'Add tabs', onclick: () => { ui.dialog.close('add'); openAddTab(); } }))) : list,
       actions: (d) => [h('button', { class: 'btn btn-lg', text: 'Close', onclick: () => d.close('cancel') })],
       initialFocus: '.more-item',
     });
@@ -369,6 +370,7 @@ export function start({ sy, root }) {
           h('span', { class: `meter-fill${r.used !== null && r.used >= 90 ? ' hot' : ''}`, style: { width: `${barWidth(r.used)}%`, '--tab-colour': colour } })),
         h('span', { class: 'win-num', text: r.reset ? `${pct(r.used)} · ${r.reset}` : pct(r.used) })))
       : [h('span', { class: 'status', text: t.signed_in ? 'No usage numbers yet' : 'Not signed in' })];
+    const wrong = mismatchNotice(t);
 
     const iconBtn = (key, ico, label, fn, extra = {}) => h('button', {
       class: 'btn', fk: `strip-${key}`, 'aria-label': label, title: label, onclick: fn, ...extra,
@@ -377,7 +379,8 @@ export function start({ sy, root }) {
     return h('section', { class: 'strip', 'aria-label': `Usage for ${tabTitle(t)}` },
       h('span', { class: 'strip-id', title: t.name },
         h('span', { class: 'dot', style: { background: colour } }), h('span', { text: tabTitle(t) })),
-      h('span', { class: 'strip-wins' }, wins, t.windows_source === 'local' && rows.length ? h('span', { class: 'tag', text: 'local', title: 'Numbers read in this tab; the hub has none for this account yet' }) : null),
+      wrong ? h('span', { class: 'strip-wins' }, h('span', { class: 'status stopped', role: 'status', fk: 'strip-mismatch', title: wrong, text: wrong })) : null,
+      wrong ? null : h('span', { class: 'strip-wins' }, wins, t.windows_source === 'local' && rows.length ? h('span', { class: 'tag', text: 'local', title: 'Numbers read in this tab; the hub has none for this account yet' }) : null),
       h('span', { class: `status ${st.kind === 'stopped' ? 'stopped' : st.kind === 'retrying' ? 'retrying' : ''}`.trim(), role: 'status', 'aria-live': 'polite', title: lastReadTitle(t), text: st.text }),
       st.action === 'resume' ? h('button', { class: 'btn btn-primary', fk: 'strip-resume', text: 'Resume', disabled: busy(`resume:${t.id}`), onclick: () => act(`resume:${t.id}`, () => sy.resumeReading({ id: t.id })) }) : null,
       st.action === 'review' ? h('button', { class: 'btn btn-primary', fk: 'strip-review', text: st.actionLabel, onclick: () => openWarning(t, true) }) : null,
@@ -416,10 +419,13 @@ export function start({ sy, root }) {
     const hb = hubBanner(hub);
     if (!hb || (hub.status === 'ok' && !hub.board_blocked)) {
       // The board covers this panel (status ok). Read-only: a strip above it with one visible button.
-      const strip = hub.status === 'ok' && !hub.owner
+      const gone = missingNotice(state.missing);
+      const strip = hub.status === 'ok' && (!hub.owner || gone)
         ? h('div', { class: 'hub-strip', role: 'status', fk: 'hub-strip' },
-          busy('owner') ? progress('owner') : h('span', { text: 'Read-only. Sign in as owner to change alerts, devices and accounts.' }),
-          h('button', { class: 'btn btn-primary', fk: 'owner-sign-in', text: busy('owner') ? 'Signing in…' : 'Sign in as owner', disabled: busy('owner'), onclick: ownerSignInClick }))
+          h('span', { class: 'hub-strip-text' },
+            !hub.owner ? (busy('owner') ? progress('owner') : h('span', { text: 'Read-only. Sign in as owner to change alerts, devices and accounts.' })) : null,
+            gone ? h('span', { class: 'hub-strip-missing', fk: 'missing-notice' }, `${gone} `, h('button', { class: 'linkish', fk: 'missing-add', text: 'Add tabs', onclick: () => openAddTab() })) : null),
+          !hub.owner ? h('button', { class: 'btn btn-primary', fk: 'owner-sign-in', text: busy('owner') ? 'Signing in…' : 'Sign in as owner', disabled: busy('owner'), onclick: ownerSignInClick }) : null)
         : null;
       const err = hb ? bannerEl(hb, 'hub') : null;
       return h('div', { class: 'hub-panel ok', role: 'tabpanel', 'aria-labelledby': 'tab-hub' }, strip,
@@ -1025,10 +1031,24 @@ export function start({ sy, root }) {
         msg.textContent = errText(err);
       }
     };
+    const add = async (d, m) => {
+      try {
+        const r = await sy.addTab({ name: m.label, seat: m.seat });
+        d.close('selected');
+        ui.overlayFor = null;
+        if (r && r.id) await select(r.id);
+      } catch (err) {
+        msg.textContent = errText(err);
+      }
+    };
+    const offers = (state.missing || []).map((m) => h('button', {
+      class: 'btn btn-lg offer', fk: `add-for-${m.label}`, text: `Add a tab for ${m.label}`, onclick: () => add(ui.dialog, m),
+    }));
     openDialog({
       title: 'Add account tab',
       body: h('div', { class: 'dlg', style: { padding: '0' } },
-        h('label', { for: 'new-tab-name', text: 'Name for this account (for example work or personal)' }),
+        offers.length ? h('div', { class: 'offers', role: 'group', 'aria-label': 'Hub accounts with no tab here' }, offers) : null,
+        h('label', { for: 'new-tab-name', text: offers.length ? 'Or a blank tab: a name for it (for example work or personal)' : 'Name for this account (for example work or personal)' }),
         (input = h('input', { type: 'text', id: 'new-tab-name', maxlength: '24', autocomplete: 'off', onkeydown: (e) => { if (e.key === 'Enter') submit(ui.dialog); } })),
         (msg = h('div', { class: 'err', role: 'alert' })),
         h('p', { class: 'fine', text: 'Sign in with email + code. Google sign-in is blocked in embedded browsers.' })),
@@ -1036,7 +1056,7 @@ export function start({ sy, root }) {
         h('button', { class: 'btn btn-lg', text: 'Cancel', onclick: () => d.close('cancel') }),
         h('button', { class: 'btn btn-primary btn-lg', text: 'Add tab', onclick: () => submit(d) }),
       ],
-      initialFocus: '#new-tab-name',
+      initialFocus: offers.length ? '.offer' : '#new-tab-name',
     });
   }
 

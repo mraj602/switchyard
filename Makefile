@@ -16,7 +16,7 @@
 #   make pane-check  the Claude Code pane mod gate (scripts/pane-check.sh and its --self-test; needs claude)
 #   make release-check  a release build of sy contains no test seams (fakeclock, fakeopen)
 #   make app-test    the desktop app (app/): npm ci --ignore-scripts, lint, unit tests (no display)
-#   make app-smoke   the Electron smoke S1-S12 (Linux: under xvfb-run; a real hub built from here)
+#   make app-smoke   the Electron smoke S1-S15 (Linux: under xvfb-run; a real hub built from here)
 #   make app-dist    the bundled sy for this machine + the app packages in app/dist (never signed;
 #                    Linux without libcrypt.so.1: the AppImage only, see APP_DIST_LINUX)
 #   make app-e2e     the packaged AppImage end to end (its own e2e build in app/dist/e2e, which alone

@@ -225,3 +225,8 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--hair); border-top-color: var(--working); animation: sy-spin 0.9s linear infinite; flex: none; }
 @keyframes sy-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+.hub-strip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; gap: 12px; }
+.hub-strip-missing { color: var(--muted); }
+.offers { display: flex; flex-direction: column; gap: 8px; }
+.offers .offer { justify-content: flex-start; }
+.strip-wins .status.stopped { white-space: normal; line-height: 1.3; }

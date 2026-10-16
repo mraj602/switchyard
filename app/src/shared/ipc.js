@@ -54,7 +54,7 @@ export const CHANNELS = Object.freeze({
     args: obj({ route: { type: 'string', min: 2, max: 200, pattern: new RegExp(HUB_ROUTE_PATTERN) } }, ['route']),
   },
 
-  'tab:add': { kind: INVOKE, fn: 'addTab', owner: 'B', returns: '{id}', args: obj({ name: TAB_NAME }, ['name']) },
+  'tab:add': { kind: INVOKE, fn: 'addTab', owner: 'B', returns: '{id}', args: obj({ name: TAB_NAME, seat: { type: 'string', max: 31, pattern: new RegExp(SEAT_ID_PATTERN) } }, ['name']) },
   'tab:update': { kind: INVOKE, fn: 'updateTab', owner: 'B', returns: 'undefined', args: withId({ name: TAB_NAME }) },
   'tab:remove': { kind: INVOKE, fn: 'removeTab', owner: 'B', returns: 'undefined', args: withId() },
   'tab:reorder': {
@@ -214,6 +214,7 @@ function check(channel, path, s, v) {
  *
  * @typedef {object} ShellState
  * @property {TabState[]} tabs              in display order
+ * @property {{seat: string, label: string}[]} [missing]  hub accounts with no tab on this computer
  * @property {'hub'|'settings'|string} view  the selected view: 'hub', 'settings' or a tab id
  * @property {HubState} hub
  * @property {Settings} settings
@@ -236,6 +237,8 @@ function check(channel, path, s, v) {
  * @property {StripWindow[]} windows  the strip: hub seat windows when known, else the local parse
  * @property {'hub'|'local'|null} windows_source
  * @property {boolean} signed_in
+ * @property {string|null} expected   label of the hub account this tab was made for
+ * @property {{expected: string, actual: string|null}|null} mismatch  signed in as another account than expected (matched by uuid)
  *
  * @typedef {object} StripWindow
  * @property {string} key             five_hour, seven_day, seven_day_opus, …

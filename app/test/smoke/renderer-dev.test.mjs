@@ -9,9 +9,9 @@ import path from 'node:path';
 import { sandbox, launch, waitFor, outDir, sleep } from './harness.mjs';
 
 const SIZES = [[1440, 940], [720, 500]];
-const SCENARIOS = ['default', 'empty', 'no_sy', 'needs_pairing', 'stopped', 'warning', 'removed', 'direct_pairing', 'unreachable', 'board_blocked', 'owner'];
+const SCENARIOS = ['default', 'empty', 'no_sy', 'needs_pairing', 'stopped', 'warning', 'removed', 'direct_pairing', 'unreachable', 'board_blocked', 'owner', 'missing'];
 // the Hub tab's own cards (and the read-only strip) are what these scenarios are about
-const HUB_VIEW = new Set(['no_sy', 'needs_pairing', 'removed', 'direct_pairing', 'unreachable', 'board_blocked', 'default', 'owner']);
+const HUB_VIEW = new Set(['no_sy', 'needs_pairing', 'removed', 'direct_pairing', 'unreachable', 'board_blocked', 'default', 'owner', 'missing']);
 
 test('S12 renderer dev page at 1440×940 and 720×500', { timeout: 5 * 60_000 }, async (t) => {
   const sb = sandbox('s12');
@@ -44,6 +44,7 @@ test('S12 renderer dev page at 1440×940 and 720×500', { timeout: 5 * 60_000 },
         const want = {
           no_sy: /Connect to a hub\./, needs_pairing: /Pair this computer\./, removed: /This computer was removed from the hub\./,
           direct_pairing: /Pair this computer\./, unreachable: /Can't reach the hub\./, board_blocked: /could not be signed in/, default: /Read-only\. Sign in as owner/,
+          missing: /claude-6 and claude-7 have no tab here\. Add tabs/,
         }[scenario];
         if (want) assert.match(text, want, `${scenario}: ${text}`);
         assert.doesNotMatch(text, /owner-link|run sy hub/i, scenario);

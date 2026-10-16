@@ -141,7 +141,7 @@ export function create(deps) {
     const m = await getMachine(); // before the read: nothing is awaited between the cancel check and the append
     let raw;
     try {
-      raw = await readTab(wc, { claudeOrigin, log, timeoutMs: deps.readerTimeoutMs, expectAccount: tab.seat?.account ?? null });
+      raw = await readTab(wc, { claudeOrigin, log, timeoutMs: deps.readerTimeoutMs, expectAccount: tab.expect && tab.seat?.account !== tab.expect.account ? null : (tab.seat?.account ?? null) });
     } catch (err) {
       if (ctx.cancelled()) return { type: 'dropped' };
       log.warn?.(`usage: ${id}: read failed:`, err?.message ?? err);

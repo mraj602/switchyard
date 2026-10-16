@@ -27,15 +27,16 @@ const SESSION_LINK_RE = new RegExp(CLAUDE_SESSION_LINK_PATTERN);
 
 /**
  * @param {{electron: object, security: object, window: object, store: object, bus: object, ipc: object,
- *          log: object, claudeOrigin?: string, timers?: {setTimeout: Function, clearTimeout: Function},
+ *          log: object, seats?: () => object[], claudeOrigin?: string, timers?: {setTimeout: Function, clearTimeout: Function},
  *          fs?: object, path?: object, userData?: string, platform?: string, chromeVersion?: string,
  *          random?: (n: number) => Buffer}} deps
  * @returns {{
  *   start(): Promise<void>,                    // create views for the stored tabs, staggered
  *   list(): object[],                          // TabInfo[] (bus.js)
  *   view(id: string): object|undefined,        // the tab's WebContentsView
- *   openLink(url: string, seat?: {account: string, org: string}|null): boolean,
- *                                              // C7 handoff: tab with that seat, else first signed-in; false = none
+ *   openLink(url: string, seat?: {id?: string, account: string, org: string}|null): Promise<boolean>,
+ *                                              // C7 handoff: a tab of that account (or one made for it, or a new one for it);
+ *                                              // with no seat: the first signed-in tab; false = none
  *   flushCookies(): Promise<void>,             // every tab's cookies.flushStore()
  *   stop(): Promise<void>,
  * }}
@@ -78,6 +79,7 @@ export function create(deps) {
       send_to_hub: t.send_to_hub !== false,
       stopped: t.stopped ?? null,
       seat: t.seat ?? null,
+      expect: t.expect ?? null,
       last_url: t.last_url ?? null,
       signed_in: isReadableUrl(liveUrl(t.id), claudeOrigin),
       loaded: !!v?.loaded,
@@ -184,25 +186,56 @@ export function create(deps) {
 
   const newId = () => `t_${(deps.random ?? randomBytes)(8).toString('hex')}`;
 
-  async function addTab({ name }) {
-    const trimmed = String(name).trim();
-    if (!trimmed) throw new Error('a tab needs a name');
+  const hubSeats = () => {
+    try {
+      return deps.seats?.() ?? [];
+    } catch {
+      return [];
+    }
+  };
+
+  /** The tab that stands for a hub account (matched by account uuid, never by email): the one signed in as it, else one made for it. */
+  function tabForAccount(account) {
+    if (typeof account !== 'string' || !account) return null;
+    const live = records().filter((t) => views.has(t.id));
+    return live.find((t) => t.seat?.account === account) ?? live.find((t) => t.expect?.account === account) ?? null;
+  }
+
+  /** A new tab, named by the account's label, that expects the account's seat. */
+  async function makeTab({ name, expect = null, url = homeUrl }) {
     const t = {
       id: newId(),
-      name: trimmed.slice(0, 24),
-      last_url: homeUrl,
+      name: name.slice(0, 24),
+      last_url: url,
       reading: READING_NEVER_ASKED,
       warning_accepted: 0,
       send_to_hub: true,
       stopped: null,
       seat: null,
+      ...(expect ? { expect } : {}),
     };
     await store.update((d) => {
       (d.tabs ??= []).push(t);
     });
     createView(t, 0);
     emit();
-    return { id: t.id };
+    return t;
+  }
+
+  const expectOf = (s) => ({ seat: s.id ?? null, account: s.account, org: s.org, label: String(s.label ?? s.email ?? s.org_name ?? 'account').slice(0, 24) });
+
+  async function addTab({ name, seat }) {
+    if (seat) {
+      const s = hubSeats().find((x) => x.id === seat);
+      if (!s) throw new Error('no such hub account');
+      const have = tabForAccount(s.account);
+      if (have) return { id: have.id };
+      const e = expectOf(s);
+      return { id: (await makeTab({ name: e.label, expect: e })).id };
+    }
+    const trimmed = String(name).trim();
+    if (!trimmed) throw new Error('a tab needs a name');
+    return { id: (await makeTab({ name: trimmed })).id };
   }
 
   async function updateTab({ id, name }) {
@@ -324,15 +357,24 @@ export function create(deps) {
     },
     list,
     view: (id) => views.get(id)?.view,
-    openLink(url, seat = null) {
+    async openLink(url, seat = null) {
       if (typeof url !== 'string' || !SESSION_LINK_RE.test(url)) return false;
-      const tabs = records();
-      let pick = seat ? tabs.find((t) => t.seat && t.seat.account === seat.account && t.seat.org === seat.org && views.has(t.id)) : null;
-      pick ??= tabs.find((t) => views.has(t.id) && isReadableUrl(liveUrl(t.id), claudeOrigin));
-      if (!pick) return false;
-      const v = views.get(pick.id);
-      void v.view.webContents.loadURL(url);
-      window.select(pick.id);
+      let id;
+      if (seat && typeof seat.account === 'string' && seat.account) {
+        // Never another account's tab: claude.ai says the session does not exist there.
+        id = tabForAccount(seat.account)?.id;
+        if (!id) {
+          const known = hubSeats().find((x) => x.account === seat.account) ?? {};
+          id = (await makeTab({ name: expectOf({ ...seat, ...known }).label, expect: expectOf({ ...seat, ...known }), url })).id;
+        } else {
+          void views.get(id).view.webContents.loadURL(url);
+        }
+      } else {
+        id = records().find((t) => views.has(t.id) && isReadableUrl(liveUrl(t.id), claudeOrigin))?.id;
+        if (!id) return false;
+        void views.get(id).view.webContents.loadURL(url);
+      }
+      window.select(id);
       window.showWindow();
       return true;
     },

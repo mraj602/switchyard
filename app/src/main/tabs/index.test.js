@@ -11,7 +11,7 @@ const A = 't_000000000000000a';
 const B = 't_000000000000000b';
 const C = '9c1e5f0a'; // an imported prototype id
 
-function rig({ tabs = [], userData = '/ud', platform = 'linux', fsOverride } = {}) {
+function rig({ tabs = [], userData = '/ud', platform = 'linux', fsOverride, seats = [] } = {}) {
   const f = fakeElectron({ platform, paths: { userData } });
   const clock = fakeClock();
   const store = memStore(tabs);
@@ -23,7 +23,7 @@ function rig({ tabs = [], userData = '/ud', platform = 'linux', fsOverride } = {
   const fs = fsOverride ?? { rm: async (p, o) => void rm.push([p, o]) };
   let n = 0;
   const api = create({
-    electron: f.electron, security, window, store, bus, ipc, log: silentLog, claudeOrigin: 'https://claude.ai', fs, userData,
+    electron: f.electron, security, window, store, bus, ipc, log: silentLog, claudeOrigin: 'https://claude.ai', fs, userData, seats: () => seats,
     timers: { setTimeout: clock.setTimeout, clearTimeout: clock.clearTimeout }, platform, chromeVersion: '130.0.6723.0',
     random: () => Buffer.from(String(++n).padStart(16, '0'), 'hex').subarray(0, 8),
   });
@@ -73,7 +73,7 @@ test('list(): TabInfo with live facts', async () => {
   const r = rig({ tabs: [tabRecord(A, { reading: 'on', warning_accepted: 1, seat: { account: 'a', org: 'o' } })] });
   await r.api.start();
   assert.deepEqual(r.api.list(), [{
-    id: A, name: A, reading: 'on', warning_accepted: 1, send_to_hub: true, stopped: null, seat: { account: 'a', org: 'o' },
+    id: A, name: A, reading: 'on', warning_accepted: 1, send_to_hub: true, stopped: null, seat: { account: 'a', org: 'o' }, expect: null,
     last_url: 'https://claude.ai/new', signed_in: false, loaded: false,
   }]);
   const wc = r.api.view(A).webContents;
@@ -248,25 +248,65 @@ test('tab:remove of a tab with no view yet (imported before the restart) still d
   assert.deepEqual(r.rm, [[path.resolve('/ud', 'Partitions', `tab-${C}`), { recursive: true, force: true }]]);
 });
 
-test('openLink: the tab whose seat matches, else the first signed-in tab, else false', async () => {
-  const r = rig({ tabs: [tabRecord(A, { seat: { account: 'a1', org: 'o1' } }), tabRecord(B, { seat: { account: 'a2', org: 'o2' } })] });
+const SEAT6 = { id: 'seat_01M4SH4F8KV20NK22FQCTR0RR6', account: 'a6', org: 'o6', label: 'claude-6' };
+const SEAT7 = { id: 'seat_01M4SH4F8KV20NK22FQCTR0RR7', account: 'a7', org: 'o7', label: 'claude-7' };
+const LINK = 'https://claude.ai/code/session_01AbC';
+
+test('openLink: the tab of the seat\'s account, else a tab made for it, else a new tab for it; never another account\'s', async () => {
+  const r = rig({ tabs: [tabRecord(A, { seat: { account: 'a1', org: 'o1' } }), tabRecord(B, { seat: { account: 'a2', org: 'o2' } })], seats: [SEAT6, SEAT7] });
   await r.api.start();
-  const url = 'https://claude.ai/code/session_01AbC';
-  assert.equal(r.api.openLink('https://example.com/', null), false, 'not a session link');
-  assert.equal(r.api.openLink('https://claude.ai/code/session_01AbC?x=1', null), false);
-  // seat match, even if the tab is not signed in
-  assert.equal(r.api.openLink(url, { account: 'a2', org: 'o2' }), true);
+  assert.equal(await r.api.openLink('https://example.com/', null), false, 'not a session link');
+  assert.equal(await r.api.openLink('https://claude.ai/code/session_01AbC?x=1', null), false);
+  // seat match (by account), even if the tab is not signed in
+  assert.equal(await r.api.openLink(LINK, { account: 'a2', org: 'o2' }), true);
   assert.equal(r.window.selected(), B);
   assert.equal(r.window.shown, 1);
-  assert.equal(r.loads().at(-1)[1], url);
-  // no seat match: first signed-in tab
+  assert.equal(r.loads().at(-1)[1], LINK);
+  // a seat with no tab, with other tabs signed in: a new tab for that account, not the signed-in one
   r.api.view(B).webContents._setURL('https://claude.ai/chat/1');
-  assert.equal(r.api.openLink(url, { account: 'zz', org: 'zz' }), true);
+  const n0 = r.loads().length;
+  assert.equal(await r.api.openLink(LINK, { id: SEAT7.id, account: 'a7', org: 'o7' }), true);
+  const made = r.store.get().tabs.at(-1);
+  assert.equal(r.store.get().tabs.length, 3);
+  assert.equal(made.name, 'claude-7');
+  assert.deepEqual(made.expect, { seat: SEAT7.id, account: 'a7', org: 'o7', label: 'claude-7' });
+  assert.equal(made.last_url, 'https://claude.ai/code/session_01AbC', 'the link is where the new tab starts');
+  assert.equal(r.window.selected(), made.id);
+  await r.clock.advance(1);
+  assert.equal(r.loads().slice(n0).filter((l) => l[1] === LINK).length, 1, 'the link loaded once, in the new tab');
+  assert.equal(r.loads().at(-1)[1], LINK);
+  // the same seat again: the tab made for it is used, no second tab
+  assert.equal(await r.api.openLink(LINK, { id: SEAT7.id, account: 'a7', org: 'o7' }), true);
+  assert.equal(r.store.get().tabs.length, 3);
+  assert.equal(r.window.selected(), made.id);
+  // a tab signed in as the account wins over a tab made for it
+  await r.store.update((d) => {
+    d.tabs.find((t) => t.id === A).seat = { account: 'a7', org: 'o7' };
+  });
+  assert.equal(await r.api.openLink(LINK, { id: SEAT7.id, account: 'a7', org: 'o7' }), true);
+  assert.equal(r.window.selected(), A);
+  // no seat at all: the old fallback, the first signed-in tab; none signed in: false
+  r.api.view(A).webContents._setURL('https://claude.ai/login');
+  assert.equal(await r.api.openLink(LINK, null), true);
   assert.equal(r.window.selected(), B);
-  // none signed in
-  r.api.view(B).webContents._setURL('https://claude.ai/login');
-  assert.equal(r.api.openLink(url, null), false);
-  assert.equal(r.api.openLink(url, { account: 'zz', org: 'zz' }), false);
+  for (const t of r.store.get().tabs) r.api.view(t.id).webContents._setURL('https://claude.ai/login');
+  assert.equal(await r.api.openLink(LINK, null), false);
+});
+
+test('addTab with a hub seat: named by the label, expects the seat, one tab per account; no such seat is refused', async () => {
+  const r = rig({ tabs: [tabRecord(A, { seat: { account: 'a1', org: 'o1' } })], seats: [SEAT6, { id: 'seat_01M4SH4F8KV20NK22FQCTR0RR1', account: 'a1', org: 'o1', label: 'claude-1' }] });
+  await r.api.start();
+  const { id } = await r.ipc.call('tab:add', { name: 'whatever', seat: SEAT6.id });
+  const t = r.store.get().tabs.find((x) => x.id === id);
+  assert.equal(t.name, 'claude-6');
+  assert.deepEqual(t.expect, { seat: SEAT6.id, account: 'a6', org: 'o6', label: 'claude-6' });
+  assert.equal(r.api.list().find((x) => x.id === id).expect.account, 'a6');
+  assert.equal((await r.ipc.call('tab:add', { name: 'x', seat: SEAT6.id })).id, id, 'no second tab for the account');
+  assert.equal((await r.ipc.call('tab:add', { name: 'x', seat: 'seat_01M4SH4F8KV20NK22FQCTR0RR1' })).id, A, 'an account that has a signed-in tab');
+  await assert.rejects(r.ipc.call('tab:add', { name: 'x', seat: SEAT7.id }), /no such hub account/);
+  const blank = await r.ipc.call('tab:add', { name: ' work ' });
+  assert.equal(r.store.get().tabs.find((x) => x.id === blank.id).expect, undefined);
+  assert.equal(r.store.get().tabs.length, 3);
 });
 
 test('cookies are flushed every 30 s and on demand', async () => {

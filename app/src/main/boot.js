@@ -33,6 +33,7 @@ import * as protocol from './protocol.js';
 import * as store from './store.js';
 import * as ipc from './ipc.js';
 import * as state from './state.js';
+import { missingAccounts } from './state.js';
 import * as sy from './sy/index.js';
 import * as hub from './hub/index.js';
 import * as window from './window.js';
@@ -204,7 +205,7 @@ export async function boot(electron, opts = {}) {
       return made.window;
     },
     // C7 handoff: true when an account tab took the link; else the hub opens it externally.
-    openSessionLink: (url, seat) => made.tabs?.openLink(url, seat) === true,
+    openSessionLink: async (url, seat) => (await made.tabs?.openLink(url, seat)) === true,
   });
 
   made.ipc.register('settings:set', (patch) => made.background.setSettings(patch));
@@ -221,7 +222,7 @@ export async function boot(electron, opts = {}) {
 
   made.tabs = m.tabs.create({
     electron, security: made.security, window: made.window, store: made.store, bus, ipc: made.ipc, log, platform,
-    claudeOrigin, userData: made.paths.userData,
+    claudeOrigin, userData: made.paths.userData, seats: () => made.hub.seats(),
   });
   await made.tabs.start();
   // Usage records go to the hub through sy; without sy (or with a sy that has no hub) the app
@@ -253,8 +254,14 @@ export async function boot(electron, opts = {}) {
     .catch((err) => log.warn?.(`hub start: ${err?.message ?? err}`));
 
   // The shell draws a read-only strip above the board; the board view starts below it.
-  const insetFor = (h) => (h?.status === 'ok' && !h.board_blocked && !h.owner ? HUB_STRIP_PX : 0);
-  bus.on('hub', (h) => made.window.setHubInset?.(insetFor(h)));
+  // It also carries the "no tab here" notice when hub accounts have no tab on this computer.
+  const insetNow = () => {
+    const h = bus.last('hub');
+    const missing = missingAccounts(made.hub.seats(), bus.last('tabs')?.tabs).length > 0;
+    return h?.status === 'ok' && !h.board_blocked && (!h.owner || missing) ? HUB_STRIP_PX : 0;
+  };
+  bus.on('hub', () => made.window.setHubInset?.(insetNow()));
+  bus.on('tabs', () => made.window.setHubInset?.(insetNow()));
 
   made.tray = m.tray.create({
     electron, bus, window: made.window, usage: made.usage, hub: made.hub, platform, assetsDir: ASSETS_DIR, log,

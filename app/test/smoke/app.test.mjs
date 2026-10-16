@@ -1,4 +1,4 @@
-// Electron smoke S1–S11 (docs/phases/6.md "Electron smoke"): one app, a real hub, the fake
+// Electron smoke S1–S11, S14, S15 (docs/phases/6.md "Electron smoke"): one app, a real hub, the fake
 // claude.ai and the real sy, all in a temp sandbox. The scenarios build on each other, so they
 // run in order inside one test. Run: `npm run smoke` (Linux: under xvfb-run).
 
@@ -12,13 +12,14 @@ import {
 } from './harness.mjs';
 import { startFakeClaude, uuidOf, USAGE_DIR } from '../fakes/claude/server.js';
 import { FUNCTIONS } from '../../src/shared/ipc.js';
+import { buildRecords, clientOf } from '../../src/shared/record.js';
 import { SHELL_CSP, WARNING_VERSION } from '../../src/shared/constants.js';
 
 const CADENCE_MS = 2000;
 const WARNING_TITLE = 'Read usage for this account?';
 const ACCEPT = 'Read usage for this account';
 
-test('Electron smoke S1–S11', { timeout: 15 * 60_000 }, async (t) => {
+test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) => {
   const sb = sandbox('smoke');
   const out = outDir(sb.root);
   const bin = syBinary(sb.root);
@@ -363,6 +364,90 @@ test('Electron smoke S1–S11', { timeout: 15 * 60_000 }, async (t) => {
     assert.ok(tray.labels.some((l) => typeof l === 'string' && l.includes(' · api · ')), JSON.stringify(tray.labels));
     assert.equal((await shellState(run.shell)).hub.needs_you, 1);
     if (!tray.available) t.diagnostic('no tray icon on this display (the count and menu still follow needs_you)');
+  });
+
+  await step('S14 a hub account with no tab: the notice, the offer in "+", a tab made for it', async () => {
+    // A second account on the hub that this computer has no tab for (a record from "another machine").
+    const acct2 = uuidOf('acct', 2);
+    const org2 = uuidOf('org', 7);
+    const machine = await main(run.app, (m) => m.sy.machineId());
+    const usage = JSON.parse(fs.readFileSync(fixture, 'utf8'));
+    const recs = buildRecords({
+      orgs: [{ org: { uuid: org2, name: 'seven', capabilities: ['chat'], rate_limit_tier: 't', billing_type: 'b', raven_type: null }, usage }],
+      account: { uuid: acct2, email_address: 'seven@example.com', full_name: 'Seven', display_name: 'Seven' },
+      activeOrg: org2, fetchMs: 5, tabId: 't_00000000000000a7', machine, client: clientOf('0.0.0'), ts: new Date().toISOString(),
+    });
+    await main(run.app, (m, _e, r) => m.sy.append(r), recs);
+    await hub.sy(['flush', '--quiet']);
+    const seven = await waitFor(async () => (await hub.get('/v1/accounts')).accounts.find((a) => a.account === acct2), 30_000, 'the second account on the hub');
+    const cookie = await hub.ownerCookie();
+    await hub.ownerFetch(cookie, 'PATCH', `/v1/accounts/${seven.id}`, { label: 'claude-7' });
+    ids.seven = seven.id;
+    await waitFor(async () => ((await shellState(run.shell)).missing ?? []).some((x) => x.label === 'claude-7'), 30_000, 'claude-7 listed as having no tab');
+    await run.shell.evaluate(() => window.sy.selectView({ view: 'hub' }));
+    await waitFor(() => run.shell.evaluate(() => document.body.innerText.includes('claude-7 has no tab here.')), 10_000, 'the notice in the Hub tab');
+    await run.shell.screenshot({ path: path.join(out, 's14-hub-notice.png') });
+    // "+" offers the account next to the blank tab.
+    await run.shell.locator('[data-fk="add-tab"]').click();
+    await run.shell.locator('[data-fk="add-for-claude-7"]').waitFor({ timeout: 10_000 });
+    assert.equal(await run.shell.evaluate(() => !!document.querySelector('#new-tab-name')), true, 'the blank "New tab" form stays');
+    await run.shell.screenshot({ path: path.join(out, 's14-add-dialog.png') });
+    await run.shell.locator('[data-fk="add-for-claude-7"]').click();
+    const made = await waitFor(async () => (await shellState(run.shell)).tabs.find((x) => x.expected === 'claude-7'), 10_000, 'the tab made for claude-7');
+    ids.seventab = made.id;
+    assert.equal(made.name, 'claude-7');
+    const stored = JSON.parse(fs.readFileSync(path.join(sb.userData, 'app-state.json'), 'utf8')).tabs.find((x) => x.id === made.id);
+    assert.deepEqual(stored.expect, { seat: ids.seven, account: acct2, org: org2, label: 'claude-7' });
+    assert.deepEqual((await shellState(run.shell)).missing, [], 'nothing missing any more');
+    // Adding again for the same account makes no second tab.
+    const again = await run.shell.evaluate((seat) => window.sy.addTab({ name: 'claude-7', seat }), ids.seven);
+    assert.equal(again.id, made.id);
+    assert.equal((await shellState(run.shell)).tabs.filter((x) => x.expected === 'claude-7').length, 1);
+  });
+
+  await step('S15 a tab signed in as another account says so; a seat link never opens in another account\'s tab', async () => {
+    const acct2 = uuidOf('acct', 2);
+    // The fake claude.ai answers as account 1 only: signing in here is the wrong account for claude-7.
+    await run.shell.evaluate(() => window.sy.selectView({ view: 'settings' }));
+    await signIn(ids.seventab);
+    await run.shell.evaluate((v) => window.sy.acceptWarning({ id: v.id, version: v.version }), { id: ids.seventab, version: WARNING_VERSION });
+    await run.shell.evaluate((id) => window.sy.setReading({ id, on: true }), ids.seventab);
+    const wrong = await waitFor(async () => (await tabOf(ids.seventab))?.mismatch, 30_000, 'the tab sees it is signed in as another account');
+    assert.equal(wrong.expected, 'claude-7');
+    await run.shell.evaluate((id) => window.sy.selectView({ view: id }), ids.seventab);
+    await waitFor(() => run.shell.evaluate(() => document.body.innerText.includes('Sign out here and sign in as claude-7')), 10_000, 'the notice on the tab');
+    await run.shell.screenshot({ path: path.join(out, 's15-mismatch.png') });
+
+    // Links: loads are recorded, never sent (the link is on the real claude.ai).
+    await main(run.app, (m) => {
+      globalThis.__loads = [];
+      const wrap = (id) => {
+        const wc = m.tabs.view(id)?.webContents;
+        if (wc && !wc.__wrapped) {
+          wc.__wrapped = true;
+          wc.loadURL = async (u) => { globalThis.__loads.push([id, u]); };
+        }
+      };
+      for (const t of m.tabs.list()) wrap(t.id);
+      globalThis.__wrap = wrap;
+    });
+    const link = 'https://claude.ai/code/session_01AbCdEf';
+    const open = (seat) => main(run.app, (m, _e, a) => m.tabs.openLink(a.link, a.seat), { link, seat });
+    const loads = () => main(run.app, () => globalThis.__loads);
+    // Account 2's link goes to the tab made for it (its signed-in account is another one, but it is the tab for 2)...
+    assert.equal(await open({ id: ids.seven, account: acct2, org: uuidOf('org', 7) }), true);
+    assert.deepEqual(await loads(), [[ids.seventab, link]]);
+    // ...account 1's link to the tab signed in as account 1 (the first such tab), never to the claude-7 tab.
+    assert.equal(await open({ id: ids.seat, account: uuidOf('acct', 1), org: uuidOf('org', 1) }), true);
+    assert.equal((await loads())[1][0], ids.work);
+    // An account with no tab at all gets one, named by its label when the hub knows it.
+    const before = (await shellState(run.shell)).tabs.length;
+    assert.equal(await open({ id: 'seat_X', account: uuidOf('acct', 3), org: uuidOf('org', 3) }), true);
+    const st = await shellState(run.shell);
+    assert.equal(st.tabs.length, before + 1);
+    assert.equal(st.view, st.tabs.at(-1).id, 'the new tab is shown');
+    await waitFor(() => run.shell.evaluate((id) => document.querySelector(`[data-fk="tab-${id}"]`)?.getAttribute('aria-selected') === 'true', st.tabs.at(-1).id), 10_000, 'the new tab selected in the bar');
+    await run.shell.screenshot({ path: path.join(out, 's15-new-tab-for-link.png') });
   });
 
   await step('no console errors in any page', () => {
