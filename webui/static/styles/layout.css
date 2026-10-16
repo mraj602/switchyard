@@ -50,7 +50,7 @@
 
 .grid { display: grid; gap: 14px; }
 .grid-needs { grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
-.grid-seats, .grid-accounts { grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr)); align-items: start; }
+.grid-seats { grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr)); align-items: start; }
 .grid-machines { grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); align-items: start; }
 .grid-mini { grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); }
 .cols { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); align-items: start; }

@@ -1,11 +1,14 @@
-// Accounts: every limit window with reset time and pace, plus web-usage fields.
+// Accounts: one calm row per account (the tighter of the 5 h and 7 d limits, and only trouble in
+// words); a row opens in place to show every window with its reset time, where Claude Code is
+// signed in, details and (owner) the label and colour form.
 
 import { h } from '../components/dom.js';
 import { seatIndex, seatName, namesCollide } from '../components/seat.js';
-import { windowRow, sortWindows, worstPace, paceChip } from '../components/windows.js';
-import { planText, placesText, kvList, usageMoney, noUsage } from '../components/cards.js';
+import { windowRow, sortWindows } from '../components/windows.js';
+import { kvList, usageMoney, noUsage, dot } from '../components/cards.js';
+import { mostRoom, tighter, attention, signedOutOn } from '../components/accounts-fmt.js';
 import { liveCounts } from '../components/state.js';
-import { agoLabel, plural, pct } from '../format.js';
+import { agoLabel, pct, clock } from '../format.js';
 import { isOwner, ensureSessions, reorderSeats } from '../store.js';
 import { moveBy, dropTarget, dropOrder, moveSentence } from '../components/order.js';
 import { patchJSON } from '../api.js';
@@ -18,6 +21,7 @@ const again = () => window.dispatchEvent(new Event('sy-rerender'));
 const edit = { id: '', label: '', colour: '', clearColour: false, error: '', busy: false };
 
 function startEdit(seat, colour) {
+  setOpen(seat.id, true);
   Object.assign(edit, { id: seat.id, label: seat.label || '', colour: /^#[0-9a-f]{6}$/.test(colour) ? colour : '#0e7c76',
     clearColour: false, error: '', busy: false });
   again();
@@ -55,20 +59,6 @@ function editForm(seat) {
       h('button', { type: 'button', class: 'linkish', 'data-key': 'seat-cancel', onclick: () => { edit.id = ''; again(); } }, 'Cancel')));
 }
 
-// Who has the most room in the 5-hour window (push.md 5.7): lowest use among visible
-// accounts with a reading from the last 6 hours, and only when under 80%.
-export function mostRoom(seats, now = Date.now()) {
-  let best = null;
-  for (const s of seats.filter((x) => !x.hidden)) {
-    const five = (s.windows || []).find((w) => w.key === 'five_hour');
-    if (!five || five.used_pct == null || five.used_pct >= 80) continue;
-    const at = Date.parse(five.updated_at || '');
-    if (Number.isNaN(at) || now - at > 6 * 36e5) continue;
-    if (!best || five.used_pct < best.five.used_pct) best = { seat: s, five };
-  }
-  return best;
-}
-
 // ---- the order of the accounts ---------------------------------------------------------------
 // The owner drags a card by its grip (pointer events: mouse, pen and touch), or focuses the
 // grip and presses the arrow keys (Alt+arrow anywhere on a card works too). The hub keeps the
@@ -79,14 +69,14 @@ const move = { error: '', said: '' };
 
 let store0 = () => ({ overview: null }); // the store of the last render
 const shownIds = () => (store0().overview ? store0().overview.seats.filter((s) => !s.hidden).map((s) => s.id) : []);
-const cardRects = () => [...document.querySelectorAll('.grid-accounts > .seat-card')].map((el) => {
+const cardRects = () => [...document.querySelectorAll('.acct-list > .seat-card')].map((el) => {
   const r = el.getBoundingClientRect();
   return { id: el.id.replace(/^seat-/, ''), left: r.left, top: r.top, width: r.width, height: r.height };
 });
 
 // Marks the dragged card and the drop place straight in the DOM (a redraw reads `drag` too).
 function paintDrag() {
-  const grid = document.querySelector('.grid-accounts');
+  const grid = document.querySelector('.acct-list');
   if (!grid) return;
   for (const el of grid.querySelectorAll('.seat-card')) {
     const id = el.id.replace(/^seat-/, '');
@@ -163,6 +153,26 @@ const grip = (seat, name) => h('button', { type: 'button', class: 'seat-grip', '
   onpointerdown: (e) => startDrag(e, seat), onkeydown: (e) => keyMove(e, seat, false) },
   h('span', { 'aria-hidden': 'true' }, '⠿'));
 
+
+// ---- which rows are open ---------------------------------------------------------------------
+// Several rows can be open; the open ones are remembered in this browser (localStorage, which may
+// be missing or blocked: then rows start closed and stay as clicked).
+const OPEN_KEY = 'sy-accounts-open';
+const open = new Set((() => {
+  try { const v = JSON.parse(localStorage.getItem(OPEN_KEY) || '[]'); return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []; } catch (_) { return []; }
+})());
+const saveOpen = () => { try { localStorage.setItem(OPEN_KEY, JSON.stringify([...open])); } catch (_) { /* private mode */ } };
+function setOpen(id, on) {
+  if (on) open.add(id); else open.delete(id);
+  saveOpen();
+}
+const toggle = (id) => { setOpen(id, !open.has(id)); again(); };
+function setAll(seats, on) {
+  for (const s of seats) { if (on) open.add(s.id); else open.delete(s.id); }
+  saveOpen();
+  again();
+}
+
 let focused = '';
 export const load = () => { focused = ''; return ensureSessions(); };
 
@@ -172,21 +182,21 @@ export function render({ store, route, now }) {
   const idx = seatIndex(o.seats);
   const seats = o.seats.filter((s) => !s.hidden);
   const counts = liveCounts(store.sessions, now);
-  const anyWeb = seats.some((s) => s.web_raw_at);
+  const want = route.query.get('seat');
+  if (want && focused !== want && seats.some((s) => s.id === want)) setOpen(want, true);
+  const allOpen = seats.length > 0 && seats.every((s) => open.has(s.id));
 
   const node = h('div', { class: 'page' },
-    h('header', { class: 'page-head col' }, h('h1', {}, 'Accounts'),
-      h('p', { class: 'muted small' }, 'One card per Claude login, whichever profile or machine it is used on.'),
-      h('p', { class: 'muted small', 'data-key': 'usage-source' }, anyWeb
-        ? 'Limits come from the Claude Code status line, and from claude.ai where its usage page is read.'
-        : 'Limits come from the Claude Code status line.')),
+    h('header', { class: 'page-head' }, h('h1', {}, 'Accounts'),
+      seats.length ? h('button', { type: 'button', class: 'linkish', 'data-key': 'accounts-expand-all', onclick: () => setAll(seats, !allOpen) },
+        allOpen ? 'Collapse all' : 'Expand all') : null),
     namesCollide(seats) && isOwner() ? h('p', { class: 'calm small', 'data-key': 'label-hint' }, 'Some accounts have nearly the same name. Use Edit to give each one a short label.') : null,
     roomLine(seats, now),
     move.error ? h('p', { class: 'form-error', role: 'alert', 'data-key': 'order-error' }, move.error) : null,
     h('p', { class: 'sr-only', role: 'status', 'aria-live': 'polite', 'data-key': 'order-said' }, move.said),
-    seats.length === 0 ? h('p', { class: 'calm' }, 'No accounts yet.') :
-      h('div', { class: 'grid grid-accounts', 'data-key': 'accounts-grid' }, seats.map((s) => accountCard(s, idx.get(s.id).colour, now, route.query.get('seat') === s.id, counts ? counts.seat.get(s.id) || 0 : s.live_sessions, isOwner() && seats.length > 1))));
-  const want = route.query.get('seat');
+    seats.length === 0 ? h('p', { class: 'calm' }, 'No accounts yet.') : [
+      h('div', { class: 'acct-list', 'data-key': 'accounts-grid' }, seats.map((s) => accountRow(s, idx.get(s.id).colour, now, want === s.id, counts ? counts.seat.get(s.id) || 0 : s.live_sessions, isOwner() && seats.length > 1))),
+      h('p', { class: 'muted small', 'data-key': 'accounts-note' }, 'The bar shows the tighter of the 5 h and 7 d limits. Select an account for everything else.')]);
   if (want && focused !== want) {
     focused = want;
     requestAnimationFrame(() => { const el = document.getElementById(`seat-${want}`); if (el) el.scrollIntoView({ block: 'center' }); });
@@ -197,37 +207,77 @@ export function render({ store, route, now }) {
 function roomLine(seats, now) {
   const best = mostRoom(seats, now);
   if (!best) return null;
-  const week = (best.seat.windows || []).find((w) => w.key === 'seven_day');
-  const left = (w) => pct(100 - w.used_pct);
   return h('p', { class: 'room', 'data-key': 'most-room' }, 'Most room right now: ', h('b', {}, seatName(best.seat)),
-    ` (${left(best.five)} of the 5-hour limit left${week && week.used_pct != null ? `, ${left(week)} of the week` : ''})`);
+    ` (5 h ${pct(best.five)} · 7 d ${pct(best.seven)})`);
 }
 
-function accountCard(seat, colour, now, highlight, live, canMove) {
-  const ws = sortWindows(seat.windows || []);
+// "Near the 5-hour limit: full by 15:48", "7-day limit nearly used, resets Sun 09:00", "Signed out on x".
+function issueText(i, now) {
+  if (i.kind === 'near') {
+    return i.key === 'five_hour'
+      ? `Near the 5-hour limit${i.at ? `: full by ${clock(i.at, now)}` : ''}`
+      : `7-day limit nearly used${i.at ? `, resets ${clock(i.at, now)}` : ''}`;
+  }
+  if (i.kind === 'signed_out') return `Signed out on ${i.machines.join(', ')}`;
+  return i.text;
+}
+
+function accountRow(seat, colour, now, highlight, live, canMove) {
   const name = seatName(seat);
-  const worst = worstPace(ws, now);
+  const t = tighter(seat, now);
+  const issues = attention(seat, now);
+  const isOpen = open.has(seat.id);
+  const detailId = `seat-detail-${seat.id}`;
+  const hot = !!t && t.used >= 90;
+  const dropClass = drag.id && drag.drop && drag.drop.target === seat.id && drag.id !== seat.id ? (drag.drop.after ? ' drop-after' : ' drop-before') : '';
+  const bar = t ? h('div', { class: 'acct-bar' },
+    h('span', { class: 'acct-win muted small' }, t.label),
+    h('div', { class: `meter acct-meter${hot ? ' hot' : ''}`, role: 'meter', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.round(t.used), 'aria-label': `${name} ${t.label} used` },
+      h('div', { class: 'meter-fill', style: { width: `${Math.min(100, Math.max(0, t.used))}%` } })),
+    h('span', { class: `mono acct-pct${hot ? ' hot' : ''}` }, pct(t.used)),
+    t.resets_at ? h('span', { class: 'muted small acct-reset', 'data-key': `reset-${seat.id}` }, `resets ${clock(t.resets_at, now)}`) : null)
+    : h('div', { class: 'acct-bar muted small' }, 'No usage yet');
+  return h('article', { class: `seat-card acct${isOpen ? ' is-open' : ''}${highlight ? ' highlight' : ''}${drag.id === seat.id ? ' seat-dragging' : ''}${dropClass}`, id: `seat-${seat.id}`, style: { '--seat': colour }, 'aria-label': name,
+    onkeydown: canMove ? (e) => { if (e.altKey) keyMove(e, seat, true); } : undefined },
+    h('div', { class: 'acct-row', onclick: (e) => { if (!e.target.closest('a, button, input, label, form')) toggle(seat.id); } },
+      canMove ? grip(seat, name) : h('span', { class: 'acct-nogrip' }),
+      h('div', { class: 'acct-who' }, dot(colour), h('h2', { class: 'seat-name' }, name), h('span', { class: 'muted small acct-plan' }, seat.plan || '')),
+      bar,
+      h('div', { class: 'acct-issue small', 'data-key': `issue-${seat.id}` },
+        issues.length ? [h('span', { class: `acct-issue-text issue-${issues[0].kind}` }, issueText(issues[0], now)),
+          issues.length > 1 ? h('span', { class: 'muted', title: issues.slice(1).map((i) => issueText(i, now)).join('; ') }, ` +${issues.length - 1}`) : null] : null),
+      h('button', { type: 'button', class: 'acct-chev', 'data-key': `seat-toggle-${seat.id}`, 'aria-expanded': String(isOpen), 'aria-controls': detailId,
+        'aria-label': `${isOpen ? 'Hide' : 'Show'} everything for ${name}`, onclick: () => toggle(seat.id) },
+        h('span', { 'aria-hidden': 'true' }, isOpen ? '▾' : '▸'))),
+    isOpen ? accountDetail(seat, colour, now, live, name, detailId) : null);
+}
+
+function accountDetail(seat, colour, now, live, name, detailId) {
+  const ws = sortWindows(seat.windows || []);
   const money = usageMoney(seat);
   // Fields the board has no sentence for still show, as a list.
   const extra = money.length ? null : kvList(seat.extra_usage);
   const spend = money.length ? null : kvList(seat.spend);
-  const where = placesText(seat);
-  const dropClass = drag.id && drag.drop && drag.drop.target === seat.id && drag.id !== seat.id ? (drag.drop.after ? ' drop-after' : ' drop-before') : '';
-  return h('article', { class: `card seat-card seat-card-full${highlight ? ' highlight' : ''}${drag.id === seat.id ? ' seat-dragging' : ''}${dropClass}`, id: `seat-${seat.id}`, style: { '--seat': colour }, 'aria-label': name,
-    onkeydown: canMove ? (e) => { if (e.altKey) keyMove(e, seat, true); } : undefined },
-    h('div', { class: 'seat-head' },
-      canMove ? grip(seat, name) : null,
-      h('h2', { class: 'seat-name' }, name),
-      h('span', { class: 'muted small' }, planText(seat)),
-      isOwner() && edit.id !== seat.id ? h('button', { type: 'button', class: 'linkish', 'data-key': `seat-edit-${seat.id}`,
-        'aria-label': `Edit ${name}`, onclick: () => startEdit(seat, colour) }, 'Edit') : null),
+  const signedIn = [...new Set((seat.places || []).filter((p) => p.slot).map((p) => p.machine_name || p.machine))];
+  const signedOut = signedOutOn(seat);
+  const rows = [['Plan', seat.plan || '–'], ['Email', seat.email || '–']];
+  if (seat.org_name) rows.splice(1, 0, ['Organisation', seat.org_name]);
+  if (money.length) rows.push(['Extra usage', money.join(' ')]);
+  rows.push(['Open sessions', String(live || 0)]);
+  return h('div', { class: 'acct-detail', id: detailId, 'data-key': `detail-${seat.id}` },
+    isOwner() && edit.id !== seat.id ? h('div', {}, h('button', { type: 'button', class: 'linkish', 'data-key': `seat-edit-${seat.id}`,
+      'aria-label': `Edit label and colour for ${name}`, onclick: () => startEdit(seat, colour) }, 'Edit label and colour')) : null,
     edit.id === seat.id ? editForm(seat) : null,
-    h('div', { class: 'muted small seat-sub' },
-      [seat.email, where ? `used on ${where}` : '', live ? plural(live, 'open session') : ''].filter(Boolean).join(' · ')),
-    ws.length ? ws.map((w) => windowRow(w, { seatName: name, full: true, now })) : noUsage(),
-    worst && worst.p.band === 'runaway' ? paceChip(worst.p) : null,
-    money.length ? h('p', { class: 'small', 'data-key': `money-${seat.id}` }, money.join(' ')) : null,
-    extra ? h('details', { class: 'extra', open: true }, h('summary', {}, 'Extra usage'), extra) : null,
-    spend ? h('details', { class: 'extra' }, h('summary', {}, 'Spend'), spend) : null,
-    seat.web_raw_at ? h('div', { class: 'muted small' }, `claude.ai usage read ${agoLabel(seat.web_raw_at, now)}`) : null);
+    h('section', { class: 'acct-sec' }, h('h3', {}, 'Limits'),
+      ws.length ? ws.map((w) => windowRow(w, { seatName: name, full: true, now })) : noUsage()),
+    h('section', { class: 'acct-sec', 'data-key': `where-${seat.id}` }, h('h3', {}, 'Signed in'),
+      signedIn.length || signedOut.length ? h('ul', { class: 'acct-where' },
+        signedIn.map((m) => h('li', {}, h('b', {}, m), ' · Claude Code signed in')),
+        signedOut.map((m) => h('li', { class: 'issue-signed_out' }, h('b', {}, m), ' · Claude Code signed out')))
+        : h('p', { class: 'muted small' }, 'Claude Code is not signed in on any machine.')),
+    h('section', { class: 'acct-sec' }, h('h3', {}, 'Details'),
+      h('dl', { class: 'kv' }, rows.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])),
+      extra ? h('details', { class: 'extra', open: true }, h('summary', {}, 'Extra usage'), extra) : null,
+      spend ? h('details', { class: 'extra' }, h('summary', {}, 'Spend'), spend) : null,
+      seat.web_raw_at ? h('p', { class: 'muted small' }, `claude.ai usage read ${agoLabel(seat.web_raw_at, now)}`) : null));
 }
