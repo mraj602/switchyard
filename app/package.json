@@ -1,6 +1,7 @@
 {
   "name": "switchyard-desktop",
   "productName": "Switchyard",
+  "desktopName": "switchyard-desktop.desktop",
   "version": "0.6.0",
   "description": "Switchyard desktop app: claude.ai account tabs, web usage and the hub board. Unofficial; not affiliated with Anthropic.",
   "license": "MIT",

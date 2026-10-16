@@ -7,7 +7,7 @@ import { section, select, toggle, toast, moreTabs, details } from '../components
 import { quietHours } from '../components/quiet.js';
 import { liveBadge } from '../components/nav.js';
 import { notifiable, appPaired, isApp } from '../components/targets.js';
-import { store, isOwner, canPush } from '../store.js';
+import { store, isOwner, canPush, inApp } from '../store.js';
 import { getSelf, getRules, getPushConfig, patchDevice, addTarget, deleteTarget, revokeDevice, listDevices } from '../api.js';
 import { pwa, isStandalone, canInstall, promptInstall, checkForUpdate, updateReady, applyUpdate } from '../pwa.js';
 import { pushStatus, turnOn, sendTest } from '../push.js';
@@ -19,7 +19,7 @@ const st = { self: null, push: null, config: null, hub: null, devices: null, tes
 const again = () => window.dispatchEvent(new Event('sy-rerender'));
 
 const mobile = () => isMobile(navigator.userAgent, navigator.maxTouchPoints, navigator.platform);
-const thisOne = () => notifNote(store.me?.device?.kind, mobile()).who;
+const thisOne = () => notifNote({ app: inApp(), mobile: mobile() }).who;
 
 export async function load({ onLogout }) {
   st.onLogout = onLogout;
@@ -84,11 +84,13 @@ function testText(t) {
 // This browser's own notifications (Web Push).
 function browserRow() {
   const p = st.push;
-  if (!canPush()) {
+  // In the desktop app even an owner session gets no Web Push (Electron has no push service):
+  // the app shows the hub's alerts itself (desktop.md C9).
+  if (!canPush() || inApp()) {
     // SE5: say what to do on this kind of device, with a link.
-    const n = notifNote(store.me?.device?.kind, mobile());
+    const n = notifNote({ app: inApp(), mobile: mobile() });
     const how = {
-      'app-settings': 'Turn them on or off in the app\'s Settings, Notifications.',
+      'app-settings': 'Turn them on or off in the app\'s Settings, Notifications and background.',
       'pair-phone': ['To get notifications here, ', h('a', { href: '#/pair', 'data-key': 'notif-pair' }, 'pair this phone with a code'), '.'],
       'owner-or-pair': ['To get notifications here, sign in as the owner (run ', h('code', {}, 'sy hub owner-link'), ' on the hub) or ', h('a', { href: '#/pair', 'data-key': 'notif-pair' }, 'pair this browser'), '.'],
     }[n.how];
@@ -136,7 +138,7 @@ function notifications() {
 }
 
 function prefs() {
-  if (!canPush() || !st.self) return null;
+  if (!canPush() || inApp() || !st.self) return null;
   const pr = st.self.prefs || {};
   const priv = pr.private == null ? 'default' : pr.private ? 'on' : 'off';
   return section('This device',
@@ -155,7 +157,7 @@ function prefs() {
 // ---- Advanced: ntfy ------------------------------------------------------------------------
 
 function ntfy() {
-  if (!canPush() || !st.self) return null;
+  if (!canPush() || inApp() || !st.self) return null;
   const targets = (st.self.targets || []).filter((t) => t.kind === 'ntfy');
   const server = st.config && st.config.ntfy_default_server || 'https://ntfy.sh';
   let srv = server, topic = '', token = '';
@@ -205,6 +207,7 @@ function advanced() {
 // ---- install, version, sign out -----------------------------------------------------------
 
 function installBlock() {
+  if (inApp()) return null; // the desktop app is already installed; there is no PWA to add
   const ua = navigator.userAgent;
   const how = canInstall() && !isStandalone() ? 'Not installed. Install it for its own window and notifications.'
     : installHint(ua, { ios: isIOS(ua, navigator.maxTouchPoints, navigator.platform), standalone: isStandalone() });
@@ -217,6 +220,7 @@ function installBlock() {
 
 // SE4: one version line; the build hashes are in Details.
 function boardState() {
+  if (inApp()) return 'board served by the hub';
   if (updateReady()) return 'a new board version is ready';
   if (pwa.build && pwa.hubBuild && pwa.build !== pwa.hubBuild) return 'board update on its way';
   return pwa.build || !pwa.supported ? 'board up to date' : 'checking the board version…';
@@ -230,7 +234,7 @@ function hubBlock(s) {
       row('Version', h('span', { 'data-key': 'version-line' }, `${v ? `Hub ${v}` : 'Hub version unknown'} · ${boardState()}`)),
       row('Status', liveBadge(s)),
       s.offline ? row('Last update', clock(new Date(s.offline.since).toISOString())) : null,
-      h('div', { class: 'actions' },
+      inApp() ? null : h('div', { class: 'actions' },
         h('button', {
           type: 'button', class: 'btn btn-sm', 'data-key': 'check-update',
           onclick: async (e) => { e.currentTarget.disabled = true; const r = await checkForUpdate(); st.updateNote = r ? '' : 'You are up to date.'; again(); },
@@ -245,6 +249,16 @@ function hubBlock(s) {
 function deviceBlock() {
   const me = store.me;
   const d = me.device;
+  if (inApp()) {
+    // The app signs this board in by itself with its desktop pairing: a sign-out here would
+    // just be undone. Unpairing the app is in the app's Settings, Hub.
+    const via = me.via || d;
+    return section('Sign-in',
+      h('div', { class: 'panel pad-s col' },
+        row('Name', via.name),
+        row('Kind', `Desktop app${me.owner ? ' · owner' : ''}`),
+        h('p', { class: 'muted small', 'data-key': 'app-signin' }, 'The app signs this board in with its own pairing. To unpair it, use the app\'s Settings, Hub.')));
+  }
   const unpair = d.kind === 'phone';
   return section('Sign-in',
     h('div', { class: 'panel pad-s col' },

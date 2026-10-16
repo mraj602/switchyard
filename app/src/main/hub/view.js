@@ -92,11 +92,24 @@ export function createHubView(deps) {
         redirect: 'error',
         signal: AbortSignal.timeout(timeoutMs),
       });
-      if (res.status === 204 || res.status === 200) return { ok: true, status: res.status };
+      if (res.status === 204 || res.status === 200) {
+        // Write the new cookie to disk now: a cookie lost at a crash or a kill means a new
+        // login at the next start (the hub then replaces the old board session, auth/session.go).
+        await flushCookies();
+        return { ok: true, status: res.status };
+      }
       if (res.status === 401) deps.onLoginRefused(401);
       return { ok: false, status: res.status, error: res.status === 429 ? 'the hub is rate limiting logins' : `login answered ${res.status}` };
     } catch (err) {
       return { ok: false, status: 0, error: String(err?.message ?? err).split('\n')[0].slice(0, 200) };
+    }
+  }
+
+  async function flushCookies() {
+    try {
+      await session().cookies.flushStore?.();
+    } catch (err) {
+      log.debug?.(`hub view: cookie flush: ${err?.message ?? err}`);
     }
   }
 
@@ -231,6 +244,8 @@ export function createHubView(deps) {
     },
     sessionFetch,
     sessionLogin,
+    hasCookie,
+    flushCookies,
     refreshOwner,
     /** The route in the view's address now, e.g. `#/sessions/abc`, or ''. */
     currentRoute() {

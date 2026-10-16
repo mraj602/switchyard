@@ -7,7 +7,7 @@
 import { h } from '../components/dom.js';
 import { section, toggle, toast, moreTabs, details } from '../components/ui.js';
 import { seatIndex, seatName } from '../components/seat.js';
-import { store, isOwner, canPush } from '../store.js';
+import { store, isOwner, canPush, inApp } from '../store.js';
 import { getMatrix, editMatrix, pausePeers, getPeerAudit, getPeerMessages, resumePeerThread } from '../api.js';
 import { agoLabel, dateTime } from '../format.js';
 import {
@@ -36,7 +36,7 @@ async function refreshAudit() {
 
 // Sends an edit (or the pause switch); a stale version (409) reloads the matrix.
 async function change(widens, send) {
-  const why = whyNot({ widens, owner: isOwner(), push: canPush(), offline: !!store.offline });
+  const why = whyNot({ widens, owner: isOwner(), push: canPush(), offline: !!store.offline, app: inApp() });
   if (why) { toast(why); return; }
   st.busy = true;
   again();
@@ -59,7 +59,7 @@ const edit = (patch, widens) => change(widens, () => editMatrix(editBody(st.matr
 function killSwitch() {
   const m = st.matrix.matrix;
   const owner = isOwner();
-  const off = whyNot({ widens: m.paused, owner, push: canPush(), offline: !!store.offline });
+  const off = whyNot({ widens: m.paused, owner, push: canPush(), offline: !!store.offline, app: inApp() });
   // While nothing can pass (no pair allowed, no message yet) the switch is a small control (PE4).
   const quiet = !m.paused && !(m.allow || []).length && !(st.messages && st.messages.length);
   return h('section', { class: `block kill${m.paused ? ' kill-on' : ''}`, 'aria-label': 'Pause all peers' },
@@ -121,7 +121,7 @@ function editor(accts, m) {
   const whys = [];
   const btns = opts.map(([target, text]) => {
     const e = cellEdit(m.allow, p.from, p.to, target);
-    const why = target === cur ? '' : whyNot({ widens: e.widens, owner, push, offline });
+    const why = target === cur ? '' : whyNot({ widens: e.widens, owner, push, offline, app: inApp() });
     if (why && !whys.includes(why)) whys.push(why);
     return h('button', {
       type: 'button', class: `btn btn-sm${target === cur ? ' btn-primary' : ''}`, 'data-key': `set-${target}`,
@@ -141,7 +141,7 @@ function matrixBlock() {
   const seats = (store.overview && store.overview.seats) || [];
   const accts = accounts(seats, m);
   const owner = isOwner();
-  const sameOff = whyNot({ widens: !m.same_account, owner, push: canPush(), offline: !!store.offline });
+  const sameOff = whyNot({ widens: !m.same_account, owner, push: canPush(), offline: !!store.offline, app: inApp() });
   return section('Accounts',
     h('div', { class: 'panel pad-s col' },
       accts.length < 2

@@ -4,7 +4,7 @@
 // Routes: see route.js. Start-up asks GET /v1/me: a 401 opens the pair screen (installed
 // app or phone) or the token login (a computer).
 
-import { store, subscribe, start, stop, setAuthLostHandler, refreshAll, canPush } from './store.js';
+import { store, subscribe, start, stop, setAuthLostHandler, refreshAll, canPush, inApp } from './store.js';
 import { logout, getJSON } from './api.js';
 import { renderNav } from './components/nav.js';
 import { h } from './components/dom.js';
@@ -74,7 +74,7 @@ async function boot() {
     appEl.classList.remove('shell-login');
     const v = parseRoute(location.hash).view;
     if (v === 'login') go('#/'); else render();
-    if (canPush()) resubscribeIfNeeded();
+    if (canPush() && !inApp()) resubscribeIfNeeded(); // the desktop app notifies by itself
   } else if (store.unauthorized || !store.error) {
     showUnauth();
   } else {
@@ -167,7 +167,7 @@ function announceNeeds() {
   const n = store.overview.counts.needs_you;
   if (lastNeeds !== null && n !== lastNeeds) announceEl.textContent = n ? `${n} sessions need you` : 'Nothing needs you';
   lastNeeds = n;
-  if ('setAppBadge' in navigator && authed && canPush()) {
+  if ('setAppBadge' in navigator && authed && canPush() && !inApp()) {
     (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {});
   }
 }

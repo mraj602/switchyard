@@ -17,7 +17,8 @@
 #   make release-check  a release build of sy contains no test seams (fakeclock, fakeopen)
 #   make app-test    the desktop app (app/): npm ci --ignore-scripts, lint, unit tests (no display)
 #   make app-smoke   the Electron smoke S1-S12 (Linux: under xvfb-run; a real hub built from here)
-#   make app-dist    the bundled sy for this machine + the app packages in app/dist (never signed)
+#   make app-dist    the bundled sy for this machine + the app packages in app/dist (never signed;
+#                    Linux without libcrypt.so.1: the AppImage only, see APP_DIST_LINUX)
 #   make app-e2e     the packaged AppImage end to end (its own e2e build in app/dist/e2e, which alone
 #                    allows --remote-debugging-port; Linux, xvfb-run)
 #   make phone-deps  install phone/node_modules from the lockfile (npm ci)
@@ -109,8 +110,13 @@ e2e-android:
 # The desktop app (docs/phases/6.md). npm runs in app/ only; the root prototype is never touched.
 # Smoke and e2e use temp HOME / SY_HOME / user data folders; on Linux they run under xvfb-run
 # when it is installed (unset WAYLAND_DISPLAY so Electron uses X11).
+# A private session bus too: under xvfb, Electron and Chrome still reach the desktop's D-Bus
+# and test alerts would pop up as real notifications. dbus-run-session gives the run its own
+# bus; without it (some CI images) the bus address points nowhere instead.
 NPM      ?= npm
+NOBUS    := $(shell command -v dbus-run-session >/dev/null 2>&1 && echo 'dbus-run-session --' || echo 'env DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent/sy-no-bus')
 XVFB     := $(shell command -v xvfb-run >/dev/null 2>&1 && echo 'env -u WAYLAND_DISPLAY -u XDG_SESSION_TYPE xvfb-run -a --server-args="-screen 0 1440x940x24"')
+XVFB     := $(if $(XVFB),$(NOBUS) $(XVFB),$(NOBUS))
 
 # Installs app/node_modules with the Electron binary, unless they are there already.
 app-deps:
@@ -147,8 +153,15 @@ app-smoke: app-deps
 	CGO_ENABLED=0 $(GO) build -o app/node_modules/.cache/sy-smoke/sy ./cmd/sy
 	cd app && SY_BIN="$$PWD/node_modules/.cache/sy-smoke/sy" $(XVFB) $(NPM) run smoke
 
+# On Linux the deb and rpm targets run electron-builder's bundled fpm, whose Ruby needs
+# libcrypt.so.1 (Fedora 40+ ships only libcrypt.so.2 unless libxcrypt-compat is installed).
+# Without it the local build makes the AppImage alone instead of failing after it; set
+# APP_DIST_LINUX="AppImage deb rpm" (or any list) to choose. CI runs `npm run dist` itself
+# and builds all three, as electron-builder.yml says.
+APP_DIST_LINUX ?= $(shell [ "$$(uname -s)" = Linux ] && ! { ldconfig -p 2>/dev/null | grep -q 'libcrypt\.so\.1 '; } && echo AppImage)
 app-dist: app-deps
-	cd app && node scripts/fetch-sy.mjs auto auto && CSC_IDENTITY_AUTO_DISCOVERY=false $(NPM) run dist -- --publish never
+	$(if $(APP_DIST_LINUX),@echo "app-dist: Linux targets: $(APP_DIST_LINUX) (deb and rpm need libcrypt.so.1 for fpm: dnf install libxcrypt-compat)")
+	cd app && node scripts/fetch-sy.mjs auto auto && CSC_IDENTITY_AUTO_DISCOVERY=false $(NPM) run dist -- --publish never $(if $(APP_DIST_LINUX),--linux $(APP_DIST_LINUX))
 
 # The e2e build bakes switchyard.allowCdp=true into the asar (desktop.md C2); app-dist never does.
 app-e2e: app-deps

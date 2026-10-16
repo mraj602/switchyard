@@ -7,7 +7,7 @@ import { qrSvg } from '../components/qr.js';
 import { pairErrorView } from '../components/pair-error.js';
 import { copyButton } from '../components/cards.js';
 import { targetKindText, usable } from '../components/targets.js';
-import { isOwner } from '../store.js';
+import { isOwner, inApp } from '../store.js';
 import { listDevices, patchDevice, revokeDevice, testTarget, makePairCode, getPairCode, cancelPairCode } from '../api.js';
 import { agoLabel, day, dateTime, clock, deviceLabel } from '../format.js';
 
@@ -230,7 +230,8 @@ export function render({ now }) {
   moreTabs('devices', { owner }));
   if (!owner) {
     return { title: 'Devices · Switchyard', node: h('div', { class: 'page' }, head,
-      h('p', { class: 'calm' }, 'Sign in as owner on the hub: run ', h('code', {}, 'sy hub owner-link'), ' there and open the link it prints.')) };
+      inApp() ? h('p', { class: 'calm' }, 'Only the owner manages devices: use Sign in as owner in the app’s Settings, Hub.')
+        : h('p', { class: 'calm' }, 'Sign in as owner on the hub: run ', h('code', {}, 'sy hub owner-link'), ' there and open the link it prints.')) };
   }
   const list = st.devices;
   const node = h('div', { class: 'page' }, head,

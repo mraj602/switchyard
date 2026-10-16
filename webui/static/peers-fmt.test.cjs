@@ -56,6 +56,10 @@ test('why a change is not available', () => {
   assert.match(P.whyNot({ ...ok, widens: true }), /owner sign-in/);
   assert.match(P.whyNot({ ...ok, push: false }), /only read/);
   assert.match(P.whyNot({ ...ok, offline: true }), /Offline/);
+  // in the desktop app the owner sign-in is the app's own button, not a command on the hub
+  assert.match(P.whyNot({ ...ok, widens: true, app: true }), /app’s Settings, Hub/);
+  assert.doesNotMatch(P.whyNot({ ...ok, widens: true, app: true }), /owner-link/);
+  assert.doesNotMatch(P.whyNot({ ...ok, push: false, app: true }), /paired phone/);
 });
 
 test('accounts: visible seats first, then accounts only the matrix names', () => {

@@ -360,6 +360,14 @@ func NormalizeCode(s string) (string, bool) {
 }
 
 // cleanName removes control characters and trims.
+// trimName cuts a made-up name to MaxNameLen runes.
+func trimName(s string) string {
+	if r := []rune(s); len(r) > MaxNameLen {
+		return string(r[:MaxNameLen])
+	}
+	return s
+}
+
 func cleanName(s string) string {
 	return strings.TrimSpace(strings.Map(func(r rune) rune {
 		if unicode.IsControl(r) {
@@ -797,6 +805,14 @@ func (s *Service) Claim(ctx context.Context, ip string, req ClaimRequest) (Claim
 // caller sets the cookie. Errors as Claim; a secret of any other kind of code is ErrInvalid
 // and the code is left alone.
 func (s *Service) OwnerSignIn(ctx context.Context, ip, secret, name string) (auth.Created, error) {
+	return s.OwnerSignInVia(ctx, ip, secret, name, nil)
+}
+
+// OwnerSignInVia is OwnerSignIn for a link opened in a board session of device via (the
+// desktop app's Hub view; nil: a plain browser). The owner session records via in its
+// created_by (auth.OwnerCreatedBy), so /v1/me can tell which app it lives in and revoking that
+// device revokes it too, and it is named after that device.
+func (s *Service) OwnerSignInVia(ctx context.Context, ip, secret, name string, via *store.Device) (auth.Created, error) {
 	if len(secret) < 22 || len(secret) > 64 {
 		return auth.Created{}, badRequest("secret must be 22 to 64 characters")
 	}
@@ -816,6 +832,11 @@ func (s *Service) OwnerSignIn(ctx context.Context, ip, secret, name string) (aut
 	if err != nil {
 		return auth.Created{}, err
 	}
+	viaID := ""
+	if via != nil {
+		viaID = via.ID
+		name = trimName("Owner session in " + via.Name)
+	}
 	if name == "" {
 		name = "Owner session"
 	}
@@ -832,7 +853,7 @@ func (s *Service) OwnerSignIn(ctx context.Context, ip, secret, name string) (aut
 		if !hmac.Equal(row.SecretHash, h) || row.Kind != "owner" {
 			return &LinkError{Code: LinkUnknown}
 		}
-		p, err := auth.Prepare(auth.CreateRequest{Kind: "browser", Name: name, CreatedBy: "owner-link:" + row.ID, Owner: true, Pepper: pepper}, time.UnixMilli(now))
+		p, err := auth.Prepare(auth.CreateRequest{Kind: "browser", Name: name, CreatedBy: auth.OwnerCreatedBy(row.ID, viaID), Owner: true, Pepper: pepper}, time.UnixMilli(now))
 		if err != nil {
 			return err
 		}

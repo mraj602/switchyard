@@ -119,7 +119,7 @@ func (s *Store) UpdateDevice(ctx context.Context, id string, name, prefs *string
 // ErrNotFound when the device is missing, or already revoked with nothing left to clean. `sy hub token revoke` and DELETE /v1/devices/{id} both end here.
 func (tx *Tx) RevokeDeviceCascade(id string) error {
 	ids := []string{id}
-	rows, err := tx.QueryContext(tx.ctx, `SELECT id FROM device WHERE created_by = ?`, "login:"+id)
+	rows, err := tx.QueryContext(tx.ctx, `SELECT id FROM device WHERE created_by = ? OR created_by GLOB ?`, "login:"+id, "owner-link:*@"+id)
 	if err != nil {
 		return err
 	}

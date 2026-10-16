@@ -33,6 +33,14 @@ test('electron-builder.yml: no publishing, no signing, no updater', () => {
   assert.ok(!('electron-updater' in (pkg.devDependencies || {})));
 });
 
+test('Linux: the app_id (desktopName) is the .desktop file name, so the shell shows the icon', () => {
+  // Electron sets CHROME_DESKTOP (the Wayland app_id and libnotify's desktop-entry hint) from
+  // desktopName; without it the id is "switchyard" and matches no installed entry.
+  assert.equal(pkg.desktopName, 'switchyard-desktop.desktop');
+  assert.match(yml, /^ {2}syncDesktopName: true$/m);
+  assert.ok(existsSync(appDir + 'assets/icon.png'));
+});
+
 test('electron-builder.yml: tests, dev page and test hooks are excluded; sy is bundled', () => {
   for (const x of ['!**/*.test.js', '!src/renderer/dev/**', '!src/main/test-hooks.js']) {
     assert.ok(yml.includes(`"${x}"`), `files excludes ${x}`);
