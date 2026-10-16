@@ -23,6 +23,34 @@ export function OfflineBanner() {
   );
 }
 
+/** The hub said it moved (/health frozen.moved_to): offer to follow it. Rendered by Page. */
+export function MovedCard() {
+  const api = useHubApi();
+  const t = useTheme();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  if (!api.moved || !api.switchToMoved) return null;
+  const switchTo = api.switchToMoved;
+  const go = async () => {
+    setBusy(true);
+    setFailed(false);
+    try {
+      setFailed((await switchTo()) === 'failed');
+    } catch {
+      setFailed(true);
+    }
+    setBusy(false);
+  };
+  return (
+    <View accessibilityRole="alert" testID="moved-card" style={[s.card, { backgroundColor: t.card, borderColor: t.accent, marginHorizontal: 16, marginTop: 8 }]}>
+      <Text style={{ color: t.text, fontSize: 16, fontWeight: '700' }}>{`Your hub moved to ${api.moved.to.replace(/^https?:\/\//, '')}`}</Text>
+      <Text style={[s.small, { color: t.muted }]}>This phone keeps its key. If the new address does not know this phone, you will be asked to scan again.</Text>
+      {failed ? <Text style={[s.small, { color: t.bad }]}>Could not reach the new address yet. Try again in a moment.</Text> : null}
+      <Btn kind="primary" label={busy ? 'Switching…' : 'Switch to the new address'} testID="moved-switch" disabled={busy} onPress={() => void go()} />
+    </View>
+  );
+}
+
 /** Back on a stack screen: the previous screen, or Now when the screen was opened by a link. */
 export function goBack() {
   if (router.canGoBack()) router.back();
@@ -70,6 +98,7 @@ export function Page({ title, meta, children, toast, back, logo }: {
     // already pads for the navigation bar).
     <SafeAreaView style={[s.fill, { backgroundColor: t.bg }]} edges={back ? ['top', 'bottom'] : ['top']} testID="page">
       <OfflineBanner />
+      <MovedCard />
       <ScrollView
         contentContainerStyle={s.page}
         refreshControl={<RefreshControl refreshing={busy} onRefresh={refresh} />}

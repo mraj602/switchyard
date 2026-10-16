@@ -18,8 +18,16 @@ export interface HubState {
   status: PairStatus;
   /** The paired hub (origin, device name); null unless paired. Never exposes the token to screens: see `hubInfo`. */
   hub: { origin: string; device: string; name: string; paired_at: string } | null;
-  /** Why the app is unpaired ("This phone was unpaired on the hub"), or null. */
+  /** Why the app is unpaired ("This phone was removed from the hub", "Your hub moved to ..."), or null. */
   notice: string | null;
+  /** The paired hub said it moved (its /health `frozen.moved_to`): the new origin, else null. */
+  moved: { to: string } | null;
+  /**
+   * Re-point the stored hub at `moved.to` and reconnect with the same token. 'switched' when it
+   * took; 'rescan' when the new address does not know this phone (the app is then unpaired, with
+   * a notice, so Pair shows); 'failed' when the new address could not be asked (nothing changed).
+   */
+  switchToMoved(): Promise<'switched' | 'rescan' | 'failed'>;
   client: HubClient | null;
   data: HubData;
   /** The reducer (optimistic Seen and Snooze of the screens). */
@@ -60,6 +68,8 @@ export function HubTestProvider(props: { value?: Partial<HubState>; children: Re
     status: 'paired',
     hub: { origin: 'https://hub.test.ts.net', device: 'dev_phone', name: 'Pixel · app', paired_at: '2026-10-13T00:00:00.000Z' },
     notice: null,
+    moved: null,
+    switchToMoved: async () => 'failed',
     client: null,
     data: initialData,
     dispatch: () => {},

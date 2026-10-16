@@ -9,7 +9,8 @@ import type { Device, Me } from '../contract/api';
 import type { AppRoute } from '../contract/routes';
 import { createPoller, initialData, loadCache, reduce } from '../lib/data';
 import type { Poller } from '../lib/data';
-import { addPendingRevoke, createHubClient, flushPendingRevokes, normalizeOrigin, revokeDevice } from '../lib/hub';
+import { addPendingRevoke, createHubClient, flushPendingRevokes, HubError, normalizeOrigin, revokeDevice } from '../lib/hub';
+import { hostOf } from '../lib/pair';
 import type { HubClient } from '../lib/hub';
 import { performDecision } from '../lib/notify';
 import type { NotificationsLike } from '../lib/notify';
@@ -42,7 +43,7 @@ export interface HubProviderProps {
   children: ReactNode;
 }
 
-export const UNPAIRED_ON_HUB = 'This phone was unpaired on the hub';
+export const UNPAIRED_ON_HUB = 'This phone was removed from the hub';
 
 export function HubProvider({ deps: initialDeps, navigate, openUrl, children }: HubProviderProps) {
   const [deps] = useState(initialDeps); // platform services are fixed for the app's lifetime
@@ -52,7 +53,9 @@ export function HubProvider({ deps: initialDeps, navigate, openUrl, children }: 
   const [notice, setNotice] = useState<string | null>(null);
   const [client, setClient] = useState<HubClient | null>(null);
   const [me, setMe] = useState<Me | null>(null);
+  const [moved, setMoved] = useState<{ to: string } | null>(null);
   const pollerRef = useRef<Poller | null>(null);
+  const clientRef = useRef<HubClient | null>(null);
   const storedRef = useRef<StoredHub | null>(null);
   const statusRef = useRef<PairStatus>('loading');
   /** The pairing generation: bumped by every pairing and clearing, so a step that started
@@ -108,6 +111,7 @@ export function HubProvider({ deps: initialDeps, navigate, openUrl, children }: 
       setStored(null);
       setClient(null);
       setMe(null);
+      setMoved(null);
       setNotice(reason);
       setStatus('unpaired');
     },
@@ -182,6 +186,15 @@ export function HubProvider({ deps: initialDeps, navigate, openUrl, children }: 
     void flushRevokes();
   }, [deps, adopt, flushRevokes, setStatus]);
 
+  /** Ask the paired hub whether it was frozen for a move; keeps the answer for the card. */
+  const checkMoved = useCallback(async () => {
+    const c = clientRef.current;
+    const mine = genRef.current;
+    if (!c) return;
+    const to = await c.movedTo();
+    if (mine === genRef.current && mounted.current) setMoved((m) => (m?.to === to || (!m && !to) ? m : to ? { to } : null));
+  }, []);
+
   useEffect(() => {
     mounted.current = true;
     void (async () => {
@@ -192,6 +205,7 @@ export function HubProvider({ deps: initialDeps, navigate, openUrl, children }: 
       if (st !== 'active') return;
       if (statusRef.current === 'locked') void boot();
       void flushRevokes();
+      void checkMoved();
     });
     return () => {
       mounted.current = false;
@@ -214,6 +228,8 @@ export function HubProvider({ deps: initialDeps, navigate, openUrl, children }: 
       afterRefresh: (d) => (mine === genRef.current ? (stateHooks.afterRefresh?.(d) ?? Promise.resolve()) : Promise.resolve()),
     });
     pollerRef.current = poller;
+    clientRef.current = client;
+    void checkMoved();
     let live = true;
     client.me().then(
       (m) => live && mine === genRef.current && setMe(m),
@@ -262,7 +278,8 @@ export function HubProvider({ deps: initialDeps, navigate, openUrl, children }: 
 
   const refresh = useCallback(async () => {
     await pollerRef.current?.kick();
-  }, []);
+    void checkMoved();
+  }, [checkMoved]);
 
   const reloadMe = useCallback(async () => {
     const c = client;
@@ -286,6 +303,7 @@ export function HubProvider({ deps: initialDeps, navigate, openUrl, children }: 
       await d.cache.removeItem(CACHE_KEY).catch(() => {});
       dispatch({ type: 'reset' });
       setNotice(null);
+      setMoved(null);
       setMe(null);
       const c = adopt(hub);
       setStatus('paired');
@@ -327,12 +345,39 @@ export function HubProvider({ deps: initialDeps, navigate, openUrl, children }: 
     else if (s) void revokeDevice(deps, s);
   }, [deps, clearAll, flushRevokes]);
 
+  /**
+   * The hub moved (machines.md 8): its device rows came along, so the same token may work at the
+   * new address. Ask GET /v1/me there first (no side effects, no clearing on a 401); only when
+   * that works is the stored hub re-pointed (a new pairing, so notifications register there).
+   */
+  const switchToMoved = useCallback(async (): Promise<'switched' | 'rescan' | 'failed'> => {
+    const s = storedRef.current;
+    const to = moved?.to;
+    if (!s || !to) return 'failed';
+    const probe = createHubClient({ origin: to, token: s.token, fetch: deps.fetch, clock: deps.clock });
+    try {
+      await probe.me();
+    } catch (e) {
+      const status = e instanceof HubError ? e.status : null;
+      if (status === 401 || status === 403 || status === 404) {
+        await clearAll(`Your hub moved to ${hostOf(to)}. Scan its QR code there to pair this phone again.`, s);
+        return 'rescan';
+      }
+      return 'failed';
+    }
+    if (storedRef.current !== s) return 'failed';
+    await pairWith({ ...s, origin: normalizeOrigin(to) });
+    return 'switched';
+  }, [deps, moved, clearAll, pairWith]);
+
   const hub = stored ? { origin: stored.origin, device: stored.device, name: stored.name, paired_at: stored.paired_at } : null;
 
   const value: HubState = {
     status,
     hub,
     notice,
+    moved,
+    switchToMoved,
     client,
     data,
     dispatch,
