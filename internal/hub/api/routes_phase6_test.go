@@ -21,8 +21,8 @@ func TestPhase6TableIsUniqueAndComplete(t *testing.T) {
 			t.Errorf("%s is also in the phase 4 or 5 table", k)
 		}
 	}
-	if len(phase6Routes) != 1 {
-		t.Errorf("%d phase 6 operations, desktop.md C10 adds 1 (PATCH /v1/accounts/{seat})", len(phase6Routes))
+	if len(phase6Routes) != 2 {
+		t.Errorf("%d phase 6 operations, desktop.md C10 adds PATCH /v1/accounts/{seat}, the seat order adds PUT /v1/seats/order", len(phase6Routes))
 	}
 	// Every phase 6 route appears exactly once in Routes(), reserved while unregistered.
 	s := New(Config{Store: nil})
@@ -35,7 +35,7 @@ func TestPhase6TableIsUniqueAndComplete(t *testing.T) {
 			}
 		}
 	}
-	if n != 1 {
+	if n != 2 {
 		t.Errorf("Routes() has %d phase 6 operations", n)
 	}
 }

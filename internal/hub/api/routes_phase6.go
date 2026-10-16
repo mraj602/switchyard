@@ -8,6 +8,7 @@ package api
 // phase6Routes: method, path, x-scopes exactly as api.yaml. Reserved is filled in by Routes().
 var phase6Routes = []Route{
 	{Method: "PATCH", Path: "/v1/accounts/{seat}", Scopes: []string{"owner"}},
+	{Method: "PUT", Path: "/v1/seats/order", Scopes: []string{"owner"}},
 }
 
 func isPhase6(method, path string) bool { return inTable(phase6Routes, method, path) }
