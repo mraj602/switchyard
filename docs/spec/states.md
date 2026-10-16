@@ -44,7 +44,9 @@ Decision 6 keeps PreToolUse / PostToolUse off by default (one process per tool c
 plugin (`plugin/switchyard/hooks/hooks.json`, phase 1) installs these command hooks, all
 `async: true` except SessionEnd, all running `sy hook`. SessionEnd is synchronous with
 `timeout: 2` (it costs about 5 ms): an async hook can be killed when Claude Code exits, and
-the session would then show as `gone` instead of `ended`.
+the session would then show as `gone` instead of `ended`. Beside these, synchronous entries
+that record nothing: `sy hook --title <Event>` (terminal.md T6) and, on SessionStart only,
+`sy hook --peers-context SessionStart` (peers.md 2.5).
 
 | Event | Matcher | Why |
 | --- | --- | --- |

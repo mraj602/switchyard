@@ -21,6 +21,7 @@ func TestPeersSkill(t *testing.T) {
 	for _, want := range []string{
 		"name: peers\n",
 		"description: Message Claude Code sessions in other accounts or on other machines through Switchyard (`sy peers list`, `sy peers send`).",
+		"Also use it on your own when your work would go better by coordinating with other agents or sessions",
 		"allowed-tools: Bash(sy peers list:*), Bash(sy peers send:*), Bash(sy peers status:*), Bash(sy peers matrix:*)",
 	} {
 		if !strings.Contains(head+"\n", want) {
@@ -41,6 +42,7 @@ func TestPeersSkill(t *testing.T) {
 		"Never send secrets",
 		"usage limits",
 		"--stdin <<'EOF'",
+		"When you message a peer on your own",
 	} {
 		if !strings.Contains(flat, rule) {
 			t.Errorf("skill lacks the rule %q", rule)
