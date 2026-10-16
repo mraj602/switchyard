@@ -166,6 +166,20 @@ export interface Seat {
   hidden?: boolean;
   windows?: Window[];
   live_sessions?: number;
+  web_raw_at?: Iso | null;
+  /** Where the seat is used: a Claude Code folder logged in to it (`slot`), or a desktop tab (`tab_id`). */
+  places?: SeatPlace[];
+  /** Claude Code folders that logged out of this seat (phone.md P17.7). */
+  signed_out?: { machine: string; machine_name: string; slot: string; since: Iso }[];
+}
+
+/** api.yaml Seat.places[]. */
+export interface SeatPlace {
+  machine: string;
+  machine_name: string;
+  slot?: string | null;
+  tab_id?: string | null;
+  stopped_reason?: string | null;
 }
 
 /** api.yaml Machine (fields the app shows). */

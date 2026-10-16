@@ -12,9 +12,10 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
 /**
- * phone.md P17.1: the profile list, sign-out (delete a profile) and the tab view. Every profile
- * call runs on the main thread, as the WebView profile API requires. Nothing here reads cookies
- * or storage: the module only creates, flushes and deletes profiles.
+ * phone.md P17.1 and P17.7: the profile list, sign-out (delete a profile), moving a profile to
+ * another seat, and the tab view. Every profile call runs on the main thread, as the WebView
+ * profile API requires. Nothing here reads cookies or storage: the module only creates,
+ * flushes, deletes and reassigns profiles.
  */
 class SyTabsModule : Module() {
   override fun definition() = ModuleDefinition {
@@ -29,13 +30,16 @@ class SyTabsModule : Module() {
 
     AsyncFunction("listProfiles") {
       if (!supported()) emptyList()
-      else TabPolicy.listed(ProfileStore.getInstance().allProfileNames.toList(), pending())
+      else TabPolicy.listed(ProfileStore.getInstance().allProfileNames.toList(), pending(), moves())
     }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("deleteProfile") { seat: String ->
-      val name = TabPolicy.profileName(seat) ?: throw CodedException("ERR_SY_TABS_SEAT", "sy-tabs: not a seat id", null)
+      if (!TabPolicy.validSeat(seat)) throw CodedException("ERR_SY_TABS_SEAT", "sy-tabs: not a seat id", null)
       if (!supported()) return@AsyncFunction false
+      val m = moves()
+      val name = TabPolicy.profileFor(seat, existing(), m)!!
       if (name in open) throw CodedException("ERR_SY_TABS_IN_USE", "sy-tabs: close the tab first", null)
+      if (name in m) setMoves(m - name) // a moved profile, once signed out, goes back to the seat its name carries
       try {
         ProfileStore.getInstance().deleteProfile(name).also { setPending(name, false) }
       } catch (e: IllegalStateException) {
@@ -46,6 +50,23 @@ class SyTabsModule : Module() {
         setPending(name, true)
         true
       }
+    }.runOnQueue(Queues.MAIN)
+
+    // P17.7 "Use this tab for <other seat> instead": the profile stays as it is (its sign-in is
+    // never read or copied); only which seat it belongs to changes.
+    AsyncFunction("moveProfile") { from: String, to: String ->
+      if (!supported()) return@AsyncFunction false
+      val m = moves()
+      val src = TabPolicy.owned(from, existing(), m)
+      if (src != null && src in open) throw CodedException("ERR_SY_TABS_IN_USE", "sy-tabs: close the tab first", null)
+      val (next, err) = TabPolicy.move(from, to, existing(), m)
+      when (err) {
+        TabPolicy.MoveError.SEAT -> throw CodedException("ERR_SY_TABS_SEAT", "sy-tabs: not a seat id", null)
+        TabPolicy.MoveError.NONE -> throw CodedException("ERR_SY_TABS_NONE", "sy-tabs: that seat has no tab", null)
+        TabPolicy.MoveError.TAKEN -> throw CodedException("ERR_SY_TABS_TAKEN", "sy-tabs: the other seat has a tab already", null)
+        null -> setMoves(next!!)
+      }
+      true
     }.runOnQueue(Queues.MAIN)
 
     // Cookies reach the disk when the app goes to the background (and when a tab closes).
@@ -68,6 +89,23 @@ class SyTabsModule : Module() {
     private val open = HashSet<String>()
 
     private const val PENDING = "pending"
+    private const val MOVES = "moves"
+
+    private fun moves(): Map<String, String> = TabPolicy.decodeMoves(store?.getStringSet(MOVES, emptySet()))
+
+    private fun setMoves(m: Map<String, String>) {
+      store?.edit()?.putStringSet(MOVES, TabPolicy.encodeMoves(m))?.apply()
+    }
+
+    /** Tab profiles on disk, minus the ones waiting for deletion (main thread, supported only). */
+    private fun existing(): List<String> {
+      val p = pending()
+      return ProfileStore.getInstance().allProfileNames.filter { it !in p && TabPolicy.seatOf(it) != null }
+    }
+
+    /** The profile a seat's tab binds now (P17.7), or null for a bad seat id. */
+    fun profileFor(seat: String?): String? =
+      if (!TabPolicy.validSeat(seat)) null else TabPolicy.profileFor(seat, existing(), moves())
 
     private fun pending(): Set<String> = store?.getStringSet(PENDING, emptySet())?.toSet() ?: emptySet()
 

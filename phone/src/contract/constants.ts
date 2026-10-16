@@ -31,6 +31,13 @@ export const WIDGET_KEY = 'sy.widget.v1';
  */
 export const LOCAL_PREFS_KEY = 'sy.local.v1';
 
+/**
+ * AsyncStorage key of what each claude.ai tab showed when it was last open (P17.7):
+ * `{<seat>: {signed_in, account, at}}`, `account` being the Anthropic account uuid claude.ai
+ * named in the tab. Never a cookie, an email or page content; local to this install, never sent.
+ */
+export const TAB_MEMO_KEY = 'sy.tabs.v1';
+
 /** Notification category with Open, Snooze and Seen (P6.2). No '-' or ':' (an Expo rule). */
 export const ALERT_CATEGORY = 'sy_alert';
 

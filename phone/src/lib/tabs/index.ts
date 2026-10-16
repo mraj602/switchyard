@@ -47,11 +47,12 @@ export function openTarget(
 
 /** The module's tab event (modules/sy-tabs TabEvent) plus when the screen got it. */
 export type TabEventAt = {
-  state: 'loading' | 'loaded' | 'http' | 'error' | 'crashed' | 'download' | 'external';
+  state: 'loading' | 'loaded' | 'http' | 'error' | 'crashed' | 'download' | 'external' | 'url' | 'account';
   url?: string;
   status?: number;
   height?: number;
   reason?: string;
+  account?: string;
   at: number;
 };
 
@@ -132,3 +133,4 @@ export function tabRows(profiles: string[], seats: Pick<Seat, 'id' | 'label' | '
     })
     .sort((a, b) => (order.get(a.seat) ?? 1e9) - (order.get(b.seat) ?? 1e9));
 }
+export * from './status';

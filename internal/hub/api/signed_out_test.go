@@ -25,7 +25,7 @@ func slotLoginRec(t *testing.T, machine, slot, acct string, at time.Time) []byte
 	return b
 }
 
-// Seat.signed_out (phone.md P17.6): a folder that logged out of a seat is listed under that
+// Seat.signed_out (phone.md P17.7): a folder that logged out of a seat is listed under that
 // seat until it logs in again; a folder that moved to another login is not; a read token sees it.
 func TestSeatSignedOut(t *testing.T) {
 	h := startHub(t, "")

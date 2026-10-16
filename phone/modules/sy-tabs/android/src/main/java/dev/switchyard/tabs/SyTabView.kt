@@ -25,11 +25,13 @@ import androidx.webkit.WebViewCompat
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
+import java.security.SecureRandom
 
 /**
- * One claude.ai tab (phone.md P17.1, P17.5): a WebView bound to its seat's profile before it
- * loads anything. No JavaScript interface, no injected script; main-frame navigations go through
- * [TabPolicy.route]; downloads, file choosers and permission requests are refused.
+ * One claude.ai tab (phone.md P17.1, P17.5, P17.7): a WebView bound to its seat's profile before
+ * it loads anything. No JavaScript interface; the one script it runs is the account check
+ * ([TabPolicy.accountStart]: claude.ai's /api/account, the uuid only); main-frame navigations go
+ * through [TabPolicy.route]; downloads, file choosers and permission requests are refused.
  */
 @SuppressLint("ViewConstructor", "SetJavaScriptEnabled")
 class SyTabView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
@@ -43,15 +45,24 @@ class SyTabView(context: Context, appContext: AppContext) : ExpoView(context, ap
   private var profile: String? = null
   private var loaded: String? = null
 
+  /** The account check in flight (its nonce), and the last main-frame URL seen (P17.7). */
+  private var checking: String? = null
+  private var lastUrl: String? = null
+  private val random = SecureRandom()
+
   /** After a props change: (re)bind to the seat's profile, then load the URL when it changed. */
   fun update() {
-    val name = TabPolicy.profileName(seat)
-    if (name != profile) destroy()
-    if (name == null) return
+    if (TabPolicy.profileName(seat) == null) {
+      destroy()
+      return
+    }
     if (!SyTabsModule.supported()) {
+      destroy()
       emit("error", null, mapOf("reason" to "unsupported"))
       return
     }
+    val name = SyTabsModule.profileFor(seat) ?: return
+    if (name != profile) destroy()
     val w = web ?: create(name) ?: return
     val target = TabPolicy.startUrl(url)
     if (target != loaded) {
@@ -68,6 +79,8 @@ class SyTabView(context: Context, appContext: AppContext) : ExpoView(context, ap
     closed?.let { SyTabsModule.flush(it) }
     profile = null
     loaded = null
+    checking = null
+    lastUrl = null
     removeView(w)
     closed?.let { SyTabsModule.closed(it) }
     w.stopLoading()
@@ -117,6 +130,43 @@ class SyTabView(context: Context, appContext: AppContext) : ExpoView(context, ap
     onTabState(m)
   }
 
+  /**
+   * P17.7: ask claude.ai, inside this tab's own session, which account it is signed in to (the
+   * uuid only; TabPolicy.accountStart), then report it as an `account` event. Runs on a readable
+   * claude.ai page, once per page load and when the page moves from the login page to a
+   * signed-in one. A new page cancels a check in flight. Nothing is stored or sent here.
+   */
+  private fun checkAccount(view: WebView, url: String?) {
+    if (web !== view || checking != null || !TabPolicy.checkable(url)) return
+    val nonce = ByteArray(8).also(random::nextBytes).joinToString("") { "%02x".format(it) }
+    checking = nonce
+    view.evaluateJavascript(TabPolicy.accountStart(nonce)) { pollAccount(view, nonce, 0) }
+  }
+
+  private fun pollAccount(view: WebView, nonce: String, n: Int) {
+    main.postDelayed({
+      if (web === view && checking == nonce) {
+        view.evaluateJavascript(TabPolicy.accountPoll(nonce)) { raw ->
+          if (web === view && checking == nonce) {
+            val r = TabPolicy.parseAccount(raw)
+            when {
+              r != null -> {
+                checking = null
+                val extra = if (r.account != null) mapOf<String, Any>("account" to r.account) else mapOf<String, Any>("status" to (r.status ?: 0))
+                emit("account", view.url, extra)
+              }
+              n + 1 >= TabPolicy.POLLS -> {
+                checking = null
+                emit("account", view.url, mapOf("status" to 0))
+              }
+              else -> pollAccount(view, nonce, n + 1)
+            }
+          }
+        }
+      }
+    }, TabPolicy.POLL_MS)
+  }
+
   private fun openExternal(url: String) {
     try {
       context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -142,10 +192,25 @@ class SyTabView(context: Context, appContext: AppContext) : ExpoView(context, ap
         view.stopLoading()
         return
       }
+      if (web === view) checking = null // a new document: the old check's answer is gone with it
       emit("loading", url)
     }
 
+    // In-page navigations (claude.ai is a single-page app: sign-in ends on /new without a load).
+    override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
+      if (web !== view || url == null || url == lastUrl) return
+      val was = lastUrl
+      lastUrl = url
+      emit("url", url)
+      // Only for a page that has finished loading; a full load is checked in onPageFinished.
+      if (view.progress == 100 && !TabPolicy.checkable(was)) checkAccount(view, url)
+    }
+
     override fun onPageFinished(view: WebView, url: String?) {
+      if (web === view) {
+        lastUrl = view.url ?: url
+        checkAccount(view, view.url ?: url)
+      }
       // The content height 3 s later: 0 means a blank page (P17.4). Read from the view, not the page.
       main.postDelayed({
         if (web === view) emit("loaded", view.url ?: url, mapOf("height" to view.contentHeight))

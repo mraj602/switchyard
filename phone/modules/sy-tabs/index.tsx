@@ -5,14 +5,19 @@ import { requireNativeView, requireOptionalNativeModule } from 'expo';
 import type { ComponentType } from 'react';
 import { Platform, type ViewProps } from 'react-native';
 
-/** What the tab reports (P17.1). */
+/**
+ * What the tab reports (P17.1). `url`: an in-page navigation (claude.ai is a single-page app).
+ * `account` (P17.7): claude.ai's answer to "which account is this?" in the tab's own session,
+ * the account uuid only, or `status` (401 signed out, 0 no answer).
+ */
 export type TabEvent = {
-  state: 'loading' | 'loaded' | 'http' | 'error' | 'crashed' | 'download' | 'external';
+  state: 'loading' | 'loaded' | 'http' | 'error' | 'crashed' | 'download' | 'external' | 'url' | 'account';
   url?: string;
   status?: number;
   height?: number;
   code?: number;
   reason?: string;
+  account?: string;
 };
 
 export type TabViewProps = ViewProps & {
@@ -27,6 +32,7 @@ type Native = {
   isSupported(): Promise<boolean>;
   listProfiles(): Promise<string[]>;
   deleteProfile(seat: string): Promise<boolean>;
+  moveProfile(from: string, to: string): Promise<boolean>;
 };
 
 const native: Native | null = Platform.OS === 'android' ? requireOptionalNativeModule<Native>('SyTabs') : null;
@@ -50,3 +56,10 @@ export const listProfiles = (): Promise<string[]> => (native ? native.listProfil
 /** Sign out: deletes the seat's profile (cookies, storage, cache). Rejects while its tab is open. */
 export const deleteProfile = (seat: string): Promise<boolean> =>
   native ? native.deleteProfile(seat) : Promise.reject(new Error('sy-tabs: Android only'));
+/**
+ * P17.7: the tab profile of `from` (and its sign-in, untouched) becomes `to`'s. Rejects
+ * `ERR_SY_TABS_TAKEN` when `to` has a tab, `ERR_SY_TABS_NONE` when `from` has none,
+ * `ERR_SY_TABS_IN_USE` while the tab is open, `ERR_SY_TABS_SEAT` on a bad seat id.
+ */
+export const moveProfile = (from: string, to: string): Promise<boolean> =>
+  native ? native.moveProfile(from, to) : Promise.reject(new Error('sy-tabs: Android only'));
