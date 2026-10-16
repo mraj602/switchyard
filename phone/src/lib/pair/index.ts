@@ -30,7 +30,10 @@ export type PairInputError =
 export type ParsedPair = { ok: true; input: PairInput } | { ok: false; reason: PairInputError };
 
 export interface ParseOptions {
-  /** __DEV__ builds also accept http:// for loopback and RFC 1918 addresses. */
+  /**
+   * __DEV__ builds also accept http:// for loopback, RFC 1918 and Tailscale (100.64.0.0/10)
+   * addresses: test builds only, for hubs on a tailnet without HTTPS certificates.
+   */
   dev: boolean;
   /** Typed address when the code was typed separately. */
   address?: string;
@@ -52,7 +55,7 @@ function isPrivateHost(host: string): boolean {
   const n = [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])];
   if (n.some((x) => x > 255)) return false;
   const [a, b] = [n[0] ?? 0, n[1] ?? 0];
-  return a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+  return a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127);
 }
 
 type Origin = { ok: true; origin: string } | { ok: false; reason: PairInputError };

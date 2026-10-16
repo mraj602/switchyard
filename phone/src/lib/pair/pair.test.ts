@@ -30,6 +30,7 @@ describe('parsePairInput', () => {
     expect(parsePairInput('hub.example.ts.net:0443 482913', prod)).toEqual({ ok: true, input: { origin: 'https://hub.example.ts.net', code: '482913' } });
     expect(parsePairInput('http://192.168.1.5:80/#/pair?c=482913', dev)).toEqual({ ok: true, input: { origin: 'http://192.168.1.5', code: '482913' } });
     expect(parsePairInput('http://192.168.1.5:443/#/pair?c=482913', dev)).toEqual({ ok: true, input: { origin: 'http://192.168.1.5:443', code: '482913' } });
+    expect(parsePairInput('http://100.101.102.103:8787/#/pair?c=482913', dev)).toEqual({ ok: true, input: { origin: 'http://100.101.102.103:8787', code: '482913' } });
   });
 
   it('accepts the code alone in the QR fragment', () => {
@@ -75,6 +76,8 @@ describe('parsePairInput', () => {
     ['http public host even in dev', `http://hub.example.ts.net/#/pair?s=${S}`, dev, 'not_https'],
     ['http 8.8.8.8 in dev', 'http://8.8.8.8 482913', dev, 'not_https'],
     ['http 172.32.0.1 (not RFC 1918) in dev', 'http://172.32.0.1 482913', dev, 'not_https'],
+    ['http 100.128.0.1 (outside Tailscale 100.64/10) in dev', 'http://100.128.0.1 482913', dev, 'not_https'],
+    ['http Tailscale address in a release build', 'http://100.101.102.103:8787 482913', prod, 'not_https'],
     ['javascript: url', 'javascript:alert(1)', prod, 'not_https'],
     ['javascript: url with //', 'javascript://hub.example.ts.net/%0aalert(1)', prod, 'not_https'],
     ['ftp', 'ftp://hub.example.ts.net 482913', prod, 'not_https'],
