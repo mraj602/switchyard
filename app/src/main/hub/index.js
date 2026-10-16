@@ -237,7 +237,7 @@ export function create(deps) {
     log,
     ...(deps.streamOptions ?? {}),
     onEvent: (type, data) => {
-      if (type === 'session' || type === 'usage') scheduleRefresh();
+      if (type === 'session' || type === 'usage' || type === 'seats') scheduleRefresh();
       else if (type === 'alert') onAlert(data);
     },
     onReset: () => {

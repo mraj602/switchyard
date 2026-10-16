@@ -667,7 +667,7 @@ func (s *Source) stream(ctx context.Context, lastID *string, fails *int, wasLive
 					s.kickAccounts() // a seat the board has not seen yet: fetch /v1/accounts
 				}
 			})
-		case "usage":
+		case "usage", "seats":
 			s.kickAccounts()
 		case "machine":
 			var me wireMachineEvent

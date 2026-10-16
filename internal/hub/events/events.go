@@ -17,7 +17,7 @@ import (
 // Event is one server-sent event.
 type Event struct {
 	ID   int64
-	Type string // hello, reset, ping, session, usage, machine, alert
+	Type string // hello, reset, ping, session, usage, machine, alert, seats
 	Data []byte // one JSON object
 	// Focus, when set, is an alternative Data that includes focus_url, for desktop devices
 	// on FocusMachine only (record.md 3.3).
