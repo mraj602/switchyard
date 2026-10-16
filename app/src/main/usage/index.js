@@ -179,9 +179,11 @@ export function create(deps) {
     f.windows = pick ? pick.windows : [];
     f.windowsSource = pick ? 'local' : null;
     const seat = pick ? { account: res.account.uuid, org: pick.org.uuid } : null;
-    if (seat && (fresh?.seat?.account !== seat.account || fresh?.seat?.org !== seat.org)) {
+    const accountName = [res.account.display_name, res.account.full_name].find((n) => typeof n === 'string' && n.trim())?.trim().slice(0, 24) ?? null;
+    if (seat && (fresh?.seat?.account !== seat.account || fresh?.seat?.org !== seat.org || (accountName && fresh?.account_name !== accountName))) {
       await patchTab(id, (t) => {
         t.seat = seat;
+        if (accountName) t.account_name = accountName;
       });
       emitTabs();
     }

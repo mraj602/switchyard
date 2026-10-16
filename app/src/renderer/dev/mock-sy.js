@@ -1,7 +1,7 @@
 // A mock of the preload's `window.sy` with fixtures, so the renderer runs in a plain browser
 // (development, screenshots, the headless check of WP-I). Excluded from the package.
 // Pick a scenario with ?scenario=<name>&view=<hub|settings|<tab id>>:
-//   default | empty | missing | no_sy | needs_pairing | removed | direct_pairing | unreachable | board_blocked | owner | stopped | dark-data | warning
+//   default | empty | missing | wrong[&shared=1][&unknown=1] | no_sy | needs_pairing | removed | direct_pairing | unreachable | board_blocked | owner | stopped | dark-data | warning
 // It is a mock: no network, no storage, nothing leaves the page.
 
 const params = new URLSearchParams(globalThis.location?.search || '');
@@ -66,6 +66,15 @@ function fixtures() {
       s.missing = [{ seat: 'seat_01HZZZZZZZZZZZZZZZZZZZZZ06', label: 'claude-6' }, { seat: 'seat_01HZZZZZZZZZZZZZZZZZZZZZ07', label: 'claude-7' }];
       s.tabs[3] = { ...s.tabs[3], name: 'claude-1', expected: 'claude-1', mismatch: { expected: 'claude-1', actual: 'work' }, reading: 'on', read_state: 'idle', last_read: iso(-MIN) };
       break;
+    case 'wrong': {
+      // a tab made for claude-6, signed in as claude-7 (?shared=1: another tab is claude-7's too; ?unknown=1: the hub does not know the account)
+      s.hub.owner = true;
+      s.hub.owner_until = iso(20 * 24 * HOUR);
+      const unknown = !!params.get('unknown');
+      s.tabs[3] = { ...s.tabs[3], name: 'claude-6', expected: 'claude-6', mismatch: { expected: 'claude-6', actual: unknown ? null : 'claude-7', shared: !!params.get('shared') }, reading: 'on', read_state: 'idle', last_read: iso(-MIN) };
+      s.view = params.get('view') || s.tabs[3].id;
+      break;
+    }
     case 'owner':
       s.hub.owner = true;
       s.hub.owner_until = iso(20 * 24 * HOUR);
@@ -124,6 +133,16 @@ const sy = {
   reorderTabs: async ({ ids }) => { state.tabs.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)); push(); },
   reloadTab: async () => undefined,
   homeTab: async () => undefined,
+  adoptTab: async ({ id }) => {
+    const t = find(id);
+    const before = t?.mismatch;
+    if (!t || !before) return { name: 'account', label: null, offer: null };
+    const name = before.actual || 'account';
+    Object.assign(t, { name, expected: before.actual ? name : null, mismatch: null });
+    push();
+    return { name, label: before.actual, offer: { seat: 'seat_01HZZZZZZZZZZZZZZZZZZZZZ06', label: before.expected } };
+  },
+  logoutTab: async () => undefined,
   openTabExternal: async () => undefined,
   acceptWarning: async ({ id }) => { const t = find(id); if (t) t.needs_warning = false; push(); },
   setReading: async ({ id, on }) => {

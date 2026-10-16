@@ -64,6 +64,8 @@ export const CHANNELS = Object.freeze({
   'tab:reload': { kind: INVOKE, fn: 'reloadTab', owner: 'B', returns: 'undefined', args: withId() },
   'tab:home': { kind: INVOKE, fn: 'homeTab', owner: 'B', returns: 'undefined', args: withId() },
   'tab:external': { kind: INVOKE, fn: 'openTabExternal', owner: 'B', returns: 'undefined', args: withId() },
+  'tab:adopt': { kind: INVOKE, fn: 'adoptTab', owner: 'B', returns: '{name, label, offer}', args: withId() },
+  'tab:logout': { kind: INVOKE, fn: 'logoutTab', owner: 'B', returns: 'undefined', args: withId() },
 
   'usage:accept-warning': {
     kind: INVOKE, fn: 'acceptWarning', owner: 'B', returns: 'undefined',
@@ -238,7 +240,7 @@ function check(channel, path, s, v) {
  * @property {'hub'|'local'|null} windows_source
  * @property {boolean} signed_in
  * @property {string|null} expected   label of the hub account this tab was made for
- * @property {{expected: string, actual: string|null}|null} mismatch  signed in as another account than expected (matched by uuid)
+ * @property {{expected: string, actual: string|null, shared: boolean}|null} mismatch  signed in as another account than expected (matched by uuid); shared: another tab is already signed in as that account
  *
  * @typedef {object} StripWindow
  * @property {string} key             five_hour, seven_day, seven_day_opus, …

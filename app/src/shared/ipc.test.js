@@ -75,6 +75,8 @@ const good = {
   'tab:reload': [{ id: ID }],
   'tab:home': [{ id: ID }],
   'tab:external': [{ id: ID }],
+  'tab:adopt': [{ id: ID }],
+  'tab:logout': [{ id: ID }],
   'usage:accept-warning': [{ id: ID, version: 1 }],
   'usage:set-reading': [{ id: ID, on: false }],
   'usage:set-send': [{ id: ID, on: true }],

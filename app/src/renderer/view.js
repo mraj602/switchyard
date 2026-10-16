@@ -42,7 +42,34 @@ export function missingNotice(missing) {
 export function mismatchNotice(tab) {
   const m = tab?.mismatch;
   if (!m) return '';
-  return `This tab is signed in as ${m.actual || 'another account'}, not ${m.expected}. Sign out here and sign in as ${m.expected}`;
+  return `This tab is signed in as ${m.actual || 'another account'}, not ${m.expected}.`;
+}
+
+/** The one-click fix on that notice: "Use this tab for claude-7" (an account the hub does not know: "this account"). */
+export function adoptLabel(tab) {
+  const m = tab?.mismatch;
+  return m ? `Use this tab for ${m.actual || 'this account'}` : '';
+}
+
+/** The second option on the notice. */
+export function signOutLabel(tab) {
+  const m = tab?.mismatch;
+  return m ? `Sign out and sign in as ${m.expected}` : '';
+}
+
+/** The confirm text when another tab is already signed in as the account, else '' (no confirm). */
+export function adoptConfirm(tab) {
+  const m = tab?.mismatch;
+  if (!m || !m.shared) return '';
+  return `Another tab is already signed in as ${m.actual || 'this account'}. Use this one too?`;
+}
+
+/** The toast after "Use this tab for ...": {text, action} where action = {label, seat} offers the account that lost its tab. */
+export function adoptToast(result) {
+  const name = result?.name || 'account';
+  const offer = result?.offer;
+  if (!offer) return { text: `This tab is now ${name}.`, action: null };
+  return { text: `This tab is now ${name}. Add a tab for ${offer.label} to sign in to it.`, action: { label: `Add tab for ${offer.label}`, seat: offer.seat, name: offer.label } };
 }
 
 /** 0 → '', 3 → '3', 12 → '9+' (the badge on Hub). */
