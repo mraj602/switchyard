@@ -111,6 +111,19 @@ test('select notifies listeners on change; removeView of the selected view falls
   assert.deepEqual(seen, [TAB_B, TAB_A, 'hub']);
 });
 
+test('setViewHidden keeps the selected view out of sight (the hub state panel shows) until shown again', () => {
+  const { w, e } = setup();
+  const hub = new e.WebContentsView({});
+  w.addView('hub', hub, 'hub');
+  assert.equal(hub.visible, true);
+  w.setViewHidden('hub', true);
+  assert.equal(hub.visible, false);
+  w.win.setBounds({ width: 900, height: 700 }); // a resize does not bring it back
+  assert.equal(hub.visible, false);
+  w.setViewHidden('hub', false);
+  assert.equal(hub.visible, true);
+});
+
 test('addView checks its arguments', () => {
   const { w, e, tabView } = setup();
   const a = tabView(TAB_A);

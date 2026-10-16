@@ -10,6 +10,7 @@ import { hubUrl } from './client.js';
 
 const LOGIN_ROUTE_RE = /^#\/(login|pair)(?:[/?]|$)/;
 const COOKIE = 'sy_session';
+const HUB_VIEW_ID = 'hub';
 const LOGIN_WINDOW_MS = 30_000;
 const LOGIN_MAX_IN_WINDOW = 2;
 
@@ -20,6 +21,7 @@ const LOGIN_MAX_IN_WINDOW = 2;
  *          onSessionLink: (url: string) => void,
  *          onOwner: (owner: boolean) => void,
  *          onLoginRefused: (status: number) => void,       // 401 on login: the token is revoked
+ *          onBlocked?: () => void,                          // the board kept asking for a login main could not give
  *          now?: () => number, timeoutMs?: number}} deps
  */
 export function createHubView(deps) {
@@ -33,6 +35,8 @@ export function createHubView(deps) {
   let pendingRoute = '';
   let loginTimes = [];
   let ownerTimer = null;
+  let suppressed = false; // the board is kept out of sight (its login page, a dead token)
+  let relogging = false;
 
   const session = () => electron.session.fromPartition(HUB_PARTITION);
   const originOf = (u) => {
@@ -158,24 +162,50 @@ export function createHubView(deps) {
     }
   }
 
+  /** Hide or show the board over the shell: the board's own login page is never shown in the app. */
+  function suppress(on) {
+    suppressed = on === true;
+    if (view) deps.window.setViewHidden(HUB_VIEW_ID, suppressed);
+  }
+
+  /** The board cannot be signed in by main: hide it and tell the owner of this module. */
+  function blocked(why) {
+    log.warn?.(`hub view: ${why}`);
+    suppress(true);
+    deps.onBlocked?.();
+  }
+
   async function relogin() {
+    if (relogging) return;
+    relogging = true;
+    try {
+      await reloginOnce();
+    } finally {
+      relogging = false;
+    }
+  }
+
+  async function reloginOnce() {
     const base = deps.base();
-    if (!base || !deps.auth()) return;
+    if (!base || !deps.auth()) return blocked('the board asks for a login and this app has no token');
+    suppress(true); // never let the login page show while main signs in
     const t = now();
     loginTimes = loginTimes.filter((x) => t - x < LOGIN_WINDOW_MS);
-    if (loginTimes.length >= LOGIN_MAX_IN_WINDOW) {
-      log.warn?.('hub view: not signing in again, the board keeps asking for a login');
-      return;
-    }
+    if (loginTimes.length >= LOGIN_MAX_IN_WINDOW) return blocked('not signing in again, the board keeps asking for a login');
     loginTimes.push(t);
     const r = await sessionLogin();
     const v = view;
-    if (!r.ok || !v) return;
+    if (!v) return;
+    if (!r.ok) {
+      if (r.status !== 401) blocked(`the board login failed (${r.status || r.error})`); // 401: handled as a dead token
+      return;
+    }
     const was = v.webContents.getURL();
     const to = target(base, pendingRoute);
     await navigate(to);
     // the view may have been dropped (reset) while it loaded
     if (view === v && was.split('#')[0] === to.split('#')[0]) v.webContents.reload?.();
+    if (view === v) suppress(false);
   }
 
   function onNavigated(url) {
@@ -206,8 +236,12 @@ export function createHubView(deps) {
       // new load: check the session's owner flag again (debounced).
       scheduleOwnerCheck();
     });
-    v.webContents.on('did-finish-load', () => scheduleOwnerCheck());
-    deps.window.addView('hub', v, 'hub');
+    v.webContents.on('did-finish-load', () => {
+      onNavigated(v.webContents.getURL()); // a login route reached by a path that fired no navigation event
+      scheduleOwnerCheck();
+    });
+    deps.window.addView(HUB_VIEW_ID, v, 'hub');
+    if (suppressed) deps.window.setViewHidden(HUB_VIEW_ID, true);
     view = v;
     viewBase = base;
     return v;
@@ -225,9 +259,15 @@ export function createHubView(deps) {
       const v = this.ensure();
       if (!v) return false;
       pendingRoute = route;
-      if (deps.auth() && !(await hasCookie())) {
+      // A cookie that is still in the jar may be revoked (the board session was removed): ask
+      // the hub before trusting it, so the board never opens on its own login page.
+      if (deps.auth() && (!(await hasCookie()) || (await sessionFetch('GET', '/v1/me')).status === 401)) {
         loginTimes.push(now());
-        await sessionLogin();
+        const r = await sessionLogin();
+        if (!r.ok) {
+          // 401: the token is dead (onLoginRefused took it); else the board cannot be signed in now
+          if (r.status !== 401) blocked(`the board login failed (${r.status || r.error})`);
+        } else suppress(false);
       }
       await navigate(target(deps.base(), route));
       return true;
@@ -255,6 +295,7 @@ export function createHubView(deps) {
         return '';
       }
     },
+    suppress,
     /** Drop the view (the hub URL changed). */
     reset() {
       if (ownerTimer) clearTimeout(ownerTimer);
@@ -272,6 +313,7 @@ export function createHubView(deps) {
       }
       view = null;
       viewBase = null;
+      suppressed = false;
     },
     /** Forget the partition's cookie (the token was revoked or replaced). */
     async signOut() {

@@ -78,6 +78,7 @@ export function create(deps) {
   const state = {
     url: null, connected: false, reachable: false, paired: false, owner: false, version: null, local: false,
     service: null, admin: null, needs_you: 0, status: 'no_sy', storage_backend: tokens.backend(), error: null,
+    removed: false, board_blocked: false,
   };
   let auth = null; // {url, device, token}: in memory, never in the state
   // Bumped at every change of auth (pairing, drop, 401): a token load that started before a
@@ -122,6 +123,7 @@ export function create(deps) {
     onSessionLink: (url) => handoff(url),
     onOwner: (owner) => set({ owner }),
     onLoginRefused: (status) => handleUnauthorized(status),
+    onBlocked: () => set({ board_blocked: true }),
   });
 
   // ---- status
@@ -181,10 +183,18 @@ export function create(deps) {
       local: !!hub.local, service: typeof hub.service === 'string' ? hub.service : null, admin, error: null,
     });
     set({ status: statusFor() });
+    if (state.board_blocked && auth) retryBoard();
     if (auth && state.connected) {
       startStream();
       if (state.reachable) refreshOverview();
     } else stopStream();
+  }
+
+  /** A blocked board gets another try at each info refresh (a hub that was down, a rate limit that has passed). */
+  function retryBoard() {
+    set({ board_blocked: false });
+    hubView.suppress(false);
+    if (hubView.view()) hubView.load(hubView.currentRoute()).catch(() => {});
   }
 
   function dropHub() {
@@ -193,6 +203,8 @@ export function create(deps) {
     stopStream();
     hubView.reset();
     state.needs_you = 0;
+    state.removed = false;
+    state.board_blocked = false;
     lastNeedsYou = '';
   }
 
@@ -222,9 +234,10 @@ export function create(deps) {
     log.warn?.(`hub: token refused (${status}), pairing is needed again`);
     setAuth(null);
     stopStream();
+    hubView.suppress(true); // the board would show its own login page: the shell's state panel shows instead
     await tokens.clear();
     await hubView.signOut();
-    set({ paired: false, status: 'needs_pairing', owner: false });
+    set({ paired: false, status: 'needs_pairing', owner: false, removed: true });
   }
 
   // ---- stream and overview
@@ -400,8 +413,9 @@ export function create(deps) {
       stored = false;
       log.warn?.(`hub: cannot store the token: ${err?.message ?? err}`);
     }
-    set({ paired: true, storage_backend: tokens.backend(), status: statusFor() });
+    set({ paired: true, removed: false, board_blocked: false, storage_backend: tokens.backend(), status: statusFor() });
     await hubView.signOut(); // a new device, a new board session
+    hubView.suppress(false);
     startStream();
     refreshOverview();
     if (hubView.view()) hubView.load(hubView.currentRoute());

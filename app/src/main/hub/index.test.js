@@ -72,6 +72,7 @@ async function harness(opts = {}) {
     addView: (id, view, kind) => winCalls.push(['addView', id, kind, view]),
     removeView: (id) => winCalls.push(['removeView', id]),
     select: (id) => winCalls.push(['select', id]),
+    setViewHidden: (id, hidden) => winCalls.push(['hidden', id, hidden]),
   };
   const slow = { setTimeout: (fn, ms) => setTimeout(fn, ms <= 1000 ? 15 : ms), clearTimeout };
   const links = [];
@@ -502,6 +503,101 @@ test('one board session: no new login while the cookie is there, and the cookie 
   await t.h.stop();
   assert.equal(flushes(), before + 1, 'stop flushes the hub cookie');
   await t.close();
+});
+
+// ---- the board's own login page is never shown in the app
+
+const hiddenNow = (t) => t.winCalls.filter((c) => c[0] === 'hidden').at(-1)?.[2] === true;
+const loginCount = (t) => t.fake.callsOf('session.fetch').filter((c) => c[1].endsWith('/v1/session/login')).length;
+
+test('a dead token (401 on the stream): the board is hidden, needs_pairing with "removed", then pairing shows it again', async () => {
+  const t = await harness();
+  await t.h.start();
+  await t.handlers['hub:pair']({});
+  await t.handlers['hub:route']({ route: '#/' });
+  assert.equal(lastHub(t).removed, false);
+  t.hub.script.stream401 = true;
+  t.hub.cutStreams();
+  await until(() => lastHub(t).status === 'needs_pairing');
+  assert.equal(lastHub(t).removed, true);
+  assert.equal(lastHub(t).paired, false);
+  assert.equal(hiddenNow(t), true, 'the board view is hidden');
+  assert.equal(fs.existsSync(t.tokenFile), false);
+  t.hub.script.stream401 = false;
+  t.sy.state.token = { ok: true, device: 'dev_2', token: TOKEN, scopes: ['write', 'read'], hub: { url: t.hub.url } }; // pair() blanks the one it was given
+  assert.deepEqual(await t.handlers['hub:pair']({}), { ok: true });
+  assert.equal(lastHub(t).removed, false);
+  assert.equal(hiddenNow(t), false, 'paired again: the board shows');
+  await t.close();
+});
+
+test('login refused with 401 while the board lands on #/login: dead token, board hidden, removed', async () => {
+  const t = await harness();
+  await t.h.start();
+  await t.handlers['hub:pair']({});
+  await t.handlers['hub:route']({ route: '#/' });
+  t.hub.script.login = 401;
+  t.h.view().webContents.emit('did-navigate-in-page', {}, `${t.hub.url}/#/login`);
+  await until(() => lastHub(t).status === 'needs_pairing');
+  assert.equal(lastHub(t).removed, true);
+  assert.equal(hiddenNow(t), true);
+  await t.close();
+});
+
+test('the board cookie revoked but the token good: a stale cookie in the jar is not trusted, main logs in silently', async () => {
+  const t = await harness();
+  await t.h.start();
+  await t.handlers['hub:pair']({});
+  // a revoked board session: the cookie is still there, the hub no longer knows it
+  await t.fake.electron.session.fromPartition('persist:sy-hub').cookies.set({ url: t.hub.url, name: 'sy_session', value: 'revoked' });
+  const before = loginCount(t);
+  await t.handlers['hub:route']({ route: '#/' });
+  assert.equal(loginCount(t), before + 1, 'logged in again although a cookie was present');
+  assert.equal(hiddenNow(t), false);
+  assert.equal(lastHub(t).status, 'ok');
+  assert.equal(lastHub(t).board_blocked, false);
+  await t.close();
+});
+
+test('the board lands on #/login later (no cookie any more): relogin runs, the page is hidden meanwhile and shown after', async () => {
+  const t = await harness();
+  await t.h.start();
+  await t.handlers['hub:pair']({});
+  await t.handlers['hub:route']({ route: '#/' });
+  const before = loginCount(t);
+  t.h.view().webContents._setURL(`${t.hub.url}/#/login`);
+  t.h.view().webContents.emit('did-finish-load'); // no did-navigate event on this path
+  await until(() => loginCount(t) === before + 1);
+  await until(() => hiddenNow(t) === false);
+  assert.equal(lastHub(t).board_blocked, false);
+  await t.close();
+});
+
+test('still on #/login after the relogin (rate limit) or a failed login: the board stays hidden and the state says so', async () => {
+  const t = await harness();
+  await t.h.start();
+  await t.handlers['hub:pair']({});
+  await t.handlers['hub:route']({ route: '#/' });
+  const wc = t.h.view().webContents;
+  for (let i = 0; i < 4; i++) {
+    wc.emit('did-navigate-in-page', {}, `${t.hub.url}/#/login`);
+    await new Promise((r) => setTimeout(r, 30));
+  }
+  await until(() => lastHub(t).board_blocked === true);
+  assert.equal(hiddenNow(t), true);
+  assert.equal(lastHub(t).status, 'ok');
+  assert.equal(lastHub(t).paired, true, 'a rate limit is not a dead token');
+  await t.close();
+  const u = await harness();
+  await u.h.start();
+  await u.handlers['hub:pair']({});
+  await u.handlers['hub:route']({ route: '#/' });
+  u.hub.script.login = 500;
+  u.h.view().webContents.emit('did-navigate-in-page', {}, `${u.hub.url}/#/pair`);
+  await until(() => lastHub(u).board_blocked === true);
+  assert.equal(hiddenNow(u), true);
+  assert.equal(lastHub(u).paired, true);
+  await u.close();
 });
 
 // ---- the claude.ai handoff
