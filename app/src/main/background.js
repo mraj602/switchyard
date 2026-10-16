@@ -28,7 +28,7 @@ const BOOL_KEYS = ['keep_running', 'notifications', 'start_hidden'];
  *   bus: for the `settings` event
  * @returns {{
  *   claim(): boolean,        // requestSingleInstanceLock + second-instance wiring; false = quit now
- *   startHidden(): boolean,  // --background or settings.start_hidden
+ *   startHidden(): boolean,  // only --background (the login entry); never a stored setting
  *   start(): void,           // close-to-tray, before-quit
  *   settings(): Promise<object>,                // Settings (shared/ipc.js), autostart read from the OS
  *   setSettings(patch: object): Promise<object>,  // settings:set
@@ -125,6 +125,7 @@ export function create(deps) {
       applyAutostart(a.autostart).then(() => publish()).catch(() => {});
       return; // applies and exits: no window
     }
+    if (a.background) return; // a login launch while already running: nothing to show
     window.showWindow();
   }
 
@@ -145,7 +146,9 @@ export function create(deps) {
       return true;
     },
     startHidden() {
-      return own.background || store.get().settings?.start_hidden === true;
+      // A normal launch (app menu, AppImage) always shows the window. A stored 'start hidden'
+      // setting used to hide those too, which left the user with a tray icon only.
+      return own.background;
     },
     start() {
       if (started) return;
