@@ -38,6 +38,21 @@
 .seat-name { font-weight: 600; font-size: 16px; }
 .seat-sub { margin-top: -8px; overflow-wrap: anywhere; }
 
+/* reordering the accounts (Accounts page, owner): a grip on each card; the card being dragged
+   fades, and a bar in the accent colour shows where it will land. */
+.seat-grip { background: none; border: 0; padding: 2px 6px; margin: -2px 2px -2px -6px; border-radius: 6px; color: var(--muted, inherit); cursor: grab; font-size: 18px; line-height: 1; touch-action: none; user-select: none; -webkit-user-select: none; min-width: 32px; min-height: 32px; }
+.seat-grip:hover { background: var(--hair); }
+.seat-grip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.seat-head .seat-name { flex: 1 1 auto; }
+body.dragging-seat, body.dragging-seat * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+.seat-dragging { opacity: 0.45; }
+.grid-accounts .drop-before, .grid-accounts .drop-after { position: relative; }
+.grid-accounts .drop-before::before, .grid-accounts .drop-after::after { content: ''; position: absolute; background: var(--accent); border-radius: 3px; pointer-events: none; }
+.grid-accounts[data-cols="n"] .drop-before::before { left: -9px; top: 0; bottom: 0; width: 5px; }
+.grid-accounts[data-cols="n"] .drop-after::after { right: -9px; top: 0; bottom: 0; width: 5px; }
+.grid-accounts:not([data-cols="n"]) .drop-before::before { top: -9px; left: 0; right: 0; height: 5px; }
+.grid-accounts:not([data-cols="n"]) .drop-after::after { bottom: -9px; left: 0; right: 0; height: 5px; }
+
 .win { display: flex; flex-direction: column; gap: 4px; }
 /* The window name stays on one line; the figure moves under it when both do not fit. */
 .win-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 8px; font-size: 13px; }

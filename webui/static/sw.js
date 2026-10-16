@@ -26,6 +26,7 @@ const ASSETS = [
   'components/live.js',
   'components/machines-fmt.js',
   'components/nav.js',
+  'components/order.js',
   'components/peers-fmt.js',
   'components/qr.js',
   'components/quiet.js',

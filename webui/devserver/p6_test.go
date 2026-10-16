@@ -27,6 +27,28 @@ func TestPatchSeatMock(t *testing.T) {
 	}
 }
 
+func TestPutSeatOrderMock(t *testing.T) {
+	_, ts := newServer(t)
+	owner := newClient(t, ts)
+	owner.cookie(OwnerToken)
+	phone := newClient(t, ts)
+	phone.cookie(PhoneToken)
+
+	phone.want(403, "PUT", "/v1/seats/order", M{"ids": []string{"seat_work"}})
+	owner.want(400, "PUT", "/v1/seats/order", M{"ids": []string{"seat_nope"}})
+	owner.want(400, "PUT", "/v1/seats/order", M{"ids": []string{"seat_work", "seat_work"}})
+	owner.want(400, "PUT", "/v1/seats/order", M{})
+	got := owner.want(200, "PUT", "/v1/seats/order", M{"ids": []string{"seat_work"}})
+	list, _ := got["accounts"].([]any)
+	if len(list) < 2 || list[0].(map[string]any)["id"] != "seat_work" || list[0].(map[string]any)["order"] != float64(0) || list[1].(map[string]any)["order"] != float64(1) {
+		t.Fatalf("order after put: %v", got)
+	}
+	ov := owner.want(200, "GET", "/v1/overview", nil)
+	if seats, _ := ov["seats"].([]any); len(seats) == 0 || seats[0].(map[string]any)["id"] != "seat_work" {
+		t.Fatalf("overview order: %v", ov["seats"])
+	}
+}
+
 func TestDesktopCodeMock(t *testing.T) {
 	_, ts := newServer(t)
 	owner := newClient(t, ts)

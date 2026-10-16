@@ -133,7 +133,7 @@ export async function getHealth() {
 
 // ---- the live stream ---------------------------------------------------------------------
 
-const EVENT_TYPES = ['hello', 'reset', 'ping', 'session', 'usage', 'machine', 'alert'];
+const EVENT_TYPES = ['hello', 'reset', 'ping', 'session', 'usage', 'machine', 'alert', 'seats'];
 
 // Opens /v1/stream with EventSource. The browser reconnects by itself and sends
 // Last-Event-ID. When it gives up (the connection was refused or closed for good) we
