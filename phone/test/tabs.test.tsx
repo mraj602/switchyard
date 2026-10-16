@@ -250,4 +250,97 @@ describe('screens', () => {
     expect(tabsState.profiles).toEqual([A]);
     jest.restoreAllMocks();
   });
+
+  it('Accounts: + Add account lists only seats without a tab, and picking one opens its tab', async () => {
+    tabsState.profiles = [A];
+    await show(<AccountsScreen />);
+    await fireEvent.press(await screen.findByTestId('add-account'));
+    expect(await screen.findByText('Which account?')).toBeTruthy();
+    expect(screen.queryByTestId(`add-seat-${A}`)).toBeNull();
+    expect(screen.getByText('Not listed? An account appears after it is used once in Claude Code or the desktop app.')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId(`add-seat-${B}`));
+    expect(routerMock.router.push).toHaveBeenCalledWith(`/tabs/${B}`);
+    expect(screen.queryByText('Which account?')).toBeNull();
+  });
+
+  it('Accounts: the sheet says so when every seat has a tab', async () => {
+    tabsState.profiles = [A, B];
+    await show(<AccountsScreen />);
+    await fireEvent.press(await screen.findByTestId('add-account'));
+    expect(await screen.findByText(/already has a tab on this phone/)).toBeTruthy();
+    expect(screen.queryByTestId(`add-seat-${A}`)).toBeNull();
+  });
+
+  it('Accounts: no Add account without tab support', async () => {
+    tabsState.supported = false;
+    await show(<AccountsScreen />);
+    await act(async () => undefined);
+    expect(screen.queryByTestId('add-account')).toBeNull();
+  });
+
+  describe('Unpair asks about the tabs', () => {
+    const run = async (answer: string | null) => {
+      const alert = jest
+        .spyOn(RNAlert, 'alert')
+        .mockImplementation((title, _m, buttons) => {
+          const pick = title.startsWith('Unpair') ? 'Unpair' : answer;
+          buttons?.find((b) => b.text === pick)?.onPress?.();
+        });
+      const p = await show(<SettingsScreen />);
+      await fireEvent.press(await screen.findByTestId('unpair'));
+      await act(async () => undefined);
+      await act(async () => undefined);
+      return { alert, p };
+    };
+
+    it('Yes removes the tab profiles, then unpairs', async () => {
+      tabsState.profiles = [A, B];
+      const { alert, p } = await run('Yes, sign out');
+      expect(alert).toHaveBeenCalledWith('Also sign out of the claude.ai tabs on this phone?', expect.any(String), expect.any(Array));
+      expect(tabsState.profiles).toEqual([]);
+      expect(p.api.unpair).toHaveBeenCalledTimes(1);
+      alert.mockRestore();
+    });
+
+    it('No keeps them and still unpairs', async () => {
+      tabsState.profiles = [A, B];
+      const { alert, p } = await run('No, keep them');
+      expect(tabsState.profiles).toEqual([A, B]);
+      expect(p.api.unpair).toHaveBeenCalledTimes(1);
+      alert.mockRestore();
+    });
+
+    it('Cancel on the second question unpairs nothing', async () => {
+      tabsState.profiles = [A];
+      const { alert, p } = await run('Cancel');
+      expect(tabsState.profiles).toEqual([A]);
+      expect(p.api.unpair).not.toHaveBeenCalled();
+      alert.mockRestore();
+    });
+
+    it('without any tab there is no second question', async () => {
+      tabsState.profiles = [];
+      const { alert, p } = await run(null);
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect(p.api.unpair).toHaveBeenCalledTimes(1);
+      alert.mockRestore();
+    });
+  });
+
+  it('Page: a moved hub shows its card with Switch to the new address', async () => {
+    const switchToMoved = jest.fn(async () => 'switched' as const);
+    const h = makeHarness({ data: twoSeatData(), api: { moved: { to: 'https://new.example.ts.net' }, switchToMoved } });
+    await render(<AccountsScreen />, { wrapper: h.Wrapper });
+    expect(await screen.findByText('Your hub moved to new.example.ts.net')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Switch to the new address'));
+    expect(switchToMoved).toHaveBeenCalledTimes(1);
+  });
+
+  it('Page: a failed switch says to try again', async () => {
+    const switchToMoved = jest.fn(async () => 'failed' as const);
+    const h = makeHarness({ data: twoSeatData(), api: { moved: { to: 'https://new.example.ts.net' }, switchToMoved } });
+    await render(<AccountsScreen />, { wrapper: h.Wrapper });
+    await fireEvent.press(await screen.findByText('Switch to the new address'));
+    expect(await screen.findByText(/Could not reach the new address yet/)).toBeTruthy();
+  });
 });

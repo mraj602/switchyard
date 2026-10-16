@@ -9,6 +9,7 @@ import { ClaudeTabsSection } from '../claude-tabs-section';
 import { useUpdate } from '../use-update';
 import { useHubApi } from '../hub-api';
 import { go } from '../nav';
+import { clearAllTabs, tabProfiles } from '../tabs';
 import { switchColors, useTheme } from '../theme';
 import { useSelf } from '../use-self';
 import { Btn, Calm, Card, Chip, KV, Muted, Page, Section, useToast } from '../ui';
@@ -47,8 +48,18 @@ export default function SettingsScreen() {
   const confirmUnpair = () =>
     RNAlert.alert(`Unpair from ${api.host}?`, 'This phone will stop receiving pushes and must be paired again.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Unpair', style: 'destructive', onPress: () => void api.unpair() },
+      { text: 'Unpair', style: 'destructive', onPress: () => void askTabs() },
     ]);
+
+  // After the first confirm: with claude.ai tabs on this phone, ask whether to sign out of them too.
+  const askTabs = async () => {
+    if ((await tabProfiles()).length === 0) return api.unpair();
+    RNAlert.alert('Also sign out of the claude.ai tabs on this phone?', 'Yes clears their sign-ins, cookies and saved data. No keeps them.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'No, keep them', onPress: () => void api.unpair() },
+      { text: 'Yes, sign out', style: 'destructive', onPress: () => void clearAllTabs().then(() => api.unpair(), () => api.unpair()) },
+    ]);
+  };
 
   const priv = prefs.private == null ? 'default' : prefs.private ? 'on' : 'off';
   const tap: TapMode = prefs.tap ?? 'auto';
