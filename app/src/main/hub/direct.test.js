@@ -59,7 +59,7 @@ test('the machine id and the hub address survive a restart; the id is made once'
   const d2 = createDirect({ fs: fsp, path, file: path.join(dir, 'direct.json'), fetch: async () => null, log: silent, clientName: 'x', version: '1', getAuth: () => null, active: () => false });
   assert.equal(await d2.machineId(), m);
   assert.equal(d2.url(), 'https://hub.example.com');
-  assert.equal((fs.statSync(path.join(dir, 'direct.json')).mode & 0o777), 0o600);
+  if (process.platform !== 'win32') assert.equal((fs.statSync(path.join(dir, 'direct.json')).mode & 0o777), 0o600);
 });
 
 test('claim posts what sy desktop token posts, and maps the failures to words', async () => {
