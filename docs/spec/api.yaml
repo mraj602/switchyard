@@ -2092,6 +2092,22 @@ components:
               stopped_reason:
                 type: [string, "null"]
                 description: "Why the desktop app stopped reading this web seat (web_seat.stopped_reason: 401, 403 or 429); null while reading or for a slot place. Phase 6."
+        signed_out:
+          type: array
+          description: >-
+            Claude Code folders that were logged in to this seat and are now logged out: the
+            slot's open slot_login period has no seat and the period just before it had this one
+            (identity.md 5.2). A folder that moved to another login is that seat's place instead.
+            Machine names and folders only, no email. The phone's Accounts card says "signed out
+            on <machine>" from it (phone.md P17.6).
+          items:
+            type: object
+            required: [machine, machine_name, slot, since]
+            properties:
+              machine: {type: string}
+              machine_name: {type: string}
+              slot: {type: string}
+              since: {type: string, format: date-time, description: When the folder was seen logged out.}
         live_sessions: {type: integer}
 
     Window:
