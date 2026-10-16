@@ -131,6 +131,26 @@ func (e Env) health(ctx context.Context, timeout time.Duration) (string, bool) {
 	return h.Version, true
 }
 
+// Health timeouts. The hub is often a tiny VM that answers /health slowly now and then; a 3 s
+// limit made the app show "Can't reach the hub" for a hub that was only busy.
+const (
+	InfoHealthTimeout   = 8 * time.Second // `desktop info`, tried twice
+	StatusHealthTimeout = 5 * time.Second // `desktop hub status`
+	PollHealthTimeout   = 3 * time.Second // each poll after `desktop hub start|stop`
+)
+
+// healthRetry is health with one more try when the first fails, so a single slow or dropped
+// answer does not make the hub look unreachable.
+func (e Env) healthRetry(ctx context.Context, timeout time.Duration) (string, bool) {
+	if v, ok := e.health(ctx, timeout); ok {
+		return v, true
+	}
+	if ctx.Err() != nil {
+		return "", false
+	}
+	return e.health(ctx, timeout)
+}
+
 // HubHere reports whether hub.url names this machine's own hub: unset, or a loopback
 // address. A hub.db left behind after the hub moved elsewhere is not an admin channel.
 func HubHere(raw string) bool { return strings.TrimSpace(raw) == "" || isLoopbackURL(raw) }
@@ -166,7 +186,7 @@ func RunInfo(ctx context.Context, e Env) (Info, error) {
 	_, tokErr := client.ReadToken(e.Dirs.State.Path)
 	info := Info{V: InfoV, Sy: e.version(), Machine: InfoMachine{ID: m.ID, Name: m.Name}}
 	info.Hub = InfoHub{URL: strp(hubURL), Connected: hubURL != "" && tokErr == nil, Dial: strp(e.Config.Hub.Dial)}
-	if v, ok := e.health(ctx, 3*time.Second); ok {
+	if v, ok := e.healthRetry(ctx, InfoHealthTimeout); ok {
 		info.Hub.Reachable = true
 		info.Hub.Version = strp(v)
 	}
@@ -403,7 +423,7 @@ func RunHub(ctx context.Context, e Env, action string) (HubService, error) {
 		if err != nil {
 			return HubService{}, err
 		}
-		_, healthy := e.health(ctx, 2*time.Second)
+		_, healthy := e.health(ctx, StatusHealthTimeout)
 		return HubService{Service: serviceState(st), Unit: unit, Health: healthy}, nil
 	}
 	switch action {
@@ -428,7 +448,7 @@ func RunHub(ctx context.Context, e Env, action string) (HubService, error) {
 	// The manager answers before the hub does: give /health a few seconds to follow.
 	want := action == ActionStart
 	for i := 0; ; i++ {
-		_, healthy := e.health(ctx, time.Second)
+		_, healthy := e.health(ctx, PollHealthTimeout)
 		if healthy == want || i >= 20 || e.Config.Hub.URL == "" {
 			break
 		}

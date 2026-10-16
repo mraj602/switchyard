@@ -126,6 +126,12 @@ files `<config>/sessions/<digits>.json` (pid, session id, cwd, socket path, name
 1. **Seat.** On a record with `seat.account` and `seat.org`: upsert `account` and `org`,
    upsert `seat` on `(account_uuid, org_uuid)`. Two different account uuids are never
    merged, even with the same email (plan section 5 rule 6).
+   **Stray free seat.** A seat whose org plan is `free` is listed as hidden (like `seat.hidden`,
+   in the board, the phone, widgets and alert names; `include_hidden` still returns it with
+   `hidden: true`) while all of these hold: it has no label, no `slot_login` ever named it, and
+   its account has another seat whose org is not free. Every claude.ai account has a personal
+   free org beside its Team org, and older desktop apps made a seat for it. A label, or a slot
+   logged in to it (Claude Code really uses that org), shows it again. Nothing is deleted.
 2. **Slot login.** For records with `slot`, find the slot's open `slot_login` period.
    - If none, open one at the record's `ts` with this seat.
    - If its seat equals this record's seat, nothing changes.

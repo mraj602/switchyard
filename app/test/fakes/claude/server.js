@@ -36,7 +36,7 @@ const PAGE = (title, body, script = '') =>
   `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title></head><body>${body}<script>${script}</script></body></html>`;
 
 /**
- * @param {{port?: number, orgs?: 1|2, active?: 0|1, fixtures?: string[], email?: string}} [opts]
+ * @param {{port?: number, orgs?: 1|2, active?: 0|1, personalFree?: boolean, fixtures?: string[], email?: string}} [opts]
  */
 export async function startFakeClaude(opts = {}) {
   const orgCount = opts.orgs ?? 1;
@@ -64,8 +64,8 @@ export async function startFakeClaude(opts = {}) {
     Array.from({ length: orgCount }, (_, i) => ({
       uuid: uuidOf('org', i + 1),
       name: i === 0 ? `${email}'s Organization` : 'Team org',
-      capabilities: i === 0 ? ['chat', 'claude_max'] : ['chat', 'raven'],
-      rate_limit_tier: i === 0 ? 'default_claude_max_5x' : 'default_raven',
+      capabilities: i === 0 ? (opts.personalFree ? ['chat'] : ['chat', 'claude_max']) : ['chat', 'raven'],
+      rate_limit_tier: i === 0 ? (opts.personalFree ? 'default' : 'default_claude_max_5x') : 'default_raven',
       billing_type: 'stripe_subscription',
       raven_type: i === 0 ? null : 'team',
       settings: { not_a_kept_key: true },

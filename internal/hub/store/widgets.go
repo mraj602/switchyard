@@ -68,7 +68,7 @@ func (s *Store) WidgetState(ctx context.Context, now int64) (WidgetState, error)
 	}
 	rows, err := s.r.QueryContext(ctx, `SELECT w.seat_id, w.window_key, coalesce(w.final_pct, w.peak_pct, 0), w.resets_at
 		FROM usage_window w JOIN seat se ON se.id = w.seat_id
-		WHERE se.hidden = 0 AND w.window_key IN ('five_hour', 'seven_day') AND w.resets_at > ?
+		WHERE NOT `+seatHiddenSQL+` AND w.window_key IN ('five_hour', 'seven_day') AND w.resets_at > ?
 		ORDER BY w.seat_id, w.window_key, w.resets_at`, now)
 	if err != nil {
 		return out, err

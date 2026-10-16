@@ -21,8 +21,7 @@ button { cursor: pointer; }
   background: var(--panel); border-bottom: 1px solid var(--hair); min-width: 0;
 }
 .brand { display: flex; align-items: center; gap: 8px; padding: 0 8px 0 4px; font-weight: 700; flex: none; }
-.tabs { display: flex; align-items: center; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-.tabs::-webkit-scrollbar { display: none; }
+.tabs { display: flex; align-items: center; gap: 2px; min-width: 0; }
 .tab {
   display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; flex: none; max-width: 200px;
   background: transparent; border: 1px solid transparent; border-radius: 8px; color: var(--ink); white-space: nowrap;
@@ -203,3 +202,26 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
   .toast { max-width: 24%; }
 }
 @media (prefers-reduced-motion: reduce) { .switch .track::after { transition: none; } }
+
+/* ---- tabs that do not fit wait in the "N more" menu (app.js fitBar); the strip never scrolls */
+.tabs { overflow: hidden; flex: 0 1 auto; }
+.more-btn { gap: 4px; }
+.more-btn .chev { font-size: 12px; }
+.more-list { display: flex; flex-direction: column; gap: 4px; padding: 0 20px; }
+.more-item { display: flex; align-items: center; gap: 8px; justify-content: flex-start; text-align: left; }
+.chip-dot { display: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.chip-short { display: none; }
+.hub-chip { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---- the right side compacts on a narrow window: gear only, chip as a dot and "Hub" */
+@media (max-width: 1180px) {
+  .settings-label, .chip-full { display: none; }
+  .chip-dot, .chip-short { display: inline-block; }
+  .settings-btn { padding: 0 8px; }
+}
+
+/* ---- progress of a slow call */
+.progress { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--hair); border-top-color: var(--working); animation: sy-spin 0.9s linear infinite; flex: none; }
+@keyframes sy-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }

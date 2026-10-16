@@ -35,6 +35,9 @@ function fixtures() {
     local: false, service: null, admin: null, needs_you: 3, status: 'ok',
   };
   const settings = { keep_running: true, notifications: true, start_hidden: false, autostart: false, close_notice_shown: true, storage_backend: 'gnome_libsecret' };
+  // ?tabs=7 pads the strip with claude-N tabs (the top bar overflow check)
+  for (let i = tabs.length + 1; i <= Number(params.get('tabs') || 0); i++) tabs.push(tab(`t_${String(i).padStart(16, '0')}`, `claude-${i}`, { label: `claude-${i}` }));
+  if (params.get('ssh')) Object.assign(hub, { admin: 'ssh:hub-vm' });
   const s = { tabs, view: params.get('view') || 'hub', hub, settings, banners: [] };
 
   switch (scenario) {
@@ -123,8 +126,9 @@ const sy = {
   setSend: async ({ id, on }) => { const t = find(id); if (t) t.send_to_hub = on; push(); },
   resumeReading: async ({ id }) => { const t = find(id); if (t) { t.stopped = null; t.read_state = 'reading'; } push(); },
   refreshUsage: async () => undefined,
-  pair: async () => { state.hub.paired = true; state.hub.status = 'ok'; push(); return { ok: true }; },
-  ownerSignIn: async () => { state.hub.owner = true; state.hub.owner_until = '2026-11-14T10:00:00Z'; push(); return later({ ok: true }, 200); },
+  // ?slow=<ms> makes pair and owner sign-in take that long (the progress line); ?fail=1 makes pair fail
+  pair: async () => { await later(0, Number(params.get('slow') || 0)); if (params.get('fail')) return { ok: false, error: 'ssh: connection timed out' }; state.hub.paired = true; state.hub.status = 'ok'; push(); return { ok: true }; },
+  ownerSignIn: async () => { await later(0, Number(params.get('slow') || 0)); state.hub.owner = true; state.hub.owner_until = '2026-11-14T10:00:00Z'; push(); return later({ ok: true }, 200); },
   ownerSignOut: async () => { state.hub.owner = false; state.hub.owner_until = null; push(); return { ok: true }; },
   hubConnect: async () => { state.hub.paired = true; state.hub.status = 'ok'; state.hub.url = 'https://hub.example.com'; push(); return { ok: true }; },
   hubUnpair: async () => { state.hub.paired = false; state.hub.owner = false; state.hub.status = 'needs_pairing'; push(); return { ok: true, revoked: true }; },
