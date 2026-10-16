@@ -86,3 +86,14 @@ describe('stateWord', () => {
     expect(stateWord({ ...base, state: 'gone' }, 0)).toBe('Gone');
   });
 });
+
+describe('planLabel', () => {
+  it('says the plan as people do, never the raw key', () => {
+    const { planLabel } = jest.requireActual('../src/lib/format') as typeof import('../src/lib/format');
+    expect(planLabel('max_20x')).toBe('Max 20x');
+    expect(planLabel('pro')).toBe('Pro');
+    expect(planLabel('team')).toBe('Team');
+    expect(planLabel(null)).toBe('');
+    expect(planLabel('some_new_plan')).not.toContain('_');
+  });
+});

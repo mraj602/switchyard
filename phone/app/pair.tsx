@@ -7,13 +7,16 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Logo } from '../src/components/logo';
 import { claim, ClaimError, hostOf, pairInputMessage, parsePairInput } from '../src/lib/pair';
 import type { PairInput } from '../src/lib/pair';
 import { useHub } from '../src/state';
 
-const C = { bg: '#111315', card: '#1A1D20', well: '#1E2226', text: '#F2F3F5', muted: '#B8BDC3', accent: '#E8B04B', error: '#F28B82' };
+// Pair keeps the brand's dark ink in light mode too (the launcher icon's colours), so its status
+// bar always uses light icons.
+const C = { bg: '#111315', card: '#1A1D20', well: '#1E2226', text: '#F2F3F5', muted: '#B8BDC3', faint: '#7A8088', accent: '#E8B04B', error: '#F28B82' };
 
 function paramString(v: string | string[] | undefined): string | undefined {
   return Array.isArray(v) ? v[0] : v;
@@ -85,6 +88,13 @@ export default function PairScreen() {
   const hubFp = paramString(params.hub);
   const sealKey = paramString(params.key);
   const linkKey = origin ? `${origin}|${secret ?? ''}|${code ?? ''}|${hubFp ?? ''}|${sealKey ?? ''}` : null;
+  // A new link starts clean: an earlier attempt's "Can't reach ..." is not about this one
+  // (adjusted while rendering, React's pattern for state that follows a prop).
+  const [seenLink, setSeenLink] = useState(linkKey);
+  if (linkKey !== seenLink) {
+    setSeenLink(linkKey);
+    if (linkKey) setError(null);
+  }
   const parsedLink = useMemo(() => {
     if (!origin) return null;
     const q = [
@@ -136,7 +146,9 @@ export default function PairScreen() {
 
   return (
     <SafeAreaView style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        <Logo size={32} colour={C.text} />
         <Text accessibilityRole="header" style={styles.h1}>
           Pair with your hub
         </Text>
@@ -188,10 +200,13 @@ export default function PairScreen() {
           </View>
         ) : typed ? (
           <View style={styles.form}>
+            <Text style={styles.label}>Hub address</Text>
             <TextInput
               accessibilityLabel="Hub address"
-              placeholder="hub.example.ts.net"
-              placeholderTextColor={C.muted}
+              placeholder="for example hub.example.ts.net"
+              placeholderTextColor={C.faint}
+              cursorColor={C.accent}
+              selectionColor={C.accent}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
@@ -199,10 +214,13 @@ export default function PairScreen() {
               onChangeText={setAddress}
               style={styles.input}
             />
+            <Text style={styles.label}>Code from Add phone</Text>
             <TextInput
               accessibilityLabel="Code"
-              placeholder="482-913"
-              placeholderTextColor={C.muted}
+              placeholder="6 digits"
+              placeholderTextColor={C.faint}
+              cursorColor={C.accent}
+              selectionColor={C.accent}
               keyboardType="number-pad"
               value={codeText}
               onChangeText={setCodeText}
@@ -260,7 +278,8 @@ const styles = StyleSheet.create({
   linkText: { color: C.accent, fontSize: 15 },
   card: { backgroundColor: C.card, borderRadius: 14, padding: 14, gap: 10 },
   cardTitle: { color: C.text, fontSize: 17, fontWeight: '600' },
-  form: { gap: 12 },
+  form: { gap: 8 },
+  label: { color: C.text, fontSize: 14, fontWeight: '600', marginTop: 4 },
   input: { backgroundColor: C.well, color: C.text, borderRadius: 12, padding: 14, fontSize: 16, minHeight: 48 },
   button: { backgroundColor: C.accent, borderRadius: 12, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   buttonText: { color: '#1A1300', fontSize: 16, fontWeight: '600' },

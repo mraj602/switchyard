@@ -3,7 +3,7 @@
 // dollar figure is what the same tokens cost at API list prices, a yardstick, not a bill. Also
 // the weekday by hour heatmap, the dearest sessions and the limit windows (peak and final %).
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import type { AnalyticsReplies } from '../../contract/api';
 import { barPercents, cacheHit, dateTime, heatLevel, hitText, pct, plural, projectName, seatName, shortDay, tokens, tokenSum, usd, WEEKDAYS } from '../../lib/format';
 import { useHubApi } from '../hub-api';
@@ -137,24 +137,25 @@ export default function AnalyticsScreen() {
   const seats = (api.data.overview?.seats ?? []).filter((s) => !s.hidden);
   const filters = (
     <View style={{ gap: 8 }}>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
+      <View style={{ flexDirection: 'row' }}>
         {RANGES.map((n) => (
           <Chip key={n} testID={`range-${n}`} label={`${n} days`} on={days === n} onPress={() => setDays(n)} />
         ))}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+      {/* Wrapped, not a sideways scroll: the last accounts were cut off with no hint there were more. */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         <Chip testID="seat-all" label="All accounts" on={seat === ''} onPress={() => setSeat('')} />
         {seats.map((s) => (
           <Chip key={s.id} testID={`seat-${s.id}`} label={seatName(s)} on={seat === s.id} onPress={() => setSeat(s.id)} />
         ))}
         <Chip testID="seat-unattributed" label="Unattributed" on={seat === 'unattributed'} onPress={() => setSeat('unattributed')} />
-      </ScrollView>
+      </View>
     </View>
   );
 
   if (!data) {
     return (
-      <Page title="Analytics">
+      <Page back title="Analytics">
         {filters}
         <Calm>{error ?? (api.data.offline ? 'Offline.' : 'Loading…')}</Calm>
       </Page>
@@ -166,7 +167,7 @@ export default function AnalyticsScreen() {
   const hit = cacheHit(tot);
   const heights = barPercents(daily.days.map((d) => d.api_usd));
   return (
-    <Page title="Analytics" meta={`${shortDay(daily.from)} to ${shortDay(daily.to)} · ${daily.tz}`}>
+    <Page back title="Analytics" meta={`${shortDay(daily.from)} to ${shortDay(daily.to)} · ${daily.tz}`}>
       {filters}
       {error ? <Muted>{error}</Muted> : null}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
