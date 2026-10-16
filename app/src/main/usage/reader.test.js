@@ -152,7 +152,7 @@ test('checkResult: ok keeps usage whole and picks the listed keys', () => {
   assert.equal(r.orgs[0].usage, raw.orgs[0].usage);
 });
 
-test('checkResult: 401, 403 and 429 on any call stop; other statuses retry', () => {
+test('checkResult: 401, 403 (when nothing is left to read) and 429 stop; other statuses retry', () => {
   for (const status of [401, 403, 429]) {
     const a = ok();
     a.orgs[0].usage = { __status: status };
@@ -199,5 +199,39 @@ test('checkResult: active_org must look like a uuid', () => {
 test('stopMessage', () => {
   assert.equal(stopMessage(429), 'rate limited');
   assert.equal(stopMessage(401), 'signed out');
-  assert.equal(stopMessage(403), 'signed out');
+  assert.equal(stopMessage(403), 'usage not available for this account');
+});
+
+const WIN = { five_hour: { utilization: 10, resets_at: '2026-01-01T00:00:00Z' } };
+
+test('checkResult: personal Max account (one org, usage served) reads', () => {
+  const r = checkResult({ orgs: [{ org: { uuid: A, raven_type: null }, usage: WIN }], account: acct, active_org: A });
+  assert.equal(r.kind, 'ok');
+  assert.equal(r.orgs.length, 1);
+});
+
+test('checkResult: Team member, two orgs, one 403s on usage: the other is read', () => {
+  const raw = { orgs: [{ org: { uuid: A, name: 'personal' }, usage: { __status: 403 } }, { org: { uuid: B, raven_type: 'team' }, usage: WIN }], account: acct, active_org: A };
+  const r = checkResult(raw);
+  assert.equal(r.kind, 'ok');
+  assert.deepEqual(r.orgs.map((o) => o.org.uuid), [B]);
+  // either order
+  raw.orgs.reverse();
+  assert.deepEqual(checkResult(raw).orgs.map((o) => o.org.uuid), [B]);
+});
+
+test('checkResult: every org 403s on usage: stop as "not available", not signed out', () => {
+  const raw = { orgs: [{ org: { uuid: A }, usage: { __status: 403 } }, { org: { uuid: B }, usage: { __status: 403 } }], account: acct };
+  assert.deepEqual(checkResult(raw), { kind: 'stop', status: 403, message: 'usage not available for this account' });
+});
+
+test('checkResult: a real sign-out (401 anywhere) stops as signed out, even beside a 403', () => {
+  const raw = { orgs: [{ org: { uuid: A }, usage: { __status: 403 } }, { org: { uuid: B }, usage: { __status: 401 } }], account: acct };
+  assert.deepEqual(checkResult(raw), { kind: 'stop', status: 401, message: 'signed out' });
+  assert.deepEqual(checkResult({ orgs: { __status: 401 }, account: null }), { kind: 'stop', status: 401, message: 'signed out' });
+});
+
+test('the script maps a redirect to /login onto a 401', () => {
+  assert.match(READER_SCRIPT, /r\.redirected/);
+  assert.match(READER_SCRIPT, /__status: 401/);
 });

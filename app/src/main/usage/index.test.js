@@ -171,7 +171,7 @@ test('429: stops with exactly one error record per seat, then no requests until 
   assert.ok(r.sy.appended.at(-1).payload.usage);
 });
 
-test('401 stops the same way, and 403 too', async () => {
+test('401 stops the same way, and a 403 on the org list too (worded as not available)', async () => {
   for (const status of [401, 403]) {
     const r = await rig();
     await r.accept();
@@ -181,7 +181,7 @@ test('401 stops the same way, and 403 too', async () => {
     await waitFor(() => r.tab().stopped, 3000, 'stopped');
     assert.equal(r.tab().stopped.status, status);
     assert.equal(r.sy.appended.length, 2);
-    assert.equal(r.sy.appended[0].payload.error.message, 'signed out');
+    assert.equal(r.sy.appended[0].payload.error.message, status === 401 ? 'signed out' : 'usage not available for this account');
   }
 });
 
