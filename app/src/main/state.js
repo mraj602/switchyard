@@ -35,7 +35,7 @@ export function defaultHub() {
   return {
     url: null, connected: false, reachable: false, paired: false, owner: false, version: null,
     local: false, service: null, admin: null, needs_you: 0, status: 'no_sy', storage_backend: null, error: null,
-    removed: false, board_blocked: false,
+    removed: false, board_blocked: false, direct: false, owner_until: null, last_seen: null, machine: '',
   };
 }
 
@@ -112,6 +112,10 @@ function hubState(h, needsYou) {
     d.error = str(h.error, 500);
     d.removed = bool(h.removed);
     d.board_blocked = bool(h.board_blocked);
+    d.direct = bool(h.direct);
+    d.owner_until = str(h.owner_until, 40);
+    d.last_seen = str(h.last_seen, 40);
+    d.machine = str(h.machine, 80) ?? '';
   }
   if (needsYou && Number.isSafeInteger(needsYou.count) && needsYou.count >= 0) d.needs_you = needsYou.count;
   return d;

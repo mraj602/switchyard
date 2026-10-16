@@ -251,7 +251,7 @@ test('Electron smoke S1–S11', { timeout: 15 * 60_000 }, async (t) => {
     assert.equal(leaks, false, 'the desktop token is never in the page');
     const me0 = await main(run.app, async (m, e, url) => (await e.session.fromPartition('persist:sy-hub').fetch(`${url}/v1/me`)).json(), hub.url);
     assert.equal(me0.owner ?? false, false);
-    const r = await run.shell.evaluate(() => window.sy.ownerSignIn());
+    const r = await run.shell.evaluate(() => window.sy.ownerSignIn({}));
     assert.equal(r.ok, true, JSON.stringify(r));
     await waitFor(async () => (await main(run.app, async (m, e, url) => (await e.session.fromPartition('persist:sy-hub').fetch(`${url}/v1/me`)).json(), hub.url)).owner === true,
       20_000, 'an owner session in persist:sy-hub');

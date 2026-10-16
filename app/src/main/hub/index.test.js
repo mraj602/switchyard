@@ -664,7 +664,7 @@ test('hub:service, accounts:local and accounts:share', async () => {
 
 test('every handler of the WP is registered', async () => {
   const t = await harness();
-  assert.deepEqual(Object.keys(t.handlers).sort(), ['accounts:local', 'accounts:share', 'hub:owner-sign-in', 'hub:pair', 'hub:route', 'hub:service', 'seat:update']);
+  assert.deepEqual(Object.keys(t.handlers).sort(), ['accounts:local', 'accounts:share', 'hub:connect', 'hub:owner-sign-in', 'hub:owner-sign-out', 'hub:pair', 'hub:retry', 'hub:route', 'hub:service', 'hub:unpair', 'seat:update']);
   await t.close();
 });
 
@@ -688,4 +688,209 @@ test('pairError: exit 1 shows sy\'s own message; exit 4 without a code is not ca
   assert.doesNotMatch(pairError({ exit: 4 }, false), /no admin channel/i);
   assert.match(pairError({ exit: 3 }, true), /refused or has expired/);
   assert.equal(pairError({ exit: 5 }, false), 'The hub is not reachable.');
+});
+
+// ---- direct mode (no sy): the app connects, pairs, uploads and unpairs by itself
+
+const NO_SY = { ok: false, code: 'no_sy', error: 'sy was not found' };
+const directHarness = async (opts) => {
+  const t = await harness(opts);
+  t.sy.state.info = NO_SY;
+  return t;
+};
+const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
+
+test('direct: without sy the Hub tab says no hub; Connect checks the address, remembers it and pairs with the code', async () => {
+  const t = await directHarness();
+  await t.h.start();
+  assert.equal(lastHub(t).status, 'no_sy');
+  const r = await t.handlers['hub:connect']({ url: t.hub.url, code: '123-456' });
+  assert.deepEqual(r, { ok: true });
+  assert.equal(lastHub(t).status, 'ok');
+  assert.equal(lastHub(t).direct, true);
+  assert.equal(lastHub(t).paired, true);
+  assert.equal(lastHub(t).url, t.hub.url);
+  // POST /v1/pair/claim: the same body sy sends, with the app's own machine id
+  const [claim] = t.hub.requestsTo('/v1/pair/claim');
+  const body = JSON.parse(claim.body);
+  assert.equal(body.code, '123456');
+  assert.equal(body.expect_kind, 'desktop');
+  assert.match(body.machine, /^[0-9A-Za-z_-]{16,64}$/);
+  assert.match(body.name, /^Switchyard-desktop/);
+  assert.equal(claim.headers.authorization, undefined, 'no token yet');
+  // the token is stored like today, the address and the machine id in direct.json
+  assert.ok(fs.existsSync(t.tokenFile));
+  const saved = readJson(path.join(t.dir, 'direct.json'));
+  assert.equal(saved.url, t.hub.url);
+  assert.equal(saved.machine, body.machine);
+  assert.equal(t.sy.calls.filter((c) => c[0] === 'token').length, 0, 'sy was not asked');
+  await until(() => t.hub.streamCount() === 1);
+  await t.close();
+});
+
+test('direct: Connect without a code only remembers the address; pairing then needs a code', async () => {
+  const t = await directHarness();
+  await t.h.start();
+  assert.deepEqual(await t.handlers['hub:connect']({ url: t.hub.url }), { ok: true });
+  assert.equal(lastHub(t).status, 'needs_pairing');
+  assert.equal(lastHub(t).paired, false);
+  assert.match((await t.handlers['hub:pair']({})).error, /pairing code/i);
+  t.hub.script.claim = 400;
+  assert.match((await t.handlers['hub:pair']({ code: '111-222' })).error, /refused or has expired/);
+  t.hub.script.claim = 429;
+  assert.match((await t.handlers['hub:pair']({ code: '111-222' })).error, /Too many/);
+  t.hub.script.claim = 200;
+  assert.deepEqual(await t.handlers['hub:pair']({ code: '111-222' }), { ok: true });
+  assert.equal(lastHub(t).status, 'ok');
+  await t.close();
+});
+
+test('direct: a bad address is refused before anything is saved', async () => {
+  const t = await directHarness();
+  await t.h.start();
+  assert.match((await t.handlers['hub:connect']({ url: 'http://hub.example.com' })).error, /https/);
+  assert.match((await t.handlers['hub:connect']({ url: 'http://127.0.0.1:9' })).error, /No hub answered/);
+  assert.equal(fs.existsSync(path.join(t.dir, 'direct.json')) && readJson(path.join(t.dir, 'direct.json')).url, null);
+  assert.equal(lastHub(t).status, 'no_sy');
+  await t.close();
+});
+
+test('with sy connected to a hub, Connect is refused and sy keeps doing the pairing', async () => {
+  const t = await harness();
+  await t.h.start();
+  assert.match((await t.handlers['hub:connect']({ url: t.hub.url })).error, /sy on this computer is already connected/);
+  assert.deepEqual(await t.handlers['hub:pair']({}), { ok: true });
+  assert.equal(lastHub(t).direct, false);
+  assert.equal(t.hub.requestsTo('/v1/pair/claim').length, 0);
+  await t.close();
+});
+
+test('direct: usage records are uploaded to /v1/ingest with the desktop token, completed like sy outbox append', async () => {
+  const t = await directHarness();
+  await t.h.start();
+  await t.handlers['hub:connect']({ url: t.hub.url, code: '123456' });
+  const machine = await t.h.direct.machineId();
+  const rec = { kind: 'web_usage', ts: '2026-10-16T10:00:00.000Z', machine, seat: { account: 'a', org: 'o', src: 'claude_ai' }, client: 'switchyard-desktop/0.6.0', payload: { tab_id: 't' } };
+  const res = await t.h.direct.append([rec, { ...rec, ts: undefined }]);
+  assert.equal(res.ok, true);
+  assert.equal(res.ids.length, 2);
+  await t.h.direct.flushNow();
+  const [ing] = t.hub.requestsTo('/v1/ingest');
+  assert.equal(ing.headers.authorization, `Bearer ${TOKEN}`);
+  const b = JSON.parse(ing.body);
+  assert.equal(b.v, 1);
+  assert.match(b.client, /^switchyard-desktop\//);
+  assert.equal(b.records.length, 2);
+  assert.match(b.records[0].id, /^[0-9A-HJKMNP-TV-Z]{26}$/);
+  assert.equal(b.records[0].v, 1);
+  assert.equal(b.records[0].kind, 'web_usage');
+  assert.match(b.records[1].ts, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/);
+  assert.equal(t.h.direct.queued(), 0);
+  await t.close();
+});
+
+test('direct: a 401 on the upload drops the token like any dead token', async () => {
+  const t = await directHarness();
+  await t.h.start();
+  await t.handlers['hub:connect']({ url: t.hub.url, code: '123456' });
+  await t.h.direct.append([{ kind: 'web_usage', machine: 'm', payload: {} }]);
+  t.hub.script.revokedSelf = true; // the device was removed on the hub
+  await t.h.direct.flushNow();
+  await until(() => lastHub(t).status === 'needs_pairing');
+  assert.equal(lastHub(t).removed, true);
+  assert.equal(t.h.direct.queued(), 1, 'the record stays queued for later');
+  await t.close();
+});
+
+test('unpair: the app revokes its own device, forgets the token, hides the board and goes back to the pair card', async () => {
+  const t = await harness();
+  await t.h.start();
+  await t.handlers['hub:pair']({});
+  await t.handlers['hub:route']({ route: '#/' });
+  assert.equal(fs.existsSync(t.tokenFile), true);
+  const r = await t.handlers['hub:unpair']({});
+  assert.deepEqual(r, { ok: true, revoked: true });
+  assert.equal(t.hub.requestsTo('/v1/devices/self').filter((q) => q.method === 'DELETE').length, 1);
+  assert.equal(t.hub.script.revokedSelf, true);
+  assert.equal(fs.existsSync(t.tokenFile), false);
+  assert.equal(lastHub(t).status, 'needs_pairing');
+  assert.equal(lastHub(t).paired, false);
+  assert.equal(lastHub(t).removed, false, 'a deliberate unpair is not a removal');
+  assert.equal(hiddenNow(t), true);
+  assert.ok(t.fake.callsOf('session.clearStorageData').length >= 1, 'cookies cleared');
+  await t.close();
+});
+
+test('unpair with the hub unreachable still drops everything locally and says what is left to do', async () => {
+  const t = await harness();
+  await t.h.start();
+  await t.handlers['hub:pair']({});
+  await t.hub.close();
+  const r = await t.handlers['hub:unpair']({});
+  assert.equal(r.ok, true);
+  assert.equal(r.revoked, false);
+  assert.match(r.warning, /Devices/);
+  assert.equal(fs.existsSync(t.tokenFile), false);
+  await t.h.stop();
+});
+
+test('direct unpair with forget drops the remembered address too: back to the Connect card', async () => {
+  const t = await directHarness();
+  await t.h.start();
+  await t.handlers['hub:connect']({ url: t.hub.url, code: '123456' });
+  await t.handlers['hub:unpair']({ forget: true });
+  assert.equal(readJson(path.join(t.dir, 'direct.json')).url, null);
+  assert.equal(lastHub(t).status, 'no_sy');
+  await t.close();
+});
+
+test('owner link pasted into the app: only a link to the paired hub is opened', async () => {
+  const t = await harness();
+  await t.h.start();
+  await t.handlers['hub:pair']({});
+  await t.handlers['hub:route']({ route: '#/' });
+  const before = t.fake.callsOf('webContents.loadURL').length;
+  assert.match((await t.handlers['hub:owner-sign-in']({ link: 'https://evil.example/#/owner?s=x' })).error, /another address/);
+  assert.match((await t.handlers['hub:owner-sign-in']({ link: 'not a link' })).error, /not a link/);
+  assert.equal(t.fake.callsOf('webContents.loadURL').length, before);
+  const link = `${t.hub.url}/#/owner?s=pasted`;
+  assert.deepEqual(await t.handlers['hub:owner-sign-in']({ link }), { ok: true });
+  assert.equal(t.fake.callsOf('webContents.loadURL').at(-1)[1], link);
+  assert.equal(t.sy.calls.filter((c) => c[0] === 'owner').length, 0, 'sy was not asked');
+  await t.close();
+});
+
+test('owner sign-in without sy asks for a pasted link instead of calling sy', async () => {
+  const t = await directHarness();
+  await t.h.start();
+  await t.handlers['hub:connect']({ url: t.hub.url, code: '123456' });
+  assert.match((await t.handlers['hub:owner-sign-in']({})).error, /Paste an owner link/);
+  await t.close();
+});
+
+test('the owner pill data: owner and until come from /v1/me; sign out of owner returns to read-only', async () => {
+  const t = await harness();
+  await t.h.start();
+  await t.handlers['hub:pair']({});
+  await t.handlers['hub:route']({ route: '#/' });
+  t.hub.set({ me: { device: { id: 'd', expires_at: '2026-11-14T10:00:00Z' }, owner: true, hub: {} } });
+  t.h.view().webContents.emit('did-finish-load');
+  await until(() => lastHub(t).owner === true);
+  assert.equal(lastHub(t).owner_until, '2026-11-14T10:00:00Z');
+  t.hub.set({ me: { device: { id: 'd' }, owner: false, hub: {} } });
+  assert.deepEqual(await t.handlers['hub:owner-sign-out'](), { ok: true });
+  assert.equal(t.hub.requestsTo('/v1/session/logout').length, 1);
+  await until(() => lastHub(t).owner === false);
+  assert.equal(lastHub(t).owner_until, null);
+  await t.close();
+});
+
+test('the hub view announces the app in its user agent', async () => {
+  const t = await harness();
+  await t.h.start();
+  await t.handlers['hub:pair']({});
+  await t.handlers['hub:route']({ route: '#/' });
+  const ua = t.fake.callsOf('webContents.setUserAgent').map((c) => c[1]).find((u) => /SwitchyardDesktop/.test(u));
+  assert.match(ua, / SwitchyardDesktop(\/|$)/);
+  await t.close();
 });

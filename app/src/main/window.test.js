@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { create, WINDOW, TOP_BAR_PX, STRIP_PX, BACKGROUND } from './window.js';
+import { create, WINDOW, TOP_BAR_PX, STRIP_PX, HUB_STRIP_PX, BACKGROUND } from './window.js';
 import * as security from './security.js';
 import { fakeElectron } from '../../test/fakes/electron.js';
 import { SAFE_WEB_PREFERENCES, SHELL_URL } from '../shared/constants.js';
@@ -154,4 +154,27 @@ test('dark theme background', () => {
   const sec = security.create({ electron: e, log: quiet });
   create({ electron: e, security: sec, preloadPath: '/p.cjs', startHidden: false, log: quiet });
   assert.equal(fake.callsOf('BrowserWindow.new')[0][0].backgroundColor, BACKGROUND.dark);
+});
+
+test('setHubInset moves the hub view down for the shell strip and back; tabs are unaffected', () => {
+  const { w, e, tabView } = setup();
+  w.win.setBounds({ width: 1200, height: 800 });
+  const hub = new e.WebContentsView({});
+  const a = tabView(TAB_A);
+  w.addView('hub', hub, 'hub');
+  w.addView(TAB_A, a, 'tab');
+  w.setHubInset(HUB_STRIP_PX);
+  assert.deepEqual(hub.getBounds(), { x: 0, y: TOP_BAR_PX + HUB_STRIP_PX, width: 1200, height: 800 - TOP_BAR_PX - HUB_STRIP_PX });
+  w.select(TAB_A);
+  assert.deepEqual(a.getBounds(), { x: 0, y: TOP_BAR_PX + STRIP_PX, width: 1200, height: 800 - TOP_BAR_PX - STRIP_PX });
+  w.select('hub');
+  w.setHubInset(0);
+  assert.deepEqual(hub.getBounds(), { x: 0, y: TOP_BAR_PX, width: 1200, height: 800 - TOP_BAR_PX });
+});
+
+test('showWindow also raises the window and takes the focus', () => {
+  const { w, fake } = setup();
+  w.showWindow();
+  assert.deepEqual(fake.callsOf('app.focus').at(-1), [{ steal: true }]);
+  assert.equal(w.win.isVisible(), true);
 });

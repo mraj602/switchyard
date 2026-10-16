@@ -19,8 +19,9 @@ const LOGIN_MAX_IN_WINDOW = 2;
  *          base: () => string|null,                       // the hub URL (normalized) or null
  *          auth: () => ({url: string, token: string}|null),
  *          onSessionLink: (url: string) => void,
- *          onOwner: (owner: boolean) => void,
+ *          onOwner: (owner: boolean, until?: string|null) => void,
  *          onLoginRefused: (status: number) => void,       // 401 on login: the token is revoked
+ *          userAgentSuffix?: string,                        // ' SwitchyardDesktop/<version>': the board can tell it is in the app
  *          onBlocked?: () => void,                          // the board kept asking for a login main could not give
  *          now?: () => number, timeoutMs?: number}} deps
  */
@@ -130,7 +131,11 @@ export function createHubView(deps) {
 
   async function refreshOwner() {
     const r = await sessionFetch('GET', '/v1/me');
-    if (r.ok) deps.onOwner(r.data?.owner === true);
+    if (r.ok) {
+      const owner = r.data?.owner === true;
+      const until = typeof r.data?.device?.expires_at === 'string' ? r.data.device.expires_at : null; // an owner session ends (30 days)
+      deps.onOwner(owner, owner ? until : null);
+    }
     else if (r.status === 401 || r.status === 403) deps.onOwner(false);
   }
 
@@ -240,6 +245,14 @@ export function createHubView(deps) {
       onNavigated(v.webContents.getURL()); // a login route reached by a path that fired no navigation event
       scheduleOwnerCheck();
     });
+    // The board can tell it runs inside the app (before it knows anything about the session).
+    try {
+      const wc = v.webContents;
+      const ua = wc.getUserAgent?.();
+      if (ua && deps.userAgentSuffix && !ua.includes(deps.userAgentSuffix)) wc.setUserAgent(`${ua} ${deps.userAgentSuffix}`);
+    } catch (err) {
+      log.warn?.(`hub view: user agent: ${err?.message ?? err}`);
+    }
     deps.window.addView(HUB_VIEW_ID, v, 'hub');
     if (suppressed) deps.window.setViewHidden(HUB_VIEW_ID, true);
     view = v;
@@ -314,6 +327,12 @@ export function createHubView(deps) {
       view = null;
       viewBase = null;
       suppressed = false;
+    },
+    /** Leave the owner session: tell the hub, drop the cookie, and sign in again as this device (read-only). */
+    async ownerSignOut() {
+      await sessionFetch('POST', '/v1/session/logout', {});
+      await this.signOut();
+      if (view) await this.load(this.currentRoute());
     },
     /** Forget the partition's cookie (the token was revoked or replaced). */
     async signOut() {

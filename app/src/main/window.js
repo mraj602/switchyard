@@ -18,6 +18,8 @@ import { SHELL_URL, VIEW_SHELL, VIEW_TAB, VIEW_HUB } from '../shared/constants.j
 export const WINDOW = Object.freeze({ WIDTH: 1440, HEIGHT: 940, MIN_WIDTH: 720, MIN_HEIGHT: 500 });
 export const TOP_BAR_PX = 48;
 export const STRIP_PX = 40;
+/** The read-only strip the shell draws above the board (Hub tab, not owner). */
+export const HUB_STRIP_PX = 44;
 /** Window background before the shell paints (docs/design/screens Desk*: page background). */
 export const BACKGROUND = Object.freeze({ light: '#F3F4F1', dark: '#17191B' });
 
@@ -68,6 +70,7 @@ export function create(deps) {
   const views = new Map();
   /** Views kept out of sight although selected (the hub board while the app shows its own state panel). */
   const hiddenViews = new Set();
+  let hubInset = 0;
   let current = 'hub';
   const selectListeners = new Set();
 
@@ -77,7 +80,7 @@ export function create(deps) {
     for (const [id, { view, kind }] of views) {
       const active = id === current;
       if (active) {
-        const top = kind === VIEW_TAB ? TOP_BAR_PX + STRIP_PX : TOP_BAR_PX;
+        const top = kind === VIEW_TAB ? TOP_BAR_PX + STRIP_PX : TOP_BAR_PX + hubInset;
         view.setBounds({ x: 0, y: top, width: Math.max(0, width), height: Math.max(0, height - top) });
       }
       view.setVisible(active && !hiddenViews.has(id));
@@ -108,6 +111,14 @@ export function create(deps) {
     views.delete(id);
     win.contentView.removeChildView(entry.view);
     if (current === id) select(firstTabId() ?? 'hub');
+  }
+
+  /** Room above the board for the shell's own strip (px, 0 for none). */
+  function setHubInset(px) {
+    const n = Number.isFinite(px) && px > 0 ? Math.floor(px) : 0;
+    if (n === hubInset) return;
+    hubInset = n;
+    layout();
   }
 
   function setViewHidden(id, hidden) {
@@ -148,7 +159,9 @@ export function create(deps) {
     if (win.isDestroyed?.()) return;
     if (win.isMinimized()) win.restore();
     win.show();
+    win.moveTop?.();
     win.focus();
+    electron.app?.focus?.({ steal: true });
   }
 
   function isShowing(id) {
@@ -173,6 +186,7 @@ export function create(deps) {
     addView,
     removeView,
     setViewHidden,
+    setHubInset,
     select,
     selected: () => current,
     showWindow,
