@@ -1,9 +1,10 @@
 // Shared UI: page frame, cards, chips, buttons, meters, rings, toast, offline banner.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHubApi } from './hub-api';
-import { SPACE, useTheme } from './theme';
+import { DARK, SPACE, useTheme } from './theme';
 import { clock, pct, seatName, stateInfo, type StateInfo } from '../lib/format';
 import type { Seat, Session, Window } from '../contract/api';
 
@@ -17,12 +18,41 @@ export function OfflineBanner() {
   const text = at == null ? 'Offline · nothing saved yet' : `Offline · showing ${clock(new Date(at).toISOString(), api.now)}`;
   return (
     <View accessibilityRole="alert" style={[s.banner, { backgroundColor: t.warn }]} testID="offline-banner">
-      <Text style={s.bannerText}>{text}</Text>
+      <Text style={[s.bannerText, { color: t === DARK ? '#17191B' : '#FFFFFF' }]}>{text}</Text>
     </View>
   );
 }
 
-export function Page({ title, meta, children, toast }: { title?: string; meta?: string; children: ReactNode; toast?: ReactNode }) {
+/** Back on a stack screen: the previous screen, or Now when the screen was opened by a link. */
+export function goBack() {
+  if (router.canGoBack()) router.back();
+  else router.replace('/' as never);
+}
+
+export function BackButton() {
+  const t = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Back"
+      testID="page-back"
+      hitSlop={12}
+      onPress={goBack}
+      style={s.back}
+    >
+      <Text style={{ color: t.text, fontSize: 22, lineHeight: 24, marginRight: 4 }}>‹</Text>
+      <Text style={{ color: t.text, fontSize: 15, fontWeight: '600' }}>Back</Text>
+    </Pressable>
+  );
+}
+
+/**
+ * The page frame. `back`: a stack screen (no tab bar below), so it gets a Back button and keeps
+ * its content clear of the gesture bar as well as the status bar.
+ */
+export function Page({ title, meta, children, toast, back, logo }: {
+  title?: string; meta?: string; children: ReactNode; toast?: ReactNode; back?: boolean; logo?: ReactNode;
+}) {
   const api = useHubApi();
   const t = useTheme();
   const [busy, setBusy] = useState(false);
@@ -38,16 +68,20 @@ export function Page({ title, meta, children, toast }: { title?: string; meta?: 
   return (
     // Android 15 draws edge to edge: keep the title clear of the status bar (the tab bar
     // already pads for the navigation bar).
-    <SafeAreaView style={[s.fill, { backgroundColor: t.bg }]} edges={['top']} testID="page">
+    <SafeAreaView style={[s.fill, { backgroundColor: t.bg }]} edges={back ? ['top', 'bottom'] : ['top']} testID="page">
       <OfflineBanner />
       <ScrollView
         contentContainerStyle={s.page}
         refreshControl={<RefreshControl refreshing={busy} onRefresh={refresh} />}
         contentInsetAdjustmentBehavior="automatic"
       >
+        {back ? <BackButton /> : null}
         {title ? (
           <View style={s.head}>
-            <Text accessibilityRole="header" style={[s.h1, { color: t.text }]}>{title}</Text>
+            <View style={s.titleRow}>
+              {logo}
+              <Text accessibilityRole="header" style={[s.h1, { color: t.text, flexShrink: 1 }]}>{title}</Text>
+            </View>
             {meta ? <Text style={[s.small, { color: t.muted }]}>{meta}</Text> : null}
           </View>
         ) : null}
@@ -166,7 +200,7 @@ export function KV({ k, v }: { k: string; v: ReactNode }) {
   const t = useTheme();
   return (
     <View style={s.kv}>
-      <Text style={[s.small, { color: t.muted, flexShrink: 0, marginRight: SPACE.m }]}>{k}</Text>
+      <Text style={[s.small, { color: t.muted, flexShrink: 0, marginRight: SPACE.m, lineHeight: 20 }]}>{k}</Text>
       {typeof v === 'string' || typeof v === 'number' ? <Text style={[s.value, { color: t.text }]}>{v}</Text> : v}
     </View>
   );
@@ -219,11 +253,13 @@ export const s = StyleSheet.create({
   fill: { flex: 1 },
   page: { padding: SPACE.l, paddingBottom: 48, gap: SPACE.m },
   head: { gap: 2, marginBottom: SPACE.xs },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  back: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingVertical: 4, marginBottom: -SPACE.xs },
   h1: { fontSize: 28, fontWeight: '700' },
   h2: { fontSize: 17, fontWeight: '700' },
   small: { fontSize: 13 },
   tiny: { fontSize: 11 },
-  value: { fontSize: 14, flexShrink: 1, textAlign: 'right' },
+  value: { fontSize: 14, lineHeight: 20, flexShrink: 1, textAlign: 'right' },
   section: { gap: SPACE.s, marginTop: SPACE.s },
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: SPACE.m, gap: SPACE.s },
@@ -234,10 +270,10 @@ export const s = StyleSheet.create({
   btn: { borderWidth: 1, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', minHeight: 44 },
   meter: { height: 8, borderRadius: 4, overflow: 'hidden' },
   kv: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 4 },
-  ring: { alignItems: 'center', width: 64, marginRight: SPACE.s },
+  ring: { alignItems: 'center', width: 84, marginRight: SPACE.s },
   ringCircle: { width: 48, height: 48, borderRadius: 24, borderWidth: 5, alignItems: 'center', justifyContent: 'center' },
   banner: { paddingVertical: 6, paddingHorizontal: SPACE.l },
-  bannerText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
+  bannerText: { fontSize: 13, fontWeight: '600' },
   toast: { position: 'absolute', left: SPACE.l, right: SPACE.l, bottom: SPACE.xl, backgroundColor: '#222B30', padding: SPACE.m, borderRadius: 10 },
   toastText: { color: '#FFFFFF' },
   row: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },

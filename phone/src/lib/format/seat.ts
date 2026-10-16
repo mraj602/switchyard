@@ -1,5 +1,6 @@
 // Account (seat) colours and lookups (webui components/seat.js).
 import type { Seat, Session } from '../../contract/api';
+import { humanKey } from './core';
 
 const FALLBACK = ['#0E7C76', '#6A4FD6', '#9A7400', '#2F6FDE'];
 const NAMED: Record<string, string> = { teal: FALLBACK[0]!, violet: FALLBACK[1]!, gold: FALLBACK[2]!, blue: FALLBACK[3]! };
@@ -18,6 +19,16 @@ export function seatIndex(seats: Seat[]): SeatIndex {
   const map: SeatIndex = new Map();
   seats.forEach((s, i) => map.set(s.id, { seat: s, colour: validColour(s.colour) ?? FALLBACK[i % FALLBACK.length]! }));
   return map;
+}
+
+const PLANS: Record<string, string> = {
+  max_20x: 'Max 20x', max_5x: 'Max 5x', max: 'Max', pro: 'Pro', team: 'Team', enterprise: 'Enterprise', free: 'Free',
+};
+
+/** The plan as people say it ("Max 20x"), never the raw key ("max_20x"); an unknown key is humanised. */
+export function planLabel(plan: string | null | undefined): string {
+  if (!plan) return '';
+  return PLANS[plan.toLowerCase()] ?? humanKey(plan);
 }
 
 export function seatName(seat: Pick<Seat, 'label' | 'email' | 'id'>): string {

@@ -2,7 +2,7 @@
 // Open in browser and Close, and the fallback strip when claude.ai does not load here (P17.4).
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TabView, type TabEvent } from '../../../modules/sy-tabs';
 import { seatIndex, seatName } from '../../lib/format';
@@ -45,11 +45,13 @@ export default function ClaudeTabScreen({ seat, url: asked }: { seat: string; ur
     setNow(Date.now());
   };
 
+  // Until the first page load the WebView is blank: say so with a spinner.
+  const loaded = events.some((e) => e.state === 'loaded');
   const problem = supported === false ? verdictText({ kind: 'failed', reason: 'unsupported' }) : verdictText(verdict);
 
   return (
     <SafeAreaView style={[s.fill, { backgroundColor: t.bg }]} edges={['top', 'bottom']}>
-      <View style={[s.rowBetween, { paddingHorizontal: 12, paddingVertical: 6, gap: 8 }]}>
+      <View style={[s.rowBetween, { paddingHorizontal: 16, paddingVertical: 6, gap: 8 }]}>
         <View style={[s.row, { flexShrink: 1 }]}>
           <Dot colour={known?.colour ?? '#8A9098'} />
           <Text accessibilityRole="header" numberOfLines={1} style={{ color: t.text, fontSize: 17, fontWeight: '700', flexShrink: 1 }}>
@@ -61,9 +63,9 @@ export default function ClaudeTabScreen({ seat, url: asked }: { seat: string; ur
           <Btn label="Close" testID="tab-close" onPress={() => (router.canGoBack() ? router.back() : router.replace('/' as never))} />
         </View>
       </View>
-      <Muted style={{ paddingHorizontal: 12, paddingBottom: 6 }}>{SIGN_IN_NOTE}</Muted>
+      <Muted style={{ paddingHorizontal: 16, paddingBottom: 6 }}>{SIGN_IN_NOTE}</Muted>
       {problem ? (
-        <View testID="tab-fallback" style={{ backgroundColor: t.bad, paddingHorizontal: 12, paddingVertical: 8, gap: 6 }}>
+        <View testID="tab-fallback" style={{ backgroundColor: t.bad, paddingHorizontal: 16, paddingVertical: 8, gap: 6 }}>
           <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>{`claude.ai did not load in this tab. ${problem}`}</Text>
           <Btn label="Open in browser" testID="tab-fallback-browser" onPress={browser} />
         </View>
@@ -71,7 +73,14 @@ export default function ClaudeTabScreen({ seat, url: asked }: { seat: string; ur
       {!validSeat(seat) ? (
         <Calm>This account has no tab.</Calm>
       ) : supported ? (
-        <TabView key={seat} seat={seat} url={url} onTabState={onTabState} style={s.fill} testID="tab-view" />
+        <View style={s.fill}>
+          <TabView key={seat} seat={seat} url={url} onTabState={onTabState} style={s.fill} testID="tab-view" />
+          {!loaded && !problem ? (
+            <View pointerEvents="none" testID="tab-loading" style={{ position: 'absolute', top: 32, left: 0, right: 0, alignItems: 'center' }}>
+              <ActivityIndicator color={t.muted} />
+            </View>
+          ) : null}
+        </View>
       ) : supported === null ? (
         <Calm>Loading…</Calm>
       ) : null}

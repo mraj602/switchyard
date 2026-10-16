@@ -162,6 +162,18 @@ describe('Pair screen', () => {
     expect(pairWith).toHaveBeenCalledTimes(1);
   });
 
+  it("a new pairing link clears the last attempt's error", async () => {
+    mockParams = { origin: 'https://hub.example.ts.net', secret: SECRET };
+    const { ui } = renderPair(fakeFetch(() => response(500)));
+    const r = await render(ui);
+    await fireEvent.press(screen.getByText('Pair with hub.example.ts.net'));
+    expect(screen.getByRole('alert')).toBeTruthy();
+    mockParams = { origin: 'https://other.example.ts.net', secret: SECRET };
+    await r.rerender(renderPair(fakeFetch(() => response(500))).ui);
+    expect(screen.getByText('Pair with other.example.ts.net?')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('Cancel on a link card claims nothing and brings back the scanner', async () => {
     mockParams = { origin: 'https://hub.example.ts.net', secret: SECRET };
     const f = fakeFetch(() => response(200, claimOk));

@@ -13,7 +13,7 @@ export default function MachinesScreen({ machine: focus }: { machine?: string })
   const tone = useToneColour();
   const o = api.data.overview;
   if (!o) {
-    return <Page title="Machines"><Calm>{api.data.offline ? 'Offline, and nothing is saved yet.' : 'Loading…'}</Calm></Page>;
+    return <Page back title="Machines"><Calm>{api.data.offline ? 'Offline, and nothing is saved yet.' : 'Loading…'}</Calm></Page>;
   }
   const idx = seatIndex(o.seats);
   const list = sortMachines((o.machines as MachineFull[]).filter((m) => !m.removed_at));
@@ -21,7 +21,7 @@ export default function MachinesScreen({ machine: focus }: { machine?: string })
   const seatText = (id?: string | null) => (id && idx.get(id) ? seatName(idx.get(id)!.seat) : id || 'not logged in');
 
   return (
-    <Page title="Machines" meta={`${plural(list.length, 'machine')} reporting to this hub`}>
+    <Page back title="Machines" meta={`${plural(list.length, 'machine')} reporting to this hub`}>
       {list.length === 0 ? (
         <Calm>No machines have connected yet. Run sy connect on one to add it.</Calm>
       ) : (

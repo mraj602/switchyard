@@ -54,3 +54,39 @@ describe('stripFirebase (P13)', () => {
     expect(JSON.stringify(plugin.stripFirebase(JSON.parse(once)))).toBe(once);
   });
 });
+
+describe('brandSplash (the Android splash)', () => {
+  const styles = () => ({
+    resources: {
+      style: [
+        { $: { name: 'AppTheme', parent: 'Theme.AppCompat.DayNight.NoActionBar' }, item: [] },
+        { $: { name: 'Theme.App.SplashScreen', parent: 'AppTheme' }, item: [{ _: '@drawable/splashscreen_logo', $: { name: 'android:windowBackground' } }] },
+      ],
+    },
+  });
+  const items = (out: { resources: { style: { $: { name: string }; item: { _: string; $: { name: string } }[] }[] } }) =>
+    Object.fromEntries(out.resources.style.find((x) => x.$.name === 'Theme.App.SplashScreen')!.item.map((i) => [i.$.name, i._]));
+
+  it('gives the splash theme the ink background and the adaptive foreground as its icon', () => {
+    expect(items(plugin.brandSplash(styles()))).toEqual(plugin.SPLASH_ITEMS);
+    expect(plugin.SPLASH_ITEMS['android:windowSplashScreenAnimatedIcon']).toBe('@mipmap/ic_launcher_foreground');
+  });
+
+  it("paints AppTheme's window with the ink too, so no white frame follows the splash", () => {
+    const out = plugin.brandSplash(styles());
+    const app = out.resources.style.find((x: { $: { name: string } }) => x.$.name === 'AppTheme');
+    expect(app.item).toContainEqual({ _: '@color/splashscreen_background', $: { name: 'android:windowBackground' } });
+  });
+
+  it('adds the style when the template has none, and is idempotent', () => {
+    const fresh = plugin.brandSplash({ resources: {} });
+    expect(items(fresh)).toEqual(plugin.SPLASH_ITEMS);
+    const once = JSON.stringify(plugin.brandSplash(styles()));
+    expect(JSON.stringify(plugin.brandSplash(JSON.parse(once)))).toBe(once);
+  });
+
+  it('sets splashscreen_background to the brand ink, replacing the template white', () => {
+    const out = plugin.setColor({ resources: { color: [{ _: '#FFFFFF', $: { name: 'splashscreen_background' } }] } }, 'splashscreen_background', plugin.BRAND_INK);
+    expect(out.resources.color).toEqual([{ _: '#17191B', $: { name: 'splashscreen_background' } }]);
+  });
+});

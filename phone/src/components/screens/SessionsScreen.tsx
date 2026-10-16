@@ -81,8 +81,11 @@ export default function SessionsScreen({ filter: filterParam, by, machine }: { f
           <View key={g.label} style={{ gap: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
               {g.colour ? <Dot colour={g.colour} /> : null}
-              <Text accessibilityRole="header" style={{ color: t.text, fontWeight: '700' }}>{g.label} </Text>
-              <Muted>{[g.sub, plural(g.rows.length, 'session')].filter(Boolean).join(' · ')}</Muted>
+              {/* One line: the long email or "85% of 5h" tail ellipsises instead of running off screen. */}
+              <Text numberOfLines={1} style={{ flexShrink: 1, color: t.muted, fontSize: 13 }}>
+                <Text accessibilityRole="header" style={{ color: t.text, fontWeight: '700', fontSize: 14 }}>{`${g.label} `}</Text>
+                {[g.sub, plural(g.rows.length, 'session')].filter(Boolean).join(' · ')}
+              </Text>
             </View>
             {g.rows.map((s) => (
               <SessionRow key={s.id} s={s} now={api.now} />
@@ -103,7 +106,7 @@ function SessionRow({ s, now }: { s: Session; now: number }) {
         <StateTag session={s} />
         <Muted>{ago(s.state_since, now)}</Muted>
       </View>
-      <Text style={{ color: t.text, fontWeight: '600' }}>
+      <Text numberOfLines={1} style={{ color: t.text, fontWeight: '600' }}>
         {projectOf(s)}
         {s.title || s.name ? <Text style={{ color: t.muted, fontWeight: '400' }}>{` · ${s.title || s.name}`}</Text> : null}
       </Text>

@@ -9,7 +9,7 @@ import { ClaudeTabsSection } from '../claude-tabs-section';
 import { useUpdate } from '../use-update';
 import { useHubApi } from '../hub-api';
 import { go } from '../nav';
-import { useTheme } from '../theme';
+import { switchColors, useTheme } from '../theme';
 import { useSelf } from '../use-self';
 import { Btn, Calm, Card, Chip, KV, Muted, Page, Section, useToast } from '../ui';
 
@@ -55,7 +55,7 @@ export default function SettingsScreen() {
   const qh = prefs.quiet_hours;
 
   return (
-    <Page title="Settings" toast={toast.node}>
+    <Page back title="Settings" toast={toast.node}>
       <Section title="Hub">
         <Card>
           <KV k="Address" v={api.host} />
@@ -121,6 +121,7 @@ export default function SettingsScreen() {
                 <Muted>The hub sends a quiet push now and then so widgets stay fresh.</Muted>
               </View>
               <Switch
+                {...switchColors(t)}
                 accessibilityLabel="Widgets refresh"
                 testID="pref-widgets"
                 value={prefs.widgets === true}
@@ -141,6 +142,7 @@ export default function SettingsScreen() {
                 <Muted>Count down on the Lock Screen when a limit push is opened.</Muted>
               </View>
               <Switch
+                {...switchColors(t)}
                 accessibilityLabel="Auto countdown"
                 testID="auto-countdown"
                 value={api.autoCountdown.on}
@@ -216,6 +218,7 @@ function QuietEditor({ value, disabled, onSave, onInvalid }: {
           <Muted>{on ? 'This phone is quiet in this window.' : 'Off: this phone follows the hub.'}</Muted>
         </View>
         <Switch
+          {...switchColors(t)}
           accessibilityLabel="Own quiet hours"
           testID="pref-quiet"
           value={on}
