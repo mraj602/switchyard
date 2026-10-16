@@ -16,6 +16,10 @@ jest.mock('expo-router', () => {
   };
   return { Tabs };
 });
+jest.mock('react-native-safe-area-context', () => ({
+  ...jest.requireActual('react-native-safe-area-context'),
+  useSafeAreaInsets: () => ({ top: 24, bottom: 48, left: 0, right: 0 }),
+}));
 jest.mock('../src/components/hub-api', () => ({
   useHubApi: () => ({ data: { offline: false, fetchedAt: null }, kick: async () => {}, now: 0 }),
 }));
@@ -63,6 +67,12 @@ describe('tab bar', () => {
     const o = mockTabs.screenOptions!;
     expect(o.tabBarActiveTintColor).toBe(LIGHT.text);
     expect(o.tabBarStyle).toMatchObject({ backgroundColor: LIGHT.card });
+  });
+
+  it('lifts the labels clear of the navigation buttons or gesture bar (the bottom inset)', async () => {
+    const TabsLayout = (jest.requireActual('../app/(tabs)/_layout') as { default: () => React.JSX.Element }).default;
+    await render(<TabsLayout />);
+    expect(mockTabs.screenOptions!.tabBarStyle).toMatchObject({ height: 66 + 48, paddingBottom: 48 + 6, paddingTop: 8 });
   });
 });
 

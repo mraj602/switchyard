@@ -453,6 +453,8 @@ then gets the 401 that shows Pair, P3).
 - "Auto countdown" (iOS only, Settings: "Count down on the Lock Screen when a limit push is
   opened") is a local app setting, not a hub pref: AsyncStorage key `sy.local.v1`
   (`LOCAL_PREFS_KEY`) holds `{auto_countdown: boolean}`, never a secret, and survives an unpair.
+  Settings → Appearance picks the theme: Device default (the default), Light or Dark. It is kept
+  under `sy.theme.v1` on this phone only and applied app-wide with `Appearance.setColorScheme`.
   Only a tap or **Open** counts (not Snooze or Seen). The payload carries no failure detail, so
   `isLimitPush` (`src/lib/integrate`) takes a `failed` push as a rate limit when its title ends
   in "rate limited" or its body is the "Resets 17:00 · …" line (push.md 5.5, 5.7); a private
