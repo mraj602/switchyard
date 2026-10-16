@@ -54,12 +54,12 @@ function svg(tag, attrs) {
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
   return el;
 }
+// The same tile mark as the icon (app/build/icons-src/mark-small.svg).
 const logo = () => {
   const s = svg('svg', { width: 22, height: 22, viewBox: '0 0 22 22', 'aria-hidden': 'true' });
-  s.append(
-    svg('path', { d: 'M3 18 L11 4 L19 18', fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }),
-    svg('path', { d: 'M7 18 L11 11 L15 18', fill: 'none', stroke: '#E8B04B', 'stroke-width': 2 }),
-  );
+  const g = svg('g', { transform: 'translate(2.5 2.5) scale(0.7727)', fill: 'none', stroke: '#E8B04B', 'stroke-width': 2.6 });
+  g.append(svg('path', { d: 'M3 18 L11 4 L19 18' }), svg('path', { d: 'M7 18 L11 11 L15 18' }));
+  s.append(svg('rect', { width: 22, height: 22, rx: 5, fill: '#17191B' }), g);
   return s;
 };
 const errText = (e) => String((e && e.message) || e || 'Something went wrong').replace(/^Error invoking remote method '[^']*': /, '').replace(/^(Error: )+/, '');

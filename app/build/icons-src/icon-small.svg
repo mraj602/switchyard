@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Small master (32 px and below): same chevron geometry, heavier stroke (2.6 on the 20 grid)
+       and a slightly larger glyph, so it holds up at 16 to 32 px. -->
+  <rect width="512" height="512" fill="#17191B"/>
+  <g transform="translate(58 58) scale(18)" fill="none" stroke="#E8B04B" stroke-width="2.6" stroke-linejoin="miter" stroke-linecap="butt">
+    <path d="M3 18 L11 4 L19 18"/>
+    <path d="M7 18 L11 11 L15 18"/>
+  </g>
+</svg>
