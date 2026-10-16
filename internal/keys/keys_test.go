@@ -337,8 +337,11 @@ func TestWidens(t *testing.T) {
 		{"same_account off", base, with(func(m *MatrixBody) { m.SameAccount = false }), false},
 		{"resume", with(func(m *MatrixBody) { m.Paused = true }), base, true},
 		{"pause", base, with(func(m *MatrixBody) { m.Paused = true }), false},
-		{"turns up", base, with(func(m *MatrixBody) { m.MaxTurns = 31 }), true},
-		{"turns down", base, with(func(m *MatrixBody) { m.MaxTurns = 29 }), false},
+		{"turns up", with(func(m *MatrixBody) { m.MaxTurns = 30 }), with(func(m *MatrixBody) { m.MaxTurns = 31 }), true},
+		{"turns down", with(func(m *MatrixBody) { m.MaxTurns = 30 }), with(func(m *MatrixBody) { m.MaxTurns = 29 }), false},
+		{"turns to no limit", with(func(m *MatrixBody) { m.MaxTurns = 500 }), base, true},
+		{"turns from no limit", base, with(func(m *MatrixBody) { m.MaxTurns = 500 }), false},
+		{"no limit kept", base, base, false},
 		{"labels only", base, with(func(m *MatrixBody) { m.Accounts = map[string]string{"a": "work"} }), false},
 		{"version only", base, with(func(m *MatrixBody) { m.Version = 9 }), false},
 	}
@@ -419,6 +422,7 @@ func TestAcceptMatrix(t *testing.T) {
 	for name, m := range map[string]func(*MatrixBody){
 		"turns 1":   func(m *MatrixBody) { m.MaxTurns = 1 },
 		"turns 501": func(m *MatrixBody) { m.MaxTurns = 501 },
+		"turns -1":  func(m *MatrixBody) { m.MaxTurns = -1 },
 		"unsorted":  func(m *MatrixBody) { m.Allow = [][]string{{"b", "a"}, {"a", "b"}} },
 		"dup":       func(m *MatrixBody) { m.Allow = [][]string{{"a", "b"}, {"a", "b"}} },
 		"triple":    func(m *MatrixBody) { m.Allow = [][]string{{"a", "b", "c"}} },
@@ -429,6 +433,16 @@ func TestAcceptMatrix(t *testing.T) {
 		if b.Check() == nil {
 			t.Errorf("%s: passes Check", name)
 		}
+	}
+	for _, n := range []int{0, 2, 30, 500} {
+		b := base
+		b.MaxTurns = n
+		if err := b.Check(); err != nil {
+			t.Errorf("max_turns %d: %v", n, err)
+		}
+	}
+	if base.MaxTurns != NoTurnLimit {
+		t.Errorf("baseline max_turns %d, want no limit", base.MaxTurns)
 	}
 }
 

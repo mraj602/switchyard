@@ -3159,7 +3159,7 @@ components:
         issued_at: {type: string, format: date-time}
         paused: {type: boolean}
         same_account: {type: boolean}
-        max_turns: {type: integer, minimum: 2, maximum: 500}
+        max_turns: {type: integer, minimum: 0, maximum: 500, not: {enum: [1]}, description: "Loop guard limit (peers.md 6.3): 0 is no limit (the default), else 2-500."}
         accounts:
           type: object
           additionalProperties: {type: string}
@@ -3203,7 +3203,7 @@ components:
             items: {type: string, description: "Account uuid or * (deny only)."}
         paused: {type: boolean}
         same_account: {type: boolean}
-        max_turns: {type: integer, minimum: 2, maximum: 500}
+        max_turns: {type: integer, minimum: 0, maximum: 500, not: {enum: [1]}, description: "Loop guard limit (peers.md 6.3): 0 is no limit (the default), else 2-500."}
 
     PeerMessage:
       type: object

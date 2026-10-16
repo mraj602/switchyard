@@ -152,5 +152,18 @@ test('turn limit: whole numbers 2 to 500; raising widens, lowering narrows', () 
   assert.equal(P.turnsWidens(30, 31), true);
   assert.equal(P.turnsWidens(30, 30), false);
   assert.equal(P.turnsWidens(30, 10), false);
+  // No limit (0) is the highest value.
+  assert.equal(P.TURNS_NONE, 0);
+  assert.equal(P.turnsWidens(30, 0), true);
+  assert.equal(P.turnsWidens(500, 0), true);
+  assert.equal(P.turnsWidens(0, 500), false);
+  assert.equal(P.turnsWidens(0, 2), false);
+  assert.equal(P.turnsWidens(0, 0), false);
+  assert.equal(P.turnsLabel(0), 'no limit');
+  assert.equal(P.turnsLabel(30), '30');
+  assert.equal(P.detailText({ max_turns: 0 }), 'no turn limit');
+  assert.equal(P.detailText({ max_turns: 30 }), '30 turns');
+  assert.match(P.NO_LIMIT_HELP, /^No limit lets agents keep talking with no one watching; the other limits still apply\.$/);
+  assert.deepEqual(j(P.editBody({ version: 4 }, { max_turns: 0 })), { edit: { base_version: 4, max_turns: 0 } });
   assert.deepEqual(j(P.editBody({ version: 4 }, { max_turns: 10 })), { edit: { base_version: 4, max_turns: 10 } });
 });

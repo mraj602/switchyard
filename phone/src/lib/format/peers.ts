@@ -78,6 +78,12 @@ export const BLOCK_ALL_CONFIRM = 'Stop all peer messages between accounts? Threa
 /** The loop guard's explanation (peers.md 6.3), the same sentence the board shows. */
 export const TURNS_HELP =
   'When two sessions message each other on their own, with no one typing, Switchyard stops delivering after this many messages, so two agents cannot keep replying to each other forever. Typing in either session (or Resume thread) starts the count again.';
+/** Shown under the turn limit (peers.md 5.4), the same sentence the board shows. */
+export const NO_LIMIT_HELP = 'No limit lets agents keep talking with no one watching; the other limits still apply.';
+/** max_turns 0 is "no limit" (peers.md 5.1), the default of a new matrix. */
+export const TURNS_NONE = 0;
+/** max_turns in words: "No limit" for 0, else the number. */
+export const turnsLabel = (n: number): string => (n === TURNS_NONE ? 'No limit' : String(n));
 export const ALLOW_FROM_COMPUTER = 'Allow pairs from a computer (board, Peers)';
 
 /** Block all (peers.md 5.4): every allowed pair removed and same_account off. Only ever narrows. */
@@ -131,7 +137,7 @@ export function detailText(d: Record<string, unknown> | null | undefined): strin
   if (d.widens === true) parts.push('widened');
   if (plain('paused')) parts.push(d.paused ? 'paused' : 'not paused');
   if (plain('same_account')) parts.push(`same account ${d.same_account ? 'on' : 'off'}`);
-  if (plain('max_turns')) parts.push(`${String(d.max_turns)} turns`);
+  if (plain('max_turns')) parts.push(d.max_turns === TURNS_NONE ? 'no turn limit' : `${String(d.max_turns)} turns`);
   if (plain('pairs')) parts.push(`${String(d.pairs)} ${Number(d.pairs) === 1 ? 'pair' : 'pairs'}`);
   if (plain('size') && Number.isFinite(Number(d.size))) parts.push(sizeLabel(Number(d.size)));
   for (const k of ['status', 'outcome', 'reason']) if (plain(k)) parts.push(String(d[k]).slice(0, 60));

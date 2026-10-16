@@ -148,6 +148,7 @@ func goldenDocs(t testing.TB) []docVector {
 
 	mx := BaselineMatrix(hubFP, goldenTime)
 	mx.Version = 4
+	mx.MaxTurns = 30 // a document from before "no limit" (0) was the default; it stays valid
 	mx.Accounts = map[string]string{"3f1c0000-0000-4000-8000-000000000001": "work", "7a200000-0000-4000-8000-000000000002": "personal"}
 	mx.Allow = SortAllow([][]string{{"7a200000-0000-4000-8000-000000000002", "3f1c0000-0000-4000-8000-000000000001"},
 		{"3f1c0000-0000-4000-8000-000000000001", "7a200000-0000-4000-8000-000000000002"}})

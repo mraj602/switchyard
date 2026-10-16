@@ -17,8 +17,9 @@ import (
 const (
 	// ThreadIdle closes a thread after this long with no message (6.1).
 	ThreadIdle = 24 * time.Hour
-	// DefaultMaxTurns is the loop guard's limit when the matrix does not say (6.3).
-	DefaultMaxTurns = 30
+	// NoTurnLimit is the max_turns that switches the loop guard's turn count off (6.3, 5.1);
+	// it is also the default of a new matrix.
+	NoTurnLimit = 0
 )
 
 // Kind of a message in a thread (6.1).
@@ -127,16 +128,19 @@ func (s *ThreadSet) Expire(now time.Time, live func(session string) bool) {
 // LoopGuard applies peers.md 6.3 to a thread that is about to carry one more message. human is
 // the newest human prompt in either session. A human prompt newer than the thread's HumanAt
 // resets the turn count and lifts the pause. It returns true (refuse) when the message would
-// make Turns exceed maxTurns, and then marks the thread paused. It does not count the
-// message: RecordMessage does, after delivery. All three parties run this same function.
+// make Turns exceed maxTurns, and then marks the thread paused. maxTurns 0 (NoTurnLimit) never
+// refuses and lifts an earlier stop; the count is still kept, so a limit set later applies to
+// it. It does not count the message: RecordMessage does, after delivery. All three parties run
+// this same function.
 func LoopGuard(t *Thread, human time.Time, maxTurns int, now time.Time) (refuse bool) {
-	if maxTurns <= 0 {
-		maxTurns = DefaultMaxTurns
-	}
 	if human.After(t.HumanAt) {
 		t.HumanAt = human
 		t.Turns = 0
 		t.PausedAt = nil
+	}
+	if maxTurns <= NoTurnLimit {
+		t.PausedAt = nil
+		return false
 	}
 	if t.Turns+1 > maxTurns {
 		if t.PausedAt == nil {
