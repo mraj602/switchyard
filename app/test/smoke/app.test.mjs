@@ -135,8 +135,14 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
     // The board was loaded at pairing, before the seat existed; its stream only updates seats
     // it already has (webui store.js applyUsage), so load it again for the new seat.
     await board.reload();
+    // The list row shows only the tighter window; every window is in the row's detail, so open it.
+    await waitFor(async () => board.evaluate((id) => {
+      const b = document.querySelector(`[data-key="seat-toggle-${id}"]`);
+      if (b && b.getAttribute('aria-expanded') !== 'true') b.click();
+      return !!document.getElementById(`seat-detail-${id}`);
+    }, seat.id), 20_000, 'the seat row opened on the board');
     const values = await waitFor(async () => {
-      const v = await board.evaluate((id) => [...document.querySelectorAll(`#seat-${id} [role=meter]`)].map((m) => m.getAttribute('aria-valuenow')), seat.id);
+      const v = await board.evaluate((id) => [...document.querySelectorAll(`#seat-detail-${id} [role=meter]`)].map((m) => m.getAttribute('aria-valuenow')), seat.id);
       return v.length ? v : null;
     }, 20_000, 'the seat card on the board').catch(async (err) => {
       fs.writeFileSync(path.join(out, 's4-board.html'), `${board.url()}\n${await board.content()}`);
