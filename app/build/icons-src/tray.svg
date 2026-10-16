@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" width="22" height="22">
+  <!-- Tray glyph: chevrons only, one flat colour (@COLOR@), stroke 2.6. gen-icons.sh fills the
+       colour and cuts the dot (needs-you) for the idle state. -->
+  <g fill="none" stroke="@COLOR@" stroke-width="2.6" stroke-linejoin="miter" stroke-linecap="butt">
+    <path d="M2.5 19 L10.5 5 L18.5 19"/>
+    <path d="M6.5 19 L10.5 12 L14.5 19"/>
+  </g>
+  <!--DOT-->
+  <circle cx="18" cy="4.2" r="3.6" fill="@COLOR@"/>
+  <!--/DOT-->
+</svg>
