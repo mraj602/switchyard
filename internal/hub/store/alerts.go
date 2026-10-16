@@ -281,39 +281,76 @@ func (tx *Tx) AlertSeat(id string, now int64) (AlertSeatRow, bool, error) {
 	return r, true, rows.Err()
 }
 
-// AlertRoomRow is another seat's current window of one key (push.md 5.7).
+// AlertRoomRow is one seat as "who has room" sees it (push.md 5.7): its current (newest)
+// window of one key, and whether it has a reading for any window at all.
 type AlertRoomRow struct {
 	Seat, Label, Email string
 	Name               string // the board's name of the seat (SeatDisplayNames)
 	Hidden             bool
-	Used               float64
-	UpdatedAt          int64
+	// HasWindow: the current window of the key has a reading (Used, ResetsAt, UpdatedAt).
+	HasWindow bool
+	Used      float64
+	ResetsAt  int64
+	UpdatedAt int64
+	// HasReading: some current window of the seat (any key) has a reading.
+	HasReading bool
 }
 
-// AlertRoom lists every seat's current window of key with a known used %.
+// AlertRoom lists every seat in list order (sort_order, created_at, id, as the board shows
+// them) with its current window of key: the newest one, as the board's overview has it. A
+// window with no used % is no reading.
 func (tx *Tx) AlertRoom(key string, now int64) ([]AlertRoomRow, error) {
 	names, err := tx.alertSeatNames()
 	if err != nil {
 		return nil, err
 	}
-	rows, err := tx.QueryContext(tx.ctx, `SELECT se.id, se.label, a.email, `+seatHiddenSQL+`, w.final_pct, w.updated_at
-		FROM usage_window w JOIN seat se ON se.id = w.seat_id LEFT JOIN account a ON a.uuid = se.account_uuid
-		WHERE w.window_key = ? AND w.resets_at > ? AND w.final_pct IS NOT NULL ORDER BY se.id`, key, now)
+	rows, err := tx.QueryContext(tx.ctx, `SELECT se.id, se.label, a.email, `+seatHiddenSQL+`
+		FROM seat se LEFT JOIN account a ON a.uuid = se.account_uuid ORDER BY se.sort_order, se.created_at, se.id`)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	var out []AlertRoomRow
+	at := map[string]int{}
 	for rows.Next() {
 		var r AlertRoomRow
 		var label, email sql.NullString
 		var hidden int
-		if err := rows.Scan(&r.Seat, &label, &email, &hidden, &r.Used, &r.UpdatedAt); err != nil {
+		if err := rows.Scan(&r.Seat, &label, &email, &hidden); err != nil {
+			rows.Close()
 			return nil, err
 		}
 		r.Label, r.Email, r.Hidden = label.String, email.String, hidden == 1
 		r.Name = names[r.Seat]
+		at[r.Seat] = len(out)
 		out = append(out, r)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	rows, err = tx.QueryContext(tx.ctx, `SELECT w.seat_id, w.window_key, w.resets_at, w.final_pct, w.updated_at FROM usage_window w
+		WHERE w.final_pct IS NOT NULL
+		  AND w.resets_at = (SELECT max(x.resets_at) FROM usage_window x WHERE x.seat_id = w.seat_id AND x.window_key = w.window_key)`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var seat, k string
+		var resets, updated int64
+		var used float64
+		if err := rows.Scan(&seat, &k, &resets, &used, &updated); err != nil {
+			return nil, err
+		}
+		i, ok := at[seat]
+		if !ok {
+			continue
+		}
+		r := &out[i]
+		r.HasReading = true
+		if k == key {
+			r.HasWindow, r.Used, r.ResetsAt, r.UpdatedAt = true, used, resets, updated
+		}
 	}
 	return out, rows.Err()
 }

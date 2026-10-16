@@ -395,35 +395,55 @@ func RenderSummary(alerts []model.Alert, o TextOptions) Text {
 	return out
 }
 
-// RoomCandidate is one other seat's current window, for WhoHasRoom.
+// RoomCandidate is one seat for WhoHasRoom, in list order: its current window of the key
+// (HasWindow: it has a reading) and whether it has a reading for any window (HasReading).
 type RoomCandidate struct {
-	Seat      string
-	Label     string
-	Hidden    bool
-	UsedPct   float64
-	UpdatedMS int64
+	Seat       string
+	Label      string
+	Hidden     bool
+	HasWindow  bool
+	UsedPct    float64
+	ResetsMS   int64
+	HasReading bool
 }
 
-// RoomFreshMS: a candidate window must have been updated within 6 hours (push.md 5.7).
-const RoomFreshMS = 6 * 60 * 60 * 1000
+// EffectiveUse is a seat's use of the window for ranking (push.md 5.7, the board's rule): 0
+// when the window's reset has passed, or when the seat has no reading for it but has one for
+// another window; otherwise its used % (an old reading counts until its reset). ok is false
+// for a seat with no reading at all.
+func EffectiveUse(c RoomCandidate, nowMS int64) (used float64, ok bool) {
+	switch {
+	case c.HasWindow && c.ResetsMS > nowMS:
+		return c.UsedPct, true
+	case c.HasWindow, c.HasReading:
+		return 0, true
+	}
+	return 0, false
+}
 
-// WhoHasRoom picks the non-hidden seat other than subject with the lowest used % in the
-// same window key, updated within 6 h, and only if under 80% (push.md 5.7).
+// WhoHasRoom picks the non-hidden seat other than subject with the lowest effective use of the
+// window (EffectiveUse), the first in list order on a tie, and only if it is under 80%
+// (push.md 5.7). Seats with no reading at all are skipped.
 func WhoHasRoom(subject string, cands []RoomCandidate, nowMS int64) *Room {
 	var best *RoomCandidate
+	bestUse := 0.0
 	for i := range cands {
 		c := &cands[i]
-		if c.Seat == subject || c.Hidden || c.UpdatedMS < nowMS-RoomFreshMS || c.UsedPct >= 80 {
+		if c.Seat == subject || c.Hidden {
 			continue
 		}
-		if best == nil || c.UsedPct < best.UsedPct || (c.UsedPct == best.UsedPct && c.Seat < best.Seat) {
-			best = c
+		use, ok := EffectiveUse(*c, nowMS)
+		if !ok || use >= 80 {
+			continue
+		}
+		if best == nil || use < bestUse {
+			best, bestUse = c, use
 		}
 	}
 	if best == nil {
 		return nil
 	}
-	return &Room{Label: best.Label, Left: 100 - best.UsedPct}
+	return &Room{Label: best.Label, Left: 100 - bestUse}
 }
 
 // Delivery parameters of push.md 6.4 and 7.2.
