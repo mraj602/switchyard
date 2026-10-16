@@ -209,7 +209,7 @@ Accounts, More**:
 | `/` (tab Now) | `#/` | Needs-you inbox with swipe Seen / Snooze (`POST /v1/alerts/{id}/seen`, `/snooze`), alert status words, rings per account, running count per machine |
 | `/sessions?filter=&by=` | `#/sessions` | Grouped list with filter chips |
 | `/sessions/[id]?alert=` | `#/sessions/<id>` | State history, last message, **Open in Claude** (`remote_url` in the seat's claude.ai tab on Android, P17; elsewhere with the wrong-account note), **Copy resume command**, Snooze |
-| `/accounts?seat=` | `#/accounts` | Cards, "most room", **Count down on Lock Screen** (iOS, P12) |
+| `/accounts?seat=` | `#/accounts` | One compact row per account that opens in place (P17.8), "most room", **Count down on Lock Screen** (iOS, P12) |
 | `/more` | `#/more` | Alerts, Machines, Peers, Settings |
 | `/more/alerts` | `#/more/alerts` | Rule switches as `prefs.mute` (`PATCH /v1/devices/self`), recent pushes (`GET /v1/alerts`) |
 | `/more/machines?machine=` | `#/machines` | Machines list |
@@ -724,8 +724,8 @@ opens in B's tab. **Open claude.ai** on an Accounts card opens the seat's tab at
 - `/tabs/[seat]?url=` (`ClaudeTabScreen`): a header with the account's dot and name,
   **Open in browser** and **Close**, then the `TabView`. A strip says: "Sign in with your email
   and the code claude.ai sends. Google sign-in does not work inside apps."
-- Accounts: each card says where its login is signed in and offers **Open claude.ai**,
-  **Sign in on this phone** or **Fix this tab** (P17.7).
+- Accounts (P17.8): a compact list; a row opens in place and shows where its login is signed in
+  and offers **Open claude.ai**, **Sign in on this phone** or **Fix this tab** (P17.7).
 - Settings → **Claude tabs**: one row per profile (seat name, or "Removed account" for a seat
   the hub no longer lists) with **Sign out (clear this tab)**, which confirms, then
   `deleteProfile` (and forgets the tab's memo, P17.7). Shown only when supported; otherwise
@@ -826,3 +826,35 @@ never by email.
      reads your chats or sends the page anywhere.' (also in Settings → Claude tabs).
 7. **Never** typed into a login page, never a cookie read into JS or Kotlin, never page content
    stored or sent.
+
+### P17.8 The Accounts list
+
+Designs Phone-Accounts-Compact, Phone-Account-Detail, Phone-Accounts-Today (Phone-11 and 12 for
+the tab status). Calm and compact: seven accounts fit on one screen.
+
+- **Header:** "Accounts" with **+ Add account** (gold outline, P17.3, tabs only) at the right;
+  under it **Expand all** / **Collapse all** (text button, from two accounts up).
+- **Most room right now:** "Most room right now: claude-2 (5 h 0% · 7 d 3%)", the board's and
+  the hub's rule. Among visible accounts the *effective use* of a window is 0 when its
+  `resets_at` has passed, or when the account has no reading for it but has one for the other
+  window; otherwise its `used_pct` (a reading older than 6 hours counts until its reset). An
+  account with no reading at all is skipped. Score = the larger of the two; lowest wins, ties go
+  to the lower 7 d, then the lower 5 h use, then list order; named only under 80%. An idle
+  account therefore has the most room.
+- **One row per account:** colour dot, name, one bar for the tighter of the 5 h and 7 d windows
+  (effective use; a tie shows 7 d) with "5 h" or "7 d" and the percentage (red from 90%), and
+  that window's reset time beside the bar ("resets 15:48", "resets Sun 09:00"). No reading:
+  "no data".
+- **One status line, only when something needs attention**, the first of: the phone tab is
+  signed in as another account (**claude-6**, or an account no seat has) > near its limit (a
+  runaway 5 h pace or 5 h at 90% or more: "Near the 5-hour limit: full by 15:48"; 7 d at 90% or
+  more: "7-day limit nearly used, resets Sun 09:00") > "Claude Code signed out on **machine**".
+  Others are counted as "+N".
+- **Tap to open in place** (`LayoutAnimation`; `?seat=` opens that row): every window (label,
+  % used, meter, "resets in 2 h 10 min (15:48)", peak, pace); **Signed in** (the Claude Code
+  line per machine, the phone tab line with "as of the tab's last visit", and its action: **Open
+  claude.ai**, **Sign in on this phone** or **Fix this tab**, which opens the Phone-12 sheet of
+  P17.7); then the plan and organisation, email, live sessions and when claude.ai usage was
+  read; and **Count down on Lock Screen** where the Live Activity qualifies (iOS, P12).
+- **Under the list**, one muted line: "The bar shows the tighter of the 5 h and 7 d limits. Tap
+  an account for everything else."

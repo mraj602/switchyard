@@ -212,6 +212,7 @@ describe('screens', () => {
 
   it('Accounts: Open claude.ai opens the seat tab', async () => {
     await show(<AccountsScreen />);
+    await fireEvent.press(await screen.findByTestId('expand-all'));
     await fireEvent.press(await screen.findByTestId(`tab-${A}`));
     expect(routerMock.router.push).toHaveBeenCalledWith(`/tabs/${A}`);
   });
@@ -219,6 +220,7 @@ describe('screens', () => {
   it('Accounts: no tab buttons without support', async () => {
     tabsState.supported = false;
     await show(<AccountsScreen />);
+    await fireEvent.press(await screen.findByTestId('expand-all'));
     await act(async () => undefined);
     expect(screen.queryByText('Open claude.ai')).toBeNull();
   });
@@ -254,6 +256,7 @@ describe('screens', () => {
   it('Accounts: + Add account lists only seats without a tab, and picking one opens its tab', async () => {
     tabsState.profiles = [A];
     await show(<AccountsScreen />);
+    await fireEvent.press(await screen.findByTestId('expand-all'));
     await fireEvent.press(await screen.findByTestId('add-account'));
     expect(await screen.findByText('Which account?')).toBeTruthy();
     expect(screen.queryByTestId(`add-seat-${A}`)).toBeNull();
@@ -266,6 +269,7 @@ describe('screens', () => {
   it('Accounts: the sheet says so when every seat has a tab', async () => {
     tabsState.profiles = [A, B];
     await show(<AccountsScreen />);
+    await fireEvent.press(await screen.findByTestId('expand-all'));
     await fireEvent.press(await screen.findByTestId('add-account'));
     expect(await screen.findByText(/already has a tab on this phone/)).toBeTruthy();
     expect(screen.queryByTestId(`add-seat-${A}`)).toBeNull();
@@ -274,6 +278,7 @@ describe('screens', () => {
   it('Accounts: no Add account without tab support', async () => {
     tabsState.supported = false;
     await show(<AccountsScreen />);
+    await fireEvent.press(await screen.findByTestId('expand-all'));
     await act(async () => undefined);
     expect(screen.queryByTestId('add-account')).toBeNull();
   });
