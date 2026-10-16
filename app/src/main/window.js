@@ -23,7 +23,8 @@ export const BACKGROUND = Object.freeze({ light: '#F3F4F1', dark: '#17191B' });
 
 /**
  * @param {{electron: object, security: object, bus?: object, preloadPath: string, startHidden: boolean,
- *          backgroundColor?: string, log?: object, title?: string}} deps
+ *          backgroundColor?: string, log?: object, title?: string, icon?: string}} deps
+ *   icon: the app icon's path (assets/icon.png); not set on macOS (the bundle has it)
  * @returns {{
  *   win: object,
  *   shell: object,
@@ -51,6 +52,12 @@ export function create(deps) {
     show: false,
     backgroundColor,
     title: deps.title ?? 'Switchyard',
+    // Linux and Windows: the menu (Switchyard, Edit, View) stays one Alt press away instead of a
+    // second bar above the app's own top bar (desktop UI audit). macOS keeps its menu bar.
+    autoHideMenuBar: true,
+    // The window icon (X11 _NET_WM_ICON, the Windows taskbar). On Wayland the shell finds the
+    // icon through the app_id, which package.json desktopName sets (switchyard-desktop).
+    ...(deps.icon ? { icon: deps.icon } : {}),
     webPreferences: security.webPreferences(VIEW_SHELL, { preload: deps.preloadPath }),
   });
   const shell = win.webContents;

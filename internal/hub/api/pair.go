@@ -142,6 +142,36 @@ func pairFail(w http.ResponseWriter, err error) {
 
 // pairDropSession revokes the session behind the request's cookie when it is a board or
 // owner session: a new cookie replaces it, as on logout.
+// pairDesktopVia is the desktop device whose board session sends this request (its cookie), or
+// nil: an owner link opened in the desktop app's Hub view stays tied to that app.
+func pairDesktopVia(r *http.Request, s *Server) *store.Device {
+	c, err := r.Cookie(auth.CookieName)
+	if err != nil {
+		return nil
+	}
+	d, err := s.Auth.Lookup(r.Context(), c.Value)
+	if err != nil || !auth.IsSessionDevice(d) {
+		return nil
+	}
+	if p := pairViaDevice(r.Context(), s, d); p != nil && p.Kind == "desktop" {
+		return p
+	}
+	return nil
+}
+
+// pairViaDevice is the live device a board session was opened from (auth.ViaOf), or nil.
+func pairViaDevice(ctx context.Context, s *Server, d store.Device) *store.Device {
+	id := auth.ViaOf(d)
+	if id == "" {
+		return nil
+	}
+	p, err := s.Store().DeviceByID(ctx, id)
+	if err != nil || p.RevokedAt != 0 {
+		return nil
+	}
+	return &p
+}
+
 func pairDropSession(r *http.Request, s *Server) {
 	if c, err := r.Cookie(auth.CookieName); err == nil {
 		if d, err := s.Auth.Lookup(r.Context(), c.Value); err == nil && auth.IsSessionDevice(d) {
@@ -205,7 +235,7 @@ func (s *Server) pairOwnerSignIn(w http.ResponseWriter, r *http.Request) {
 	if !pairSessionCheck(s, w, r, true) {
 		return
 	}
-	c, err := pairService(s).OwnerSignIn(r.Context(), auth.ClientIP(r), body.Secret, body.Name)
+	c, err := pairService(s).OwnerSignInVia(r.Context(), auth.ClientIP(r), body.Secret, body.Name, pairDesktopVia(r, s))
 	if err != nil {
 		pairFail(w, err)
 		return
@@ -291,5 +321,11 @@ func (s *Server) pairMe(w http.ResponseWriter, r *http.Request) {
 	if u := hubPublicURL(r.Context(), s); u != "" {
 		hub["public_url"] = u
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"device": devView(det, dev.ID, nil), "owner": dev.HasScope("owner"), "hub": hub})
+	// via: the device this board session was opened from, so a board inside the desktop app
+	// knows it is there (no Web Push, no install; the app notifies itself).
+	var via any
+	if p := pairViaDevice(r.Context(), s, dev); p != nil {
+		via = map[string]any{"id": p.ID, "kind": p.Kind, "name": p.Name}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"device": devView(det, dev.ID, nil), "owner": dev.HasScope("owner"), "hub": hub, "via": via})
 }

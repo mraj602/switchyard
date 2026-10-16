@@ -62,6 +62,8 @@ export const SRC_DIR = nodePath.resolve(here, '..');
 export const APP_DIR = nodePath.resolve(SRC_DIR, '..');
 export const PRELOAD_PATH = nodePath.join(SRC_DIR, 'preload', 'shell.cjs');
 export const ASSETS_DIR = nodePath.join(APP_DIR, 'assets');
+/** The app icon for the window and notifications (Linux, Windows; a macOS bundle has its own). */
+export const ICON_PATH = nodePath.join(ASSETS_DIR, 'icon.png');
 
 /** A pending `sy flush` at quit may wait this long (6.md WP-I: ≤ 5 s); the outbox keeps the records anyway. */
 export const QUIT_FLUSH_MAX_MS = 5_000;
@@ -207,10 +209,14 @@ export async function boot(electron, opts = {}) {
   made.ipc.register('settings:set', (patch) => made.background.setSettings(patch));
   made.ipc.start();
 
+  const icon = platform === 'darwin' ? undefined : ICON_PATH;
   made.window = m.window.create({
-    electron, security: made.security, bus, log, preloadPath: PRELOAD_PATH, startHidden: made.background.startHidden(),
+    electron, security: made.security, bus, log, preloadPath: PRELOAD_PATH, startHidden: made.background.startHidden(), icon,
   });
-  made.state = m.state.create({ bus, ipc: made.ipc, window: made.window, hub: made.hub, store: made.store, log });
+  made.state = m.state.create({
+    bus, ipc: made.ipc, window: made.window, hub: made.hub, store: made.store, log,
+    about: { app: app.getVersion(), electron: process.versions.electron, chrome: process.versions.chrome, platform: `${process.platform} ${process.arch}` },
+  });
 
   made.tabs = m.tabs.create({
     electron, security: made.security, window: made.window, store: made.store, bus, ipc: made.ipc, log, platform,
@@ -241,7 +247,7 @@ export async function boot(electron, opts = {}) {
     electron, bus, window: made.window, usage: made.usage, hub: made.hub, platform, assetsDir: ASSETS_DIR, log,
   });
   made.tray.start();
-  made.notify = m.notify.create({ electron, bus, hub: made.hub, window: made.window, store: made.store, log });
+  made.notify = m.notify.create({ electron, bus, hub: made.hub, window: made.window, store: made.store, log, icon });
   made.notify.start();
   made.menu = m.menu.create({
     electron, window: made.window, tabs: made.tabs, usage: made.usage, autostart: made.autostart, store: made.store,

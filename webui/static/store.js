@@ -6,6 +6,7 @@ import {
   snoozeAlert, seenAlert, putJSON,
 } from './api.js';
 import { applyOrder } from './components/order.js';
+import { meInApp } from './components/notif-note.js';
 
 const listeners = new Set();
 
@@ -34,6 +35,12 @@ export const setAuthLostHandler = (fn) => { onAuthLost = fn; };
 // only: the push and owner controls stay hidden for it.
 export const isOwner = () => !!(store.me && store.me.owner);
 export const canPush = () => !!(store.me && (store.me.owner || (store.me.device.scopes || []).includes('push')));
+
+// The board is the desktop app's Hub view: /v1/me says this session was opened from a desktop
+// device (`via`, api.yaml Me), or the caller is the desktop token itself. The app shows the
+// hub's alerts as notifications on its own (desktop.md C9) and cannot install a PWA, so Web
+// Push, install, pairing "this browser" and sign-out are not offered there.
+export const inApp = () => meInApp(store.me);
 
 async function guarded(fn) {
   try {

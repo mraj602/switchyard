@@ -49,6 +49,10 @@ linux:
   target: [AppImage, deb, rpm]
   category: Utility
   executableName: switchyard-desktop
+  # package.json desktopName (switchyard-desktop.desktop) is Electron's Wayland app_id and the
+  # libnotify desktop-entry hint; the .desktop file has that name and StartupWMClass, so GNOME
+  # and KDE match the window, the dock and notifications to it (and show its icon).
+  syncDesktopName: true
   synopsis: Claude account tabs, web usage and the Switchyard hub board
   maintainer: Switchyard
 

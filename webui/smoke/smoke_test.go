@@ -42,8 +42,17 @@ func TestBrowserSmoke(t *testing.T) {
 	}))
 	defer ts.Close()
 
+	// Headless Chrome still talks to the desktop's session bus, so the fixture alerts would
+	// pop up as real notifications: run it on a private bus (dbus-run-session), or, without
+	// that tool, with a bus address that points nowhere.
 	cmd := exec.Command("node", "smoke.cjs")
-	cmd.Env = append(os.Environ(), "NODE_PATH="+modules, "BASE_URL="+ts.URL, "TOKEN="+devserver.DefaultToken,
+	env := os.Environ()
+	if dbus, err := exec.LookPath("dbus-run-session"); err == nil {
+		cmd = exec.Command(dbus, "--", "node", "smoke.cjs")
+	} else {
+		env = append(env, "DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent/sy-no-bus")
+	}
+	cmd.Env = append(env, "NODE_PATH="+modules, "BASE_URL="+ts.URL, "TOKEN="+devserver.DefaultToken,
 		"PAIR_SECRET="+devserver.PairSecret, "PAIR_CODE="+devserver.PairCode, "OWNER_SECRET="+devserver.OwnerSecret, "EXPIRED_OWNER_SECRET="+devserver.ExpiredOwnerSecret, "OUT_DIR="+out)
 	b, err := cmd.CombinedOutput()
 	t.Logf("%s", b)

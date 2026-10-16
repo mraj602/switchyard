@@ -57,7 +57,10 @@ func IsSessionDevice(d store.Device) bool {
 // "login:<device id>") whose own token goes into the HttpOnly, SameSite=Strict cookie
 // sy_session. The pasted token is never stored in the browser, the cookie can only read
 // (even when a desktop token was pasted), and revoking the pasted device revokes the
-// session too. Unknown or revoked token: 401; no read scope: 403; malformed body: 400.
+// session too. A desktop device keeps one board session: its Hub view is one cookie jar, so a
+// new login revokes the sessions it made before (in the same transaction), and an app that
+// signs in at every start or after a lost cookie leaves no trail of "board via" devices.
+// Unknown or revoked token: 401; no read scope: 403; malformed body: 400.
 func (a *Authenticator) LoginHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
@@ -84,8 +87,19 @@ func (a *Authenticator) LoginHandler() http.Handler {
 			WriteError(w, http.StatusForbidden, "forbidden", "this token cannot read (machine tokens only upload)")
 			return
 		}
-		c, err := Create(r.Context(), a.Store, CreateRequest{Kind: "browser", Name: "board via " + d.Name,
-			CreatedBy: "login:" + d.ID, Parent: d.ID, Scopes: []string{"read"}})
+		p, err := Prepare(CreateRequest{Kind: "browser", Name: "board via " + d.Name,
+			CreatedBy: "login:" + d.ID, Parent: d.ID, Scopes: []string{"read"}}, a.Store.Now())
+		if err == nil {
+			err = a.Store.Write(r.Context(), func(tx *store.Tx) error {
+				if d.Kind == "desktop" {
+					if err := tx.RevokeBoardSessions(d.ID); err != nil {
+						return err
+					}
+				}
+				return p.Insert(tx)
+			})
+		}
+		c := p.Created
 		if errors.Is(err, ErrUnauthorized) {
 			a.fail(clientIP(r))
 			WriteError(w, http.StatusUnauthorized, "unauthorized", "unknown or revoked token")

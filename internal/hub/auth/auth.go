@@ -169,6 +169,31 @@ func ViaCookie(ctx context.Context) bool {
 // IsOwnerSession reports whether d is an owner session made by `sy hub owner-link`.
 func IsOwnerSession(d store.Device) bool { return strings.HasPrefix(d.CreatedBy, "owner-link:") }
 
+// OwnerCreatedBy is the created_by of an owner session made from link code: "owner-link:<code
+// id>", plus "@<device id>" when the link was opened in a board session of that device (the
+// desktop app's Hub view), so the session still says which app it lives in.
+func OwnerCreatedBy(code, via string) string {
+	if via == "" {
+		return "owner-link:" + code
+	}
+	return "owner-link:" + code + "@" + via
+}
+
+// ViaOf is the id of the device a board session was opened from: the device whose token a
+// login swapped ("login:<id>"), or the one whose board session swapped an owner link
+// ("owner-link:<code id>@<id>"). "" for any other device.
+func ViaOf(d store.Device) string {
+	if id, ok := strings.CutPrefix(d.CreatedBy, "login:"); ok {
+		return id
+	}
+	if rest, ok := strings.CutPrefix(d.CreatedBy, "owner-link:"); ok {
+		if _, id, ok := strings.Cut(rest, "@"); ok {
+			return id
+		}
+	}
+	return ""
+}
+
 // Require authenticates the request (bearer header, ?token= when allowed, else the
 // board's cookie) and checks that the device holds at least one of scopes. Unknown,
 // revoked or expired tokens get 401, a missing scope 403 (tokens.md 3). A request that
