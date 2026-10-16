@@ -221,7 +221,24 @@ func (tx *Tx) RevokeDevice(id string) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrNotFound
 	}
-	_, err = tx.exec(`UPDATE device SET revoked_at = ? WHERE created_by = ? AND revoked_at IS NULL`, tx.NowMS(), "login:"+id)
+	return tx.revokeSessionsOf(id)
+}
+
+// revokeSessionsOf revokes the live sessions made from device id: its board logins
+// ("login:<id>") and the owner sessions opened in one of them ("owner-link:<code>@<id>").
+func (tx *Tx) revokeSessionsOf(id string) error {
+	_, err := tx.exec(`UPDATE device SET revoked_at = ? WHERE (created_by = ? OR created_by GLOB ?) AND revoked_at IS NULL`,
+		tx.NowMS(), "login:"+id, "owner-link:*@"+id)
+	return err
+}
+
+// RevokeBoardSessions revokes the live board logins made from device parent ("login:<parent>")
+// before a new one is made: a desktop app keeps one (auth.LoginHandler).
+func (tx *Tx) RevokeBoardSessions(parent string) error {
+	if err := tx.CheckNotFrozen(); err != nil {
+		return err
+	}
+	_, err := tx.exec(`UPDATE device SET revoked_at = ? WHERE created_by = ? AND revoked_at IS NULL`, tx.NowMS(), "login:"+parent)
 	return err
 }
 

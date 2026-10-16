@@ -474,6 +474,25 @@ test('seat:update goes through the owner cookie (PATCH), never the desktop token
   await t.close();
 });
 
+test('one board session: no new login while the cookie is there, and the cookie is flushed to disk', async () => {
+  const t = await harness();
+  await t.h.start();
+  await t.handlers['hub:pair']({});
+  await t.handlers['hub:route']({ route: '#/' });
+  const logins = () => t.fake.callsOf('session.fetch').filter((c) => c[1].endsWith('/v1/session/login')).length;
+  assert.equal(logins(), 1);
+  const flushes = () => t.fake.callsOf('cookies.flushStore').filter((c) => c[0] === 'persist:sy-hub').length;
+  assert.ok(flushes() >= 1, 'the new cookie is written at once');
+  // a seat edit without owner rights used to log in again (a new board session each time)
+  await t.handlers['seat:update']({ seat: SEAT.id, label: 'x' });
+  await t.handlers['seat:update']({ seat: SEAT.id, label: 'y' });
+  assert.equal(logins(), 1);
+  const before = flushes();
+  await t.h.stop();
+  assert.equal(flushes(), before + 1, 'stop flushes the hub cookie');
+  await t.close();
+});
+
 // ---- the claude.ai handoff
 
 test('a claude.ai session link goes to the tab with the matching seat', async () => {

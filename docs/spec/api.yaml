@@ -79,7 +79,9 @@ paths:
         only, recorded as made from the pasted token's device. Afterwards the read
         endpoints and `/v1/stream` accept that cookie. A cookie never carries `write` or
         `push`, even when a desktop token was pasted; revoking the pasted token's device
-        revokes its board sessions. The board never keeps the token in JavaScript.
+        revokes its board sessions. A desktop token keeps one board session: its login
+        revokes the board sessions made from it before (the app's Hub view has one cookie
+        jar). The board never keeps the token in JavaScript.
         Unknown or revoked token: `401`; a token without `read`: `403`; more than 10
         failed logins a minute: `429`. Same-origin only; no CORS headers are sent.
       security: []
@@ -2491,6 +2493,22 @@ components:
           properties:
             version: {type: string}
             public_url: {type: [string, "null"]}
+        via:
+          description: |
+            The device this board session was opened from, when it is a session made by
+            `/v1/session/login` (that token's device) or an owner session whose link was
+            opened in such a session (`owner-link:<code>@<device id>`); `null` otherwise.
+            A board with `via.kind` = `desktop` is the desktop app's Hub view: the app shows
+            the hub's alerts as notifications itself (desktop.md C9), so the board offers no
+            Web Push, install or pairing of "this browser".
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [id, kind, name]
+              properties:
+                id: {type: string}
+                kind: {type: string, enum: [machine, desktop, phone, browser]}
+                name: {type: string}
 
     PairCode:
       type: object
