@@ -33,9 +33,8 @@ pairing.md (desktop codes, owner links), machines.md 4.4 (admin channel).
   `reading` is one of `"on"`, `"off"` or `"never_asked"`. `stopped` is `null` or
   `{"status": 429, "at": "…"}`. `warning_accepted` is the warning version that was accepted,
   or `0`.
-- Tab id: `t_` + 16 lowercase hex characters from `crypto.randomBytes(8)`. Tabs imported from
-  the prototype keep the prototype's 8-hex account id unchanged, because the phase 0 importer
-  already used it as `web_usage.payload.tab_id`, so the web seat continues. Pattern:
+- Tab id: `t_` + 16 lowercase hex characters from `crypto.randomBytes(8)`. Tab ids of the
+  earlier 8-hex form (from the removed prototype import) are still accepted. Pattern:
   `^(t_[0-9a-f]{16}|[0-9a-f]{8})$`. Partition: `persist:tab-<tab id>`.
 - `client` in records: `switchyard-desktop/<app version>`.
 - Single-instance lock (per user-data folder). `--background` starts hidden. A second launch
@@ -154,23 +153,21 @@ not used). Before calling a handler it checks the following.
 | `accounts:local` | — | `sy account list --json` result | C |
 | `accounts:share` | `{folder, share: string}` | `{ok, error?}` | C |
 | `settings:set` | `{keep_running?, notifications?, autostart?, start_hidden?}` | `Settings` | E |
-| `import:prototype` | `{dry_run: bool}` | `ImportReport` | F |
 | push `state` | `ShellState` (debounced 100 ms) | | A (state is assembled from every module through `bus.js`) |
 | push `toast` | `{level, text}` | | A |
 
 `ShellState` holds the tabs (id, name, colour, label and seat id from the seat when one is known,
 reading state, the local strip windows, last read, the stop reason), the selected view, the hub
 (url, connected, owner, version, service state, needs-you count) and settings. It never holds
-tokens or secrets. The field-level shapes (`ShellState`, `TabState`, `HubState`, `Settings`,
-`ImportReport`) are the JSDoc types at the end of `src/shared/ipc.js`.
+tokens or secrets. The field-level shapes (`ShellState`, `TabState`, `HubState`, `Settings`) are the JSDoc types at the end of `src/shared/ipc.js`.
 
 Wave 0 details fixed by `src/shared/ipc.js`:
 
 - `window.sy` function names, in table order: `state`, `selectView`, `hubRoute`, `addTab`,
   `updateTab`, `removeTab`, `reorderTabs`, `reloadTab`, `homeTab`, `openTabExternal`,
   `acceptWarning`, `setReading`, `setSend`, `resumeReading`, `refreshUsage`, `pair`,
-  `ownerSignIn`, `hubService`, `updateSeat`, `localAccounts`, `shareAccount`, `setSettings`,
-  `importPrototype`; plus `on(event, cb)`, which returns an unsubscribe function. Each
+  `ownerSignIn`, `hubService`, `updateSeat`, `localAccounts`, `shareAccount`, `setSettings`;
+  plus `on(event, cb)`, which returns an unsubscribe function. Each
   function takes one argument object (or none, for the channels without arguments) and
   returns the handler's promise.
 - Push channels go over the wire under their own names (`state`, `toast`).
@@ -371,7 +368,6 @@ account in a hidden or background start until the window is shown.
     closed, tray.
   - **Hub settings** links: Machines, Alerts and rules, Devices, Phone pairing, the hub's own
     Settings. Each opens the Hub view at its route (pwa.md 3).
-  - **Import from the prototype** (WP-F; it shows a dry run first).
 
 ## C9. Notifications and tray (WP-E)
 
@@ -448,12 +444,12 @@ only `main/index.js` imports `electron`, and only `main/sy/` imports `child_proc
 test in `main/boot.test.js` checks both). `main/boot.js` creates the modules in this order
 (`START_ORDER`, as built in wave 2):
 `paths` → `security` → `protocol` → `ipc` → `store` → `autostart` → `background` →
-`importPrototype` → `sy` → `hub` → `window` → `state` → `tabs` → `usage` → `tray` → `notify`
+`sy` → `hub` → `window` → `state` → `tabs` → `usage` → `tray` → `notify`
 → `menu`. Before `ready`: `paths`, `security.applyGlobal()`, `protocol.registerSchemes()`,
 `ipc` (right after the bus), `store`, `autostart` and `background`, whose `claim()` (the
 single-instance lock) ends a second launch there. `background` reaches the window and tray
 through late-bound getters, since they exist only after `ready`. After `ready`: the store
-loads, `--import-prototype` runs before any tab opens, `ipc.start()` precedes the window,
+loads, `ipc.start()` precedes the window,
 `hub.start()` follows it, `tabs.start()` then `usage.start()` run once the window exists,
 and the hub view is made when the Hub view is selected and the hub status is `ok`. Quit runs
 `SHUTDOWN_ORDER`: `usage.stop` → `tabs.stop` (cookies flushed) → `hub.stop` (the stream) →
