@@ -75,6 +75,9 @@ type Options struct {
 	CertProbe func(ctx context.Context) (CertInfo, error)
 	// Rebaseline re-records which settings.json files are symlinks instead of warning.
 	Rebaseline bool
+	// HealthProbe asks a remote hub for GET /health; nil: the real call, 3 s, through
+	// hub.dial. Tests inject a fake.
+	HealthProbe func(ctx context.Context, hubURL, dial string) (client.Health, error)
 	// HubListen is the hub's listen address for hints; "" = the installed hub service's
 	// --listen (service.InstalledListen). Tests set it.
 	HubListen string
@@ -130,7 +133,7 @@ func Run(ctx context.Context, o Options) Report {
 	checkAgent(&rep, o, cfg)
 	checkOutbox(&rep, o, cfg)
 	checkMachine(ctx, &rep, o, cfg)
-	checkPush(ctx, &rep, o)
+	checkPush(ctx, &rep, o, cfg)
 	checkTerminal(ctx, &rep, o, cfg, claudeVersion)
 	return rep
 }
