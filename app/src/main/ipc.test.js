@@ -125,7 +125,7 @@ test('before the window exists every call is refused', async () => {
 
 test('a channel nobody registered rejects as not available', async () => {
   const { e, shell } = setup();
-  await assert.rejects(e.ipcMain._invoke('import:prototype', shell, { dry_run: true }), /not available/);
+  await assert.rejects(e.ipcMain._invoke('view:select', shell, { view: 'hub' }), /not available/);
 });
 
 test('handler errors reach the caller', async () => {

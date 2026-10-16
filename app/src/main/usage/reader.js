@@ -21,6 +21,8 @@ export const READER_SCRIPT = `(async () => {
   const j = async (u) => {
     try {
       const r = await fetch(u, { credentials: 'include', headers: { accept: 'application/json' } });
+      // A redirect to the login page is a real sign-out (the same as a 401).
+      if (r.redirected && /\\/(login|logout)(\\/|\\?|$)/.test(new URL(r.url).pathname)) return { __status: 401 };
       if (!r.ok) return { __status: r.status };
       return await r.json();
     } catch (e) {
@@ -107,7 +109,8 @@ const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 /**
  * Check a reader result in main before use: shapes, total size (≤ 512 KiB), uuids.
  * Returns {kind: 'ok', orgs, account, activeOrg, fetchMs}, or {kind: 'stop', status, message}
- * for a 401, 403 or 429 on any call, or {kind: 'retry', message} for anything else wrong.
+ * for a 401 or 429 on any call, or a 403 that leaves no organization to read (a 403 on only some
+ * orgs' usage drops those orgs), or {kind: 'retry', message} for anything else wrong.
  * The `orgs[].org` and `account` carry only their listed keys; `usage` is kept whole.
  */
 export function checkResult(raw) {
@@ -120,16 +123,21 @@ export function checkResult(raw) {
   }
   if (size > READER_MAX_BYTES) return { kind: 'retry', message: 'result too large' };
 
-  const statuses = [];
-  const note = (v) => {
-    if (isStatusObj(v)) statuses.push(v.__status);
-  };
-  note(raw.orgs);
-  if (Array.isArray(raw.orgs)) for (const o of raw.orgs) note(o?.usage);
-  note(raw.account);
-  const stop = statuses.find((s) => STOP_STATUSES.includes(s));
-  if (stop !== undefined) return { kind: 'stop', status: stop, message: stopMessage(stop) };
-  if (statuses.length) return { kind: 'retry', message: statuses[0] === 0 ? 'network error' : `HTTP ${statuses[0]}` };
+  // Status handling. 401 anywhere: signed out. 429 anywhere: rate limited. A 403 on the
+  // organizations list or the account is "not available" for the whole account. A 403 on one
+  // org's /usage only drops that org (a Team member belongs to several orgs, and not every one
+  // serves usage to a member): the others are read, and only when none is left does the read stop.
+  const top = [raw.orgs, raw.account].filter(isStatusObj).map((v) => v.__status);
+  const perOrg = Array.isArray(raw.orgs) ? raw.orgs.map((o) => (isStatusObj(o?.usage) ? o.usage.__status : null)) : [];
+  const all = [...top, ...perOrg.filter((s) => s !== null)];
+  for (const s of [401, 429]) if (all.includes(s)) return { kind: 'stop', status: s, message: stopMessage(s) };
+  if (top.includes(403)) return { kind: 'stop', status: 403, message: stopMessage(403) };
+  const other = all.filter((s) => s !== 403);
+  if (other.length) return { kind: 'retry', message: other[0] === 0 ? 'network error' : `HTTP ${other[0]}` };
+  if (Array.isArray(raw.orgs) && raw.orgs.length > 0 && perOrg.every((s) => s === 403)) {
+    return { kind: 'stop', status: 403, message: stopMessage(403) };
+  }
+  if (Array.isArray(raw.orgs)) raw = { ...raw, orgs: raw.orgs.filter((_, i) => perOrg[i] !== 403) };
 
   if (!Array.isArray(raw.orgs) || raw.orgs.length === 0) return { kind: 'retry', message: 'no organizations' };
   const orgs = [];
@@ -149,6 +157,7 @@ export function checkResult(raw) {
 /** Text of the error record and the strip for a stop status. */
 export function stopMessage(status) {
   if (status === 429) return 'rate limited';
-  if (status === 401 || status === 403) return 'signed out';
+  if (status === 401) return 'signed out';
+  if (status === 403) return 'usage not available for this account';
   return `HTTP ${status}`;
 }
