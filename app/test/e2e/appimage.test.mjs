@@ -27,7 +27,7 @@ import path from 'node:path';
 import { sandbox, startHub, waitFor, sleep, freePort, outDir, APP_DIR, LINUX_ARGS } from '../smoke/harness.mjs';
 import { HUB_TOKEN_FILE } from '../../src/shared/constants.js';
 
-const NOT_CONNECTED = 'sy is not connected to a hub';
+const NOT_CONNECTED = 'Connect to a hub.';
 
 function findAppImage() {
   if (process.env.SY_APPIMAGE) return path.resolve(process.env.SY_APPIMAGE);
