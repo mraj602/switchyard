@@ -12,7 +12,7 @@ import { WARNING_VERSION } from '../shared/constants.js';
 import { barWidth, pct, bytes, plural } from '../shared/format.js';
 import {
   tabTitle, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds, droppedIds,
-  effectiveView, windowRows, readingStatus, lastReadTitle, hubBanner, hubUsable, hubSummary,
+  effectiveView, windowRows, readingStatus, lastReadTitle, hubBanner, hubUsable, hubSummary, hubChip, ownerPill,
   SHARE_SWITCHES, foldersOf, isPrimary, switchState, shareSpec, loginCommand, COLOUR_RE, PAIR_CODE_RE,
 } from './view.js';
 
@@ -74,7 +74,7 @@ export function start({ sy, root }) {
   const ui = {
     v: 0, overlayFor: null, returnView: null, dialog: null, drafts: {}, errors: {}, busy: new Set(),
     dismissed: new Set(), toast: null, folders: null, foldersError: '', foldersLoading: false,
-    section: 'tabs', pairCode: '', pairError: '',
+    section: 'computer', pairCode: '', pairError: '', useCode: false, connectUrl: '', connectCode: '', connectError: '',
   };
   const last = {};
   let ready = false;
@@ -177,7 +177,7 @@ export function start({ sy, root }) {
     if (!ready) return;
     const v = view();
     const minute = Math.floor(Date.now() / TICK_MS);
-    paint('bar', [state.tabs.map((t) => [t.id, t.name, t.label, t.colour]), state.hub.status, state.hub.needs_you, v, ui.toast, state.view], bar, buildBar);
+    paint('bar', [state.tabs.map((t) => [t.id, t.name, t.label, t.colour]), state.hub.status, state.hub.needs_you, state.hub.owner, state.hub.owner_until, state.hub.removed, state.hub.board_blocked, v, ui.toast, state.view], bar, buildBar);
     const t = tabById(v);
     paint('strip', [t, minute, ui.v], stripHost, () => (t ? buildStrip(t) : h('div', { hidden: true })));
     paint('content', [v, state, ui.v, ui.folders, ui.foldersError, ui.section, minute], content, () => buildContent(v));
@@ -217,10 +217,10 @@ export function start({ sy, root }) {
       onkeydown: onTabKeys,
     }, hubTab, tabEls);
 
-    const hb = hubBanner(state.hub);
-    const chip = hb
-      ? h('button', { class: `hub-chip ${hb.level}`, fk: 'hub-chip', text: hubSummary(state.hub), title: 'Open the hub settings', onclick: () => openSettings('hub') })
-      : null;
+    const hc = hubChip(state.hub);
+    const chip = h('button', { class: `hub-chip ${hc.level}`, fk: 'hub-chip', text: hc.text, title: 'Open the Hub tab', onclick: () => select('hub') });
+    const pill = ownerPill(state.hub);
+    const pillEl = pill ? h('span', { class: `owner-pill ${pill.owner ? 'owner' : ''}`.trim(), fk: 'owner-pill', text: pill.text, title: pill.owner ? 'Signed in as owner on this computer' : 'This computer can view, not change' }) : null;
     const tt = ui.toast ? h('div', { class: `toast ${ui.toast.level === 'error' ? 'error' : ui.toast.level === 'warn' ? 'warn' : ''}`.trim(), role: 'status', 'aria-live': 'polite', text: ui.toast.text, title: ui.toast.text }) : null;
 
     return [
@@ -230,10 +230,11 @@ export function start({ sy, root }) {
       h('span', { class: 'spacer' }),
       tt,
       chip,
+      pillEl,
       h('button', {
-        class: 'icon-btn', fk: 'settings', title: 'Settings (Ctrl+,)', 'aria-current': v === 'settings' ? 'page' : null,
+        class: 'icon-btn settings-btn', fk: 'settings', title: 'App settings (Ctrl+,)', 'aria-label': 'App settings', 'aria-current': v === 'settings' ? 'page' : null,
         onclick: () => select('settings'),
-      }, h('span', { text: 'Settings' })),
+      }, h('span', { class: 'gear', text: '\u2699', 'aria-hidden': 'true' }), h('span', { text: 'App settings' })),
     ];
   }
 
@@ -364,29 +365,88 @@ export function start({ sy, root }) {
   function hubPanel() {
     const hub = state.hub;
     const hb = hubBanner(hub);
-    const inner = h('div', { class: 'inner' }, h('h1', { text: 'Hub' }));
-    if (!hb) {
-      inner.append(h('p', { class: 'hint', text: hub.url ? `Loading the hub board from ${hub.url}…` : 'Loading the hub board…' }));
-    } else {
-      inner.append(bannerEl(hb, 'hub'));
-      if (hb.action === 'service') inner.append(serviceControls());
-      for (const b of state.banners || []) inner.append(h('div', { class: `banner ${b.level === 'warn' ? 'warn' : b.level === 'error' ? 'error' : ''}`.trim(), role: 'status', text: b.text }));
-      inner.append(h('p', { class: 'hint' }, 'Account tabs work without a hub. ', h('button', { class: 'linkish', fk: 'hub-open-settings', text: 'Open hub settings', onclick: () => openSettings('hub') })));
+    if (!hb || (hub.status === 'ok' && !hub.board_blocked)) {
+      // The board covers this panel (status ok). Read-only: a strip above it with one visible button.
+      const strip = hub.status === 'ok' && !hub.owner
+        ? h('div', { class: 'hub-strip', role: 'status', fk: 'hub-strip' },
+          h('span', { text: 'Read-only. Sign in as owner to change alerts, devices and accounts.' }),
+          h('button', { class: 'btn btn-primary', fk: 'owner-sign-in', text: 'Sign in as owner', disabled: busy('owner'), onclick: ownerSignInClick }))
+        : null;
+      const err = hb ? bannerEl(hb, 'hub') : null;
+      return h('div', { class: 'hub-panel ok', role: 'tabpanel', 'aria-labelledby': 'tab-hub' }, strip,
+        h('div', { class: 'inner' }, err, h('p', { class: 'hint', text: hub.url ? `Loading the hub board from ${hub.url}…` : 'Loading the hub board…' })));
     }
+    const inner = h('div', { class: 'inner' }, h('h1', { text: 'Hub' }), bannerEl(hb, 'hub'));
+    for (const b of state.banners || []) inner.append(h('div', { class: `banner ${b.level === 'warn' ? 'warn' : b.level === 'error' ? 'error' : ''}`.trim(), role: 'status', text: b.text }));
+    if (hub.direct && hub.status === 'needs_pairing') {
+      inner.append(h('p', { class: 'hint' }, `Hub: ${hub.url}. `, h('button', { class: 'linkish', fk: 'hub-other', text: 'Use another hub', onclick: () => act('unpair', () => sy.hubUnpair({ forget: true })) })));
+    }
+    inner.append(h('p', { class: 'hint' }, 'Account tabs work without a hub. ', h('button', { class: 'linkish', fk: 'hub-open-settings', text: 'Open App settings', onclick: () => openSettings('computer') })));
     return h('div', { class: 'hub-panel', role: 'tabpanel', 'aria-labelledby': 'tab-hub' }, inner);
   }
 
   function bannerEl(hb, where) {
-    const el = h('div', { class: `banner ${hb.level === 'warn' ? 'warn' : hb.level === 'error' ? 'error' : ''}`.trim(), role: 'status' }, h('div', { text: hb.text }));
+    const el = h('div', { class: `banner ${hb.level === 'warn' ? 'warn' : hb.level === 'error' ? 'error' : ''}`.trim(), role: 'status' },
+      hb.title ? h('div', { class: 'banner-title', text: hb.title }) : null, h('div', { text: hb.text }));
     const actions = h('div', { class: 'banner-actions' });
     if (hb.command) actions.append(cmdRow(hb.command, `cmd-${where}-${hb.command}`));
-    if (hb.action === 'pair') actions.append(pairForm(where));
+    if (hb.action === 'connect') actions.append(connectForm(where));
+    if (hb.action === 'pair' || (hb.action === 'pair-click' && ui.useCode)) actions.append(pairForm(where));
+    if (hb.action === 'pair-click' && ui.useCode) actions.append(h('button', { class: 'linkish', fk: `pair-no-code-${where}`, text: 'Pair without a code', onclick: () => { ui.useCode = false; ui.pairError = ''; ui.v++; render(); } }));
     if (hb.action === 'pair-click') {
-      actions.append(h('button', { class: 'btn btn-primary', fk: `pair-click-${where}`, text: 'Pair this computer', disabled: busy('pair'), onclick: () => doPair('') }));
-      if (ui.pairError) actions.append(h('span', { class: 'err', text: ui.pairError }));
+      if (!ui.useCode) {
+        actions.append(h('button', { class: 'btn btn-primary', fk: `pair-click-${where}`, text: 'Pair this computer', disabled: busy('pair'), onclick: () => doPair('') }));
+        actions.append(h('button', { class: 'linkish', fk: `pair-use-code-${where}`, text: 'Use a code instead', onclick: () => { ui.useCode = true; ui.pairError = ''; ui.v++; render(); } }));
+      }
+      if (ui.pairError && ui.useCode === false) actions.append(h('span', { class: 'err', text: ui.pairError }));
+    }
+    if (hb.action === 'retry' || hb.action === 'retry-service') {
+      actions.append(h('button', { class: 'btn btn-primary', fk: `retry-${where}`, text: 'Try again', disabled: busy('retry'), onclick: () => act('retry', () => sy.hubRetry()) }));
+      if (hb.action === 'retry-service' && state.hub.service && state.hub.service !== 'missing' && state.hub.service !== 'running') {
+        actions.append(h('button', { class: 'btn', fk: `start-hub-${where}`, text: 'Start hub', disabled: busy('service'), onclick: () => act('service', () => sy.hubService({ action: 'start' })) }));
+      }
     }
     if (actions.childNodes.length) el.append(actions);
     return el;
+  }
+
+  function connectForm(where) {
+    return h('div', { class: 'connect-form' },
+      h('label', { for: `connect-url-${where}`, text: 'Hub address' }),
+      h('input', {
+        type: 'text', id: `connect-url-${where}`, fk: `connect-url-${where}`, placeholder: 'https://hub.example.com', autocomplete: 'off', spellcheck: 'false',
+        value: ui.connectUrl, oninput: (e) => { ui.connectUrl = e.target.value; }, onkeydown: (e) => { if (e.key === 'Enter') doConnect(); },
+      }),
+      h('label', { for: `connect-code-${where}`, text: 'Pairing code' }),
+      h('input', {
+        type: 'text', id: `connect-code-${where}`, fk: `connect-code-${where}`, placeholder: '123-456', inputmode: 'numeric', autocomplete: 'off', maxlength: '7',
+        value: ui.connectCode, oninput: (e) => { ui.connectCode = e.target.value; }, onkeydown: (e) => { if (e.key === 'Enter') doConnect(); },
+      }),
+      h('div', { class: 'hint small', text: 'Get a code on any owner device: More, Devices, Add desktop app.' }),
+      h('div', { class: 'row-actions' },
+        h('button', { class: 'btn btn-primary', fk: `connect-btn-${where}`, text: 'Connect', disabled: busy('connect'), onclick: () => doConnect() }),
+        ui.connectError ? h('span', { class: 'err', role: 'alert', text: ui.connectError }) : null));
+  }
+
+  async function doConnect() {
+    const url = ui.connectUrl.trim();
+    const code = ui.connectCode.trim();
+    if (!url) return connectFail('Enter the hub address, for example https://hub.example.com.');
+    if (code && !PAIR_CODE_RE.test(code)) return connectFail('The code is 6 digits, like 123-456.');
+    if (!code) return connectFail('Type the pairing code. Get one on any owner device: More, Devices, Add desktop app.');
+    ui.connectError = '';
+    const r = await act('connect', () => sy.hubConnect({ url, code }));
+    if (r && r.ok) {
+      ui.connectCode = '';
+      toast('info', 'Paired with the hub.');
+    } else if (r) connectFail(r.error || 'Could not connect.');
+    return undefined;
+  }
+
+  function connectFail(text) {
+    ui.connectError = text;
+    ui.v++;
+    render();
   }
 
   function pairForm(where) {
@@ -419,6 +479,7 @@ export function start({ sy, root }) {
     const r = await act('pair', () => sy.pair(c ? { code: c } : {}));
     if (r && r.ok) {
       ui.pairCode = '';
+      ui.useCode = false;
       toast('info', 'Paired with the hub.');
     } else if (r) {
       ui.pairError = r.error || 'Pairing failed.';
@@ -461,17 +522,17 @@ export function start({ sy, root }) {
   // ---- settings
 
   const SECTIONS = [
+    ['computer', 'This computer'],
+    ['notify', 'Notifications'],
     ['tabs', 'Account tabs'],
     ['folders', 'Claude Code folders'],
-    ['hub', 'Hub'],
-    ['notify', 'Notifications and background'],
-    ['links', 'Hub settings'],
+    ['login', 'Start at login'],
     ['about', 'About'],
   ];
 
   function settingsPage() {
     if (ui.folders === null && !ui.foldersLoading && !ui.foldersError) setTimeout(loadFolders, 0);
-    const nav = h('nav', { class: 'page-nav', 'aria-label': 'Settings sections' }, h('div', { class: 'nav-title', text: 'Settings' }),
+    const nav = h('nav', { class: 'page-nav', 'aria-label': 'App settings sections' }, h('div', { class: 'nav-title', text: 'App settings' }),
       SECTIONS.map(([id, label]) => h('button', {
         fk: `nav-${id}`, text: label, 'aria-current': String(ui.section === id),
         onclick: () => {
@@ -483,11 +544,10 @@ export function start({ sy, root }) {
         },
       })));
     const banners = (state.banners || []).map((b) => h('div', { class: `banner ${b.level === 'warn' ? 'warn' : b.level === 'error' ? 'error' : ''}`.trim(), role: 'status', text: b.text }));
-    const hb = hubBanner(state.hub);
     const main = h('div', { class: 'page-main' },
-      h('h1', { text: 'Settings' }),
+      h('h1', { text: 'App settings' }),
       banners.length ? h('div', { class: 'banners' }, banners) : null,
-      sectionTabs(), sectionFolders(), sectionHub(hb), sectionNotify(), sectionLinks(), sectionAbout());
+      sectionComputer(), sectionNotify(), sectionTabs(), sectionFolders(), sectionLogin(), sectionAbout());
     return h('div', { class: 'page' }, nav, main);
   }
 
@@ -682,28 +742,37 @@ export function start({ sy, root }) {
     await loadFolders();
   }
 
-  // -- hub
+  // -- this computer
 
-  function sectionHub(hb) {
+  function sectionComputer() {
     const hub = state.hub;
+    const hb = hubBanner(hub);
+    const paired = !!hub.paired;
+    const pill = ownerPill(hub);
     const dl = h('dl', { class: 'kv' },
-      h('dt', { text: 'Address' }), h('dd', { text: hub.url || 'none' }),
-      h('dt', { text: 'Status' }), h('dd', { text: hubSummary(hub) }),
-      h('dt', { text: 'sy connected' }), h('dd', { text: hub.connected ? 'yes' : 'no' }),
-      h('dt', { text: 'Hub version' }), h('dd', { text: hub.version || '–' }),
-      h('dt', { text: 'Owner' }), h('dd', {},
-        h('span', { text: hub.owner ? 'signed in as owner' : 'read-only' }),
-        hub.owner ? null : h('button', { class: 'btn', fk: 'owner-sign-in', text: 'Sign in as owner', disabled: !hubUsable(hub) || busy('owner'), onclick: ownerSignIn })),
-      h('dt', { text: 'Pairing' }), h('dd', {}, h('span', { text: hub.paired ? 'paired (desktop token stored)' : 'not paired' })),
+      h('dt', { text: 'Name' }), h('dd', { text: hub.machine || '–' }),
+      h('dt', { text: 'Hub' }), h('dd', { text: hub.url ? `${hub.url} · ${hubSummary(hub)}` : 'none' }),
+      h('dt', { text: 'Pairing' }), h('dd', { text: paired ? `paired${hub.direct ? '' : ' through sy'}` : hub.removed ? 'removed from the hub' : 'not paired' }),
+      h('dt', { text: 'Access' }), h('dd', {},
+        h('span', { text: pill ? pill.text : hub.owner ? 'Owner' : 'Read-only' }),
+        hub.owner
+          ? h('button', { class: 'btn', fk: 'owner-sign-out', text: 'Sign out of owner', disabled: busy('owner-out'), onclick: () => act('owner-out', async () => { await sy.ownerSignOut(); toast('info', 'Signed out of owner. This computer can view, not change.'); }) })
+          : h('button', { class: 'btn', fk: 'owner-sign-in-settings', text: 'Sign in as owner', disabled: !hubUsable(hub) || busy('owner'), onclick: ownerSignInClick })),
       hub.local ? [h('dt', { text: 'Hub service' }), h('dd', {}, h('span', { text: hub.service || 'unknown' }), hub.service !== 'missing' ? serviceButtons() : null,
         hub.service === 'missing' ? h('span', { class: 'muted' }, 'Not installed: run ', h('code', { text: 'sy setup --hub here' })) : null)] : null,
       hub.admin ? [h('dt', { text: 'Admin channel' }), h('dd', { text: hub.admin })] : null,
     );
     const warn = state.settings.storage_backend === 'basic_text'
       ? h('div', { class: 'banner warn', role: 'status', text: 'This system has no secret store, so the hub token is kept in a file readable only by you (mode 0600), not encrypted.' }) : null;
-    return section('hub', 'Hub', 'The hub board is shown in the Hub tab. Numbers there and in the strip come from the hub when it knows the account.',
-      hb ? bannerEl(hb, 'settings') : null, warn, h('div', { class: 'card card-pad' }, dl),
-      hub.owner ? null : h('p', { class: 'hint small', text: 'Owner sign-in asks sy for a one-time link through your local hub or the admin channel. There is no password to type.' }));
+    return section('computer', 'This computer', 'Connection, pairing and owner access for this app. The board itself is in the Hub tab; hub-wide settings are in its sidebar, under Hub settings.',
+      hb && !hubUsable(hub) ? bannerEl(hb, 'settings') : null, warn, h('div', { class: 'card card-pad' }, dl),
+      paired || hub.direct ? h('div', { class: 'row-actions' },
+        paired ? h('button', { class: 'btn btn-danger', fk: 'unpair', text: 'Unpair this computer', disabled: busy('unpair'), onclick: openUnpair }) : null) : null);
+  }
+
+  async function ownerSignInClick() {
+    if (state.hub.admin || state.hub.local) await ownerSignIn();
+    else openOwnerLink();
   }
 
   function serviceButtons() {
@@ -715,44 +784,37 @@ export function start({ sy, root }) {
   }
 
   async function ownerSignIn() {
-    const r = await act('owner', () => sy.ownerSignIn());
+    const r = await act('owner', () => sy.ownerSignIn({}));
     if (r && r.ok === false) toast('error', r.error || 'Owner sign-in did not work.');
     else if (r) await select('hub');
   }
 
-  // -- notifications and background
+  // -- notifications
 
-  function sectionNotify() {
-    const s = state.settings;
-    const set = (key) => (on) => act(`set-${key}`, async () => {
+  function settingSwitch(key) {
+    return (on) => act(`set-${key}`, async () => {
       const r = await sy.setSettings({ [key]: on });
       if (r && typeof r === 'object') state = { ...state, settings: { ...state.settings, ...r } };
     });
-    return section('notify', 'Notifications and background', null,
-      h('div', { class: 'card card-pad' },
-        h('div', { class: 'switches' },
-          sw('set-notifications', 'Notify me when a session needs me', s.notifications, set('notifications'), { hint: 'From hub alerts only. The hub decides what and when, including quiet hours.' })),
-        h('div', { class: 'switches' },
-          sw('set-autostart', 'Run at login', s.autostart, set('autostart')),
-          sw('set-keep_running', 'Keep running when the window is closed', s.keep_running, set('keep_running')))));
   }
 
-  // -- hub settings links
+  function sectionNotify() {
+    const s = state.settings;
+    return section('notify', 'Notifications', null,
+      h('div', { class: 'card card-pad' },
+        h('div', { class: 'switches' },
+          sw('set-notifications', 'Notify me when a session needs me', s.notifications, settingSwitch('notifications'), { hint: 'From hub alerts only. The hub decides what and when, including quiet hours.' }),
+          sw('set-keep_running', 'Keep running in the tray when the window is closed', s.keep_running, settingSwitch('keep_running')))));
+  }
 
-  function sectionLinks() {
-    const links = [
-      ['Machines', '#/machines'], ['Alerts and rules', '#/more/alerts'], ['Devices', '#/more/devices'],
-      ['Phone pairing', '#/more/devices'], ['The hub’s own settings', '#/more/settings'],
-    ];
-    const usable = hubUsable(state.hub);
-    return section('links', 'Hub settings', usable ? 'Each opens the Hub tab at that page.' : 'Connect to the hub to open these.',
-      h('div', { class: 'row-actions' }, links.map(([label, route], i) => h('button', {
-        class: 'btn btn-lg', fk: `link-${i}`, text: label, disabled: !usable || busy('route'),
-        onclick: async () => {
-          const ok = await act('route', async () => { await sy.hubRoute({ route }); return true; });
-          if (ok) await select('hub');
-        },
-      }))));
+  // -- start at login
+
+  function sectionLogin() {
+    const s = state.settings;
+    return section('login', 'Start at login', null,
+      h('div', { class: 'card card-pad' },
+        h('div', { class: 'switches' },
+          sw('set-autostart', 'Start Switchyard when I log in', s.autostart, settingSwitch('autostart'), { hint: 'Off by default. A login start goes to the tray; any other start shows the window.' }))));
   }
 
   // -- about
@@ -809,6 +871,52 @@ export function start({ sy, root }) {
     const f = initialFocus ? dlg.querySelector(initialFocus) : dlg.querySelector('input, button');
     if (f) f.focus();
     return api;
+  }
+
+  function openUnpair() {
+    openDialog({
+      title: 'Unpair this computer?',
+      body: h('p', { text: "This computer is removed from the hub's Devices list and the board is hidden here. Account tabs keep working. Pair again with a code to see the board." }),
+      actions: (d) => [
+        h('button', { class: 'btn btn-lg', text: 'Cancel', onclick: () => d.close('cancel') }),
+        h('button', {
+          class: 'btn btn-danger btn-lg', fk: 'unpair-confirm', text: 'Unpair this computer',
+          onclick: async () => {
+            d.close('removed');
+            const r = await act('unpair', () => sy.hubUnpair({}));
+            if (r && r.warning) toast('warn', r.warning);
+            else if (r && r.ok) toast('info', 'This computer is unpaired.');
+            await select('hub');
+          },
+        }),
+      ],
+      initialFocus: '.btn',
+    });
+  }
+
+  function openOwnerLink() {
+    let input;
+    let msg;
+    const submit = async (d) => {
+      const link = input.value.trim();
+      if (!link) { msg.textContent = 'Paste the owner link first.'; input.focus(); return; }
+      msg.textContent = '';
+      const r = await act('owner', () => sy.ownerSignIn({ link }));
+      if (r && r.ok) { d.close('selected'); ui.overlayFor = null; await select('hub'); } else if (r) msg.textContent = r.error || 'That link did not work.';
+    };
+    openDialog({
+      title: 'Sign in as owner',
+      body: h('div', { class: 'dlg', style: { padding: '0' } },
+        h('label', { for: 'owner-link', text: 'Paste owner link' }),
+        (input = h('input', { type: 'text', id: 'owner-link', autocomplete: 'off', spellcheck: 'false', placeholder: `${state.hub.url || 'https://hub.example.com'}/#/owner?s=…`, onkeydown: (e) => { if (e.key === 'Enter') submit(ui.dialog); } })),
+        (msg = h('div', { class: 'err', role: 'alert' })),
+        h('p', { class: 'fine', text: 'Get one on an owner device: More, Devices, Make another device owner. Or on the hub\u2019s computer: sy hub owner-link.' })),
+      actions: (d) => [
+        h('button', { class: 'btn btn-lg', text: 'Cancel', onclick: () => d.close('cancel') }),
+        h('button', { class: 'btn btn-primary btn-lg', fk: 'owner-link-go', text: 'Sign in as owner', onclick: () => submit(d) }),
+      ],
+      initialFocus: '#owner-link',
+    });
   }
 
   function openWarning(t, manual = false) {
