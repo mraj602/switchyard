@@ -49,6 +49,18 @@ export function create(deps) {
 
   const dark = () => !!electron.nativeTheme?.shouldUseDarkColors;
 
+  // Folder of the glyph ink: 'light' (white) for dark bars. Linux panels (GNOME, KDE, most others) are
+  // dark even under a light system theme, so Linux is always light unless SWITCHYARD_TRAY_ICON=dark|light
+  // says otherwise; Windows follows the theme.
+  function inkFolder() {
+    if (platform === 'linux') {
+      const o = String((deps.env ?? process.env).SWITCHYARD_TRAY_ICON ?? '').trim().toLowerCase();
+      if (o === 'dark' || o === 'light') return o;
+      return 'light';
+    }
+    return dark() ? 'light' : 'dark';
+  }
+
   // dot: the needs-you state. On macOS the template image adapts to the bar by itself; elsewhere
   // a dark bar (dark theme) gets the light glyph and a light bar the dark glyph.
   function image(dot) {
@@ -58,7 +70,7 @@ export function create(deps) {
       return img;
     }
     const size = TRAY_SIZE[platform] ?? 22;
-    return electron.nativeImage.createFromPath(path.join(assets, dark() ? 'light' : 'dark', `${dot ? 'tray-dot' : 'tray'}-${size}.png`));
+    return electron.nativeImage.createFromPath(path.join(assets, inkFolder(), `${dot ? 'tray-dot' : 'tray'}-${size}.png`));
   }
 
   const overlay = () => electron.nativeImage.createFromPath(path.join(assets, 'overlay-dot.png'));
