@@ -12,7 +12,8 @@ import { quietHours } from '../components/quiet.js';
 import { seatIndex, seatName } from '../components/seat.js';
 import { notifiable, targetKindText } from '../components/targets.js';
 import { clock, day, deviceLabel } from '../format.js';
-import { isOwner, canPush } from '../store.js';
+import { isOwner, canPush, inApp } from '../store.js';
+import { ownerHow } from '../components/notif-note.js';
 import {
   getRules, getSelf, patchDevice, putRule, addRule, deleteRule, putPushSettings, getAlerts, listDevices, testTarget,
 } from '../api.js';
@@ -288,8 +289,8 @@ function statusLine(mode) {
     return h('p', { class: 'notice notice-warn', role: 'status', 'data-key': 'no-receivers' },
       mode === 'owner'
         ? ['No device can receive notifications yet, so alerts only show here on the board. ',
-          h('a', { href: '#/more/devices?add=phone', 'data-key': 'setup-receiver' }, 'Pair the Android app'), ' or ',
-          h('a', { href: '#/more/settings' }, 'turn them on in this browser'), '.']
+          h('a', { href: '#/more/devices?add=phone', 'data-key': 'setup-receiver' }, 'Pair the Android app'),
+          inApp() ? ', or turn on notifications in the app’s Settings.' : [' or ', h('a', { href: '#/more/settings' }, 'turn them on in this browser'), '.']]
         : ['This device gets no notifications yet. ', h('a', { href: '#/more/settings', 'data-key': 'setup-receiver' }, 'Turn them on in Settings'), '.']);
   }
   const names = list.map((x) => deviceLabel(x.device, state.devices));
@@ -342,7 +343,7 @@ export function render({ store }) {
         ? 'What sends a notification, for every device, and how long to wait first so you can answer at the terminal before anything is sent.'
         : mode === 'device'
           ? 'What sends a notification. The switches choose what this device gets; the hub sets the waits.'
-          : 'What sends a notification. Read-only: sign in as the owner (sy hub owner-link) to change them.'),
+          : `What sends a notification. Read-only: to change them, sign in as the owner (${ownerHow(inApp())}).`),
       !state.rules ? h('p', { class: 'muted' }, state.error || 'Loading…')
         : h('div', { class: 'panel' }, ruleRows(mode), quiet ? h('div', { class: 'row' }, quiet) : null)),
     state.rules ? overrides(mode, idx) : null,

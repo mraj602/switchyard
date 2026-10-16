@@ -6,6 +6,7 @@ import { seatIndex, seatName } from './seat.js';
 import { pct, clock } from '../format.js';
 import { TAB_OF } from '../route.js';
 import { liveState } from '../store.js';
+import { meInApp } from './notif-note.js';
 
 const LIVE_TEXT = {
   live: 'Live',
@@ -74,9 +75,11 @@ export function renderNav(navEl, { page, store, onLogout }) {
   const needs = o ? o.counts.needs_you : 0;
   const idx = o ? seatIndex(o.seats) : new Map();
   const owner = !!(store.me && store.me.owner);
+  // In the desktop app the app's own bar carries the name, and the app signs the board in.
+  const app = meInApp(store.me);
   const lit = (it) => it.id === page || (it.id === 'more' && TAB_OF[page] === 'more');
   navEl.replaceChildren(h('div', { class: 'nav-inner' },
-    h('div', { class: 'brand' }, logo(), h('span', {}, 'Switchyard')),
+    app ? null : h('div', { class: 'brand' }, logo(), h('span', {}, 'Switchyard')),
     h('ul', { class: 'nav-list' }, ITEMS.filter((it) => !it.owner || owner).map((it) => h('li', { class: `nav-${it.where}` },
       h('a', { href: it.href, 'data-key': `nav-${it.id}`, 'aria-current': lit(it) ? 'page' : undefined },
         icon(it.icon),
@@ -93,5 +96,5 @@ export function renderNav(navEl, { page, store, onLogout }) {
       }))) : null,
     h('div', { class: 'nav-foot' },
       liveBadge(store),
-      h('button', { type: 'button', class: 'linkish', onclick: onLogout, 'data-key': 'logout' }, 'Sign out'))));
+      app ? null : h('button', { type: 'button', class: 'linkish', onclick: onLogout, 'data-key': 'logout' }, 'Sign out'))));
 }
