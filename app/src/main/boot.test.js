@@ -4,8 +4,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, relative } from 'node:path';
 
-import { boot, START_ORDER, SHUTDOWN_ORDER, MODULES, IMPORT_TOASTS, late } from './boot.js';
-import { ImportError } from './import-prototype.js';
+import { boot, START_ORDER, SHUTDOWN_ORDER, MODULES, late } from './boot.js';
 import { fakeElectron } from '../../test/fakes/electron.js';
 
 const silent = { debug() {}, info() {}, warn() {}, error() {} };
@@ -31,7 +30,6 @@ function recordingModules(app, over = {}) {
       start: () => note('background.start'),
       setSettings: async (p) => ({ ...p, set: true }),
     },
-    importPrototype: { run: async () => ({ dry_run: true, copied: [], skipped: [], bytes: 0 }) },
     sy: { flushNow: async () => note('sy.flushNow') },
     hub: { start: async () => note('hub.start'), stop: async () => note('hub.stop'), view: () => null, ensureView: async () => note('hub.ensureView') },
     window: { selected: () => 'hub', onSelect: () => () => {}, shell: null },
@@ -51,7 +49,6 @@ function recordingModules(app, over = {}) {
   const modules = {};
   for (const name of Object.keys(MODULES)) modules[name] = inst(name);
   modules.paths = inst('paths', { appStateFile: '/u/app-state.json', hubTokenFile: '/u/hub-token.bin', userData: '/u' });
-  modules.importPrototype = { ...inst('importPrototype'), parseArgs: over.parseArgs ?? (() => null) };
   return { modules, log, handlers };
 }
 
@@ -87,8 +84,7 @@ test('boot creates the modules in START_ORDER, with paths, security, schemes, ip
   const before = (a, b) => assert.ok(idx(a) >= 0 && idx(b) >= 0 && idx(a) < idx(b), `${a} before ${b}`);
   before('paths', 'background.claim');
   before('background.claim', 'store.load');
-  before('store.load', 'importPrototype');
-  before('importPrototype', 'tabs.start');
+  before('store.load', 'tabs.start');
   before('tabs.start', 'usage.start');
   before('ipc.start', 'window');
   before('background.startHidden', 'window');
@@ -154,27 +150,6 @@ test('a failing shutdown step does not block the rest', async () => {
   await made.shutdown();
   const steps = log.map((e) => e.name).filter((n) => SHUTDOWN_ORDER.includes(n));
   assert.deepEqual(steps, SHUTDOWN_ORDER.filter((s) => s !== 'tabs.stop'));
-});
-
-test('--import-prototype runs before the tabs; a dry run prints the report and ends the launch', async () => {
-  const { made, names, out, fake } = await run({ parseArgs: () => ({ dry_run: true }) });
-  assert.equal(made.stopped, true);
-  assert.deepEqual(JSON.parse(out.join('')), { dry_run: true, copied: [], skipped: [], bytes: 0 });
-  assert.ok(!names.includes('tabs.start'));
-  assert.deepEqual(fake.callsOf('app.exit').at(-1), [0]);
-});
-
-test('import:prototype maps ImportError codes to toasts and returns no report', async () => {
-  for (const code of Object.keys(IMPORT_TOASTS)) {
-    const { handlers, log } = await run({ importPrototype: { run: async () => { throw new ImportError(code, `msg ${code}`); } } });
-    const r = await handlers.get('import:prototype')({ dry_run: true });
-    assert.equal(r, undefined);
-    const t = log.filter((e) => e.name === 'ipc.send' && e.ch === 'toast').at(-1);
-    assert.equal(t.p.level, IMPORT_TOASTS[code][0], code);
-    assert.ok(t.p.text.startsWith(IMPORT_TOASTS[code][1]), code);
-  }
-  const { handlers } = await run();
-  assert.deepEqual(await handlers.get('import:prototype')({ dry_run: true }), { dry_run: true, copied: [], skipped: [], bytes: 0 });
 });
 
 test('late() reads its target at use time', () => {

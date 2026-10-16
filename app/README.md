@@ -8,7 +8,7 @@ Anthropic.
 It is a separate package from the root prototype (`main.js`, `shell/`, ...), which stays live
 until you retire it. Both can run at the same time: they use different user data folders
 (`switchyard-desktop` here, `switchyard` for the prototype) and this app never opens the
-prototype's folder except to copy from it when you ask (Import, below).
+prototype's folder.
 
 Specs: `docs/spec/desktop.md` (contracts C1-C12), `docs/phases/6.md` (work packages, test plan).
 
@@ -90,20 +90,6 @@ npm run dist:linux                       # or dist:mac, dist:win; output in dist
 `SHA256SUMS`). Packages are never signed and never published (`electron-builder.yml`,
 `publish: null`); signing is a manual step. `build/after-pack.cjs` flips the Electron fuses
 (desktop.md C2). Linux targets: AppImage, deb, rpm.
-
-## Import from the prototype
-
-Copy-only, and only while the prototype is not running (quit it from its tray first):
-
-- Settings, then Import from the prototype: a dry run first, then Import. The app asks to
-  quit and start again so the imported tabs open signed in.
-- Or from a terminal: `Switchyard --import-prototype --dry-run` prints the JSON report and
-  exits; `Switchyard --import-prototype` (optionally `=<folder>`) imports and starts.
-  Exit codes: 0 on a dry run, 3 when the prototype is running, 1 on any other failure.
-
-It reads the prototype's `accounts.json` and copies each account's partition into a new tab;
-it never writes the prototype's folder. Each imported tab asks for the usage warning again.
-Retiring the prototype is a manual step (docs/phases/6.md "Manual: migrate and retire").
 
 ## Security model
 

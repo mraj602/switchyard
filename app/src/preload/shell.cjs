@@ -32,7 +32,6 @@ const INVOKE = {
   localAccounts: 'accounts:local',
   shareAccount: 'accounts:share',
   setSettings: 'settings:set',
-  importPrototype: 'import:prototype',
 };
 
 // Channels that take no argument: the function passes none, whatever it is called with.

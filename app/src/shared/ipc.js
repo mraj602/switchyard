@@ -104,7 +104,6 @@ export const CHANNELS = Object.freeze({
     kind: INVOKE, fn: 'setSettings', owner: 'E', returns: 'Settings',
     args: obj({ keep_running: BOOL, notifications: BOOL, autostart: BOOL, start_hidden: BOOL }),
   },
-  'import:prototype': { kind: INVOKE, fn: 'importPrototype', owner: 'F', returns: 'ImportReport', args: obj({ dry_run: BOOL }, ['dry_run']) },
 
   // push (main → shell)
   state: { kind: PUSH, fn: null, owner: 'A', args: { type: 'any' }, returns: null }, // ShellState, debounced 100 ms
@@ -253,10 +252,4 @@ function check(channel, path, s, v) {
  * @property {boolean} autostart      read from the OS (autostart.js), not stored
  * @property {boolean} close_notice_shown
  * @property {'basic_text'|string|null} [storage_backend]  safeStorage backend; 'basic_text' shows a warning
- *
- * @typedef {object} ImportReport
- * @property {boolean} dry_run
- * @property {string[]} copied        tab ids copied (or that would be)
- * @property {{id: string, reason: string}[]} skipped
- * @property {number} bytes
  */

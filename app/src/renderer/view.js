@@ -71,6 +71,19 @@ export function movedIds(ids, id, delta) {
   return out;
 }
 
+/**
+ * New order of ids after dropping `id` on `overId`: before it, or after it when `after`. The Hub
+ * and "+" are not in `ids`, so they cannot move or be displaced. Null when nothing moves.
+ */
+export function droppedIds(ids, id, overId, after) {
+  const from = ids.indexOf(id);
+  if (from < 0 || id === overId || !ids.includes(overId)) return null;
+  const rest = ids.filter((x) => x !== id);
+  const at = rest.indexOf(overId) + (after ? 1 : 0);
+  rest.splice(at, 0, id);
+  return rest.every((x, i) => x === ids[i]) ? null : rest;
+}
+
 /** The view the shell is really showing: a dialog opened over a tab keeps that tab's strip. */
 export const effectiveView = (state, overlayFor) => overlayFor || state.view;
 
@@ -109,7 +122,8 @@ export function readingStatus(tab, now = Date.now()) {
   if (tab.reading === 'off' || tab.read_state === 'off') return { kind: 'off', text: 'Reading off', action: null };
   if (tab.stopped) {
     const s = tab.stopped.status;
-    const why = s === 429 ? 'rate limited' : s === 401 || s === 403 ? 'signed out' : 'error';
+    if (s === 403) return { kind: 'stopped', text: 'Usage not available for this account (403).', action: 'resume', actionLabel: 'Resume' };
+    const why = s === 429 ? 'rate limited' : s === 401 ? 'signed out' : 'error';
     return { kind: 'stopped', text: `Stopped: ${why} (${s}).`, action: 'resume', actionLabel: 'Resume' };
   }
   if (!tab.signed_in) return { kind: 'signed_out', text: 'Sign in to read usage', action: null };

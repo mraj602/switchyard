@@ -9,8 +9,7 @@
 //                   (+ registerSchemes) → ipc → store (created, not loaded) → autostart →
 //                   background → background.claim() (single instance; a second launch or a
 //                   --autostart=on|off launch stops here)
-//   after 'ready'   protocol.handle → store.load → --import-prototype (before the tabs start)
-//                   → sy → hub → ipc.start() (before the shell can call) → window (hidden with
+//   after 'ready'   protocol.handle → store.load → sy → hub → ipc.start() (before the shell can call) → window (hidden with
 //                   --background or start_hidden) → state → tabs.start() → usage.start() →
 //                   hub.start() (the hub view is made when Hub is selected) → tray, notify,
 //                   menu.build() → background.start()
@@ -44,11 +43,10 @@ import * as notify from './notify.js';
 import * as menu from './menu.js';
 import * as autostart from './autostart.js';
 import * as background from './background.js';
-import * as importPrototype from './import-prototype.js';
 
 /** The order of the create() calls (see the header). */
 export const START_ORDER = Object.freeze([
-  'paths', 'security', 'protocol', 'ipc', 'store', 'autostart', 'background', 'importPrototype',
+  'paths', 'security', 'protocol', 'ipc', 'store', 'autostart', 'background',
   'sy', 'hub', 'window', 'state', 'tabs', 'usage', 'tray', 'notify', 'menu',
 ]);
 
@@ -56,7 +54,7 @@ export const START_ORDER = Object.freeze([
 export const SHUTDOWN_ORDER = Object.freeze(['usage.stop', 'tabs.stop', 'hub.stop', 'sy.flushNow', 'store.flush']);
 
 export const MODULES = Object.freeze({
-  paths, security, protocol, store, ipc, state, sy, hub, window, tabs, usage, tray, notify, menu, autostart, background, importPrototype,
+  paths, security, protocol, store, ipc, state, sy, hub, window, tabs, usage, tray, notify, menu, autostart, background,
 });
 
 const here = nodePath.dirname(fileURLToPath(import.meta.url));
@@ -67,14 +65,6 @@ export const ASSETS_DIR = nodePath.join(APP_DIR, 'assets');
 
 /** A pending `sy flush` at quit may wait this long (6.md WP-I: ≤ 5 s); the outbox keeps the records anyway. */
 export const QUIT_FLUSH_MAX_MS = 5_000;
-
-/** Toast texts for the importer's ImportError codes. */
-export const IMPORT_TOASTS = Object.freeze({
-  running: ['warn', 'The Switchyard prototype is running. Quit it (tray, Quit), then import again.'],
-  not_found: ['warn', 'No prototype data folder was found on this computer.'],
-  bad_accounts: ['error', "The prototype's accounts.json could not be read, so nothing was imported."],
-  same_folder: ['error', "That is this app's own folder, so nothing was imported."],
-});
 
 /** test-hooks.js (WP-A) is imported only when unpackaged; null when packaged or absent. */
 async function defaultTestHooks(app) {
@@ -105,15 +95,6 @@ export function late(get) {
     },
   });
 }
-
-const isPidAlive = (pid) => {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (err) {
-    return err?.code === 'EPERM';
-  }
-};
 
 function withTimeout(p, ms) {
   let h;
@@ -209,24 +190,6 @@ export async function boot(electron, opts = {}) {
   made.protocol.handle();
   await made.store.load();
 
-  made.importer = m.importPrototype.create({
-    fs, path, platform,
-    appData: app.getPath('appData'),
-    userData: made.paths.userData,
-    store: made.store,
-    hostname: os.hostname(),
-    isPidAlive,
-    log,
-  });
-  const importArgs = m.importPrototype.parseArgs?.(argv) ?? null;
-  if (importArgs) {
-    const done = await importFromCli(made, importArgs, { app, log, stdout, stderr, toast });
-    if (done) {
-      made.stopped = true;
-      return made;
-    }
-  }
-
   made.sy = m.sy.create({
     env, fs, path, log, platform, resourcesPath: process.resourcesPath ?? '',
     minSy: opts.minSy ?? '0.6.0', syBin: testHooks?.syBin?.(env) ?? null,
@@ -242,7 +205,6 @@ export async function boot(electron, opts = {}) {
   });
 
   made.ipc.register('settings:set', (patch) => made.background.setSettings(patch));
-  made.ipc.register('import:prototype', (args) => importFromShell(made, args, { log, toast }));
   made.ipc.start();
 
   made.window = m.window.create({
@@ -314,47 +276,4 @@ async function shutdown(made, log) {
     await step('state.stop', () => made.state?.stop());
   })();
   return made.shuttingDown;
-}
-
-/**
- * --import-prototype[=<dir>] [--dry-run]: the report goes to stdout as one JSON line. A dry run
- * (or a failed one) ends the launch; a real import goes on starting, so the tabs open.
- * @returns {Promise<boolean>} true when this launch ends here
- */
-async function importFromCli(made, args, { app, log, stdout, stderr, toast }) {
-  try {
-    const report = await made.importer.run(args);
-    stdout.write(`${JSON.stringify(report)}\n`);
-    if (args.dry_run) {
-      app.exit(0);
-      return true;
-    }
-    if (report.copied.length) toast('info', `Imported ${report.copied.length} tab${report.copied.length === 1 ? '' : 's'} from the prototype. Accept the reading warning on each.`);
-    return false;
-  } catch (err) {
-    stderr.write(`switchyard-desktop: import: ${err?.message ?? err}\n`);
-    log.warn?.(`import: ${err?.code ?? ''} ${err?.message ?? err}`);
-    app.exit(err?.code === 'running' ? 3 : 1);
-    return true;
-  }
-}
-
-/** import:prototype from Settings. An ImportError becomes a toast (no report). */
-async function importFromShell(made, args, { log, toast }) {
-  try {
-    const report = await made.importer.run({ dry_run: args.dry_run });
-    if (!args.dry_run && report.copied.length) {
-      toast('info', `Imported ${report.copied.length} tab${report.copied.length === 1 ? '' : 's'}. Quit and start Switchyard again to open them.`);
-    }
-    return report;
-  } catch (err) {
-    const known = err?.name === 'ImportError' ? IMPORT_TOASTS[err.code] : null;
-    if (known) {
-      toast(known[0], err.code === 'running' || err.code === 'not_found' ? known[1] : `${known[1]} ${String(err.message).slice(0, 300)}`);
-      return undefined;
-    }
-    log.error?.('import failed:', err);
-    toast('error', `The import failed: ${String(err?.message ?? err).slice(0, 300)}`);
-    return undefined;
-  }
 }

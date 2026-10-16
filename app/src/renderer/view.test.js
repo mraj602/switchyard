@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  tabTitle, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds,
+  tabTitle, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds, droppedIds,
   effectiveView, windowLabel, windowRows, readingStatus, hubBanner, hubSummary, hubUsable, foldersOf,
   switchState, shareSpec, SHARE_SWITCHES, isPrimary, loginCommand, SHARE_FOLDER_RE,
 } from './view.js';
@@ -84,7 +84,7 @@ test('reading status covers every state', () => {
   assert.equal(s429.text, 'Stopped: rate limited (429).');
   assert.equal(s429.action, 'resume');
   assert.equal(readingStatus(tab({ stopped: { status: 401, at: local(13, 0) } }), NOW).text, 'Stopped: signed out (401).');
-  assert.equal(readingStatus(tab({ stopped: { status: 403, at: local(13, 0) } }), NOW).text, 'Stopped: signed out (403).');
+  assert.equal(readingStatus(tab({ stopped: { status: 403, at: local(13, 0) } }), NOW).text, 'Usage not available for this account (403).');
   assert.equal(readingStatus(tab({ signed_in: false }), NOW).kind, 'signed_out');
   assert.equal(readingStatus(tab({ read_state: 'retrying', retry_at: local(14, 20) }), NOW).text, 'Retrying at 14:20');
   assert.equal(readingStatus(tab({ read_state: 'retrying' }), NOW).text, 'Retrying');
@@ -158,4 +158,16 @@ test('folders and commands', () => {
   assert.equal(loginCommand(folder({ label: '' })), 'sy account login ~/.claude-2');
   assert.equal(SHARE_FOLDER_RE.test('~/.claude-2'), true);
   assert.equal(SHARE_FOLDER_RE.test('~/a b'), false);
+});
+
+test('droppedIds: drop before or after a tab; no-ops are null', () => {
+  const ids = ['a', 'b', 'c', 'd'];
+  assert.deepEqual(droppedIds(ids, 'a', 'c', false), ['b', 'a', 'c', 'd']);
+  assert.deepEqual(droppedIds(ids, 'a', 'c', true), ['b', 'c', 'a', 'd']);
+  assert.deepEqual(droppedIds(ids, 'd', 'a', false), ['d', 'a', 'b', 'c']);
+  assert.equal(droppedIds(ids, 'b', 'a', true), null, 'already there');
+  assert.equal(droppedIds(ids, 'b', 'c', false), null, 'already there');
+  assert.equal(droppedIds(ids, 'b', 'b', true), null);
+  assert.equal(droppedIds(ids, 'x', 'a', true), null, 'unknown dragged id (the Hub)');
+  assert.equal(droppedIds(ids, 'a', 'hub', false), null, 'the Hub is not a drop target');
 });
