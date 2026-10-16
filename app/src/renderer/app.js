@@ -74,7 +74,7 @@ export function start({ sy, root }) {
   const ui = {
     v: 0, overlayFor: null, returnView: null, dialog: null, drafts: {}, errors: {}, busy: new Set(),
     dismissed: new Set(), toast: null, folders: null, foldersError: '', foldersLoading: false,
-    report: null, section: 'tabs', pairCode: '', pairError: '',
+    section: 'tabs', pairCode: '', pairError: '',
   };
   const last = {};
   let ready = false;
@@ -180,7 +180,7 @@ export function start({ sy, root }) {
     paint('bar', [state.tabs.map((t) => [t.id, t.name, t.label, t.colour]), state.hub.status, state.hub.needs_you, v, ui.toast, state.view], bar, buildBar);
     const t = tabById(v);
     paint('strip', [t, minute, ui.v], stripHost, () => (t ? buildStrip(t) : h('div', { hidden: true })));
-    paint('content', [v, state, ui.v, ui.folders, ui.foldersError, ui.report, ui.section, minute], content, () => buildContent(v));
+    paint('content', [v, state, ui.v, ui.folders, ui.foldersError, ui.section, minute], content, () => buildContent(v));
     maybeWarn();
   }
 
@@ -466,7 +466,6 @@ export function start({ sy, root }) {
     ['hub', 'Hub'],
     ['notify', 'Notifications and background'],
     ['links', 'Hub settings'],
-    ['import', 'Import from the prototype'],
   ];
 
   function settingsPage() {
@@ -487,7 +486,7 @@ export function start({ sy, root }) {
     const main = h('div', { class: 'page-main' },
       h('h1', { text: 'Settings' }),
       banners.length ? h('div', { class: 'banners' }, banners) : null,
-      sectionTabs(), sectionFolders(), sectionHub(hb), sectionNotify(), sectionLinks(), sectionImport());
+      sectionTabs(), sectionFolders(), sectionHub(hb), sectionNotify(), sectionLinks());
     return h('div', { class: 'page' }, nav, main);
   }
 
@@ -756,40 +755,6 @@ export function start({ sy, root }) {
       }))));
   }
 
-  // -- import
-
-  function sectionImport() {
-    const r = ui.report;
-    const body = [];
-    if (r) {
-      const lines = [
-        r.dry_run ? 'Dry run: nothing was changed.' : 'Import done.',
-        `${r.dry_run ? 'Would copy' : 'Copied'}: ${r.copied?.length ? r.copied.join(', ') : 'nothing'}`,
-        ...(r.skipped || []).map((s) => `Skipped ${s.id}: ${s.reason}`),
-        r.bytes ? `Size: ${bytes(r.bytes)}` : null,
-      ].filter(Boolean);
-      body.push(h('pre', { class: 'report', role: 'status', text: lines.join('\n') }));
-      if (r.dry_run && r.copied?.length) {
-        body.push(h('div', { class: 'row-actions' }, h('button', {
-          class: 'btn btn-primary btn-lg', fk: 'import-go', text: `Import ${plural(r.copied.length, 'tab')}`, disabled: busy('import'), onclick: openImportConfirm,
-        })));
-      }
-    }
-    return section('import', 'Import from the prototype',
-      'Copies the account tabs of the earlier Switchyard prototype, with their sign-ins. The prototype’s own folder is only read, never changed, and it must not be running.',
-      ...body,
-      h('div', { class: 'row-actions' }, h('button', { class: 'btn btn-lg', fk: 'import-dry', text: r ? 'Check again (dry run)' : 'Check what would be imported', disabled: busy('import'), onclick: () => runImport(true) })));
-  }
-
-  async function runImport(dry) {
-    const r = await act('import', () => sy.importPrototype({ dry_run: dry }));
-    if (r && typeof r === 'object') {
-      ui.report = r;
-      ui.v++;
-      render();
-    }
-  }
-
   // ---- dialogs
 
   function openDialog({ title, body, actions, onClose, overlay = true, initialFocus }) {
@@ -917,19 +882,6 @@ export function start({ sy, root }) {
         }),
       ],
       initialFocus: '.btn',
-    });
-  }
-
-  function openImportConfirm() {
-    const r = ui.report;
-    openDialog({
-      title: 'Import from the prototype?',
-      body: h('p', { text: `This copies ${plural(r?.copied?.length || 0, 'account tab')} with their sign-ins into this app. The prototype’s folder is not changed.` }),
-      actions: (d) => [
-        h('button', { class: 'btn btn-lg', text: 'Cancel', onclick: () => d.close('cancel') }),
-        h('button', { class: 'btn btn-primary btn-lg', text: 'Import', onclick: async () => { d.close('import'); await runImport(false); } }),
-      ],
-      initialFocus: '.btn-primary',
     });
   }
 

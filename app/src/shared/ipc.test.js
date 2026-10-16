@@ -87,7 +87,6 @@ const good = {
   'accounts:local': [undefined],
   'accounts:share': [{ folder: '~/.claude-2', share: 'all' }, { folder: '/home/me/.claude', share: 'projects,todos=off' }],
   'settings:set': [{}, { keep_running: true, notifications: false, autostart: true, start_hidden: false }],
-  'import:prototype': [{ dry_run: true }],
   toast: [{ level: 'warn', text: 'sy not found' }],
 };
 
@@ -108,7 +107,6 @@ const bad = {
   'seat:update': [{ label: 'x' }, { seat: 'seat_x' }, { seat: SEAT, label: 'Work' }, { seat: SEAT, colour: '#FFF' }, { seat: SEAT, colour: 'red' }],
   'accounts:share': [{ folder: '~/.claude; rm -rf /', share: 'all' }, { folder: '~/x', share: 'ALL' }, { folder: '~/x' }],
   'settings:set': [{ keep_running: 1 }, { theme: 'dark' }],
-  'import:prototype': [{}, { dry_run: 'yes' }],
   toast: [{ level: 'debug', text: 'x' }, { level: 'info', text: '' }],
 };
 

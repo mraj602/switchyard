@@ -38,8 +38,6 @@ export const PROTOTYPE_HOOK_PORT = 47821;
 /** Command-line flags (C1, WP-E, WP-F). */
 export const FLAG_BACKGROUND = '--background';
 export const FLAG_AUTOSTART = '--autostart'; // --autostart=on|off
-export const FLAG_IMPORT_PROTOTYPE = '--import-prototype'; // [=<dir>]
-export const FLAG_DRY_RUN = '--dry-run';
 
 // ---- C2 security
 

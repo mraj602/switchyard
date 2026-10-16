@@ -123,7 +123,6 @@ const sy = {
   localAccounts: async () => later({ folders: structuredClone(folders) }, 120),
   shareAccount: async () => ({ ok: true }),
   setSettings: async (p) => { Object.assign(state.settings, p); push(); return structuredClone(state.settings); },
-  importPrototype: async ({ dry_run: dry }) => later({ dry_run: dry, copied: ['9f3a1c20', '55aa00bb'], skipped: [{ id: 'deadbeef', reason: 'already present' }], bytes: 48_300_000 }, 150),
   on: (event, cb) => {
     if (!listeners[event]) throw new Error(`sy.on: unknown event ${event}`);
     listeners[event].add(cb);
