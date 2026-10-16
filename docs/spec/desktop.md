@@ -215,7 +215,11 @@ sy desktop hub status|start|stop --json
 {"service": "running" | "stopped" | "missing", "unit": "…", "health": true}
 ```
 
-- `info`: `hub.service` is `null` when the hub is not on this machine. `local` = `<data>/hub.db`
+- `info`: `hub.reachable` is `GET /health` with an 8 s timeout and one retry (the hub is often a
+  tiny VM that answers slowly now and then); `hub status` uses 5 s and the polls after
+  `hub start|stop` 3 s. The app adds its own debounce: a hub that was reachable is shown as
+  Unreachable only after two info checks in a row fail (the board stays meanwhile and the next
+  check comes in 30 s, not 5 min). `hub.service` is `null` when the hub is not on this machine. `local` = `<data>/hub.db`
   exists and `hub.url` is a loopback URL. `admin` is the admin-channel resolution of
   machines.md 4.4 (flag none, `machines.hub_admin`, else `local` when `hub.db` exists, else
   `null`). `admin_error` is why `machines.hub_admin` cannot be used (a refused command prefix),
@@ -277,7 +281,17 @@ full_name, display_name} | {__status}, active_org, fetch_ms}`.
 | `usage:resume` | Clear `stopped`, read now |
 | `usage:set-reading {on: false}` | Clear the timers; mark any read in flight as cancelled, so its result is dropped before the outbox (a sequence number checked after `await`); nothing more is read or appended for that tab |
 
-**Records.** One `web_usage` per org returned by `/api/organizations`, exactly as in record.md
+**Which orgs.** Every claude.ai account has a personal free org beside its Team or paid orgs,
+and the `lastActiveOrg` cookie often points at it. A record makes a seat on the hub, so
+reporting it made a second, free seat for the same person. The app reports (`chooseOrgs`,
+`shared/usage.js`): every org that is not free when the account has one (Team, Enterprise, Max,
+Pro; plan as `planOf`); when all its orgs are free, exactly one: the tab's own seat org if still
+there, else the active org, else the one with the most windows. The org the strip and `tab.seat`
+follow is the active one when reported, else the tab's seat org, else the one with the most
+windows; so a tab whose seat was a stray free org moves to the paid one. A free org that is
+really used in Claude Code gets its seat from the slot's own records, not from the app.
+
+**Records.** One `web_usage` per org chosen above, exactly as in record.md
 4.3:
 `seat = {account, org, email, src: "claude_ai"}`, `payload = {tab_id, org: <six keys>, account:
 <four keys>, active, usage: <raw, whole>, fetch_ms}`. `client`, `machine` (cached from

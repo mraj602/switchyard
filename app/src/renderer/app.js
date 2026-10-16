@@ -12,7 +12,7 @@ import { WARNING_VERSION } from '../shared/constants.js';
 import { barWidth, pct, bytes, plural } from '../shared/format.js';
 import {
   tabTitle, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds, droppedIds,
-  effectiveView, windowRows, readingStatus, lastReadTitle, hubBanner, hubUsable, hubSummary, hubChip, ownerPill,
+  effectiveView, windowRows, readingStatus, lastReadTitle, hubBanner, hubUsable, hubSummary, hubChip, ownerPill, fitTabs, progressText,
   SHARE_SWITCHES, foldersOf, isPrimary, switchState, shareSpec, loginCommand, COLOUR_RE, PAIR_CODE_RE,
 } from './view.js';
 
@@ -121,6 +121,9 @@ export function start({ sy, root }) {
     }
   }
   const busy = (key) => ui.busy.has(key);
+  // A spinner and a line for a call that takes a while (pairing / owner sign-in through SSH).
+  const progress = (kind) => h('span', { class: 'progress', role: 'status', 'aria-live': 'polite' },
+    h('span', { class: 'spinner', 'aria-hidden': 'true' }), h('span', { text: progressText(state.hub, kind) }));
 
   function toast(level, text) {
     ui.toast = { level, text };
@@ -177,7 +180,9 @@ export function start({ sy, root }) {
     if (!ready) return;
     const v = view();
     const minute = Math.floor(Date.now() / TICK_MS);
+    const barBefore = last.bar;
     paint('bar', [state.tabs.map((t) => [t.id, t.name, t.label, t.colour]), state.hub.status, state.hub.needs_you, state.hub.owner, state.hub.owner_until, state.hub.removed, state.hub.board_blocked, v, ui.toast, state.view], bar, buildBar);
+    if (last.bar !== barBefore) fitBar();
     const t = tabById(v);
     paint('strip', [t, minute, ui.v], stripHost, () => (t ? buildStrip(t) : h('div', { hidden: true })));
     paint('content', [v, state, ui.v, ui.folders, ui.foldersError, ui.section, minute], content, () => buildContent(v));
@@ -218,7 +223,11 @@ export function start({ sy, root }) {
     }, hubTab, tabEls);
 
     const hc = hubChip(state.hub);
-    const chip = h('button', { class: `hub-chip ${hc.level}`, fk: 'hub-chip', text: hc.text, title: 'Open the Hub tab', onclick: () => select('hub') });
+    const chip = h('button', { class: `hub-chip ${hc.level}`, fk: 'hub-chip', 'aria-label': hc.text, title: `${hc.text}. Open the Hub tab`, onclick: () => select('hub') },
+      h('span', { class: 'chip-dot', 'aria-hidden': 'true' }), h('span', { class: 'chip-full', text: hc.text }), h('span', { class: 'chip-short', 'aria-hidden': 'true', text: 'Hub' }));
+    const more = h('button', {
+      class: 'icon-btn more-btn', fk: 'more-tabs', hidden: true, 'aria-haspopup': 'dialog', title: 'Tabs that do not fit', onclick: () => openMoreTabs(),
+    }, h('span', { class: 'more-label' }), h('span', { class: 'chev', text: '\u25BE', 'aria-hidden': 'true' }));
     const pill = ownerPill(state.hub);
     const pillEl = pill ? h('span', { class: `owner-pill ${pill.owner ? 'owner' : ''}`.trim(), fk: 'owner-pill', text: pill.text, title: pill.owner ? 'Signed in as owner on this computer' : 'This computer can view, not change' }) : null;
     const tt = ui.toast ? h('div', { class: `toast ${ui.toast.level === 'error' ? 'error' : ui.toast.level === 'warn' ? 'warn' : ''}`.trim(), role: 'status', 'aria-live': 'polite', text: ui.toast.text, title: ui.toast.text }) : null;
@@ -226,6 +235,7 @@ export function start({ sy, root }) {
     return [
       h('div', { class: 'brand' }, logo(), h('span', { class: 'brand-name', text: 'Switchyard' })),
       list,
+      more,
       h('button', { class: 'icon-btn', fk: 'add-tab', 'aria-label': 'Add account tab', title: 'Add account tab', onclick: () => openAddTab() }, h('span', { text: '+', 'aria-hidden': 'true' })),
       h('span', { class: 'spacer' }),
       tt,
@@ -234,8 +244,47 @@ export function start({ sy, root }) {
       h('button', {
         class: 'icon-btn settings-btn', fk: 'settings', title: 'App settings (Ctrl+,)', 'aria-label': 'App settings', 'aria-current': v === 'settings' ? 'page' : null,
         onclick: () => select('settings'),
-      }, h('span', { class: 'gear', text: '\u2699', 'aria-hidden': 'true' }), h('span', { text: 'App settings' })),
+      }, h('span', { class: 'gear', text: '\u2699', 'aria-hidden': 'true' }), h('span', { class: 'settings-label', text: 'App settings' })),
     ];
+  }
+
+  // Tabs that do not fit leave the strip and wait in the "N more" menu; the shown tab stays.
+  function fitBar() {
+    const tabsEl = bar.querySelector('.tabs');
+    const more = bar.querySelector('.more-btn');
+    if (!tabsEl || !more) return;
+    const els = [...tabsEl.children];
+    for (const el of els) el.hidden = false;
+    more.hidden = true;
+    const available = tabsEl.clientWidth;
+    if (!available || tabsEl.scrollWidth <= available) return;
+    more.querySelector('.more-label').textContent = `${els.length} more`;
+    more.hidden = false;
+    const moreWidth = more.offsetWidth + 4;
+    const sel = state.tabs.findIndex((t) => t.id === view()) + 1;
+    const keep = fitTabs(els.map((el) => el.offsetWidth), available, moreWidth, sel > 0 ? sel : -1);
+    const n = keep.filter((k) => !k).length;
+    els.forEach((el, i) => { el.hidden = !keep[i]; });
+    more.hidden = n === 0;
+    more.querySelector('.more-label').textContent = `${n} more`;
+    more.setAttribute('aria-label', `${n} more ${n === 1 ? 'tab' : 'tabs'}`);
+  }
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => fitBar()).observe(bar);
+
+  function openMoreTabs() {
+    const hidden = [...bar.querySelectorAll('.tabs [role="tab"][hidden]')].map((el) => el.dataset.id).filter(Boolean);
+    const list = h('div', { class: 'more-list', role: 'menu', 'aria-label': 'Tabs that do not fit' });
+    state.tabs.forEach((t, i) => {
+      if (!hidden.includes(t.id)) return;
+      list.append(h('button', {
+        class: 'btn more-item', role: 'menuitem', fk: `more-${t.id}`, onclick: () => { ui.dialog.close('selected'); select(t.id); },
+      }, h('span', { class: 'dot', style: { background: tabColour(t, i) } }), h('span', { class: 'tab-name', text: tabTitle(t) })));
+    });
+    openDialog({
+      title: 'More tabs', body: list,
+      actions: (d) => [h('button', { class: 'btn btn-lg', text: 'Close', onclick: () => d.close('cancel') })],
+      initialFocus: '.more-item',
+    });
   }
 
   function onTabKeys(e) {
@@ -369,8 +418,8 @@ export function start({ sy, root }) {
       // The board covers this panel (status ok). Read-only: a strip above it with one visible button.
       const strip = hub.status === 'ok' && !hub.owner
         ? h('div', { class: 'hub-strip', role: 'status', fk: 'hub-strip' },
-          h('span', { text: 'Read-only. Sign in as owner to change alerts, devices and accounts.' }),
-          h('button', { class: 'btn btn-primary', fk: 'owner-sign-in', text: 'Sign in as owner', disabled: busy('owner'), onclick: ownerSignInClick }))
+          busy('owner') ? progress('owner') : h('span', { text: 'Read-only. Sign in as owner to change alerts, devices and accounts.' }),
+          h('button', { class: 'btn btn-primary', fk: 'owner-sign-in', text: busy('owner') ? 'Signing in…' : 'Sign in as owner', disabled: busy('owner'), onclick: ownerSignInClick }))
         : null;
       const err = hb ? bannerEl(hb, 'hub') : null;
       return h('div', { class: 'hub-panel ok', role: 'tabpanel', 'aria-labelledby': 'tab-hub' }, strip,
@@ -395,8 +444,9 @@ export function start({ sy, root }) {
     if (hb.action === 'pair-click' && ui.useCode) actions.append(h('button', { class: 'linkish', fk: `pair-no-code-${where}`, text: 'Pair without a code', onclick: () => { ui.useCode = false; ui.pairError = ''; ui.v++; render(); } }));
     if (hb.action === 'pair-click') {
       if (!ui.useCode) {
-        actions.append(h('button', { class: 'btn btn-primary', fk: `pair-click-${where}`, text: 'Pair this computer', disabled: busy('pair'), onclick: () => doPair('') }));
-        actions.append(h('button', { class: 'linkish', fk: `pair-use-code-${where}`, text: 'Use a code instead', onclick: () => { ui.useCode = true; ui.pairError = ''; ui.v++; render(); } }));
+        actions.append(h('button', { class: 'btn btn-primary', fk: `pair-click-${where}`, text: busy('pair') ? 'Pairing…' : 'Pair this computer', disabled: busy('pair'), onclick: () => doPair('') }));
+        if (busy('pair')) actions.append(progress('pair'));
+        else actions.append(h('button', { class: 'linkish', fk: `pair-use-code-${where}`, text: 'Use a code instead', onclick: () => { ui.useCode = true; ui.pairError = ''; ui.v++; render(); } }));
       }
       if (ui.pairError && ui.useCode === false) actions.append(h('span', { class: 'err', text: ui.pairError }));
     }
@@ -457,6 +507,7 @@ export function start({ sy, root }) {
         value: ui.pairCode, 'aria-label': 'Pairing code', oninput: (e) => { ui.pairCode = e.target.value; }, onkeydown: (e) => { if (e.key === 'Enter') doPair(ui.pairCode); },
       }),
       h('button', { class: 'btn btn-primary', fk: `pair-btn-${where}`, text: 'Pair', disabled: busy('pair'), onclick: () => doPair(ui.pairCode) }),
+      busy('pair') ? progress('pair') : null,
       ui.pairError ? h('span', { class: 'err', role: 'alert', text: ui.pairError }) : null,
     );
   }
@@ -757,7 +808,7 @@ export function start({ sy, root }) {
         h('span', { text: pill ? pill.text : hub.owner ? 'Owner' : 'Read-only' }),
         hub.owner
           ? h('button', { class: 'btn', fk: 'owner-sign-out', text: 'Sign out of owner', disabled: busy('owner-out'), onclick: () => act('owner-out', async () => { await sy.ownerSignOut(); toast('info', 'Signed out of owner. This computer can view, not change.'); }) })
-          : h('button', { class: 'btn', fk: 'owner-sign-in-settings', text: 'Sign in as owner', disabled: !hubUsable(hub) || busy('owner'), onclick: ownerSignInClick })),
+          : [h('button', { class: 'btn', fk: 'owner-sign-in-settings', text: busy('owner') ? 'Signing in…' : 'Sign in as owner', disabled: !hubUsable(hub) || busy('owner'), onclick: ownerSignInClick }), busy('owner') ? progress('owner') : null]),
       hub.local ? [h('dt', { text: 'Hub service' }), h('dd', {}, h('span', { text: hub.service || 'unknown' }), hub.service !== 'missing' ? serviceButtons() : null,
         hub.service === 'missing' ? h('span', { class: 'muted' }, 'Not installed: run ', h('code', { text: 'sy setup --hub here' })) : null)] : null,
       hub.admin ? [h('dt', { text: 'Admin channel' }), h('dd', { text: hub.admin })] : null,

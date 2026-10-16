@@ -142,6 +142,22 @@ export function create(deps) {
   // ---- status
 
   let mode = 'no_sy'; // 'no_sy' | 'dial' | null: what sy reported before any hub logic applies
+  let unreachableStreak = 0;
+
+  /**
+   * A hub that was reachable must fail two info checks in a row before the app says Unreachable
+   * (the hub is often a tiny VM that answers slowly now and then); the board stays meanwhile and
+   * the next check comes sooner. A hub never seen reachable is reported at once.
+   */
+  function settleReachable(reachable, version) {
+    if (reachable) {
+      unreachableStreak = 0;
+      return { reachable: true, version };
+    }
+    unreachableStreak++;
+    if (state.reachable && unreachableStreak < 2) return { reachable: true, version: state.version };
+    return { reachable: false, version };
+  }
 
   function statusFor() {
     if (mode) return mode;
@@ -199,7 +215,7 @@ export function create(deps) {
       if (gen === authGen) setAuth(loaded); // else a pairing (or a drop) came first: keep it
     }
     set({
-      url, connected: !!hub.connected && !!url, reachable: !!hub.reachable, paired: !!auth, version: hub.version ?? null,
+      url, connected: !!hub.connected && !!url, ...settleReachable(!!hub.reachable, hub.version ?? null), paired: !!auth,
       local: !!hub.local, service: typeof hub.service === 'string' ? hub.service : null, admin, error: null,
     });
     set({ status: statusFor() });
@@ -233,7 +249,7 @@ export function create(deps) {
     const h = await direct.health(url);
     if (stopped) return;
     set({
-      url, connected: true, reachable: h.ok, paired: !!auth, version: h.version, local: false, service: null, admin: null,
+      url, connected: true, ...settleReachable(h.ok, h.version), paired: !!auth, local: false, service: null, admin: null,
       direct: true, error: null,
     });
     set({ status: statusFor() });
@@ -254,6 +270,7 @@ export function create(deps) {
     state.removed = false;
     state.board_blocked = false;
     lastNeedsYou = '';
+    unreachableStreak = 0;
   }
 
   function schedulePoll() {
@@ -266,7 +283,7 @@ export function create(deps) {
         log.warn?.(`hub: info refresh failed: ${err?.message ?? err}`);
       }
       if (started) schedulePoll();
-    }, state.status === 'ok' ? INFO_POLL_MS : INFO_POLL_BAD_MS);
+    }, state.status === 'ok' && unreachableStreak === 0 ? INFO_POLL_MS : INFO_POLL_BAD_MS);
     infoTimer?.unref?.();
   }
 

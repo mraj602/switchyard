@@ -91,6 +91,40 @@ export function pickOrg(orgs, activeOrg) {
   return scored.find((x) => x.org.uuid === activeOrg && x.windows.length) || scored.sort((a, b) => b.windows.length - a.windows.length)[0] || null;
 }
 
+/**
+ * The orgs of a read that are reported to the hub (a record, so a seat, each), and the one the
+ * strip and the tab's seat follow. Every claude.ai account has a personal free org beside its
+ * Team or paid orgs; reporting that one made a second, free seat for the same person. So:
+ *  - when the account has a paid org (Team, Enterprise, Max, Pro), every free org is left out;
+ *  - when all its orgs are free, only one is reported: the tab's own seat org if it is still
+ *    there, else the active org, else the one with most windows (a tab never makes two seats);
+ *  - the shown org is the active one when it is reported, else the tab's seat org, else the one
+ *    with most windows.
+ * A free org that is really used in Claude Code has its seat from the slot's own records.
+ * @param {{org: object, usage: object}[]} orgs
+ * @param {string|null} activeOrg
+ * @param {{account?: string, org?: string}|null} seat the tab's seat before this read
+ * @param {string} [account] the account uuid of this read
+ * @returns {{report: {org: object, usage: object}[], pick: {org: object, usage: object, windows: object[]}|null}}
+ */
+export function chooseOrgs(orgs, activeOrg, seat, account) {
+  const paid = orgs.filter((o) => planOf(o.org) !== 'Free');
+  const mine = seat && seat.org && (!seat.account || !account || seat.account === account) ? seat.org : null;
+  let report = paid;
+  if (!paid.length) {
+    const only = orgs.find((o) => o.org.uuid === mine)
+      || orgs.find((o) => o.org.uuid === activeOrg)
+      || pickOrg(orgs, activeOrg)
+      || orgs[0];
+    report = only ? [only] : [];
+  }
+  const withWindows = report.filter((o) => o.usage && !o.usage.__status && stripWindows(o.usage).length);
+  const prefer = (id) => (id ? withWindows.find((o) => o.org.uuid === id) : null);
+  const best = prefer(activeOrg) || prefer(mine) || pickOrg(report, activeOrg);
+  const pick = best ? { ...best, windows: stripWindows(best.usage) } : null;
+  return { report, pick };
+}
+
 // ---- URLs (claude.ai only; the navigation policy itself is shared/urls.js, WP-A)
 
 /** True for https://claude.ai[/…], any *.claude.ai host, or `origin` (the test fake's origin). */

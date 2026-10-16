@@ -46,6 +46,28 @@ export function labelError(label) {
 /** The order the keyboard walks: Hub first, then the tabs. */
 export const viewOrder = (state) => ['hub', ...state.tabs.map((t) => t.id)];
 
+/**
+ * Which tabs of the top bar fit. `widths` are the natural widths of the strip's tabs in order
+ * (Hub first), `available` the room for them, `moreWidth` the width of the "N more" button and
+ * `selected` the index of the shown tab (-1: none). Hub (index 0) and the selected tab always
+ * stay; the rest are kept in order while they fit. Returns one boolean per tab; when any is
+ * false the caller shows the "N more" menu button.
+ */
+export function fitTabs(widths, available, moreWidth, selected, gap = 2) {
+  const n = widths.length;
+  const total = widths.reduce((a, w) => a + w, 0) + gap * Math.max(0, n - 1);
+  if (total <= available) return widths.map(() => true);
+  const keep = widths.map((_, i) => i === 0 || i === selected);
+  let used = widths.reduce((a, w, i) => a + (keep[i] ? w + gap : 0), 0) + moreWidth;
+  for (let i = 0; i < n; i++) {
+    if (keep[i]) continue;
+    if (used + widths[i] + gap > available) break;
+    keep[i] = true;
+    used += widths[i] + gap;
+  }
+  return keep;
+}
+
 /** Next view id when moving delta steps through the order, wrapping. */
 export function cycleView(order, current, delta) {
   if (!order.length) return current;
@@ -200,6 +222,17 @@ export function hubChip(hub) {
     case 'dial': return { text: 'Hub · Forward mode', level: 'warn' };
     default: return { text: 'Hub · Not connected', level: 'info' };
   }
+}
+
+/**
+ * What the one-click paths say while they wait. Through an SSH admin channel `sy` takes
+ * ~15 s, so the person is told what is happening and how long it can take.
+ * kind: 'pair' | 'owner'.
+ */
+export function progressText(hub, kind) {
+  const ssh = !!(hub && hub.admin && hub.admin !== 'local' && !hub.local);
+  const head = kind === 'owner' ? 'Signing in as owner…' : 'Pairing…';
+  return ssh ? `${head} asking the hub's computer over SSH (can take 20 seconds)` : head;
 }
 
 /** The owner pill next to the chip (a paired hub only): "Read-only" or "Owner · until 14 Nov". */

@@ -248,7 +248,7 @@ func (tx *Tx) AlertSeat(id string, now int64) (AlertSeatRow, bool, error) {
 	r := AlertSeatRow{ID: id}
 	var label, email sql.NullString
 	var hidden int
-	err := tx.queryRow(`SELECT se.label, a.email, se.hidden FROM seat se LEFT JOIN account a ON a.uuid = se.account_uuid WHERE se.id = ?`, id).
+	err := tx.queryRow(`SELECT se.label, a.email, `+seatHiddenSQL+` FROM seat se LEFT JOIN account a ON a.uuid = se.account_uuid WHERE se.id = ?`, id).
 		Scan(&label, &email, &hidden)
 	if errors.Is(err, sql.ErrNoRows) {
 		return r, false, nil
@@ -296,7 +296,7 @@ func (tx *Tx) AlertRoom(key string, now int64) ([]AlertRoomRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := tx.QueryContext(tx.ctx, `SELECT se.id, se.label, a.email, se.hidden, w.final_pct, w.updated_at
+	rows, err := tx.QueryContext(tx.ctx, `SELECT se.id, se.label, a.email, `+seatHiddenSQL+`, w.final_pct, w.updated_at
 		FROM usage_window w JOIN seat se ON se.id = w.seat_id LEFT JOIN account a ON a.uuid = se.account_uuid
 		WHERE w.window_key = ? AND w.resets_at > ? AND w.final_pct IS NOT NULL ORDER BY se.id`, key, now)
 	if err != nil {

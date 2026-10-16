@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   tabTitle, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds, droppedIds,
   effectiveView, windowLabel, windowRows, readingStatus, hubBanner, hubSummary, hubChip, ownerPill, hubUsable, foldersOf,
-  switchState, shareSpec, SHARE_SWITCHES, isPrimary, loginCommand, SHARE_FOLDER_RE,
+  switchState, shareSpec, SHARE_SWITCHES, isPrimary, loginCommand, SHARE_FOLDER_RE, fitTabs, progressText,
 } from './view.js';
 import { SHARE_SPEC_PATTERN } from '../shared/ipc.js';
 
@@ -203,4 +203,24 @@ test('droppedIds: drop before or after a tab; no-ops are null', () => {
   assert.equal(droppedIds(ids, 'b', 'b', true), null);
   assert.equal(droppedIds(ids, 'x', 'a', true), null, 'unknown dragged id (the Hub)');
   assert.equal(droppedIds(ids, 'a', 'hub', false), null, 'the Hub is not a drop target');
+});
+
+test('fitTabs: everything fits, or the Hub and the shown tab stay and the rest go in order', () => {
+  const w = [60, 100, 100, 100, 100, 100, 100, 100];
+  assert.deepEqual(fitTabs(w, 2000, 90, -1), w.map(() => true));
+  // room for Hub + 3 tabs + the "more" button
+  const keep = fitTabs(w, 60 + 3 * 102 + 94, 90, -1);
+  assert.deepEqual(keep, [true, true, true, true, false, false, false, false]);
+  // the shown tab (index 7) is always kept, so one fewer fits before it
+  const sel = fitTabs(w, 60 + 3 * 102 + 94, 90, 7);
+  assert.deepEqual(sel, [true, true, true, false, false, false, false, true]);
+  // no room at all: still Hub and the shown tab
+  assert.deepEqual(fitTabs(w, 10, 90, 3), [true, false, false, true, false, false, false, false]);
+});
+
+test('progressText: SSH admin channels say how long it can take', () => {
+  assert.equal(progressText({ admin: 'ssh:vm' }, 'pair'), "Pairing… asking the hub's computer over SSH (can take 20 seconds)");
+  assert.match(progressText({ admin: 'ssh:vm' }, 'owner'), /^Signing in as owner… asking the hub's computer over SSH/);
+  assert.equal(progressText({ admin: 'local', local: true }, 'pair'), 'Pairing…');
+  assert.equal(progressText({}, 'owner'), 'Signing in as owner…');
 });

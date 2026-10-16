@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-import { isClaudeUrl, isReadableUrl, pickOrg, planOf, stripWindows, windowsOf } from './usage.js';
+import { chooseOrgs, isClaudeUrl, isReadableUrl, pickOrg, planOf, stripWindows, windowsOf } from './usage.js';
 
 const root = new URL('../../../testdata/usage/', import.meta.url);
 const golden = JSON.parse(fs.readFileSync(new URL('./usage.golden.json', import.meta.url), 'utf8'));
@@ -68,4 +68,33 @@ test('isClaudeUrl and isReadableUrl', () => {
   assert.ok(isReadableUrl('https://claude.ai/'));
   for (const p of ['/login', '/login/', '/logout', '/login/magic']) assert.ok(!isReadableUrl(`https://claude.ai${p}`), p);
   assert.ok(!isReadableUrl('about:blank'));
+});
+
+test('chooseOrgs: never a free personal org beside a paid one; one seat per all-free tab', () => {
+  const use = { five_hour: { utilization: 1 }, seven_day: { utilization: 2 } };
+  const team = { org: { uuid: 'team', capabilities: ['chat', 'raven'], raven_type: 'team' }, usage: use };
+  const free = { org: { uuid: 'free', capabilities: ['chat'] }, usage: { five_hour: { utilization: 9 } } };
+  const free2 = { org: { uuid: 'free2', capabilities: ['chat'] }, usage: use };
+  const max = { org: { uuid: 'max', capabilities: ['chat', 'claude_max'], rate_limit_tier: 'default_claude_max_5x' }, usage: use };
+  const ids = (r) => r.report.map((o) => o.org.uuid);
+
+  // the reported case: a Team seat on the tab, the active org cookie points at the personal org
+  const r1 = chooseOrgs([team, free], 'free', { account: 'acc', org: 'team' }, 'acc');
+  assert.deepEqual(ids(r1), ['team']);
+  assert.equal(r1.pick.org.uuid, 'team');
+  // no seat yet: the same
+  assert.deepEqual(ids(chooseOrgs([free, team], 'free', null, 'acc')), ['team']);
+  // a tab whose stored seat is the stray free org heals to the paid one
+  assert.equal(chooseOrgs([team, free], 'free', { account: 'acc', org: 'free' }, 'acc').pick.org.uuid, 'team');
+  // two paid orgs are both real; the active one is shown
+  const two = chooseOrgs([team, max], 'max', { account: 'acc', org: 'team' }, 'acc');
+  assert.deepEqual(ids(two), ['team', 'max']);
+  assert.equal(two.pick.org.uuid, 'max');
+  // all free: one org only, the tab's own seat first, else the active one, else the busiest
+  assert.deepEqual(ids(chooseOrgs([free, free2], 'free', { account: 'acc', org: 'free2' }, 'acc')), ['free2']);
+  assert.deepEqual(ids(chooseOrgs([free, free2], 'free', null, 'acc')), ['free']);
+  assert.deepEqual(ids(chooseOrgs([free, free2], null, null, 'acc')), ['free2']);
+  // a seat of another account is not "mine"
+  assert.deepEqual(ids(chooseOrgs([free, free2], null, { account: 'other', org: 'free' }, 'acc')), ['free2']);
+  assert.deepEqual(chooseOrgs([], null, null, 'acc'), { report: [], pick: null });
 });
