@@ -290,7 +290,7 @@ function statusLine(mode) {
       mode === 'owner'
         ? ['No device can receive notifications yet, so alerts only show here on the board. ',
           h('a', { href: '#/more/devices?add=phone', 'data-key': 'setup-receiver' }, 'Pair the Android app'),
-          inApp() ? ', or turn on notifications in the app’s Settings.' : [' or ', h('a', { href: '#/more/settings' }, 'turn them on in this browser'), '.']]
+          inApp() ? ', or turn on notifications in the app’s App settings, Notifications.' : [' or ', h('a', { href: '#/more/settings' }, 'turn them on in this browser'), '.']]
         : ['This device gets no notifications yet. ', h('a', { href: '#/more/settings', 'data-key': 'setup-receiver' }, 'Turn them on in Settings'), '.']);
   }
   const names = list.map((x) => deviceLabel(x.device, state.devices));

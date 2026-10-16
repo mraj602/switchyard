@@ -152,19 +152,29 @@ async function boardFlow(sizeName, w, hgt) {
   const ctx = await browser.createBrowserContext();
   const page = await newPage(ctx, sizeName, w, hgt, { ua: undefined, label: 'board', mobile: false });
   await page.goto(BASE + '/#/login', { waitUntil: 'networkidle2' });
-  // The login leads with sy hub owner-link; the token form is behind a disclosure (L1).
-  await page.waitForSelector('.login-card [data-key=owner-link-cmd]');
+  // "Sign in to this hub": an owner link, a code, the hub-computer fold-out (sy hub owner-link);
+  // the token form is behind a disclosure (L1).
+  await page.waitForSelector('.login-card [data-key=owner-link-form]');
+  await page.waitForSelector('.login-card [data-key=to-pair]');
+  await page.waitForSelector('.login-card [data-key=owner-cli] [data-key=owner-link-cmd]');
+  // A pasted owner link for another hub is refused with the other origin named.
+  await page.type('[data-key=owner-link-input]', 'https://other.example/#/owner?s=abcdefghijklmnopqrstuv');
+  await page.click('[data-key=owner-link-open]');
+  await page.waitForFunction(() => /not this hub/.test((document.querySelector('[data-key=owner-link-error]:not([hidden])') || {}).textContent || ''), { timeout: 4000 })
+    .catch(() => fail(page.tag('a foreign owner link was not refused')));
+  if (!(await page.$('[data-key=owner-link-error] a[href^="https://other.example/"]'))) fail(page.tag('the refusal has no link to the other hub'));
+  await page.evaluate(() => { document.querySelector('[data-key=owner-link-input]').value = ''; });
   await shot(page, `${sizeName}-login`);
   await page.click('[data-key=token-login] summary');
   await page.waitForSelector('#token', { visible: true });
   await page.type('#token', 'sy_b_wrong');
-  await page.click('button[type=submit]');
-  await page.waitForSelector('.form-error:not([hidden])');
+  await page.click('.login-token button[type=submit]');
+  await page.waitForSelector('.login-token .form-error:not([hidden])');
   await page.evaluate(() => { document.getElementById('token').value = ''; });
   await page.type('#token', TOKEN);
   // Typing clears the old error (L2).
-  if (await page.$('.form-error:not([hidden])')) fail(page.tag('the login error stayed while the token was retyped'));
-  await Promise.all([page.waitForSelector('#nav a[aria-current=page]'), page.click('button[type=submit]')]);
+  if (await page.$('.login-token .form-error:not([hidden])')) fail(page.tag('the login error stayed while the token was retyped'));
+  await Promise.all([page.waitForSelector('#nav a[aria-current=page]'), page.click('.login-token button[type=submit]')]);
   for (const [name, hash, sel] of BOARD_PAGES) await visit(page, sizeName, name, hash, sel);
   await auditChecks(page, sizeName);
   for (const [name, hash, sel] of [['more', '#/more', '.more-list'], ['alerts-readonly', '#/more/alerts', '.log'], ['settings-readonly', '#/more/settings', '[data-key=build]'], ['devices-readonly', '#/more/devices', '.calm']]) {
@@ -291,6 +301,21 @@ async function phoneFlow(sizeName, w, hgt) {
   await shot(page, `${sizeName}-pair`);
   await ctx.close();
   await resetHub();
+  // The desktop app's Hub view marks itself in the user agent (works signed out): no CLI on the
+  // sign-in page; signed in, the sidebar says Hub settings.
+  const appCtx = await browser.createBrowserContext();
+  const app = await newPage(appCtx, sizeName, w, hgt, { label: 'in-app', mobile: false, ua: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Electron/37.10.3 Safari/537.36 SwitchyardDesktop/0.6.0' });
+  await app.goto(BASE + '/#/login', { waitUntil: 'networkidle2' });
+  try { await app.waitForSelector('[data-key=login-app]', { timeout: 4000 }); } catch (e) { fail(app.tag('the app sign-in page is not the in-app one')); }
+  if (/sy hub/.test(await app.evaluate(() => document.body.textContent || ''))) fail(app.tag('the app sign-in page names a CLI command'));
+  const signedIn = await app.evaluate(async (t) => { const r = await fetch('/v1/session/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: t }) }); return r.status + ' ' + await r.text(); }, TOKEN);
+  if (!/^2/.test(signedIn)) fail(app.tag('app sign-in: ' + signedIn));
+  await app.evaluate(() => { location.hash = '#/'; });
+  await app.reload({ waitUntil: 'networkidle2' }); // a hash change alone keeps the signed-out page
+  await app.waitForFunction(() => ((document.querySelector('[data-key=nav-settings]') || {}).textContent || '') === 'Hub settings', { timeout: 6000 })
+    .catch(async () => fail(app.tag('the app sidebar does not say Hub settings: ' + await app.evaluate(() => location.hash + ' | ' + ((document.querySelector('[data-key=nav-settings]') || {}).textContent) + ' | ' + navigator.userAgent.slice(-30)))));
+  await appCtx.close();
+  await resetHub();
 }
 
 // ---- the owner -------------------------------------------------------------------------------
@@ -326,8 +351,19 @@ async function ownerFlow(sizeName, w, hgt) {
   await page.click('[data-key=save-rule_o1]');
   await page.waitForFunction(async () => (await (await fetch('/v1/rules')).json()).rules.find((r) => r.id === 'rule_o1').delay_s === 600, { timeout: 4000 }).catch(() => fail(page.tag('override change did not save')));
   await page.waitForFunction(() => /after 10 min/.test((document.querySelector('[data-key=ov-rule_o1]') || {}).textContent || ''), { timeout: 4000 }).catch(() => fail(page.tag('override row did not show the new wait')));
-  // Add phone dialog.
+  // Make another device owner: a one-time owner link with its QR and a copy button (pairing.md 4.1).
   await page.evaluate(() => { location.hash = '#/more/devices'; });
+  await page.waitForSelector('[data-key=make-owner]');
+  await page.click('[data-key=make-owner]');
+  try {
+    await page.waitForFunction(() => /#\/owner\?s=/.test((document.querySelector('dialog[open] [data-key=owner-link-url]') || {}).textContent || ''), { timeout: 4000 });
+    await page.waitForSelector('dialog[open] svg.qr rect', { timeout: 4000 });
+    await page.waitForSelector('dialog[open] [data-key=copy-owner-link]', { timeout: 4000 });
+  } catch (e) { fail(page.tag('Make another device owner did not show the link, its QR and Copy')); }
+  await shot(page, `${sizeName}-o-make-owner`);
+  await page.click('dialog[open] [data-key=pair-cancel]').catch(() => fail(page.tag('owner link dialog has no Cancel')));
+  await page.waitForFunction(() => !document.querySelector('dialog[open]'), { timeout: 4000 }).catch(() => fail(page.tag('owner link dialog did not close')));
+  // Add phone dialog.
   await page.waitForSelector('[data-key=add-phone]');
   await page.click('[data-key=add-phone]');
   try { await page.waitForSelector('dialog[open] svg.qr rect', { timeout: 4000 }); } catch (e) { fail(page.tag('Add phone did not draw a QR code')); }
