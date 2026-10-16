@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="1 0 20 20" width="192" height="192">
+  <!-- The bare mark, tightly cropped, for the app's own screens (src/components/logo.tsx): the
+       icon's gold double chevron on transparent, so it sits on light and dark backgrounds. -->
+  <g fill="none" stroke="#E8B04B" stroke-width="2" stroke-linejoin="miter" stroke-linecap="butt">
+    <path d="M3 18 L11 4 L19 18"/>
+    <path d="M7 18 L11 11 L15 18"/>
+  </g>
+</svg>
