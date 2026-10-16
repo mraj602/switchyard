@@ -177,6 +177,21 @@ test('tab:reorder keeps unknown ids out and unlisted tabs last', async () => {
   assert.deepEqual(r.api.list().map((t) => t.id), [C, A, B]);
 });
 
+test('tab:reorder persists the order in the store, notifies once, and a re-listed full order is a no-op change', async () => {
+  const r = rig({ tabs: [tabRecord(A), tabRecord(B), tabRecord(C)] });
+  await r.api.start();
+  const before = r.events.length;
+  await r.ipc.call('tab:reorder', { ids: [B, C, A] });
+  assert.deepEqual(r.store.get().tabs.map((t) => t.id), [B, C, A], 'the stored order is the display order');
+  assert.equal(r.events.length, before + 1);
+  assert.deepEqual(r.events.at(-1).tabs.map((t) => t.id), [B, C, A]);
+  await r.ipc.call('tab:reorder', { ids: [B, C, A] });
+  assert.deepEqual(r.store.get().tabs.map((t) => t.id), [B, C, A]);
+  // a partial list moves only the listed tabs to the front; none is lost
+  await r.ipc.call('tab:reorder', { ids: [A] });
+  assert.deepEqual(r.store.get().tabs.map((t) => t.id), [A, B, C]);
+});
+
 test('tab:reload, tab:home, tab:external', async () => {
   const r = rig({ tabs: [tabRecord(A)] });
   await r.api.start();

@@ -29,6 +29,9 @@ button { cursor: pointer; }
 }
 .tab:hover { background: var(--hair-soft); }
 .tab[aria-selected="true"] { background: var(--selected); font-weight: 600; }
+.tab.drop-before { box-shadow: inset 3px 0 0 var(--accent, currentColor); }
+.tab.drop-after { box-shadow: inset -3px 0 0 var(--accent, currentColor); }
+.tab[draggable="true"] { cursor: grab; }
 .tab .tab-name { overflow: hidden; text-overflow: ellipsis; }
 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--muted); }
 .dot-off { opacity: 0.4; }
