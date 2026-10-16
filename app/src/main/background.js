@@ -5,7 +5,7 @@
 import { FLAG_AUTOSTART, FLAG_BACKGROUND } from '../shared/constants.js';
 
 export const NOTICE_TITLE = 'Switchyard is still running';
-export const NOTICE_WITH_TRAY = 'Closing the window keeps Switchyard running in the tray, so alerts and usage keep coming. Use the tray icon to open it again, or choose Quit. You can change this in Settings (Keep running).';
+export const NOTICE_WITH_TRAY = 'Switchyard keeps running in the tray. Quit from the tray menu.';
 export const NOTICE_NO_TRAY = 'There is no tray icon on this desktop, so Switchyard keeps running with no window. Start Switchyard again to show it, or turn off Keep running in Settings so closing the window quits.';
 
 /** @param {string[]} argv @returns {{background: boolean, autostart: boolean|null}} */
@@ -28,7 +28,7 @@ const BOOL_KEYS = ['keep_running', 'notifications', 'start_hidden'];
  *   bus: for the `settings` event
  * @returns {{
  *   claim(): boolean,        // requestSingleInstanceLock + second-instance wiring; false = quit now
- *   startHidden(): boolean,  // --background or settings.start_hidden
+ *   startHidden(): boolean,  // only --background (the login entry); never a stored setting
  *   start(): void,           // close-to-tray, before-quit
  *   settings(): Promise<object>,                // Settings (shared/ipc.js), autostart read from the OS
  *   setSettings(patch: object): Promise<object>,  // settings:set
@@ -43,6 +43,10 @@ export function create(deps) {
   const { app } = electron;
   const platform = deps.platform ?? process.platform;
   const own = parseArgv(deps.argv);
+  const env = deps.env ?? process.env;
+  // GNOME/Wayland gives a launched app an activation token; Electron has no API to hand it on,
+  // so it travels as additionalData and the running instance puts it where Chromium looks.
+  const activationToken = () => env.XDG_ACTIVATION_TOKEN || env.DESKTOP_STARTUP_ID || null;
   let quitting = false;
   let appliedP = Promise.resolve();
   let started = false;
@@ -119,11 +123,17 @@ export function create(deps) {
     }
   }
 
-  function onSecondInstance(_event, argv2) {
+  function onSecondInstance(_event, argv2, _cwd, extra) {
     const a = parseArgv(argv2);
     if (a.autostart !== null) {
       applyAutostart(a.autostart).then(() => publish()).catch(() => {});
       return; // applies and exits: no window
+    }
+    if (a.background) return; // a login launch while already running: nothing to show
+    const token = typeof extra?.activation === 'string' ? extra.activation.slice(0, 200) : null;
+    if (token) {
+      env.XDG_ACTIVATION_TOKEN = token;
+      env.DESKTOP_STARTUP_ID = token;
     }
     window.showWindow();
   }
@@ -136,7 +146,8 @@ export function create(deps) {
 
   return {
     claim() {
-      if (!app.requestSingleInstanceLock()) return false;
+      const token = activationToken();
+      if (!app.requestSingleInstanceLock(token ? { activation: token } : undefined)) return false;
       app.on('second-instance', onSecondInstance);
       if (own.autostart !== null) {
         appliedP = applyAutostart(own.autostart).then(() => app.exit(0));
@@ -145,7 +156,9 @@ export function create(deps) {
       return true;
     },
     startHidden() {
-      return own.background || store.get().settings?.start_hidden === true;
+      // A normal launch (app menu, AppImage) always shows the window. A stored 'start hidden'
+      // setting used to hide those too, which left the user with a tray icon only.
+      return own.background;
     },
     start() {
       if (started) return;

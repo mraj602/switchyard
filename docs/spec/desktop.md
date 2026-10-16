@@ -147,7 +147,11 @@ not used). Before calling a handler it checks the following.
 | `usage:resume` | `{id}` | — | B |
 | `usage:refresh` | `{id?}` | — | B |
 | `hub:pair` | `{code: "^\d{3}-?\d{3}$"}` or `{}` (local or admin channel) | `{ok, error?}` | C |
-| `hub:owner-sign-in` | — | `{ok, error?}` | C |
+| `hub:owner-sign-in` | `{}` (local hub or admin channel) or `{link}` (a pasted owner link to the paired hub's own origin) | `{ok, error?}` | C |
+| `hub:owner-sign-out` | — | `{ok}` | C |
+| `hub:connect` | `{url, code?}` (checks `/health`, remembers the address without sy, pairs with the code) | `{ok, error?}` | C |
+| `hub:unpair` | `{forget?: bool}` (`DELETE /v1/devices/self`, then the token and the board session are dropped) | `{ok, revoked, warning?}` | C |
+| `hub:retry` | — | `{ok}` | C |
 | `hub:service` | `{action: "status" \| "start" \| "stop"}` | `{service, health}` | C |
 | `seat:update` | `{seat, label?, colour?}` (owner; `PATCH /v1/accounts/{seat}`) | `{ok, error?}` | C |
 | `accounts:local` | — | `sy account list --json` result | C |
@@ -167,7 +171,7 @@ Wave 0 details fixed by `src/shared/ipc.js`:
 - `window.sy` function names, in table order: `state`, `selectView`, `hubRoute`, `addTab`,
   `updateTab`, `removeTab`, `reorderTabs`, `reloadTab`, `homeTab`, `openTabExternal`,
   `acceptWarning`, `setReading`, `setSend`, `resumeReading`, `refreshUsage`, `pair`,
-  `ownerSignIn`, `hubService`, `updateSeat`, `localAccounts`, `shareAccount`, `setSettings`;
+  `ownerSignIn`, `ownerSignOut`, `hubConnect`, `hubUnpair`, `hubRetry`, `hubService`, `updateSeat`, `localAccounts`, `shareAccount`, `setSettings`;
   plus `on(event, cb)`, which returns an unsubscribe function. Each
   function takes one argument object (or none, for the channels without arguments) and
   returns the handler's promise.

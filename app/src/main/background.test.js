@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { create, parseArgv } from './background.js';
+import { create, parseArgv, NOTICE_WITH_TRAY } from './background.js';
 import { createBus } from './bus.js';
 import { fakeElectron } from '../../test/fakes/electron.js';
 
-function setup({ argv = [], settings = {}, trayOn = true, singleInstance = true, onQuit } = {}) {
+function setup({ argv = [], settings = {}, trayOn = true, singleInstance = true, onQuit, env = {} } = {}) {
   const fake = fakeElectron({ singleInstance });
   const bus = createBus();
   const events = [];
@@ -29,10 +29,10 @@ function setup({ argv = [], settings = {}, trayOn = true, singleInstance = true,
   const tray = { available: () => trayOn };
   const quits = [];
   const bg = create({
-    electron: fake.electron, window, store, autostart, tray, argv, bus, platform: 'linux', log: console,
+    electron: fake.electron, window, store, autostart, tray, argv, bus, platform: 'linux', log: console, env,
     onQuit: onQuit ?? (async () => quits.push('flush')),
   });
-  return { fake, bg, win, shown, autostartCalls, events, quits, store: () => state };
+  return { fake, bg, win, shown, autostartCalls, events, quits, env, store: () => state };
 }
 
 const tick = () => new Promise((r) => setImmediate(r));
@@ -43,11 +43,11 @@ test('parseArgv', () => {
   assert.deepEqual(parseArgv(['--autostart=maybe']), { background: false, autostart: null });
 });
 
-test('claim: the lock decides, startHidden follows --background or start_hidden', () => {
+test('claim: the lock decides, startHidden follows --background only', () => {
   assert.equal(setup().bg.claim(), true);
   assert.equal(setup({ singleInstance: false }).bg.claim(), false);
   assert.equal(setup({ argv: ['--background'] }).bg.startHidden(), true);
-  assert.equal(setup({ settings: { start_hidden: true } }).bg.startHidden(), true);
+  assert.equal(setup({ settings: { start_hidden: true } }).bg.startHidden(), false); // a stale setting never hides a normal launch
   assert.equal(setup().bg.startHidden(), false);
 });
 
@@ -61,6 +61,15 @@ test('a second launch shows the window; with --autostart it applies it and shows
   assert.deepEqual(shown, ['show']);
   assert.deepEqual(autostartCalls, [true]);
   assert.equal(events.at(-1).autostart, true);
+});
+
+test('a second launch from the app menu shows and focuses the window even with start_hidden stored; a login launch does not', () => {
+  const { fake, bg, shown } = setup({ settings: { start_hidden: true } });
+  bg.claim();
+  fake.electron.app.emit('second-instance', {}, ['app', '--no-sandbox']);
+  assert.deepEqual(shown, ['show']);
+  fake.electron.app.emit('second-instance', {}, ['app', '--background']);
+  assert.deepEqual(shown, ['show']);
 });
 
 test('this launch with --autostart=off applies it, exits and claim() is false', async () => {
@@ -134,4 +143,28 @@ test('setSettings: stores booleans, drives autostart, emits settings, ignores ju
     keep_running: true, notifications: false, start_hidden: false, autostart: true, close_notice_shown: false, storage_backend: 'gnome_libsecret',
   });
   assert.deepEqual(events.at(-1), s);
+});
+
+test('the close notice is the one sentence of the target, and only once', async () => {
+  const { fake, bg, win, store } = setup();
+  assert.equal(NOTICE_WITH_TRAY, 'Switchyard keeps running in the tray. Quit from the tray menu.');
+  bg.claim();
+  bg.start();
+  win.emit('close', { preventDefault() {} });
+  await tick();
+  assert.equal(store().settings.close_notice_shown, true);
+  assert.equal(fake.callsOf('Notification.new').at(-1)[0].body, NOTICE_WITH_TRAY);
+});
+
+test('the launcher activation token travels to the running instance, which exports it and shows the window', () => {
+  const env = { XDG_ACTIVATION_TOKEN: 'tok-from-launcher' };
+  const second = setup({ env });
+  second.bg.claim();
+  assert.deepEqual(second.fake.callsOf('app.requestSingleInstanceLock'), [[{ activation: 'tok-from-launcher' }]]);
+  const running = setup({ env: {} });
+  running.bg.claim();
+  running.fake.electron.app.emit('second-instance', {}, ['app'], '/', { activation: 'tok-from-launcher' });
+  assert.deepEqual(running.shown, ['show']);
+  assert.equal(running.env.XDG_ACTIVATION_TOKEN, 'tok-from-launcher');
+  assert.equal(running.env.DESKTOP_STARTUP_ID, 'tok-from-launcher');
 });

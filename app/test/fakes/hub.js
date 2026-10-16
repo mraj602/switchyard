@@ -31,7 +31,7 @@ export async function startFakeHub(initial = {}) {
     me: { device: { id: 'dev_x' }, owner: false, hub: { version: '0.6.0' } },
     ...initial,
   };
-  const script = { stream401: false, stream403: false, login: 204, overview: 200, loginSetsCookie: true };
+  const script = { stream401: false, stream403: false, login: 204, overview: 200, loginSetsCookie: true, claim: 200, ingest: 200, revokedSelf: false };
   const requests = [];
   const streams = new Set();
   let eventId = 0;
@@ -49,9 +49,16 @@ export async function startFakeHub(initial = {}) {
         res.end(obj === undefined ? '' : JSON.stringify(obj));
       };
       const bearer = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1];
-      const authed = bearer === 'sy_d_good' || (req.headers.cookie ?? '').includes('sy_session=ok');
+      const authed = (bearer === 'sy_d_good' && !script.revokedSelf) || (req.headers.cookie ?? '').includes('sy_session=ok');
       const p = u.pathname;
       if (p === '/health') return json(200, { ok: true, version: '0.6.0' });
+      if (p === '/v1/pair/claim' && req.method === 'POST') {
+        if (script.claim !== 200) return json(script.claim, { error: { message: 'no' } });
+        const b = JSON.parse(body || '{}');
+        if (!b.code && !b.secret) return json(400, { error: { message: 'no code' } });
+        script.revokedSelf = false;
+        return json(200, { device: 'dev_direct', token: 'sy_d_good', kind: 'desktop', scopes: ['write', 'read'] });
+      }
       if (p === '/v1/session/login' && req.method === 'POST') {
         const status = script.login;
         const headers = status === 204 && script.loginSetsCookie ? { 'set-cookie': 'sy_session=ok; Path=/; HttpOnly' } : {};
@@ -69,6 +76,16 @@ export async function startFakeHub(initial = {}) {
         res.write(`id: ${++eventId}\nevent: hello\ndata: ${JSON.stringify({ version: '0.6.0', schema: 5 })}\n\n`);
         if (data.resetOnConnect && last !== undefined) res.write(`id: ${++eventId}\nevent: reset\ndata: {}\n\n`);
         return undefined;
+      }
+      if (p === '/v1/ingest' && req.method === 'POST') {
+        if (script.ingest !== 200) return json(script.ingest, { error: { message: 'no' } });
+        const b = JSON.parse(body || '{}');
+        return json(200, { accepted: (b.records ?? []).map((r) => r.id), duplicates: [], rejected: [] });
+      }
+      if (p === '/v1/devices/self' && req.method === 'DELETE') {
+        script.revokedSelf = true;
+        res.writeHead(204);
+        return res.end();
       }
       if (p === '/v1/overview') return script.overview === 200 ? json(200, data.overview) : json(script.overview, { error: { message: 'x' } });
       if (p === '/v1/accounts' && req.method === 'GET') return json(200, data.accounts);

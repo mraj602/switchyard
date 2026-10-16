@@ -142,50 +142,84 @@ export const lastReadTitle = (tab, now) => (tab.last_read ? `last read ${clock(t
 // ---- hub banners
 
 /**
- * The banner a hub status needs, or null when ok. action: 'pair' (code field + button),
- * 'pair-click' (one click: admin channel or local hub), 'settings', or null.
+ * The card a hub status needs on the Hub tab, or null when the board can show (status ok, no error).
+ * {level, title, text, command, action}. action: 'connect' (address + code), 'pair' (code field),
+ * 'pair-click' (one click: admin channel or local hub), 'retry' (Try again, + 'service' on a local hub:
+ * Start hub), 'service', or null.
  */
-export function hubBanner(hub) {
+export function hubBanner(hub, now = Date.now()) {
   if (!hub) return null;
   switch (hub.status) {
     case 'ok':
+      if (hub.board_blocked) {
+        // The board asked for its own sign-in and the app could not give it: its login page is never shown.
+        return { level: 'error', title: 'The board could not be signed in.', text: hub.error || 'It is tried again shortly. If it keeps failing, unpair this computer in App settings and pair it again.', command: null, action: 'retry' };
+      }
       // e.g. a 403 from the hub: shown, but the token is kept (only a 401 means it is dead)
-      return hub.error ? { level: 'error', text: hub.error, command: null, action: null } : null;
+      return hub.error ? { level: 'error', title: null, text: hub.error, command: null, action: null } : null;
     case 'no_sy':
-      return { level: 'warn', text: 'sy was not found. Run "sy setup" in a terminal to connect this computer to a hub. Account tabs still work.', command: 'sy setup', action: null };
     case 'not_connected':
-      return { level: 'warn', text: 'sy is not connected to a hub. Run "sy setup" in a terminal. Account tabs still work.', command: 'sy setup', action: null };
+      return { level: 'info', title: 'Connect to a hub.', text: "Enter your hub's address. Account tabs work without a hub.", command: null, action: 'connect' };
     case 'dial':
-      return { level: 'warn', text: 'This computer reaches its hub in forward mode, which is not supported in the desktop app. Use the hub from a browser, or connect this computer directly.', command: null, action: null };
-    case 'needs_pairing':
-      return {
-        level: 'info',
-        text: hub.admin || hub.local
-          ? 'Pair the app with your hub to see the board here.'
-          : 'Pair the app with your hub: on the board open More, Devices, Add desktop app, and type the code here.',
-        command: null,
-        action: hub.admin || hub.local ? 'pair-click' : 'pair',
-      };
-    case 'unreachable':
-      return { level: 'error', text: hub.url ? `The hub at ${hub.url} is not reachable.` : 'The hub is not reachable.', command: null, action: hub.local ? 'service' : null };
+      return { level: 'warn', title: null, text: 'This computer reaches its hub in forward mode, which is not supported in the desktop app. Use the hub from a browser, or connect this computer directly.', command: null, action: null };
+    case 'needs_pairing': {
+      const oneClick = !!(hub.admin || hub.local);
+      const how = oneClick
+        ? "This computer can reach the hub's computer, so pairing needs no code."
+        : 'Get a code on any owner device: More, Devices, Add desktop app.';
+      return hub.removed
+        ? { level: 'warn', title: 'This computer was removed from the hub.', text: `Someone removed it in Devices. Pair again to see the board. ${how}`, command: null, action: oneClick ? 'pair-click' : 'pair' }
+        : { level: 'info', title: 'Pair this computer.', text: how, command: null, action: oneClick ? 'pair-click' : 'pair' };
+    }
+    case 'unreachable': {
+      const seen = hub.last_seen ? ` Last seen ${agoLabel(hub.last_seen, now) || 'a while ago'}.` : '';
+      return { level: 'error', title: "Can't reach the hub.", text: `${hub.url || 'The hub'}.${seen}`, command: null, action: hub.local ? 'retry-service' : 'retry' };
+    }
     default:
       return null;
   }
 }
 
 /** Whether the board itself can be shown (the hub module has a view to put over the shell). */
-export const hubUsable = (hub) => !!hub && hub.status === 'ok';
+export const hubUsable = (hub) => !!hub && hub.status === 'ok' && !hub.board_blocked;
 
-/** One-line hub status for the top bar chip and Settings. */
+/** "14 Nov" for an RFC 3339 time, or ''. */
+export function shortDate(iso) {
+  const t = Date.parse(iso ?? '');
+  if (!Number.isFinite(t)) return '';
+  return new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+/** The top-bar chip: text and level for any state ("Hub · Connected"). */
+export function hubChip(hub) {
+  if (!hub) return { text: 'Hub · Unknown', level: 'info' };
+  switch (hub.status) {
+    case 'ok': return hub.board_blocked ? { text: 'Hub · Sign-in failed', level: 'error' } : { text: 'Hub · Connected', level: hub.error ? 'error' : 'ok' };
+    case 'needs_pairing': return { text: hub.removed ? 'Hub · Removed' : 'Hub · Not paired', level: 'warn' };
+    case 'unreachable': return { text: 'Hub · Unreachable', level: 'error' };
+    case 'dial': return { text: 'Hub · Forward mode', level: 'warn' };
+    default: return { text: 'Hub · Not connected', level: 'info' };
+  }
+}
+
+/** The owner pill next to the chip (a paired hub only): "Read-only" or "Owner · until 14 Nov". */
+export function ownerPill(hub) {
+  if (!hub || hub.status !== 'ok' || hub.board_blocked) return null;
+  if (!hub.owner) return { text: 'Read-only', owner: false };
+  const d = shortDate(hub.owner_until);
+  return { text: d ? `Owner · until ${d}` : 'Owner', owner: true };
+}
+
+/** One-line hub status for Settings. */
 export function hubSummary(hub) {
   if (!hub) return 'Hub: unknown';
   switch (hub.status) {
     // "v0.6.0", but a dev build's version is the word "dev": no "vdev".
     case 'ok': return hub.version ? `Connected · ${/^\d/.test(hub.version) ? 'v' : ''}${hub.version}` : 'Connected';
-    case 'no_sy': return 'sy not found';
-    case 'not_connected': return 'sy not connected';
+    case 'no_sy': return 'Not connected';
+    case 'not_connected': return 'Not connected';
     case 'dial': return 'Forward mode (unsupported)';
-    case 'needs_pairing': return 'Needs pairing';
+    case 'needs_pairing': return hub.removed ? 'Removed from the hub' : 'Needs pairing';
     case 'unreachable': return 'Unreachable';
     default: return 'Unknown';
   }
