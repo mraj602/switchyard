@@ -19,8 +19,78 @@
 //          expo-notifications in app.config.ts: manifest mods run in reverse order of the
 //          plugins list, so it then sees (and drops) the meta-data expo-notifications adds.
 //
+// Android splash (`brandSplash`): expo-splash-screen is not a dependency, so the template's
+//          Theme.App.SplashScreen would show a white window. It gets the Android 12+ splash
+//          attributes instead: the ink background (BRAND_INK) and the adaptive icon's foreground
+//          mipmap (app.config.ts android.adaptiveIcon) as the centre icon. AppTheme's window
+//          background is the same ink, so the gap between the splash and the first React frame
+//          is not a white flash.
+//
 // Wave 0 skeleton; owned by WP-W from wave 1 on (phases/8.md).
-const { AndroidConfig, withAndroidManifest, withAppBuildGradle, withInfoPlist } = require('expo/config-plugins');
+const {
+  AndroidConfig,
+  withAndroidColors,
+  withAndroidManifest,
+  withAndroidStyles,
+  withAppBuildGradle,
+  withInfoPlist,
+} = require('expo/config-plugins');
+
+/** The icon's ink (phone/assets/src/icon.svg), also the splash background. */
+const BRAND_INK = '#17191B';
+const SPLASH_STYLE = 'Theme.App.SplashScreen';
+const SPLASH_ITEMS = {
+  'android:windowBackground': '@color/splashscreen_background',
+  'android:windowSplashScreenBackground': '@color/splashscreen_background',
+  'android:windowSplashScreenAnimatedIcon': '@mipmap/ic_launcher_foreground',
+};
+
+/** Sets (or adds) a <color name=...> in a colors.xml object. Idempotent. */
+function setColor(colors, name, value) {
+  colors.resources = colors.resources || {};
+  const list = (colors.resources.color || []).filter((c) => c.$.name !== name);
+  list.push({ _: value, $: { name } });
+  colors.resources.color = list;
+  return colors;
+}
+
+/** Sets one <item> of a style (replacing any earlier value). */
+function setItem(style, name, value) {
+  style.item = (style.item || []).filter((i) => i.$.name !== name);
+  style.item.push({ _: value, $: { name } });
+}
+
+/**
+ * The splash style edit on a styles.xml object: the SPLASH_ITEMS set on Theme.App.SplashScreen,
+ * and AppTheme's window background the same ink. Idempotent.
+ */
+function brandSplash(styles) {
+  styles.resources = styles.resources || {};
+  const all = styles.resources.style || [];
+  const app = all.find((x) => x.$.name === 'AppTheme');
+  if (app) setItem(app, 'android:windowBackground', '@color/splashscreen_background');
+  let style = all.find((x) => x.$.name === SPLASH_STYLE);
+  if (!style) {
+    style = { $: { name: SPLASH_STYLE, parent: 'AppTheme' }, item: [] };
+    all.push(style);
+  }
+  const items = (style.item || []).filter((i) => !(i.$.name in SPLASH_ITEMS));
+  for (const [name, value] of Object.entries(SPLASH_ITEMS)) items.push({ _: value, $: { name } });
+  style.item = items;
+  styles.resources.style = all;
+  return styles;
+}
+
+function withSySplash(config) {
+  config = withAndroidColors(config, (c) => {
+    setColor(c.modResults, 'splashscreen_background', BRAND_INK);
+    return c;
+  });
+  return withAndroidStyles(config, (c) => {
+    brandSplash(c.modResults);
+    return c;
+  });
+}
 
 const REMOVED_PERMISSIONS = ['android.permission.RECORD_AUDIO', 'android.permission.SYSTEM_ALERT_WINDOW'];
 
@@ -99,12 +169,17 @@ module.exports = function withSyNative(config, props = {}) {
   config = withSyIos(config);
   config = withSyAndroid(config, { development });
   config = withSyWorkAlignment(config);
+  config = withSySplash(config);
   return config;
 };
 module.exports.REMOVED_PERMISSIONS = REMOVED_PERMISSIONS;
 module.exports.WORK_VERSION = WORK_VERSION;
 module.exports.alignWorkVersions = alignWorkVersions;
 module.exports.stripFirebase = stripFirebase;
+module.exports.brandSplash = brandSplash;
+module.exports.setColor = setColor;
+module.exports.BRAND_INK = BRAND_INK;
+module.exports.SPLASH_ITEMS = SPLASH_ITEMS;
 /** The FCM-stripping manifest edit as a plugin of its own (see the header for its place). */
 module.exports.withSyNoFirebase = function withSyNoFirebase(config) {
   return withAndroidManifest(config, (c) => {

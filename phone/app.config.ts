@@ -12,6 +12,9 @@ const APP_ID = process.env.SY_APP_ID || 'dev.switchyard.app.local';
 const GROUP_ID = `group.${APP_ID}`;
 const VERSION = '0.8.0';
 const DEV = process.env.SY_APP_VARIANT === 'development';
+/** The brand colours of the icon (phone/assets/src/icon.svg) and the board (webui base.css). */
+export const BRAND_INK = '#17191B';
+export const BRAND_ACCENT = '#E8B04B';
 
 /** Android versionCode (the updater's `build`, P16.1): MAJOR*10000 + MINOR*100 + PATCH of VERSION, so it only rises with the version. */
 export const VERSION_CODE = (() => {
@@ -73,6 +76,8 @@ export const ANDROID_WIDGETS = [
 export default ({ config }: ConfigContext): ExpoConfig => {
   const notificationIcon = asset('assets/notification-icon.png');
   const icon = asset('assets/icon.png');
+  const foreground = asset('assets/adaptive-foreground.png');
+  const monochrome = asset('assets/adaptive-monochrome.png');
 
   return {
     ...config,
@@ -92,6 +97,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       package: APP_ID,
       versionCode: VERSION_CODE,
+      // The launcher icon (phone/assets/src/*.svg, scripts/gen-icons.sh): the gold mark on ink,
+      // plus the Android 13 themed-icon layer. The splash reuses the foreground (with-sy-native.js).
+      ...(foreground
+        ? { adaptiveIcon: { foregroundImage: foreground, backgroundColor: BRAND_INK, ...(monochrome ? { monochromeImage: monochrome } : {}) } }
+        : {}),
       // Never back up the app's data (the keychain token, P3); with-sy-native.js also sets it.
       allowBackup: false,
       // Listed explicitly so the prebuilt manifest shows them (expo-notifications would also
@@ -114,7 +124,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       'expo-router',
       // Before expo-notifications: mods run in reverse order, so this one sees its FCM meta-data.
       './plugins/with-sy-no-firebase.js',
-      ['expo-notifications', { color: '#0E7C76', ...(notificationIcon ? { icon: notificationIcon } : {}) }],
+      ['expo-notifications', { color: BRAND_ACCENT, ...(notificationIcon ? { icon: notificationIcon } : {}) }],
       ['expo-secure-store', { faceIDPermission: false, configureAndroidBackup: false }],
       [
         'expo-camera',

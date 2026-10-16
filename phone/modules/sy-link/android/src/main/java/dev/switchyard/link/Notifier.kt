@@ -41,6 +41,12 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
     return if (r != 0) r else R.drawable.sy_link_notify
   }
 
+  /** The brand accent behind the small icon: expo-notifications' notification_icon_color, else the icon gold. */
+  private fun color(): Int {
+    val r = ctx.resources.getIdentifier("notification_icon_color", "color", ctx.packageName)
+    return if (r != 0) ctx.getColor(r) else BRAND_ACCENT
+  }
+
   private fun flags() = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
 
   /** Tap and Open: the app at the payload's route, or the Claude link when the tap rule says so. */
@@ -69,7 +75,7 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
     // An action meant for another hub is dropped (phone.md P6.4): its buttons are not offered.
     val sameHub = n.origin == null || store.origin == null || sameOrigin(n.origin, store.origin!!)
     val b = NotificationCompat.Builder(ctx, n.channel)
-      .setSmallIcon(icon())
+      .setSmallIcon(icon()).setColor(color())
       .setContentTitle(n.title)
       .setContentText(n.body)
       .setStyle(NotificationCompat.BigTextStyle().bigText(n.body))
@@ -129,7 +135,7 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
       flags(),
     )
     return NotificationCompat.Builder(ctx, Channels.CONNECTION)
-      .setSmallIcon(icon())
+      .setSmallIcon(icon()).setColor(color())
       .setContentTitle("Switchyard")
       .setContentText(text)
       .setOngoing(true)
@@ -146,7 +152,7 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
     ensureChannels()
     notify(
       NotifyIds.forTag("sy-link-stopped"),
-      NotificationCompat.Builder(ctx, Channels.NEEDS_YOU).setSmallIcon(icon()).setContentTitle("Switchyard").setContentText(why)
+      NotificationCompat.Builder(ctx, Channels.NEEDS_YOU).setSmallIcon(icon()).setColor(color()).setContentTitle("Switchyard").setContentText(why)
         .setAutoCancel(true).build(),
     )
   }
@@ -171,6 +177,9 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
   }
 
   companion object {
+    /** #E8B04B, the gold of phone/assets/src/icon.svg (app.config.ts BRAND_ACCENT). */
+    const val BRAND_ACCENT: Int = 0xFFE8B04B.toInt()
+
     fun sameOrigin(a: String, b: String): Boolean = norm(a) == norm(b)
 
     private fun norm(o: String) = o.lowercase().trimEnd('/').removeSuffix(":443")
