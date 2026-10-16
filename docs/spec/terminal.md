@@ -135,7 +135,7 @@ Rules, all in Go and table-tested:
   - Budget: a fold of a 20 MiB outbox under 200 ms (benchmark).
 - **Token.** `sy board connect` calls `desktop.Token` with name `terminal · <machine name>`,
   through the admin channel (machines.md 4.4) or with `--code-stdin` (a **desktop** pairing
-  code from Devices → Add device → Desktop, or `sy hub pair --kind desktop`). It writes
+  code from More → Devices → Add desktop app, or `sy hub pair --kind desktop`). It writes
   `{"v":1,"url","device","token"}` atomically, mode 0600. On a hub host in merged mode this
   is one command with no code.
 

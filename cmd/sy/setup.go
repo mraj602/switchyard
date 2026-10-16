@@ -616,10 +616,30 @@ func (e *setupEnv) summary(ctx context.Context, st model.State, res apply.Result
 	if open > 0 {
 		fmt.Fprintf(w, "%d Claude sessions are open: restart them to start reporting.\n", open)
 	}
+	e.ownerStep(ctx, res, hub, listen)
 	e.phoneStep(st, hub, listen, offerPhone)
-	fmt.Fprintln(w, "Next machine: sy machine add user@host (phase 5).")
+	fmt.Fprintln(w, "Next machine: sy machine add user@host.")
 	if st.Hub.URL != nil {
 		fmt.Fprintln(w, "Dashboard: "+*st.Hub.URL)
+	}
+}
+
+// ownerStep prints the first owner link (pairing.md 4.1) after `sy setup --hub here` when
+// the hub step worked and the hub never had an owner session: link, QR, board URL and "Open
+// this on your computer to become owner. Pair everything else from the board." Nothing
+// otherwise; it never fails setup.
+func (e *setupEnv) ownerStep(ctx context.Context, res apply.Result, hub model.HubChoice, listen string) {
+	if hub.Mode != model.HubHere || (res.Hub != nil && res.Hub.Error != "") {
+		return
+	}
+	if listen == "" {
+		listen = service.DefaultListen
+	}
+	f, ok := e.stdout.(*os.File)
+	ansi := ok && term.IsTerminal(int(f.Fd()))
+	fmt.Fprintln(e.stdout)
+	if _, err := cli.FirstOwnerLinkDB(ctx, filepath.Join(e.dirs.Data.Path, "hub.db"), "http://"+listen, e.stdout, ansi); err != nil {
+		fmt.Fprintf(e.stdout, "Owner: could not make an owner link now (%v). Later: `sy hub owner-link`\n", err)
 	}
 }
 
@@ -646,7 +666,7 @@ func (e *setupEnv) phoneStep(st model.State, hub model.HubChoice, listen string,
 		fmt.Fprintln(w, "Phone: later (connect a hub first, then sy phone pair)")
 		return
 	case !isLoopbackURL(url):
-		fmt.Fprintf(w, "Phone: open %s -> Settings -> Add phone, or run `sy phone pair` on the hub\n", strings.TrimRight(url, "/"))
+		fmt.Fprintf(w, "Phone: open %s as owner -> More -> Devices -> Add phone, or run `sy phone pair` on the hub\n", strings.TrimRight(url, "/"))
 		return
 	case !offer:
 		fmt.Fprintln(w, "Phone: run `sy phone pair` on this machine")

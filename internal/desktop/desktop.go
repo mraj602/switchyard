@@ -311,7 +311,7 @@ func RunToken(ctx context.Context, e Env, o TokenOptions) (Token, error) {
 		return e.claimToken(ctx, hubURL, m.ID, name)
 	}
 	if e.Admin == nil {
-		return Token{}, e.noAdmin("or pair with a code from the board (Devices, Add device, Desktop)")
+		return Token{}, e.noAdmin("or pair with a code from the board (More, Devices, Add desktop app)")
 	}
 	out, err := e.Admin.Hub(ctx, []string{"token", "create", "--kind", "desktop", "--machine", m.ID, "--name", name, "--json"}, nil)
 	if err != nil {
