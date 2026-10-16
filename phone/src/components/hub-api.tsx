@@ -51,6 +51,10 @@ export interface HubApi {
    * elsewhere (iOS, no module): no Updates row.
    */
   updater?: Updater;
+  /** The hub said it moved (/health `frozen.moved_to`): where to, else absent. */
+  moved?: { to: string } | null;
+  /** Re-point this phone at `moved.to` with the same token; see HubState.switchToMoved. */
+  switchToMoved?(): Promise<'switched' | 'rescan' | 'failed'>;
   /** DELETE /v1/devices/self (best effort), then clear the keychain, cache and widget data. */
   unpair(): Promise<void>;
 }

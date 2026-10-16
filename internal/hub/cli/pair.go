@@ -300,6 +300,69 @@ func OwnerLink(args []string, stdout, stderr io.Writer) error {
 	return nil
 }
 
+// FirstOwnerNext is the next step under a first-start owner link (pairing.md 4.1).
+const FirstOwnerNext = "Open this on your computer to become owner. Pair everything else from the board."
+
+// FirstOwnerLink makes the first-start owner link of pairing.md 4.1 and returns it as one
+// printable block (link, QR, board URL, next step), or "" when the hub already had an owner
+// session. hubURL is the address to put in the link (--public-url, hub.public_url, else the
+// listen address); svc nil = a service on st with the default pepper. ansi draws the QR black
+// on white for a terminal; without it (a log, the journal) the QR is plain half blocks.
+func FirstOwnerLink(ctx context.Context, st *store.Store, svc *pair.Service, hubURL, by string, ansi bool) (string, error) {
+	had, err := st.HadOwnerSession(ctx)
+	if err != nil || had {
+		return "", err
+	}
+	if svc == nil {
+		svc = pair.NewService(st, "")
+	}
+	l, err := svc.CreateOwnerLink(ctx, pair.OwnerLinkRequest{URL: hubURL, TTL: pair.DefaultTTL, CreatedBy: by, Insecure: true})
+	if err != nil {
+		return "", err
+	}
+	m, err := pair.NewMatrix(l.URL)
+	if err != nil {
+		return "", err
+	}
+	qr := m.Terminal()
+	if !ansi {
+		qr = strings.NewReplacer("\x1b[30;47m", "", "\x1b[0m", "").Replace(qr)
+	}
+	var b strings.Builder
+	rule := strings.Repeat("-", 72) + "\n"
+	b.WriteString(rule)
+	fmt.Fprintf(&b, "This hub has no owner yet. Owner link (works once, until %s):\n\n  %s\n\n",
+		l.ExpiresAt.Local().Format("15:04"), l.URL)
+	for _, ln := range strings.SplitAfter(qr, "\n") {
+		if ln != "" {
+			b.WriteString("  " + ln)
+		}
+	}
+	fmt.Fprintf(&b, "\nBoard: %s/\n%s\n", l.Hub, FirstOwnerNext)
+	b.WriteString(rule)
+	return b.String(), nil
+}
+
+// FirstOwnerLinkDB is FirstOwnerLink on the hub database at db ("" = the default), for `sy
+// setup --hub here`: the link uses the hub.public_url setting when set, else hubURL. It
+// prints the block to w and says whether it printed one.
+func FirstOwnerLinkDB(ctx context.Context, db, hubURL string, w io.Writer, ansi bool) (bool, error) {
+	st, err := openHubStore(ctx, db)
+	if err != nil {
+		return false, err
+	}
+	defer st.Close()
+	if u, _, _ := st.PairSetting(ctx, "hub.public_url"); u != "" {
+		hubURL = u
+	}
+	block, err := FirstOwnerLink(ctx, st, nil, hubURL, "setup", ansi)
+	if err != nil || block == "" {
+		return false, err
+	}
+	_, err = io.WriteString(w, block)
+	return err == nil, err
+}
+
 // openHubStore opens the hub database for a pairing command: it must already exist, or
 // this is not the hub machine.
 func openHubStore(ctx context.Context, db string) (*store.Store, error) {
@@ -314,7 +377,7 @@ func openHubStore(ctx context.Context, db string) (*store.Store, error) {
 	if _, err := os.Stat(path); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("there is no hub database at %s: run this on the hub machine (in Docker: docker compose exec hub sy hub pair ...), "+
-				"or open the board, Settings, Add phone", path)
+				"or, signed in as owner on the board, open More, Devices, Add phone", path)
 		}
 		return nil, err
 	}

@@ -1,21 +1,22 @@
 // Devices (owner): machines, phones, browsers and owner sessions; rename, revoke, send a test
-// notification; Add phone / Add machine / Add desktop app with a pairing code (pairing.md 2.4, 6).
+// notification; Add phone / Add machine / Add desktop app with a pairing code (pairing.md 2.4, 6);
+// Make another device owner with a one-time owner link (pairing.md 4.1).
 
 import { h } from '../components/dom.js';
-import { toast, moreTabs } from '../components/ui.js';
+import { toast, moreTabs, ownerHintNode } from '../components/ui.js';
 import { qrSvg } from '../components/qr.js';
 import { pairErrorView } from '../components/pair-error.js';
 import { copyButton } from '../components/cards.js';
 import { targetKindText, usable } from '../components/targets.js';
 import { isOwner, inApp } from '../store.js';
-import { listDevices, patchDevice, revokeDevice, testTarget, makePairCode, getPairCode, cancelPairCode } from '../api.js';
+import { listDevices, patchDevice, revokeDevice, testTarget, makePairCode, makeOwnerLink, getPairCode, cancelPairCode } from '../api.js';
 import { agoLabel, day, dateTime, clock, deviceLabel } from '../format.js';
 
 const st = { devices: null, error: null, dialog: null, results: {} };
 const again = () => window.dispatchEvent(new Event('sy-rerender'));
 
-const KINDS = ['phone', 'machine', 'desktop'];
-const TITLE = { phone: 'Add a phone', machine: 'Add a machine', desktop: 'Add the desktop app' };
+const KINDS = ['phone', 'machine', 'desktop', 'owner'];
+const TITLE = { phone: 'Add a phone', machine: 'Add a machine', desktop: 'Add the desktop app', owner: 'Make another device owner' };
 
 export async function load({ route }) {
   st.error = null;
@@ -46,7 +47,9 @@ async function openDialog(kind) {
   st.dialog = { kind, busy: true };
   again();
   try {
-    const code = await makePairCode({ kind });
+    // An owner link (POST /v1/owner-links) is tracked like a pairing code: same id space,
+    // same status poll and cancel.
+    const code = kind === 'owner' ? await makeOwnerLink() : await makePairCode({ kind });
     st.dialog = { kind, code, status: 'live', left: Math.max(0, Math.round((Date.parse(code.expires_at) - Date.now()) / 1000)) };
   } catch (ex) {
     st.dialog = { kind, error: { message: ex.message, code: ex.code || '' } };
@@ -92,14 +95,23 @@ function machineCommands(c) {
     h('p', {}, 'Either way, give it this code when it asks:'));
 }
 
-// The desktop app (desktop.md C4, C6): on its computer, pipe the code into sy, or type it in
-// the app's Hub settings.
+// The desktop app (desktop.md C4, C6): the code is typed in the app itself (its Hub tab claims
+// it), never through a command that would print the token to a terminal.
 function desktopCommands() {
   return h('div', { class: 'col desktop-cmds' },
-    h('p', {}, 'On the computer with the desktop app, run:'),
-    h('pre', { class: 'cmd mono', 'data-key': 'cmd-desktop' }, 'sy desktop token --code-stdin'),
-    copyButton('sy desktop token --code-stdin', 'Copy command', 'copy-desktop'),
-    h('p', {}, 'and paste this code when it asks for it. You can also type the code in the desktop app’s Hub settings.'));
+    h('p', { 'data-key': 'desktop-how' }, 'Type this code in the desktop app: Hub tab, Pair.'));
+}
+
+// Make another device owner (pairing.md 4.1): the one-time owner link, its QR and a copy button.
+function ownerLinkBody(l) {
+  return h('div', { class: 'pair-box' },
+    qrSvg(l.qr, 'QR code of the owner link'),
+    h('div', { class: 'col' },
+      h('p', {}, 'Open it on the other device, or paste it into the desktop app. It works once, for 10 minutes, and makes that device owner for 30 days.'),
+      h('p', { class: 'muted small break mono', 'data-key': 'owner-link-url' }, l.url),
+      copyButton(l.url, 'Copy link', 'copy-owner-link'),
+      h('p', { class: 'muted small' }, 'Expires in ', h('span', { 'data-countdown': '' }, countdown(st.dialog.left || 0)), ' · works once'),
+      h('p', { class: 'muted small' }, 'Anyone with this link can become owner until it is used or expires. Send it only to your own device.')));
 }
 
 const countdown = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -108,25 +120,32 @@ function dialog() {
   const d = st.dialog;
   if (!d) return null;
   const title = TITLE[d.kind] || TITLE.phone;
+  const owner = d.kind === 'owner';
+  const noun = owner ? 'link' : 'code';
   let body;
   if (d.ask) {
     body = h('div', { class: 'col' },
       h('p', {}, d.kind === 'phone'
         ? 'This makes a one-time code for the Switchyard Android app or a phone’s browser. It works once and expires after 10 minutes.'
-        : 'This makes a one-time code. It works once and expires after 10 minutes.'),
-      h('button', { type: 'button', class: 'btn btn-primary', 'data-key': 'make-code', onclick: () => openDialog(d.kind) }, 'Make a code'));
-  } else if (d.busy) body = h('p', { class: 'muted' }, 'Making a code…');
+        : owner ? 'This makes a one-time owner link for another device. It works once and expires after 10 minutes.'
+          : 'This makes a one-time code. It works once and expires after 10 minutes.'),
+      h('button', { type: 'button', class: 'btn btn-primary', 'data-key': 'make-code', onclick: () => openDialog(d.kind) }, owner ? 'Make a link' : 'Make a code'));
+  } else if (d.busy) body = h('p', { class: 'muted' }, `Making a ${noun}…`);
   else if (d.error) {
     const e = pairErrorView(d.error);
     body = h('div', { class: 'form-error col', role: 'alert', 'data-key': 'pair-error', 'data-code': e.code },
       h('strong', {}, e.title), h('p', { 'data-key': 'pair-error-message' }, e.message));
   }
   else if (d.status === 'claimed') {
-    body = h('div', { class: 'col' },
-      h('p', { class: 'status-ok strong', 'data-key': 'pair-claimed' }, `Paired: ${d.device ? d.device.name : 'new device'}`),
-      st.devices && d.device ? testButton(st.devices.find((x) => x.id === d.device.id)) : null);
+    body = owner
+      ? h('p', { class: 'status-ok strong', 'data-key': 'pair-claimed' }, `Used: ${d.device ? d.device.name : 'another device'} is owner now.`)
+      : h('div', { class: 'col' },
+        h('p', { class: 'status-ok strong', 'data-key': 'pair-claimed' }, `Paired: ${d.device ? d.device.name : 'new device'}`),
+        st.devices && d.device ? testButton(st.devices.find((x) => x.id === d.device.id)) : null);
   } else if (d.status && d.status !== 'live') {
-    body = h('p', { class: 'muted' }, d.status === 'cancelled' ? 'This code was cancelled.' : 'This code expired. Close and make a new one.');
+    body = h('p', { class: 'muted' }, d.status === 'cancelled' ? `This ${noun} was cancelled.` : `This ${noun} expired. Close and make a new one.`);
+  } else if (owner) {
+    body = ownerLinkBody(d.code);
   } else {
     const c = d.code;
     const digits = [
@@ -151,7 +170,7 @@ function dialog() {
     d.code && d.status === 'live' ? h('button', {
       type: 'button', class: 'btn', 'data-key': 'pair-cancel',
       onclick: async () => { try { await cancelPairCode(d.code.id); } catch (ex) { toast(ex.message); } closeDialog(); },
-    }, 'Cancel this code') : null);
+    }, `Cancel this ${noun}`) : null);
   dlg.addEventListener('cancel', (e) => { e.preventDefault(); closeDialog(); });
   queueMicrotask(() => { if (dlg.isConnected && !dlg.open) dlg.showModal(); });
   return dlg;
@@ -226,12 +245,13 @@ export function render({ now }) {
     owner ? h('div', { class: 'actions' },
       h('button', { type: 'button', class: 'btn btn-primary', 'data-key': 'add-phone', onclick: () => openDialog('phone') }, 'Add phone'),
       h('button', { type: 'button', class: 'btn', 'data-key': 'add-machine', onclick: () => openDialog('machine') }, 'Add machine'),
-      h('button', { type: 'button', class: 'btn', 'data-key': 'add-desktop', onclick: () => openDialog('desktop') }, 'Add desktop app')) : null),
+      h('button', { type: 'button', class: 'btn', 'data-key': 'add-desktop', onclick: () => openDialog('desktop') }, 'Add desktop app'),
+      // pairing.md 4.1: a one-time owner link for another device (owner sessions only).
+      h('button', { type: 'button', class: 'btn', 'data-key': 'make-owner', onclick: () => openDialog('owner') }, 'Make another device owner')) : null),
   moreTabs('devices', { owner }));
   if (!owner) {
     return { title: 'Devices · Switchyard', node: h('div', { class: 'page' }, head,
-      inApp() ? h('p', { class: 'calm' }, 'Only the owner manages devices: use Sign in as owner in the app’s Settings, Hub.')
-        : h('p', { class: 'calm' }, 'Sign in as owner on the hub: run ', h('code', {}, 'sy hub owner-link'), ' there and open the link it prints.')) };
+      ownerHintNode({ app: inApp(), lead: 'Only the owner manages devices.', key: 'devices-owner-hint', cls: 'calm' })) };
   }
   const list = st.devices;
   const node = h('div', { class: 'page' }, head,

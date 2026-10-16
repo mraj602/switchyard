@@ -143,7 +143,7 @@ function done() {
     h('h1', {}, 'Paired'),
     h('p', { class: 'strong', 'data-key': 'paired-as' }, `Paired as ${st.name}`),
     nameForm(),
-    mobile() ? h('p', { class: 'muted small', 'data-key': 'app-hint' }, 'On Android, the Switchyard app gets notifications over its own connection to your hub. Pair the app from Devices › Add phone on your computer. In this browser, you can turn on notifications here.') : null,
+    mobile() ? h('p', { class: 'muted small', 'data-key': 'app-hint' }, 'On Android, the Switchyard app gets notifications over its own connection to your hub. Pair the app from an owner device: More, Devices, Add phone. In this browser, you can turn on notifications here.') : null,
     canInstall() ? h('button', { type: 'button', class: 'btn btn-primary', 'data-key': 'install-app', onclick: promptInstall }, 'Install app') : null,
     h('button', {
       type: 'button', class: 'btn', 'data-key': 'turn-on-notifications', disabled: st.notif === WAITING,
@@ -236,8 +236,8 @@ export function render() {
     body = h('div', { class: 'col' },
       h('h1', {}, mobile() ? 'Pair this phone' : 'Pair this browser'),
       mobile()
-        ? h('p', { class: 'pair-lead' }, 'On your computer, open Devices › Add phone on the board (or run ', h('code', {}, 'sy phone pair'), ' on the hub). Scan the QR code with this phone’s camera, or type the 6-digit code below.')
-        : h('p', { class: 'pair-lead' }, 'Enter the 6-digit code from Devices › Add phone on a board where you are signed in as the owner, or from ', h('code', {}, 'sy phone pair'), ' on the hub.'),
+        ? h('p', { class: 'pair-lead' }, 'On an owner device, open More, Devices, Add phone. Scan the QR code with this phone’s camera, or type the 6-digit code below.')
+        : h('p', { class: 'pair-lead' }, 'This browser can read the board once paired. Get a 6-digit code on an owner device: More, Devices, Add phone.'),
       st.other ? h('p', { class: 'form-error', role: 'alert' }, 'That code is for another hub: ', h('a', { href: `${st.other}/#/pair` }, `open ${st.other}`), ' and install the app from there.') : null,
       st.error ? h('p', { class: 'form-error', role: 'alert', 'data-key': 'pair-error' }, st.error) : null,
       !cam || st.typed ? typedForm() : null,

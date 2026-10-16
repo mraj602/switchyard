@@ -88,6 +88,32 @@ func (tx *Tx) SetDeviceExpiry(id string, at int64) error {
 	return err
 }
 
+// RenewDeviceExpiry moves a live device's expires_at to at when it is set and earlier than
+// before (owner sessions slide: pairing.md 4). It reports whether a row changed: false for
+// a revoked device, one that never expires, or one another request renewed first.
+func (s *Store) RenewDeviceExpiry(ctx context.Context, id string, at, before int64) (bool, error) {
+	var n int64
+	err := s.Write(ctx, func(tx *Tx) error {
+		res, err := tx.exec(`UPDATE device SET expires_at = ? WHERE id = ? AND revoked_at IS NULL AND expires_at IS NOT NULL
+			AND expires_at < ?`, at, id, before)
+		if err != nil {
+			return err
+		}
+		n, _ = res.RowsAffected()
+		return nil
+	})
+	return n > 0, err
+}
+
+// HadOwnerSession reports whether this hub ever made an owner session (a device whose
+// created_by starts with owner-link:, revoked and expired ones included). Until it has,
+// `sy hub serve` prints a first owner link at start (pairing.md 4.1).
+func (s *Store) HadOwnerSession(ctx context.Context) (bool, error) {
+	var n int
+	err := s.r.QueryRowContext(ctx, `SELECT count(*) FROM device WHERE created_by GLOB 'owner-link:*'`).Scan(&n)
+	return n > 0, err
+}
+
 // UpdateDevice changes a device's name and/or prefs (JSON text). Nil leaves a field alone.
 // ErrNotFound when the device does not exist.
 func (s *Store) UpdateDevice(ctx context.Context, id string, name, prefs *string) error {

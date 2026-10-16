@@ -250,6 +250,24 @@ describe('screens', () => {
     expect(screen.getByTestId(`phonetab-${A}`)).toHaveTextContent('Phone tab: not signed in');
   });
 
+  it('+ Add account follows a moved tab: the seat it went to is not offered, the one it left is', async () => {
+    tabsState.profiles = [A];
+    await AsyncStorage.setItem(TAB_MEMO_KEY, JSON.stringify({ [A]: { signed_in: true, account: ACC_B, at: T } }));
+    await show(<AccountsScreen />);
+    await fireEvent.press(screen.getByTestId('add-account'));
+    await act(async () => undefined);
+    expect(screen.queryByTestId(`add-seat-${A}`)).toBeNull();
+    expect(screen.getByTestId(`add-seat-${B}`)).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('add-account-close'));
+    await fireEvent.press(screen.getByTestId(`fix-${A}`));
+    await fireEvent.press(screen.getByTestId('fix-use'));
+    await act(async () => undefined);
+    await fireEvent.press(screen.getByTestId('add-account'));
+    await act(async () => undefined);
+    expect(screen.getByTestId(`add-seat-${A}`)).toBeTruthy();
+    expect(screen.queryByTestId(`add-seat-${B}`)).toBeNull();
+  });
+
   it('Fix this tab: only sign out when the other seat has a tab already', async () => {
     tabsState.profiles = [A, B];
     await AsyncStorage.setItem(TAB_MEMO_KEY, JSON.stringify({ [A]: { signed_in: true, account: ACC_B, at: T } }));

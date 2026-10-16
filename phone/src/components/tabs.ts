@@ -5,6 +5,7 @@ import * as SyTabs from '../../modules/sy-tabs';
 import { openTarget } from '../lib/tabs';
 import { openRemote } from './links';
 import { go } from './nav';
+import { forgetMemo, profilesChanged } from './tab-memo';
 
 let supported: Promise<boolean> | null = null;
 
@@ -12,6 +13,25 @@ let supported: Promise<boolean> | null = null;
 export function tabsSupported(): Promise<boolean> {
   supported ??= SyTabs.available ? SyTabs.isSupported().catch(() => false) : Promise.resolve(false);
   return supported;
+}
+
+/** Seat ids that have a claude.ai tab profile on this phone (empty where tabs are unsupported). */
+export async function tabProfiles(): Promise<string[]> {
+  if (!SyTabs.available || !(await tabsSupported())) return [];
+  return SyTabs.listProfiles().catch(() => []);
+}
+
+/**
+ * Sign out of every claude.ai tab on this phone (deletes each tab profile). Best effort: a tab
+ * that is open refuses; the rest are cleared. Returns how many could not be cleared.
+ */
+export async function clearAllTabs(): Promise<number> {
+  const ids = await tabProfiles();
+  const results = await Promise.allSettled(ids.map((id) => SyTabs.deleteProfile(id)));
+  // What a cleared tab showed goes with it (P17.7).
+  await Promise.all(ids.filter((_, i) => results[i]!.status === 'fulfilled').map((id) => forgetMemo(id)));
+  if (ids.length) profilesChanged();
+  return results.filter((r) => r.status === 'rejected').length;
 }
 
 /** For tests: forget the cached answer. */

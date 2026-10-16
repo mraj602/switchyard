@@ -18,6 +18,8 @@ import { createTokenStore, normalizeHubUrl } from './token.js';
 import { createClient, hubUrlAllowed } from './client.js';
 import { createStream } from './stream.js';
 import { createHubView } from './view.js';
+import { createDirect } from './direct.js';
+import { CLIENT_NAME } from '../../shared/constants.js';
 
 const ROUTE_RE = new RegExp(HUB_ROUTE_PATTERN);
 const SESSION_LINK_RE = new RegExp(CLAUDE_SESSION_LINK_PATTERN);
@@ -78,6 +80,7 @@ export function create(deps) {
   const state = {
     url: null, connected: false, reachable: false, paired: false, owner: false, version: null, local: false,
     service: null, admin: null, needs_you: 0, status: 'no_sy', storage_backend: tokens.backend(), error: null,
+    removed: false, board_blocked: false, direct: false, owner_until: null, last_seen: null, machine: '',
   };
   let auth = null; // {url, device, token}: in memory, never in the state
   // Bumped at every change of auth (pairing, drop, 401): a token load that started before a
@@ -95,10 +98,12 @@ export function create(deps) {
   let refreshTimer = null;
   let inflight = null;
   let lastNeedsYou = '';
-  let machineName = '';
+  let machineName = String(deps.hostname ?? '');
 
   const emitHub = () => bus.emit('hub', { ...state });
   const set = (patch) => {
+    // When the hub is reached, or lost, it was last seen now.
+    if (patch.reachable !== undefined && patch.reachable !== state.reachable) patch = { ...patch, last_seen: new Date().toISOString() };
     let changed = false;
     for (const [k, v] of Object.entries(patch)) {
       if (state[k] !== v) {
@@ -109,7 +114,15 @@ export function create(deps) {
     if (changed) emitHub();
   };
 
-  const client = createClient({ fetch: deps.fetch, getAuth: () => auth, reportedBySy: () => reportedBySy });
+  // The app dials the hub itself (direct) when there is no sy or sy has no hub: the address was
+  // checked by direct.check (https, or a local network), so plain http is allowed like for sy.
+  const allowHttp = () => reportedBySy || state.direct;
+  const client = createClient({ fetch: deps.fetch, getAuth: () => auth, reportedBySy: allowHttp });
+  const direct = createDirect({
+    fs: deps.fs, path: deps.path, file: deps.directFile ?? deps.path.join(deps.path.dirname(deps.tokenFile), 'direct.json'),
+    fetch: deps.fetch, log, clientName: CLIENT_NAME, version: deps.clientVersion ?? '0.0.0', timers,
+    getAuth: () => auth, active: () => state.direct, onUnauthorized: (status) => handleUnauthorized(status),
+  });
 
   const hubView = createHubView({
     electron: deps.electron, security: deps.security,
@@ -120,8 +133,10 @@ export function create(deps) {
     base: () => state.url,
     auth: () => auth,
     onSessionLink: (url) => handoff(url),
-    onOwner: (owner) => set({ owner }),
+    onOwner: (owner, until) => set({ owner, owner_until: owner ? until ?? null : null }),
     onLoginRefused: (status) => handleUnauthorized(status),
+    onBlocked: () => set({ board_blocked: true }),
+    userAgentSuffix: deps.clientVersion ? `SwitchyardDesktop/${deps.clientVersion}` : 'SwitchyardDesktop',
   });
 
   // ---- status
@@ -142,6 +157,12 @@ export function create(deps) {
     if (stopped) return;
     const info = await sy.info();
     if (stopped) return;
+    await direct.load();
+    // sy (when there is one) wins; without sy, or with a sy that has no hub, the app uses the
+    // hub address it remembers itself.
+    const syHasHub = info.ok && typeof info.hub?.url === 'string' && info.hub.url !== '' && !!info.hub.connected;
+    if (!syHasHub && direct.url()) return refreshDirect(info);
+    state.direct = false;
     if (!info.ok) {
       mode = info.code === 'no_sy' ? 'no_sy' : null;
       dropHub();
@@ -155,6 +176,7 @@ export function create(deps) {
     const hub = info.hub ?? {};
     reportedBySy = true;
     machineName = String(info.machine?.name ?? '');
+    state.machine = machineName;
     const rawUrl = typeof hub.url === 'string' ? hub.url : null;
     const url = rawUrl && hubUrlAllowed(rawUrl, true) ? normalizeHubUrl(rawUrl) : null;
     if (url !== state.url) dropHub(); // another hub: the token, the view and the stream are no longer valid
@@ -181,10 +203,46 @@ export function create(deps) {
       local: !!hub.local, service: typeof hub.service === 'string' ? hub.service : null, admin, error: null,
     });
     set({ status: statusFor() });
+    if (state.board_blocked && auth) retryBoard();
     if (auth && state.connected) {
       startStream();
       if (state.reachable) refreshOverview();
     } else stopStream();
+  }
+
+  /** A blocked board gets another try at each info refresh (a hub that was down, a rate limit that has passed). */
+  function retryBoard() {
+    set({ board_blocked: false });
+    hubView.suppress(false);
+    if (hubView.view()) hubView.load(hubView.currentRoute()).catch(() => {});
+  }
+
+  async function refreshDirect(info) {
+    const url = direct.url();
+    mode = null;
+    state.direct = true;
+    if (info?.ok) machineName = String(info.machine?.name ?? machineName);
+    state.machine = machineName;
+    if (url !== state.url) dropHub();
+    if (!auth) {
+      const gen = authGen;
+      const loaded = await tokens.load(url);
+      if (stopped) return;
+      if (gen === authGen) setAuth(loaded);
+    }
+    const h = await direct.health(url);
+    if (stopped) return;
+    set({
+      url, connected: true, reachable: h.ok, paired: !!auth, version: h.version, local: false, service: null, admin: null,
+      direct: true, error: null,
+    });
+    set({ status: statusFor() });
+    if (state.board_blocked && auth) retryBoard();
+    if (auth && state.reachable) {
+      startStream();
+      refreshOverview();
+      direct.flushSoon();
+    } else if (!auth) stopStream();
   }
 
   function dropHub() {
@@ -193,6 +251,8 @@ export function create(deps) {
     stopStream();
     hubView.reset();
     state.needs_you = 0;
+    state.removed = false;
+    state.board_blocked = false;
     lastNeedsYou = '';
   }
 
@@ -222,9 +282,10 @@ export function create(deps) {
     log.warn?.(`hub: token refused (${status}), pairing is needed again`);
     setAuth(null);
     stopStream();
+    hubView.suppress(true); // the board would show its own login page: the shell's state panel shows instead
     await tokens.clear();
     await hubView.signOut();
-    set({ paired: false, status: 'needs_pairing', owner: false });
+    set({ paired: false, status: 'needs_pairing', owner: false, removed: true });
   }
 
   // ---- stream and overview
@@ -232,7 +293,7 @@ export function create(deps) {
   const stream = createStream({
     fetch: deps.fetch,
     getAuth: () => auth,
-    reportedBySy: () => reportedBySy,
+    reportedBySy: allowHttp,
     timers,
     log,
     ...(deps.streamOptions ?? {}),
@@ -382,17 +443,34 @@ export function create(deps) {
 
   async function pair(args = {}) {
     await refreshInfo();
+    const code = typeof args.code === 'string' && args.code !== '' ? args.code : undefined;
+    if (state.direct) {
+      if (state.status === 'unreachable') return { ok: false, error: 'The hub is not reachable.' };
+      if (code === undefined) return { ok: false, error: 'Type the pairing code. Get one on an owner device: More, Devices, Add desktop app.' };
+      const r = await direct.claim({ url: state.url, code, name: tokenName() });
+      if (!r.ok) return { ok: false, error: r.error };
+      return finishPair(r.device, r.token);
+    }
     if (state.status === 'no_sy') return { ok: false, error: 'sy was not found. Install it, then run sy setup.' };
     if (state.status === 'dial') return { ok: false, error: state.error };
     if (!ready()) return { ok: false, error: 'sy is not connected to a hub. Run sy setup.' };
-    const code = typeof args.code === 'string' && args.code !== '' ? args.code : undefined;
-    const safeName = machineName.replace(/[^A-Za-z0-9._-]/g, '').slice(0, 20);
-    // No spaces (TOKEN_NAME_RE): through an ssh admin channel the name is a remote word.
-    const r = await sy.token({ code, name: safeName ? `Switchyard-desktop-${safeName}` : 'Switchyard-desktop' });
+    const r = await sy.token({ code, name: tokenName() });
     if (!r.ok) return { ok: false, error: pairError(r, code !== undefined) };
     if (typeof r.token !== 'string' || !r.token || typeof r.device !== 'string') return { ok: false, error: 'The hub answered without a token.' };
-    setAuth({ url: state.url, device: r.device, token: r.token });
+    const device = r.device;
+    const token = r.token;
     r.token = '';
+    return finishPair(device, token);
+  }
+
+  // No spaces (TOKEN_NAME_RE): through an ssh admin channel the name is a remote word.
+  function tokenName() {
+    const safeName = machineName.replace(/[^A-Za-z0-9._-]/g, '').slice(0, 20);
+    return safeName ? `Switchyard-desktop-${safeName}` : 'Switchyard-desktop';
+  }
+
+  async function finishPair(device, token) {
+    setAuth({ url: state.url, device, token });
     let stored = true;
     try {
       stored = await tokens.save(auth);
@@ -400,16 +478,34 @@ export function create(deps) {
       stored = false;
       log.warn?.(`hub: cannot store the token: ${err?.message ?? err}`);
     }
-    set({ paired: true, storage_backend: tokens.backend(), status: statusFor() });
+    set({ paired: true, removed: false, board_blocked: false, storage_backend: tokens.backend(), status: statusFor() });
     await hubView.signOut(); // a new device, a new board session
+    hubView.suppress(false);
     startStream();
     refreshOverview();
     if (hubView.view()) hubView.load(hubView.currentRoute());
     return stored ? { ok: true } : { ok: true, stored: false, warning: 'No secure storage is available, so the token is kept for this run only.' };
   }
 
-  async function ownerSignIn() {
+  /** A pasted owner link: only a link to the paired hub's own address is opened. */
+  async function ownerFromLink(text) {
+    if (!state.url || !auth) return { ok: false, error: 'Pair this computer first.' };
+    let u;
+    try {
+      u = new URL(text);
+    } catch {
+      return { ok: false, error: 'That is not a link. Paste the whole owner link.' };
+    }
+    if (u.origin !== new URL(`${state.url}/`).origin) return { ok: false, error: `That link is for another address. Only a link to ${state.url} is accepted.` };
+    if (!(await hubView.loadOwnerLink(u.toString()))) return { ok: false, error: `That link is for another address. Only a link to ${state.url} is accepted.` };
+    deps.window.select('hub');
+    return { ok: true };
+  }
+
+  async function ownerSignIn(args = {}) {
+    if (typeof args?.link === 'string' && args.link.trim() !== '') return ownerFromLink(args.link.trim());
     if (!state.url) await refreshInfo();
+    if (state.direct) return { ok: false, error: 'Paste an owner link: on an owner device open More, Devices, Make another device owner.' };
     if (!ready()) return { ok: false, error: 'sy is not connected to a hub. Run sy setup.' };
     const r = await sy.ownerLink();
     if (!r.ok) {
@@ -423,6 +519,47 @@ export function create(deps) {
     if (typeof r.url !== 'string' || !(await hubView.loadOwnerLink(r.url))) return { ok: false, error: 'The hub gave a link for another address; it was not opened.' };
     deps.window.select('hub');
     return { ok: true };
+  }
+
+  async function ownerSignOut() {
+    if (!state.owner) return { ok: true };
+    await hubView.ownerSignOut();
+    return { ok: true };
+  }
+
+  /** Check a hub address, remember it (no sy needed) and pair with a code when one is given. */
+  async function connect({ url, code } = {}) {
+    await refreshInfo();
+    if (state.connected && !state.direct) return { ok: false, error: `sy on this computer is already connected to ${state.url}. Use Pair this computer.` };
+    const c = await direct.check(url);
+    if (!c.ok) return { ok: false, error: c.error };
+    await direct.setUrl(c.url);
+    await refreshInfo();
+    if (typeof code === 'string' && code !== '') return pair({ code });
+    return { ok: true };
+  }
+
+  /** Revoke this app's own device on the hub (DELETE /v1/devices/self), forget the token and the board session. */
+  async function unpair({ forget } = {}) {
+    let revoked = false;
+    let warning;
+    if (auth) {
+      const r = await client.request('DELETE', '/v1/devices/self');
+      revoked = r.ok || r.status === 401 || r.status === 404; // 401: it was already removed there
+      if (!revoked) warning = 'The hub could not be reached, so this computer may still be listed in Devices there. Remove it from that list.';
+    }
+    setAuth(null);
+    stopStream();
+    hubView.suppress(true);
+    await tokens.clear();
+    await hubView.signOut();
+    if (forget) {
+      await direct.setUrl(null);
+      mode = null;
+    }
+    set({ paired: false, owner: false, removed: false, board_blocked: false, needs_you: 0 });
+    await refreshInfo();
+    return warning ? { ok: true, revoked, warning } : { ok: true, revoked };
   }
 
   async function route(route) {
@@ -472,7 +609,14 @@ export function create(deps) {
   const { ipc } = deps;
   ipc.register('hub:route', ({ route: r }) => route(r));
   ipc.register('hub:pair', (args) => pair(args ?? {}));
-  ipc.register('hub:owner-sign-in', () => ownerSignIn());
+  ipc.register('hub:owner-sign-in', (args) => ownerSignIn(args ?? {}));
+  ipc.register('hub:owner-sign-out', () => ownerSignOut());
+  ipc.register('hub:connect', (args) => connect(args ?? {}));
+  ipc.register('hub:unpair', (args) => unpair(args ?? {}));
+  ipc.register('hub:retry', async () => {
+    await refreshInfo();
+    return { ok: true };
+  });
   ipc.register('hub:service', (args) => hubService(args));
   ipc.register('seat:update', (args) => updateSeat(args));
   ipc.register('accounts:local', () => localAccounts());
@@ -502,6 +646,7 @@ export function create(deps) {
     alert: fetchAlert,
     session: fetchSession,
     seats: () => seats.slice(),
+    direct,
     state: () => ({ ...state }),
     async stop() {
       started = false;
@@ -510,6 +655,7 @@ export function create(deps) {
       if (refreshTimer) timers.clearTimeout(refreshTimer);
       infoTimer = refreshTimer = null;
       stopStream();
+      await Promise.race([direct.flushNow(), new Promise((r) => timers.setTimeout(r, 3000))]);
       await hubView.flushCookies(); // the board session survives the restart (no new login)
     },
   };

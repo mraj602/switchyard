@@ -184,6 +184,12 @@ select, input[type="password"], input[type="text"] { border: 1px solid var(--btn
 .login-col .login-card { width: 100%; }
 .login-token { gap: 8px; padding-top: 10px; }
 .login-more summary { cursor: pointer; color: var(--link); font-size: 14px; }
+.login-option { gap: 6px; padding-top: 12px; border-top: 1px solid var(--hair); }
+.login-option h2 { font-size: 16px; margin: 0; }
+.login-option .btn { align-self: flex-start; }
+.login-owner { gap: 6px; }
+.owner-hint { gap: 4px; }
+.owner-hint .login-more pre { margin-top: 6px; }
 .brand-row svg { color: var(--ink); }
 .form-error { color: var(--failed); background: var(--failed-bg); padding: 8px 10px; border-radius: 8px; font-size: 14px; }
 .form-error[hidden] { display: none; }

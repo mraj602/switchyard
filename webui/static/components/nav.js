@@ -5,8 +5,7 @@ import { dot } from './cards.js';
 import { seatIndex, seatName } from './seat.js';
 import { pct, clock } from '../format.js';
 import { TAB_OF } from '../route.js';
-import { liveState } from '../store.js';
-import { meInApp } from './notif-note.js';
+import { liveState, inApp } from '../store.js';
 
 const LIVE_TEXT = {
   live: 'Live',
@@ -62,11 +61,15 @@ const logo = () => {
   const ns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(ns, 'svg');
   svg.setAttribute('viewBox', '0 0 22 22'); svg.setAttribute('width', '22'); svg.setAttribute('height', '22'); svg.setAttribute('aria-hidden', 'true');
-  for (const [d, c] of [['M3 18 L11 4 L19 18', 'currentColor'], ['M7 18 L11 11 L15 18', '#E8B04B']]) {
-    const p = document.createElementNS(ns, 'path');
-    p.setAttribute('d', d); p.setAttribute('fill', 'none'); p.setAttribute('stroke', c); p.setAttribute('stroke-width', '2');
-    svg.append(p);
-  }
+  const mk = (tag, attrs) => {
+    const el = document.createElementNS(ns, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    return el;
+  };
+  // The same tile mark as the icon (app/build/icons-src/mark-small.svg).
+  const g = mk('g', { transform: 'translate(2.5 2.5) scale(0.7727)', fill: 'none', stroke: '#E8B04B', 'stroke-width': '2.6' });
+  g.append(mk('path', { d: 'M3 18 L11 4 L19 18' }), mk('path', { d: 'M7 18 L11 11 L15 18' }));
+  svg.append(mk('rect', { width: '22', height: '22', rx: '5', fill: '#17191B' }), g);
   return svg;
 };
 
@@ -76,14 +79,14 @@ export function renderNav(navEl, { page, store, onLogout }) {
   const idx = o ? seatIndex(o.seats) : new Map();
   const owner = !!(store.me && store.me.owner);
   // In the desktop app the app's own bar carries the name, and the app signs the board in.
-  const app = meInApp(store.me);
+  const app = inApp();
   const lit = (it) => it.id === page || (it.id === 'more' && TAB_OF[page] === 'more');
   navEl.replaceChildren(h('div', { class: 'nav-inner' },
     app ? null : h('div', { class: 'brand' }, logo(), h('span', {}, 'Switchyard')),
     h('ul', { class: 'nav-list' }, ITEMS.filter((it) => !it.owner || owner).map((it) => h('li', { class: `nav-${it.where}` },
       h('a', { href: it.href, 'data-key': `nav-${it.id}`, 'aria-current': lit(it) ? 'page' : undefined },
         icon(it.icon),
-        h('span', { class: 'nav-label' }, it.label),
+        h('span', { class: 'nav-label' }, app && it.id === 'settings' ? 'Hub settings' : it.label),
         it.id === 'sessions' && needs > 0 ? h('span', { class: 'count', 'aria-label': `${needs} need you` }, needs) : null)))),
     o && o.seats.length ? h('div', { class: 'nav-accounts' },
       h('div', { class: 'nav-heading' }, 'Accounts'),

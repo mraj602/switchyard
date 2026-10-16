@@ -23,6 +23,34 @@ export function OfflineBanner() {
   );
 }
 
+/** The hub said it moved (/health frozen.moved_to): offer to follow it. Rendered by Page. */
+export function MovedCard() {
+  const api = useHubApi();
+  const t = useTheme();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  if (!api.moved || !api.switchToMoved) return null;
+  const switchTo = api.switchToMoved;
+  const go = async () => {
+    setBusy(true);
+    setFailed(false);
+    try {
+      setFailed((await switchTo()) === 'failed');
+    } catch {
+      setFailed(true);
+    }
+    setBusy(false);
+  };
+  return (
+    <View accessibilityRole="alert" testID="moved-card" style={[s.card, { backgroundColor: t.card, borderColor: t.accent, marginHorizontal: 16, marginTop: 8 }]}>
+      <Text style={{ color: t.text, fontSize: 16, fontWeight: '700' }}>{`Your hub moved to ${api.moved.to.replace(/^https?:\/\//, '')}`}</Text>
+      <Text style={[s.small, { color: t.muted }]}>This phone keeps its key. If the new address does not know this phone, you will be asked to scan again.</Text>
+      {failed ? <Text style={[s.small, { color: t.bad }]}>Could not reach the new address yet. Try again in a moment.</Text> : null}
+      <Btn kind="primary" label={busy ? 'Switching…' : 'Switch to the new address'} testID="moved-switch" disabled={busy} onPress={() => void go()} />
+    </View>
+  );
+}
+
 /** Back on a stack screen: the previous screen, or Now when the screen was opened by a link. */
 export function goBack() {
   if (router.canGoBack()) router.back();
@@ -50,8 +78,10 @@ export function BackButton() {
  * The page frame. `back`: a stack screen (no tab bar below), so it gets a Back button and keeps
  * its content clear of the gesture bar as well as the status bar.
  */
-export function Page({ title, meta, children, toast, back, logo }: {
+export function Page({ title, meta, children, toast, back, logo, right }: {
   title?: string; meta?: string; children: ReactNode; toast?: ReactNode; back?: boolean; logo?: ReactNode;
+  /** At the right end of the title row (Accounts: + Add account). */
+  right?: ReactNode;
 }) {
   const api = useHubApi();
   const t = useTheme();
@@ -70,6 +100,7 @@ export function Page({ title, meta, children, toast, back, logo }: {
     // already pads for the navigation bar).
     <SafeAreaView style={[s.fill, { backgroundColor: t.bg }]} edges={back ? ['top', 'bottom'] : ['top']} testID="page">
       <OfflineBanner />
+      <MovedCard />
       <ScrollView
         contentContainerStyle={s.page}
         refreshControl={<RefreshControl refreshing={busy} onRefresh={refresh} />}
@@ -81,6 +112,7 @@ export function Page({ title, meta, children, toast, back, logo }: {
             <View style={s.titleRow}>
               {logo}
               <Text accessibilityRole="header" style={[s.h1, { color: t.text, flexShrink: 1 }]}>{title}</Text>
+              {right ? <View style={{ marginLeft: 'auto' }}>{right}</View> : null}
             </View>
             {meta ? <Text style={[s.small, { color: t.muted }]}>{meta}</Text> : null}
           </View>
@@ -165,10 +197,12 @@ export function Chip({ label, on, onPress, count, testID }: { label: string; on:
 }
 
 export function Btn({ label, onPress, onLongPress, kind = 'plain', disabled, testID }: {
-  label: string; onPress: () => void; onLongPress?: () => void; kind?: 'plain' | 'primary' | 'danger'; disabled?: boolean; testID?: string;
+  /** `outline`: the accent's border on no fill (design Phone-11's + Add account). */
+  label: string; onPress: () => void; onLongPress?: () => void; kind?: 'plain' | 'primary' | 'danger' | 'outline'; disabled?: boolean; testID?: string;
 }) {
   const t = useTheme();
   const bg = kind === 'primary' ? t.accent : 'transparent';
+  const border = kind === 'danger' ? t.bad : kind === 'primary' || kind === 'outline' ? t.accent : t.line;
   const fg = kind === 'primary' ? t.accentText : kind === 'danger' ? t.bad : t.text;
   return (
     <Pressable
@@ -179,7 +213,7 @@ export function Btn({ label, onPress, onLongPress, kind = 'plain', disabled, tes
       onPress={onPress}
       {...(onLongPress ? { onLongPress } : {})}
       testID={testID}
-      style={[s.btn, { backgroundColor: bg, borderColor: kind === 'danger' ? t.bad : kind === 'primary' ? t.accent : t.line, opacity: disabled ? 0.45 : 1 }]}
+      style={[s.btn, { backgroundColor: bg, borderColor: border, borderWidth: kind === 'outline' ? 1.5 : 1, opacity: disabled ? 0.45 : 1 }]}
     >
       <Text style={{ color: fg, fontWeight: '600' }}>{label}</Text>
     </Pressable>

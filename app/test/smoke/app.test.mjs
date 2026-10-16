@@ -242,16 +242,18 @@ test('Electron smoke S1–S11', { timeout: 15 * 60_000 }, async (t) => {
 
   await step('S8 hub view: cookie login, owner sign-in, seat label edit', async () => {
     await run.shell.evaluate(() => window.sy.selectView({ view: 'hub' }));
-    const board = await waitFor(() => run.app.windows().find((p) => p.url().startsWith(hub.url)), 20_000, 'the hub view page');
-    await board.waitForLoadState('load');
-    const leaks = await board.evaluate(() => {
+    // Through main, not run.app.windows(): after the restart the hub view exists before Playwright attached, and
+    // Playwright then never lists it (the page is fine: loaded, visible, signed in).
+    const hubPage = (fn) => main(run.app, (m, _e, code) => m.hub.view()?.webContents.executeJavaScript(code), `(${fn})()`);
+    await waitFor(() => main(run.app, (m, e, url) => m.hub.view()?.webContents.getURL().startsWith(url) && !m.hub.view().webContents.isLoading(), hub.url), 20_000, 'the hub view page');
+    const leaks = await hubPage(() => {
       const all = [document.cookie, JSON.stringify({ ...localStorage }), JSON.stringify({ ...sessionStorage }), document.documentElement.outerHTML].join('\n');
       return /sy_d_[A-Za-z0-9]{10,}/.test(all);
     });
     assert.equal(leaks, false, 'the desktop token is never in the page');
     const me0 = await main(run.app, async (m, e, url) => (await e.session.fromPartition('persist:sy-hub').fetch(`${url}/v1/me`)).json(), hub.url);
     assert.equal(me0.owner ?? false, false);
-    const r = await run.shell.evaluate(() => window.sy.ownerSignIn());
+    const r = await run.shell.evaluate(() => window.sy.ownerSignIn({}));
     assert.equal(r.ok, true, JSON.stringify(r));
     await waitFor(async () => (await main(run.app, async (m, e, url) => (await e.session.fromPartition('persist:sy-hub').fetch(`${url}/v1/me`)).json(), hub.url)).owner === true,
       20_000, 'an owner session in persist:sy-hub');

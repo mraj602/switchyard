@@ -10,7 +10,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Logo } from '../src/components/logo';
-import { claim, ClaimError, hostOf, pairInputMessage, parsePairInput } from '../src/lib/pair';
+import { claim, ClaimError, claimMessage, hostOf, networkKind, pairInputMessage, parsePairInput } from '../src/lib/pair';
 import type { PairInput } from '../src/lib/pair';
 import { useHub } from '../src/state';
 
@@ -32,6 +32,7 @@ export default function PairScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<PairInput | null>(null);
+  const [noticeSeen, setNoticeSeen] = useState(false);
   const busyRef = useRef(false);
   const lastScan = useRef<string | null>(null);
 
@@ -46,7 +47,11 @@ export default function PairScreen() {
         await hub.pairWith(stored);
         router.replace('/');
       } catch (e) {
-        setError(e instanceof ClaimError ? e.message : `Can't reach ${hostOf(input.origin)}. Is Tailscale on?`);
+        if (e instanceof ClaimError) setError(e.message);
+        else {
+          const kind = networkKind(e);
+          setError(claimMessage(kind, hostOf(input.origin)));
+        }
       } finally {
         busyRef.current = false;
         setBusy(false);
@@ -153,7 +158,7 @@ export default function PairScreen() {
           Pair with your hub
         </Text>
         <Text style={styles.muted}>
-          On your computer, open Add phone (desktop app, hub page, or sy phone pair) and scan the QR code, or type the address and code.
+          On your computer, open Add phone (in the desktop app or on the hub&apos;s board) and scan the QR code, or type the address and code.
         </Text>
 
         {confirm ? (
@@ -239,7 +244,24 @@ export default function PairScreen() {
             {shownError}
           </Text>
         )}
-        {hub.notice && !shownError && !confirm && !linkInput && <Text style={styles.error}>{hub.notice}</Text>}
+        {hub.notice && !noticeSeen && !shownError && !confirm && !linkInput && (
+          <View style={styles.card} testID="notice-card">
+            <Text accessibilityRole="alert" style={styles.cardTitle}>{hub.notice}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setNoticeSeen(true);
+                setTyped(false);
+                setError(null);
+                lastScan.current = null;
+                if (!permission?.granted && permission?.canAskAgain !== false) void requestPermission();
+              }}
+              style={styles.button}
+            >
+              <Text style={styles.buttonText}>Scan again</Text>
+            </Pressable>
+          </View>
+        )}
 
         {!confirm && !linkInput && (
           <Pressable
@@ -258,7 +280,7 @@ export default function PairScreen() {
 
         <View style={styles.card}>
           <Text style={styles.small}>
-            The phone gets its own read-only key. It can see your sessions and usage, and it can never control a session or see your Claude logins. Remove it any time from Devices.
+            The phone gets its own read-only key. It can see your sessions and usage, and it can never control a session or see your Claude logins. Remove it any time on the board&apos;s Devices page.
           </Text>
         </View>
       </ScrollView>

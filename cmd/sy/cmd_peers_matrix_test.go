@@ -279,7 +279,7 @@ func TestPeersNoOwnerKeyPointsToTheBoard(t *testing.T) {
 		t.Fatal(err)
 	}
 	code, _, errs := m.sy(nil, "allow", "work", "personal")
-	if code != 4 || !strings.Contains(errs, "Settings → Peers") {
+	if code != 4 || !strings.Contains(errs, "More, Peers on the board") {
 		t.Fatalf("%d %q", code, errs)
 	}
 }

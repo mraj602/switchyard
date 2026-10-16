@@ -3,11 +3,16 @@
 // JavaScript.
 
 export class AuthError extends Error {
-  constructor(message = 'Not signed in') {
+  constructor(message = 'Not signed in', reason = '') {
     super(message);
     this.name = 'AuthError';
+    this.reason = reason; // api.yaml Unauthorized: revoked | expired | owner_expired | ''
   }
 }
+
+// Why the last 401 happened (the hub's `reason`), for the sign-in page's reason line.
+let lastReason = '';
+export const authReason = () => lastReason;
 
 // The service worker answers a read from its copy when the hub cannot be reached and marks
 // it with X-Sy-Cached-At. The store listens: a number means "showing data from then", null
@@ -36,7 +41,13 @@ async function request(path, init, opts = {}) {
   } catch (e) {
     throw new Error('Cannot reach the hub');
   }
-  if (res.status === 401 && !opts.anon) { clearCachedData(); throw new AuthError(); }
+  if (res.status === 401 && !opts.anon) {
+    clearCachedData();
+    let reason = '';
+    try { reason = (await res.json()).reason || ''; } catch (_) { /* not JSON */ }
+    lastReason = reason;
+    throw new AuthError(undefined, reason);
+  }
   if (!res.ok) {
     let msg = `Hub answered ${res.status}`;
     let code = '', at = null, rule = '', ttlS = 0;
@@ -77,7 +88,10 @@ export const getSession = (id) => getJSON(`/v1/sessions/${enc(id)}`);
 
 export const login = (token) => postJSON('/v1/session/login', { token }, { anon: true });
 
+// Sign out: the hub revokes this browser's device (a board, owner or cookie-paired session;
+// pairing.md 6) and clears the cookie. A chosen sign-out has no reason line.
 export async function logout() {
+  lastReason = '';
   try { return await postJSON('/v1/session/logout'); } finally { clearCachedData(); }
 }
 
@@ -87,6 +101,7 @@ export const getMe = () => getJSON('/v1/me');
 export const claimPair = (body) => postJSON('/v1/pair/claim', { cookie: true, ...body }, { anon: true });
 export const ownerSignIn = (secret, name) => postJSON('/v1/session/owner', { secret, name }, { anon: true });
 export const makePairCode = (body) => postJSON('/v1/pair/codes', body);
+export const makeOwnerLink = () => postJSON('/v1/owner-links', {});
 export const getPairCode = (id) => getJSON(`/v1/pair/codes/${enc(id)}`);
 export const cancelPairCode = (id) => del(`/v1/pair/codes/${enc(id)}`);
 

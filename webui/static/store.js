@@ -3,10 +3,10 @@
 
 import {
   AuthError, getMe, getOverview, getSessions, getSession, openStream, setCachedHandler,
-  snoozeAlert, seenAlert, putJSON,
+  snoozeAlert, seenAlert, putJSON, authReason,
 } from './api.js';
 import { applyOrder } from './components/order.js';
-import { meInApp } from './components/notif-note.js';
+import { meInApp, markerInApp } from './components/notif-note.js';
 
 const listeners = new Set();
 
@@ -40,7 +40,44 @@ export const canPush = () => !!(store.me && (store.me.owner || (store.me.device.
 // device (`via`, api.yaml Me), or the caller is the desktop token itself. The app shows the
 // hub's alerts as notifications on its own (desktop.md C9) and cannot install a PWA, so Web
 // Push, install, pairing "this browser" and sign-out are not offered there.
-export const inApp = () => meInApp(store.me);
+// Signed out there is no /v1/me: the app's marker (a "SwitchyardDesktop/" user agent token, or
+// ?in=desktop in the start URL, kept for this tab) says it too, so the sign-in page never shows
+// the browser's CLI wording inside the app.
+export const inApp = () => meInApp(store.me) || appMarker();
+
+let marker = null;
+export function appMarker() {
+  if (marker !== null) return marker;
+  let saved = false;
+  try { saved = sessionStorage.getItem('sy.in') === 'desktop'; } catch (_) { /* no storage */ }
+  marker = saved || markerInApp(navigator.userAgent, location.search);
+  if (marker && !saved) { try { sessionStorage.setItem('sy.in', 'desktop'); } catch (_) { /* no storage */ } }
+  return marker;
+}
+
+// The owner session's end, remembered in this browser (a convenience only): after it passes,
+// the cookie is gone and the hub cannot say why, so the sign-in page still says "Your owner
+// access ended."
+const OWNER_UNTIL = 'sy.ownerUntil';
+function rememberOwner(m) {
+  try {
+    if (m.owner && m.device && m.device.expires_at) localStorage.setItem(OWNER_UNTIL, m.device.expires_at);
+    else localStorage.removeItem(OWNER_UNTIL);
+  } catch (_) { /* no storage */ }
+}
+export function forgetOwner() {
+  try { localStorage.removeItem(OWNER_UNTIL); } catch (_) { /* no storage */ }
+}
+
+// Why this browser is signed out, for the sign-in page (api.yaml Unauthorized reason): the
+// last 401's reason, else "owner_expired" when a remembered owner session has ended.
+export function lostReason(now = Date.now()) {
+  const r = authReason();
+  if (r) return r;
+  let until = '';
+  try { until = localStorage.getItem(OWNER_UNTIL) || ''; } catch (_) { /* no storage */ }
+  return until && Date.parse(until) <= now ? 'owner_expired' : '';
+}
 
 async function guarded(fn) {
   try {
@@ -75,7 +112,7 @@ setCachedHandler((at) => {
 
 export async function refreshMe() {
   const m = await guarded(getMe);
-  if (m) store.me = m;
+  if (m) { store.me = m; rememberOwner(m); }
   return !!m;
 }
 
@@ -84,7 +121,7 @@ export async function refreshMe() {
 export async function checkSignIn() {
   try {
     const m = await getMe();
-    if (m) store.me = m;
+    if (m) { store.me = m; rememberOwner(m); }
   } catch (e) {
     if (e instanceof AuthError && !store.unauthorized) { store.unauthorized = true; stop(); onAuthLost(); }
   }

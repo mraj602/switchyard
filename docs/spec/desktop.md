@@ -147,7 +147,11 @@ not used). Before calling a handler it checks the following.
 | `usage:resume` | `{id}` | — | B |
 | `usage:refresh` | `{id?}` | — | B |
 | `hub:pair` | `{code: "^\d{3}-?\d{3}$"}` or `{}` (local or admin channel) | `{ok, error?}` | C |
-| `hub:owner-sign-in` | — | `{ok, error?}` | C |
+| `hub:owner-sign-in` | `{}` (local hub or admin channel) or `{link}` (a pasted owner link to the paired hub's own origin) | `{ok, error?}` | C |
+| `hub:owner-sign-out` | — | `{ok}` | C |
+| `hub:connect` | `{url, code?}` (checks `/health`, remembers the address without sy, pairs with the code) | `{ok, error?}` | C |
+| `hub:unpair` | `{forget?: bool}` (`DELETE /v1/devices/self`, then the token and the board session are dropped) | `{ok, revoked, warning?}` | C |
+| `hub:retry` | — | `{ok}` | C |
 | `hub:service` | `{action: "status" \| "start" \| "stop"}` | `{service, health}` | C |
 | `seat:update` | `{seat, label?, colour?}` (owner; `PATCH /v1/accounts/{seat}`) | `{ok, error?}` | C |
 | `accounts:local` | — | `sy account list --json` result | C |
@@ -167,7 +171,7 @@ Wave 0 details fixed by `src/shared/ipc.js`:
 - `window.sy` function names, in table order: `state`, `selectView`, `hubRoute`, `addTab`,
   `updateTab`, `removeTab`, `reorderTabs`, `reloadTab`, `homeTab`, `openTabExternal`,
   `acceptWarning`, `setReading`, `setSend`, `resumeReading`, `refreshUsage`, `pair`,
-  `ownerSignIn`, `hubService`, `updateSeat`, `localAccounts`, `shareAccount`, `setSettings`;
+  `ownerSignIn`, `ownerSignOut`, `hubConnect`, `hubUnpair`, `hubRetry`, `hubService`, `updateSeat`, `localAccounts`, `shareAccount`, `setSettings`;
   plus `on(event, cb)`, which returns an unsubscribe function. Each
   function takes one argument object (or none, for the channels without arguments) and
   returns the handler's promise.
@@ -313,7 +317,7 @@ account in a hidden or background start until the window is shown.
   such a record, the token is dropped and pairing starts again. A file that cannot be decrypted
   (the keyring locked or not up yet) is kept and tried again later; pairing replaces it.
   Pairing (`hub:pair`): with `admin` set, it is one click. Otherwise the person types the code
-  from the board (Devices → Add device → Desktop, created by WP-H) or from
+  from the board (More → Devices → Add desktop app, created by WP-H) or from
   `sy hub pair --kind desktop`.
 - Requests use Node's `fetch` in main with `Authorization: Bearer`, a 10 s timeout and no
   redirects. Plain `http:` is allowed only for loopback hosts, or when `sy desktop info`
@@ -382,9 +386,13 @@ account in a hidden or background start until the window is shown.
   on that session.
 - There are no Snooze or Seen buttons, because the desktop token has no `push` scope. The
   board's buttons work with an owner session.
-- Tray: the icon with a needs-you badge, from committed PNGs `assets/tray/tray-{0..9,9plus}.png`
-  and `@2x` versions. macOS uses `tray.setTitle(n)` and `app.dock.setBadge`; Windows uses
-  `win.setOverlayIcon`; Linux uses `app.setBadgeCount` where supported. Menu: Open Switchyard;
+- Tray: a monochrome chevron glyph (no tile) from committed PNGs under `assets/tray/{dark,light}/`
+  (16, 22, 24, 32 px with `@2x`; the dark ink for light bars, the light ink for dark bars, chosen
+  by `nativeTheme.shouldUseDarkColors` and swapped on theme change; macOS uses the
+  `trayTemplate` template images). "Needs you" is a small dot at the top-right of the glyph; the
+  count is in the tooltip ("2 sessions need you") and the first menu line. macOS also sets
+  `app.dock.setBadge`; Windows uses `win.setOverlayIcon` (a dot); Linux uses `app.setBadgeCount`
+  where supported. Icons are rendered by `scripts/gen-icons.sh` from `build/icons-src/`. Menu: Open Switchyard;
   up to 5 needs-you sessions ("work · api · asked"), each opening its route; Refresh usage;
   Pause all reading (sets every tab off, with a confirm); Quit. With no tray (GNOME without
   AppIndicator), closing the window quits unless `keep_running` is set, and the close notice

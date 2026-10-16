@@ -1,7 +1,7 @@
 // A mock of the preload's `window.sy` with fixtures, so the renderer runs in a plain browser
 // (development, screenshots, the headless check of WP-I). Excluded from the package.
 // Pick a scenario with ?scenario=<name>&view=<hub|settings|<tab id>>:
-//   default | empty | no_sy | needs_pairing | stopped | dark-data | warning
+//   default | empty | no_sy | needs_pairing | removed | direct_pairing | unreachable | board_blocked | owner | stopped | dark-data | warning
 // It is a mock: no network, no storage, nothing leaves the page.
 
 const params = new URLSearchParams(globalThis.location?.search || '');
@@ -43,7 +43,6 @@ function fixtures() {
       break;
     case 'no_sy':
       Object.assign(s.hub, { connected: false, reachable: false, paired: false, url: null, version: null, status: 'no_sy', needs_you: 0 });
-      s.banners = [{ level: 'warn', text: 'sy not found: run "sy setup" to connect this computer.' }];
       break;
     case 'needs_pairing':
       Object.assign(s.hub, { paired: false, status: 'needs_pairing', needs_you: 0 });
@@ -59,6 +58,19 @@ function fixtures() {
       break;
     case 'owner':
       s.hub.owner = true;
+      s.hub.owner_until = iso(20 * 24 * HOUR);
+      break;
+    case 'removed':
+      Object.assign(s.hub, { paired: false, status: 'needs_pairing', removed: true, needs_you: 0, admin: 'local', local: true, service: 'running' });
+      break;
+    case 'direct_pairing':
+      Object.assign(s.hub, { paired: false, status: 'needs_pairing', direct: true, needs_you: 0 });
+      break;
+    case 'unreachable':
+      Object.assign(s.hub, { reachable: false, status: 'unreachable', needs_you: 0, last_seen: iso(-12 * MIN), local: true, service: 'stopped' });
+      break;
+    case 'board_blocked':
+      Object.assign(s.hub, { board_blocked: true });
       break;
     default:
       break;
@@ -112,7 +124,11 @@ const sy = {
   resumeReading: async ({ id }) => { const t = find(id); if (t) { t.stopped = null; t.read_state = 'reading'; } push(); },
   refreshUsage: async () => undefined,
   pair: async () => { state.hub.paired = true; state.hub.status = 'ok'; push(); return { ok: true }; },
-  ownerSignIn: async () => { state.hub.owner = true; push(); return later({ ok: true }, 200); },
+  ownerSignIn: async () => { state.hub.owner = true; state.hub.owner_until = '2026-11-14T10:00:00Z'; push(); return later({ ok: true }, 200); },
+  ownerSignOut: async () => { state.hub.owner = false; state.hub.owner_until = null; push(); return { ok: true }; },
+  hubConnect: async () => { state.hub.paired = true; state.hub.status = 'ok'; state.hub.url = 'https://hub.example.com'; push(); return { ok: true }; },
+  hubUnpair: async () => { state.hub.paired = false; state.hub.owner = false; state.hub.status = 'needs_pairing'; push(); return { ok: true, revoked: true }; },
+  hubRetry: async () => ({ ok: true }),
   hubService: async ({ action }) => ({ service: action === 'stop' ? 'stopped' : 'running', health: action !== 'stop' }),
   updateSeat: async ({ seat, label, colour }) => {
     const t = state.tabs.find((x) => x.seat === seat);

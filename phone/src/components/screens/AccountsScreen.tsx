@@ -1,8 +1,9 @@
-// Accounts (PhoneAccounts; design Phone-11): one card per login, "most room", every limit window with its
-// reset and pace, where the login is signed in (Claude Code on each machine, from the hub, and
-// this phone's claude.ai tab, P17.7) with the matching action (Open claude.ai, Sign in on this
-// phone, Fix this tab: the Phone-12 sheet), and "Count down on Lock Screen" where the Live Activity
-// qualifies (iOS).
+// Accounts (PhoneAccounts; design Phone-11): "+ Add account" in the header (a tab for a hub
+// account this phone has none for), one card per login, "most room", every limit window with
+// its reset and pace, where the login is signed in (Claude Code on each machine, from the hub,
+// and this phone's claude.ai tab, P17.7) with the matching action (Open claude.ai, Sign in on
+// this phone, Fix this tab: the Phone-12 sheet), and "Count down on Lock Screen" where the Live
+// Activity qualifies (iOS).
 import { useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import type { Seat, Window } from '../../contract/api';
@@ -14,7 +15,7 @@ import {
 } from '../../lib/tabs';
 import { useHubApi } from '../hub-api';
 import { go } from '../nav';
-import { giveTab, signOutTab, useTabMemos, useTabProfiles } from '../tab-memo';
+import { giveTab, profilesChanged, signOutTab, useTabMemos, useTabProfiles } from '../tab-memo';
 import { useTabsSupported } from '../tabs';
 import { useTheme } from '../theme';
 import { Btn, Calm, Card, Dot, Meter, Muted, Page, useToast, useToneColour } from '../ui';
@@ -46,6 +47,7 @@ export default function AccountsScreen({ seat: focus }: { seat?: string }) {
       title="Accounts"
       meta="One card per login. Each shows where it is signed in: Claude Code on your machines, and its claude.ai tab on this phone."
       toast={toast.node}
+      right={tabs ? <AddAccount seats={seats} profiles={profiles} /> : undefined}
     >
       {best ? (
         <Text testID="most-room" style={{ color: t.text }}>
@@ -96,6 +98,55 @@ export default function AccountsScreen({ seat: focus }: { seat?: string }) {
         />
       ) : null}
     </Page>
+  );
+}
+
+/**
+ * + Add account: hub accounts this phone has no claude.ai tab for yet. Picking one opens that
+ * seat's tab at claude.ai (the sign-in is the person's, in the tab); the app never signs in or
+ * reads the page. An account the hub does not list has not been used yet on a computer.
+ * `profiles` is the screen's useTabProfiles: listed by owner, so a profile moveProfile gave to
+ * another seat counts for that seat, and a seat whose profile was given away is offered again.
+ */
+function AddAccount({ seats, profiles }: { seats: Seat[]; profiles: string[] | null }) {
+  const t = useTheme();
+  const [open, setOpen] = useState(false);
+  const show = () => {
+    setOpen(true);
+    profilesChanged(); // fresh from the module
+  };
+  const todo = seats.filter((s) => profiles && !profiles.includes(s.id));
+  return (
+    <>
+      <Btn kind="outline" label="+ Add account" testID="add-account" onPress={show} />
+      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+        <Pressable accessibilityLabel="Close" style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={() => setOpen(false)} />
+        <View testID="add-account-sheet" style={{ backgroundColor: t.bg, padding: 16, gap: 10, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '75%' }}>
+          <Text accessibilityRole="header" style={{ color: t.text, fontSize: 18, fontWeight: '700' }}>Which account?</Text>
+          {profiles === null ? (
+            <Muted>Loading…</Muted>
+          ) : todo.length === 0 ? (
+            <Muted>{seats.length === 0 ? 'No accounts on this hub yet.' : 'Every account on this hub already has a tab on this phone. Open it from its card.'}</Muted>
+          ) : (
+            todo.map((s) => (
+              <Card
+                key={s.id}
+                label={`Add ${seatName(s)}`}
+                onPress={() => {
+                  setOpen(false);
+                  go.tab(s.id);
+                }}
+              >
+                <Text testID={`add-seat-${s.id}`} style={{ color: t.text, fontWeight: '700' }}>{seatName(s)}</Text>
+                <Muted>{[s.email, planLabel(s.plan), s.org_name].filter(Boolean).join(' · ')}</Muted>
+              </Card>
+            ))
+          )}
+          <Muted>Not listed? An account appears after it is used once in Claude Code or the desktop app.</Muted>
+          <Btn label="Close" testID="add-account-close" onPress={() => setOpen(false)} />
+        </View>
+      </Modal>
+    </>
   );
 }
 

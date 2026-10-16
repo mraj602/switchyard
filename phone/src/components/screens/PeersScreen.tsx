@@ -8,7 +8,7 @@ import {
   agoLabel, auditWho, cellLabel, cellState, CELL_GLYPH, CELL_WORD, detailText, eventLabel, messageWho, narrowings,
   outcomeLabel, peerAccounts, sizeLabel,
 } from '../../lib/format';
-import { HubError } from '../../lib/hub';
+import { HubError, OWNER_ONLY, errorText } from '../../lib/hub';
 import { useHubApi } from '../hub-api';
 import { switchColors, useTheme } from '../theme';
 import { Btn, Calm, Card, Muted, Page, Section, useToast } from '../ui';
@@ -40,7 +40,7 @@ export default function PeersScreen() {
         setInfo(m.value);
         setError(null);
       } else {
-        setError(m.reason instanceof Error ? m.reason.message : 'Could not load the matrix');
+        setError(errorText(m.reason, 'Could not load the matrix'));
       }
       if (a.status === 'fulfilled') setAudit(a.value.entries ?? []);
       // Optional: a hub that does not serve it answers 404 or 501.
@@ -62,9 +62,9 @@ export default function PeersScreen() {
         toast.show('The matrix changed meanwhile. Check it and try again.');
         load();
       } else if (e instanceof HubError && e.status === 403) {
-        toast.show('Widening needs the owner: use the board or sy at a terminal.');
+        toast.show(OWNER_ONLY);
       } else {
-        toast.show(e instanceof Error ? e.message : 'Could not change the matrix');
+        toast.show(errorText(e, 'Could not change the matrix'));
       }
     }
     setBusy(false);
@@ -113,7 +113,7 @@ export default function PeersScreen() {
               onValueChange={(on) => void run(() => client!.pausePeers(on))}
             />
           </View>
-          {m.paused && !owner ? <Muted>Resuming needs the owner: sign in on the board, or run sy peers resume.</Muted> : null}
+          {m.paused && !owner ? <Muted>Resume peers from a computer (board Peers page).</Muted> : null}
         </Card>
       </Section>
 

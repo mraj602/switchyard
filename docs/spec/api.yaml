@@ -106,11 +106,16 @@ paths:
     post:
       tags: [meta]
       operationId: sessionLogout
-      summary: Clear the session cookie
+      summary: Sign out (clear the session cookie and revoke its device)
+      description: |
+        Revokes the device behind the cookie when it is a board session, an owner session or
+        a phone or browser paired in cookie mode (pairing.md 6), then clears the cookie. The
+        pasted token of a board login stays valid; no other device is touched. A request whose
+        `Origin` is not the hub's own only clears the cookie.
       security: []
       x-scopes: []
       responses:
-        "204": {description: "Cookie cleared and its board session revoked (the pasted token stays valid)."}
+        "204": {description: "Cookie cleared and its device revoked."}
 
   /v1/ingest:
     post:
@@ -679,9 +684,11 @@ paths:
       operationId: ownerSignIn
       summary: Swap a one-time owner link secret for an owner session cookie
       description: |
-        The secret comes from `sy hub owner-link` (pairing.md 4). On success the hub makes a
-        `browser` device with scopes `owner`, `read`, `push`, expiring in 30 days, and sets it
-        as the `sy_session` cookie. A refused secret is `401` with `code` = `link_used`,
+        The secret comes from `sy hub owner-link`, from `POST /v1/owner-links` on an owner
+        device, or from the first-start link of `sy hub serve` (pairing.md 4.1). On success the
+        hub makes a `browser` device with scopes `owner`, `read`, `push`, expiring in 30 days,
+        and sets it as the `sy_session` cookie. Used in its last 7 days, the session slides to
+        30 days from then (pairing.md 4). A refused secret is `401` with `code` = `link_used`,
         `link_expired`, `link_cancelled` or `link_unknown`, `at` and `ttl_s` (pairing.md 4). Rate
         limited as `/v1/pair/claim`.
       security: []
@@ -711,6 +718,58 @@ paths:
                       code: {enum: [link_used, link_expired, link_cancelled, link_unknown]}
                       at: {type: string, format: date-time, description: "When it was used, expired or was cancelled; absent for link_unknown."}
                       ttl_s: {type: integer, minimum: 1, description: "The lifetime the link was made with (`sy hub owner-link --ttl`), so the board can say how long links work; absent for link_unknown."}
+        "429": {$ref: "#/components/responses/TooMany"}
+
+  /v1/owner-links:
+    post:
+      tags: [pairing]
+      operationId: makeOwnerLink
+      summary: Make a one-time owner link for another device (Make another device owner)
+      description: |
+        pairing.md 4.1. Owner sessions only. The link is a `pair_code` of kind `owner`, works
+        once for 10 minutes (the `pair.ttl_s` setting does not apply) and is consumed by
+        `POST /v1/session/owner` exactly as one from `sy hub owner-link`. At most 3 links made
+        this way are live; a fourth cancels the oldest. `url` defaults to `hub.public_url`,
+        else the origin of this request. Rate limited per client IP as `/v1/pair/claim`. The
+        hub logs one line with the code id and the maker, never the secret. Poll
+        `GET /v1/pair/codes/{id}` for `claimed`; `DELETE /v1/pair/codes/{id}` cancels it.
+      x-scopes: [owner]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: {type: string, format: uri}
+      responses:
+        "201":
+          description: The link. `url` (which holds the secret) is shown only in this reply.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, url, expires_at, qr]
+                properties:
+                  id: {type: string}
+                  url: {type: string, description: "<hub>/#/owner?s=<secret>"}
+                  expires_at: {type: string, format: date-time}
+                  qr:
+                    type: object
+                    description: QR module matrix of `url`, as PairCode's.
+                    required: [size, rows]
+                    properties:
+                      size: {type: integer}
+                      rows:
+                        type: array
+                        items: {type: string, pattern: "^[01]+$"}
+        "400":
+          description: Malformed request, or (code `needs_https`) a plain http address that is not loopback.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
         "429": {$ref: "#/components/responses/TooMany"}
 
   /v1/pair/codes:
@@ -1797,10 +1856,18 @@ components:
         application/json:
           schema: {$ref: "#/components/schemas/Error"}
     Unauthorized:
-      description: Missing, unknown or revoked token.
+      description: |
+        Missing, unknown or revoked token. When the token belongs to a device that was
+        revoked or has expired, `reason` says which (pairing.md 4, 6), so the board can say
+        "This browser was removed from the hub." or "Your owner access ended.".
       content:
         application/json:
-          schema: {$ref: "#/components/schemas/Error"}
+          schema:
+            allOf:
+              - {$ref: "#/components/schemas/Error"}
+              - type: object
+                properties:
+                  reason: {type: string, enum: [revoked, expired, owner_expired]}
     Forbidden:
       description: Token lacks the scope.
       content:

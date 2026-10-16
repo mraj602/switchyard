@@ -66,6 +66,7 @@ export function fakeClient(over: Partial<Record<keyof HubClient, unknown>> = {})
   const base: Record<string, unknown> = {
     origin: 'https://hub.example.ts.net',
     health: jest.fn(async () => true),
+    movedTo: jest.fn(async () => null),
     me: jest.fn(async () => structuredClone(me) as unknown as Me),
     overview: jest.fn(async () => fx.overview),
     sessions: jest.fn(async () => fx.sessions),
