@@ -42,6 +42,8 @@ const ASSETS = [
   'format.js',
   'icons/apple-touch-icon-180.png',
   'icons/badge-96.png',
+  'icons/favicon-32.png',
+  'icons/favicon.ico',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/icon.svg',

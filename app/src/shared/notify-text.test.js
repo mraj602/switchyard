@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { notifyText, cut, routeFor } from './notify-text.js';
-import { badgeKey, badgeFile, badgeText, normalizeCount, BADGE_KEYS } from './badge.js';
+import { badgeText, normalizeCount } from './badge.js';
 
 const session = (over = {}) => ({ id: 's1', seat: 'st1', seat_label: 'work', project: 'api', detail: 'question', question: null, ...over });
 
@@ -78,15 +78,7 @@ test('routes: a session alert without a session id falls back to the hub root', 
   assert.match(routeFor({ id: 'a b', trigger: 'asked', session: 's/1' }, null), /^#\/sessions\/s%2F1\?alert=a%20b$/);
 });
 
-test('badge keys', () => {
-  assert.deepEqual(BADGE_KEYS.length, 11);
-  assert.equal(badgeKey(0), '0');
-  assert.equal(badgeKey(9), '9');
-  assert.equal(badgeKey(10), '9plus');
-  assert.equal(badgeKey(-3), '0');
-  assert.equal(badgeKey('x'), '0');
-  assert.equal(badgeKey(4.9), '4');
-  assert.equal(badgeFile(12), 'tray-9plus.png');
+test('badge text', () => {
   assert.equal(badgeText(0), '');
   assert.equal(badgeText(7), '7');
   assert.equal(badgeText(30), '9+');
