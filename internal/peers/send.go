@@ -183,9 +183,6 @@ func (e Env) SendWith(c Caller, to, text string, o SendOpts) (SendResult, *Refus
 		}
 	}
 	maxTurns := m.MaxTurns()
-	if maxTurns <= 0 {
-		maxTurns = DefaultMaxTurns
-	}
 	if LoopGuard(th, newestHuman(sender, &target), maxTurns, now) {
 		_ = threads.Save(e.ThreadsPath()) // keeps paused_at
 		return SendResult{}, Refuse(CodeLoopGuard, "%d automated turns without a human prompt in either session; paused until you type in one of them", maxTurns)

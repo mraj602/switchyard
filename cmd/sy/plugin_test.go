@@ -46,6 +46,16 @@ func TestPluginHooksJSON(t *testing.T) {
 		if titleEvents[ev] {
 			wantGroups = 2
 		}
+		// SessionStart has a third: `sy hook --peers-context SessionStart` (peers.md 2.5),
+		// synchronous with timeout 1, so its additionalContext reaches the session.
+		if ev == "SessionStart" {
+			wantGroups = 3
+			ch := groups[len(groups)-1].Hooks
+			if len(ch) != 1 || ch[0].Command != "command -v sy >/dev/null 2>&1 && sy hook --peers-context SessionStart || true" ||
+				ch[0].Async || ch[0].Timeout != 1 || groups[len(groups)-1].Matcher != "" {
+				t.Errorf("SessionStart peers context entry: %+v", groups[len(groups)-1])
+			}
+		}
 		if len(groups) != wantGroups || len(groups[0].Hooks) != 1 {
 			t.Fatalf("%s: want %d group(s) with one hook each", ev, wantGroups)
 		}

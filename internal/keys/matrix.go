@@ -7,12 +7,27 @@ import (
 	"time"
 )
 
-// Matrix limits (peers.md 5.1).
+// Matrix limits (peers.md 5.1). max_turns is 0 (no limit, the default) or 2-500.
 const (
+	NoTurnLimit     = 0
 	MinMaxTurns     = 2
 	MaxMaxTurns     = 500
-	DefaultMaxTurns = 30
+	DefaultMaxTurns = NoTurnLimit
 )
+
+// ValidMaxTurns reports whether n is a max_turns the matrix accepts: 0 (no limit) or 2-500.
+func ValidMaxTurns(n int) bool {
+	return n == NoTurnLimit || (n >= MinMaxTurns && n <= MaxMaxTurns)
+}
+
+// TurnsWiden reports whether going from max_turns old to next widens (keys.md 5.2): "no
+// limit" (0) counts as the highest value, so setting it widens and leaving it narrows.
+func TurnsWiden(old, next int) bool {
+	if old == next || old == NoTurnLimit {
+		return false
+	}
+	return next == NoTurnLimit || next > old
+}
 
 // MatrixBody is the body of a matrix document (peers.md 5.1). Evaluating it (who may message
 // whom) is the peers package's job; this package signs, verifies and compares bodies.
@@ -29,7 +44,7 @@ type MatrixBody struct {
 }
 
 // BaselineMatrix is version 1 for hub hubFP: nothing allowed, same_account on, not paused,
-// 30 turns. A machine with no document compares against it (keys.md 5.4).
+// no turn limit. A machine with no document compares against it (keys.md 5.4).
 func BaselineMatrix(hubFP string, now time.Time) MatrixBody {
 	return MatrixBody{V: 1, Version: 1, Hub: hubFP, IssuedAt: FormatTime(now), SameAccount: true,
 		MaxTurns: DefaultMaxTurns, Accounts: map[string]string{}, Allow: [][]string{}}
@@ -40,7 +55,7 @@ func (m MatrixBody) Allows(from, to string) bool {
 	return slices.ContainsFunc(m.Allow, func(p []string) bool { return p[0] == from && p[1] == to })
 }
 
-// Check validates the fields: version from 1, max_turns 2-500, allow pairs of two non-empty
+// Check validates the fields: version from 1, max_turns 0 (no limit) or 2-500, allow pairs of two non-empty
 // account ids, sorted, no duplicates.
 func (m MatrixBody) Check() error {
 	bad := func(f string) error { return fmt.Errorf("%w: matrix %s", ErrBody, f) }
@@ -50,7 +65,7 @@ func (m MatrixBody) Check() error {
 	if !validTime(m.IssuedAt) {
 		return bad("issued_at")
 	}
-	if m.MaxTurns < MinMaxTurns || m.MaxTurns > MaxMaxTurns {
+	if !ValidMaxTurns(m.MaxTurns) {
 		return bad("max_turns")
 	}
 	for i, p := range m.Allow {
@@ -80,14 +95,14 @@ func SortAllow(pairs [][]string) [][]string {
 
 // Widens reports whether next widens compared with old (keys.md 5.2): an allowed pair is
 // added, same_account goes from false to true, paused from true to false, or max_turns
-// grows. Everything else narrows or is neutral. The hub, the agent and the CLI all use this.
+// grows (0, no limit, being the highest; TurnsWiden). Everything else narrows or is neutral. The hub, the agent and the CLI all use this.
 func Widens(old, next MatrixBody) bool {
 	for _, p := range next.Allow {
 		if len(p) == 2 && !old.Allows(p[0], p[1]) {
 			return true
 		}
 	}
-	return (!old.SameAccount && next.SameAccount) || (old.Paused && !next.Paused) || next.MaxTurns > old.MaxTurns
+	return (!old.SameAccount && next.SameAccount) || (old.Paused && !next.Paused) || TurnsWiden(old.MaxTurns, next.MaxTurns)
 }
 
 // VerifyMatrix checks a matrix document: one signature, by the owner or the hub, the body's

@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import type { MatrixInfo, PeerAuditEntry, PeerMessage } from '../../contract/api';
 import {
-  agoLabel, auditWho, ALLOW_FROM_COMPUTER, BLOCK_ALL_CONFIRM, blockAllEdit, blockedAll, TURNS_HELP, cellLabel, cellState, CELL_GLYPH, CELL_WORD, detailText, eventLabel, messageWho, narrowings,
+  agoLabel, auditWho, ALLOW_FROM_COMPUTER, BLOCK_ALL_CONFIRM, blockAllEdit, blockedAll, TURNS_HELP, TURNS_NONE, NO_LIMIT_HELP, turnsLabel, cellLabel, cellState, CELL_GLYPH, CELL_WORD, detailText, eventLabel, messageWho, narrowings,
   outcomeLabel, peerAccounts, sizeLabel,
 } from '../../lib/format';
 import { HubError, OWNER_ONLY, errorText } from '../../lib/hub';
@@ -91,7 +91,7 @@ export default function PeersScreen() {
     target === 'none' ? 'None' : target === 'out' ? `${from} → ${to}` : target === 'in' ? `${to} → ${from}` : 'Both ways';
 
   return (
-    <Page back title="Peers" meta={`Matrix version ${m.version} · signed by ${info.signer} · max ${m.max_turns} turns`} toast={toast.node}>
+    <Page back title="Peers" meta={`Matrix version ${m.version} · signed by ${info.signer} · ${m.max_turns === TURNS_NONE ? 'no turn limit' : `max ${m.max_turns} turns`}`} toast={toast.node}>
       <Section title="Pause all peers">
         <Card accent={m.paused ? t.bad : undefined}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -183,8 +183,9 @@ export default function PeersScreen() {
           )}
           <Muted>⇄ both ways · → may start a thread · ← only the other may start one · · none · = same account{m.same_account ? '' : ' (off)'}. Replies inside a thread are always allowed.</Muted>
           <View testID="peers-turns" style={{ gap: 2, marginTop: 4 }}>
-            <Text style={{ color: t.text, fontWeight: '600' }}>{`Replies between two sessions without you: ${m.max_turns}`}</Text>
+            <Text style={{ color: t.text, fontWeight: '600' }}>{`Replies between two sessions without you: ${turnsLabel(m.max_turns)}`}</Text>
             <Muted>{TURNS_HELP}</Muted>
+            <Muted>{NO_LIMIT_HELP}</Muted>
             <Muted>Change it on the board (Peers).</Muted>
           </View>
           {picked?.from && picked.to ? (

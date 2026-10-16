@@ -678,12 +678,26 @@ async function peersChecks(page, sizeName, who, owner) {
   const allCells = (cls) => page.evaluate((c) => { const b = [...document.querySelectorAll('[data-key=matrix] .mx-btn')]; return b.length === 12 && b.every((x) => x.classList.contains(c)); }, cls);
   const waitAll = (cls, what) => page.waitForFunction((c) => { const b = [...document.querySelectorAll('[data-key=matrix] .mx-btn')]; return b.length === 12 && b.every((x) => x.classList.contains(c)); }, { timeout: 4000 }, cls).catch(() => fail(t(what)));
   if (!/^Replies between two sessions without you/.test((await txt('[data-key=peers-turns] label')) || '') || !/When two sessions message each other on their own/.test((await txt('[data-key=peers-turns]')) || '') || !/starts the count again\./.test((await txt('[data-key=peers-turns]')) || '')) fail(t('turn limit label or explanation missing'));
-  if ((await page.$eval('[data-key=max-turns]', (i) => i.value)) !== '30') fail(t('turn limit is not 30'));
+  if (!/No limit lets agents keep talking with no one watching; the other limits still apply\./.test((await txt('[data-key=peers-turns]')) || '')) fail(t('no-limit explanation missing'));
   const setTurns = async (n) => {
     await page.$eval('[data-key=max-turns]', (i, v) => { i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); }, String(n));
     await settle();
   };
+  const noLimit = () => page.$eval('[data-key=max-turns-none]', (c) => c.checked);
+  const setNone = async (on) => {
+    await page.$eval('[data-key=max-turns-none]', (c, v) => { c.checked = v; c.dispatchEvent(new Event('change', { bubbles: true })); }, on);
+    await settle();
+  };
+  const turnsDisabled = () => page.$eval('[data-key=max-turns]', (i) => i.disabled);
   const turnsLine = () => page.evaluate(() => { const d = document.querySelector('[data-key=peers-details]'); if (d) d.open = true; return (document.querySelector('[data-key=matrix-version]') || {}).textContent || ''; });
+  if (owner) {
+    // A new matrix has no turn limit: the box is ticked and the number field is off.
+    if (!(await noLimit()) || !(await turnsDisabled())) fail(t('a new matrix does not show No limit with the number disabled'));
+    if (!/no turn limit/.test(await turnsLine())) fail(t(`details line does not say no turn limit: ${await turnsLine()}`));
+    if (!(await page.$eval('[data-key=max-turns-set]', (b) => b.disabled))) fail(t('Set is enabled with nothing changed'));
+  }
+  if (await noLimit()) await setNone(false);
+  if (await turnsDisabled()) fail(t('the number field stays disabled with No limit off'));
   await setTurns(1);
   if (!(await page.$eval('[data-key=max-turns-set]', (b) => b.disabled)) || !/2 to 500/.test((await txt('[data-key=max-turns-why]')) || '')) fail(t('turn limit 1 is not refused with the range'));
   await setTurns(501);
@@ -696,12 +710,25 @@ async function peersChecks(page, sizeName, who, owner) {
     await shot(page, `${sizeName}-${who}-peers-allow-all`);
     await pressSel('[data-key=block-all]');
     await waitAll('mx-none', 'Block all did not clear every cell');
+    if (!(await noLimit())) fail(t('No limit is not ticked again after a matrix change while the matrix has none'));
+    await setNone(false);
     await setTurns(40);
-    if (await page.$eval('[data-key=max-turns-set]', (b) => b.disabled)) fail(t('raising the turn limit is disabled for the owner'));
+    if (await page.$eval('[data-key=max-turns-set]', (b) => b.disabled)) fail(t('setting the turn limit to 40 is disabled for the owner'));
     await pressSel('[data-key=max-turns-set]');
-    try { await page.waitForFunction(() => /at most 40 turns/.test((document.querySelector('[data-key=matrix-version]') || {}).textContent || ''), { timeout: 4000 }); } catch (e) { fail(t(`raising the turn limit to 40 did not stick: ${await turnsLine()}`)); }
+    try { await page.waitForFunction(() => /at most 40 turns/.test((document.querySelector('[data-key=matrix-version]') || {}).textContent || ''), { timeout: 4000 }); } catch (e) { fail(t(`setting the turn limit to 40 did not stick: ${await turnsLine()}`)); }
     const ev = await page.evaluate(async () => (await (await fetch('/v1/peers/matrix')).json()).matrix);
     if (ev.max_turns !== 40 || ev.same_account !== false || ev.allow.length !== 0) fail(t(`matrix after bulk edits: ${JSON.stringify(ev)}`));
+    // No limit is the highest value; the owner may set it.
+    await setNone(true);
+    if (!(await turnsDisabled())) fail(t('the number field is not disabled with No limit on'));
+    if (await page.$eval('[data-key=max-turns-set]', (b) => b.disabled)) fail(t('setting no limit is disabled for the owner'));
+    await pressSel('[data-key=max-turns-set]');
+    try { await page.waitForFunction(() => /no turn limit/.test((document.querySelector('[data-key=matrix-version]') || {}).textContent || ''), { timeout: 4000 }); } catch (e) { fail(t(`setting no limit did not stick: ${await turnsLine()}`)); }
+    const nl = await page.evaluate(async () => (await (await fetch('/v1/peers/matrix')).json()).matrix);
+    if (nl.max_turns !== 0) fail(t(`matrix after No limit: ${JSON.stringify(nl)}`));
+    await settle();
+    await shot(page, `${sizeName}-${who}-peers-no-limit`);
+    await setNone(false);
     await setTurns(30);
     await pressSel('[data-key=max-turns-set]');
     try { await page.waitForFunction(() => /at most 30 turns/.test((document.querySelector('[data-key=matrix-version]') || {}).textContent || ''), { timeout: 4000 }); } catch (e) { fail(t('lowering the turn limit to 30 did not stick')); }
@@ -717,6 +744,9 @@ async function peersChecks(page, sizeName, who, owner) {
     if (!/Only the owner can allow pairs\./.test((await txt('[data-key=allow-all-why]')) || '')) fail(t('device has no "Only the owner can allow pairs." line'));
     await setTurns(45);
     if (!(await page.$eval('[data-key=max-turns-set]', (b) => b.disabled)) || !/owner sign-in/.test((await txt('[data-key=max-turns-why]')) || '')) fail(t('device may raise the turn limit, or is not told why not'));
+    await setNone(true);
+    if (!(await page.$eval('[data-key=max-turns-set]', (b) => b.disabled)) || !/owner sign-in/.test((await txt('[data-key=max-turns-why]')) || '')) fail(t('device may set no limit, or is not told why not'));
+    await setNone(false);
     await setTurns(20);
     if (await page.$eval('[data-key=max-turns-set]', (b) => b.disabled)) fail(t('device cannot lower the turn limit'));
     await pressSel('[data-key=max-turns-set]');

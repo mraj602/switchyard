@@ -11,13 +11,16 @@ import (
 
 const hookUsage = `usage: sy hook [<Event>]            record one Claude Code hook event (JSON on stdin)
        sy hook --title <Event>      print the tab title hook JSON, or nothing (terminal.titles)
+       sy hook --peers-context <Event>
+                                    on SessionStart, print the peers context hook JSON, or nothing
 
-Run by Claude Code's hooks; it always exits 0 and never changes what Claude Code does.
+Run by Claude Code's hooks; it always exits 0 and never blocks or decides anything (the
+peers context only tells a new session that other sessions are reachable).
 `
 
-// runHook is `sy hook [event]` and `sy hook --title <Event>`. It never returns an error and
-// writes to stdout only the title hook's JSON (or the usage for --help): a hook must not
-// change what Claude Code does. --help, -h and help print usage and touch no state.
+// runHook is `sy hook [event]`, `sy hook --title <Event>` and `sy hook --peers-context
+// <Event>`. It never returns an error and writes to stdout only the title or peers-context
+// hook's JSON (or the usage for --help): a hook must not block or decide anything. --help, -h and help print usage and touch no state.
 func runHook(args []string, stdout, _ io.Writer) error {
 	if len(args) > 0 {
 		switch args[0] {
@@ -26,6 +29,9 @@ func runHook(args []string, stdout, _ io.Writer) error {
 			return nil
 		case hook.TitleFlag:
 			hook.RunTitle(args[1:], os.Stdin, stdout, os.Getenv)
+			return nil
+		case hook.PeersContextFlag:
+			hook.RunPeersContext(args[1:], os.Stdin, stdout, os.Getenv)
 			return nil
 		}
 	}

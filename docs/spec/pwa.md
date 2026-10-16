@@ -192,8 +192,9 @@ The desktop app's Hub tab shows this same page.
 - **Accounts**: a grid with one row per sender and one column per receiver (the board's visible
   seats, plus any account the matrix names). A cell is none `·`, one way `→` (the row may start a
   thread), back `←` (only the column may), or both `⇄`; the diagonal is `=`, the same-account
-  switch of the matrix (`same_account`). The matrix version, its signer and `max_turns` are
-  shown above the grid. A cell opens an editor under the grid: None, row to column, column to
+  switch of the matrix (`same_account`). The matrix version, its signer and `max_turns` ("no
+  turn limit" for 0) are shown with the grid; the turn limit is a number field with a **No limit**
+  checkbox (peers.md 5.4). A cell opens an editor under the grid: None, row to column, column to
   row, Both ways. Each choice is a `PUT /v1/peers/matrix` `edit` with `base_version` (a stale one
   is 409: the page reloads the matrix and says so): added pairs go in `allow`, removed pairs in
   `deny`.

@@ -82,8 +82,8 @@ func TestDocMatrixDetailAndMaxTurns(t *testing.T) {
 	if d.Detail != "the matrix does not allow w → p" {
 		t.Errorf("detail %q", d.Detail)
 	}
-	if m.MaxTurns() != 30 {
-		t.Errorf("baseline max turns %d", m.MaxTurns())
+	if m.MaxTurns() != NoTurnLimit {
+		t.Errorf("baseline max turns %d, want no limit", m.MaxTurns())
 	}
 	b.MaxTurns = 7
 	if NewDocMatrix(b).MaxTurns() != 7 {

@@ -318,7 +318,8 @@ requires it.
 
 A matrix document **widens** compared with the one before it when any of these is true:
 an allowed directed pair is added, `same_account` goes from false to true, `paused` goes
-from true to false, or `max_turns` grows. Anything else narrows or is neutral. The rule is
+from true to false, or `max_turns` grows, where 0 (no limit) counts as the highest value: going
+to 0 widens, going from 0 to any number narrows (`keys.TurnsWiden`). Anything else narrows or is neutral. The rule is
 computed by one function (`keys.Widens(old, new)`, in `internal/keys` beside the matrix body so
 the hub, the agent and the CLI share it without importing `internal/peers`).
 

@@ -22,7 +22,7 @@ type Decision struct {
 type Matrix interface {
 	// Allowed is peers.Allowed(m, from_account, to_account, thread) of peers.md 5.3.
 	Allowed(from, to Party, thread *Thread) Decision
-	// MaxTurns is the loop guard limit (matrix `max_turns`, 2-500).
+	// MaxTurns is the loop guard limit (matrix `max_turns`, 2-500; 0 is no limit).
 	MaxTurns() int
 }
 
@@ -37,4 +37,4 @@ func (NoMatrix) Allowed(from, to Party, _ *Thread) Decision {
 	return Decision{Reason: CodeNoMatrix, Detail: "the matrix is not configured on this machine, so nothing is allowed"}
 }
 
-func (NoMatrix) MaxTurns() int { return DefaultMaxTurns }
+func (NoMatrix) MaxTurns() int { return NoTurnLimit }

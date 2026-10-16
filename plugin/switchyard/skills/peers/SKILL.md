@@ -1,6 +1,6 @@
 ---
 name: peers
-description: Message Claude Code sessions in other accounts or on other machines through Switchyard (`sy peers list`, `sy peers send`). Use when the user asks to coordinate with, ask, tell or hand information to another session, or mentions a session on another machine or account.
+description: Message Claude Code sessions in other accounts or on other machines through Switchyard (`sy peers list`, `sy peers send`). Use when the user asks to coordinate with, ask, tell or hand information to another session, or mentions a session on another machine or account. Also use it on your own when your work would go better by coordinating with other agents or sessions (asking what another session knows or is doing, handing over a result, avoiding duplicate work), including sessions that native ListAgents and SendMessage do not show.
 allowed-tools: Bash(sy peers list:*), Bash(sy peers send:*), Bash(sy peers status:*), Bash(sy peers matrix:*)
 ---
 
@@ -11,8 +11,9 @@ one line. Switchyard only relays what the user's matrix allows; you never decide
 
 1. Run `sy peers list --json`. It lists the sessions this session may message: `handle`,
    `name`, `account_label`, `machine`, `project`, `state`, `can`.
-2. Pick the target from the user's description (project, machine, account, name). If two
-   sessions fit, ask the user which one; do not guess.
+2. Pick the target from the user's description (project, machine, account, name), or, when
+   you coordinate on your own, from what your task needs. If two sessions fit, ask the user
+   which one (or, with no one to ask, send to none); do not guess.
 3. Send one concise message with the handle, the text on standard input, in a quoted heredoc so
    the shell never expands it:
 
@@ -37,6 +38,8 @@ nobody, say that, and name what it printed (for example that the matrix is not s
   `sy peers same-account on`. If a peer is not reachable, tell the user which account pair
   needs to change and that they do it in Settings → Peers on the board or with `sy peers allow`
   in their own terminal.
+- When you message a peer on your own (the user did not ask), send only what your current
+  task needs, and say in your next reply to the user what you sent and to whom.
 - One path per message: do not also send it with native `SendMessage` or Remote Control.
 - When `sy peers send` prints `not delivered`, do not retry unless the user asks. When it
   prints `queued`, do not resend.
