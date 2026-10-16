@@ -616,7 +616,7 @@ async function peersChecks(page, sizeName, who, owner) {
   await page.evaluate(() => { window.confirm = () => true; });
   const allCells = (cls) => page.evaluate((c) => { const b = [...document.querySelectorAll('[data-key=matrix] .mx-btn')]; return b.length === 12 && b.every((x) => x.classList.contains(c)); }, cls);
   const waitAll = (cls, what) => page.waitForFunction((c) => { const b = [...document.querySelectorAll('[data-key=matrix] .mx-btn')]; return b.length === 12 && b.every((x) => x.classList.contains(c)); }, { timeout: 4000 }, cls).catch(() => fail(t(what)));
-  if (!/^Automated turns per thread/.test((await txt('[data-key=peers-turns] label')) || '') || !/A thread is one conversation between two sessions\./.test((await txt('[data-key=peers-turns]')) || '') || !/Resume thread\)\. This stops two agents/.test((await txt('[data-key=peers-turns]')) || '')) fail(t('turn limit label or explanation missing'));
+  if (!/^Replies between two sessions without you/.test((await txt('[data-key=peers-turns] label')) || '') || !/When two sessions message each other on their own/.test((await txt('[data-key=peers-turns]')) || '') || !/starts the count again\./.test((await txt('[data-key=peers-turns]')) || '')) fail(t('turn limit label or explanation missing'));
   if ((await page.$eval('[data-key=max-turns]', (i) => i.value)) !== '30') fail(t('turn limit is not 30'));
   const setTurns = async (n) => {
     await page.$eval('[data-key=max-turns]', (i, v) => { i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); }, String(n));

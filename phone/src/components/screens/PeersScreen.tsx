@@ -183,7 +183,7 @@ export default function PeersScreen() {
           )}
           <Muted>⇄ both ways · → may start a thread · ← only the other may start one · · none · = same account{m.same_account ? '' : ' (off)'}. Replies inside a thread are always allowed.</Muted>
           <View testID="peers-turns" style={{ gap: 2, marginTop: 4 }}>
-            <Text style={{ color: t.text, fontWeight: '600' }}>{`Automated turns per thread: ${m.max_turns}`}</Text>
+            <Text style={{ color: t.text, fontWeight: '600' }}>{`Replies between two sessions without you: ${m.max_turns}`}</Text>
             <Muted>{TURNS_HELP}</Muted>
             <Muted>Change it on the board (Peers).</Muted>
           </View>

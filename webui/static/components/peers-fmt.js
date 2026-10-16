@@ -81,7 +81,7 @@ export const blockedAll = (allow, sameAccount) => !sameAccount && !(allow || [])
 // The loop-guard limit (peers.md 5.1, 6.3): 2 to 500, the hub's own bound.
 export const TURNS_MIN = 2;
 export const TURNS_MAX = 500;
-export const TURNS_HELP = 'A thread is one conversation between two sessions. After this many messages with no one typing in either session, delivery stops until you type in one of them (or Resume thread). This stops two agents replying to each other forever.';
+export const TURNS_HELP = 'When two sessions message each other on their own, with no one typing, Switchyard stops delivering after this many messages, so two agents cannot keep replying to each other forever. Typing in either session (or Resume thread) starts the count again.';
 export const ALLOW_ALL_CONFIRM = 'Allow every account to message every other account, both ways?';
 export const BLOCK_ALL_CONFIRM = 'Stop all peer messages between accounts? Threads in progress stop too.';
 export const OWNER_ONLY_ALLOW = 'Only the owner can allow pairs.';

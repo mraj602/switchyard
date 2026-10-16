@@ -77,7 +77,7 @@ export function narrowings(allow: [string, string][], from: string, to: string, 
 export const BLOCK_ALL_CONFIRM = 'Stop all peer messages between accounts? Threads in progress stop too.';
 /** The loop guard's explanation (peers.md 6.3), the same sentence the board shows. */
 export const TURNS_HELP =
-  'A thread is one conversation between two sessions. After this many messages with no one typing in either session, delivery stops until you type in one of them (or Resume thread). This stops two agents replying to each other forever.';
+  'When two sessions message each other on their own, with no one typing, Switchyard stops delivering after this many messages, so two agents cannot keep replying to each other forever. Typing in either session (or Resume thread) starts the count again.';
 export const ALLOW_FROM_COMPUTER = 'Allow pairs from a computer (board, Peers)';
 
 /** Block all (peers.md 5.4): every allowed pair removed and same_account off. Only ever narrows. */

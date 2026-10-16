@@ -235,7 +235,7 @@ the owner. Everything is disabled while offline. A **Block all** button above th
 "Stop all peer messages between accounts? Threads in progress stop too.") sends one `edit` with
 every pair in `deny` and `same_account: false` (`blockAllEdit`); Allow all is not offered
 (owner-only; the screen says "Allow pairs from a computer (board, Peers)"). The turn limit
-(`max_turns`) is shown read-only as "Automated turns per thread: N" with the loop-guard
+(`max_turns`) is shown read-only as "Replies between two sessions without you: N" with the loop-guard
 explanation (peers.md 6.3, 5.4).
 
 Owner-only PWA screens (Devices, Add phone, rule editing) are not in the app. Analytics (More, Analytics; `GET /v1/analytics/{report}`, analytics.md) is: a range (7, 30, 90 days), a seat filter, totals, daily cost bars, a compact weekday by hour heatmap, models, projects, the five dearest sessions, limit windows (peak and final percent as bars) and limit hits.
