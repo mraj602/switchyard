@@ -222,7 +222,7 @@ func (a *Authenticator) Require(opt Options, scopes ...string) func(http.Handler
 			d, err := a.LookupDetail(r.Context(), tok)
 			if err != nil {
 				if errors.Is(err, ErrUnauthorized) {
-					WriteError(w, http.StatusUnauthorized, "unauthorized", "unknown or revoked token")
+					writeUnauthorized(w, a.whyRefused(r.Context(), tok))
 				} else {
 					WriteError(w, http.StatusServiceUnavailable, "unavailable", "database unavailable")
 				}
@@ -246,9 +246,89 @@ func (a *Authenticator) Require(opt Options, scopes ...string) func(http.Handler
 				a.refreshCookie(w, r, d.Device, tok)
 				r = r.WithContext(context.WithValue(r.Context(), cookieKey{}, true))
 			}
+			a.renewOwner(w, r, d, tok, src == srcCookie)
 			a.touch(r.Context(), d.Device, ClientIP(r))
 			next.ServeHTTP(w, r.WithContext(WithDevice(r.Context(), d.Device)))
 		})
+	}
+}
+
+// Why a token was refused (the reason field of a 401, api.yaml Unauthorized): the board says
+// "This browser was removed from the hub." or "Your owner access ended." instead of a bare
+// sign-in page. Only a caller holding the token learns it.
+const (
+	ReasonRevoked      = "revoked"
+	ReasonExpired      = "expired"
+	ReasonOwnerExpired = "owner_expired"
+)
+
+// whyRefused says why a token LookupDetail refused is not live: ReasonRevoked, ReasonExpired
+// or ReasonOwnerExpired for a token that belongs to a device; "" for an unknown token (or
+// any error).
+func (a *Authenticator) whyRefused(ctx context.Context, token string) string {
+	if !LooksLikeToken(token) {
+		return ""
+	}
+	h := Hash(token)
+	if IsOwnerToken(token) {
+		if a.Pepper == nil {
+			return ""
+		}
+		k, err := a.Pepper()
+		if err != nil {
+			return ""
+		}
+		h = OwnerHash(k, token)
+	}
+	d, err := a.Store.DeviceDetailByHash(ctx, h)
+	switch {
+	case err != nil:
+		return ""
+	case d.RevokedAt != 0:
+		return ReasonRevoked
+	case a.expired(d) && IsOwnerSession(d.Device):
+		return ReasonOwnerExpired
+	case a.expired(d):
+		return ReasonExpired
+	}
+	return ""
+}
+
+func writeUnauthorized(w http.ResponseWriter, reason string) {
+	if reason == "" {
+		WriteError(w, http.StatusUnauthorized, "unauthorized", "unknown or revoked token")
+		return
+	}
+	msg := map[string]string{ReasonRevoked: "this device was removed from the hub", ReasonExpired: "this sign-in has expired",
+		ReasonOwnerExpired: "this owner session has expired"}[reason]
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusUnauthorized)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg, "code": "unauthorized", "reason": reason})
+}
+
+// Owner sessions slide (pairing.md 4): one used in its last OwnerRenewWithin is extended
+// to OwnerSessionAge from now, and its cookie is set again with the new Max-Age.
+const OwnerRenewWithin = 7 * 24 * time.Hour
+
+// renewOwner extends an owner session that authenticated this request when it ends within
+// OwnerRenewWithin. Renewed at most once per window: afterwards it has 30 days left again.
+// A database error leaves the session as it was (the next request tries again).
+func (a *Authenticator) renewOwner(w http.ResponseWriter, r *http.Request, d store.DeviceDetail, token string, cookie bool) {
+	if !IsOwnerSession(d.Device) || d.ExpiresAt == 0 {
+		return
+	}
+	now := a.Now()
+	if time.UnixMilli(d.ExpiresAt).Sub(now) >= OwnerRenewWithin {
+		return
+	}
+	at := now.Add(OwnerSessionAge)
+	ok, err := a.Store.RenewDeviceExpiry(r.Context(), d.ID, at.UnixMilli(), now.Add(OwnerRenewWithin).UnixMilli())
+	if err != nil || !ok {
+		return
+	}
+	if cookie {
+		http.SetCookie(w, SessionCookie(r, token, OwnerSessionAge))
 	}
 }
 

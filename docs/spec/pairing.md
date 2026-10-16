@@ -270,8 +270,17 @@ sy hub owner-link [--url U] [--ttl 10m] [--json]
 - The board's `#/owner` route posts `POST /v1/session/owner {"secret": "…"}`. The hub
   makes a `browser` device with scopes `["owner", "read", "push"]`, token prefix `sy_o_`,
   `expires_at` = now + 30 days, `created_by = "owner-link:<pair_code id>"`, name from the
-  user agent, and sets it as the `sy_session` cookie (3.2 rules, `Max-Age` 30 days, not
-  refreshed). The reply is `204`.
+  user agent, and sets it as the `sy_session` cookie (3.2 rules, `Max-Age` 30 days). The
+  reply is `204`.
+- **Sliding renewal.** An owner session that authenticates a request in its last 7 days
+  (`auth.OwnerRenewWithin`) gets `expires_at` = now + 30 days, and a cookie request gets
+  the cookie again with `Max-Age` 30 days. So an owner who opens the board at least once in
+  any 30 days never signs in again; one left unused for 30 days ends. Because every use
+  renews, the board shows no expiry warning banner: Settings, Sign-in shows "Owner access
+  until <date>" (`/v1/me` `device.expires_at`) with "Renews when you use the board". A
+  session that did end gives a 401 with `reason: owner_expired` (below), and the board says
+  "Your owner access ended." There is no upper bound on a session that keeps being used;
+  Devices lists it, and revoking it ends it at once.
 - A refused link is `401` with a reason in `code`, `at` (when it was used, expired or
   was cancelled) and `ttl_s` (the lifetime the link was made with, so an expired link says
   "links made this way work for 1 minute" rather than a fixed 10 minutes): `link_used`, `link_expired`, `link_cancelled`, or `link_unknown` (no
@@ -287,8 +296,36 @@ sy hub owner-link [--url U] [--ttl 10m] [--json]
   session also carries `read` and `push`.
 - Owner sessions appear in the Devices list as "browser · owner session" with their expiry,
   and are revoked like any device. `POST /v1/session/logout` revokes the session behind the
-  cookie when its `created_by` starts with `login:` or `owner-link:`.
-- `auth.Lookup` treats `expires_at <= now` as revoked (401).
+  cookie when its `created_by` starts with `login:` or `owner-link:` (and a cookie-mode
+  phone or browser, section 6); never any other device.
+- `auth.Lookup` treats `expires_at <= now` as revoked (401). A 401 for a token that belongs
+  to a device carries `reason`: `revoked`, `expired` (a board login past 30 days) or
+  `owner_expired` (api.yaml `Unauthorized`). The board's sign-in page shows it as "This
+  browser was removed from the hub." or "Your owner access ended.".
+
+### 4.1 Where owner links come from
+
+1. **On the hub's computer:** `sy hub owner-link` (above), the recovery path.
+2. **From any owner device:** board More → Devices → **Make another device owner**
+   (`POST /v1/owner-links`, owner sessions only). It shows the link, its QR and "Open it on
+   the other device, or paste it into the desktop app". The link is a `pair_code` of kind
+   `owner` with `created_by = "owner:<device id>"`, always 10 minutes (the `pair.ttl_s`
+   setting does not apply), single use, and consumed by `POST /v1/session/owner` exactly
+   as one from `sy hub owner-link`. At most 3 such links are live; a fourth cancels the
+   oldest. Rate limited per client IP as claims are (3.3); cookie requests follow the CSRF
+   rules of 3.2. The hub log gets `pair owner-link made code=pc_… by=dev_… ip=… expires=…`
+   and, when used, `pair owner ok device=dev_… code=pc_…`; never the secret or the link.
+   The dialog polls `GET /v1/pair/codes/{id}` and says "Used: <device>" once claimed;
+   **Cancel this link** is `DELETE /v1/pair/codes/{id}`.
+3. **First start:** while the hub has never had an owner session
+   (`store.HadOwnerSession`: no device with `created_by` `owner-link:*`, revoked ones
+   included), `sy hub serve` makes one owner link at each start and prints it in one block
+   on its log (stderr; the journal when it runs as a service) with a terminal QR, the board
+   URL and "Open this on your computer to become owner. Pair everything else from the
+   board." The `sy setup --hub here` summary prints the same block. The address is
+   `--public-url` (or `hub.public_url`), else the listen address (a wildcard address shows as
+   `127.0.0.1`). This link is in the log on purpose: it works once, for 10 minutes, and only
+   until someone is owner; after the first owner session the hub never prints one again.
 
 ## 5. The phone's side
 
@@ -351,6 +388,7 @@ handled as in 5.3.
 | `GET /v1/devices/{id}` | owner; any device for `self` | One device. `self` = the caller. The web app uses `GET /v1/devices/self` for its Settings page. |
 | `PATCH /v1/devices/{id}` | owner; push-scoped devices for `self` | `{name?, prefs?}` (prefs: push.md 5.4). |
 | `DELETE /v1/devices/{id}` | owner; push-scoped devices for `self` ("Unpair this phone") | Sets `revoked_at`, disables and deletes its push targets, cancels its pending deliveries, revokes board/owner sessions made from it (`created_by = login:<id>`). 204. Revoking `self` also clears the cookie. |
+| `POST /v1/session/logout` | the cookie's device | **Sign out** in the board. Revokes the device behind the cookie when it is a board session (`login:`), an owner session (`owner-link:`) or a phone or browser paired in cookie mode (`pair:`), with the sessions made from it, then clears the cookie. So a signed-out browser does not stay listed in Devices. No other device is touched: the owner signing out of one browser leaves every phone and computer it paired alone. A token made with `sy hub token create` and pasted is not revoked. A request with a foreign `Origin` only clears the cookie. |
 
 - Lists (Devices, Alerts' receivers, Settings → Notifications) tell apart devices that share
   a name: the first one paired keeps it, later ones get their place ("Pixel 9 · Chrome · 2",

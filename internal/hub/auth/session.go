@@ -114,12 +114,24 @@ func (a *Authenticator) LoginHandler() http.Handler {
 	})
 }
 
-// LogoutHandler is POST /v1/session/logout: it revokes the browser session behind the
-// cookie (the pasted token stays valid) and clears the cookie.
+// SignOutRevokes reports whether signing out with d's cookie revokes d: a board or owner
+// session (IsSessionDevice), or a phone or browser paired in cookie mode (created_by
+// "pair:"), whose cookie is its only copy of the token: signing out ends that device on
+// the hub too, so it does not stay listed in Devices (pairing.md 6). Only d itself is
+// revoked (with the sessions made from it): an owner signing out of one browser leaves every
+// other device alone.
+func SignOutRevokes(d store.Device) bool {
+	return IsSessionDevice(d) || (strings.HasPrefix(d.CreatedBy, "pair:") && (d.Kind == "browser" || d.Kind == "phone"))
+}
+
+// LogoutHandler is POST /v1/session/logout: it revokes the device behind the cookie
+// (SignOutRevokes; the pasted token of a board login stays valid) and clears the cookie.
+// A request with a foreign Origin only clears the cookie: it never revokes (pairing.md 3.2;
+// SameSite=Strict already keeps the cookie off cross-site requests).
 func (a *Authenticator) LogoutHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if c, err := r.Cookie(CookieName); err == nil {
-			if d, err := a.Lookup(r.Context(), c.Value); err == nil && IsSessionDevice(d) {
+		if c, err := r.Cookie(CookieName); err == nil && a.SameOrigin(r) {
+			if d, err := a.Lookup(r.Context(), c.Value); err == nil && SignOutRevokes(d) {
 				_ = Revoke(r.Context(), a.Store, d.ID)
 			}
 		}
