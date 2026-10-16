@@ -734,7 +734,6 @@ export function start({ sy, root }) {
           sw('set-notifications', 'Notify me when a session needs me', s.notifications, set('notifications'), { hint: 'From hub alerts only. The hub decides what and when, including quiet hours.' })),
         h('div', { class: 'switches' },
           sw('set-autostart', 'Run at login', s.autostart, set('autostart')),
-          sw('set-start_hidden', 'Start hidden', s.start_hidden, set('start_hidden')),
           sw('set-keep_running', 'Keep running when the window is closed', s.keep_running, set('keep_running')))));
   }
 

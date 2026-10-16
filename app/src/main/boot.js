@@ -10,7 +10,7 @@
 //                   background → background.claim() (single instance; a second launch or a
 //                   --autostart=on|off launch stops here)
 //   after 'ready'   protocol.handle → store.load → sy → hub → ipc.start() (before the shell can call) → window (hidden with
-//                   --background or start_hidden) → state → tabs.start() → usage.start() →
+//                   --background only) → state → tabs.start() → usage.start() →
 //                   hub.start() (the hub view is made when Hub is selected) → tray, notify,
 //                   menu.build() → background.start()
 //

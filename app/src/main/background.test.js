@@ -43,11 +43,11 @@ test('parseArgv', () => {
   assert.deepEqual(parseArgv(['--autostart=maybe']), { background: false, autostart: null });
 });
 
-test('claim: the lock decides, startHidden follows --background or start_hidden', () => {
+test('claim: the lock decides, startHidden follows --background only', () => {
   assert.equal(setup().bg.claim(), true);
   assert.equal(setup({ singleInstance: false }).bg.claim(), false);
   assert.equal(setup({ argv: ['--background'] }).bg.startHidden(), true);
-  assert.equal(setup({ settings: { start_hidden: true } }).bg.startHidden(), true);
+  assert.equal(setup({ settings: { start_hidden: true } }).bg.startHidden(), false); // a stale setting never hides a normal launch
   assert.equal(setup().bg.startHidden(), false);
 });
 
@@ -61,6 +61,15 @@ test('a second launch shows the window; with --autostart it applies it and shows
   assert.deepEqual(shown, ['show']);
   assert.deepEqual(autostartCalls, [true]);
   assert.equal(events.at(-1).autostart, true);
+});
+
+test('a second launch from the app menu shows and focuses the window even with start_hidden stored; a login launch does not', () => {
+  const { fake, bg, shown } = setup({ settings: { start_hidden: true } });
+  bg.claim();
+  fake.electron.app.emit('second-instance', {}, ['app', '--no-sandbox']);
+  assert.deepEqual(shown, ['show']);
+  fake.electron.app.emit('second-instance', {}, ['app', '--background']);
+  assert.deepEqual(shown, ['show']);
 });
 
 test('this launch with --autostart=off applies it, exits and claim() is false', async () => {
