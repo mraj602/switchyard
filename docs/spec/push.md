@@ -446,9 +446,20 @@ passed.
 ### 5.7 "Who has room"
 
 For a rate-limit failure or a limit alert, the body names the seat with the most room in the
-same window key: the lowest `used_pct` among non-hidden seats other than the subject, with a
-current window updated within 6 hours, and only if it is under 80%. Wording: "work has 59%
-left". Nothing is said when no seat qualifies. Switchyard never switches accounts (plan
+same window key (`five_hour` for a rate-limit failure, the alert's window for a limit alert),
+by the rule the board and the phone use for "Most room right now" (pwa.md, Accounts):
+
+- A seat's **effective use** of the window is its current (newest) window's `used_pct`, so an
+  older reading still counts until its reset; it is **0** when that window's `resets_at` has
+  passed, or when the seat has no reading for this window but has one for another. A seat with
+  no reading at all is skipped.
+- Among non-hidden seats other than the subject, the lowest effective use wins; a tie goes to
+  the first in list order (the board's seat order: `sort_order`, then creation, then id); and
+  only if it is under 80%.
+
+So an idle account (0%, its window already reset or never read for this key) is named before a
+busier one. Wording: "work has 59% left" (100 minus the effective use; an idle account "has
+100% left"). Nothing is said when no seat qualifies. Switchyard never switches accounts (plan
 section 13).
 
 ### 5.8 Remote Control link and deep links
