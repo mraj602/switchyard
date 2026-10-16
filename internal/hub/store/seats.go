@@ -93,6 +93,19 @@ func (tx *Tx) PatchSeat(id string, p SeatPatch) error {
 	return nil
 }
 
+// seatHiddenSQL is the hidden state of a seat `se`, as an SQL expression (0 or 1): the owner's
+// hide, or the seat is a stray free org of an account that has a paid one (identity.md 5.1).
+// Every claude.ai account has a personal free org beside its Team org, and a desktop app that
+// reported every org made a second seat for the same person. Such a seat is hidden while it
+// has no label (nobody named it), no slot was ever logged in to it (nobody uses it in Claude
+// Code) and its account has another seat whose org is not free. A label or a slot login brings
+// it back, so a free org that is really used is never hidden.
+const seatHiddenSQL = `(se.hidden = 1 OR (se.label IS NULL
+	AND EXISTS (SELECT 1 FROM org fo WHERE fo.uuid = se.org_uuid AND fo.plan = 'free')
+	AND NOT EXISTS (SELECT 1 FROM slot_login sl WHERE sl.seat_id = se.id)
+	AND EXISTS (SELECT 1 FROM seat s2 JOIN org o2 ON o2.uuid = s2.org_uuid
+		WHERE s2.account_uuid = se.account_uuid AND s2.id <> se.id AND coalesce(o2.plan, 'unknown') <> 'free')))`
+
 // SeatSlotLook applies a slot_info label and colour (record.md 4.7) only while the seat's
 // look_src is NULL or 'slot', and then sets look_src to 'slot'. An invalid or empty value is
 // left alone. It reports whether anything was applied.

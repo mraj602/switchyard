@@ -331,3 +331,24 @@ test('stop waits for the last append and clears the timers', async () => {
   assert.equal(r.clock.pending(), 0);
 });
 
+
+test('a Team account whose tab is on its free personal org: records and seat only for the Team org', async () => {
+  const main = server;
+  server = await startFakeClaude({ orgs: 2, active: 0, personalFree: true }); // org 1: free personal and active; org 2: Team
+  try {
+    // the tab already has its Team seat
+    const r = await rig({ tabs: [{ ...tabRecord(TAB), seat: { account: uuidOf('acct', 1), org: uuidOf('org', 2) } }] });
+    await r.accept();
+    assert.equal(r.sy.appended.length, 1, 'no record for the free personal org');
+    assert.equal(r.sy.appended[0].seat.org, uuidOf('org', 2));
+    assert.deepEqual(r.tab().seat, { account: uuidOf('acct', 1), org: uuidOf('org', 2) });
+    // and a tab with no seat yet does not make the personal one either
+    const r2 = await rig();
+    await r2.accept();
+    assert.deepEqual(r2.sy.appended.map((x) => x.seat.org), [uuidOf('org', 2)]);
+    assert.deepEqual(r2.tab().seat, { account: uuidOf('acct', 1), org: uuidOf('org', 2) });
+  } finally {
+    await server.close();
+    server = main;
+  }
+});

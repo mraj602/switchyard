@@ -11,7 +11,7 @@
 import { CLAUDE_ORIGIN, READING_OFF, READING_ON, WARNING_VERSION } from '../../shared/constants.js';
 import { cadenceFor } from '../../shared/backoff.js';
 import { buildErrorRecords, buildRecords, clientOf, seatsOf } from '../../shared/record.js';
-import { isReadableUrl, pickOrg } from '../../shared/usage.js';
+import { isReadableUrl, chooseOrgs } from '../../shared/usage.js';
 import { checkResult, readTab } from './reader.js';
 import { createScheduler, KIND } from './scheduler.js';
 
@@ -169,12 +169,13 @@ export function create(deps) {
       return { type: 'retry', message: res.message };
     }
 
-    const records = send && m ? buildRecords({ orgs: res.orgs, account: res.account, activeOrg: res.activeOrg, fetchMs: res.fetchMs, tabId: id, machine: m, client, ts }) : [];
+    // Only the orgs that make a seat: never a free personal org beside a paid one (chooseOrgs).
+    const { report, pick } = chooseOrgs(res.orgs, res.activeOrg, fresh?.seat ?? null, res.account.uuid);
+    const records = send && m ? buildRecords({ orgs: report, account: res.account, activeOrg: res.activeOrg, fetchMs: res.fetchMs, tabId: id, machine: m, client, ts }) : [];
     const done = publish(records, id); // synchronous up to sy.append
     track(done);
     f.lastRead = ts;
-    f.seats = seatsOf(res.orgs, res.account, res.activeOrg);
-    const pick = pickOrg(res.orgs, res.activeOrg);
+    f.seats = seatsOf(report, res.account, res.activeOrg);
     f.windows = pick ? pick.windows : [];
     f.windowsSource = pick ? 'local' : null;
     const seat = pick ? { account: res.account.uuid, org: pick.org.uuid } : null;

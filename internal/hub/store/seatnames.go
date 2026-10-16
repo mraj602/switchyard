@@ -71,7 +71,7 @@ func SeatDisplayNames(seats []SeatIdent) map[string]string {
 // alertSeatNames is SeatDisplayNames over the board's seats (the shown ones) plus the
 // extra seat ids asked for, so a hidden seat still gets a name.
 func (tx *Tx) alertSeatNames(extra ...string) (map[string]string, error) {
-	rows, err := tx.QueryContext(tx.ctx, `SELECT se.id, se.label, a.email, se.hidden FROM seat se
+	rows, err := tx.QueryContext(tx.ctx, `SELECT se.id, se.label, a.email, `+seatHiddenSQL+` FROM seat se
 		LEFT JOIN account a ON a.uuid = se.account_uuid ORDER BY se.sort_order, se.created_at, se.id`)
 	if err != nil {
 		return nil, err

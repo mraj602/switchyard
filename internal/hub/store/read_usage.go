@@ -135,10 +135,10 @@ type Place struct {
 
 // Seats lists seats in display order.
 func (s *Store) Seats(ctx context.Context, includeHidden bool, now time.Time) ([]SeatRow, error) {
-	q := `SELECT se.id, se.account_uuid, se.org_uuid, a.email, o.name, o.plan, se.label, se.colour, se.sort_order, se.hidden
+	q := `SELECT se.id, se.account_uuid, se.org_uuid, a.email, o.name, o.plan, se.label, se.colour, se.sort_order, ` + seatHiddenSQL + `
 		FROM seat se LEFT JOIN account a ON a.uuid = se.account_uuid LEFT JOIN org o ON o.uuid = se.org_uuid`
 	if !includeHidden {
-		q += ` WHERE se.hidden = 0`
+		q += ` WHERE NOT ` + seatHiddenSQL
 	}
 	rows, err := s.r.QueryContext(ctx, q+` ORDER BY se.sort_order, se.created_at, se.id`)
 	if err != nil {
