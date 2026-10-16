@@ -12,11 +12,22 @@ export function validColour(c: unknown): string | null {
   return NAMED[c.toLowerCase()] ?? null;
 }
 
+/**
+ * Seats in the hub's display order: by `order` (the owner's drag-and-drop order,
+ * PUT /v1/seats/order), ties and seats without one in the order given. Returns the same array
+ * when it is already in order, so a redraw does not see a change.
+ */
+export function orderSeats<T extends Pick<Seat, 'order'>>(seats: T[]): T[] {
+  const key = (s: T) => (typeof s.order === 'number' && Number.isFinite(s.order) ? s.order : Number.MAX_SAFE_INTEGER);
+  const sorted = seats.map((s, i) => ({ s, i })).sort((a, b) => key(a.s) - key(b.s) || a.i - b.i).map((x) => x.s);
+  return sorted.every((s, i) => s === seats[i]) ? seats : sorted;
+}
+
 export type SeatIndex = Map<string, { seat: Seat; colour: string }>;
 
 export function seatIndex(seats: Seat[]): SeatIndex {
   const map: SeatIndex = new Map();
-  seats.forEach((s, i) => map.set(s.id, { seat: s, colour: validColour(s.colour) ?? FALLBACK[i % FALLBACK.length]! }));
+  orderSeats(seats).forEach((s, i) => map.set(s.id, { seat: s, colour: validColour(s.colour) ?? FALLBACK[i % FALLBACK.length]! }));
   return map;
 }
 
