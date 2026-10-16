@@ -107,15 +107,24 @@ func TestOwnerSessionShapeScopesAndExpiry(t *testing.T) {
 	}
 }
 
-func TestLogoutRevokesOwnerAndLoginSessionsButNotClaimedPhones(t *testing.T) {
+// Sign out revokes the device behind the cookie: an owner session, and a phone or browser
+// paired in cookie mode (pairing.md 6). A token made with `sy hub token create` (pasted, used
+// as a bearer elsewhere) is not revoked by a cookie that happens to hold it, and no other
+// device is touched: the owner signing out of one browser leaves the phone it paired alone.
+func TestLogoutRevokesTheCookiesDeviceOnly(t *testing.T) {
 	a, st, _ := newAuth(t)
 	ctx := context.Background()
 	o := ownerSession(t, st)
 	phone, _ := Create(ctx, st, CreateRequest{Kind: "phone", Name: "pixel", CreatedBy: "pair:pc_y"})
-	for name, tc := range map[string]struct {
+	browser, _ := Create(ctx, st, CreateRequest{Kind: "browser", Name: "laptop", CreatedBy: "pair:pc_z"})
+	cli, _ := Create(ctx, st, CreateRequest{Kind: "browser", Name: "kiosk"})
+	bystander, _ := Create(ctx, st, CreateRequest{Kind: "phone", Name: "other", CreatedBy: "pair:pc_w"})
+	for _, tc := range []struct {
+		name   string
 		c      Created
 		revoke bool
-	}{"owner": {o, true}, "phone": {phone, false}} {
+	}{{"owner", o, true}, {"phone", phone, true}, {"browser", browser, true}, {"cli", cli, false}} {
+		name := tc.name
 		req := httptest.NewRequest("POST", "/v1/session/logout", nil)
 		req.AddCookie(&http.Cookie{Name: CookieName, Value: tc.c.Token})
 		rec := httptest.NewRecorder()
@@ -129,6 +138,87 @@ func TestLogoutRevokesOwnerAndLoginSessionsButNotClaimedPhones(t *testing.T) {
 		}
 		if ck := rec.Result().Cookies(); len(ck) != 1 || ck[0].MaxAge >= 0 {
 			t.Errorf("%s: cookie not cleared", name)
+		}
+	}
+	if _, err := a.Lookup(ctx, bystander.Token); err != nil {
+		t.Errorf("a sign-out revoked another device: %v", err)
+	}
+	// A foreign Origin only clears the cookie.
+	other, _ := Create(ctx, st, CreateRequest{Kind: "phone", Name: "x", CreatedBy: "pair:pc_v"})
+	req := httptest.NewRequest("POST", "/v1/session/logout", nil)
+	req.Header.Set("Origin", "https://evil.example")
+	req.AddCookie(&http.Cookie{Name: CookieName, Value: other.Token})
+	a.LogoutHandler().ServeHTTP(httptest.NewRecorder(), req)
+	if _, err := a.Lookup(ctx, other.Token); err != nil {
+		t.Errorf("a cross-origin sign-out revoked the device: %v", err)
+	}
+}
+
+// pairing.md 4: an owner session used in its last 7 days slides to 30 days from now, and its
+// cookie is set again; earlier it is left alone.
+func TestOwnerSessionRenewsInItsLastWeek(t *testing.T) {
+	a, st, clk := newAuth(t)
+	ctx := context.Background()
+	o := ownerSession(t, st)
+	h := a.Require(Options{}, "owner")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(204) }))
+	call := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest("GET", "/v1/devices", nil)
+		req.AddCookie(&http.Cookie{Name: CookieName, Value: o.Token})
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec
+	}
+	exp := func() int64 {
+		d, err := st.DeviceDetailByID(ctx, o.Device.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return d.ExpiresAt
+	}
+	first := exp()
+	clk.Add(22 * 24 * time.Hour) // 8 days left: not yet
+	if rec := call(); rec.Code != 204 || len(rec.Result().Cookies()) != 0 || exp() != first {
+		t.Fatalf("renewed too early: %d, %d cookies, expiry moved %v", rec.Code, len(rec.Result().Cookies()), exp() != first)
+	}
+	clk.Add(2 * 24 * time.Hour) // 6 days left
+	rec := call()
+	if rec.Code != 204 {
+		t.Fatal(rec.Code)
+	}
+	if want := clk.Now().Add(OwnerSessionAge).UnixMilli(); exp() != want {
+		t.Errorf("expiry %d, want %d (30 days from now)", exp(), want)
+	}
+	ck := rec.Result().Cookies()
+	if len(ck) != 1 || ck[0].Value != o.Token || ck[0].MaxAge != int(OwnerSessionAge.Seconds()) {
+		t.Errorf("cookie not set again with 30 days: %+v", ck)
+	}
+	// Unused for 30 days: it ends, and the 401 says why.
+	clk.Add(OwnerSessionAge + time.Minute)
+	rec = call()
+	if rec.Code != 401 || !strings.Contains(rec.Body.String(), `"reason":"owner_expired"`) {
+		t.Errorf("expired owner session: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+// A 401 says why when the token belongs to a device: revoked, or expired; never for an
+// unknown token.
+func TestUnauthorizedReason(t *testing.T) {
+	a, st, _ := newAuth(t)
+	ctx := context.Background()
+	h := a.Require(Options{}, "read")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(204) }))
+	phone, _ := Create(ctx, st, CreateRequest{Kind: "phone", Name: "pixel", CreatedBy: "pair:pc_y"})
+	if err := Revoke(ctx, st, phone.Device.ID); err != nil {
+		t.Fatal(err)
+	}
+	unknown, _ := NewToken("phone")
+	for tok, want := range map[string]string{phone.Token: `"reason":"revoked"`, unknown: ""} {
+		req := httptest.NewRequest("GET", "/v1/overview", nil)
+		req.Header.Set("Authorization", "Bearer "+tok)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		body := rec.Body.String()
+		if rec.Code != 401 || (want != "" && !strings.Contains(body, want)) || (want == "" && strings.Contains(body, "reason")) {
+			t.Errorf("%d %s, want reason %q", rec.Code, body, want)
 		}
 	}
 }

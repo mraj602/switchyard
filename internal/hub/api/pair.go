@@ -80,6 +80,7 @@ func init() {
 		pairWire(s)
 		return http.HandlerFunc(s.pairClaim)
 	})
+	Register("POST", "/v1/owner-links", func(s *Server) http.Handler { return pairRequire(s, s.pairMakeOwnerLink, "owner") })
 }
 
 // pairDecode reads a small JSON body into v; it writes the 400 itself.
@@ -282,6 +283,37 @@ func (s *Server) pairMakeCode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusCreated, map[string]any{"id": c.ID, "kind": c.Kind, "name": name, "code": c.Code, "secret": c.Secret,
 		"url": c.URL, "expires_at": store.Time(c.ExpiresAt.UnixMilli()), "command": command, "qr": c.QR})
+}
+
+// pairMakeOwnerLink is POST /v1/owner-links (pairing.md 4.1): "Make another device owner".
+// Owner sessions only (the route requires the owner scope; MintOwnerLink checks it is an
+// owner session); a cookie request passed the CSRF rules in Auth.Require. The reply carries
+// the link once; the hub keeps only its hash, and the log line names the code id only.
+func (s *Server) pairMakeOwnerLink(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	dev, _ := auth.DeviceFrom(r.Context())
+	var body struct {
+		URL string `json:"url"`
+	}
+	if r.ContentLength != 0 && !pairDecode(w, r, &body) {
+		return
+	}
+	hub, err := pair.ResolveURL(body.URL, hubPublicURL(r.Context(), s), pair.RequestOrigin(r))
+	if err != nil {
+		pairFail(w, err)
+		return
+	}
+	l, err := pairService(s).MintOwnerLink(r.Context(), auth.ClientIP(r), dev, hub)
+	if err != nil {
+		pairFail(w, err)
+		return
+	}
+	qr, err := pair.NewMatrix(l.URL)
+	if err != nil {
+		auth.WriteError(w, http.StatusServiceUnavailable, "unavailable", "could not draw the QR code")
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"id": l.ID, "url": l.URL, "expires_at": store.Time(l.ExpiresAt.UnixMilli()), "qr": qr})
 }
 
 func (s *Server) pairGetCode(w http.ResponseWriter, r *http.Request) {
