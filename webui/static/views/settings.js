@@ -13,7 +13,7 @@ import { pwa, isStandalone, canInstall, promptInstall, checkForUpdate, updateRea
 import { pushStatus, turnOn, sendTest } from '../push.js';
 import { isIOS, isMobile, ntfyLink, installHint } from '../platform.js';
 import { day, clock, agoLabel, humanKey, plural, deviceLabel } from '../format.js';
-import { notifNote } from '../components/notif-note.js';
+import { notifNote, ownerHow } from '../components/notif-note.js';
 
 const st = { self: null, push: null, config: null, hub: null, devices: null, test: null, ntfy: null, busy: false, updateNote: '', error: null };
 const again = () => window.dispatchEvent(new Event('sy-rerender'));
@@ -90,9 +90,9 @@ function browserRow() {
     // SE5: say what to do on this kind of device, with a link.
     const n = notifNote({ app: inApp(), mobile: mobile() });
     const how = {
-      'app-settings': 'Turn them on or off in the app\'s Settings, Notifications and background.',
+      'app-settings': 'Turn them on or off in the app’s App settings, Notifications.',
       'pair-phone': ['To get notifications here, ', h('a', { href: '#/pair', 'data-key': 'notif-pair' }, 'pair this phone with a code'), '.'],
-      'owner-or-pair': ['To get notifications here, sign in as the owner (run ', h('code', {}, 'sy hub owner-link'), ' on the hub) or ', h('a', { href: '#/pair', 'data-key': 'notif-pair' }, 'pair this browser'), '.'],
+      'owner-or-pair': ['To get notifications here, sign in as the owner (', ownerHow(false), ') or ', h('a', { href: '#/pair', 'data-key': 'notif-pair' }, 'pair this browser'), '.'],
     }[n.how];
     return h('div', { class: 'row status-row' }, h('span', { class: 'row-text' }, h('b', {}, n.who),
       h('span', { 'data-key': 'notif-state' }, n.state), h('span', { class: 'muted small' }, how)));
@@ -246,25 +246,35 @@ function hubBlock(s) {
         row('Build the hub serves', h('span', { class: 'mono' }, pwa.hubBuild || '–')))));
 }
 
+// An owner session slides (pairing.md 4): every use in its last week renews it for 30 days,
+// so there is no warning banner, only the date here.
+function ownerUntilRow(at) {
+  return row('Owner access until', h('span', { class: 'col' },
+    h('span', { title: new Date(at).toString(), 'data-key': 'owner-until' }, day(at)),
+    h('span', { class: 'muted small' }, 'Renews when you use the board.')));
+}
+
 function deviceBlock() {
   const me = store.me;
   const d = me.device;
   if (inApp()) {
     // The app signs this board in by itself with its desktop pairing: a sign-out here would
-    // just be undone. Unpairing the app is in the app's Settings, Hub.
+    // just be undone. Unpairing the app is in its App settings, This computer.
     const via = me.via || d;
     return section('Sign-in',
       h('div', { class: 'panel pad-s col' },
         row('Name', via.name),
         row('Kind', `Desktop app${me.owner ? ' · owner' : ''}`),
-        h('p', { class: 'muted small', 'data-key': 'app-signin' }, 'The app signs this board in with its own pairing. To unpair it, use the app\'s Settings, Hub.')));
+        me.owner && d.expires_at ? ownerUntilRow(d.expires_at) : null,
+        h('p', { class: 'muted small', 'data-key': 'app-signin' }, 'The app signs this board in with its own pairing. To unpair it, use App settings, This computer, Unpair this computer.')));
   }
   const unpair = d.kind === 'phone';
   return section('Sign-in',
     h('div', { class: 'panel pad-s col' },
       row('Name', d.name),
       row('Kind', `${humanKey(d.kind)}${me.owner ? ' · owner' : canPush() ? '' : ' · read-only'}`),
-      d.expires_at ? row('Signed in until', h('span', { title: new Date(d.expires_at).toString() }, day(d.expires_at))) : null,
+      d.expires_at ? (me.owner ? ownerUntilRow(d.expires_at)
+        : row('Signed in until', h('span', { title: new Date(d.expires_at).toString() }, day(d.expires_at)))) : null,
       h('div', { class: 'actions' },
         unpair ? h('button', {
           type: 'button', class: 'btn btn-danger', 'data-key': 'unpair',
@@ -279,7 +289,7 @@ function deviceBlock() {
 export function render({ store: s }) {
   const owner = isOwner();
   const node = h('div', { class: 'page' },
-    h('header', { class: 'page-head col' }, h('h1', {}, 'Settings'), moreTabs('settings', { owner })),
+    h('header', { class: 'page-head col' }, h('h1', {}, inApp() ? 'Hub settings' : 'Settings'), moreTabs('settings', { owner })),
     notifications(),
     prefs(),
     installBlock(),
