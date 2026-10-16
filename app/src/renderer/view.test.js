@@ -105,6 +105,15 @@ test('hub banners and summaries', () => {
   assert.equal(hubBanner(hub({ status: 'needs_pairing' })).action, 'pair');
   assert.equal(hubBanner(hub({ status: 'needs_pairing', admin: 'local' })).action, 'pair-click');
   assert.equal(hubBanner(hub({ status: 'needs_pairing', local: true })).action, 'pair-click');
+  // a removed device: the wording, then the same pair action as a first pairing
+  assert.match(hubBanner(hub({ status: 'needs_pairing', removed: true })).text, /^This app was removed from the hub\./);
+  assert.equal(hubBanner(hub({ status: 'needs_pairing', removed: true })).action, 'pair');
+  assert.equal(hubBanner(hub({ status: 'needs_pairing', removed: true, admin: 'local' })).action, 'pair-click');
+  assert.doesNotMatch(hubBanner(hub({ status: 'needs_pairing' })).text, /removed/);
+  // the board could not be signed in: our own panel, never the board's login wording
+  assert.equal(hubBanner(hub({ board_blocked: true })).level, 'error');
+  assert.doesNotMatch(hubBanner(hub({ board_blocked: true })).text, /owner-link|browser/i);
+  assert.equal(hubUsable(hub({ board_blocked: true })), false);
   assert.match(hubBanner(hub({ status: 'unreachable' })).text, /hub\.example/);
   assert.equal(hubBanner(hub({ status: 'unreachable', local: true })).action, 'service');
   assert.equal(hubBanner(hub({ status: 'something_new' })), null);

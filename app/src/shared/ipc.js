@@ -244,6 +244,8 @@ function check(channel, path, s, v) {
  * @property {'running'|'stopped'|'missing'|null} service
  * @property {string|null} admin      admin channel ('local', a command prefix) or null
  * @property {number} needs_you
+ * @property {boolean} removed        the hub refused this app's token (its device was removed): pair again
+ * @property {boolean} board_blocked  the board asked for its own sign-in and main could not answer it: the board is hidden
  * @property {'ok'|'no_sy'|'not_connected'|'dial'|'needs_pairing'|'unreachable'} status
  *
  * @typedef {object} Settings

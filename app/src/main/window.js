@@ -66,6 +66,8 @@ export function create(deps) {
 
   /** id → {view, kind} */
   const views = new Map();
+  /** Views kept out of sight although selected (the hub board while the app shows its own state panel). */
+  const hiddenViews = new Set();
   let current = 'hub';
   const selectListeners = new Set();
 
@@ -78,7 +80,7 @@ export function create(deps) {
         const top = kind === VIEW_TAB ? TOP_BAR_PX + STRIP_PX : TOP_BAR_PX;
         view.setBounds({ x: 0, y: top, width: Math.max(0, width), height: Math.max(0, height - top) });
       }
-      view.setVisible(active);
+      view.setVisible(active && !hiddenViews.has(id));
     }
   }
 
@@ -106,6 +108,12 @@ export function create(deps) {
     views.delete(id);
     win.contentView.removeChildView(entry.view);
     if (current === id) select(firstTabId() ?? 'hub');
+  }
+
+  function setViewHidden(id, hidden) {
+    if (hidden) hiddenViews.add(id);
+    else hiddenViews.delete(id);
+    layout();
   }
 
   function firstTabId() {
@@ -164,6 +172,7 @@ export function create(deps) {
     shell,
     addView,
     removeView,
+    setViewHidden,
     select,
     selected: () => current,
     showWindow,

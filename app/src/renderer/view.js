@@ -150,6 +150,10 @@ export function hubBanner(hub) {
   switch (hub.status) {
     case 'ok':
       // e.g. a 403 from the hub: shown, but the token is kept (only a 401 means it is dead)
+      if (hub.board_blocked) {
+        // The board asked for its own sign-in and the app could not give it: its login page is never shown.
+        return { level: 'error', text: hub.error || 'The hub board could not be signed in from this app. It is tried again shortly; if it keeps failing, pair this computer again in Settings, Hub.', command: null, action: null };
+      }
       return hub.error ? { level: 'error', text: hub.error, command: null, action: null } : null;
     case 'no_sy':
       return { level: 'warn', text: 'sy was not found. Run "sy setup" in a terminal to connect this computer to a hub. Account tabs still work.', command: 'sy setup', action: null };
@@ -159,10 +163,10 @@ export function hubBanner(hub) {
       return { level: 'warn', text: 'This computer reaches its hub in forward mode, which is not supported in the desktop app. Use the hub from a browser, or connect this computer directly.', command: null, action: null };
     case 'needs_pairing':
       return {
-        level: 'info',
-        text: hub.admin || hub.local
+        level: hub.removed ? 'warn' : 'info',
+        text: (hub.removed ? 'This app was removed from the hub. ' : '') + (hub.admin || hub.local
           ? 'Pair the app with your hub to see the board here.'
-          : 'Pair the app with your hub: on the board open More, Devices, Add desktop app, and type the code here.',
+          : 'Pair the app with your hub: on the board open More, Devices, Add desktop app, and type the code here.'),
         command: null,
         action: hub.admin || hub.local ? 'pair-click' : 'pair',
       };
@@ -174,7 +178,7 @@ export function hubBanner(hub) {
 }
 
 /** Whether the board itself can be shown (the hub module has a view to put over the shell). */
-export const hubUsable = (hub) => !!hub && hub.status === 'ok';
+export const hubUsable = (hub) => !!hub && hub.status === 'ok' && !hub.board_blocked;
 
 /** One-line hub status for the top bar chip and Settings. */
 export function hubSummary(hub) {
