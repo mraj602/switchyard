@@ -1,5 +1,5 @@
 {
-  "description": "Switchyard: record session events with `sy hook` (async, never blocks, always exits 0; SessionEnd is synchronous with a 2 s timeout so a closing session still records `ended`). Events from docs/spec/states.md section 2. Seven further synchronous entries (`sy hook --title <Event>`, timeout 1) print the tab title as hook JSON and stay silent unless `terminal.titles` is on (docs/spec/terminal.md T6).",
+  "description": "Switchyard: record session events with `sy hook` (async, never blocks, always exits 0; SessionEnd is synchronous with a 2 s timeout so a closing session still records `ended`). Events from docs/spec/states.md section 2. Seven further synchronous entries (`sy hook --title <Event>`, timeout 1) print the tab title as hook JSON and stay silent unless `terminal.titles` is on (docs/spec/terminal.md T6). One more synchronous SessionStart entry (`sy hook --peers-context SessionStart`, timeout 1) tells a new session that it can reach sessions of other accounts and machines, and stays silent unless peers are enabled and the local matrix lets this account reach another (docs/spec/peers.md 2.5).",
   "hooks": {
     "SessionStart": [
       {
@@ -16,6 +16,15 @@
           {
             "type": "command",
             "command": "command -v sy >/dev/null 2>&1 && sy hook --title SessionStart || true",
+            "timeout": 1
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v sy >/dev/null 2>&1 && sy hook --peers-context SessionStart || true",
             "timeout": 1
           }
         ]
