@@ -288,11 +288,11 @@ A signed document (keys.md 4.1) of type `matrix`:
 
 | Field | Rule |
 | --- | --- |
-| `version` | Previous + 1 at the hub; a machine accepts any version above its own (it may have missed some) and ignores lower ones. Version 1 is made by the hub the first time anything asks for the matrix (`GET /v1/peers/matrix`, which `sy peers enable` and `sy peers matrix` do): nothing allowed, `same_account: true`, `paused: false`, `max_turns: 30`, hub-signed. That content is also the **baseline** a machine with no document compares against (keys.md 5.4), so version 1 is neutral and a first document that allows more is a widening. |
+| `version` | Previous + 1 at the hub; a machine accepts any version above its own (it may have missed some) and ignores lower ones. Version 1 is made by the hub the first time anything asks for the matrix (`GET /v1/peers/matrix`, which `sy peers enable` and `sy peers matrix` do): nothing allowed, `same_account: true`, `paused: false`, `max_turns: 0` (no turn limit), hub-signed. That content is also the **baseline** a machine with no document compares against (keys.md 5.4), so version 1 is neutral and a first document that allows more is a widening. |
 | `hub` | The hub key's fingerprint (keys.md 4.1); another hub's document is refused. |
 | `paused` | The kill switch (11). |
 | `same_account` | Whether sessions of one account may message each other across machines and through Switchyard on one machine (the diagonal). Default true: it is what native `/peers` already allows. |
-| `max_turns` | Loop guard limit (6.3), 2–500. |
+| `max_turns` | Loop guard limit (6.3): **0 means no limit** (the default of a new matrix; the loop guard then never stops a thread for turns, while the rates of 9.2, the content limits of 9.1 and the kill switch of 11 still apply), else 2–500. For widening, no limit counts as the highest value (keys.md 5.2). Documents signed before 0 was allowed (2–500, version 1 had 30) stay valid and keep their number until someone changes it. |
 | `accounts` | Account uuid → label, for display only (the board's account labels at signing time). |
 | `allow` | Directed pairs `[from, to]` of account uuids: `from` may **start** a thread with `to`. "Both ways" is two pairs. Sorted, no duplicates. |
 
@@ -332,8 +332,8 @@ machine can lie about which of its own sessions is which account, but no other m
 
 | Change | Who | How |
 | --- | --- | --- |
-| Allow a pair, `same_account` on, resume, raise `max_turns` (widening, keys.md 5.2) | You: owner key at a terminal, or an owner session on the board or desktop app | `sy peers allow …`, `sy peers resume` (owner key, signing guard); Settings → Peers (board, desktop): hub-signed |
-| Deny a pair, pause, lower `max_turns` (narrowing) | Any paired device, phones included, or the owner key | `sy peers deny …`, `sy peers pause`; Settings → Peers or the pause switch on any screen |
+| Allow a pair, `same_account` on, resume, raise `max_turns` or set it to no limit (widening, keys.md 5.2) | You: owner key at a terminal, or an owner session on the board or desktop app | `sy peers allow …`, `sy peers resume` (owner key, signing guard); Settings → Peers (board, desktop): hub-signed |
+| Deny a pair, pause, lower `max_turns` or set a number when it was no limit (narrowing) | Any paired device, phones included, or the owner key | `sy peers deny …`, `sy peers pause`; Settings → Peers or the pause switch on any screen |
 | Resume one thread the loop guard stopped (widening, 6.3) | An owner session on the board, or a human prompt in either session | Settings → Peers → Audit, "Resume thread": hub-signed, so machines with `hub_may_widen = false` keep their stop (and say so in the audit) |
 
 **Bulk actions and the turn limit (board).** Settings → Peers has two buttons above the grid
@@ -344,16 +344,17 @@ there is no endpoint of their own:
 | --- | --- | --- | --- |
 | **Allow all** | `allow` every missing ordered pair of the accounts shown (both ways, ⇄) and `same_account: true` | widening | an owner session only; a non-owner sees it disabled or hidden with "Only the owner can allow pairs." Confirm: "Allow every account to message every other account, both ways?" |
 | **Block all** | `deny` every pair in `allow` and `same_account: false` | narrowing | any paired device (phone included). Confirm: "Stop all peer messages between accounts? Threads in progress stop too." Threads in progress stop because their replies need the opener's pair (5.3, rule 4) |
-| **Replies between two sessions without you** | `max_turns` | raising widens (owner session), lowering narrows (any paired device) | the hub enforces it like any edit (keys.md 5.2); the field accepts 2 to 500 (5.1), the same bound the hub's `Check` applies |
+| **Replies between two sessions without you** | `max_turns` | raising, or ticking **No limit** (0), widens (owner session); lowering, or setting any number while it is no limit, narrows (any paired device) | the hub enforces it like any edit (keys.md 5.2); the number field accepts 2 to 500, and the **No limit** checkbox beside it sends 0 (5.1), the same values the hub's `Check` accepts. While No limit is ticked the number field is disabled. |
 
 Block all is not the pause switch: it changes the matrix (pairs and same-account stay off until
 someone allows them again), while pause keeps the matrix and stops delivery (11). The phone
-offers Block all and shows the turn limit read-only with its explanation; it never offers Allow
+offers Block all and shows the turn limit read-only with its explanation ("No limit" for 0); it never offers Allow
 all or a raise (a phone is never an owner session) and points to "Allow pairs from a computer
 (board, Peers)". The turn-limit field is labelled "Replies between two sessions without you" and
 explained: "When two sessions message each other on their own, with no one typing, Switchyard
 stops delivering after this many messages, so two agents cannot keep replying to each other
-forever. Typing in either session (or Resume thread) starts the count again."
+forever. Typing in either session (or Resume thread) starts the count again." and, under it,
+"No limit lets agents keep talking with no one watching; the other limits still apply."
 
 The hub accepts a new version, stores it (`matrix_doc`), writes a `peer_audit` row and queues
 a `matrix` frame to every machine with an agent. A machine applies it on receipt (keys.md 5.4
@@ -403,8 +404,11 @@ message of a thread passes through both sessions' agents, so both always see the
   carries the sender's `human_at`; the receiving agent knows its own session's; the hub learns
   both from the envelope and from `peer_result` (8.4).
 - `turns` = messages in the thread since `human_at`.
-- A message that would make `turns` exceed `max_turns` (default **30**) is refused
-  (`loop_guard`), and the thread is marked paused (`paused_at`). The sender sees
+- With `max_turns` 0 (no limit, the default) the loop guard never refuses: `turns` is still
+  counted (so a limit set later applies at once) and a thread it stopped earlier is no longer
+  stopped. The rates (9.2) and the kill switch (11) still bound an unattended conversation.
+- Otherwise a message that would make `turns` exceed `max_turns` is refused
+  (`loop_guard`), and the thread is marked paused (`paused_at`). The sender sees (at 30)
   "not delivered: 30 automated turns without a human prompt in either session; paused until
   you type in one of them". This is a stop, not a prompt.
 - A new human prompt in either session resets `turns` to 0 and clears `paused_at`. The board
@@ -459,7 +463,7 @@ sy peers matrix [--json]            print the grid with numbered accounts
 sy peers allow <from> <to> [--both] [--yes]     widen: owner key (passphrase), signing guard
 sy peers deny <from> <to|'*'> [--both] [--yes]  narrow: any device; hub-signed unless the owner key is present
 sy peers same-account on|off        on widens (owner key), off narrows
-sy peers max-turns <n>              raising widens (owner key), lowering narrows
+sy peers max-turns <n|none>         2-500, or none (or 0) for no limit; raising or none widens (owner key), lowering narrows
 sy peers pause                      kill switch for all machines (narrows; works from any paired device)
 sy peers resume                     lift it (widens: owner key)
 sy peers off | on                   this machine only, works offline (11)
@@ -513,8 +517,10 @@ from \ to         1 work    2 personal   3 lab
 1 work              =          ⇄           →
 2 personal          ⇄          =           ·
 3 lab               ·          ·           =
-matrix v4 · signed by owner k7q2-m4xa-… · same account: on · max turns: 30 · not paused
+matrix v4 · signed by owner k7q2-m4xa-… · same account: on · replies without you: 30 · not paused
 ```
+
+The last line says `replies without you: no limit` when `max_turns` is 0.
 
 ## 8. Delivery
 
@@ -880,8 +886,8 @@ captured on reply sockets.
 
 - **Unit (`internal/peers`):** matrix evaluation tables (every cell, diagonal, paused, reply
   rule, opener narrowed); `keys.Widens` (including against the version-1 baseline when a machine
-  has no document); loop guard (reset by human, `max_turns` edge, pause and
-  auto-resume); rate buckets with the fake clock; content cleaning and the secret list
+  has no document); loop guard (reset by human, `max_turns` edge, 0 never refuses, pause and
+  auto-resume); `keys.TurnsWiden` (no limit is the highest value); rate buckets with the fake clock; content cleaning and the secret list
   (positive and negative); wrapper builder goldens (attribute order, escaping, `from-name`
   cleaning, hop-chain cut to 32); `uds:` encoding; registry reader fixtures (torn, dead pid,
   recycled pid, `.key` files never opened, proven by the recording file system); ancestry with

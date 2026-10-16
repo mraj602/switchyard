@@ -60,7 +60,7 @@ func TestPeersMatrixEndpoints(t *testing.T) {
 		t.Fatalf("GET: %d %v", st, m)
 	}
 	v1 := matrix(m)
-	if v1.Version != 1 || len(v1.Allow) != 0 || !v1.SameAccount || v1.Paused || v1.MaxTurns != 30 {
+	if v1.Version != 1 || len(v1.Allow) != 0 || !v1.SameAccount || v1.Paused || v1.MaxTurns != keys.NoTurnLimit {
 		t.Fatalf("version 1: %+v", v1)
 	}
 	if _, m2 := h.call("GET", "/v1/peers/matrix", phone, nil); matrix(m2).Version != 1 {
@@ -145,6 +145,29 @@ func TestPeersMatrixEndpoints(t *testing.T) {
 	st, m = h.call("POST", "/v1/peers/pause", h.owner, map[string]any{"paused": false})
 	if st != 200 || matrix(m).Paused {
 		t.Fatalf("resume by an owner session: %d %v", st, m)
+	}
+
+	// The turn limit: 0 is no limit and counts as the highest value (keys.md 5.2).
+	turns := func(n int) map[string]any { return map[string]any{"edit": map[string]any{"max_turns": n}} }
+	st, m = h.call("PUT", "/v1/peers/matrix", phone, turns(30))
+	if st != 200 || m["widens"] != false || matrix(m).MaxTurns != 30 {
+		t.Fatalf("no limit → 30 from a phone (narrowing): %d %v", st, m)
+	}
+	if st, _ := h.call("PUT", "/v1/peers/matrix", phone, turns(0)); st != 403 {
+		t.Errorf("30 → no limit from a phone: %d, want 403", st)
+	}
+	for _, n := range []int{1, -1, 501} {
+		if st, _ := h.call("PUT", "/v1/peers/matrix", h.owner, turns(n)); st != 400 {
+			t.Errorf("max_turns %d: %d, want 400", n, st)
+		}
+	}
+	st, m = h.call("PUT", "/v1/peers/matrix", h.owner, turns(0))
+	if st != 200 || m["widens"] != true || matrix(m).MaxTurns != keys.NoTurnLimit {
+		t.Fatalf("30 → no limit from an owner session: %d %v", st, m)
+	}
+	st, m = h.call("PUT", "/v1/peers/matrix", machine, turns(500))
+	if st != 200 || m["widens"] != false || matrix(m).MaxTurns != 500 {
+		t.Fatalf("no limit → 500 from a machine (narrowing): %d %v", st, m)
 	}
 
 	// Audit: owner session and viewers read it; machines and phones do not. Metadata only.

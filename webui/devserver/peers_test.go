@@ -30,7 +30,6 @@ func TestPeersMatrixPauseAudit(t *testing.T) {
 
 	// Widening needs the owner session; a phone gets 403 and the version stays.
 	phone.want(403, "PUT", "/v1/peers/matrix", M{"edit": M{"allow": [][]string{{acctA, acctB}}}})
-	phone.want(403, "PUT", "/v1/peers/matrix", M{"edit": M{"same_account": true, "max_turns": 99}})
 	m = owner.want(200, "PUT", "/v1/peers/matrix", M{"edit": M{"base_version": 1, "allow": [][]string{{acctA, acctB}, {acctB, acctA}}}})
 	check(t, schemas, "MatrixInfo", "matrix", m)
 	if v := m["matrix"].(map[string]any)["version"]; v != float64(2) {
@@ -56,13 +55,29 @@ func TestPeersMatrixPauseAudit(t *testing.T) {
 	phone.want(403, "POST", "/v1/peers/pause", M{"paused": false})
 	owner.want(200, "POST", "/v1/peers/pause", M{"paused": false})
 
+	// The turn limit: 0 is no limit (the default) and the highest value (keys.md 5.2).
+	if v := m["matrix"].(map[string]any)["max_turns"]; v != float64(0) {
+		t.Fatalf("default max_turns %v, want 0 (no limit)", v)
+	}
+	m = phone.want(200, "PUT", "/v1/peers/matrix", M{"edit": M{"max_turns": 40}})
+	if m["widens"] != false || m["matrix"].(map[string]any)["max_turns"] != float64(40) {
+		t.Fatalf("no limit → 40 narrows: %v", m)
+	}
+	phone.want(403, "PUT", "/v1/peers/matrix", M{"edit": M{"max_turns": 0}})
+	phone.want(403, "PUT", "/v1/peers/matrix", M{"edit": M{"max_turns": 99}})
+	owner.want(400, "PUT", "/v1/peers/matrix", M{"edit": M{"max_turns": 1}})
+	m = owner.want(200, "PUT", "/v1/peers/matrix", M{"edit": M{"max_turns": 0}})
+	if m["widens"] != true || m["matrix"].(map[string]any)["max_turns"] != float64(0) {
+		t.Fatalf("40 → no limit widens: %v", m)
+	}
+
 	a := owner.want(200, "GET", "/v1/peers/audit", nil)
 	var events []string
 	each(t, a["entries"], func(e any) {
 		check(t, schemas, "PeerAuditEntry", "audit", e)
 		events = append(events, e.(map[string]any)["event"].(string))
 	})
-	want := []string{"resume", "pause", "matrix", "matrix", "loop_guard", "matrix"} // newest first
+	want := []string{"matrix", "matrix", "resume", "pause", "matrix", "matrix", "loop_guard", "matrix"} // newest first
 	if len(events) != len(want) {
 		t.Fatalf("audit events %v, want %v", events, want)
 	}

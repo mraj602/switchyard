@@ -102,7 +102,7 @@ func TestPeersMatrixEndToEnd(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("matrix: %d %q %q", code, out, errs)
 	}
-	for _, want := range []string{`from \ to`, "1 personal", "2 work", "matrix v1 · signed by hub ", "same account: on", "max turns: 30", "not paused"} {
+	for _, want := range []string{`from \ to`, "1 personal", "2 work", "matrix v1 · signed by hub ", "same account: on", "replies without you: no limit", "not paused"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("matrix print lacks %q:\n%s", want, out)
 		}
@@ -240,7 +240,7 @@ func TestPeersWideningRefusedUnderClaude(t *testing.T) {
 	m.rig.env.tty = func() (keysTTY, error) { t.Fatal("the terminal was opened under Claude Code"); return nil, nil }
 	before := m.hubMatrix().Version
 	for _, args := range [][]string{
-		{"allow", "work", "personal", "--yes"}, {"resume", "--yes"}, {"max-turns", "40"},
+		{"allow", "work", "personal", "--yes"}, {"resume", "--yes"},
 	} {
 		code, _, errs := m.sy(nil, args...)
 		if code != 4 || !strings.Contains(errs, "refusing to sign") {
@@ -250,9 +250,24 @@ func TestPeersWideningRefusedUnderClaude(t *testing.T) {
 	if m.hubMatrix().Version != before {
 		t.Fatal("a refused widening reached the hub")
 	}
-	// Narrowing stays open to a session: deny, pause, lower limits.
+	// Narrowing stays open to a session: deny, pause, lower limits (version 1 has no turn
+	// limit, so any number narrows).
 	if code, _, errs := m.sy(nil, "max-turns", "10"); code != 0 {
 		t.Fatalf("lowering max turns under Claude: %d %q", code, errs)
+	}
+	before = m.hubMatrix().Version
+	for _, n := range []string{"40", "none", "0"} {
+		if code, _, errs := m.sy(nil, "max-turns", n); code != 4 || !strings.Contains(errs, "refusing to sign") {
+			t.Errorf("max-turns %s under Claude: %d %q", n, code, errs)
+		}
+	}
+	if m.hubMatrix().Version != before {
+		t.Fatal("a refused raise reached the hub")
+	}
+	for _, n := range []string{"1", "501", "-3", "lots"} {
+		if code, _, _ := m.sy(nil, "max-turns", n); code != 2 {
+			t.Errorf("max-turns %s: %d, want usage", n, code)
+		}
 	}
 	if code, _, errs := m.sy(nil, "pause"); code != 0 {
 		t.Fatalf("pause under Claude: %d %q", code, errs)

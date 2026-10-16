@@ -18,7 +18,7 @@ func TestPeersMatrixPrint(t *testing.T) {
 1 work         =          ⇄          →
 2 personal     ⇄          =          ·
 3 lab          ·          ·          =
-matrix v4 · signed by owner K7Q2-M4XA-K7Q2-M4XA-K7Q2-M4XA · same account: on · max turns: 30 · not paused
+matrix v4 · signed by owner K7Q2-M4XA-K7Q2-M4XA-K7Q2-M4XA · same account: on · replies without you: 30 · not paused
 `
 	if out.String() != want {
 		t.Errorf("got:\n%s\nwant:\n%s", out.String(), want)
@@ -29,5 +29,12 @@ matrix v4 · signed by owner K7Q2-M4XA-K7Q2-M4XA-K7Q2-M4XA · same account: on �
 	printMatrix(&out, s, accts)
 	if !bytes.Contains(out.Bytes(), []byte("PAUSED")) {
 		t.Errorf("a paused matrix says so:\n%s", out.String())
+	}
+	b.MaxTurns = keys.NoTurnLimit
+	s.Body = b
+	out.Reset()
+	printMatrix(&out, s, accts)
+	if !bytes.Contains(out.Bytes(), []byte("replies without you: no limit")) {
+		t.Errorf("max_turns 0 prints as no limit:\n%s", out.String())
 	}
 }
