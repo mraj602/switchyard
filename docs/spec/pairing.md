@@ -327,6 +327,16 @@ sy hub owner-link [--url U] [--ttl 10m] [--json]
    `127.0.0.1`). This link is in the log on purpose: it works once, for 10 minutes, and only
    until someone is owner; after the first owner session the hub never prints one again.
 
+The signed-out board (`#/login`, "Sign in to this hub") offers the same three: paste an
+owner link (accepted only for this hub's own origin and an `#/owner?s=` link), **Pair with a
+code** (read-only), and a fold-out "On the hub's computer" with `sy hub owner-link`. After a
+401 it shows the reason (`revoked`: "This browser was removed from the hub.",
+`owner_expired`: "Your owner access ended."). Inside the desktop app's Hub view no CLI is
+named: non-owner hints read "Use Sign in as owner on the Hub tab." The board knows it is in
+the app from `/v1/me` `via.kind = desktop`, or, signed out too, from the user agent token
+` SwitchyardDesktop/<version>` the app adds to the view's session (or `?in=desktop` in its
+start URL).
+
 ## 5. The phone's side
 
 ### 5.1 Android (Chrome)
