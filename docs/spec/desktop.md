@@ -215,7 +215,11 @@ sy desktop hub status|start|stop --json
 {"service": "running" | "stopped" | "missing", "unit": "…", "health": true}
 ```
 
-- `info`: `hub.service` is `null` when the hub is not on this machine. `local` = `<data>/hub.db`
+- `info`: `hub.reachable` is `GET /health` with an 8 s timeout and one retry (the hub is often a
+  tiny VM that answers slowly now and then); `hub status` uses 5 s and the polls after
+  `hub start|stop` 3 s. The app adds its own debounce: a hub that was reachable is shown as
+  Unreachable only after two info checks in a row fail (the board stays meanwhile and the next
+  check comes in 30 s, not 5 min). `hub.service` is `null` when the hub is not on this machine. `local` = `<data>/hub.db`
   exists and `hub.url` is a loopback URL. `admin` is the admin-channel resolution of
   machines.md 4.4 (flag none, `machines.hub_admin`, else `local` when `hub.db` exists, else
   `null`). `admin_error` is why `machines.hub_admin` cannot be used (a refused command prefix),
