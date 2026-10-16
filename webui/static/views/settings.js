@@ -13,12 +13,13 @@ import { pwa, isStandalone, canInstall, promptInstall, checkForUpdate, updateRea
 import { pushStatus, turnOn, sendTest } from '../push.js';
 import { isIOS, isMobile, ntfyLink, installHint } from '../platform.js';
 import { day, clock, agoLabel, humanKey, plural, deviceLabel } from '../format.js';
+import { notifNote } from '../components/notif-note.js';
 
 const st = { self: null, push: null, config: null, hub: null, devices: null, test: null, ntfy: null, busy: false, updateNote: '', error: null };
 const again = () => window.dispatchEvent(new Event('sy-rerender'));
 
 const mobile = () => isMobile(navigator.userAgent, navigator.maxTouchPoints, navigator.platform);
-const thisOne = () => (mobile() ? 'This phone' : 'This browser');
+const thisOne = () => notifNote(store.me?.device?.kind, mobile()).who;
 
 export async function load({ onLogout }) {
   st.onLogout = onLogout;
@@ -85,11 +86,14 @@ function browserRow() {
   const p = st.push;
   if (!canPush()) {
     // SE5: say what to do on this kind of device, with a link.
-    return h('div', { class: 'row status-row' }, h('span', { class: 'row-text' }, h('b', {}, thisOne()),
-      h('span', { 'data-key': 'notif-state' }, 'Off: this sign-in only reads the board.'),
-      h('span', { class: 'muted small' }, mobile()
-        ? ['To get notifications here, ', h('a', { href: '#/pair', 'data-key': 'notif-pair' }, 'pair this phone with a code'), '.']
-        : ['To get notifications here, sign in as the owner (run ', h('code', {}, 'sy hub owner-link'), ' on the hub) or ', h('a', { href: '#/pair', 'data-key': 'notif-pair' }, 'pair this browser'), '.'])));
+    const n = notifNote(store.me?.device?.kind, mobile());
+    const how = {
+      'app-settings': 'Turn them on or off in the app\'s Settings, Notifications.',
+      'pair-phone': ['To get notifications here, ', h('a', { href: '#/pair', 'data-key': 'notif-pair' }, 'pair this phone with a code'), '.'],
+      'owner-or-pair': ['To get notifications here, sign in as the owner (run ', h('code', {}, 'sy hub owner-link'), ' on the hub) or ', h('a', { href: '#/pair', 'data-key': 'notif-pair' }, 'pair this browser'), '.'],
+    }[n.how];
+    return h('div', { class: 'row status-row' }, h('span', { class: 'row-text' }, h('b', {}, n.who),
+      h('span', { 'data-key': 'notif-state' }, n.state), h('span', { class: 'muted small' }, how)));
   }
   if (!p) return h('div', { class: 'row status-row' }, h('span', { class: 'row-text' }, h('b', {}, thisOne()), h('span', { class: 'muted' }, st.error || 'Checking…')));
   if (p.state === 'on') {
