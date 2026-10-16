@@ -62,18 +62,59 @@ export function worstPace(ws: Window[], now: number, tz?: string): { p: PaceInfo
   return best;
 }
 
+const reading = (w: Window | undefined): w is Window => !!w && w.used_pct != null;
+
 /**
- * Who has the most room in the 5-hour window (push.md 5.7): lowest use among visible accounts
- * with a reading from the last 6 hours, and only when under 80%.
+ * The use of one window that counts for "room": 0 once its `resets_at` has passed, or when the
+ * seat has no reading for it but has one for the other window; else its used_pct (a reading
+ * older than 6 hours still counts until its reset). null when the seat has no reading at all.
  */
-export function mostRoom(seats: Seat[], now: number): { seat: Seat; five: Window } | null {
-  let best: { seat: Seat; five: Window } | null = null;
+export function effectiveUse(w: Window | undefined, other: Window | undefined, now: number): number | null {
+  if (!reading(w)) return reading(other) ? 0 : null;
+  const reset = Date.parse(w.resets_at || '');
+  if (!Number.isNaN(reset) && reset <= now) return 0;
+  return w.used_pct as number;
+}
+
+export interface SeatUse {
+  five: number;
+  seven: number;
+  fiveW?: Window;
+  sevenW?: Window;
+}
+
+/** The effective 5-hour and 7-day use of a seat (see effectiveUse); null with no reading at all. */
+export function seatUse(s: Pick<Seat, 'windows'>, now: number): SeatUse | null {
+  const five = (s.windows ?? []).find((w) => w.key === 'five_hour');
+  const seven = (s.windows ?? []).find((w) => w.key === 'seven_day');
+  const f = effectiveUse(five, seven, now);
+  const v = effectiveUse(seven, five, now);
+  if (f == null || v == null) return null;
+  return { five: f, seven: v, ...(five ? { fiveW: five } : {}), ...(seven ? { sevenW: seven } : {}) };
+}
+
+/**
+ * Who has the most room right now (the board's and the hub's rule): among visible accounts with
+ * any reading, score = the larger of the effective 5-hour and 7-day use; lowest wins, ties go to
+ * the lower 7-day, then the lower 5-hour use, then list order; only when the score is under 80.
+ */
+export function mostRoom(seats: Seat[], now: number): { seat: Seat; five: number; seven: number } | null {
+  let best: { seat: Seat; five: number; seven: number } | null = null;
+  const score = (x: { five: number; seven: number }) => Math.max(x.five, x.seven);
   for (const s of seats.filter((x) => !x.hidden)) {
-    const five = (s.windows ?? []).find((w) => w.key === 'five_hour');
-    if (!five || five.used_pct == null || five.used_pct >= 80) continue;
-    const at = Date.parse(five.updated_at || '');
-    if (Number.isNaN(at) || now - at > 6 * 36e5) continue;
-    if (!best || five.used_pct < (best.five.used_pct as number)) best = { seat: s, five };
+    const u = seatUse(s, now);
+    if (!u) continue;
+    const c = { seat: s, five: u.five, seven: u.seven };
+    if (!best || score(c) < score(best) || (score(c) === score(best) && (c.seven < best.seven || (c.seven === best.seven && c.five < best.five)))) best = c;
   }
-  return best;
+  return best && score(best) < 80 ? best : null;
+}
+
+/** The window the Accounts row shows: the tighter of 5 h and 7 d (a tie shows 7 d); null without a reading. */
+export function tighterWindow(s: Pick<Seat, 'windows'>, now: number): { key: 'five_hour' | 'seven_day'; short: '5 h' | '7 d'; used: number; w?: Window } | null {
+  const u = seatUse(s, now);
+  if (!u) return null;
+  return u.five > u.seven
+    ? { key: 'five_hour', short: '5 h', used: u.five, ...(u.fiveW ? { w: u.fiveW } : {}) }
+    : { key: 'seven_day', short: '7 d', used: u.seven, ...(u.sevenW ? { w: u.sevenW } : {}) };
 }

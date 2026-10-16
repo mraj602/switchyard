@@ -204,6 +204,7 @@ describe('screens', () => {
 
   it('Accounts: both lines and Sign in on this phone for a seat without a tab', async () => {
     await show(<AccountsScreen />);
+    await fireEvent.press(await screen.findByTestId('expand-all'));
     expect(screen.getByTestId(`code-${A}`)).toHaveTextContent('Claude Code: signed in on worker · signed out on mraj602');
     expect(screen.getByTestId(`phonetab-${A}`)).toHaveTextContent('Phone tab: not signed in');
     expect(screen.getByTestId(`tab-${A}`)).toHaveTextContent('Sign in on this phone');
@@ -215,6 +216,7 @@ describe('screens', () => {
     tabsState.profiles = [A];
     await AsyncStorage.setItem(TAB_MEMO_KEY, JSON.stringify({ [A]: { signed_in: true, account: ACC_A, at: T } }));
     await show(<AccountsScreen />);
+    await fireEvent.press(await screen.findByTestId('expand-all'));
     expect(screen.getByTestId(`phonetab-${A}`)).toHaveTextContent('Phone tab: signed in, matches this account');
     await fireEvent.press(screen.getByTestId(`tab-${A}`));
     expect(routerMock.router.push).toHaveBeenCalledWith(`/tabs/${A}`);
@@ -224,6 +226,7 @@ describe('screens', () => {
     tabsState.profiles = [A];
     await AsyncStorage.setItem(TAB_MEMO_KEY, JSON.stringify({ [A]: { signed_in: true, account: ACC_B, at: T } }));
     await show(<AccountsScreen />);
+    await fireEvent.press(await screen.findByTestId('expand-all'));
     expect(screen.getByTestId(`phonetab-${A}`)).toHaveTextContent('Phone tab: signed in as claude-6, not this account');
     await fireEvent.press(screen.getByTestId(`fix-${A}`));
     expect(screen.getByText("claude-7's tab is signed in as claude-6")).toBeTruthy();
@@ -239,6 +242,7 @@ describe('screens', () => {
     tabsState.profiles = [A];
     await AsyncStorage.setItem(TAB_MEMO_KEY, JSON.stringify({ [A]: { signed_in: true, account: ACC_B, at: T } }));
     await show(<AccountsScreen />);
+    await fireEvent.press(await screen.findByTestId('expand-all'));
     await fireEvent.press(screen.getByTestId(`fix-${A}`));
     await fireEvent.press(screen.getByTestId('fix-use'));
     await act(async () => undefined);
@@ -254,6 +258,7 @@ describe('screens', () => {
     tabsState.profiles = [A];
     await AsyncStorage.setItem(TAB_MEMO_KEY, JSON.stringify({ [A]: { signed_in: true, account: ACC_B, at: T } }));
     await show(<AccountsScreen />);
+    await fireEvent.press(await screen.findByTestId('expand-all'));
     await fireEvent.press(screen.getByTestId('add-account'));
     await act(async () => undefined);
     expect(screen.queryByTestId(`add-seat-${A}`)).toBeNull();
@@ -272,6 +277,7 @@ describe('screens', () => {
     tabsState.profiles = [A, B];
     await AsyncStorage.setItem(TAB_MEMO_KEY, JSON.stringify({ [A]: { signed_in: true, account: ACC_B, at: T } }));
     await show(<AccountsScreen />);
+    await fireEvent.press(await screen.findByTestId('expand-all'));
     await fireEvent.press(screen.getByTestId(`fix-${A}`));
     expect(screen.getByTestId('fix-signout')).toBeTruthy();
     expect(screen.queryByTestId('fix-use')).toBeNull();
@@ -280,6 +286,7 @@ describe('screens', () => {
   it('no phone tab line where tabs are not supported', async () => {
     tabsState.supported = false;
     await show(<AccountsScreen />);
+    await fireEvent.press(await screen.findByTestId('expand-all'));
     expect(screen.getByTestId(`code-${A}`)).toBeTruthy();
     expect(screen.queryByTestId(`phonetab-${A}`)).toBeNull();
     expect(screen.queryByTestId(`fix-${A}`)).toBeNull();
