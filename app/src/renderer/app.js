@@ -11,7 +11,7 @@
 import { WARNING_VERSION } from '../shared/constants.js';
 import { barWidth, pct, bytes, plural } from '../shared/format.js';
 import {
-  tabTitle, missingNotice, mismatchNotice, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds, droppedIds,
+  tabTitle, missingNotice, mismatchNotice, adoptLabel, signOutLabel, adoptConfirm, adoptToast, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds, droppedIds,
   effectiveView, windowRows, readingStatus, lastReadTitle, hubBanner, hubUsable, hubSummary, hubChip, ownerPill, fitTabs, progressText,
   SHARE_SWITCHES, foldersOf, isPrimary, switchState, shareSpec, loginCommand, COLOUR_RE, PAIR_CODE_RE,
 } from './view.js';
@@ -19,6 +19,7 @@ import {
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const TICK_MS = 30_000;
 const TOAST_MS = 6_000;
+const ACTION_TOAST_MS = 20_000;
 
 // ---- tiny DOM helpers
 
@@ -125,8 +126,8 @@ export function start({ sy, root }) {
   const progress = (kind) => h('span', { class: 'progress', role: 'status', 'aria-live': 'polite' },
     h('span', { class: 'spinner', 'aria-hidden': 'true' }), h('span', { text: progressText(state.hub, kind) }));
 
-  function toast(level, text) {
-    ui.toast = { level, text };
+  function toast(level, text, action = null) {
+    ui.toast = { level, text, action };
     const mine = ui.toast;
     ui.v++;
     render();
@@ -136,7 +137,7 @@ export function start({ sy, root }) {
         ui.v++;
         render();
       }
-    }, TOAST_MS);
+    }, action ? ACTION_TOAST_MS : TOAST_MS);
   }
 
   async function select(id) {
@@ -230,7 +231,7 @@ export function start({ sy, root }) {
     }, h('span', { class: 'more-label' }), h('span', { class: 'chev', text: '\u25BE', 'aria-hidden': 'true' }));
     const pill = ownerPill(state.hub);
     const pillEl = pill ? h('span', { class: `owner-pill ${pill.owner ? 'owner' : ''}`.trim(), fk: 'owner-pill', text: pill.text, title: pill.owner ? 'Signed in as owner on this computer' : 'This computer can view, not change' }) : null;
-    const tt = ui.toast ? h('div', { class: `toast ${ui.toast.level === 'error' ? 'error' : ui.toast.level === 'warn' ? 'warn' : ''}`.trim(), role: 'status', 'aria-live': 'polite', text: ui.toast.text, title: ui.toast.text }) : null;
+    const tt = ui.toast ? h('div', { class: `toast ${ui.toast.level === 'error' ? 'error' : ui.toast.level === 'warn' ? 'warn' : ''}${ui.toast.action ? ' has-action' : ''}`.trim(), role: 'status', 'aria-live': 'polite', title: ui.toast.text }, h('span', { class: 'toast-text', text: ui.toast.text }), ui.toast.action ? h('button', { class: 'linkish', fk: 'toast-action', text: ui.toast.action.label, onclick: ui.toast.action.run }) : null) : null;
 
     return [
       h('div', { class: 'brand' }, logo(), h('span', { class: 'brand-name', text: 'Switchyard' })),
@@ -379,9 +380,11 @@ export function start({ sy, root }) {
     return h('section', { class: 'strip', 'aria-label': `Usage for ${tabTitle(t)}` },
       h('span', { class: 'strip-id', title: t.name },
         h('span', { class: 'dot', style: { background: colour } }), h('span', { text: tabTitle(t) })),
-      wrong ? h('span', { class: 'strip-wins' }, h('span', { class: 'status stopped', role: 'status', fk: 'strip-mismatch', title: wrong, text: wrong })) : null,
+      wrong ? h('span', { class: 'strip-notice', role: 'status', fk: 'strip-mismatch', title: wrong, text: wrong }) : null,
+      wrong ? h('button', { class: 'btn btn-primary', fk: 'strip-adopt', text: adoptLabel(t), disabled: busy(`adopt:${t.id}`), onclick: () => adoptClick(t) }) : null,
+      wrong ? h('button', { class: 'linkish', fk: 'strip-signout', text: signOutLabel(t), onclick: () => act(`logout:${t.id}`, () => sy.logoutTab({ id: t.id })) }) : null,
       wrong ? null : h('span', { class: 'strip-wins' }, wins, t.windows_source === 'local' && rows.length ? h('span', { class: 'tag', text: 'local', title: 'Numbers read in this tab; the hub has none for this account yet' }) : null),
-      h('span', { class: `status ${st.kind === 'stopped' ? 'stopped' : st.kind === 'retrying' ? 'retrying' : ''}`.trim(), role: 'status', 'aria-live': 'polite', title: lastReadTitle(t), text: st.text }),
+      wrong && !st.action ? null : h('span', { class: `status ${st.kind === 'stopped' ? 'stopped' : st.kind === 'retrying' ? 'retrying' : ''}`.trim(), role: 'status', 'aria-live': 'polite', title: lastReadTitle(t), text: st.text }),
       st.action === 'resume' ? h('button', { class: 'btn btn-primary', fk: 'strip-resume', text: 'Resume', disabled: busy(`resume:${t.id}`), onclick: () => act(`resume:${t.id}`, () => sy.resumeReading({ id: t.id })) }) : null,
       st.action === 'review' ? h('button', { class: 'btn btn-primary', fk: 'strip-review', text: st.actionLabel, onclick: () => openWarning(t, true) }) : null,
       h('span', { class: 'strip-actions' },
@@ -394,6 +397,37 @@ export function start({ sy, root }) {
         iconBtn('home', '⌂', 'Home', () => act(`home:${t.id}`, () => sy.homeTab({ id: t.id }))),
         iconBtn('external', '↗', 'Open in browser', () => act(`ext:${t.id}`, () => sy.openTabExternal({ id: t.id }))),
       ));
+  }
+
+  // "Use this tab for claude-7": one click, or a confirm when another tab is already that account's.
+  function adoptClick(t) {
+    const run = () => act(`adopt:${t.id}`, async () => {
+      const r = await sy.adoptTab({ id: t.id });
+      const msg = adoptToast(r);
+      const a = msg.action;
+      toast('info', msg.text, a ? { label: a.label, run: () => { ui.toast = null; ui.v++; render(); void addForAccount({ seat: a.seat, label: a.name }); } } : null);
+    });
+    const ask = adoptConfirm(t);
+    if (!ask) { run(); return; }
+    openDialog({
+      title: adoptLabel(t),
+      body: h('p', { fk: 'adopt-confirm', text: ask }),
+      actions: (d) => [
+        h('button', { class: 'btn btn-lg', text: 'Cancel', onclick: () => d.close('cancel') }),
+        h('button', { class: 'btn btn-primary btn-lg', fk: 'adopt-yes', text: 'Use this tab', onclick: () => { d.close('cancel'); run(); } }),
+      ],
+      initialFocus: '[data-fk="adopt-yes"]',
+    });
+  }
+
+  /** The existing add-for-account flow (sy.addTab with the seat): a fresh tab made for the account, shown, ready to sign in. */
+  async function addForAccount(m) {
+    try {
+      const r = await sy.addTab({ name: m.label, seat: m.seat });
+      if (r && r.id) await select(r.id);
+    } catch (err) {
+      toast('error', errText(err));
+    }
   }
 
   function toggleReading(t, on) {

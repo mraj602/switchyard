@@ -201,6 +201,18 @@ test('missingAccounts: hub accounts with no tab, by account uuid; hidden and unn
   assert.deepEqual(missingAccounts(undefined, tabs), []);
 });
 
+test('mismatch.shared: another tab really signed in as the same account', () => {
+  const seats = [{ id: 'seat_01M4SH4F8KV20NK22FQCTR0RR1', account: 'acc-1', org: 'org-1', label: 'claude-1' }];
+  const expect = { seat: 'seat_01M4SH4F8KV20NK22FQCTR0RR6', account: 'acc-6', org: 'org-6', label: 'claude-6' };
+  const wrong = info(A, { seat: { account: 'acc-1', org: 'org-1' }, expect });
+  const own = info(B, { seat: { account: 'acc-1', org: 'org-1' } });
+  assert.equal(tabState(wrong, null, seats, [wrong, own]).mismatch.shared, true);
+  assert.equal(tabState(wrong, null, seats, [wrong]).mismatch.shared, false, 'itself does not count');
+  assert.equal(tabState(wrong, null, seats, [wrong, { ...own, signed_in: false }]).mismatch.shared, false, 'a signed-out tab does not count');
+  const alsoWrong = info(B, { seat: { account: 'acc-1', org: 'org-1' }, expect });
+  assert.equal(tabState(wrong, null, seats, [wrong, alsoWrong]).mismatch.shared, false, 'a tab made for another account is not that account\'s tab');
+});
+
 test('a tab made for claude-6 and signed in as claude-1 is a mismatch (uuid, not email); signed in as 6 is not', () => {
   const seats = [
     { id: 'seat_01M4SH4F8KV20NK22FQCTR0RR1', account: 'acc-1', org: 'org-1', label: 'claude-1', email: 'same@example.com' },
@@ -208,7 +220,7 @@ test('a tab made for claude-6 and signed in as claude-1 is a mismatch (uuid, not
   ];
   const expect = { seat: seats[1].id, account: 'acc-6', org: 'org-6', label: 'claude-6' };
   const wrong = tabState(info(A, { seat: { account: 'acc-1', org: 'org-1' }, expect }), null, seats);
-  assert.deepEqual(wrong.mismatch, { expected: 'claude-6', actual: 'claude-1' });
+  assert.deepEqual(wrong.mismatch, { expected: 'claude-6', actual: 'claude-1', shared: false });
   assert.equal(wrong.expected, 'claude-6');
   assert.deepEqual([wrong.label, wrong.colour, wrong.seat], [null, null, null], 'the landed-in account\'s look is not the tab\'s');
   assert.equal(tabState(info(A, { seat: { account: 'acc-6', org: 'org-6' }, expect }), null, seats).mismatch, null);
