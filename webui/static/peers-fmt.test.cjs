@@ -125,3 +125,32 @@ test('a machine that refused the resume: named when the hub says which', () => {
     { id: 1, event: 'loop_guard', thread: t1 },
   ]).size, 0);
 });
+
+test('Allow all adds every missing pair both ways and turns same account on; only that widens', () => {
+  assert.deepEqual(j(P.allowAllEdit([], [A, B], true)), { allow: [[A, B], [B, A]], deny: [], widens: true });
+  assert.deepEqual(j(P.allowAllEdit([[A, B]], [A, B, C], true)).allow, [[A, C], [B, A], [B, C], [C, A], [C, B]]);
+  assert.deepEqual(j(P.allowAllEdit([[A, B], [B, A]], [A, B], false)), { allow: [], deny: [], widens: true, same_account: true });
+  assert.equal(P.allowedAll([[A, B], [B, A]], [A, B], true), true);
+  assert.equal(P.allowedAll([[A, B]], [A, B], true), false);
+  assert.equal(P.allowedAll([[A, B], [B, A]], [A, B], false), false);
+});
+
+test('Block all removes every pair and turns same account off; never widens', () => {
+  assert.deepEqual(j(P.blockAllEdit([[A, B], [B, A]], true)), { allow: [], deny: [[A, B], [B, A]], widens: false, same_account: false });
+  assert.deepEqual(j(P.blockAllEdit([], false)), { allow: [], deny: [], widens: false });
+  assert.equal(P.blockedAll([], false), true);
+  assert.equal(P.blockedAll([], true), false);
+  assert.equal(P.blockedAll([[A, B]], false), false);
+  assert.deepEqual(j(P.editBody({ version: 4 }, P.blockAllEdit([[A, B]], true))), { edit: { base_version: 4, deny: [[A, B]], same_account: false } });
+});
+
+test('turn limit: whole numbers 2 to 500; raising widens, lowering narrows', () => {
+  assert.equal(P.parseTurns('30'), 30);
+  assert.equal(P.parseTurns(' 2 '), 2);
+  assert.equal(P.parseTurns('500'), 500);
+  for (const bad of ['1', '0', '501', '', '3.5', '-4', 'abc', '1e2', null]) assert.equal(P.parseTurns(bad), null, String(bad));
+  assert.equal(P.turnsWidens(30, 31), true);
+  assert.equal(P.turnsWidens(30, 30), false);
+  assert.equal(P.turnsWidens(30, 10), false);
+  assert.deepEqual(j(P.editBody({ version: 4 }, { max_turns: 10 })), { edit: { base_version: 4, max_turns: 10 } });
+});

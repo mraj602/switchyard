@@ -215,7 +215,7 @@ Accounts, More**:
 | `/more/machines?machine=` | `#/machines` | Machines list |
 | `/more/settings` | `#/more/settings` | Hub and status, notifications state, private pushes, tap behaviour, own quiet hours, widgets refresh switch (`prefs.widgets`), app version and **Check for update** (P16), **Unpair** |
 | `/more/settings/notifications` | — | P6.7 (N1) |
-| `/more/peers` | `#/more/peers` | PE3: **Pause all peers**, the matrix (view; a tapped cell can only narrow) and the audit list (peers.md 5, 10, 11); see below |
+| `/more/peers` | `#/more/peers` | PE3: **Pause all peers**, the matrix (view; a tapped cell and **Block all** can only narrow; the turn limit is read-only) and the audit list (peers.md 5, 10, 11); see below |
 | `/alerts/[id]` | `#/alerts/<id>` | Loads the alert and replaces itself with its deep link (push.md 5.8) |
 | `/pair` | `#/pair` | P2 |
 | `/tabs/[seat]?url=` | — | P17: the seat's claude.ai tab (Android) |
@@ -231,7 +231,12 @@ ways offers one way either way or none, one way offers none, none offers nothing
 `PUT /v1/peers/matrix` `edit` with `base_version` and `deny` entries only, never `allow`
 (`narrowings` in `src/lib/format/peers.ts`). Allowing a pair, same account on and resume are on
 the board or at a terminal (peers.md 5.4). A 409 reloads the matrix, a 403 says the change needs
-the owner. Everything is disabled while offline.
+the owner. Everything is disabled while offline. A **Block all** button above the grid (confirm:
+"Stop all peer messages between accounts? Threads in progress stop too.") sends one `edit` with
+every pair in `deny` and `same_account: false` (`blockAllEdit`); Allow all is not offered
+(owner-only; the screen says "Allow pairs from a computer (board, Peers)"). The turn limit
+(`max_turns`) is shown read-only as "Automated turns per thread: N" with the loop-guard
+explanation (peers.md 6.3, 5.4).
 
 Owner-only PWA screens (Devices, Add phone, rule editing) are not in the app. Analytics (More, Analytics; `GET /v1/analytics/{report}`, analytics.md) is: a range (7, 30, 90 days), a seat filter, totals, daily cost bars, a compact weekday by hour heatmap, models, projects, the five dearest sessions, limit windows (peak and final percent as bars) and limit hits.
 Wording, ages and state words come from `src/lib/format` and match `webui/static/format.js`
