@@ -4,6 +4,7 @@
 import { h } from '../components/dom.js';
 import { toast, moreTabs } from '../components/ui.js';
 import { qrSvg } from '../components/qr.js';
+import { pairErrorView } from '../components/pair-error.js';
 import { copyButton } from '../components/cards.js';
 import { targetKindText, usable } from '../components/targets.js';
 import { isOwner } from '../store.js';
@@ -48,7 +49,7 @@ async function openDialog(kind) {
     const code = await makePairCode({ kind });
     st.dialog = { kind, code, status: 'live', left: Math.max(0, Math.round((Date.parse(code.expires_at) - Date.now()) / 1000)) };
   } catch (ex) {
-    st.dialog = { kind, error: ex.message };
+    st.dialog = { kind, error: { message: ex.message, code: ex.code || '' } };
     again();
     return;
   }
@@ -115,7 +116,11 @@ function dialog() {
         : 'This makes a one-time code. It works once and expires after 10 minutes.'),
       h('button', { type: 'button', class: 'btn btn-primary', 'data-key': 'make-code', onclick: () => openDialog(d.kind) }, 'Make a code'));
   } else if (d.busy) body = h('p', { class: 'muted' }, 'Making a code…');
-  else if (d.error) body = h('p', { class: 'form-error', role: 'alert' }, d.error);
+  else if (d.error) {
+    const e = pairErrorView(d.error);
+    body = h('div', { class: 'form-error col', role: 'alert', 'data-key': 'pair-error', 'data-code': e.code },
+      h('strong', {}, e.title), h('p', { 'data-key': 'pair-error-message' }, e.message));
+  }
   else if (d.status === 'claimed') {
     body = h('div', { class: 'col' },
       h('p', { class: 'status-ok strong', 'data-key': 'pair-claimed' }, `Paired: ${d.device ? d.device.name : 'new device'}`),

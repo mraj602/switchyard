@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mraj602/switchyard/internal/config"
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
 
@@ -32,7 +33,7 @@ func hubDB(t *testing.T, e fakeEnv) (*store.Store, *sql.DB) {
 func runPush(t *testing.T, e fakeEnv) Report {
 	t.Helper()
 	var rep Report
-	checkPush(context.Background(), &rep, e.opts(nil))
+	checkPush(context.Background(), &rep, e.opts(nil), config.Config{})
 	return rep
 }
 
@@ -133,7 +134,7 @@ func TestPushFixUsesTheHubsListenPort(t *testing.T) {
 	o := e.opts(nil)
 	o.HubListen = "127.0.0.1:19100"
 	var rep Report
-	checkPush(context.Background(), &rep, o)
+	checkPush(context.Background(), &rep, o, config.Config{})
 	if c := pcheck(t, rep, "push url"); !strings.Contains(c.Fix, "tailscale serve --bg 19100") {
 		t.Fatalf("%+v", c)
 	}

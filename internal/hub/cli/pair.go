@@ -165,7 +165,7 @@ func printCode(w io.Writer, c pair.Code, qr bool) {
 		fmt.Fprintf(w, "  Link: %s\n", c.URL)
 	}
 	if c.PlainHTTP {
-		fmt.Fprintf(w, "  Note: this address is plain http, so the app can pair but cannot be installed or receive pushes.\n  Run `%s` on the hub and use its https address for the full app.\n", service.ServeHintFor(c.Hub))
+		fmt.Fprintf(w, "  Note: this address is plain http, so the app can pair but cannot be installed or receive pushes.\n  For the full app, %s.\n", service.HTTPSFixFor(c.Hub))
 	}
 	fmt.Fprintln(w)
 }

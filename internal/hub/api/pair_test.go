@@ -257,7 +257,7 @@ func TestPairCodesAPI(t *testing.T) {
 	// No url: the origin of the request is http, which a phone cannot use.
 	r := h.call("POST", "/v1/pair/codes", map[string]any{"kind": "phone"}, opts{cookie: owner})
 	// The fix names the hub's own port (the test server's), not a fixed 8787.
-	if _, port, _ := strings.Cut(strings.TrimPrefix(h.http.URL, "http://"), ":"); r.code != 400 || !strings.Contains(string(r.body), "tailscale serve --bg "+port+"`") {
+	if _, port, _ := strings.Cut(strings.TrimPrefix(h.http.URL, "http://"), ":"); r.code != 400 || !strings.Contains(string(r.body), "tailscale serve --bg "+port+"`") || !strings.Contains(string(r.body), `"code":"needs_https"`) {
 		t.Errorf("http origin for a phone: %d %s", r.code, r.body)
 	}
 	// With hub.public_url set it is used.

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mraj602/switchyard/internal/config"
 	"github.com/mraj602/switchyard/internal/service"
 	_ "modernc.org/sqlite" // the driver; the hub database is opened read-only here
 )
@@ -28,8 +29,15 @@ const (
 const pushErrorWindow = 24 * time.Hour
 
 // checkPush adds the phone-push checks when this machine is the hub (its database is
-// <data>/hub.db). It opens the file read-only, never migrates and never fails doctor.
-func checkPush(ctx context.Context, rep *Report, o Options) {
+// <data>/hub.db and hub.url is empty or names this machine). When hub.url names another
+// machine, a hub.db here is a stale copy: doctor checks the remote hub's /health instead and
+// leaves the database alone. It opens the file read-only, never migrates and never fails
+// doctor.
+func checkPush(ctx context.Context, rep *Report, o Options, cfg config.Config) {
+	if strings.TrimSpace(cfg.Hub.URL) != "" && !hubIsLocal(cfg, hubListen(o)) {
+		checkRemoteHub(ctx, rep, o, cfg)
+		return
+	}
 	if o.Dirs.Data.Path == "" {
 		return
 	}
@@ -112,7 +120,7 @@ func pushChecks(ctx context.Context, rep *Report, db *sql.DB, now time.Time, lis
 	if raw.Valid {
 		_ = json.Unmarshal([]byte(raw.String), &pub)
 	}
-	urlFix := "run `" + service.ServeHint(listen) + "` and restart with `sy hub serve --public-url https://<name>.ts.net`"
+	urlFix := service.HTTPSFix(listen)
 	switch {
 	case pub == "":
 		rep.add(Check{Name: "push url", Level: Warn, Detail: "phones cannot pair or get pushes without the hub's https address", Fix: urlFix})
