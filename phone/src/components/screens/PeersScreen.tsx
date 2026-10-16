@@ -10,7 +10,7 @@ import {
 } from '../../lib/format';
 import { HubError } from '../../lib/hub';
 import { useHubApi } from '../hub-api';
-import { useTheme } from '../theme';
+import { switchColors, useTheme } from '../theme';
 import { Btn, Calm, Card, Muted, Page, Section, useToast } from '../ui';
 
 const CELL = 44;
@@ -72,7 +72,7 @@ export default function PeersScreen() {
 
   if (!info) {
     return (
-      <Page title="Peers" toast={toast.node}>
+      <Page back title="Peers" toast={toast.node}>
         <Calm>{error ?? (offline ? 'Offline.' : 'Loading…')}</Calm>
       </Page>
     );
@@ -90,7 +90,7 @@ export default function PeersScreen() {
     target === 'none' ? 'None' : target === 'out' ? `${from} → ${to}` : target === 'in' ? `${to} → ${from}` : 'Both ways';
 
   return (
-    <Page title="Peers" meta={`Matrix version ${m.version} · signed by ${info.signer} · max ${m.max_turns} turns`} toast={toast.node}>
+    <Page back title="Peers" meta={`Matrix version ${m.version} · signed by ${info.signer} · max ${m.max_turns} turns`} toast={toast.node}>
       <Section title="Pause all peers">
         <Card accent={m.paused ? t.bad : undefined}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -105,6 +105,7 @@ export default function PeersScreen() {
               </Muted>
             </View>
             <Switch
+              {...switchColors(t)}
               accessibilityLabel="Pause all peers"
               testID="peers-pause"
               value={m.paused}

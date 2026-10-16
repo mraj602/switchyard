@@ -4,9 +4,9 @@ import { FlexWidget, TextWidget } from 'react-native-android-widget';
 
 import { clock, nextResetAt, type AndroidWidgetProps } from '../../src/lib/widget';
 
-const BG = '#1c1b22';
-const FG = '#f2f2f7';
-const DIM = '#9a9aa5';
+const BG = '#17191B'; // the brand ink (theme.ts, the launcher icon)
+const FG = '#ECEEEF';
+const DIM = '#9AA1A8';
 const OPEN = { clickAction: 'OPEN_URI', clickActionData: { uri: 'switchyard://now' } } as const;
 
 export function SyNeedsYou({ snapshot, now, tz }: AndroidWidgetProps) {

@@ -5,7 +5,7 @@ import type { Alert, Rule } from '../../contract/api';
 import { OUTCOME, RULE_GROUPS, clock, delayText, reasonText } from '../../lib/format';
 import { useHubApi } from '../hub-api';
 import { go } from '../nav';
-import { useTheme } from '../theme';
+import { switchColors, useTheme } from '../theme';
 import { useSelf } from '../use-self';
 import { Calm, Card, Muted, Page, Section, useToast } from '../ui';
 
@@ -45,7 +45,7 @@ export default function AlertsScreen() {
   const list = alerts ?? (api.data.alerts.length ? api.data.alerts : null);
 
   return (
-    <Page title="Alerts" meta="Switches choose what this phone gets; the hub sets the delays." toast={toast.node}>
+    <Page back title="Alerts" meta="Switches choose what this phone gets; the hub sets the delays." toast={toast.node}>
       <Section title="Rules">
         {!rules ? (
           <Calm>Loading…</Calm>
@@ -65,6 +65,7 @@ export default function AlertsScreen() {
                     {!ruleOn ? <Muted>Off on the hub</Muted> : null}
                   </View>
                   <Switch
+                    {...switchColors(t)}
                     accessibilityLabel={label}
                     testID={`rule-${g.id}`}
                     value={ruleOn && !muted}
