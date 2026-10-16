@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   tabTitle, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds, droppedIds,
   effectiveView, windowLabel, windowRows, readingStatus, hubBanner, hubSummary, hubChip, ownerPill, hubUsable, foldersOf,
-  switchState, shareSpec, SHARE_SWITCHES, isPrimary, loginCommand, SHARE_FOLDER_RE, fitTabs, progressText,
+  switchState, shareSpec, SHARE_SWITCHES, isPrimary, loginCommand, SHARE_FOLDER_RE, fitTabs, progressText, nameList, missingNotice, mismatchNotice,
 } from './view.js';
 import { SHARE_SPEC_PATTERN } from '../shared/ipc.js';
 
@@ -223,4 +223,23 @@ test('progressText: SSH admin channels say how long it can take', () => {
   assert.match(progressText({ admin: 'ssh:vm' }, 'owner'), /^Signing in as owner… asking the hub's computer over SSH/);
   assert.equal(progressText({ admin: 'local', local: true }, 'pair'), 'Pairing…');
   assert.equal(progressText({}, 'owner'), 'Signing in as owner…');
+});
+
+test('missingNotice: one quiet line naming the accounts without a tab', () => {
+  const m = (...l) => l.map((label, i) => ({ seat: `seat_${i}`, label }));
+  assert.equal(missingNotice([]), '');
+  assert.equal(missingNotice(undefined), '');
+  assert.equal(missingNotice(m('claude-6')), 'claude-6 has no tab here.');
+  assert.equal(missingNotice(m('claude-6', 'claude-7')), 'claude-6 and claude-7 have no tab here.');
+  assert.equal(nameList(['a', 'b', 'c']), 'a, b and c');
+  assert.equal(nameList(['a', 'b', 'c', 'd', 'e']), 'a, b and 3 more');
+});
+
+test('mismatchNotice: only when main found a different account uuid', () => {
+  assert.equal(mismatchNotice(tab()), '');
+  assert.equal(
+    mismatchNotice(tab({ mismatch: { expected: 'claude-6', actual: 'claude-1' } })),
+    'This tab is signed in as claude-1, not claude-6. Sign out here and sign in as claude-6',
+  );
+  assert.match(mismatchNotice(tab({ mismatch: { expected: 'claude-6', actual: null } })), /signed in as another account, not claude-6/);
 });

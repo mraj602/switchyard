@@ -22,6 +22,29 @@ export function tabColour(tab, index = 0) {
   return SEAT_FALLBACK[((index % 4) + 4) % 4];
 }
 
+/** "claude-6", "claude-6 and claude-7", "a, b and c", "a, b and 2 more". */
+export function nameList(labels) {
+  const l = labels.filter(Boolean);
+  if (l.length <= 1) return l.join('');
+  if (l.length === 2) return `${l[0]} and ${l[1]}`;
+  if (l.length === 3) return `${l[0]}, ${l[1]} and ${l[2]}`;
+  return `${l[0]}, ${l[1]} and ${l.length - 2} more`;
+}
+
+/** The quiet line for hub accounts with no tab here, or '' when none. */
+export function missingNotice(missing) {
+  const l = Array.isArray(missing) ? missing.map((m) => m.label) : [];
+  if (!l.length) return '';
+  return `${nameList(l)} ${l.length === 1 ? 'has' : 'have'} no tab here.`;
+}
+
+/** The notice for a tab made for one account but signed in as another, or '' (a uuid match decided it in main). */
+export function mismatchNotice(tab) {
+  const m = tab?.mismatch;
+  if (!m) return '';
+  return `This tab is signed in as ${m.actual || 'another account'}, not ${m.expected}. Sign out here and sign in as ${m.expected}`;
+}
+
 /** 0 → '', 3 → '3', 12 → '9+' (the badge on Hub). */
 export function badgeText(n) {
   if (!Number.isInteger(n) || n <= 0) return '';

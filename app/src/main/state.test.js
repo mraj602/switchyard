@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { create, defaultHub, tabState } from './state.js';
+import { create, defaultHub, missingAccounts, tabState } from './state.js';
 import { createBus } from './bus.js';
 
 const A = 't_9c1e5f0a7b2d4e68';
@@ -68,7 +68,7 @@ const info = (id, more = {}) => ({
 test('snapshot before anything is known', () => {
   const { st } = setup();
   assert.deepEqual(st.snapshot(), {
-    tabs: [], view: 'hub', hub: defaultHub(),
+    tabs: [], missing: [], view: 'hub', hub: defaultHub(),
     settings: { keep_running: true, notifications: true, start_hidden: false, autostart: false, close_notice_shown: false },
     banners: [],
   });
@@ -100,7 +100,7 @@ test('tabs merge TabInfo, the newest usage of each tab and the hub seat look', (
   bus.emit('usage', { id: A, read_state: 'idle', stopped: null, retry_at: null, last_read: '2026-10-13T14:10:00Z', windows: [{ key: 'five_hour', label: null, used_pct: 13, resets_at: 'y' }], windows_source: 'hub' });
   const [a, b] = st.snapshot().tabs;
   assert.deepEqual(a, {
-    id: A, name: 'work', label: 'work', colour: '#112233', seat: 'seat_01M4SH4F8KV20NK22FQCTR0RRK', reading: 'on', needs_warning: false, send_to_hub: true,
+    id: A, name: 'work', expected: null, mismatch: null, label: 'work', colour: '#112233', seat: 'seat_01M4SH4F8KV20NK22FQCTR0RRK', reading: 'on', needs_warning: false, send_to_hub: true,
     read_state: 'idle', stopped: null, retry_at: null, last_read: '2026-10-13T14:10:00Z',
     windows: [{ key: 'five_hour', label: null, used_pct: 13, resets_at: 'y' }], windows_source: 'hub', signed_in: true,
   });
@@ -190,4 +190,28 @@ test('banners and stop', () => {
   timers.advance(1000);
   assert.equal(sent.length, 0);
   assert.equal(bus.listenerCount('hub'), 0);
+});
+
+test('missingAccounts: hub accounts with no tab, by account uuid; hidden and unnamed seats are left out', () => {
+  const S = (n, extra = {}) => ({ id: `seat_01M4SH4F8KV20NK22FQCTR0RR${n}`, account: `acc-${n}`, org: `org-${n}`, label: `claude-${n}`, ...extra });
+  const seats = [S(1), S(2), S(3, { hidden: true }), S(4, { label: null, email: null }), S(5), S(5, { org: 'org-5b' })];
+  const tabs = [{ seat: { account: 'acc-1', org: 'org-1' } }, { seat: null, expect: { account: 'acc-5' } }];
+  assert.deepEqual(missingAccounts(seats, tabs), [{ seat: seats[1].id, label: 'claude-2' }]);
+  assert.deepEqual(missingAccounts(seats, []).map((m) => m.label), ['claude-1', 'claude-2', 'claude-5']);
+  assert.deepEqual(missingAccounts(undefined, tabs), []);
+});
+
+test('a tab made for claude-6 and signed in as claude-1 is a mismatch (uuid, not email); signed in as 6 is not', () => {
+  const seats = [
+    { id: 'seat_01M4SH4F8KV20NK22FQCTR0RR1', account: 'acc-1', org: 'org-1', label: 'claude-1', email: 'same@example.com' },
+    { id: 'seat_01M4SH4F8KV20NK22FQCTR0RR6', account: 'acc-6', org: 'org-6', label: 'claude-6', email: 'same@example.com' },
+  ];
+  const expect = { seat: seats[1].id, account: 'acc-6', org: 'org-6', label: 'claude-6' };
+  const wrong = tabState(info(A, { seat: { account: 'acc-1', org: 'org-1' }, expect }), null, seats);
+  assert.deepEqual(wrong.mismatch, { expected: 'claude-6', actual: 'claude-1' });
+  assert.equal(wrong.expected, 'claude-6');
+  assert.deepEqual([wrong.label, wrong.colour, wrong.seat], [null, null, null], 'the landed-in account\'s look is not the tab\'s');
+  assert.equal(tabState(info(A, { seat: { account: 'acc-6', org: 'org-6' }, expect }), null, seats).mismatch, null);
+  assert.equal(tabState(info(A, { seat: null, expect }), null, seats).mismatch, null, 'not signed in yet');
+  assert.equal(tabState(info(A, { seat: { account: 'zzz', org: 'o' }, expect }), null, seats).mismatch.actual, null, 'an account the hub does not know');
 });

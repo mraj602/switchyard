@@ -1,7 +1,7 @@
 // A mock of the preload's `window.sy` with fixtures, so the renderer runs in a plain browser
 // (development, screenshots, the headless check of WP-I). Excluded from the package.
 // Pick a scenario with ?scenario=<name>&view=<hub|settings|<tab id>>:
-//   default | empty | no_sy | needs_pairing | removed | direct_pairing | unreachable | board_blocked | owner | stopped | dark-data | warning
+//   default | empty | missing | no_sy | needs_pairing | removed | direct_pairing | unreachable | board_blocked | owner | stopped | dark-data | warning
 // It is a mock: no network, no storage, nothing leaves the page.
 
 const params = new URLSearchParams(globalThis.location?.search || '');
@@ -38,7 +38,7 @@ function fixtures() {
   // ?tabs=7 pads the strip with claude-N tabs (the top bar overflow check)
   for (let i = tabs.length + 1; i <= Number(params.get('tabs') || 0); i++) tabs.push(tab(`t_${String(i).padStart(16, '0')}`, `claude-${i}`, { label: `claude-${i}` }));
   if (params.get('ssh')) Object.assign(hub, { admin: 'ssh:hub-vm' });
-  const s = { tabs, view: params.get('view') || 'hub', hub, settings, banners: [] };
+  const s = { tabs, missing: [], view: params.get('view') || 'hub', hub, settings, banners: [] };
 
   switch (scenario) {
     case 'empty':
@@ -58,6 +58,13 @@ function fixtures() {
     case 'warning':
       s.tabs[3] = { ...s.tabs[3], reading: 'never_asked', needs_warning: true, read_state: 'idle' };
       s.view = params.get('view') || s.tabs[3].id;
+      break;
+    case 'missing':
+      // hub accounts claude-6 and claude-7 have no tab here; the first tab was made for claude-1 but is signed in as another account
+      s.hub.owner = true;
+      s.hub.owner_until = iso(20 * 24 * HOUR);
+      s.missing = [{ seat: 'seat_01HZZZZZZZZZZZZZZZZZZZZZ06', label: 'claude-6' }, { seat: 'seat_01HZZZZZZZZZZZZZZZZZZZZZ07', label: 'claude-7' }];
+      s.tabs[3] = { ...s.tabs[3], name: 'claude-1', expected: 'claude-1', mismatch: { expected: 'claude-1', actual: 'work' }, reading: 'on', read_state: 'idle', last_read: iso(-MIN) };
       break;
     case 'owner':
       s.hub.owner = true;
@@ -105,8 +112,9 @@ const sy = {
   state: () => later(structuredClone(state), 20),
   selectView: async ({ view }) => { state.view = view; push(); },
   hubRoute: async () => later(undefined),
-  addTab: async ({ name }) => {
+  addTab: async ({ name, seat }) => {
     const id = `t_${String(nextId++).padStart(16, '0')}`;
+    if (seat) state.missing = (state.missing || []).filter((m) => m.seat !== seat);
     state.tabs.push(tab(id, name, { signed_in: false, reading: 'never_asked', needs_warning: false, last_read: null }));
     push();
     return { id };

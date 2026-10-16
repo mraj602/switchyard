@@ -60,6 +60,32 @@ function seatLook(seats, seat) {
   return seats.find((s) => s && s.account === seat.account && s.org === seat.org) ?? null;
 }
 
+const seatName = (s) => str(s?.label ?? s?.email ?? s?.org_name, 24);
+
+/**
+ * The hub accounts with no tab on this computer: none of the tabs is signed in as the account or
+ * was made for it (matched by account uuid, never by email). One entry per account, in hub order;
+ * hidden seats and seats with nothing to call them by are left out.
+ * @returns {{seat: string, label: string}[]}
+ */
+export function missingAccounts(seats, tabs) {
+  if (!Array.isArray(seats)) return [];
+  const have = new Set();
+  for (const t of Array.isArray(tabs) ? tabs : []) {
+    if (t?.seat?.account) have.add(t.seat.account);
+    if (t?.expect?.account) have.add(t.expect.account);
+  }
+  const out = [];
+  for (const s of seats) {
+    if (!s || s.hidden || typeof s.account !== 'string' || have.has(s.account)) continue;
+    const label = seatName(s);
+    if (!label || typeof s.id !== 'string' || !SEAT_ID_RE.test(s.id)) continue;
+    have.add(s.account);
+    out.push({ seat: s.id, label });
+  }
+  return out;
+}
+
 /**
  * One TabState from a TabInfo (bus 'tabs'), the newest usage payload of that tab and the hub seats.
  * @returns {import('../shared/ipc.js').TabState}
@@ -73,12 +99,22 @@ export function tabState(info, usage, seats) {
   let readState = READ_STATES.has(usage?.read_state) ? usage.read_state : null;
   if (reading === READING_OFF) readState = 'off';
   else if (!readState) readState = stopped ? 'stopped' : 'idle';
+  // A tab made for a hub account, now signed in as another one (the usage reader learned its uuid).
+  const expected = info.expect?.account ? (str(info.expect.label, 24) ?? 'the account') : null;
+  let mismatch = null;
+  if (expected && signedIn && info.seat?.account && info.seat.account !== info.expect.account) {
+    const actual = Array.isArray(seats) ? seats.find((s) => s && s.account === info.seat.account) : null;
+    mismatch = { expected, actual: seatName(actual) };
+  }
   return {
     id: info.id,
     name: str(info.name, 24) ?? '',
-    label: str(look?.label, 24),
-    colour: str(look?.colour, 7),
-    seat: typeof look?.id === 'string' && SEAT_ID_RE.test(look.id) ? look.id : null,
+    expected,
+    mismatch,
+    // A mismatched tab keeps its own name: the label, colour and seat of the account it landed in are not its.
+    label: mismatch ? null : str(look?.label, 24),
+    colour: mismatch ? null : str(look?.colour, 7),
+    seat: !mismatch && typeof look?.id === 'string' && SEAT_ID_RE.test(look.id) ? look.id : null,
     reading,
     // C5: shown once a tab could read (signed in) and the accepted version is older, unless
     // the person said "Not now" (reading off).
@@ -178,6 +214,7 @@ export function create(deps) {
     const s = seats();
     return {
       tabs: tabsInfo().map((info) => tabState(info, usage.get(info.id), s)),
+      missing: missingAccounts(s, tabsInfo()),
       view: window.selected(),
       hub: hubState(bus.last('hub'), bus.last('needs_you')),
       settings: settingsState(bus.last('settings'), deps.store?.get?.().settings, bus.last('hub')?.storage_backend),
