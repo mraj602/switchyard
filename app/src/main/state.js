@@ -90,7 +90,7 @@ export function missingAccounts(seats, tabs) {
  * One TabState from a TabInfo (bus 'tabs'), the newest usage payload of that tab and the hub seats.
  * @returns {import('../shared/ipc.js').TabState}
  */
-export function tabState(info, usage, seats) {
+export function tabState(info, usage, seats, infos = []) {
   const reading = READINGS.has(info.reading) ? info.reading : READING_NEVER_ASKED;
   const accepted = Number.isSafeInteger(info.warning_accepted) ? info.warning_accepted : 0;
   const signedIn = bool(info.signed_in);
@@ -104,7 +104,10 @@ export function tabState(info, usage, seats) {
   let mismatch = null;
   if (expected && signedIn && info.seat?.account && info.seat.account !== info.expect.account) {
     const actual = Array.isArray(seats) ? seats.find((s) => s && s.account === info.seat.account) : null;
-    mismatch = { expected, actual: seatName(actual) };
+    // Another tab already signed in as the account this one is signed in as (and really is its tab).
+    const shared = (Array.isArray(infos) ? infos : []).some((o) => o && o.id !== info.id && bool(o.signed_in) && o.seat?.account === info.seat.account
+      && !(o.expect?.account && o.expect.account !== o.seat.account));
+    mismatch = { expected, actual: seatName(actual), shared };
   }
   return {
     id: info.id,
@@ -213,7 +216,7 @@ export function create(deps) {
   function snapshot() {
     const s = seats();
     return {
-      tabs: tabsInfo().map((info) => tabState(info, usage.get(info.id), s)),
+      tabs: tabsInfo().map((info, _i, all) => tabState(info, usage.get(info.id), s, all)),
       missing: missingAccounts(s, tabsInfo()),
       view: window.selected(),
       hub: hubState(bus.last('hub'), bus.last('needs_you')),

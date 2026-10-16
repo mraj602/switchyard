@@ -20,6 +20,8 @@ const INVOKE = {
   reloadTab: 'tab:reload',
   homeTab: 'tab:home',
   openTabExternal: 'tab:external',
+  adoptTab: 'tab:adopt',
+  logoutTab: 'tab:logout',
   acceptWarning: 'usage:accept-warning',
   setReading: 'usage:set-reading',
   setSend: 'usage:set-send',

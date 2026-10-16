@@ -238,6 +238,44 @@ export function create(deps) {
     return { id: (await makeTab({ name: trimmed })).id };
   }
 
+  /**
+   * "Use this tab for <the account it is signed in as>": the tab becomes that account's. A hub account:
+   * named by its label, `expect` = its seat. An account the hub does not know: `expect` cleared (the
+   * tab follows what is signed in), named by the usage reader's display name, else "account".
+   * Returns what the shell needs for its toast: `offer` is the account the tab was made for, when it
+   * now has no tab (the existing add-for-account flow).
+   */
+  async function adoptTab({ id }) {
+    const t = rec(id);
+    if (!t) throw new Error('no such tab');
+    const account = t.seat?.account;
+    if (!account) throw new Error('this tab is not signed in as an account yet');
+    const before = t.expect ?? null;
+    const seats = hubSeats();
+    const s = seats.find((x) => x.account === account && x.org === t.seat.org) ?? seats.find((x) => x.account === account) ?? null;
+    const expect = s ? expectOf(s) : null;
+    const name = (expect ? expect.label : String(t.account_name ?? '').trim().slice(0, 24)) || 'account';
+    await store.update((d) => {
+      const x = d.tabs.find((y) => y.id === id);
+      if (!x) return;
+      x.name = name;
+      if (expect) x.expect = expect;
+      else delete x.expect;
+    });
+    emit();
+    let offer = null;
+    if (before?.account && before.account !== account && !tabForAccount(before.account)) {
+      const o = seats.find((x) => x.account === before.account && typeof x.id === 'string');
+      if (o) offer = { seat: o.id, label: before.label };
+    }
+    return { name, label: expect ? expect.label : null, offer };
+  }
+
+  /** Sign out in this tab: claude.ai's own logout page, loaded in the tab. */
+  async function logoutTab({ id }) {
+    await withView(id).view.webContents.loadURL(`${claudeOrigin}/logout`);
+  }
+
   async function updateTab({ id, name }) {
     if (!rec(id)) throw new Error('no such tab');
     if (name === undefined) return;
@@ -330,6 +368,8 @@ export function create(deps) {
     handlersRegistered = true;
     ipc.register('tab:add', addTab);
     ipc.register('tab:update', updateTab);
+    ipc.register('tab:adopt', adoptTab);
+    ipc.register('tab:logout', logoutTab);
     ipc.register('tab:remove', removeTab);
     ipc.register('tab:reorder', reorderTabs);
     ipc.register('tab:reload', async ({ id }) => {

@@ -9,7 +9,7 @@ import path from 'node:path';
 import { sandbox, launch, waitFor, outDir, sleep } from './harness.mjs';
 
 const SIZES = [[1440, 940], [720, 500]];
-const SCENARIOS = ['default', 'empty', 'no_sy', 'needs_pairing', 'stopped', 'warning', 'removed', 'direct_pairing', 'unreachable', 'board_blocked', 'owner', 'missing'];
+const SCENARIOS = ['default', 'empty', 'no_sy', 'needs_pairing', 'stopped', 'warning', 'removed', 'direct_pairing', 'unreachable', 'board_blocked', 'owner', 'missing', 'wrong'];
 // the Hub tab's own cards (and the read-only strip) are what these scenarios are about
 const HUB_VIEW = new Set(['no_sy', 'needs_pairing', 'removed', 'direct_pairing', 'unreachable', 'board_blocked', 'default', 'owner', 'missing']);
 
@@ -24,7 +24,7 @@ test('S12 renderer dev page at 1440×940 and 720×500', { timeout: 5 * 60_000 },
   });
   for (const scenario of SCENARIOS) {
     for (const [width, height] of SIZES) {
-      const url = `app://shell/dev/index.html?scenario=${scenario}&view=${scenario === 'stopped' ? 't_0000000000000001' : HUB_VIEW.has(scenario) ? 'hub' : 'settings'}`;
+      const url = `app://shell/dev/index.html?scenario=${scenario}&view=${scenario === 'stopped' ? 't_0000000000000001' : scenario === 'wrong' ? '' : HUB_VIEW.has(scenario) ? 'hub' : 'settings'}`;
       const seen = new Set(run.app.windows());
       await run.app.evaluate(({ BrowserWindow }, a) => {
         const w = new BrowserWindow({
