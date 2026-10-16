@@ -251,6 +251,12 @@ on a shared table (WP-S).
   `settings.private`); the Live Activity is kept up to date either way, and the badge is set
   from the overview's needs-you count (P6.6). `GET /v1/rules` (`snooze_min`) and `GET /v1/me`
   are read again at most every 5 minutes while polling.
+- **Order of the accounts.** Every list of seats (Accounts, Now, Analytics, Peers, Settings →
+  Claude tabs, the widget snapshot) follows `seat.order`, the owner's order from the board's
+  drag-and-drop (pwa.md 3.0; read-only here, no dragging on the phone): `reduce` puts the
+  overview's and the accounts reply's seats in that order (`orderSeats`: ties and seats without
+  an `order` keep the reply's order, the latter last). The phone has no stream, so a reorder
+  shows on the next poll (15 s in the foreground).
 
 ## P6. Notifications
 
@@ -406,7 +412,8 @@ then gets the 401 that shows Pair, P3).
 ```
 
 - `buildSnapshot(overview, accounts, now, prefs)` (pure). There are at most 4 seats, ordered
-  as the Accounts screen orders them. `top` is null in private mode. Labels are cut to 12
+  as the Accounts screen orders them: the hub's order (`seat.order`, set by the owner's
+  drag-and-drop on the board, pwa.md 3.0; seats without one last). `top` is null in private mode. Labels are cut to 12
   characters.
 - `buildTimeline(snapshot, now)` → entries `{date, props}`: one now, one at each `resets_at`
   in the next 24 h (that ring drops to 0 and reads "reset"), and one at `as_of + 60 min`
