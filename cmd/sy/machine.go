@@ -19,6 +19,7 @@ import (
 
 	"github.com/mraj602/switchyard/internal/client"
 	"github.com/mraj602/switchyard/internal/config"
+	"github.com/mraj602/switchyard/internal/desktop"
 	"github.com/mraj602/switchyard/internal/directpush"
 	"github.com/mraj602/switchyard/internal/hub/cli"
 	"github.com/mraj602/switchyard/internal/identity"
@@ -253,7 +254,8 @@ func adminChannel(e *machineEnv, flagValue string, cfg config.Config) (machinead
 	if v == "" {
 		v = cfg.Machines.HubAdmin
 	}
-	if v == "" {
+	// The local hub.db is the channel only while the hub is here: after a move it is stale.
+	if v == "" && desktop.HubHere(cfg.Hub.URL) {
 		if _, err := os.Stat(filepath.Join(e.dirs.Data.Path, "hub.db")); err == nil {
 			v = "local"
 		}
