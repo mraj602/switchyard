@@ -168,6 +168,13 @@ filters and the Analytics account picker) reads `store.overview.seats` and follo
   row, Both ways. Each choice is a `PUT /v1/peers/matrix` `edit` with `base_version` (a stale one
   is 409: the page reloads the matrix and says so): added pairs go in `allow`, removed pairs in
   `deny`.
+- **Allow all / Block all** sit above the grid: Allow all (owner session only: every account
+  pair both ways, same account on; hidden for others with "Only the owner can allow pairs.")
+  and Block all (any sign-in that may narrow: every pair removed, same account off). Each asks
+  with `confirm()` first and is one `PUT /v1/peers/matrix` `edit` (peers.md 5.4); neither is the
+  pause switch.
+- **Automated turns per thread** is a number field (2 to 500) with a Set button and the loop-guard
+  explanation (peers.md 6.3) under it. Raising it needs an owner session, lowering it does not.
 - **Who may do what** (api.yaml, keys.md 5.2): a choice that adds a pair, and the same-account
   switch turned on, widen, so they are enabled only for an owner session (`/v1/me` `owner`). A
   choice that only removes pairs, and the pause button, need an owner session or a device with

@@ -11,16 +11,18 @@ import { store, isOwner, canPush, inApp } from '../store.js';
 import { getMatrix, editMatrix, pausePeers, getPeerAudit, getPeerMessages, resumePeerThread } from '../api.js';
 import { agoLabel, dateTime } from '../format.js';
 import {
-  peerAccounts, cellState, cellLabel, cellEdit, editBody, whyNot, detailText, eventLabel, auditWho,
+  peerAccounts, allowAllEdit, blockAllEdit, allowedAll, blockedAll, parseTurns, turnsWidens,
+  TURNS_MIN, TURNS_MAX, TURNS_HELP, ALLOW_ALL_CONFIRM, BLOCK_ALL_CONFIRM, OWNER_ONLY_ALLOW, cellState, cellLabel, cellEdit, editBody, whyNot, detailText, eventLabel, auditWho,
   messageWho, outcomeLabel, sizeLabel, resumableStops, resumeText, isSetup, CELL_GLYPH, CELL_WORD, LEGEND,
 } from '../components/peers-fmt.js';
 
-const st = { matrix: null, audit: null, messages: null, error: null, pick: null, busy: false };
+const st = { matrix: null, audit: null, messages: null, error: null, pick: null, busy: false, turns: null };
 const again = () => window.dispatchEvent(new Event('sy-rerender'));
 
 export async function load() {
   st.error = null;
   st.pick = null;
+  st.turns = null;
   const [m, a, msg] = await Promise.allSettled([getMatrix(), getPeerAudit({ limit: '50' }), getPeerMessages({ limit: '50' })]);
   if (m.status === 'fulfilled') st.matrix = m.value;
   else if (m.reason && m.reason.name !== 'AuthError') st.error = m.reason.message;
@@ -43,6 +45,7 @@ async function change(widens, send) {
   try {
     st.matrix = await send();
     st.pick = null;
+    st.turns = null;
     await refreshAudit();
   } catch (ex) {
     if (ex.status === 409) { try { st.matrix = await getMatrix(); } catch (_) { /* shown below */ } toast('The matrix changed meanwhile. Check it and try again.'); }
@@ -135,6 +138,62 @@ function editor(accts, m) {
     whys.map((w) => h('p', { class: 'muted small', 'data-key': 'cell-why' }, w)));
 }
 
+// ---- bulk controls and the turn limit ------------------------------------------------------
+
+// Allow all widens (owner session only); Block all narrows (any paired device). Both go through
+// the same matrix edit as a single cell.
+function bulkBlock(accts, m) {
+  const owner = isOwner(), offline = !!store.offline;
+  const ids = accts.map((a) => a.account);
+  const allowOff = !owner ? OWNER_ONLY_ALLOW : whyNot({ widens: true, owner, push: canPush(), offline, app: inApp() });
+  const blockOff = whyNot({ widens: false, owner, push: canPush(), offline, app: inApp() });
+  const allDone = allowedAll(m.allow, ids, m.same_account), noneLeft = blockedAll(m.allow, m.same_account);
+  return h('div', { class: 'col', 'data-key': 'peers-bulk' },
+    h('div', { class: 'actions' },
+      owner ? h('button', {
+        type: 'button', class: 'btn btn-sm', 'data-key': 'allow-all', disabled: st.busy || !!allowOff || allDone,
+        title: allowOff || undefined,
+        onclick: () => { if (confirm(ALLOW_ALL_CONFIRM)) edit(allowAllEdit(m.allow, ids, m.same_account), true); },
+      }, 'Allow all') : null,
+      h('button', {
+        type: 'button', class: 'btn btn-sm btn-danger', 'data-key': 'block-all', disabled: st.busy || !!blockOff || noneLeft,
+        title: blockOff || undefined,
+        onclick: () => { if (confirm(BLOCK_ALL_CONFIRM)) edit(blockAllEdit(m.allow, m.same_account), false); },
+      }, 'Block all')),
+    !owner ? h('p', { class: 'muted small', 'data-key': 'allow-all-why' }, OWNER_ONLY_ALLOW) : null,
+    blockOff ? h('p', { class: 'muted small', 'data-key': 'block-all-why' }, blockOff) : null);
+}
+
+// "Automated turns per thread" (peers.md 5.1, 6.3): raising widens (owner only), lowering narrows.
+function turnsBlock(m) {
+  const owner = isOwner(), offline = !!store.offline;
+  const draft = st.turns === null ? String(m.max_turns) : st.turns;
+  const next = parseTurns(draft);
+  const why = next === null || next === m.max_turns ? '' : whyNot({ widens: turnsWidens(m.max_turns, next), owner, push: canPush(), offline, app: inApp() });
+  const input = h('input', {
+    type: 'number', inputmode: 'numeric', min: String(TURNS_MIN), max: String(TURNS_MAX), step: '1', value: draft,
+    'data-key': 'max-turns', 'aria-label': 'Automated turns per thread', 'aria-describedby': 'max-turns-help', disabled: st.busy ? true : undefined,
+  });
+  const apply = h('button', {
+    type: 'button', class: 'btn btn-sm', 'data-key': 'max-turns-set', disabled: st.busy || next === null || next === m.max_turns || !!why,
+    title: why || undefined,
+    onclick: () => { const n = parseTurns(input.value); if (n !== null) edit({ max_turns: n }, turnsWidens(m.max_turns, n)); },
+  }, 'Set');
+  // Typing updates the button in place (a re-render would drop the focus); the reasons refresh on change.
+  input.addEventListener('input', () => {
+    st.turns = input.value;
+    const n = parseTurns(input.value);
+    apply.disabled = st.busy || n === null || n === m.max_turns
+      || !!whyNot({ widens: turnsWidens(m.max_turns, n), owner, push: canPush(), offline, app: inApp() });
+  });
+  input.addEventListener('change', () => { st.turns = input.value; again(); });
+  return h('div', { class: 'col', 'data-key': 'peers-turns' },
+    h('label', { class: 'actions' }, h('span', { class: 'strong' }, 'Automated turns per thread:'), input, apply),
+    h('p', { class: 'muted small', id: 'max-turns-help' }, TURNS_HELP),
+    next === null ? h('p', { class: 'muted small', 'data-key': 'max-turns-why' }, `Use a whole number from ${TURNS_MIN} to ${TURNS_MAX}.`) : null,
+    why ? h('p', { class: 'muted small', 'data-key': 'max-turns-why' }, why) : null);
+}
+
 function matrixBlock() {
   const info = st.matrix;
   const m = info.matrix;
@@ -146,7 +205,7 @@ function matrixBlock() {
     h('div', { class: 'panel pad-s col' },
       accts.length < 2
         ? h('p', { class: 'muted' }, 'Peers between accounts need at least two accounts on this hub.')
-        : [grid(accts, m), editor(accts, m)],
+        : [bulkBlock(accts, m), grid(accts, m), editor(accts, m)],
       h('ul', { class: 'mx-legend muted small', 'aria-label': 'Legend' }, LEGEND.map(([g, t]) => h('li', {}, h('span', { class: 'mx-glyph', 'aria-hidden': 'true' }, g), ` ${t}`))),
       h('p', { class: 'muted small' }, 'Replies inside a thread are always allowed.'),
       toggle({
@@ -155,6 +214,7 @@ function matrixBlock() {
         onChange: (v) => edit({ same_account: v }, v),
       }),
       sameOff ? h('p', { class: 'muted small' }, sameOff) : null,
+      turnsBlock(m),
       details({ text: 'Details', key: 'peers-details' },
         h('p', { class: 'muted small', 'data-key': 'matrix-version' },
           `Version ${m.version} · signed by ${info.signer}${info.created_at ? ` · ${agoLabel(info.created_at, Date.now())}` : ''} · at most ${m.max_turns} turns per thread`))));

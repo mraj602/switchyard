@@ -73,6 +73,24 @@ export function narrowings(allow: [string, string][], from: string, to: string, 
   return res;
 }
 
+/** The board's confirm for Block all (peers.md 5.4). */
+export const BLOCK_ALL_CONFIRM = 'Stop all peer messages between accounts? Threads in progress stop too.';
+/** The loop guard's explanation (peers.md 6.3), the same sentence the board shows. */
+export const TURNS_HELP =
+  'A thread is one conversation between two sessions. After this many messages with no one typing in either session, delivery stops until you type in one of them (or Resume thread). This stops two agents replying to each other forever.';
+export const ALLOW_FROM_COMPUTER = 'Allow pairs from a computer (board, Peers)';
+
+/** Block all (peers.md 5.4): every allowed pair removed and same_account off. Only ever narrows. */
+export function blockAllEdit(allow: [string, string][], sameAccount: boolean, version: number): MatrixEdit {
+  const edit: MatrixEdit = { base_version: version };
+  if (allow.length) edit.deny = allow.map((p): [string, string] => [p[0], p[1]]);
+  if (sameAccount) edit.same_account = false;
+  return edit;
+}
+
+/** True when Block all would change nothing. */
+export const blockedAll = (allow: [string, string][], sameAccount: boolean): boolean => !sameAccount && allow.length === 0;
+
 export function sizeLabel(n: number): string {
   if (!Number.isFinite(n) || n < 0) return '';
   if (n < 1000) return `${n} B`;
