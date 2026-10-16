@@ -4,7 +4,7 @@
 // Routes: see route.js. Start-up asks GET /v1/me: a 401 opens the pair screen (installed
 // app or phone) or the token login (a computer).
 
-import { store, subscribe, start, stop, setAuthLostHandler, refreshAll, canPush, inApp } from './store.js';
+import { store, subscribe, start, stop, setAuthLostHandler, refreshAll, canPush, inApp, forgetOwner } from './store.js';
 import { logout, getJSON } from './api.js';
 import { renderNav } from './components/nav.js';
 import { h } from './components/dom.js';
@@ -50,9 +50,9 @@ function go(hash) {
   if (location.hash === hash) render(); else location.hash = hash;
 }
 
-// Where a signed-out visitor lands: the pair screen on a phone or in the installed app,
-// the token login on a computer.
-const unauthRoute = () => (isStandalone() || isMobile(navigator.userAgent, navigator.maxTouchPoints, navigator.platform) ? '#/pair' : '#/login');
+// Where a signed-out visitor lands: the pair screen on a phone or in the installed app, the
+// sign-in page on a computer and in the desktop app's Hub view (which shows no CLI there).
+const unauthRoute = () => (!inApp() && (isStandalone() || isMobile(navigator.userAgent, navigator.maxTouchPoints, navigator.platform)) ? '#/pair' : '#/login');
 
 function showUnauth() {
   authed = false;
@@ -187,8 +187,14 @@ function renderBanners() {
   bannersEl.replaceChildren(...kids);
 }
 
+// Sign out revokes this browser's device on the hub (pairing.md 6). A browser paired with a
+// code needs a new code to come back, so it asks first; an owner or board session just ends.
 async function doLogout() {
+  const d = store.me && store.me.device;
+  if (d && String(d.created_by || '').startsWith('pair:') && !store.me.owner
+    && !confirm('Sign out? This browser is removed from the hub. To come back, pair it again with a code or open an owner link.')) return;
   try { await logout(); } catch (_) { /* cookie may already be gone */ }
+  forgetOwner();
   showUnauth();
 }
 

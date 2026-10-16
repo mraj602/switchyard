@@ -68,11 +68,17 @@ export function editBody(matrix, edit) {
 
 // Why a change is not available to this caller, or '' when it is. Widening needs an owner
 // session; narrowing needs one too, or a device with the push scope. `app`: the desktop app's
-// Hub view, where owner sign-in is a button in the app's Settings.
+// Hub view, where owner sign-in is a button on the Hub tab.
 export function whyNot({ widens, owner, push, offline, app }) {
   if (offline) return 'Offline: the matrix cannot change now.';
-  if (widens && !owner) return app ? 'Widening needs an owner sign-in: use Sign in as owner in the app’s Settings, Hub.' : 'Widening needs an owner sign-in: run sy hub owner-link on the hub.';
-  if (!owner && !push) return app ? 'This sign-in can only read. Sign in as owner in the app’s Settings, Hub, to narrow.' : 'This sign-in can only read. Sign in as owner, or use a paired phone, to narrow.';
+  if (widens && !owner) {
+    return app ? 'Widening needs an owner sign-in. Use Sign in as owner on the Hub tab.'
+      : 'Widening needs an owner sign-in. Sign in as owner: open an owner link from an owner device (More, Devices, Make another device owner).';
+  }
+  if (!owner && !push) {
+    return app ? 'This sign-in can only read. Use Sign in as owner on the Hub tab to narrow.'
+      : 'This sign-in can only read. Sign in as owner (an owner link from an owner device: More, Devices, Make another device owner), or use a paired phone, to narrow.';
+  }
   return '';
 }
 

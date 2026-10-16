@@ -5,7 +5,7 @@
 // hub signs it only then. A control that is not available says why.
 
 import { h } from '../components/dom.js';
-import { section, toggle, toast, moreTabs, details } from '../components/ui.js';
+import { section, toggle, toast, moreTabs, details, ownerHintNode } from '../components/ui.js';
 import { seatIndex, seatName } from '../components/seat.js';
 import { store, isOwner, canPush, inApp } from '../store.js';
 import { getMatrix, editMatrix, pausePeers, getPeerAudit, getPeerMessages, resumePeerThread } from '../api.js';
@@ -233,6 +233,6 @@ export function render() {
     matrixBlock(),
     auditBlock(label),
     messagesBlock(label),
-    !owner ? h('p', { class: 'muted small' }, 'Widening, and resuming after a pause or a loop-guard stop, need an owner sign-in: run sy hub owner-link on the hub.') : null);
+    !owner ? ownerHintNode({ app: inApp(), lead: 'Widening, and resuming after a pause or a loop-guard stop, need an owner sign-in.', key: 'peers-owner-hint' }) : null);
   return { title: 'Peers · Switchyard', node };
 }
