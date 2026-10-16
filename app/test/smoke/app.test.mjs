@@ -13,7 +13,6 @@ import {
 import { startFakeClaude, uuidOf, USAGE_DIR } from '../fakes/claude/server.js';
 import { FUNCTIONS } from '../../src/shared/ipc.js';
 import { SHELL_CSP, WARNING_VERSION } from '../../src/shared/constants.js';
-import { badgeFile } from '../../src/shared/badge.js';
 
 const CADENCE_MS = 2000;
 const WARNING_TITLE = 'Read usage for this account?';
@@ -355,11 +354,12 @@ test('Electron smoke S1–S11', { timeout: 15 * 60_000 }, async (t) => {
       const r = await main(run.app, (m) => ({
         available: m.tray.available(),
         count: m.tray.count(),
+        icon: m.tray.iconName(),
         labels: m.tray.buildMenu().items.map((i) => i.label),
       }));
       return r.count === 1 ? r : null;
     }, 20_000, 'needs-you count 1');
-    assert.equal(badgeFile(tray.count), 'tray-1.png');
+    assert.match(tray.icon, /^(tray-dot-\d+\.png|trayDotTemplate\.png)$/);
     assert.ok(tray.labels.some((l) => typeof l === 'string' && l.includes(' · api · ')), JSON.stringify(tray.labels));
     assert.equal((await shellState(run.shell)).hub.needs_you, 1);
     if (!tray.available) t.diagnostic('no tray icon on this display (the count and menu still follow needs_you)');

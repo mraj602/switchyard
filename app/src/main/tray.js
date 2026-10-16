@@ -150,6 +150,8 @@ export function create(deps) {
       return tray !== null && !tray.isDestroyed?.();
     },
     count: () => count,
+    /** The icon file name in use (a dot variant while something needs you); for the smoke test. */
+    iconName: () => (platform === 'darwin' ? `${count > 0 ? 'trayDotTemplate' : 'trayTemplate'}.png` : `${count > 0 ? 'tray-dot' : 'tray'}-${TRAY_SIZE[platform] ?? 22}.png`),
     buildMenu,
   };
 }
