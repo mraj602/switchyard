@@ -6,7 +6,8 @@ import { windowRow, sortWindows, worstPace, paceChip } from '../components/windo
 import { planText, placesText, kvList, usageMoney, noUsage } from '../components/cards.js';
 import { liveCounts } from '../components/state.js';
 import { agoLabel, plural, pct } from '../format.js';
-import { isOwner, ensureSessions } from '../store.js';
+import { isOwner, ensureSessions, reorderSeats } from '../store.js';
+import { moveBy, dropTarget, dropOrder, moveSentence } from '../components/order.js';
 import { patchJSON } from '../api.js';
 import { toast } from '../components/ui.js';
 
@@ -68,10 +69,105 @@ export function mostRoom(seats, now = Date.now()) {
   return best;
 }
 
+// ---- the order of the accounts ---------------------------------------------------------------
+// The owner drags a card by its grip (pointer events: mouse, pen and touch), or focuses the
+// grip and presses the arrow keys (Alt+arrow anywhere on a card works too). The hub keeps the
+// order for every device (PUT /v1/seats/order); the board shows it at once (store.reorderSeats).
+// The pure parts are in components/order.js.
+const drag = { id: '', drop: null };
+const move = { error: '', said: '' };
+
+let store0 = () => ({ overview: null }); // the store of the last render
+const shownIds = () => (store0().overview ? store0().overview.seats.filter((s) => !s.hidden).map((s) => s.id) : []);
+const cardRects = () => [...document.querySelectorAll('.grid-accounts > .seat-card')].map((el) => {
+  const r = el.getBoundingClientRect();
+  return { id: el.id.replace(/^seat-/, ''), left: r.left, top: r.top, width: r.width, height: r.height };
+});
+
+// Marks the dragged card and the drop place straight in the DOM (a redraw reads `drag` too).
+function paintDrag() {
+  const grid = document.querySelector('.grid-accounts');
+  if (!grid) return;
+  for (const el of grid.querySelectorAll('.seat-card')) {
+    const id = el.id.replace(/^seat-/, '');
+    el.classList.toggle('seat-dragging', id === drag.id);
+    el.classList.toggle('drop-before', !!drag.drop && drag.drop.target === id && !drag.drop.after && id !== drag.id);
+    el.classList.toggle('drop-after', !!drag.drop && drag.drop.target === id && drag.drop.after && id !== drag.id);
+  }
+  const tops = new Set(cardRects().map((r) => Math.round(r.top)));
+  grid.dataset.cols = tops.size < grid.querySelectorAll('.seat-card').length ? 'n' : '1';
+}
+
+async function commit(ids, id, name) {
+  move.error = '';
+  const err = await reorderSeats(ids);
+  if (err) { move.error = err; toast(err); move.said = ''; } else move.said = moveSentence(name, ids, id);
+  again();
+}
+
+function endDrag(drop) {
+  window.removeEventListener('pointermove', onMove);
+  window.removeEventListener('pointerup', onUp);
+  window.removeEventListener('pointercancel', onCancel);
+  window.removeEventListener('keydown', onEsc, true);
+  document.body.classList.remove('dragging-seat');
+  const id = drag.id;
+  drag.id = ''; drag.drop = null;
+  paintDrag();
+  if (!drop || !id) return;
+  const next = dropOrder(shownIds(), id, drop);
+  if (next) commit(next, id, nameOf(id));
+}
+
+const nameOf = (id) => {
+  const s = store0().overview && store0().overview.seats.find((x) => x.id === id);
+  return s ? seatName(s) : '';
+};
+
+function onMove(e) {
+  if (!drag.id) return;
+  drag.drop = dropTarget(cardRects(), e.clientX, e.clientY);
+  paintDrag();
+  // Near the top or bottom of the window the page scrolls under the pointer.
+  if (e.clientY < 60) window.scrollBy(0, -14); else if (e.clientY > window.innerHeight - 60) window.scrollBy(0, 14);
+}
+function onUp(e) { drag.drop = dropTarget(cardRects(), e.clientX, e.clientY); endDrag(drag.drop); }
+function onCancel() { endDrag(null); }
+function onEsc(e) { if (e.key === 'Escape') { e.preventDefault(); endDrag(null); } }
+
+function startDrag(e, seat) {
+  if (e.button !== undefined && e.button !== 0) return;
+  e.preventDefault();
+  drag.id = seat.id; drag.drop = null;
+  document.body.classList.add('dragging-seat');
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onCancel);
+  window.addEventListener('keydown', onEsc, true);
+  paintDrag();
+}
+
+const KEY_DELTA = { ArrowUp: -1, ArrowLeft: -1, ArrowDown: 1, ArrowRight: 1 };
+function keyMove(e, seat, needAlt) {
+  const delta = KEY_DELTA[e.key];
+  if (!delta || (needAlt && !e.altKey)) return;
+  e.preventDefault();
+  e.stopPropagation(); // the grip and the card both listen: one move per key
+  const ids = shownIds();
+  const next = moveBy(ids, seat.id, delta);
+  if (next !== ids) commit(next, seat.id, seatName(seat));
+}
+
+const grip = (seat, name) => h('button', { type: 'button', class: 'seat-grip', 'data-key': `seat-grip-${seat.id}`,
+  'aria-label': `Move ${name}: drag, or press the arrow keys`, title: 'Drag to reorder (or use the arrow keys)',
+  onpointerdown: (e) => startDrag(e, seat), onkeydown: (e) => keyMove(e, seat, false) },
+  h('span', { 'aria-hidden': 'true' }, '⠿'));
+
 let focused = '';
 export const load = () => { focused = ''; return ensureSessions(); };
 
 export function render({ store, route, now }) {
+  store0 = () => store;
   const o = store.overview;
   const idx = seatIndex(o.seats);
   const seats = o.seats.filter((s) => !s.hidden);
@@ -86,8 +182,10 @@ export function render({ store, route, now }) {
         : 'Limits come from the Claude Code status line.')),
     namesCollide(seats) && isOwner() ? h('p', { class: 'calm small', 'data-key': 'label-hint' }, 'Some accounts have nearly the same name. Use Edit to give each one a short label.') : null,
     roomLine(seats, now),
+    move.error ? h('p', { class: 'form-error', role: 'alert', 'data-key': 'order-error' }, move.error) : null,
+    h('p', { class: 'sr-only', role: 'status', 'aria-live': 'polite', 'data-key': 'order-said' }, move.said),
     seats.length === 0 ? h('p', { class: 'calm' }, 'No accounts yet.') :
-      h('div', { class: 'grid grid-accounts' }, seats.map((s) => accountCard(s, idx.get(s.id).colour, now, route.query.get('seat') === s.id, counts ? counts.seat.get(s.id) || 0 : s.live_sessions))));
+      h('div', { class: 'grid grid-accounts', 'data-key': 'accounts-grid' }, seats.map((s) => accountCard(s, idx.get(s.id).colour, now, route.query.get('seat') === s.id, counts ? counts.seat.get(s.id) || 0 : s.live_sessions, isOwner() && seats.length > 1))));
   const want = route.query.get('seat');
   if (want && focused !== want) {
     focused = want;
@@ -105,7 +203,7 @@ function roomLine(seats, now) {
     ` (${left(best.five)} of the 5-hour limit left${week && week.used_pct != null ? `, ${left(week)} of the week` : ''})`);
 }
 
-function accountCard(seat, colour, now, highlight, live) {
+function accountCard(seat, colour, now, highlight, live, canMove) {
   const ws = sortWindows(seat.windows || []);
   const name = seatName(seat);
   const worst = worstPace(ws, now);
@@ -114,8 +212,11 @@ function accountCard(seat, colour, now, highlight, live) {
   const extra = money.length ? null : kvList(seat.extra_usage);
   const spend = money.length ? null : kvList(seat.spend);
   const where = placesText(seat);
-  return h('article', { class: `card seat-card seat-card-full${highlight ? ' highlight' : ''}`, id: `seat-${seat.id}`, style: { '--seat': colour }, 'aria-label': name },
+  const dropClass = drag.id && drag.drop && drag.drop.target === seat.id && drag.id !== seat.id ? (drag.drop.after ? ' drop-after' : ' drop-before') : '';
+  return h('article', { class: `card seat-card seat-card-full${highlight ? ' highlight' : ''}${drag.id === seat.id ? ' seat-dragging' : ''}${dropClass}`, id: `seat-${seat.id}`, style: { '--seat': colour }, 'aria-label': name,
+    onkeydown: canMove ? (e) => { if (e.altKey) keyMove(e, seat, true); } : undefined },
     h('div', { class: 'seat-head' },
+      canMove ? grip(seat, name) : null,
       h('h2', { class: 'seat-name' }, name),
       h('span', { class: 'muted small' }, planText(seat)),
       isOwner() && edit.id !== seat.id ? h('button', { type: 'button', class: 'linkish', 'data-key': `seat-edit-${seat.id}`,

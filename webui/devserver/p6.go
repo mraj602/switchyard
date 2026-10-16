@@ -12,6 +12,7 @@ const DesktopToken = "sy_d_devdesktop000000000000000000000000000000"
 
 func (s *Server) phase6Routes() {
 	s.mux.HandleFunc("PATCH /v1/accounts/{seat}", s.guard(s.patchSeat, "owner"))
+	s.mux.HandleFunc("PUT /v1/seats/order", s.guard(s.putSeatOrder, "owner"))
 }
 
 func seatLabelOK(v string) bool {
