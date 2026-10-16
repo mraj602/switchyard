@@ -6,7 +6,7 @@ import { create, needsYouText } from './tray.js';
 import { createBus } from './bus.js';
 import { fakeElectron } from '../../test/fakes/electron.js';
 
-function setup(platform, { confirm = async () => true, throwTray = false, darkTheme = false } = {}) {
+function setup(platform, { confirm = async () => true, throwTray = false, darkTheme = false, env = {} } = {}) {
   const fake = fakeElectron({ platform });
   const themeListeners = [];
   fake.electron.nativeTheme = {
@@ -28,7 +28,7 @@ function setup(platform, { confirm = async () => true, throwTray = false, darkTh
   const window = { win, showWindow: () => calls.push(['show']) };
   const usage = { refresh: async () => calls.push(['refresh']), pauseAll: async () => calls.push(['pause']) };
   const hub = { route: async (r) => calls.push(['route', r]) };
-  const tray = create({ electron: fake.electron, bus, window, usage, hub, platform, assetsDir: '/assets', confirm });
+  const tray = create({ electron: fake.electron, bus, window, usage, hub, platform, assetsDir: '/assets', confirm, env });
   return { fake, bus, calls, tray };
 }
 
@@ -41,7 +41,7 @@ test('start() creates the tray with the empty image', () => {
   const { fake, tray } = setup('linux');
   assert.equal(tray.start(), true);
   assert.equal(tray.available(), true);
-  assert.deepEqual(fake.callsOf('Tray.new')[0][0], icon('dark', 'tray-22.png'));
+  assert.deepEqual(fake.callsOf('Tray.new')[0][0], icon('light', 'tray-22.png'));
 });
 
 test('start() is false when the tray cannot be made', () => {
@@ -57,7 +57,7 @@ test('linux: dot image and count by state, tooltip carries the count', () => {
   bus.emit('needs_you', needs(12));
   bus.emit('needs_you', needs(0));
   assert.deepEqual(fake.callsOf('app.setBadgeCount').map((a) => a[0]), [0, 3, 12, 0]);
-  assert.deepEqual(imgs(fake).slice(-3), [icon('dark', 'tray-dot-22.png'), icon('dark', 'tray-dot-22.png'), icon('dark', 'tray-22.png')]);
+  assert.deepEqual(imgs(fake).slice(-3), [icon('light', 'tray-dot-22.png'), icon('light', 'tray-dot-22.png'), icon('light', 'tray-22.png')]);
   assert.equal(fake.callsOf('Tray.setTitle').length, 0);
   bus.emit('needs_you', needs(1));
   assert.equal(fake.trays[0].toolTip, '1 session needs you');
@@ -66,13 +66,28 @@ test('linux: dot image and count by state, tooltip carries the count', () => {
   assert.equal(needsYouText(0), '');
 });
 
-test('the glyph follows the theme: light ink on dark bars, and updates on change', () => {
-  const { fake, tray } = setup('linux', { darkTheme: true });
+test('linux: always the light glyph (panels are dark), whatever the theme; SWITCHYARD_TRAY_ICON overrides', () => {
+  const a = setup('linux', { darkTheme: false });
+  a.tray.start();
+  assert.equal(a.fake.trays[0].image.path, icon('light', 'tray-22.png'));
+  const b = setup('linux', { darkTheme: true, env: { SWITCHYARD_TRAY_ICON: 'dark' } });
+  b.tray.start();
+  assert.equal(b.fake.trays[0].image.path, icon('dark', 'tray-22.png'));
+  const c = setup('linux', { darkTheme: false, env: { SWITCHYARD_TRAY_ICON: 'light' } });
+  c.tray.start();
+  assert.equal(c.fake.trays[0].image.path, icon('light', 'tray-22.png'));
+  const d = setup('linux', { env: { SWITCHYARD_TRAY_ICON: 'bogus' } });
+  d.tray.start();
+  assert.equal(d.fake.trays[0].image.path, icon('light', 'tray-22.png'));
+});
+
+test('windows: the glyph follows the theme, and updates on change', () => {
+  const { fake, tray } = setup('win32', { darkTheme: true });
   tray.start();
-  assert.equal(fake.trays[0].image.path, icon('light', 'tray-22.png'));
+  assert.equal(fake.trays[0].image.path, icon('light', 'tray-16.png'));
   fake.electron.nativeTheme.shouldUseDarkColors = false;
   fake.themeListeners.forEach((fn) => fn());
-  assert.equal(fake.trays[0].image.path, icon('dark', 'tray-22.png'));
+  assert.equal(fake.trays[0].image.path, icon('dark', 'tray-16.png'));
   tray.stop();
   assert.equal(fake.themeListeners.length, 0);
 });
@@ -140,5 +155,5 @@ test('start() takes the newest needs_you already on the bus', () => {
   const { fake, bus, tray } = setup('linux');
   bus.emit('needs_you', needs(5));
   tray.start();
-  assert.equal(fake.trays[0].image.path, icon('dark', 'tray-dot-22.png'));
+  assert.equal(fake.trays[0].image.path, icon('light', 'tray-dot-22.png'));
 });
