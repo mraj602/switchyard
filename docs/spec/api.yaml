@@ -330,6 +330,52 @@ paths:
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
 
+  /v1/seats/order:
+    put:
+      tags: [read]
+      operationId: putSeatOrder
+      summary: Set the order of the accounts (drag and drop on the Accounts page)
+      description: |
+        pwa.md Accounts. The owner's order of the seats, the same on every device. The listed
+        seats come first in the order given; seats not listed (hidden ones, or one that
+        appeared after the caller last looked) follow in their current order, so a partial
+        list is allowed and an empty list only renumbers. Every id must name a seat and none
+        may repeat (400 otherwise, and nothing changes; at most 500 ids). The hub renumbers
+        `seat.sort_order` 0..n-1 (the `order` of `Seat`), so positions are unique afterwards.
+        A new seat sorts after every seat already ordered. `GET /v1/accounts`,
+        `GET /v1/overview` and the stream all list seats by `order`, then by first sight.
+        Publishes a `seats` stream event with every seat id in the new order, so open boards,
+        the desktop app and the phone's next refresh show it with no reload.
+      x-scopes: [owner]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids:
+                  type: array
+                  maxItems: 500
+                  items: {type: string}
+              additionalProperties: false
+      responses:
+        "200":
+          description: Every seat (hidden ones too), in the new order.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accounts]
+                properties:
+                  accounts:
+                    type: array
+                    items: {$ref: "#/components/schemas/Seat"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
   /v1/accounts/{seat}/windows:
     get:
       tags: [read]
@@ -538,6 +584,7 @@ paths:
                 usage: {$ref: "#/components/schemas/StreamUsage"}
                 machine: {$ref: "#/components/schemas/StreamMachine"}
                 alert: {$ref: "#/components/schemas/StreamAlert"}
+                seats: {$ref: "#/components/schemas/StreamSeats"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
 
@@ -2021,7 +2068,7 @@ components:
         plan: {type: [string, "null"]}
         label: {type: [string, "null"]}
         colour: {type: [string, "null"]}
-        order: {type: integer}
+        order: {type: integer, description: "Display position: seats are listed by it (PUT /v1/seats/order sets it, 0..n-1)."}
         hidden: {type: boolean}
         windows:
           type: array
@@ -2421,7 +2468,7 @@ components:
 
     StreamEventType:
       type: string
-      enum: [hello, reset, ping, session, usage, machine, alert]
+      enum: [hello, reset, ping, session, usage, machine, alert, seats]
 
     StreamHello:
       type: object
@@ -2466,6 +2513,16 @@ components:
       required: [machine]
       properties:
         machine: {$ref: "#/components/schemas/Machine"}
+
+    StreamSeats:
+      type: object
+      description: The owner reordered the accounts (PUT /v1/seats/order).
+      required: [order]
+      properties:
+        order:
+          type: array
+          description: Every seat id (hidden ones too) in the new display order.
+          items: {type: string}
 
     StreamAlert:
       type: object

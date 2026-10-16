@@ -28,6 +28,7 @@ const ASSETS = [
   'components/nav.js',
   'components/pair-error.js',
   'components/notif-note.js',
+  'components/order.js',
   'components/peers-fmt.js',
   'components/qr.js',
   'components/quiet.js',
