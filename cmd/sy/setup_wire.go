@@ -493,7 +493,7 @@ func (e *setupEnv) applyDeps(st model.State, p model.Plan) apply.Deps {
 		Plugins:     pluginmkt.New(e.runner),
 		Service:     service.New(e.serviceEnv()),
 		Connector:   syConnector{e: e},
-		Exec:        apply.OSExec{Dir: e.dirs.State.Path},
+		Exec:        apply.OSExec{Dir: e.dirs.State.Path, Claude: e.claude},
 		Contents:    e.contentsFor(st, p),
 		ConfigSet:   e.configSet,
 		RemoveTimer: e.removeTimer,
