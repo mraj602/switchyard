@@ -1,9 +1,12 @@
 // Settings (P4): hub and status, notifications, private pushes, tap
-// behaviour, own quiet hours, the widgets refresh switch, Claude tabs (P17), app version and Unpair.
-import { useState } from 'react';
+// behaviour, own quiet hours, the widgets refresh switch, Claude tabs (P17), appearance (light, dark
+// or device default), app version and Unpair.
+import { useEffect, useState } from 'react';
 import { Alert as RNAlert, Switch, Text, TextInput, View } from 'react-native';
 import type { PushTestResult, QuietHours, TapMode } from '../../contract/api';
+import { loadTheme, saveTheme, THEME_CHOICES, type ThemeChoice } from '../appearance';
 import { clock } from '../../lib/format';
+import { systemCache } from '../../state/platform';
 import { updateText, type Updater } from '../../lib/update';
 import { ClaudeTabsSection } from '../claude-tabs-section';
 import { useUpdate } from '../use-update';
@@ -166,6 +169,8 @@ export default function SettingsScreen() {
 
       <ClaudeTabsSection toast={toast.show} />
 
+      <AppearanceSection />
+
       <Section title="App version">
         <Card>
           <KV k="Version" v={`${api.app.version} (${api.app.build})`} />
@@ -245,5 +250,40 @@ function QuietEditor({ value, disabled, onSave, onInvalid }: {
         </View>
       ) : null}
     </View>
+  );
+}
+
+/** Appearance: device default (the default), light or dark; this phone only. */
+function AppearanceSection() {
+  const t = useTheme();
+  const [choice, setChoice] = useState<ThemeChoice | null>(null);
+  useEffect(() => {
+    let live = true;
+    void loadTheme(systemCache).then((c) => live && setChoice(c));
+    return () => {
+      live = false;
+    };
+  }, []);
+  return (
+    <Section title="Appearance">
+      <Card>
+        <Text style={{ color: t.text, fontWeight: '600' }}>Theme</Text>
+        <Muted>{"Device default follows your phone's light or dark setting."}</Muted>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+          {THEME_CHOICES.map((c) => (
+            <Chip
+              key={c.value}
+              testID={`theme-${c.value}`}
+              label={c.label}
+              on={(choice ?? 'system') === c.value}
+              onPress={() => {
+                setChoice(c.value);
+                void saveTheme(systemCache, c.value);
+              }}
+            />
+          ))}
+        </View>
+      </Card>
+    </Section>
   );
 }

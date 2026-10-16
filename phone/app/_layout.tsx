@@ -15,6 +15,7 @@ import type { Glue } from '../src/lib/integrate';
 import { initNotifications } from '../src/lib/notify';
 import type { NotificationsLike } from '../src/lib/notify';
 import { routeToHref } from '../src/lib/links';
+import { loadTheme } from '../src/components/appearance';
 import { bridge, HubGlue, HubProvider, installStateHooks, systemGluePlatform, useHub } from '../src/state';
 import type { ProviderDeps } from '../src/state';
 import { getAppInfo, systemAppState, systemCache, systemClock, systemFetch, systemLink, systemSecureHub } from '../src/state/platform';
@@ -39,6 +40,8 @@ if (!g.__syNotifInit || !g.__syGlue) {
   });
 }
 const glue: Glue = g.__syGlue!;
+// The saved colour scheme (Settings, Appearance) before the first screen paints, as far as it can.
+void loadTheme(systemCache);
 
 function Gate() {
   const { status } = useHub();
