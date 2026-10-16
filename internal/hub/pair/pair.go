@@ -67,10 +67,11 @@ var (
 // telling a used link from an expired one gives nothing to a guesser, and it tells the
 // owner what to do. Typed codes keep the single ErrInvalid answer.
 const (
-	LinkUsed      = "link_used"
-	LinkExpired   = "link_expired"
-	LinkCancelled = "link_cancelled"
-	LinkUnknown   = "link_unknown"
+	LinkUsed       = "link_used"
+	LinkExpired    = "link_expired"
+	CodeNeedsHTTPS = "needs_https" // 400: the address is plain http and a phone needs https
+	LinkCancelled  = "link_cancelled"
+	LinkUnknown    = "link_unknown"
 )
 
 // LinkError is a 401 of owner sign-in with its reason. At is when the link was used,
@@ -137,7 +138,17 @@ func (e *LimitError) Error() string {
 }
 
 func badRequest(msg string) error { return &ClaimError{400, "bad_request", msg} }
-func conflict(msg string) error   { return &ClaimError{409, "conflict", msg} }
+
+// urlError is the answer for an address NormalizeURL refused: needs_https has its own code,
+// so the board can show the hub's message and tools can tell it from other bad requests.
+func urlError(err error) error {
+	if errors.Is(err, ErrNeedsHTTPS) {
+		return &ClaimError{400, CodeNeedsHTTPS, err.Error()}
+	}
+	return badRequest(err.Error())
+}
+
+func conflict(msg string) error { return &ClaimError{409, "conflict", msg} }
 
 // Service makes and claims pairing codes over the hub's store.
 type Service struct {
@@ -424,7 +435,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Code, error) {
 	}
 	origin, plain, err := NormalizeURL(req.URL, req.Kind, req.Insecure)
 	if err != nil {
-		return Code{}, badRequest(err.Error())
+		return Code{}, urlError(err)
 	}
 	ttl, err := s.ttl(ctx, req.TTL)
 	if err != nil {
@@ -525,7 +536,7 @@ type OwnerLink struct {
 func (s *Service) CreateOwnerLink(ctx context.Context, req OwnerLinkRequest) (OwnerLink, error) {
 	origin, plain, err := NormalizeURL(req.URL, "owner", req.Insecure)
 	if err != nil {
-		return OwnerLink{}, badRequest(err.Error())
+		return OwnerLink{}, urlError(err)
 	}
 	ttl, err := s.ttl(ctx, req.TTL)
 	if err != nil {
