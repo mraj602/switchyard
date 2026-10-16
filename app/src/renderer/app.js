@@ -11,7 +11,7 @@
 import { WARNING_VERSION } from '../shared/constants.js';
 import { barWidth, pct, bytes, plural } from '../shared/format.js';
 import {
-  tabTitle, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds,
+  tabTitle, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds, droppedIds,
   effectiveView, windowRows, readingStatus, lastReadTitle, hubBanner, hubUsable, hubSummary,
   SHARE_SWITCHES, foldersOf, isPrimary, switchState, shareSpec, loginCommand, COLOUR_RE, PAIR_CODE_RE,
 } from './view.js';
@@ -203,6 +203,12 @@ export function start({ sy, root }) {
         class: 'tab', role: 'tab', id: `tab-${t.id}`, fk: `tab-${t.id}`, 'aria-selected': String(sel), tabindex: sel ? '0' : '-1',
         'aria-controls': 'content', title: `${tabTitle(t)}${i < 9 ? ` (Ctrl+${i + 1})` : ''}`, 'data-id': t.id,
         onclick: () => select(t.id),
+        draggable: 'true',
+        ondragstart: (e) => { drag.id = t.id; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', t.id); },
+        ondragover: (e) => dragOver(e, t.id),
+        ondragleave: (e) => e.currentTarget.classList.remove('drop-before', 'drop-after'),
+        ondrop: (e) => dropOn(e, t.id),
+        ondragend: () => { drag.id = null; clearDropMarks(); },
       }, h('span', { class: 'dot', style: { background: tabColour(t, i) } }), h('span', { class: 'tab-name', text: tabTitle(t) }));
     });
 
@@ -252,6 +258,33 @@ export function start({ sy, root }) {
       const n = root.querySelector(`[data-fk="tab-${target}"]`);
       if (n) n.focus();
     });
+  }
+
+  // Drag to reorder: only account tabs are draggable and drop targets, so the Hub stays first and
+  // "+" last. The order goes through the same tab:reorder as the keyboard and Settings moves.
+  const drag = { id: null };
+  const clearDropMarks = () => root.querySelectorAll('.tab.drop-before, .tab.drop-after').forEach((n) => n.classList.remove('drop-before', 'drop-after'));
+  const dropAfter = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return e.clientX > r.left + r.width / 2;
+  };
+  function dragOver(e, overId) {
+    if (!drag.id || drag.id === overId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    clearDropMarks();
+    e.currentTarget.classList.add(dropAfter(e) ? 'drop-after' : 'drop-before');
+  }
+  async function dropOn(e, overId) {
+    e.preventDefault();
+    const id = drag.id;
+    const after = dropAfter(e);
+    drag.id = null;
+    clearDropMarks();
+    if (!id) return;
+    const next = droppedIds(state.tabs.map((t) => t.id), id, overId, after);
+    if (!next) return;
+    await act('reorder', () => sy.reorderTabs({ ids: next }));
   }
 
   async function moveTab(id, delta) {

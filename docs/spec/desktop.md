@@ -140,7 +140,7 @@ not used). Before calling a handler it checks the following.
 | `tab:add` | `{name: string ≤ 24}` | `{id}` | B |
 | `tab:update` | `{id, name?}` | — | B |
 | `tab:remove` | `{id}` (clears that partition's storage) | — | B |
-| `tab:reorder` | `{ids: [id…]}` | — | B |
+| `tab:reorder` | `{ids: [id…]}` (account tab ids in the new display order; ids not listed keep their order after the listed ones, unknown ids are dropped) | — | B |
 | `tab:reload` / `tab:home` / `tab:external` | `{id}` | — | B |
 | `usage:accept-warning` | `{id, version: int}` | — | B |
 | `usage:set-reading` | `{id, on: bool}` | — | B |
@@ -179,6 +179,14 @@ Wave 0 details fixed by `src/shared/ipc.js`:
   control characters; `seat:update.seat` matches `^seat_[0-9A-HJKMNP-TV-Z]{26}$` (a hub seat
   id), `label` and `colour` the `SeatPatch` patterns or `null`; `accounts:share` uses the C11
   patterns; `toast.text` is 1 to 500 characters. Only plain objects are accepted.
+
+Reordering account tabs (shell tab bar). The Hub tab is always first and "+" always last: only
+account tabs are draggable and drop targets, and the order sent is account tabs only. Three ways
+to move a tab, all ending in `tab:reorder`: drag a tab and drop it on the left or right half of
+another tab (a bar marks the insertion side); focus a tab and press Alt+Left or Alt+Right
+(Alt+Shift+Left/Right works the same); or use the up/down buttons of a tab's row in Settings.
+Main stores the order in `app-state.json` (the order of `tabs`), which is also the order of the
+Ctrl+1..9 shortcuts and of the strip, so it survives restarts.
 
 ## C4. `sy desktop` (Go, WP-S)
 
@@ -260,7 +268,9 @@ full_name, display_name} | {__status}, active_org, fetch_ms}`.
 | --- | --- |
 | Every call 2xx | Reset the backoff; build the records; update the strip |
 | Network error, 5xx, script error, bad shape | Back off 5, 10, 20, 40, then 60 min (cap), plus jitter; the strip says "retrying at 14:20" |
-| 401 or 403 on any call | `stopped = {status}`; append one `web_usage` with `error: {status, message}` for each known seat of the tab (none if the seat is unknown); the strip says "Stopped: signed out (401). Resume" |
+| 401 on any call (or a redirect to `/login`) | `stopped = {status}`; append one `web_usage` with `error: {status, message}` for each known seat of the tab (none if the seat is unknown); the strip says "Stopped: signed out (401). Resume" |
+| 403 on `/api/organizations` or `/api/account` | The same stop with status 403; the strip says "Usage not available for this account (403)." (not "signed out": a 403 is a refusal, a 401 is a sign-out) |
+| 403 on one org's `/usage` | That org is dropped from the read; the other orgs are read (a Team member belongs to several orgs, and not every one serves usage to a member). Only if every org 403s is it the stop above |
 | 429 | The same, with "Stopped: rate limited (429). Resume" |
 | `usage:resume` | Clear `stopped`, read now |
 | `usage:set-reading {on: false}` | Clear the timers; mark any read in flight as cancelled, so its result is dropped before the outbox (a sequence number checked after `await`); nothing more is read or appended for that tab |

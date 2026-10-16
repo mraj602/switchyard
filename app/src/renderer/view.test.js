@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  tabTitle, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds,
+  tabTitle, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds, droppedIds,
   effectiveView, windowLabel, windowRows, readingStatus, hubBanner, hubSummary, hubUsable, foldersOf,
   switchState, shareSpec, SHARE_SWITCHES, isPrimary, loginCommand, SHARE_FOLDER_RE,
 } from './view.js';
@@ -158,4 +158,16 @@ test('folders and commands', () => {
   assert.equal(loginCommand(folder({ label: '' })), 'sy account login ~/.claude-2');
   assert.equal(SHARE_FOLDER_RE.test('~/.claude-2'), true);
   assert.equal(SHARE_FOLDER_RE.test('~/a b'), false);
+});
+
+test('droppedIds: drop before or after a tab; no-ops are null', () => {
+  const ids = ['a', 'b', 'c', 'd'];
+  assert.deepEqual(droppedIds(ids, 'a', 'c', false), ['b', 'a', 'c', 'd']);
+  assert.deepEqual(droppedIds(ids, 'a', 'c', true), ['b', 'c', 'a', 'd']);
+  assert.deepEqual(droppedIds(ids, 'd', 'a', false), ['d', 'a', 'b', 'c']);
+  assert.equal(droppedIds(ids, 'b', 'a', true), null, 'already there');
+  assert.equal(droppedIds(ids, 'b', 'c', false), null, 'already there');
+  assert.equal(droppedIds(ids, 'b', 'b', true), null);
+  assert.equal(droppedIds(ids, 'x', 'a', true), null, 'unknown dragged id (the Hub)');
+  assert.equal(droppedIds(ids, 'a', 'hub', false), null, 'the Hub is not a drop target');
 });
