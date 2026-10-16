@@ -1,10 +1,12 @@
-// Owner sign-in: #/owner?s=<secret> from `sy hub owner-link`. Swaps the one-time secret for an
-// owner session cookie, then opens Settings.
+// Owner sign-in: #/owner?s=<secret> from an owner device (More, Devices, Make another device
+// owner), the hub's first start or `sy hub owner-link`. Swaps the one-time secret for an owner
+// session cookie, then opens Settings.
 
 import { h } from '../components/dom.js';
 import { ownerSignIn } from '../api.js';
 import { brandRow } from '../components/ui.js';
 import { deviceName } from '../platform.js';
+import { inApp } from '../store.js';
 import { clock as clockOf, lifetime } from '../format.js';
 
 const st = { phase: 'idle', error: '' };
@@ -14,19 +16,22 @@ const again = () => window.dispatchEvent(new Event('sy-rerender'));
 // second POST; a different secret (a fresh link pasted into this tab) is tried.
 let sent = '';
 
-const NEW_LINK = 'Run sy hub owner-link on the hub for a new one.';
+// Where a new link comes from: an owner device first; the hub's computer only in a browser
+// (inside the desktop app, the Hub tab's Sign in as owner).
+const newLink = () => (inApp() ? 'Use Sign in as owner on the Hub tab for a new one.'
+  : 'Get a new one on an owner device (More, Devices, Make another device owner), or run sy hub owner-link on the hub’s computer.');
 const clock = (at) => { const t = at ? clockOf(at) : ''; return t ? ` (${t})` : ''; };
 // lasted is how long the link worked: the hub sends the lifetime it was made with
 // (`sy hub owner-link --ttl`), which is not always the default 10 minutes.
 const lasted = (ttlS) => { const d = lifetime(ttlS); return d ? `: it worked for ${d} after it was made` : ''; };
 function refusal(e) {
   switch (e.code) {
-    case 'link_used': return `This sign-in link was already used${clock(e.at)}. ${NEW_LINK}`;
-    case 'link_expired': return `This sign-in link expired${clock(e.at)}${lasted(e.ttl_s)}. ${NEW_LINK}`;
-    case 'link_cancelled': return `This sign-in link was cancelled. ${NEW_LINK}`;
-    case 'link_unknown': return `This hub does not know that sign-in link. Check that the whole link was opened, or: ${NEW_LINK}`;
+    case 'link_used': return `This sign-in link was already used${clock(e.at)}. ${newLink()}`;
+    case 'link_expired': return `This sign-in link expired${clock(e.at)}${lasted(e.ttl_s)}. ${newLink()}`;
+    case 'link_cancelled': return `This sign-in link was cancelled. ${newLink()}`;
+    case 'link_unknown': return `This hub does not know that sign-in link. Check that the whole link was opened, or: ${newLink()}`;
   }
-  return `This sign-in link was already used or has expired. ${NEW_LINK}`;
+  return `This sign-in link was already used or has expired. ${newLink()}`;
 }
 
 export async function load({ route, onLoggedIn }) {
@@ -35,7 +40,7 @@ export async function load({ route, onLoggedIn }) {
   if (secret ? secret === sent : sent) return;
   sent = secret;
   st.error = '';
-  if (!secret) { st.phase = 'error'; st.error = `This link has no sign-in secret. ${NEW_LINK}`; return; }
+  if (!secret) { st.phase = 'error'; st.error = `This link has no sign-in secret. ${newLink()}`; return; }
   st.phase = 'working';
   again();
   try {
@@ -54,7 +59,7 @@ export async function load({ route, onLoggedIn }) {
 export function render() {
   const body = st.phase === 'error'
     ? h('div', { class: 'card login-card' }, h('h1', {}, 'Owner sign-in'), h('p', { class: 'form-error', role: 'alert', 'data-key': 'owner-error' }, st.error),
-      h('a', { class: 'btn', href: '#/login' }, 'Sign in with a token instead'))
+      inApp() ? null : h('a', { class: 'btn', href: '#/login', 'data-key': 'owner-other-ways' }, 'Other ways to sign in'))
     : h('div', { class: 'card login-card' }, h('h1', {}, 'Owner sign-in'), h('p', { class: 'muted', role: 'status' }, 'Signing in…'));
   return { title: 'Owner sign-in · Switchyard', node: h('div', { class: 'login-wrap' }, h('div', { class: 'login-col' }, brandRow(), body)) };
 }

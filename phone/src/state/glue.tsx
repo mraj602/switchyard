@@ -152,6 +152,8 @@ export function HubGlue({ glue, clock = systemClock, children }: { glue: Glue; c
     ...(updater ? { updater } : {}),
     ...(countdown ? { countdown } : {}),
     ...(autoCountdown ? { autoCountdown } : {}),
+    moved: hub.moved,
+    switchToMoved: hub.switchToMoved,
     unpair: hub.unpair,
   };
   return <HubApiProvider value={value}>{children}</HubApiProvider>;

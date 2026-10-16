@@ -40,6 +40,21 @@ export class HubError extends Error {
   }
 }
 
+/** A hub call refused with 403: the action needs an owner session, which a phone never has. */
+export const OWNER_ONLY = 'Only the owner can change this, from a computer.';
+
+/** Phone words for a failed hub call: never "GET /path: 403 forbidden". */
+export function errorText(e: unknown, fallback: string): string {
+  if (e instanceof HubError) {
+    if (e.status === 403) return OWNER_ONLY;
+    if (e.code === 'timeout') return 'The hub did not answer in time.';
+    if (e.code === 'network') return "Can't reach the hub right now.";
+    if (e.status != null) return `${fallback} (the hub answered ${e.status}).`;
+    return fallback;
+  }
+  return e instanceof Error && e.message ? e.message : fallback;
+}
+
 export interface HubClientDeps {
   origin: string; // https://hub.example.ts.net
   token: string;
@@ -62,6 +77,11 @@ export interface SessionsQuery {
 export interface HubClient {
   readonly origin: string;
   health(): Promise<boolean>; // GET /health within 1.5 s
+  /**
+   * GET /health: where a hub frozen for a move says it went (machines.md 8.1, `frozen.moved_to`),
+   * as an origin; null when the hub is not frozen, gave no address, or could not be asked.
+   */
+  movedTo(): Promise<string | null>;
   me(): Promise<Me>;
   overview(): Promise<Overview>;
   sessions(q?: SessionsQuery): Promise<SessionsPage>;
@@ -131,6 +151,18 @@ export function normalizeOrigin(origin: string): string {
   const pm = /^(.*):(\d{1,5})$/.exec(authority);
   if (pm && DEFAULT_PORT[scheme] === String(Number(pm[2]))) authority = pm[1]!;
   return `${scheme}://${authority}`;
+}
+
+/**
+ * A `moved_to` from /health as an https origin other than `current`; null for anything else
+ * (nothing, junk, plain http, the hub's own address). Only scheme and host[:port] are kept.
+ */
+export function movedOrigin(v: unknown, current: string): string | null {
+  if (typeof v !== 'string' || v.length > 300) return null;
+  const m = /^https:\/\/([^\s/?#@]+)(?:[/?#].*)?$/i.exec(v.trim());
+  if (!m) return null;
+  const o = normalizeOrigin(`https://${m[1]}`);
+  return o === normalizeOrigin(current) ? null : o;
 }
 
 /** The answer came from `origin` (compared after normalising both, so ":443" is the same). */
@@ -230,6 +262,15 @@ export function createHubClient(deps: HubClientDeps): HubClient {
         return res.ok;
       } catch {
         return false;
+      }
+    },
+    async movedTo() {
+      try {
+        const res = await send(fetch, clock, { method: 'GET', path: '/health', timeoutMs: HEALTH_TIMEOUT_MS, origin });
+        const body = (await res.json()) as { frozen?: { moved_to?: unknown } };
+        return movedOrigin(body?.frozen?.moved_to, origin);
+      } catch {
+        return null;
       }
     },
     me: () => call<Me>('GET', '/v1/me'),

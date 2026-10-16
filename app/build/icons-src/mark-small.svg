@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" width="22" height="22">
+  <!-- The in-app wordmark: the small master as a 22 px tile with rounded corners. Inlined by
+       app/src/renderer/app.js and webui/static/components/nav.js. -->
+  <rect width="22" height="22" rx="5" fill="#17191B"/>
+  <g transform="translate(2.5 2.5) scale(0.7727)" fill="none" stroke="#E8B04B" stroke-width="2.6" stroke-linejoin="miter" stroke-linecap="butt">
+    <path d="M3 18 L11 4 L19 18"/>
+    <path d="M7 18 L11 11 L15 18"/>
+  </g>
+</svg>

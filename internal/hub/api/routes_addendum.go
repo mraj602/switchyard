@@ -27,6 +27,8 @@ var addendumRoutes = []Route{
 	{Method: "GET", Path: "/v1/peers/audit", Scopes: []string{"owner", "read"}},
 	{Method: "GET", Path: "/v1/app/android", Scopes: []string{"owner", "read", "push"}},
 	{Method: "GET", Path: "/v1/app/android/apk", Scopes: []string{"owner", "read", "push"}},
+	// Flows redesign (pairing.md 4.1): an owner session makes an owner link for another device.
+	{Method: "POST", Path: "/v1/owner-links", Scopes: []string{"owner"}},
 }
 
 func isAddendum(method, path string) bool { return inTable(addendumRoutes, method, path) }

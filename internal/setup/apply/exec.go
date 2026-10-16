@@ -25,6 +25,10 @@ type OSExec struct {
 	// <cwd>/.claude/settings.json as project settings, so plugin commands must run from a
 	// neutral folder (setup.md 5.2: the state dir), never $HOME. Empty means os.TempDir().
 	Dir string
+	// Claude is the claude binary setup located (claudecli.Locate). Plans name it "claude";
+	// over a non-interactive SSH session ~/.local/bin is often not on PATH, so argv[0]
+	// "claude" runs this path instead. Empty means a PATH lookup.
+	Claude string
 }
 
 // Run implements Exec.
@@ -38,7 +42,11 @@ func (e OSExec) Run(ctx context.Context, argv []string, env map[string]*string) 
 	}
 	ctx, cancel := context.WithTimeout(ctx, t)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
+	name := argv[0]
+	if name == "claude" && e.Claude != "" {
+		name = e.Claude
+	}
+	cmd := exec.CommandContext(ctx, name, argv[1:]...)
 	cmd.Env = overlayEnv(os.Environ(), env)
 	cmd.Dir = e.Dir
 	if cmd.Dir == "" {

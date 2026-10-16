@@ -49,6 +49,11 @@ button { cursor: pointer; }
 .hub-chip { font-size: 12px; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--hair); color: var(--muted); background: transparent; flex: none; }
 .hub-chip.warn { color: var(--warn-ink); background: var(--warn-bg); border-color: transparent; }
 .hub-chip.error { color: var(--failed); background: var(--failed-bg); border-color: transparent; }
+.hub-chip.ok { color: var(--ink); }
+.owner-pill { font-size: 12px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--hair); color: var(--muted); flex: none; }
+.owner-pill.owner { color: var(--info-ink); background: var(--info-bg); border-color: transparent; }
+.settings-btn { display: inline-flex; align-items: center; gap: 6px; }
+.settings-btn .gear { font-size: 15px; line-height: 1; }
 .hub-chip.info { color: var(--info-ink); background: var(--info-bg); border-color: transparent; }
 .toast {
   flex: 0 1 auto; max-width: 40%; padding: 4px 10px; border-radius: 8px; font-size: 13px; overflow: hidden;
@@ -157,6 +162,12 @@ td.muted, .muted { color: var(--muted); }
 
 .hub-panel { position: absolute; inset: 0; overflow: auto; display: flex; align-items: flex-start; justify-content: center; padding: 48px 24px; }
 .hub-panel .inner { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 16px; }
+.hub-panel.ok { padding: 0; flex-direction: column; align-items: stretch; justify-content: flex-start; overflow: hidden; }
+.hub-panel.ok .inner { max-width: none; padding: 16px 24px; }
+.hub-strip { box-sizing: border-box; height: 44px; flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px; background: var(--info-bg); color: var(--ink); font-size: 13px; border-bottom: 1px solid var(--hair); }
+.banner-title { font-weight: 600; }
+.connect-form { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 420px; }
+.connect-form label { font-size: 12px; color: var(--muted); }
 .hub-panel h1 { margin: 0; font-size: 22px; font-weight: 600; }
 
 .report { font-family: var(--mono); font-size: 12px; white-space: pre-wrap; background: var(--ground); border-radius: 8px; padding: 10px; margin: 0; overflow-wrap: anywhere; }

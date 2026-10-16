@@ -97,12 +97,33 @@ func (s *Server) authenticate(r *http.Request) *caller {
 	return c
 }
 
+// revokedCaller reports whether r carries a known token that was revoked.
+func (s *Server) revokedCaller(r *http.Request) bool {
+	tok := ""
+	if ck, err := r.Cookie(CookieName); err == nil {
+		tok = ck.Value
+	} else if t, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer "); ok {
+		tok = t
+	}
+	if tok == "" || s.callerFor(tok, false) == nil {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.revoked[tok]
+}
+
 // guard authenticates, checks that the caller holds one of scopes (none listed: any
 // caller) and applies the cookie rule for state-changing requests.
 func (s *Server) guard(h func(http.ResponseWriter, *http.Request, *caller), scopes ...string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c := s.authenticate(r)
 		if c == nil {
+			if s.revokedCaller(r) {
+				// api.yaml Unauthorized: a known token says why it was refused.
+				writeJSON(w, 401, M{"error": "this device was removed from the hub", "code": "unauthorized", "reason": "revoked"})
+				return
+			}
 			writeErr(w, 401, "unauthorized", "missing or unknown token")
 			return
 		}
@@ -316,6 +337,7 @@ func (s *Server) phase4Routes() {
 	m("GET /v1/pair/codes/{id}", g(s.getPairCode, "owner"))
 	m("DELETE /v1/pair/codes/{id}", g(s.cancelPairCode, "owner"))
 	m("POST /v1/pair/claim", s.claim)
+	m("POST /v1/owner-links", g(s.makeOwnerLink, "owner"))
 
 	m("GET /v1/devices", g(s.listDevices, "owner"))
 	m("GET /v1/devices/{id}", g(s.getDevice, "owner", "read", "push"))
@@ -418,6 +440,18 @@ func (s *Server) makePairCode(w http.ResponseWriter, r *http.Request, c *caller)
 		out["command"] = "sy connect " + origin(r) + " --code 482-913"
 	}
 	writeJSON(w, 201, out)
+}
+
+// makeOwnerLink is POST /v1/owner-links (pairing.md 4.1): the mock's one owner link
+// (OwnerSecret), 10 minutes, tracked as pc_dev1 like a pairing code.
+func (s *Server) makeOwnerLink(w http.ResponseWriter, r *http.Request, c *caller) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := s.opts.Now()
+	s.pair = pairState{created: true, kind: "owner", createdAt: now, expiresAt: now.Add(10 * time.Minute)}
+	url := origin(r) + "/#/owner?s=" + OwnerSecret
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, 201, M{"id": "pc_dev1", "url": url, "expires_at": ts(s.pair.expiresAt), "qr": fakeQR(url)})
 }
 
 // fakeQR is a deterministic 29x29 module matrix (finder patterns plus pseudo-random fill)

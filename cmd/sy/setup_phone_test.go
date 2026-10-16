@@ -136,7 +136,7 @@ func TestPhoneStepMessages(t *testing.T) {
 		want  string
 	}{
 		{"none", model.State{}, model.HubChoice{Mode: model.HubLater}, true, "Phone: later (connect a hub first, then sy phone pair)"},
-		{"remote join", model.State{}, model.HubChoice{Mode: model.HubJoin, URL: "https://hub.example/"}, true, "Phone: open https://hub.example -> Settings -> Add phone, or run `sy phone pair` on the hub"},
+		{"remote join", model.State{}, model.HubChoice{Mode: model.HubJoin, URL: "https://hub.example/"}, true, "Phone: open https://hub.example as owner -> More -> Devices -> Add phone, or run `sy phone pair` on the hub"},
 		{"remote kept", hubURL("https://hub.example"), model.HubChoice{Mode: model.HubKeep}, true, "Phone: open https://hub.example"},
 		{"local quiet", model.State{}, model.HubChoice{Mode: model.HubHere}, false, "Phone: run `sy phone pair` on this machine"},
 		{"kept loopback quiet", hubURL("http://localhost:8787"), model.HubChoice{}, false, "Phone: run `sy phone pair` on this machine"},

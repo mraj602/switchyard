@@ -56,3 +56,24 @@ func TestOSExecExit1GoalHoldsAndDir(t *testing.T) {
 		t.Error("not_found exit 1 must fail")
 	}
 }
+
+// TestOSExecClaudeUsesLocatedPath: a plan's argv[0] "claude" runs the located binary, so setup
+// works over SSH where ~/.local/bin is not on PATH (sy machine add).
+func TestOSExecClaudeUsesLocatedPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("sh script")
+	}
+	bin := t.TempDir()
+	fake := filepath.Join(bin, "claude-located")
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\necho located\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", t.TempDir())
+	out, err := (OSExec{Claude: fake}).Run(context.Background(), []string{"claude", "plugin", "list"}, nil)
+	if err != nil || strings.TrimSpace(string(out)) != "located" {
+		t.Fatalf("out %q err %v, want the located binary", out, err)
+	}
+	if _, err := (OSExec{}).Run(context.Background(), []string{"claude", "--version"}, nil); err == nil {
+		t.Error("without Claude, argv[0] claude must be looked up on PATH (empty here)")
+	}
+}

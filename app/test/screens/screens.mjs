@@ -253,7 +253,7 @@ async function phaseMain() {
     await shots(run, 'dialog-remove-tab', { themes: ['light'], sizes: [BIG] });
     await run.shell.keyboard.press('Escape');
     // ---- owner
-    const o = await run.shell.evaluate(() => window.sy.ownerSignIn());
+    const o = await run.shell.evaluate(() => window.sy.ownerSignIn({}));
     if (!o.ok) notes.push(`owner: ${JSON.stringify(o)}`);
     await sleep(3000);
     await boardTour(run, hub, 'owner', BOARD_ROUTES.filter(([n]) => ['now', 'settings', 'devices', 'accounts', 'alerts', 'more'].includes(n)));
