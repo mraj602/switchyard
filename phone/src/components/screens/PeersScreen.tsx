@@ -1,11 +1,12 @@
 // Peers (PE3; peers.md 5, 10, 11): the matrix, Pause all peers and the audit list. Read-only
-// except narrowing: a tapped cell can only lose pairs, and the pause switch only pauses.
+// except narrowing: a tapped cell can only lose pairs, Block all removes every pair, and the pause
+// switch only pauses. The turn limit (6.3) is shown, not edited.
 // Allowing, and resuming after a pause, need the owner on the board or at a terminal.
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import type { MatrixInfo, PeerAuditEntry, PeerMessage } from '../../contract/api';
 import {
-  agoLabel, auditWho, cellLabel, cellState, CELL_GLYPH, CELL_WORD, detailText, eventLabel, messageWho, narrowings,
+  agoLabel, auditWho, ALLOW_FROM_COMPUTER, BLOCK_ALL_CONFIRM, blockAllEdit, blockedAll, TURNS_HELP, cellLabel, cellState, CELL_GLYPH, CELL_WORD, detailText, eventLabel, messageWho, narrowings,
   outcomeLabel, peerAccounts, sizeLabel,
 } from '../../lib/format';
 import { HubError, OWNER_ONLY, errorText } from '../../lib/hub';
@@ -119,6 +120,21 @@ export default function PeersScreen() {
 
       <Section title="Accounts">
         <Card>
+          <View testID="peers-bulk" style={{ gap: 6 }}>
+            <Btn
+              testID="block-all"
+              kind="danger"
+              label="Block all"
+              disabled={off || blockedAll(m.allow, m.same_account)}
+              onPress={() =>
+                Alert.alert('Block all?', BLOCK_ALL_CONFIRM, [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Block all', style: 'destructive', onPress: () => void run(() => client!.editMatrix(blockAllEdit(m.allow, m.same_account, m.version))) },
+                ])
+              }
+            />
+            <Muted>{ALLOW_FROM_COMPUTER}</Muted>
+          </View>
           {accounts.length < 2 ? (
             <Muted>Peers between accounts need at least two accounts on this hub.</Muted>
           ) : (
@@ -166,6 +182,11 @@ export default function PeersScreen() {
             </ScrollView>
           )}
           <Muted>⇄ both ways · → may start a thread · ← only the other may start one · · none · = same account{m.same_account ? '' : ' (off)'}. Replies inside a thread are always allowed.</Muted>
+          <View testID="peers-turns" style={{ gap: 2, marginTop: 4 }}>
+            <Text style={{ color: t.text, fontWeight: '600' }}>{`Automated turns per thread: ${m.max_turns}`}</Text>
+            <Muted>{TURNS_HELP}</Muted>
+            <Muted>Change it on the board (Peers).</Muted>
+          </View>
           {picked?.from && picked.to ? (
             <View testID="cell-editor" style={{ gap: 6, marginTop: 4 }}>
               <Text style={{ color: t.text, fontWeight: '600' }}>{`${picked.from.label} and ${picked.to.label}: ${CELL_WORD[cellState(m.allow, pick!.from, pick!.to)]}`}</Text>

@@ -57,6 +57,46 @@ export function cellEdit(allow, from, to, target) {
   return { allow: add, deny: del, widens: add.length > 0 };
 }
 
+// Allow all (peers.md 5.4): every ordered pair of the given accounts, and same_account on. The
+// edit adds only what is missing; widens is true when it adds anything.
+export function allowAllEdit(allow, accounts, sameAccount) {
+  const add = [];
+  for (const a of accounts) for (const b of accounts) if (a !== b && !hasPair(allow, a, b)) add.push([a, b]);
+  const edit = { allow: add, deny: [], widens: add.length > 0 };
+  if (!sameAccount) { edit.same_account = true; edit.widens = true; }
+  return edit;
+}
+
+// Block all: every pair in the matrix removed and same_account off. Always a narrowing.
+export function blockAllEdit(allow, sameAccount) {
+  const deny = (allow || []).map((p) => [p[0], p[1]]);
+  const edit = { allow: [], deny, widens: false };
+  if (sameAccount) edit.same_account = false;
+  return edit;
+}
+
+export const allowedAll = (allow, accounts, sameAccount) => !!sameAccount && !allowAllEdit(allow, accounts, sameAccount).widens;
+export const blockedAll = (allow, sameAccount) => !sameAccount && !(allow || []).length;
+
+// The loop-guard limit (peers.md 5.1, 6.3): 2 to 500, the hub's own bound.
+export const TURNS_MIN = 2;
+export const TURNS_MAX = 500;
+export const TURNS_HELP = 'A thread is one conversation between two sessions. After this many messages with no one typing in either session, delivery stops until you type in one of them (or Resume thread). This stops two agents replying to each other forever.';
+export const ALLOW_ALL_CONFIRM = 'Allow every account to message every other account, both ways?';
+export const BLOCK_ALL_CONFIRM = 'Stop all peer messages between accounts? Threads in progress stop too.';
+export const OWNER_ONLY_ALLOW = 'Only the owner can allow pairs.';
+
+// The whole number in a text field, or null when it is not one inside the range.
+export function parseTurns(text) {
+  const t = String(text == null ? '' : text).trim();
+  if (!/^\d+$/.test(t)) return null;
+  const n = Number(t);
+  return n >= TURNS_MIN && n <= TURNS_MAX ? n : null;
+}
+
+// Raising the limit widens (owner only); lowering narrows.
+export const turnsWidens = (current, next) => next > current;
+
 // The body of PUT /v1/peers/matrix for an edit; base_version makes a stale edit a 409.
 export function editBody(matrix, edit) {
   const b = { base_version: matrix.version };
