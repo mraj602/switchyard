@@ -126,7 +126,8 @@ describe('Now', () => {
     data.sessions = data.sessions.map((x) => (x.state === 'done' ? { ...x, last_message: null, question: null, detail: 'started' } : strip(x)));
     await show(<NowScreen />, { data });
     expect(screen.queryByText('permission_request')).toBeNull();
-    expect(screen.getAllByText('No details were sent.').length).toBeGreaterThan(0);
+    // The state's own ask stands in for the missing text, never the detail code.
+    expect(screen.getAllByText(/Wants permission for a tool|Waiting for your reply|No details were sent/).length).toBeGreaterThan(0);
     await show(<SessionsScreen />, { data });
     expect(screen.queryByText('permission_request')).toBeNull();
     expect(screen.queryByText('started')).toBeNull();

@@ -4,7 +4,7 @@
 import { Text, View } from 'react-native';
 import type { Seat, Window } from '../../contract/api';
 import {
-  agoLabel, clock, mostRoom, paceInfo, pct, plural, seatIndex, seatName, sortWindows, until, windowLabel, worstPace,
+  agoLabel, clock, mostRoom, paceInfo, pct, planLabel, plural, seatIndex, seatName, sortWindows, until, windowLabel, worstPace,
 } from '../../lib/format';
 import { useHubApi } from '../hub-api';
 import { go } from '../nav';
@@ -72,7 +72,7 @@ function AccountCard({ seat, colour, now, highlight, canCountdown, onCountdown, 
       <Card accent={colour} style={highlight ? { borderColor: colour, borderWidth: 2 } : undefined}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <Text accessibilityRole="header" style={{ color: t.text, fontSize: 18, fontWeight: '700' }}>{name}</Text>
-          <Muted>{[seat.plan, seat.org_name].filter(Boolean).join(' · ')}</Muted>
+          <Muted>{[planLabel(seat.plan), seat.org_name].filter(Boolean).join(' · ')}</Muted>
         </View>
         <Muted>
           {[seat.email, places ? `used on ${places}` : '', seat.live_sessions ? plural(seat.live_sessions, 'live session') : ''].filter(Boolean).join(' · ')}
@@ -85,7 +85,8 @@ function AccountCard({ seat, colour, now, highlight, canCountdown, onCountdown, 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                   <Text style={{ color: t.text }}>{windowLabel(w)}</Text>
                   <Text style={{ color: w.used_pct != null && w.used_pct >= 90 ? t.bad : t.text }}>
-                    {w.used_pct == null ? 'no data' : `${pct(w.used_pct)}${w.resets_at ? ` · ${clock(w.resets_at, now)}` : ''}${w.used_pct >= 90 ? ' high' : ''}`}
+                    {/* The reset time is on the line below; red already says the window is nearly full. */}
+                    {w.used_pct == null ? 'no data' : `${pct(w.used_pct)} used`}
                   </Text>
                 </View>
                 <Meter value={w.used_pct} colour={colour} label={`${name} ${windowLabel(w)} used`} />

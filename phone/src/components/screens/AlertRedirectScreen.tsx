@@ -30,7 +30,7 @@ export default function AlertRedirectScreen({ id }: { id: string }) {
   }, [client, id]);
 
   return (
-    <Page>
+    <Page back>
       {error ? (
         <>
           <Calm>{error}</Calm>

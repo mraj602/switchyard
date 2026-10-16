@@ -1,4 +1,6 @@
 // Colours and spacing of the app's screens. Light and dark follow the system setting.
+// The palette is the board's (webui/static/styles/base.css) and the icon's: ink #17191B and the
+// gold accent #E8B04B, so the phone, the board and the launcher icon read as one product.
 import { useColorScheme } from 'react-native';
 
 export interface Theme {
@@ -17,17 +19,22 @@ export interface Theme {
 }
 
 export const LIGHT: Theme = {
-  bg: '#F6F7F8', card: '#FFFFFF', text: '#14171A', muted: '#5C646D', line: '#E1E4E8', accent: '#0E7C76', accentText: '#FFFFFF',
-  ok: '#18794E', warn: '#9A6700', bad: '#C62828', needs: '#B45309', track: '#E3E6EA',
+  bg: '#F3F4F1', card: '#FFFFFF', text: '#17191B', muted: '#5E646B', line: '#DFE1DC', accent: '#E8B04B', accentText: '#17191B',
+  ok: '#2E6B3A', warn: '#8A5A00', bad: '#B42318', needs: '#C2410C', track: '#E9EBE6',
 };
 
 export const DARK: Theme = {
-  bg: '#0F1214', card: '#1A1E21', text: '#ECEFF1', muted: '#9AA3AB', line: '#2B3136', accent: '#35B8AE', accentText: '#06201E',
-  ok: '#4CC38A', warn: '#E5B53B', bad: '#FF7B72', needs: '#F2A154', track: '#2B3136',
+  bg: '#121416', card: '#1B1E21', text: '#ECEEEF', muted: '#9AA1A8', line: '#2C3034', accent: '#E8B04B', accentText: '#17191B',
+  ok: '#7CC48A', warn: '#E8B04B', bad: '#F0877D', needs: '#F08A57', track: '#2A2E32',
 };
 
 export function useTheme(): Theme {
   return useColorScheme() === 'dark' ? DARK : LIGHT;
+}
+
+/** Switch colours: the accent track when on (React Native's default is a platform teal). */
+export function switchColors(t: Theme): { trackColor: { false: string; true: string }; thumbColor: string } {
+  return { trackColor: { false: t.line, true: t.accent }, thumbColor: '#FFFFFF' };
 }
 
 export const SPACE = { xs: 4, s: 8, m: 12, l: 16, xl: 24 } as const;

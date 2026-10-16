@@ -7,7 +7,7 @@ import type { LinkState } from '../../contract/link';
 import type { PushTestResult } from '../../contract/api';
 import { batteryWords, knownMaker, linkErrorWords, linkStatusWords, makerGuide, PING_CHOICES_S, verifiedWords } from '../../lib/notify';
 import { useHubApi } from '../hub-api';
-import { useTheme } from '../theme';
+import { switchColors, useTheme } from '../theme';
 import { useSelf } from '../use-self';
 import { Btn, Calm, Card, Chip, KV, Muted, Page, Section, useToast } from '../ui';
 import { testText } from './SettingsScreen';
@@ -55,7 +55,7 @@ export default function NotifySettingsScreen() {
 
   if (!link) {
     return (
-      <Page title="Notifications">
+      <Page back title="Notifications">
         <Calm>Instant delivery is part of the Android app built without Google services. This build uses the system push service.</Calm>
       </Page>
     );
@@ -117,7 +117,7 @@ export default function NotifySettingsScreen() {
   const err = s ? linkErrorWords(s.lastError) : null;
 
   return (
-    <Page title="Notifications" toast={toast.node}>
+    <Page back title="Notifications" toast={toast.node}>
       {noTarget ? (
         <Card>
           <Text testID="link-no-target" style={{ color: t.text }}>
@@ -134,6 +134,7 @@ export default function NotifySettingsScreen() {
               <Muted>Keeps a connection to your hub. Uses a small, constant notification.</Muted>
             </View>
             <Switch
+              {...switchColors(t)}
               accessibilityLabel="Instant delivery"
               testID="link-enabled"
               value={!!s?.enabled}

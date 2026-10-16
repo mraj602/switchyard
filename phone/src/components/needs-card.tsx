@@ -20,6 +20,14 @@ export const swipeAction = (dx: number): 'seen' | 'snooze' | null => (dx >= THRE
 /** What the session wants from you, as one line. Never the internal `detail` code (the board's ask). */
 export const ask = (s: Pick<Session, 'question' | 'last_message'>): string => s.question || s.last_message || '';
 
+/** The line shown when the hook sent no text: what the state itself asks for. */
+export const noAsk = (s: Pick<Session, 'state'>): string =>
+  s.state === 'needs_permission'
+    ? 'Wants permission for a tool. Open it to decide.'
+    : s.state === 'asked'
+      ? 'Waiting for your reply.'
+      : 'No details were sent.';
+
 export function LinkButtons({ session, toast }: { session: Session; toast: (m: string) => void }) {
   const url = httpsUrl(session.remote_url);
   return (
@@ -83,18 +91,19 @@ export function NeedsCard({ session, seats, now, act, canAct, snoozeMin, toast }
           <Muted>{ago(session.state_since, now)}</Muted>
         </View>
         <Text style={{ color: t.text, fontSize: 15, fontFamily: session.state === 'needs_permission' ? 'Courier' : undefined }} numberOfLines={4}>
-          {ask(session) || 'No details were sent.'}
+          {ask(session) || noAsk(session)}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Dot colour={seat.colour} />
           <Muted>{`${seat.label} · ${projectOf(session)}${session.machine_name ? ' · ' + session.machine_name : ''}`}</Muted>
         </View>
         {a ? <Muted>{alertText(a, now)}</Muted> : null}
+        {/* The actions sit inside the card they act on (they used to float between cards). */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+          <AlertButtons session={session} act={act} canAct={canAct} snoozeMin={snoozeMin} />
+          <LinkButtons session={session} toast={toast} />
+        </View>
       </Card>
-      <View style={{ gap: 8, marginTop: 6 }}>
-        <AlertButtons session={session} act={act} canAct={canAct} snoozeMin={snoozeMin} />
-        <LinkButtons session={session} toast={toast} />
-      </View>
     </Animated.View>
   );
 }

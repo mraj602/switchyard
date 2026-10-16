@@ -75,7 +75,7 @@ export default function SessionScreen({ id, alert: alertParam }: { id: string; a
   const s: SessionDetail | null = detail && fromList ? { ...detail, alert: fromList.alert ?? detail.alert } : detail ?? (fromList ? { ...fromList, timeline: [] } : null);
 
   if (!s) {
-    return <Page title="Session"><Calm>{error || 'Loading session…'}</Calm></Page>;
+    return <Page title="Session" back><Calm>{error || 'Loading session…'}</Calm></Page>;
   }
 
   const idx = seatIndex(api.data.overview?.seats ?? []);
@@ -100,7 +100,7 @@ export default function SessionScreen({ id, alert: alertParam }: { id: string; a
   ];
 
   return (
-    <Page toast={toast.node}>
+    <Page toast={toast.node} back>
       <View style={{ gap: 4 }}>
         <Text accessibilityRole="header" style={{ color: t.text, fontSize: 24, fontWeight: '700' }}>
           {projectOf(s)}
@@ -118,6 +118,14 @@ export default function SessionScreen({ id, alert: alertParam }: { id: string; a
         </View>
       </View>
 
+      {/* What the session wants comes first, then what you can do about it. */}
+      {text ? (
+        <Card accent={tone(info.cls)}>
+          <Muted>{s.question ? 'Waiting on you' : 'Last message'}</Muted>
+          <Text style={{ color: t.text, fontSize: 15, fontFamily: s.state === 'needs_permission' ? 'Courier' : undefined }}>{text}</Text>
+        </Card>
+      ) : null}
+
       <View style={{ gap: 8 }}>
         <LinkButtons session={s} toast={toast.show} />
         <AlertButtons session={s} act={act} canAct={canAct} snoozeMin={snoozeMin} />
@@ -131,13 +139,10 @@ export default function SessionScreen({ id, alert: alertParam }: { id: string; a
             : 'The Claude app is signed in to one account at a time: if it shows another account, use the resume command.'}
         </Muted>
       ) : null}
-      {s.resume ? <Text selectable style={{ color: t.text, fontFamily: 'Courier', fontSize: 12 }}>{s.resume}</Text> : null}
-
-      {text ? (
-        <Card accent={tone(info.cls)}>
-          <Muted>{s.question ? 'Waiting on you' : 'Last message'}</Muted>
-          <Text style={{ color: t.text, fontSize: 15, fontFamily: s.state === 'needs_permission' ? 'Courier' : undefined }}>{text}</Text>
-        </Card>
+      {s.resume ? (
+        <View style={{ backgroundColor: t.track, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10 }}>
+          <Text selectable style={{ color: t.text, fontFamily: 'monospace', fontSize: 13 }}>{s.resume}</Text>
+        </View>
       ) : null}
 
       <Section title="Details">
@@ -151,7 +156,7 @@ export default function SessionScreen({ id, alert: alertParam }: { id: string; a
         right={tl.length > events.length || showAll ? <Btn label={showAll ? 'State changes only' : `Show all ${tl.length} events`} onPress={() => setShowAll(!showAll)} /> : undefined}
       >
         {events.length === 0 ? (
-          <Calm>No events yet.</Calm>
+          <Calm>{!detail && api.data.offline ? 'The history loads when the hub is reachable.' : 'No events yet.'}</Calm>
         ) : (
           <Card>
             {[...events].reverse().map((e, i) => (

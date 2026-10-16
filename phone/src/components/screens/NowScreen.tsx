@@ -5,6 +5,7 @@ import { useAlertActions } from '../alert-actions';
 import { useHubApi } from '../hub-api';
 import { go } from '../nav';
 import { NeedsCard } from '../needs-card';
+import { Mark } from '../logo';
 import { useTheme } from '../theme';
 import { Calm, Card, Muted, Page, Ring, Section, useToast, useToneColour } from '../ui';
 
@@ -18,7 +19,7 @@ export default function NowScreen() {
 
   if (!o) {
     return (
-      <Page title="Now" toast={toast.node}>
+      <Page title="Now" logo={<Mark size={26} />} toast={toast.node}>
         <Calm>{api.data.offline ? 'Offline, and nothing is saved yet.' : 'Loading…'}</Calm>
       </Page>
     );
@@ -30,7 +31,7 @@ export default function NowScreen() {
   const canSwipe = needs.some((s) => canAct(s));
 
   return (
-    <Page title="Now" toast={toast.node}>
+    <Page title="Now" logo={<Mark size={26} />} toast={toast.node}>
       {seats.length ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityLabel="5-hour limit per account">
           {seats.map((s) => (

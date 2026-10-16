@@ -4,10 +4,10 @@ import { FlexWidget, TextWidget } from 'react-native-android-widget';
 
 import { clock, resetKeysAt, seatRows, type AndroidWidgetProps, type SeatRow } from '../../src/lib/widget';
 
-const BG = '#1c1b22';
-const FG = '#f2f2f7';
-const DIM = '#9a9aa5';
-const TRACK = '#3a3a44';
+const BG = '#17191B'; // the brand ink (theme.ts, the launcher icon)
+const FG = '#ECEEEF';
+const DIM = '#9AA1A8';
+const TRACK = '#2A2E32';
 const BAR_W = 64;
 
 type Hex = `#${string}`;
