@@ -31,6 +31,18 @@ describe('reduce', () => {
     expect(s).toMatchObject({ fetchedAt: 3, offline: false, overview, sessions, accounts, alerts });
   });
 
+  it("loaded puts the accounts in the owner's order (seat.order), in every list", () => {
+    const a = accounts.map((x, i) => ({ ...x, order: accounts.length - i }));
+    const o = { ...overview, seats: overview.seats.map((x, i) => ({ ...x, order: overview.seats.length - i })) };
+    const s = reduce(initialData, { type: 'loaded', at: 1, overview: o, accounts: a });
+    expect(s.accounts.map((x) => x.id)).toEqual([...a].reverse().map((x) => x.id));
+    expect(s.overview?.seats.map((x) => x.id)).toEqual([...o.seats].reverse().map((x) => x.id));
+    // A reply already in order is kept as it is.
+    const same = reduce(initialData, loaded(1));
+    expect(same.accounts).toBe(accounts);
+    expect(same.overview).toBe(overview);
+  });
+
   it('loaded keeps the pieces it was not given', () => {
     const s = reduce(reduce(initialData, loaded(1)), { type: 'loaded', at: 2, accounts: [] });
     expect(s.accounts).toEqual([]);

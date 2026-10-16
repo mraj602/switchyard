@@ -3,8 +3,9 @@
 
 import {
   AuthError, getMe, getOverview, getSessions, getSession, openStream, setCachedHandler,
-  snoozeAlert, seenAlert,
+  snoozeAlert, seenAlert, putJSON,
 } from './api.js';
+import { applyOrder } from './components/order.js';
 
 const listeners = new Set();
 
@@ -155,6 +156,7 @@ function onEvent(type, data) {
     case 'session': applySession(data); break;
     case 'usage': applyUsage(data); break;
     case 'machine': applyMachine(data); break;
+    case 'seats': applySeatOrder(data); break;
     case 'alert': if (data.session && data.alert) patchSessionAlert(data.session, data.alert); break;
     default: return; // hello, ping: nothing to draw
   }
@@ -185,6 +187,44 @@ function applySession({ session, change }) {
 function applyUsage({ seat, windows }) {
   const s = store.overview && store.overview.seats.find((x) => x.id === seat);
   if (s && windows) s.windows = windows;
+}
+
+// ---- the order of the accounts -------------------------------------------------------------
+
+// Every list of accounts (the sidebar, Accounts, Now, Sessions groups, the filters) reads
+// store.overview.seats, so putting that array in the new order redraws them all.
+let seatOrderBusy = 0;
+
+function applySeatOrder(data) {
+  // Our own PUT is in flight: its answer settles the order, an event may be an older one.
+  if (seatOrderBusy > 0 || !store.overview || !data || !Array.isArray(data.order)) return;
+  store.overview.seats = applyOrder(store.overview.seats, data.order);
+}
+
+// Owner: the shown accounts in a new order (PUT /v1/seats/order). The board takes the order at
+// once and puts it back, saying why, when the hub refuses. Resolves to '' or the error text.
+export async function reorderSeats(ids) {
+  const o = store.overview;
+  if (!o) return 'Not connected yet.';
+  const before = o.seats;
+  o.seats = applyOrder(before, ids);
+  seatOrderBusy++;
+  emit();
+  let err = '';
+  try {
+    const r = await putJSON('/v1/seats/order', { ids });
+    if (r && Array.isArray(r.accounts) && store.overview) {
+      store.overview.seats = applyOrder(store.overview.seats, r.accounts.map((a) => a.id));
+    }
+  } catch (e) {
+    if (e instanceof AuthError) { store.unauthorized = true; stop(); onAuthLost(); return ''; }
+    err = e.status === 403 ? 'Sign in as owner to reorder accounts.' : `Could not save the order: ${e.message}`;
+    if (store.overview) store.overview.seats = applyOrder(store.overview.seats, before.map((s) => s.id));
+  } finally {
+    seatOrderBusy--;
+  }
+  emit();
+  return err;
 }
 
 function applyMachine({ machine }) {

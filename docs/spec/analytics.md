@@ -59,7 +59,8 @@ built, and the queries are cheap over `token_row`'s indexes.
 
 Every counter row is `input`, `output`, `cache_5m`, `cache_1h`, `cache_read`, `replies`,
 `api_usd`, `unpriced_replies`. Lists are never null. Ties in cost sort by name or id so the
-order is stable.
+order is stable. The board's and the phone's account pickers list accounts in the owner's
+order (`seat.order`, pwa.md 3.0), not by cost.
 
 **History.** A `daily` day that is before the first `token_row` of the hub (any seat) and has
 Claude Code's own totals from `history_day` (the history import) has `source: "history"`: only

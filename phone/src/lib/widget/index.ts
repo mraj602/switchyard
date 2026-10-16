@@ -16,6 +16,7 @@ import {
   type WindowKey,
 } from '../../contract/snapshot';
 import { validateWidgetSnapshot } from '../../contract/validate';
+import { orderSeats } from '../format/seat';
 
 export interface SnapshotPrefs {
   private: boolean;
@@ -71,12 +72,10 @@ function earliest(seats: SnapshotSeat[], after: number, skip?: Set<string>): Sna
 /** At most 4 seats in Accounts order; `top` null in private mode; labels cut to 12. */
 export function buildSnapshot(overview: Overview, accounts: Seat[], now: number, prefs: SnapshotPrefs): WidgetSnapshot {
   const source = accounts.length > 0 ? accounts : overview.seats;
-  const ordered = source
-    .map((s, i) => ({ s, i }))
-    .filter(({ s }) => !s.hidden)
-    .sort((a, b) => (a.s.order ?? 0) - (b.s.order ?? 0) || a.i - b.i)
-    .slice(0, SNAPSHOT_MAX_SEATS)
-    .map(({ s }) => s);
+  // The hub's order (the owner's drag-and-drop order, `seat.order`; seats without one last).
+  const ordered = orderSeats(source)
+    .filter((s) => !s.hidden)
+    .slice(0, SNAPSHOT_MAX_SEATS);
 
   const seats: SnapshotSeat[] = ordered.map((s) => ({
     id: s.id,

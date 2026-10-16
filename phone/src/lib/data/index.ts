@@ -3,6 +3,7 @@
 import type { Alert, AlertBrief, Overview, Seat, Session } from '../../contract/api';
 import { CACHE_KEY, POLL_MS } from '../../contract/constants';
 import type { AppStateSource, Clock, KVStore } from '../../contract/platform';
+import { orderSeats } from '../format/seat';
 import { HubError } from '../hub';
 import type { HubClient } from '../hub';
 
@@ -53,13 +54,19 @@ function patchAll(state: HubData, id: string, patch: Partial<AlertBrief>): HubDa
   };
 }
 
+/** Every list of accounts follows the owner's order (`seat.order`), whatever the reply's order. */
+function inHubOrder(o: Overview): Overview {
+  const seats = orderSeats(o.seats ?? []);
+  return seats === o.seats ? o : { ...o, seats };
+}
+
 export function reduce(state: HubData, action: DataAction): HubData {
   switch (action.type) {
     case 'loaded':
       return {
-        overview: action.overview ?? state.overview,
+        overview: action.overview ? inHubOrder(action.overview) : state.overview,
         sessions: action.sessions ?? state.sessions,
-        accounts: action.accounts ?? state.accounts,
+        accounts: action.accounts ? orderSeats(action.accounts) : state.accounts,
         alerts: action.alerts ?? state.alerts,
         fetchedAt: action.at,
         offline: false,

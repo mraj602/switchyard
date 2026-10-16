@@ -233,6 +233,7 @@ async function phoneFlow(sizeName, w, hgt) {
   await visit(page, sizeName, 'p-sessions-machine', '#/sessions?by=machine', '.sessions-table');
   await visit(page, sizeName, 'p-session', `#/sessions/${ASKED}?alert=al_pending`, '.session-actions');
   await visit(page, sizeName, 'p-accounts', '#/accounts?seat=seat_work', '.room');
+  if (await page.$('.seat-grip')) fail(page.tag('a paired phone (not the owner) sees the drag grips on Accounts'));
   await visit(page, sizeName, 'p-more', '#/more', '.more-list');
   await analyticsChecks(page, sizeName, 'phone');
   await visit(page, sizeName, 'p-alerts', '#/more/alerts', '.log');
@@ -310,6 +311,7 @@ async function ownerFlow(sizeName, w, hgt) {
   await visit(page, sizeName, 'o-settings', '#/more/settings', '[data-key=hub-address]');
   await visit(page, sizeName, 'o-alerts', '#/more/alerts', '[data-key=rule-asked]');
   await visit(page, sizeName, 'o-devices', '#/more/devices', '.dev-list');
+  await orderFlow(page, sizeName);
   await machinesFlow(page, sizeName);
   // Owner switches edit the global rule.
   await page.click('[data-key=nav-alerts], [data-key=nav-more]').catch(() => {});
@@ -335,6 +337,87 @@ async function ownerFlow(sizeName, w, hgt) {
   try { await page.waitForSelector('[data-key=pair-claimed]', { timeout: 6000 }); } catch (e) { fail(page.tag('dialog never showed Paired after the claim')); }
   await ctx.close();
   await resetHub();
+}
+
+// ---- the order of the accounts (owner): drag, keyboard, another device, a refusal ---------------
+
+const sideShown = (page) => page.evaluate(() => { const n = document.querySelector('.nav-accounts'); return !!n && n.offsetParent !== null; });
+const sideOrder = (page) => page.$$eval('.nav-accounts [data-key^="nav-seat-"]', (els) => els.map((a) => a.dataset.key.replace('nav-seat-', '')));
+const cardOrder = (page) => page.$$eval('.grid-accounts > .seat-card', (els) => els.map((a) => a.id.replace('seat-', '')));
+const hubOrder = (page) => page.evaluate(async () => (await (await fetch('/v1/accounts')).json()).accounts.map((a) => a.id));
+const sameList = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const waitCards = (page, want, what) => page.waitForFunction((w2) => JSON.stringify([...document.querySelectorAll('.grid-accounts > .seat-card')].map((a) => a.id.replace('seat-', ''))) === JSON.stringify(w2), { timeout: 4000 }, want)
+  .catch(() => fail(page.tag(`order: ${what}`)));
+const waitSide = async (page, want, what, timeout = 4000) => !(await sideShown(page)) || page.waitForFunction((w2) => JSON.stringify([...document.querySelectorAll('.nav-accounts [data-key^="nav-seat-"]')].map((a) => a.dataset.key.replace('nav-seat-', ''))) === JSON.stringify(w2), { timeout }, want)
+  .catch(() => fail(page.tag(`order: ${what}`)));
+
+async function orderFlow(page, sizeName) {
+  const t = (m) => page.tag(`order: ${m}`);
+  await visit(page, sizeName, 'o-accounts', '#/accounts', '.seat-grip');
+  const start = await cardOrder(page);
+  if (start.length < 3) fail(t(`only ${start.length} cards`));
+  if ((await sideShown(page)) && !sameList(await sideOrder(page), start)) fail(t(`sidebar ${await sideOrder(page)} differs from the cards ${start}`));
+  if ((await page.$$('.seat-grip')).length !== start.length) fail(t('not one grip per card'));
+
+  // Drag the last card to just before the one above it with the pointer (scrolled so both show).
+  const last = start[start.length - 1];
+  await page.evaluate((id) => window.scrollTo(0, document.getElementById(`seat-${id}`).getBoundingClientRect().top + window.scrollY - 70), start[start.length - 2]);
+  await sleep(150);
+  const g = await (await page.$(`[data-key="seat-grip-${last}"]`)).boundingBox();
+  const second = await (await page.$(`#seat-${start[start.length - 2]}`)).boundingBox();
+  await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(second.x + 20, second.y + 20, { steps: 8 });
+  if (!(await page.$('.seat-dragging')) || !(await page.$('.drop-before'))) fail(t('no drag state or drop bar while dragging'));
+  await shot(page, `${sizeName}-o-accounts-dragging`);
+  // (A full-page screenshot resets the scroll: put the pointer over the target again.)
+  await page.evaluate((id) => window.scrollTo(0, document.getElementById(`seat-${id}`).getBoundingClientRect().top + window.scrollY - 70), start[start.length - 2]);
+  await sleep(150);
+  const again = await (await page.$(`#seat-${start[start.length - 2]}`)).boundingBox();
+  await page.mouse.move(again.x + 20, again.y + 20, { steps: 3 });
+  await page.mouse.up();
+  const want = [...start.slice(0, -2), last, start[start.length - 2]];
+  await waitCards(page, want, 'dropping the last card first did not reorder the cards');
+  await waitSide(page, want, 'the sidebar did not follow the drop');
+  if (!sameList(await hubOrder(page), want)) fail(t('the hub did not keep the order'));
+  await shot(page, `${sizeName}-o-accounts-dropped`);
+
+  // Keyboard: ArrowDown on the focused grip moves that card one place; focus stays on it.
+  await page.focus(`[data-key="seat-grip-${want[0]}"]`);
+  await page.keyboard.press('ArrowDown');
+  const kb = [want[1], want[0], ...want.slice(2)];
+  await waitCards(page, kb, 'ArrowDown on the grip did not move the card');
+  if (!sameList(await hubOrder(page), kb)) fail(t('the hub did not keep the keyboard move'));
+  if ((await page.evaluate(() => document.activeElement && document.activeElement.dataset.key)) !== `seat-grip-${want[0]}`) fail(t('focus left the grip after a move'));
+  // Alt+ArrowUp inside the card moves it back (once, not twice).
+  await page.keyboard.down('Alt'); await page.keyboard.press('ArrowUp'); await page.keyboard.up('Alt');
+  await waitCards(page, want, 'Alt+ArrowUp did not move the card back one place');
+
+  // Another device reorders: this board follows on the stream with no reload, on any page.
+  await page.evaluate(() => { location.hash = '#/'; });
+  await page.waitForSelector('.page-now');
+  const other = [...want].reverse();
+  await page.evaluate(async (ids) => { await fetch('/v1/seats/order', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) }); }, other);
+  await waitSide(page, other, 'the sidebar did not follow an order set from another device', 5000);
+  const rings = await page.$$eval('a.ring', (els) => els.map((e) => decodeURIComponent(e.getAttribute('href').split('seat=')[1])));
+  if (rings.length && !sameList(rings, other.filter((id) => rings.includes(id)))) fail(t(`Now rings ${rings} do not follow ${other}`));
+
+  // A refused save puts the order back and says so.
+  await page.evaluate(() => { location.hash = '#/accounts'; });
+  await page.waitForSelector('.seat-grip');
+  await page.evaluate(() => {
+    const real = window.fetch;
+    window.__realFetch = real;
+    window.fetch = (u, o) => (o && o.method === 'PUT' && /\/v1\/seats\/order$/.test(String(u))
+      ? Promise.resolve(new Response(JSON.stringify({ error: 'invalid seat order: nope' }), { status: 400, headers: { 'Content-Type': 'application/json' } }))
+      : real(u, o));
+  });
+  const before = await cardOrder(page);
+  await page.focus(`[data-key="seat-grip-${before[0]}"]`);
+  await page.keyboard.press('ArrowDown');
+  await page.waitForSelector('[data-key=order-error]', { timeout: 4000 }).catch(() => fail(t('a refused save showed no error')));
+  if (!sameList(await cardOrder(page), before)) fail(t('a refused save did not put the cards back'));
+  await page.evaluate(() => { window.fetch = window.__realFetch; });
 }
 
 // ---- the Machines screen as the owner -----------------------------------------------------------
