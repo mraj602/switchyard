@@ -415,7 +415,8 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
     const wrong = await waitFor(async () => (await tabOf(ids.seventab))?.mismatch, 30_000, 'the tab sees it is signed in as another account');
     assert.equal(wrong.expected, 'claude-7');
     await run.shell.evaluate((id) => window.sy.selectView({ view: id }), ids.seventab);
-    await waitFor(() => run.shell.evaluate(() => document.body.innerText.includes('Sign out here and sign in as claude-7')), 10_000, 'the notice on the tab');
+    await waitFor(() => run.shell.evaluate(() => document.body.innerText.includes('Sign out and sign in as claude-7')), 10_000, 'the notice and the sign-out option on the tab');
+    assert.equal(await run.shell.evaluate(() => document.querySelector('[data-fk="strip-adopt"]')?.textContent), `Use this tab for ${wrong.actual}`);
     await run.shell.screenshot({ path: path.join(out, 's15-mismatch.png') });
 
     // Links: loads are recorded, never sent (the link is on the real claude.ai).
@@ -448,6 +449,40 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
     assert.equal(st.view, st.tabs.at(-1).id, 'the new tab is shown');
     await waitFor(() => run.shell.evaluate((id) => document.querySelector(`[data-fk="tab-${id}"]`)?.getAttribute('aria-selected') === 'true', st.tabs.at(-1).id), 10_000, 'the new tab selected in the bar');
     await run.shell.screenshot({ path: path.join(out, 's15-new-tab-for-link.png') });
+
+    // "Use this tab for ...": another tab is already signed in as this account, so a confirm comes first.
+    const actual = wrong.actual;
+    assert.ok(actual, 'the hub knows the account the tab is signed in as');
+    assert.equal(wrong.shared, true);
+    await run.shell.evaluate((id) => window.sy.selectView({ view: id }), ids.seventab);
+    await run.shell.locator('[data-fk="strip-adopt"]').click();
+    await run.shell.locator('[data-fk="adopt-confirm"]').waitFor({ timeout: 10_000 });
+    assert.equal(await run.shell.locator('[data-fk="adopt-confirm"]').textContent(), `Another tab is already signed in as ${actual}. Use this one too?`);
+    await run.shell.screenshot({ path: path.join(out, 's15-adopt-confirm.png') });
+    await run.shell.locator('dialog[open] button', { hasText: 'Cancel' }).click();
+    assert.equal((await tabOf(ids.seventab)).name, 'claude-7', 'Cancel changes nothing');
+    await run.shell.locator('[data-fk="strip-adopt"]').click();
+    await run.shell.locator('[data-fk="adopt-yes"]').click();
+    const adopted = await waitFor(async () => { const x = await tabOf(ids.seventab); return x && !x.mismatch ? x : null; }, 10_000, 'the notice gone');
+    assert.equal(adopted.name, actual);
+    assert.equal(adopted.expected, actual);
+    const rec = JSON.parse(fs.readFileSync(path.join(sb.userData, 'app-state.json'), 'utf8')).tabs.find((x) => x.id === ids.seventab);
+    assert.equal(rec.expect.account, uuidOf('acct', 1));
+    assert.equal(rec.name, actual);
+    await run.shell.locator('[data-fk="toast-action"]').waitFor({ timeout: 10_000 });
+    assert.equal(await run.shell.evaluate(() => document.querySelector('.toast-text').textContent), `This tab is now ${actual}. Add a tab for claude-7 to sign in to it.`);
+    await waitFor(() => run.shell.evaluate(() => !document.querySelector('[data-fk="strip-mismatch"]')), 10_000, 'the strip notice gone');
+    assert.ok(((await shellState(run.shell)).missing ?? []).some((x) => x.label === 'claude-7'), 'claude-7 has no tab now');
+    await run.shell.screenshot({ path: path.join(out, 's15-adopted-toast.png') });
+    const nTabs = (await shellState(run.shell)).tabs.length;
+    await run.shell.locator('[data-fk="toast-action"]').click();
+    const fresh = await waitFor(async () => { const st = await shellState(run.shell); return st.tabs.length === nTabs + 1 ? st.tabs.at(-1) : null; }, 10_000, 'a fresh tab for claude-7');
+    assert.equal(fresh.name, 'claude-7');
+    assert.equal(fresh.expected, 'claude-7');
+    assert.equal((await shellState(run.shell)).view, fresh.id, 'the fresh tab is shown');
+    assert.deepEqual(((await shellState(run.shell)).missing ?? []).filter((x) => x.label === 'claude-7'), []);
+    await waitFor(() => run.shell.evaluate((id) => document.querySelector(`[data-fk="tab-${id}"]`)?.getAttribute('aria-selected') === 'true', fresh.id), 10_000, 'the fresh tab selected in the bar');
+    await run.shell.screenshot({ path: path.join(out, 's15-fresh-tab-for-claude-7.png') });
   });
 
   await step('no console errors in any page', () => {

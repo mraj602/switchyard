@@ -145,6 +145,8 @@ not used). Before calling a handler it checks the following.
 | `tab:remove` | `{id}` (clears that partition's storage) | — | B |
 | `tab:reorder` | `{ids: [id…]}` (account tab ids in the new display order; ids not listed keep their order after the listed ones, unknown ids are dropped) | — | B |
 | `tab:reload` / `tab:home` / `tab:external` | `{id}` | — | B |
+| `tab:adopt` | `{id}` (make the tab the account it is signed in as) | `{name, label, offer}` | B |
+| `tab:logout` | `{id}` (load claude.ai's logout in the tab) | — | B |
 | `usage:accept-warning` | `{id, version: int}` | — | B |
 | `usage:set-reading` | `{id, on: bool}` | — | B |
 | `usage:set-send` | `{id, on: bool}` | — | B |
@@ -173,7 +175,7 @@ tokens or secrets. The field-level shapes (`ShellState`, `TabState`, `HubState`,
 Wave 0 details fixed by `src/shared/ipc.js`:
 
 - `window.sy` function names, in table order: `state`, `selectView`, `hubRoute`, `addTab`,
-  `updateTab`, `removeTab`, `reorderTabs`, `reloadTab`, `homeTab`, `openTabExternal`,
+  `updateTab`, `removeTab`, `reorderTabs`, `reloadTab`, `homeTab`, `openTabExternal`, `adoptTab`, `logoutTab`,
   `acceptWarning`, `setReading`, `setSend`, `resumeReading`, `refreshUsage`, `pair`,
   `ownerSignIn`, `ownerSignOut`, `hubConnect`, `hubUnpair`, `hubRetry`, `hubService`, `updateSeat`, `localAccounts`, `shareAccount`, `setSettings`;
   plus `on(event, cb)`, which returns an unsubscribe function. Each
@@ -385,11 +387,27 @@ account in a hidden or background start until the window is shown.
   tab returns that tab. Tabs are only ever made by that click (or by a handoff above), never
   silently.
 - Wrong account in a tab: `TabState.expected` is the label in `expect`; `TabState.mismatch`
-  (`{expected, actual}`) is set when the tab is signed in and the account uuid its usage reader
+  (`{expected, actual, shared}`) is set when the tab is signed in and the account uuid its usage reader
   learned (`tab.seat.account`) is not `expect.account` (never by email; `actual` is the hub's
-  label for that account, else null). The strip then says "This tab is signed in as claude-1,
-  not claude-6. Sign out here and sign in as claude-6", and the tab keeps its own name (not the
-  other account's label, colour or seat). The phone has the same check (phone.md P17.7).
+  label for that account, else null; `shared` is true when another tab is already signed in as
+  that account). The strip then says "This tab is signed in as claude-1, not claude-6." and the
+  tab keeps its own name (not the other account's label, colour or seat). It offers two ways out:
+  - **Use this tab for claude-1** (the person signed in as claude-1 on purpose; "Use this tab for
+    this account" when the hub does not know the account). `tab:adopt` makes the tab that
+    account's: for a hub account its name is the hub label and `expect` becomes that seat (colour
+    and seat follow it); for an unknown account `expect` is removed (the tab follows whatever is
+    signed in) and the name is the usage reader's account display name (`account_name` in the tab
+    record, from `/api/account`, never the email), else "account". The notice goes away. If
+    `shared` is true a confirm first says "Another tab is already signed in as claude-1. Use this
+    one too?" (two tabs of one account are fine). The account the tab was made for then has no tab, so the
+    "has no tab here" line and the **+** offer show it, and a toast says "This tab is now
+    claude-1. Add a tab for claude-6 to sign in to it." with an **Add tab for claude-6** action
+    that runs the add-for-account flow above (`offer` in the `tab:adopt` result is
+    `{seat, label}` for that account, or null when another tab already stands for it).
+  - **Sign out and sign in as claude-6**, a text button that loads `<claude.ai>/logout` in the
+    tab (`tab:logout`).
+
+  The phone has the same check (phone.md P17.7).
 
 ## C8. Shell layout (WP-D, design `DeskAccountTab`, `DeskHome`)
 

@@ -58,6 +58,9 @@ button { cursor: pointer; }
   flex: 0 1 auto; max-width: 40%; padding: 4px 10px; border-radius: 8px; font-size: 13px; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap; background: var(--info-bg); color: var(--info-ink);
 }
+.toast.has-action { max-width: 62%; display: flex; gap: 10px; align-items: center; }
+.toast-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.toast .linkish { flex: none; color: inherit; white-space: nowrap; }
 .toast.warn { background: var(--warn-bg); color: var(--warn-ink); }
 .toast.error { background: var(--failed-bg); color: var(--failed); }
 
@@ -229,4 +232,6 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .hub-strip-missing { color: var(--muted); }
 .offers { display: flex; flex-direction: column; gap: 8px; }
 .offers .offer { justify-content: flex-start; }
+.strip-notice { white-space: normal; flex: 1 0 150px; min-width: 0; max-height: 40px; overflow: hidden; font-size: 12px; line-height: 1.25; font-weight: 600; color: var(--failed); }
+.strip > .linkish { white-space: normal; flex: 0 1 auto; min-width: 70px; max-height: 40px; overflow: hidden; font-size: 12px; line-height: 1.15; text-align: left; }
 .strip-wins .status.stopped { white-space: normal; line-height: 1.3; }

@@ -293,6 +293,53 @@ test('openLink: the tab of the seat\'s account, else a tab made for it, else a n
   assert.equal(await r.api.openLink(LINK, null), false);
 });
 
+test('adoptTab: a tab made for claude-6, signed in as claude-7, becomes claude-7\'s; claude-6 is offered a new tab', async () => {
+  const expect6 = { seat: SEAT6.id, account: 'a6', org: 'o6', label: 'claude-6' };
+  const r = rig({ tabs: [tabRecord(A, { name: 'claude-6', expect: expect6, seat: { account: 'a7', org: 'o7' } })], seats: [SEAT6, SEAT7] });
+  await r.api.start();
+  const out = await r.ipc.call('tab:adopt', { id: A });
+  assert.deepEqual(out, { name: 'claude-7', label: 'claude-7', offer: { seat: SEAT6.id, label: 'claude-6' } });
+  const t = r.store.get().tabs[0];
+  assert.equal(t.name, 'claude-7');
+  assert.deepEqual(t.expect, { seat: SEAT7.id, account: 'a7', org: 'o7', label: 'claude-7' });
+  assert.equal(r.events.at(-1).tabs[0].name, 'claude-7', 'announced on the bus');
+  // the existing add-for-account flow then makes claude-6 a fresh tab
+  const made = await r.ipc.call('tab:add', { name: 'claude-6', seat: SEAT6.id });
+  assert.notEqual(made.id, A);
+  // no offer when another tab already stands for the account that lost this one
+  const r2 = rig({ tabs: [tabRecord(A, { expect: expect6, seat: { account: 'a7', org: 'o7' } }), tabRecord(B, { seat: { account: 'a6', org: 'o6' } })], seats: [SEAT6, SEAT7] });
+  await r2.api.start();
+  assert.equal((await r2.ipc.call('tab:adopt', { id: A })).offer, null);
+});
+
+test('adoptTab: an account the hub does not know clears expect and uses the reader\'s display name, else "account"', async () => {
+  const expect6 = { seat: SEAT6.id, account: 'a6', org: 'o6', label: 'claude-6' };
+  const r = rig({ tabs: [tabRecord(A, { name: 'claude-6', expect: expect6, seat: { account: 'zz', org: 'oz' }, account_name: 'Ada Lovelace' }), tabRecord(B, { name: 'b', expect: expect6, seat: { account: 'yy', org: 'oy' } })], seats: [SEAT6] });
+  await r.api.start();
+  const a = await r.ipc.call('tab:adopt', { id: A });
+  assert.deepEqual([a.name, a.label], ['Ada Lovelace', null]);
+  assert.equal('expect' in r.store.get().tabs[0], false);
+  assert.equal((await r.ipc.call('tab:adopt', { id: B })).name, 'account');
+  assert.equal(r.store.get().tabs[1].name, 'account');
+  // matched by uuid, never by email: a seat with the same email but another account is not it
+  const r3 = rig({ tabs: [tabRecord(A, { expect: expect6, seat: { account: 'zz', org: 'oz' } })], seats: [{ ...SEAT7, email: 'same@example.com' }, { ...SEAT6, email: 'same@example.com' }] });
+  await r3.api.start();
+  assert.equal((await r3.ipc.call('tab:adopt', { id: A })).label, null);
+  // not signed in as anything yet: refused
+  const r4 = rig({ tabs: [tabRecord(A, { expect: expect6 })], seats: [SEAT6] });
+  await r4.api.start();
+  await assert.rejects(r4.ipc.call('tab:adopt', { id: A }), /not signed in/);
+  await assert.rejects(r4.ipc.call('tab:adopt', { id: B }), /no such tab/);
+});
+
+test('logoutTab loads claude.ai\'s logout in that tab', async () => {
+  const r = rig({ tabs: [tabRecord(A)] });
+  await r.api.start();
+  await r.ipc.call('tab:logout', { id: A });
+  assert.equal(r.loads().at(-1)[1], 'https://claude.ai/logout');
+  await assert.rejects(r.ipc.call('tab:logout', { id: B }), /no such tab/);
+});
+
 test('addTab with a hub seat: named by the label, expects the seat, one tab per account; no such seat is refused', async () => {
   const r = rig({ tabs: [tabRecord(A, { seat: { account: 'a1', org: 'o1' } })], seats: [SEAT6, { id: 'seat_01M4SH4F8KV20NK22FQCTR0RR1', account: 'a1', org: 'o1', label: 'claude-1' }] });
   await r.api.start();
@@ -328,5 +375,5 @@ test('handlers are registered once for exactly the tab:* channels', async () => 
   const r = rig();
   await r.api.start();
   await r.api.start();
-  assert.deepEqual([...r.ipc.handlers.keys()].sort(), ['tab:add', 'tab:external', 'tab:home', 'tab:reload', 'tab:remove', 'tab:reorder', 'tab:update']);
+  assert.deepEqual([...r.ipc.handlers.keys()].sort(), ['tab:add', 'tab:adopt', 'tab:external', 'tab:home', 'tab:logout', 'tab:reload', 'tab:remove', 'tab:reorder', 'tab:update']);
 });

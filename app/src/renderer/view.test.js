@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   tabTitle, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds, droppedIds,
   effectiveView, windowLabel, windowRows, readingStatus, hubBanner, hubSummary, hubChip, ownerPill, hubUsable, foldersOf,
-  switchState, shareSpec, SHARE_SWITCHES, isPrimary, loginCommand, SHARE_FOLDER_RE, fitTabs, progressText, nameList, missingNotice, mismatchNotice,
+  switchState, shareSpec, SHARE_SWITCHES, isPrimary, loginCommand, SHARE_FOLDER_RE, fitTabs, progressText, nameList, missingNotice, mismatchNotice, adoptLabel, signOutLabel, adoptConfirm, adoptToast,
 } from './view.js';
 import { SHARE_SPEC_PATTERN } from '../shared/ipc.js';
 
@@ -225,6 +225,22 @@ test('progressText: SSH admin channels say how long it can take', () => {
   assert.equal(progressText({}, 'owner'), 'Signing in as owner…');
 });
 
+test('adopt: the button, the second option, the confirm and the toast', () => {
+  const wrong = (m) => tab({ mismatch: { expected: 'claude-6', actual: 'claude-7', shared: false, ...m } });
+  assert.equal(adoptLabel(wrong()), 'Use this tab for claude-7');
+  assert.equal(adoptLabel(wrong({ actual: null })), 'Use this tab for this account');
+  assert.equal(adoptLabel(tab()), '');
+  assert.equal(signOutLabel(wrong()), 'Sign out and sign in as claude-6');
+  assert.equal(adoptConfirm(wrong()), '');
+  assert.equal(adoptConfirm(wrong({ shared: true })), 'Another tab is already signed in as claude-7. Use this one too?');
+  assert.deepEqual(adoptToast({ name: 'claude-7', offer: { seat: 'seat_X', label: 'claude-6' } }), {
+    text: 'This tab is now claude-7. Add a tab for claude-6 to sign in to it.',
+    action: { label: 'Add tab for claude-6', seat: 'seat_X', name: 'claude-6' },
+  });
+  assert.deepEqual(adoptToast({ name: 'Ada', offer: null }), { text: 'This tab is now Ada.', action: null });
+  assert.equal(adoptToast(undefined).text, 'This tab is now account.');
+});
+
 test('missingNotice: one quiet line naming the accounts without a tab', () => {
   const m = (...l) => l.map((label, i) => ({ seat: `seat_${i}`, label }));
   assert.equal(missingNotice([]), '');
@@ -239,7 +255,7 @@ test('mismatchNotice: only when main found a different account uuid', () => {
   assert.equal(mismatchNotice(tab()), '');
   assert.equal(
     mismatchNotice(tab({ mismatch: { expected: 'claude-6', actual: 'claude-1' } })),
-    'This tab is signed in as claude-1, not claude-6. Sign out here and sign in as claude-6',
+    'This tab is signed in as claude-1, not claude-6.',
   );
   assert.match(mismatchNotice(tab({ mismatch: { expected: 'claude-6', actual: null } })), /signed in as another account, not claude-6/);
 });
