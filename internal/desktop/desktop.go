@@ -131,6 +131,10 @@ func (e Env) health(ctx context.Context, timeout time.Duration) (string, bool) {
 	return h.Version, true
 }
 
+// HubHere reports whether hub.url names this machine's own hub: unset, or a loopback
+// address. A hub.db left behind after the hub moved elsewhere is not an admin channel.
+func HubHere(raw string) bool { return strings.TrimSpace(raw) == "" || isLoopbackURL(raw) }
+
 func isLoopbackURL(raw string) bool {
 	u, err := url.Parse(raw)
 	if err != nil || u.Hostname() == "" {
@@ -181,7 +185,7 @@ func RunInfo(ctx context.Context, e Env) (Info, error) {
 		info.Admin = strp(e.AdminName)
 	case e.Config.Machines.HubAdmin != "":
 		info.Admin = strp(e.Config.Machines.HubAdmin)
-	case dbHere:
+	case dbHere && HubHere(hubURL):
 		info.Admin = strp(AdminLocal)
 	}
 	info.Outbox = outboxInfo(e.Dirs.State.Path)

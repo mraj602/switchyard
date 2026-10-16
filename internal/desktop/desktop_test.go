@@ -164,6 +164,35 @@ func TestInfoConnectedLocalHub(t *testing.T) {
 	golden(t, "info_local.golden", info)
 }
 
+// A hub.db left on the laptop after the hub moved is not the admin channel: no "local".
+func TestInfoRemoteHubStaleLocalDB(t *testing.T) {
+	e := sandboxEnv(t)
+	connect(t, &e, "https://hub.example.ts.net")
+	if err := os.WriteFile(filepath.Join(e.Dirs.Data.Path, "hub.db"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	e.Service = &fakeCtl{st: model.ServiceStatus{Installed: true}}
+	e.HTTP = func(time.Duration) (*http.Client, error) {
+		return &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) { return nil, errors.New("down") })}, nil
+	}
+	info, err := RunInfo(context.Background(), e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Hub.Local || info.Admin != nil {
+		t.Fatalf("stale hub.db taken as the hub: local=%v admin=%v", info.Hub.Local, info.Admin)
+	}
+}
+
+func TestHubHere(t *testing.T) {
+	for raw, want := range map[string]bool{"": true, "http://127.0.0.1:8787": true, "http://localhost:9": true, "http://[::1]:8787": true,
+		"https://hub.example.ts.net": false, "http://100.101.102.103:8787": false} {
+		if got := HubHere(raw); got != want {
+			t.Errorf("HubHere(%q) = %v, want %v", raw, got, want)
+		}
+	}
+}
+
 func TestInfoRemoteHubAdminPrefixAndDial(t *testing.T) {
 	e := sandboxEnv(t)
 	connect(t, &e, "https://hub.example.ts.net")
