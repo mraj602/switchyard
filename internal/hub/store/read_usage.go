@@ -119,7 +119,18 @@ type SeatRow struct {
 	ExtraUsage, Spend                   json.RawMessage // raw from the newest web_usage, nil if none
 	WebRawAt                            int64
 	Places                              []Place
+	SignedOut                           []SlotPlace
 	LiveSessions                        int
+}
+
+// SlotPlace is a Claude Code folder whose login was this seat until it logged out: its open
+// slot_login period has no seat and the period just before it had this seat (api.yaml
+// Seat.signed_out). A folder that moved to another login is that login's place, not this.
+type SlotPlace struct {
+	Machine     string `json:"machine"`
+	MachineName string `json:"machine_name"`
+	Slot        string `json:"slot"`
+	Since       Time   `json:"since"`
 }
 
 // Place is where a seat is used: a slot logged in to it, or a desktop tab.
@@ -222,8 +233,34 @@ func (s *Store) seatExtras(ctx context.Context, r *SeatRow, now time.Time) error
 	if err := rows.Err(); err != nil {
 		return err
 	}
+	if err := s.seatSignedOut(ctx, r); err != nil {
+		return err
+	}
 	return s.r.QueryRowContext(ctx, `SELECT count(*)`+sessionFrom+` WHERE s.seat_id = ? AND `+liveNowCondition,
 		append([]any{r.ID}, liveArgs(now)...)...).Scan(&r.LiveSessions)
+}
+
+func (s *Store) seatSignedOut(ctx context.Context, r *SeatRow) error {
+	rows, err := s.r.QueryContext(ctx, `SELECT sl.machine_id, m.name, sl.folder, l.since_at FROM slot_login l
+		JOIN slot_login p ON p.slot_id = l.slot_id AND p.until_at = l.since_at
+		JOIN slot sl ON sl.id = l.slot_id JOIN machine m ON m.id = sl.machine_id
+		WHERE l.until_at IS NULL AND l.seat_id IS NULL AND p.seat_id = ? AND sl.removed_at IS NULL
+		ORDER BY 2, 3`, r.ID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	r.SignedOut = []SlotPlace{}
+	for rows.Next() {
+		var p SlotPlace
+		var since int64
+		if err := rows.Scan(&p.Machine, &p.MachineName, &p.Slot, &since); err != nil {
+			return err
+		}
+		p.Since = Time(since)
+		r.SignedOut = append(r.SignedOut, p)
+	}
+	return rows.Err()
 }
 
 // SlotView is a machine's slot (api.yaml Machine.slots).

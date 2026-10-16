@@ -93,22 +93,23 @@ func windowsOf(rows []store.WindowRow, now time.Time) []Window {
 
 // Seat is api.yaml Seat.
 type Seat struct {
-	ID           string          `json:"id"`
-	Account      string          `json:"account"`
-	Org          string          `json:"org"`
-	Email        *string         `json:"email"`
-	OrgName      *string         `json:"org_name"`
-	Plan         *string         `json:"plan"`
-	Label        *string         `json:"label"`
-	Colour       *string         `json:"colour"`
-	Order        int64           `json:"order"`
-	Hidden       bool            `json:"hidden"`
-	Windows      []Window        `json:"windows"`
-	ExtraUsage   json.RawMessage `json:"extra_usage"`
-	Spend        json.RawMessage `json:"spend"`
-	WebRawAt     store.Time      `json:"web_raw_at"`
-	Places       []store.Place   `json:"places"`
-	LiveSessions int             `json:"live_sessions"`
+	ID           string            `json:"id"`
+	Account      string            `json:"account"`
+	Org          string            `json:"org"`
+	Email        *string           `json:"email"`
+	OrgName      *string           `json:"org_name"`
+	Plan         *string           `json:"plan"`
+	Label        *string           `json:"label"`
+	Colour       *string           `json:"colour"`
+	Order        int64             `json:"order"`
+	Hidden       bool              `json:"hidden"`
+	Windows      []Window          `json:"windows"`
+	ExtraUsage   json.RawMessage   `json:"extra_usage"`
+	Spend        json.RawMessage   `json:"spend"`
+	WebRawAt     store.Time        `json:"web_raw_at"`
+	Places       []store.Place     `json:"places"`
+	SignedOut    []store.SlotPlace `json:"signed_out"`
+	LiveSessions int               `json:"live_sessions"`
 }
 
 func (s *Server) seats(r *http.Request, includeHidden bool) ([]Seat, error) {
@@ -125,7 +126,8 @@ func (s *Server) seats(r *http.Request, includeHidden bool) ([]Seat, error) {
 		}
 		seat := Seat{ID: x.ID, Account: x.Account, Org: x.Org, Email: x.Email, OrgName: x.OrgName, Plan: x.Plan, Label: x.Label,
 			Colour: x.Colour, Order: x.Order, Hidden: x.Hidden, Windows: windowsOf(ws, now), ExtraUsage: x.ExtraUsage,
-			Spend: x.Spend, WebRawAt: store.Time(x.WebRawAt), Places: x.Places, LiveSessions: x.LiveSessions}
+			Spend: x.Spend, WebRawAt: store.Time(x.WebRawAt), Places: x.Places, SignedOut: x.SignedOut,
+			LiveSessions: x.LiveSessions}
 		if seat.ExtraUsage == nil {
 			seat.ExtraUsage = json.RawMessage("null")
 		}
