@@ -109,7 +109,8 @@ export function readingStatus(tab, now = Date.now()) {
   if (tab.reading === 'off' || tab.read_state === 'off') return { kind: 'off', text: 'Reading off', action: null };
   if (tab.stopped) {
     const s = tab.stopped.status;
-    const why = s === 429 ? 'rate limited' : s === 401 || s === 403 ? 'signed out' : 'error';
+    if (s === 403) return { kind: 'stopped', text: 'Usage not available for this account (403).', action: 'resume', actionLabel: 'Resume' };
+    const why = s === 429 ? 'rate limited' : s === 401 ? 'signed out' : 'error';
     return { kind: 'stopped', text: `Stopped: ${why} (${s}).`, action: 'resume', actionLabel: 'Resume' };
   }
   if (!tab.signed_in) return { kind: 'signed_out', text: 'Sign in to read usage', action: null };

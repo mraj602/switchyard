@@ -84,7 +84,7 @@ test('reading status covers every state', () => {
   assert.equal(s429.text, 'Stopped: rate limited (429).');
   assert.equal(s429.action, 'resume');
   assert.equal(readingStatus(tab({ stopped: { status: 401, at: local(13, 0) } }), NOW).text, 'Stopped: signed out (401).');
-  assert.equal(readingStatus(tab({ stopped: { status: 403, at: local(13, 0) } }), NOW).text, 'Stopped: signed out (403).');
+  assert.equal(readingStatus(tab({ stopped: { status: 403, at: local(13, 0) } }), NOW).text, 'Usage not available for this account (403).');
   assert.equal(readingStatus(tab({ signed_in: false }), NOW).kind, 'signed_out');
   assert.equal(readingStatus(tab({ read_state: 'retrying', retry_at: local(14, 20) }), NOW).text, 'Retrying at 14:20');
   assert.equal(readingStatus(tab({ read_state: 'retrying' }), NOW).text, 'Retrying');
