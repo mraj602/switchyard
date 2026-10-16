@@ -24,11 +24,11 @@ var ErrNeedsHTTPS = errors.New("a phone needs the hub's https address (service w
 // set one) and `tailscale serve` only as one option, with the hub's own port (not a fixed
 // 8787). A loopback address can never be reached by a phone.
 func needsHTTPS(httpURL string) error {
-	msg := "but the address in use is " + httpURL + " (the board was opened over it)."
+	msg := "but the address in use is " + httpURL + "."
 	if u, err := url.Parse(httpURL); err == nil && loopbackHost(u.Hostname()) {
 		msg += " A loopback address can never be reached by a phone."
 	}
-	msg += " Open the board at the hub's https address, or set one: " + service.HTTPSFixFor(httpURL) + "."
+	msg += " Open the board at the hub's https address, or " + service.HTTPSFixFor(httpURL) + "."
 	return fmt.Errorf("%w, %s", ErrNeedsHTTPS, msg)
 }
 
