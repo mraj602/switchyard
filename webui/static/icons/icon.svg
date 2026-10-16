@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Large master (48 px and up): gold double chevron on the ink tile, stroke 2 on the 20 grid. -->
   <rect width="512" height="512" fill="#17191B"/>
-  <g transform="translate(80 80) scale(16)" fill="none" stroke="#E8B04B" stroke-width="2"
-     stroke-linejoin="miter" stroke-linecap="butt">
+  <g transform="translate(80 80) scale(16)" fill="none" stroke="#E8B04B" stroke-width="2" stroke-linejoin="miter" stroke-linecap="butt">
     <path d="M3 18 L11 4 L19 18"/>
     <path d="M7 18 L11 11 L15 18"/>
   </g>

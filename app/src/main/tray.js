@@ -1,13 +1,23 @@
-// Tray (C9): icon with the needs-you badge (assets/tray, shared/badge.js), platform
-// branches, and the menu. Badge: macOS tray title + dock badge, Windows overlay icon,
-// Linux app.setBadgeCount; the tray image itself carries the count everywhere.
+// Tray (C9): a monochrome chevron glyph (assets/tray; dark ink for light bars, light ink for
+// dark bars, picked by nativeTheme and re-picked when it changes; a template image on macOS),
+// platform branches, and the menu. "Needs you" is a small dot on the glyph; the count is in
+// the tooltip and the first menu line. Also: macOS dock badge, Windows overlay dot, Linux
+// app.setBadgeCount.
 import nodePath from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { badgeFile, badgeText, normalizeCount } from '../shared/badge.js';
+import { badgeText, normalizeCount } from '../shared/badge.js';
 import { TRAY_SESSIONS_MAX } from '../shared/constants.js';
 
 const DEFAULT_ASSETS = fileURLToPath(new URL('../../assets', import.meta.url));
+/** "2 sessions need you", "1 session needs you"; '' for none. */
+export function needsYouText(count) {
+  return count > 0 ? `${count} session${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} you` : '';
+}
+
+/** The glyph size per platform; every size 16/22/24/32 (with @2x) is shipped in assets/tray. */
+const TRAY_SIZE = { linux: 22, win32: 16, darwin: 16 };
+
 export const PAUSE_CONFIRM_TEXT = 'Pause reading on every account tab? Usage will stop updating until you turn reading on again.';
 
 /**
@@ -37,7 +47,21 @@ export function create(deps) {
   let count = 0;
   let sessions = [];
 
-  const image = (n) => electron.nativeImage.createFromPath(path.join(assets, badgeFile(n)));
+  const dark = () => !!electron.nativeTheme?.shouldUseDarkColors;
+
+  // dot: the needs-you state. On macOS the template image adapts to the bar by itself; elsewhere
+  // a dark bar (dark theme) gets the light glyph and a light bar the dark glyph.
+  function image(dot) {
+    if (platform === 'darwin') {
+      const img = electron.nativeImage.createFromPath(path.join(assets, dot ? 'trayDotTemplate.png' : 'trayTemplate.png'));
+      img.setTemplateImage?.(true);
+      return img;
+    }
+    const size = TRAY_SIZE[platform] ?? 22;
+    return electron.nativeImage.createFromPath(path.join(assets, dark() ? 'light' : 'dark', `${dot ? 'tray-dot' : 'tray'}-${size}.png`));
+  }
+
+  const overlay = () => electron.nativeImage.createFromPath(path.join(assets, 'overlay-dot.png'));
 
   function show() {
     window.showWindow();
@@ -50,7 +74,8 @@ export function create(deps) {
 
   function buildMenu() {
     const items = [{ label: 'Open Switchyard', click: show }, { type: 'separator' }];
-    if (sessions.length === 0) items.push({ label: 'Nothing needs you', enabled: false });
+    if (count > 0) items.push({ label: needsYouText(count), enabled: false });
+    if (sessions.length === 0 && count === 0) items.push({ label: 'Nothing needs you', enabled: false });
     for (const s of sessions.slice(0, TRAY_SESSIONS_MAX)) items.push({ label: String(s.title), click: () => openRoute(s.route) });
     items.push(
       { type: 'separator' },
@@ -73,16 +98,15 @@ export function create(deps) {
 
   function applyBadge() {
     if (!tray) return;
-    tray.setImage(image(count));
-    tray.setToolTip(count > 0 ? `Switchyard: ${count} need${count === 1 ? 's' : ''} you` : 'Switchyard');
+    tray.setImage(image(count > 0));
+    tray.setToolTip(count > 0 ? needsYouText(count) : 'Switchyard');
     tray.setContextMenu(buildMenu());
     const { app } = electron;
     if (platform === 'darwin') {
-      tray.setTitle(badgeText(count));
       app.dock?.setBadge(badgeText(count));
     } else if (platform === 'win32') {
       const win = window.win;
-      if (win && !win.isDestroyed?.()) win.setOverlayIcon(count > 0 ? image(count) : null, count > 0 ? `${count} need you` : '');
+      if (win && !win.isDestroyed?.()) win.setOverlayIcon(count > 0 ? overlay() : null, needsYouText(count));
     } else {
       app.setBadgeCount(count);
     }
@@ -98,7 +122,7 @@ export function create(deps) {
     start() {
       if (tray) return true;
       try {
-        tray = new electron.Tray(image(0));
+        tray = new electron.Tray(image(false));
       } catch (err) {
         log.warn?.('tray: not available here:', err?.message ?? err);
         tray = null;
@@ -112,11 +136,13 @@ export function create(deps) {
       if (last) onNeedsYou(last);
       else applyBadge();
       off = bus.on('needs_you', onNeedsYou);
+      electron.nativeTheme?.on?.('updated', applyBadge);
       return true;
     },
     stop() {
       if (off) off();
       off = null;
+      electron.nativeTheme?.removeListener?.('updated', applyBadge);
       if (tray && !tray.isDestroyed?.()) tray.destroy();
       tray = null;
     },

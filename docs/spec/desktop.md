@@ -386,9 +386,13 @@ account in a hidden or background start until the window is shown.
   on that session.
 - There are no Snooze or Seen buttons, because the desktop token has no `push` scope. The
   board's buttons work with an owner session.
-- Tray: the icon with a needs-you badge, from committed PNGs `assets/tray/tray-{0..9,9plus}.png`
-  and `@2x` versions. macOS uses `tray.setTitle(n)` and `app.dock.setBadge`; Windows uses
-  `win.setOverlayIcon`; Linux uses `app.setBadgeCount` where supported. Menu: Open Switchyard;
+- Tray: a monochrome chevron glyph (no tile) from committed PNGs under `assets/tray/{dark,light}/`
+  (16, 22, 24, 32 px with `@2x`; the dark ink for light bars, the light ink for dark bars, chosen
+  by `nativeTheme.shouldUseDarkColors` and swapped on theme change; macOS uses the
+  `trayTemplate` template images). "Needs you" is a small dot at the top-right of the glyph; the
+  count is in the tooltip ("2 sessions need you") and the first menu line. macOS also sets
+  `app.dock.setBadge`; Windows uses `win.setOverlayIcon` (a dot); Linux uses `app.setBadgeCount`
+  where supported. Icons are rendered by `scripts/gen-icons.sh` from `build/icons-src/`. Menu: Open Switchyard;
   up to 5 needs-you sessions ("work · api · asked"), each opening its route; Refresh usage;
   Pause all reading (sets every tab off, with a confirm); Quit. With no tray (GNOME without
   AppIndicator), closing the window quits unless `keep_running` is set, and the close notice

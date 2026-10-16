@@ -62,11 +62,15 @@ const logo = () => {
   const ns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(ns, 'svg');
   svg.setAttribute('viewBox', '0 0 22 22'); svg.setAttribute('width', '22'); svg.setAttribute('height', '22'); svg.setAttribute('aria-hidden', 'true');
-  for (const [d, c] of [['M3 18 L11 4 L19 18', 'currentColor'], ['M7 18 L11 11 L15 18', '#E8B04B']]) {
-    const p = document.createElementNS(ns, 'path');
-    p.setAttribute('d', d); p.setAttribute('fill', 'none'); p.setAttribute('stroke', c); p.setAttribute('stroke-width', '2');
-    svg.append(p);
-  }
+  const mk = (tag, attrs) => {
+    const el = document.createElementNS(ns, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    return el;
+  };
+  // The same tile mark as the icon (app/build/icons-src/mark-small.svg).
+  const g = mk('g', { transform: 'translate(2.5 2.5) scale(0.7727)', fill: 'none', stroke: '#E8B04B', 'stroke-width': '2.6' });
+  g.append(mk('path', { d: 'M3 18 L11 4 L19 18' }), mk('path', { d: 'M7 18 L11 11 L15 18' }));
+  svg.append(mk('rect', { width: '22', height: '22', rx: '5', fill: '#17191B' }), g);
   return svg;
 };
 
