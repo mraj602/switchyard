@@ -109,8 +109,13 @@ e2e-android:
 # The desktop app (docs/phases/6.md). npm runs in app/ only; the root prototype is never touched.
 # Smoke and e2e use temp HOME / SY_HOME / user data folders; on Linux they run under xvfb-run
 # when it is installed (unset WAYLAND_DISPLAY so Electron uses X11).
+# A private session bus too: under xvfb, Electron and Chrome still reach the desktop's D-Bus
+# and test alerts would pop up as real notifications. dbus-run-session gives the run its own
+# bus; without it (some CI images) the bus address points nowhere instead.
 NPM      ?= npm
+NOBUS    := $(shell command -v dbus-run-session >/dev/null 2>&1 && echo 'dbus-run-session --' || echo 'env DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent/sy-no-bus')
 XVFB     := $(shell command -v xvfb-run >/dev/null 2>&1 && echo 'env -u WAYLAND_DISPLAY -u XDG_SESSION_TYPE xvfb-run -a --server-args="-screen 0 1440x940x24"')
+XVFB     := $(if $(XVFB),$(NOBUS) $(XVFB),$(NOBUS))
 
 # Installs app/node_modules with the Electron binary, unless they are there already.
 app-deps:
