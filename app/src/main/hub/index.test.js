@@ -894,3 +894,38 @@ test('the hub view announces the app in its user agent', async () => {
   assert.match(ua, / SwitchyardDesktop(\/|$)/);
   await t.close();
 });
+
+test('one failed health check does not flip a reachable hub to Unreachable; two in a row do, and a good one recovers', async () => {
+  const t = await harness();
+  await t.h.start();
+  await t.handlers['hub:pair']({});
+  await until(() => lastHub(t).status === 'ok');
+  const down = info(t.hub.url, { hub: { reachable: false, version: null } });
+  const up = info(t.hub.url);
+  t.sy.state.info = down;
+  await t.handlers['hub:retry']();
+  assert.equal(lastHub(t).status, 'ok', 'first failure: the board stays');
+  assert.equal(lastHub(t).reachable, true);
+  await t.handlers['hub:retry']();
+  assert.equal(lastHub(t).status, 'unreachable', 'second failure in a row');
+  t.sy.state.info = up;
+  await t.handlers['hub:retry']();
+  assert.equal(lastHub(t).status, 'ok');
+  t.sy.state.info = down;
+  await t.handlers['hub:retry']();
+  t.sy.state.info = up;
+  await t.handlers['hub:retry']();
+  t.sy.state.info = down;
+  await t.handlers['hub:retry']();
+  assert.equal(lastHub(t).status, 'ok', 'failures that are not consecutive never count');
+  await t.close();
+});
+
+test('a hub never seen reachable is reported unreachable at once', async () => {
+  const t = await harness();
+  t.sy.state.info = info(t.hub.url, { hub: { reachable: false, version: null } });
+  await t.h.start();
+  await t.handlers['hub:pair']({}).catch(() => {});
+  assert.equal(lastHub(t).reachable, false);
+  await t.close();
+});

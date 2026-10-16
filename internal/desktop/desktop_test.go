@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -539,5 +540,54 @@ func TestBadHubAdminOnlyBreaksTheActionsThatNeedIt(t *testing.T) {
 	}
 	if _, err := RunHub(context.Background(), e, ActionStatus); err != nil {
 		t.Fatalf("hub status: %v", err)
+	}
+}
+
+// A hub that drops the first /health (a slow tiny VM) is still reachable: info tries twice, with
+// the 8 s timeout rather than 3 s.
+func TestInfoHealthRetriesOnceWithLongTimeout(t *testing.T) {
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if hits.Add(1) == 1 {
+			http.Error(w, "busy", http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = w.Write([]byte(`{"ok":true,"version":"0.6.0","schema":5,"time":"2026-10-13T10:00:00Z"}`))
+	}))
+	t.Cleanup(srv.Close)
+	e := sandboxEnv(t)
+	connect(t, &e, srv.URL)
+	var asked []time.Duration
+	e.HTTP = func(d time.Duration) (*http.Client, error) { asked = append(asked, d); return srv.Client(), nil }
+	info, err := RunInfo(context.Background(), e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.Hub.Reachable || hits.Load() != 2 {
+		t.Fatalf("reachable=%v hits=%d", info.Hub.Reachable, hits.Load())
+	}
+	for _, d := range asked {
+		if d != 8*time.Second {
+			t.Fatalf("health timeout %v, want 8s", d)
+		}
+	}
+}
+
+// Two failures in a row are unreachable, and it is exactly two tries.
+func TestInfoHealthGivesUpAfterTwoTries(t *testing.T) {
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		http.Error(w, "down", http.StatusBadGateway)
+	}))
+	t.Cleanup(srv.Close)
+	e := sandboxEnv(t)
+	connect(t, &e, srv.URL)
+	info, err := RunInfo(context.Background(), e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Hub.Reachable || hits.Load() != 2 {
+		t.Fatalf("reachable=%v hits=%d", info.Hub.Reachable, hits.Load())
 	}
 }
