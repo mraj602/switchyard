@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHubApi } from './hub-api';
 import { DARK, SPACE, useTheme } from './theme';
-import { clock, pct, seatName, stateInfo, type StateInfo } from '../lib/format';
+import { clock, pct, seatName, shownUse, stateInfo, windowPhase, type StateInfo } from '../lib/format';
 import type { Seat, Session, Window } from '../contract/api';
 
 // ---- page ---------------------------------------------------------------------------------
@@ -244,8 +244,9 @@ export function KV({ k, v }: { k: string; v: ReactNode }) {
 export function Ring({ seat, colour, now, onPress }: { seat: Seat; colour: string; now: number; onPress?: () => void }) {
   const t = useTheme();
   const w: Window | undefined = (seat.windows ?? []).find((x) => x.key === 'five_hour');
-  const used = w && w.used_pct != null ? w.used_pct : null;
+  const used = shownUse(w, now);
   const hot = used != null && used >= 90;
+  const phase = w && used != null ? windowPhase(w, now) : null;
   const name = seatName(seat);
   return (
     <Pressable
@@ -259,7 +260,9 @@ export function Ring({ seat, colour, now, onPress }: { seat: Seat; colour: strin
       </View>
       <View style={{ width: 44, marginTop: 4 }}><Meter value={used} colour={colour} label={`${name} 5-hour`} /></View>
       <Text numberOfLines={1} style={[s.small, { color: t.text, marginTop: 2 }]}>{name}</Text>
-      <Text style={[s.tiny, { color: hot ? t.bad : t.muted }]}>{w?.resets_at ? clock(w.resets_at, now) : ''}</Text>
+      <Text style={[s.tiny, { color: hot ? t.bad : t.muted }]}>
+        {phase === 'idle' ? 'not started' : w?.resets_at ? `${phase === 'reset' ? 'reset ' : ''}${clock(w.resets_at, now)}` : ''}
+      </Text>
     </Pressable>
   );
 }

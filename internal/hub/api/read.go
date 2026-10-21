@@ -30,7 +30,18 @@ type Window struct {
 	Source    string     `json:"source"`
 	UpdatedAt store.Time `json:"updated_at"`
 	Pace      *PaceJSON  `json:"pace"`
+	// State is current (resets_at ahead), reset (resets_at has passed and no newer reading)
+	// or idle (claude.ai's newest reading is 0 % with no reset: the window has not started;
+	// resets_at is null).
+	State string `json:"state"`
 }
+
+// Window states (api.yaml Window.state).
+const (
+	StateCurrent = "current"
+	StateReset   = "reset"
+	StateIdle    = "idle"
+)
 
 // PaceJSON is Window.pace.
 type PaceJSON struct {
@@ -53,8 +64,14 @@ func windowOf(w store.WindowRow, now time.Time, current bool) Window {
 	default:
 		out.Source = "web"
 	}
+	if w.Idle {
+		out.State = StateIdle
+		return out
+	}
+	out.State = StateCurrent
 	resets := time.UnixMilli(w.ResetsAt)
 	if !now.Before(resets) {
+		out.State = StateReset
 		// The window has reset: nothing is known to be used in the new one yet.
 		if current {
 			zero := 0.0

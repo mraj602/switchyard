@@ -6,15 +6,23 @@ const has = (w) => !!w && w.used_pct != null && !Number.isNaN(Number(w.used_pct)
 // True when the seat has any reading at all.
 export const hasReading = (seat) => (seat.windows || []).some(has);
 
-// Use of one window for ranking: 0 once its reset has passed, or when the seat has no reading
-// for it but has one for another window; otherwise its used_pct (an old reading counts until
-// its reset). null when the seat has no reading at all.
+// How a window reads now (api.yaml Window.state): 'idle' (claude.ai says it has not started:
+// 0 %, no reset time; an older hub sends no state but the same 0 % with no reset), 'reset' (its
+// resets_at has passed: nothing used since) or 'current'.
+export function windowPhase(w, now = Date.now()) {
+  if (w.state === 'idle' || (!w.resets_at && w.used_pct != null && Number(w.used_pct) === 0)) return 'idle';
+  const reset = Date.parse(w.resets_at || '');
+  return !Number.isNaN(reset) && reset <= now ? 'reset' : 'current';
+}
+
+// Use of one window for ranking: 0 once its reset has passed or while it is idle (not
+// started), or when the seat has no reading for it but has one for another window; otherwise
+// its used_pct (an old reading counts until its reset). null when the seat has no reading at all.
 export function effectiveUse(seat, key, now = Date.now()) {
   if (!hasReading(seat)) return null;
   const w = win(seat, key);
   if (!has(w)) return 0;
-  const reset = Date.parse(w.resets_at || '');
-  if (!Number.isNaN(reset) && reset <= now) return 0;
+  if (windowPhase(w, now) !== 'current') return 0;
   return Number(w.used_pct);
 }
 
@@ -35,7 +43,9 @@ export function mostRoom(seats, now = Date.now()) {
   return best ? { seat: best.seat, five: best.five, seven: best.seven } : null;
 }
 
-// The tighter of the 5 h and 7 d windows: { key, label, used, resets_at } or null.
+// The tighter of the 5 h and 7 d windows: { key, label, used, phase, resets_at } or null.
+// phase is windowPhase of that window (null when the seat has no such window); resets_at is
+// its reset time (passed when phase is 'reset'), null when idle or unknown.
 export function tighter(seat, now = Date.now()) {
   const five = effectiveUse(seat, 'five_hour', now);
   if (five == null) return null;
@@ -43,8 +53,8 @@ export function tighter(seat, now = Date.now()) {
   const key = seven > five ? 'seven_day' : 'five_hour';
   const w = win(seat, key);
   const used = key === 'seven_day' ? seven : five;
-  const live = has(w) && used === Number(w.used_pct);
-  return { key, label: key === 'seven_day' ? '7 d' : '5 h', used, resets_at: live ? w.resets_at || null : null };
+  const phase = has(w) ? windowPhase(w, now) : null;
+  return { key, label: key === 'seven_day' ? '7 d' : '5 h', used, phase, resets_at: phase && phase !== 'idle' ? w.resets_at || null : null };
 }
 
 // Machines where Claude Code is signed out on this seat (not also signed in there).

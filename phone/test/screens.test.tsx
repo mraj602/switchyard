@@ -15,7 +15,7 @@ import SessionsScreen from '../src/components/screens/SessionsScreen';
 import SettingsScreen from '../src/components/screens/SettingsScreen';
 import { clock, isLive, mostRoom } from '../src/lib/format';
 import { HubError } from '../src/lib/hub';
-import type { Session } from '../src/contract/api';
+import type { Seat, Session } from '../src/contract/api';
 import { NOW, fakeClient, freshData, fx, makeHarness, routerMock } from './screen-harness';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -231,6 +231,24 @@ describe('Accounts', () => {
     expect(within(screen.getByTestId('detail-seat_work')).getAllByText(/^resets in /).length).toBeGreaterThan(0);
     await fireEvent.press(screen.getByTestId('row-seat_work'));
     expect(screen.queryByTestId('detail-seat_work')).toBeNull();
+  });
+
+  it('shows an idle window as 0 % not started, and a passed reset as "reset at", never "resets now"', async () => {
+    const accounts = structuredClone(fx.accounts.accounts) as unknown as Seat[];
+    const work = accounts.find((s) => s.id === 'seat_work')!;
+    const passed = new Date(NOW - 3 * 86_400_000).toISOString();
+    work.windows = [
+      { key: 'five_hour', used_pct: 0, resets_at: null, state: 'idle', updated_at: new Date(NOW - 60_000).toISOString(), source: 'web' },
+      { key: 'weekly_fable', label: '7-day · Fable', used_pct: 0, resets_at: passed, state: 'reset', source: 'web' },
+    ];
+    await show(<AccountsScreen seat="seat_work" />, { data: { accounts } });
+    expect(screen.getByTestId('reset-seat_work')).toHaveTextContent('not started');
+    expect(screen.getByTestId('pct-seat_work')).toHaveTextContent('0%');
+    const detail = within(screen.getByTestId('detail-seat_work'));
+    expect(detail.getByText('not started · starts when you next use this account')).toBeTruthy();
+    expect(detail.getByText(`reset at ${clock(passed, NOW)}`)).toBeTruthy();
+    expect(detail.queryByText(/resets now/)).toBeNull();
+    expect(detail.queryByText('no data')).toBeNull();
   });
 
   it('opens the account asked for, and Expand all / Collapse all toggles every row', async () => {

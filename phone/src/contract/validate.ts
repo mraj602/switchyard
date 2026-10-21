@@ -195,8 +195,10 @@ export function validateWindow(x: unknown, path = 'window'): Problems {
   const o = root(x, path, p);
   if (!o) return p;
   field(p, o, 'key', 'string', path);
-  field(p, o, 'resets_at', 'iso', path);
+  // null only for an idle window (not started); an older hub always sends a time.
+  field(p, o, 'resets_at', 'iso?', path);
   field(p, o, 'used_pct', 'number?', path, true);
+  oneOf(p, field(p, o, 'state', 'string', path, true), ['current', 'reset', 'idle'], `${path}.state`);
   return p;
 }
 

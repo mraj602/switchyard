@@ -159,7 +159,15 @@ The desktop app's Hub tab shows this same page.
 - **One row per account**: grip (owner only; drag and arrow keys as in 3.0), colour dot, name, the
   plan in muted text; one bar for the tighter of the 5 h and 7 d limits (label "5 h" or "7 d", the
   percentage, red from 90%) with the reset time of that window beside it ("resets 15:48",
-  "resets Sun 09:00"). A window whose reset has passed counts as 0.
+  "resets Sun 09:00"). A window whose reset has passed counts as 0 and says when it reset ("reset
+  at Sat 10:10"), never "resets now". An **idle** window (api.yaml `Window.state` `idle`, or 0 %
+  with no `resets_at` from an older hub: claude.ai has not started it, record.md 4.3) is 0 % with
+  a muted "not started", never "no data" or "unknown". On a tie the bar shows 5 h.
+- **Windows everywhere** (`components/windows.js`: `windowPhase` from `accounts-fmt.js`,
+  `shownUse`, `resetWords`; the Now cards, the rings and the expanded rows): idle → "0% · not
+  started" (expanded: "not started · starts when you next use this account"; ring: "not
+  started"); reset passed → "0% · reset at Sat 10:10" (ring: "reset Sat 10:10"); else "41% ·
+  resets 15:48" (expanded: "resets in 2 h 10 min (15:48)").
 - **Needs a look**: a line only when something does. Priority: near the limit (runaway pace on 5 h:
   "Near the 5-hour limit: full by 15:48"; or 7 d at 90% or more: "7-day limit nearly used, resets
   Sun 09:00") > **Signed out on <machine>** (`Seat.signed_out`, api.yaml; a machine where the
@@ -174,8 +182,8 @@ The desktop app's Hub tab shows this same page.
 - Below the list one muted line: "The bar shows the tighter of the 5 h and 7 d limits. Select an
   account for everything else."
 - **Most room right now** ("Most room right now: claude-2 (5 h 0% · 7 d 3%)"): among non-hidden
-  accounts, the effective use of a window is 0 when its `resets_at` has passed, or when the account
-  has no reading for that window but has one for another; otherwise its `used_pct` (a reading older
+  accounts, the effective use of a window is 0 when its `resets_at` has passed or it is idle, or
+  when the account has no reading for that window but has one for another; otherwise its `used_pct` (a reading older
   than 6 hours counts until its reset). An account with no reading at all is skipped. Score =
   max(effective 5 h, effective 7 d); the lowest wins; ties go to the lower 7 d, then the lower 5 h,
   then list order; only when the score is under 80.

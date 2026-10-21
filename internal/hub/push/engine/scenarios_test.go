@@ -110,6 +110,21 @@ func TestRow06RoomNamesTheIdleAccount(t *testing.T) {
 	}
 }
 
+// An idle reading (claude.ai: 0 %, no reset, the window has not started) newer than the seat's
+// window is its current window: it counts as 0 for "who has room".
+func TestRow06RoomCountsAnIdleReadingAsZero(t *testing.T) {
+	h := newHarness(t)
+	h.sample("idle@example.com", 0, 60, at(4*time.Hour), -1, time.Time{})
+	h.sample("busy@example.com", 0, 41, at(4*time.Hour), -1, time.Time{})
+	h.advanceTo(time.Hour)
+	h.webIdle("idle@example.com", time.Hour)
+	h.failure(s1, "rate_limit", time.Hour)
+	got := h.expectSends(1)
+	if !strings.Contains(got[0].Msg.Payload.Body, "idle has 100% left") {
+		t.Fatalf("%q", got[0].Msg.Payload.Body)
+	}
+}
+
 func TestRow07OverloadedIsNoPush(t *testing.T) {
 	h := newHarness(t)
 	h.failure(s1, "overloaded", 0)

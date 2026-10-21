@@ -301,6 +301,30 @@ orgs"), because every account has a personal free organisation and it is not a s
   `juniper_tide`, `cedar_ember`, `amber_gauge`, `extra_usage`, `limits`, `spend`,
   `member_dashboard_available`, `seven_day_breakdown`, `weekly_scoped_shares`. Any of them
   may be null. Any new key is kept.
+- **How the hub reads the windows** (internal/hub/usage `WindowsOf`; each window becomes a
+  `limit_sample`, source `web`):
+  - Every top-level key whose value is an object with a non-null `utilization` is a window of
+    that key (`resets_at` as given, possibly null).
+  - `limits[]` items with `scope.model.display_name` are model-scoped windows keyed
+    lower(`group` or `kind`) + `_` + lower(model) (`weekly_fable`), `percent` as used.
+  - Unscoped `limits[]` items (no model, no surface) of a known kind fill a window when its
+    top-level field is null or missing: `session` → `five_hour`, `weekly_all` → `seven_day`
+    (`percent`, `resets_at`). When both carry the window the top-level one is kept (its
+    `utilization` is unrounded; the two agree in every reading seen). Other unscoped kinds are
+    not read. `is_active` is not read as "started": a `weekly_all` item reads
+    `is_active: false` with 24 % used, so it says nothing the hub can use.
+  - A window with `utilization` (or `percent`) 0 and `resets_at` null is **idle**: claude.ai's
+    "not started" (the account has not been used since its last window ended; the window starts
+    with the next message). It is a real, current reading (api.yaml `Window.state` `idle`):
+    0 % used, no reset time. Seen on idle accounts: `five_hour: {utilization: 0, resets_at:
+    null}` with `seven_day: null` and only a model-scoped weekly item in `limits[]`. The hub
+    never invents a reset time, nor a `seven_day` window from a model-scoped one.
+  - A window with a `resets_at` folds into its `usage_window` (store `AddSample`); an idle
+    reading is kept in `limit_sample` with `resets_at` NULL and makes no `usage_window`. The
+    current views (`/v1/accounts`, `/v1/overview`, the `usage` event, "who has room", push.md
+    5.7) show an idle window in place of a key's newest `usage_window` when the newest idle
+    claude.ai reading of that key is newer than it (or the key has no window). A status-line
+    sample without a reset time is not read as idle.
 - The section 1 rule 4 key filter is **not** applied to `payload.usage`: its keys are
   usage counters, and a filter could drop a future counter whose name contains "token".
   The desktop app builds `payload` from the three usage endpoints only, which carry no

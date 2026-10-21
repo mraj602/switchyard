@@ -144,12 +144,15 @@ export interface Window {
   label?: string | null;
   used_pct?: number | null;
   peak_pct?: number | null;
-  resets_at: Iso;
+  /** null only for an idle window (state 'idle'): it has not started, so no reset time yet. */
+  resets_at: Iso | null;
   started_at?: Iso | null;
   unused_pct?: number | null;
   source?: 'statusline' | 'web' | 'both';
   updated_at?: Iso | null;
   pace?: { projected_pct: number; full_at?: Iso | null; band: 'comfortable' | 'on_track' | 'fast' | 'runaway' } | null;
+  /** current: resets ahead; reset: resets_at passed (used 0 since); idle: not started (hubs before it omit it). */
+  state?: 'current' | 'reset' | 'idle';
 }
 
 /** api.yaml Seat (an account card). */

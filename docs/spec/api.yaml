@@ -2185,7 +2185,22 @@ components:
         label: {type: [string, "null"]}
         used_pct: {type: [number, "null"]}
         peak_pct: {type: [number, "null"]}
-        resets_at: {type: string, format: date-time}
+        resets_at:
+          type: [string, "null"]
+          format: date-time
+          description: "null only for an idle window (state idle): it has not started, so it has no reset time yet."
+        state:
+          type: string
+          enum: [current, reset, idle]
+          description: >-
+            current: resets_at is ahead. reset: resets_at has passed with no newer reading; in
+            /v1/accounts, /v1/overview and the usage event used_pct is then 0 (the window reset;
+            nothing is known to be used since). idle: claude.ai's newest reading of this key (newer
+            than any window) is 0 % with no reset time, the window has not started and starts when
+            the account is next used; used_pct 0, resets_at, started_at, peak_pct, unused_pct and
+            pace null, updated_at is that reading's time. Idle windows appear only in the current
+            views (accounts, overview, usage event), never in /v1/accounts/{seat}/windows history
+            (record.md 4.3).
         started_at: {type: [string, "null"], format: date-time}
         unused_pct: {type: [number, "null"]}
         source: {type: string, enum: [statusline, web, both]}

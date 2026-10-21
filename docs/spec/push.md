@@ -451,7 +451,9 @@ by the rule the board and the phone use for "Most room right now" (pwa.md, Accou
 
 - A seat's **effective use** of the window is its current (newest) window's `used_pct`, so an
   older reading still counts until its reset; it is **0** when that window's `resets_at` has
-  passed, or when the seat has no reading for this window but has one for another. A seat with
+  passed, when it is idle (claude.ai's newest reading of the key, newer than the window, is 0 %
+  with no reset time: not started, record.md 4.3), or when the seat has no reading for this
+  window but has one for another. A seat with
   no reading at all is skipped.
 - Among non-hidden seats other than the subject, the lowest effective use wins; a tie goes to
   the first in list order (the board's seat order: `sort_order`, then creation, then id); and
