@@ -289,8 +289,10 @@ sy peers matrix          # numbered grid; note the numbers of the two accounts
 4. **Limits and switches.** `sy peers deny 2 1` then retry the reply: refused `not_allowed`.
    `sy peers pause`: sends refuse with `paused`; `sy peers resume` (owner key). `sy peers off` and
    `sy peers on` (this machine only). Ask Claude to send a made-up string that starts with `sk-ant-`: it
-   must be refused (`secret`). Ask it to loop two sessions endlessly: the loop guard stops it at the
-   turn limit (default 30, `sy peers max-turns <n>`).
+   must be refused (`secret`). Ask it to loop two sessions endlessly: with the default turn limit
+   (none, `max_turns` 0) only the rates stop it (`rate_limited ... retry in`, 20 quick messages per
+   session, 60 an hour per pair); set `sy peers max-turns 4` to see the loop guard stop it at 4,
+   then `sy peers max-turns none` to go back.
 5. **A session cannot widen.** From inside a session ask Claude to run `sy peers allow 1 2`: it must
    refuse with the signing-guard message (exit 4).
 
@@ -306,6 +308,10 @@ Both machines need K1 and K2 done. In a session on the laptop with a session ope
 ```sh
 sy peers list --all                  # the worker's sessions appear, with their handles
 ```
+
+If the worker's sessions show `start (blocked: ...)`, the link keys are not owner-certified yet
+(K1 not done): the line under the table names the steps, and a send is refused with the same
+reason without reaching the hub. Same-machine messages (K3) work without certified keys.
 
 Ask Claude on the laptop to message that handle. **Pass:** `delivered`; the worker's agent log shows
 one line with ids and sizes and no text; the hub's audit (`sy peers audit`) has the metadata and no

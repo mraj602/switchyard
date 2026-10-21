@@ -10,7 +10,10 @@ one line. Switchyard only relays what the user's matrix allows; you never decide
 ## Steps
 
 1. Run `sy peers list --json`. It lists the sessions this session may message: `handle`,
-   `name`, `account_label`, `machine`, `project`, `state`, `can`.
+   `name`, `account_label`, `machine`, `project`, `state`, `can`. A session with `blocked`
+   (on another machine) cannot be reached now: do not send to it; tell the user its reason
+   and the fix that `sy peers list` (without `--json`) prints, which the owner runs in their
+   own terminal.
 2. Pick the target from the user's description (project, machine, account, name), or, when
    you coordinate on your own, from what your task needs. If two sessions fit, ask the user
    which one (or, with no one to ask, send to none); do not guess.
@@ -41,8 +44,9 @@ nobody, say that, and name what it printed (for example that the matrix is not s
 - When you message a peer on your own (the user did not ask), send only what your current
   task needs, and say in your next reply to the user what you sent and to whom.
 - One path per message: do not also send it with native `SendMessage` or Remote Control.
-- When `sy peers send` prints `not delivered`, do not retry unless the user asks. When it
-  prints `queued`, do not resend.
+- When `sy peers send` prints `not delivered`, do not retry unless the user asks. The one
+  exception is a rate limit that names a wait (`retry in …`): you may send the same message
+  once more after that wait. When it prints `queued`, do not resend.
 - To answer a message you received, use the command in its header (`Reply with: sy peers send
   <handle> "…"`), with the text on standard input as above.
 - Never send secrets, tokens, credentials or file contents the user did not ask you to share.

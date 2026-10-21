@@ -150,6 +150,7 @@ func (r *Remote) Sessions() ([]peers.Session, error) {
 		return nil, err
 	}
 	out := make([]peers.Session, 0, len(rep.Sessions))
+	check := r.reachability(rep)
 	for _, w := range rep.Sessions {
 		if w.MachineID == r.Env.Machine.ID {
 			continue
@@ -159,10 +160,45 @@ func (r *Remote) Sessions() ([]peers.Session, error) {
 			Mode: peers.ModePrompting}
 		if w.Device != nil {
 			s.Device = *w.Device
+			if b := check(s.Device, w.Machine); b != nil {
+				s.Blocked = b.Reason
+			}
 		}
 		out = append(out, s)
 	}
 	return out, nil
+}
+
+// reachability returns the check of peers.Reachability for the machines of one directory
+// reply: whether this machine and the machine of an agent device can exchange messages
+// (certificates and pins), each device checked once.
+func (r *Remote) reachability(rep *peers.PeersReply) func(device, machine string) *peers.ErrBlocked {
+	trust, terr := keys.PinnedTrust(r.Env.State)
+	rev := revocations(r.Env.State)
+	var own *keys.Doc
+	if dk, err := keys.ReadDeviceKeys(r.Env.State); err == nil && dk.Device != "" {
+		if d, ok := rep.Certs[dk.Device]; ok {
+			own = &d
+		}
+	}
+	seen := map[string]*peers.ErrBlocked{}
+	return func(device, machine string) *peers.ErrBlocked {
+		if b, ok := seen[device]; ok {
+			return b
+		}
+		var b *peers.ErrBlocked
+		if terr != nil {
+			b = &peers.ErrBlocked{Reason: "this machine's pins cannot be read (" + terr.Error() + ")"}
+		} else {
+			var target *keys.Doc
+			if d, ok := rep.Certs[device]; ok {
+				target = &d
+			}
+			b = peers.Reachability(trust, rev, own, target, device, machine)
+		}
+		seen[device] = b
+		return b
+	}
 }
 
 // ---- sending (peers.md 8.2) ----
@@ -212,6 +248,11 @@ func (r *Remote) Send(o peers.Outgoing) (*peers.Pending, *peers.Refusal) {
 	trust, err := keys.PinnedTrust(r.Env.State)
 	if err != nil {
 		return nil, peers.Refuse(peers.CodeFailed, "this machine's pins: %v", err)
+	}
+	// Certificates first (this machine's own too: every receiver refuses an uncertified
+	// sender), with the reason and the owner's fix in the refusal line.
+	if b := r.reachability(rep)(*to.Device, to.Machine); b != nil {
+		return nil, peers.Refuse(peers.CodeRejected, "%s", peers.BlockedLine(o.To.Handle, b))
 	}
 	rev := revocations(r.Env.State)
 	cert, err := peers.CheckMachineCert(certDoc, trust, rev, *to.Device)

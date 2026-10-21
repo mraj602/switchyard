@@ -93,6 +93,8 @@ type testHub struct {
 	// mayWiden is peers.hub_may_widen per machine name (default false), set before the
 	// machines are made.
 	mayWiden map[string]bool
+	// noOwner: no owner key; machines pair with pairTOFU and take hub-signed widening.
+	noOwner bool
 
 	mu    sync.Mutex
 	rogue intercept
@@ -122,6 +124,20 @@ func (h *testHub) setRogue(r intercept) {
 // newHub starts a hub with a confirmed owner key and an owner-signed matrix that lets work
 // start threads with personal (and nothing else across accounts), maxTurns turns.
 func newHub(t *testing.T, maxTurns int) *testHub {
+	t.Helper()
+	return newHubOwner(t, maxTurns, true)
+}
+
+// newHubNoOwner is the hub of an owner who never ran `sy keys init`: no owner key, the same
+// pairs plus personal → work (so work ⇄ personal) in a hub-signed matrix (an owner session on the board widened it), machines that
+// take hub-signed widening (hub_may_widen, the default) and certificates with the hub's
+// signature only (pairTOFU).
+func newHubNoOwner(t *testing.T, maxTurns int) *testHub {
+	t.Helper()
+	return newHubOwner(t, maxTurns, false)
+}
+
+func newHubOwner(t *testing.T, maxTurns int, owner bool) *testHub {
 	t.Helper()
 	ctx := context.Background()
 	clk := &clock{}
@@ -157,19 +173,48 @@ func newHub(t *testing.T, maxTurns int) *testHub {
 	}))
 	t.Cleanup(func() { h.lk.Close(); h.srv.Close(); st.Close() })
 
-	od, err := keys.NewOwnerKeyDoc(h.owner, k.FP, clk.Now())
-	if err != nil {
-		t.Fatal(err)
+	if !owner {
+		h.noOwner = true
+		turns := maxTurns
+		if _, err := h.ks.EditMatrix(ctx, hubkeys.MatrixEdit{MaxTurns: &turns,
+			Allow: [][]string{{accOther, accPersonal}, {accPersonal, accWork}, {accWork, accPersonal}}}, "test", true); err != nil {
+			t.Fatal(err)
+		}
+		return h
 	}
-	if _, err := h.ks.ProposeAndConfirm(ctx, od); err != nil {
-		t.Fatal(err)
-	}
+	h.confirmOwner()
 	h.ownerMatrix(func(b *keys.MatrixBody) {
 		b.MaxTurns = maxTurns
 		b.Accounts = map[string]string{accWork: "work", accPersonal: "personal", accOther: "other"}
 		b.Allow = [][]string{{accOther, accPersonal}, {accWork, accPersonal}} // sorted
 	})
 	return h
+}
+
+// confirmOwner is `sy keys init` on the owner machine plus its confirmation: the owner key
+// becomes the hub's active one.
+func (h *testHub) confirmOwner() {
+	h.t.Helper()
+	od, err := keys.NewOwnerKeyDoc(h.owner, h.ks.Key.FP, h.clk.Now())
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	if _, err := h.ks.ProposeAndConfirm(h.ctx, od); err != nil {
+		h.t.Fatal(err)
+	}
+}
+
+// certify is `sy keys certify` for one machine: the owner signs its hub-signed certificate.
+func (h *testHub) certify(m *machine) {
+	h.t.Helper()
+	var raw []byte
+	if err := h.st.R().QueryRowContext(h.ctx, `SELECT cert FROM device_key WHERE device_id = ?`, m.device).Scan(&raw); err != nil {
+		h.t.Fatal(err)
+	}
+	ownerPub := h.owner.Public().(ed25519.PublicKey)
+	if err := h.ks.Certify(h.ctx, m.device, keys.Fingerprint(ownerPub), keys.SignDoc(keys.TypeDeviceCert, raw, keys.ByOwner, h.owner).Sig); err != nil {
+		h.t.Fatal(err)
+	}
 }
 
 // ownerMatrix stores the next matrix version, signed by the owner key: the current body
@@ -323,7 +368,31 @@ func mustJSON(v any) string { b, _ := json.Marshal(v); return string(b) }
 // starts its agent. The link is not connected yet: connect does that.
 func (h *testHub) newMachine(name, id string, specs ...sessionSpec) *machine {
 	h.t.Helper()
+	if h.noOwner {
+		return h.newMachineWith((*testHub).pairTOFU, name, id, specs...)
+	}
 	return h.newMachineWith((*testHub).pairQR, name, id, specs...)
+}
+
+// pairTOFU is `sy agent enable` on a hub with no owner key (reg tofu, keys.md 7.1): the keys
+// are registered and hub-signed, only the hub key is pinned, nothing is owner-certified.
+func (h *testHub) pairTOFU(m *machine, c auth.Created, dk keys.DeviceKeys) {
+	t := h.t
+	t.Helper()
+	pub, _ := dk.Public()
+	if err := h.st.Write(h.ctx, func(tx *store.Tx) error {
+		_, err := h.ks.RegisterTx(tx, c.Device, pub, keys.RegTOFU)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	dk.Device = m.device
+	if err := keys.WriteDeviceKeys(m.state, dk); err != nil {
+		t.Fatal(err)
+	}
+	if err := keys.SetPin(keys.Path(m.state, keys.HubPinFile), keys.NewPin(h.ks.Key.Pub, keys.PinTOFU, h.clk.Now())); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // pairQR registers the machine's keys the way a QR pairing does (reg qr), certifies them
@@ -490,7 +559,7 @@ func (h *testHub) newMachineWith(pair func(*testHub, *machine, auth.Created, key
 	m.remote = peerlink.New(m.env(), quiet)
 	m.remote.Fresh = -1
 	m.remote.HubMayWiden = h.mayWiden[name]
-	m.lc = linkclient.New(linkclient.Config{State: m.state, URL: h.url(), Peers: m.remote, Now: h.clk.Now, Log: quiet,
+	m.lc = linkclient.New(linkclient.Config{State: m.state, URL: h.url(), Peers: m.remote, Now: h.clk.Now, Log: quiet, HubMayWiden: h.noOwner,
 		Backoff: []time.Duration{20 * time.Millisecond}})
 	m.remote.Link = m.lc
 

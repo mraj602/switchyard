@@ -70,7 +70,11 @@ B or C reads it as a cross-session message and answers with sy peers send (or Se
   With a hub to reach (not `pull`) a `link keys` line follows: a warning when the machine has
   no keys, the hub has none or other keys for it, or the certificate has no owner signature
   ("peers on other machines refuse this machine", fix `sy keys certify <device>` on the owner
-  machine); OK with `reg` and the fingerprint when certified.
+  machine). When this machine also pins no owner key (most often: none was ever made) the
+  fix is the whole of `peers.CertFix`: `sy keys init` on the owner machine (once), confirm it,
+  `sy keys certify --all`, then `sy agent enable` on each other machine; a certified machine
+  that pins no owner key warns too (it cannot check other machines' certificates, fix `sy
+  agent enable`). OK with `reg` and the fingerprint when certified and pinned.
 - Plan section 1 ("nothing stays running") gets its one exception here: the agent is installed
   only by `sy agent enable` (or `sy peers enable`, which calls it). Hooks, the status line and
   `sy tick` never depend on it.
@@ -211,7 +215,18 @@ secret is in it. Sessions of the same account are not a reason to print it (nati
 
 - `device`: the agent device of the session's machine (`null` when that machine runs no
   agent: not reachable). The `peers` frame carries each such device's certificate once
-  (`certs`, link.md 6.3), which the sender checks before it seals to it (8.2).
+  (`certs`, link.md 6.3), which the sender checks before it seals to it (8.2), and the asking
+  device's own.
+- `blocked` (other machines only, omitted when empty): why messages to that session cannot go
+  now although `can` says the matrix allows them (`peers.Reachability`, from the `certs` and
+  this machine's pins): `this machine has no owner key pinned`, `this machine's link keys are
+  not owner-certified` (every receiver would refuse it, 8.4), `<machine>'s link keys are not
+  owner-certified`, `<machine> is revoked`, or the certificate does not check. A send to such a
+  session is refused at once (`rejected`, exit 7, nothing reaches the hub) with that reason;
+  for the certificate reasons the line adds the owner's fix (`peers.CertFix`: `sy keys init`
+  once, confirm it, `sy keys certify --all`, `sy agent enable` on the other machines; terminal
+  only, the signing guard refuses them inside Claude Code) and "Do not retry until then". The
+  table of `sy peers list` shows `start (blocked: <reason>)` and prints the fix once below it.
 - The hub's `peers` frame lists the **other** machines' live sessions (session events in the
   last 7 days, not ended or gone) with `machine` (the name), `machine_id`, `state` and
   `device`, and no `can`: the asking agent works `can` out with its own matrix and threads,
@@ -293,6 +308,12 @@ the message may still be queued and delivered, so it is not reported `not delive
 still be delivered; do not resend (msg …)`, the exit code is 8 (7.2, no new code), the turn
 counts in the sender's thread, and a later `peer_status` still answers `--wait` and
 `sy peers status`.
+
+A receiving machine that refuses an uncertified sender (`rejected` `uncertified`, 8.4) is
+reported as `not delivered: <handle>'s machine refused it (uncertified): one of the two
+machines' link keys has no owner signature. To fix it, <peers.CertFix>. Do not retry until
+then.` A rate refusal names the wait (`retry in 42s`); it is the one refusal the skill lets
+Claude send again, once, after that wait (12).
 
 No notice is ever injected into the sender's session later. `sy peers status [<msg>]` shows
 what became of earlier messages.
@@ -821,7 +842,8 @@ Specified here; written in PE1 together with the commands it calls.
   knows or is doing, handing over a result, avoiding duplicate work), including sessions that
   native ListAgents and SendMessage do not show."; `allowed-tools: Bash(sy peers list:*),
   Bash(sy peers send:*), Bash(sy peers status:*), Bash(sy peers matrix:*)`.
-- **Steps:** run `sy peers list --json`; pick the target by the user's description (project,
+- **Steps:** run `sy peers list --json`; skip sessions with `blocked` (tell the user the
+  reason and the owner's fix that `sy peers list` prints); pick the target by the user's description (project,
   machine, account, name), or by what the task needs when Claude coordinates on its own, and
   ask when two fit (with no one to ask, send to none); send one concise message with `sy peers send
   <handle> --stdin` (a quoted heredoc, so the shell never expands the text); report the
@@ -835,7 +857,9 @@ Specified here; written in PE1 together with the commands it calls.
   - A message Claude sends on its own carries only what the current task needs, and Claude
     says in its next reply to the user what it sent and to whom.
   - One path per message: do not also send it with native `SendMessage` or Remote Control.
-  - On `not delivered`, do not retry unprompted. On `queued`, do not resend.
+  - On `not delivered`, do not retry unprompted, except a rate limit that names a wait
+    (`retry in …`): the same message may be sent once more after it. On `queued`, do not
+    resend.
   - Reply with the command in the message header.
   - Never send secrets, tokens, credentials or file contents the user did not ask to share.
   - No delegating work to another account to get around usage limits.
@@ -961,4 +985,14 @@ captured on reply sockets.
   → rejected; hub-signed widening refused under `hub_may_widen = false`; pause stops a queued
   message; `sy peers off` with the hub down; "Resume thread" through the hub's endpoint after
   the loop guard (one machine offline, then delivered), and refused by a machine with
-  `hub_may_widen = false`, which keeps its stop and reports it to the hub's audit.
+  `hub_may_widen = false`, which keeps its stop and reports it to the hub's audit; with
+  `max_turns` 0, 50 unattended round trips all delivered and counted by all three parties,
+  and a fast exchange stopped by the rate with a `retry in` that works; an idle target
+  delivered and an ended one `target_gone`; unknown handles and the address forms across
+  machines; the hub out of reach (`hub_unreachable` for other machines, same-machine sends
+  spooled for the audit) and back; 64 KiB across machines including text that JSON escaping
+  makes six times longer, one byte more `too_big`, Unicode kept and controls removed; and a
+  world with no owner key (`blocked` in the list, the refusal with the fix, same-machine
+  sends working), then the owner's steps (`sy keys init`, confirm, certify, the other machine
+  pinning the owner key at its next login) after which the same pair exchanges messages, and
+  a sender that alone is uncertified.

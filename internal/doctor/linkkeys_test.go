@@ -2,6 +2,7 @@ package doctor
 
 import (
 	"context"
+	"crypto/ed25519"
 	"errors"
 	"strings"
 	"testing"
@@ -52,6 +53,22 @@ func TestCheckLinkKeys(t *testing.T) {
 	probe = func(context.Context) (CertInfo, error) { return CertInfo{}, errors.New("connection refused") }
 	if c := check(); len(c) != 0 {
 		t.Fatalf("hub down: %+v", c)
+	}
+	probe = func(context.Context) (CertInfo, error) { return CertInfo{Device: "dev_1", Reg: "ssh", SignFP: fp}, nil }
+	// No owner key pinned here (the owner never ran sy keys init): the fix starts there.
+	if c := check(); len(c) != 1 || !strings.Contains(c[0].Detail, "no owner key pinned") || !strings.Contains(c[0].Fix, "sy keys init") ||
+		!strings.Contains(c[0].Fix, "sy keys certify --all") || !strings.Contains(c[0].Fix, "sy agent enable") {
+		t.Fatalf("uncertified, no owner pin: %+v", c)
+	}
+	probe = func(context.Context) (CertInfo, error) {
+		return CertInfo{Device: "dev_1", Reg: "ssh", SignFP: fp, OwnerSigned: true}, nil
+	}
+	if c := check(); len(c) != 1 || c[0].Level != Warn || !strings.Contains(c[0].Detail, "no owner key pinned") || !strings.HasPrefix(c[0].Fix, "sy agent enable") {
+		t.Fatalf("certified, no owner pin: %+v", c)
+	}
+	opub, _, _ := ed25519.GenerateKey(nil)
+	if err := keys.SetPin(keys.Path(tmp, keys.OwnerPinFile), keys.NewPin(opub, keys.PinTOFU, time.Now())); err != nil {
+		t.Fatal(err)
 	}
 	probe = func(context.Context) (CertInfo, error) { return CertInfo{Device: "dev_1", Reg: "ssh", SignFP: fp}, nil }
 	if c := check(); len(c) != 1 || !strings.Contains(c[0].Detail, "not owner-certified") || c[0].Fix != "on the owner machine: sy keys certify dev_1" {
