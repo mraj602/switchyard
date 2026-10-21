@@ -89,7 +89,7 @@ func TestFoldFixtureRuns(t *testing.T) {
 			if s.State != Ended || s.EndReason != "other" || !s.EndedAt.Equal(in[len(in)-1].TS) {
 				t.Errorf("final = %s/%s ended_at %v", s.State, s.EndReason, s.EndedAt)
 			}
-			if s.Detector != "q1" || s.NeedsYou() {
+			if s.Detector != "q2" || s.NeedsYou() {
 				t.Errorf("detector %q needs_you %v", s.Detector, s.NeedsYou())
 			}
 		})

@@ -1,6 +1,6 @@
 // Package state is the session state engine: a pure fold of a session's records into
 // working, needs_permission, asked, done, failed, ended or gone, plus the question
-// detector (q1) and gone detection from session lists.
+// detector (q2) and gone detection from session lists.
 //
 // Contract: docs/spec/states.md.
 //

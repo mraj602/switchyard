@@ -7,7 +7,7 @@ import (
 )
 
 // DetectorVersion is stored in session_state.detector.
-const DetectorVersion = "q1"
+const DetectorVersion = "q2"
 
 var (
 	inlineCode   = regexp.MustCompile("`[^`\n]*`")
@@ -17,11 +17,14 @@ var (
 	urlToken     = regexp.MustCompile(`^https?://\S+$`)
 	questionHead = []string{"should i", "shall i", "do you want", "would you like", "want me to",
 		"which ", "can you confirm", "let me know if", "let me know which"}
+	// q2: a list after a ":" lead-in is a choice only when the lead-in asks for one, so
+	// "Three agents are running now:" and "Here is what I changed:" are not questions.
+	choiceWords = regexp.MustCompile(`(?i)\b(which|choose|choice|choices|pick|prefer|select|option|options|decide|would you|do you want|want me to|should i|shall i|let me know|your call)\b`)
 )
 
 const maxQuestionRunes = 120
 
-// ReadsAsQuestion applies detector q1 (states.md section 4) to a Stop's last message. It
+// ReadsAsQuestion applies detector q2 (states.md section 4) to a Stop's last message. It
 // returns whether the message reads as a question and the question text (at most 120
 // characters). An empty message is never a question.
 func ReadsAsQuestion(msg string) (bool, string) {
@@ -75,9 +78,10 @@ func ReadsAsQuestion(msg string) (bool, string) {
 		}
 		if before != "" {
 			b := trimTrailing(before)
-			if strings.HasSuffix(b, "?") || strings.HasSuffix(b, ":") {
-				bl := strings.Split(b, "\n")
-				return true, cut(strings.TrimSpace(bl[len(bl)-1]))
+			bl := strings.Split(b, "\n")
+			lead := strings.TrimSpace(bl[len(bl)-1])
+			if strings.HasSuffix(b, "?") || (strings.HasSuffix(b, ":") && choiceWords.MatchString(lead)) {
+				return true, cut(lead)
 			}
 		}
 	}

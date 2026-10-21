@@ -46,6 +46,9 @@ func TestReadsAsQuestion(t *testing.T) {
 		{"lettered options", "Pick one:\nA. fast\nB. safe", true, ""},
 		{"bold option bullets", "Here are the choices:\n- **Option 1**: fast\n- **Option 2**: safe", true, ""},
 		{"one option is not enough", "Next step:\n1. Deploy", false, ""},
+		{"a list after a plain colon lead-in is a report, not a choice", "Three agents are running now:\n1. Fixing limits.\n2. Fixing the tap.\n3. Research.", false, ""},
+		{"what I changed, numbered", "Here is what I changed:\n\n1. The parser\n2. The tests", false, ""},
+		{"a colon lead-in that asks for a pick", "Which one should I build:\n1. Limits\n2. Sessions", true, "Which one should I build:"},
 		{"options without lead-in", "Summary of changes\n1. Added x\n2. Fixed y", false, ""},
 		{"options after plain statement", "I did the following.\n\n1. Added x\n2. Fixed y", false, ""},
 		// 4c

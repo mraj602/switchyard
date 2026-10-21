@@ -121,13 +121,17 @@ func seedOutbox(t *testing.T, state string, n int) []string {
 	for i := 0; i < n; i++ {
 		id := fmt.Sprintf("01JA2XQ8R7Y5V0Z6M3K1T%05d", i)
 		ids = append(ids, id)
-		fmt.Fprintf(&sb, `{"v":1,"id":%q,"kind":"hook_event","ts":"2026-10-12T10:00:00.000Z","machine":"m_x","payload":{}}`+"\n", id)
+		fmt.Fprintf(&sb, `{"v":1,"id":%q,"kind":"hook_event","ts":"%sT10:00:00.000Z","machine":"m_x","payload":{}}`+"\n", id, seedDay())
 	}
-	if err := os.WriteFile(filepath.Join(dir, "2026-10-12.jsonl"), []byte(sb.String()), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, seedDay()+".jsonl"), []byte(sb.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return ids
 }
+
+// seedDay is the day file seeded records go in: today (UTC), so the outbox's age-based
+// pruning (outbox.Prune) never removes it; a fixed date made the test fail once it aged.
+func seedDay() string { return time.Now().UTC().Format("2006-01-02") }
 
 // appendOutbox appends n hook_event records to today's day file through the outbox.
 func appendOutbox(t *testing.T, state string, n int) []string {
@@ -219,7 +223,7 @@ func TestConnectHappyPath(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(home, ".config", "systemd", "user", "switchyard-flush.timer")); !os.IsNotExist(err) {
 		t.Error("timer file not removed")
 	}
-	if _, err := os.Stat(filepath.Join(deps.dirs.State.Path, "outbox", "2026-10-12.jsonl")); err != nil {
+	if _, err := os.Stat(filepath.Join(deps.dirs.State.Path, "outbox", seedDay()+".jsonl")); err != nil {
 		t.Error("outbox must survive disconnect")
 	}
 }

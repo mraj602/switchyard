@@ -162,7 +162,7 @@ Notes on the table:
   `bypass_permissions_disabled`, `other`. Stored as `detail`.
 - **`asked:tool`** for `ExitPlanMode` means "plan ready for approval". Shown as "plan ready".
 
-## 4. "Reads as a question" (detector `q1`)
+## 4. "Reads as a question" (detector `q2`)
 
 Input: `derived.last_message` of a Stop record (the last ≤ 400 characters, record.md 4.1). If
 it is absent (last messages not allowed), the result is always "not a question" and the
@@ -180,7 +180,11 @@ Steps, applied to the text:
    - b. P contains at least two option lines, i.e. lines matching
      `^\s*(\d{1,2}|[A-Ha-h])[.)]\s+\S` or `^\s*[-*]\s+\*\*(Option|Choice)\b` (case
      insensitive), **and** the text before the first option line (in P or in the paragraph
-     just before P) ends with `?` or `:`.
+     just before P) ends with `?`, or ends with `:` and its last line contains a choice word
+     (whole words, case insensitive: `which`, `choose`, `choice(s)`, `pick`, `prefer`,
+     `select`, `option(s)`, `decide`, `would you`, `do you want`, `want me to`, `should i`,
+     `shall i`, `let me know`, `your call`). So "Pick one:" before a numbered list is a
+     question, while "Three agents are running now:" or "Here is what I changed:" is a report.
    - c. The last sentence of P (P with trailing `.`, `!` and whitespace removed, then the
      text after the last `.`, `!` or newline; leading `*`, `_`, `>`, `-`, `#` and whitespace
      ignored, so `**Should I continue**` matches)
@@ -191,16 +195,16 @@ Steps, applied to the text:
      `https?://\S+`; 4a then does not hold, 4b and 4c are still tried);
    - P (after step 3) is a single line shorter than 3 characters.
    - Known limits, kept on purpose: a rhetorical question that ends the message, and a list
-     introduced by `:` ("Here is what I changed:" then numbered lines), both count as a
-     question.
+     introduced by `:` whose lead-in has a choice word but is not really asking, both count
+     as a question.
 
 The question text stored in `session_state.question` is the last line of P that ends with
 `?` (for 4b, the line before the first option; for 4c, the last line of P), with leading
 `*`, `_`, `>` and spaces removed, cut to 120 characters. Option lines (4b) are matched on P
 before step 3, so a trailing `)` or `*` cannot hide one.
 
-The detector version (`q1`) is stored in `session_state.detector`. A later `q2` can be
-introduced on the hub and replayed over history without touching any client (plan
+The detector version (`q2`; `q1` treated any `:` lead-in in 4b as a question) is stored in
+`session_state.detector`. A later version can be introduced on the hub and replayed over history without touching any client (plan
 section 9). The phase 1 tests ship a table of example messages with the expected result.
 
 ## 5. `gone` and timeouts
