@@ -119,3 +119,41 @@ func TestPace(t *testing.T) {
 		t.Error("pace after reset or without start")
 	}
 }
+
+// An idle account (claude.ai: the 5-hour window has not started) reads as five_hour 0 % with
+// no reset, seven_day absent, and the model-scoped week from limits[].
+func TestWindowsOfIdleAccount(t *testing.T) {
+	raw := json.RawMessage(`{"five_hour":{"utilization":0,"resets_at":null},"seven_day":null,"seven_day_opus":null,
+		"extra_usage":{"is_enabled":false},
+		"limits":[{"kind":"session","group":"session","percent":0,"resets_at":null,"is_active":true,"scope":null},
+		  {"kind":"weekly_scoped","group":"weekly","percent":0,"resets_at":"2026-10-27T04:00:00+00:00","is_active":false,
+		   "scope":{"model":{"id":null,"display_name":"Fable"},"surface":null}}]}`)
+	ws := WindowsOf(raw)
+	if len(ws) != 2 || ws[0].Key != "five_hour" || !ws[0].Idle() || ws[1].Key != "weekly_fable" || ws[1].Idle() {
+		t.Fatalf("%+v", ws)
+	}
+	if !ws[1].ResetsAt.Equal(time.Date(2026, 10, 27, 4, 0, 0, 0, time.UTC)) || !ws[1].Inactive {
+		t.Fatalf("%+v", ws[1])
+	}
+}
+
+// Unscoped limits[] items fill five_hour / seven_day when the top-level field is null; when
+// both carry the window the top-level one (unrounded) is kept; unknown kinds are left out.
+func TestWindowsOfLimitsFallback(t *testing.T) {
+	raw := json.RawMessage(`{"five_hour":{"utilization":8.4,"resets_at":"2026-10-21T22:09:59Z"},"seven_day":null,
+		"limits":[{"kind":"session","group":"session","percent":8,"resets_at":"2026-10-21T22:09:59Z","is_active":true},
+		  {"kind":"weekly_all","group":"weekly","percent":7,"resets_at":"2026-10-28T03:00:00Z","is_active":false,"scope":{"model":null,"surface":null}},
+		  {"kind":"weekly_odd","group":"weekly","percent":50,"resets_at":"2026-10-28T03:00:00Z"}]}`)
+	ws := WindowsOf(raw)
+	if len(ws) != 2 || ws[0].Key != "five_hour" || *ws[0].UsedPct != 8.4 || ws[1].Key != "seven_day" || *ws[1].UsedPct != 7 {
+		t.Fatalf("%+v", ws)
+	}
+	if !ws[1].ResetsAt.Equal(time.Date(2026, 10, 28, 3, 0, 0, 0, time.UTC)) || ws[1].Idle() {
+		t.Fatalf("%+v", ws[1])
+	}
+	// Only limits[] (no top-level windows): an idle session is an idle five_hour.
+	ws = WindowsOf(json.RawMessage(`{"limits":[{"kind":"session","group":"session","percent":0,"resets_at":null}]}`))
+	if len(ws) != 1 || ws[0].Key != "five_hour" || !ws[0].Idle() {
+		t.Fatalf("%+v", ws)
+	}
+}

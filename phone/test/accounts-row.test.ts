@@ -1,7 +1,7 @@
 // The Accounts list's rules (phone.md P17.8): "most room" (effective use of both windows), the
 // bar's tighter window, and the one status line of a row.
 import type { Seat, Window } from '../src/contract/api';
-import { mostRoom, tighterWindow } from '../src/lib/format';
+import { clock, mostRoom, resetWords, tighterWindow, windowPhase } from '../src/lib/format';
 import { attention, type PhoneTab } from '../src/lib/tabs';
 
 const NOW = Date.parse('2026-10-17T12:00:00Z');
@@ -58,6 +58,32 @@ describe('mostRoom', () => {
     const f = seat('f', [win('five_hour', 5, 3), win('seven_day', 30, 50)]);
     expect(name(mostRoom([e, f], NOW))).toBe('e'); // identical: list order
     expect(name(mostRoom([f, e], NOW))).toBe('f');
+  });
+});
+
+describe('idle and reset windows', () => {
+  const idle = (key: string): Window => ({ key, used_pct: 0, resets_at: null, state: 'idle', updated_at: iso(NOW - 60_000) });
+
+  it('an idle window (not started) reads 0 % with "not started"; a passed reset reads "reset at"', () => {
+    expect(windowPhase(idle('five_hour'), NOW)).toBe('idle');
+    expect(resetWords(idle('five_hour'), NOW)).toBe('not started');
+    // an older hub: no state, but 0 % with no reset time is the same idle reading
+    expect(windowPhase({ used_pct: 0, resets_at: null }, NOW)).toBe('idle');
+    const passed = win('five_hour', 0, -50, { state: 'reset' });
+    expect(windowPhase(passed, NOW)).toBe('reset');
+    expect(resetWords(passed, NOW)).toBe(`reset at ${clock(passed.resets_at, NOW)}`);
+    expect(resetWords(passed, NOW, { long: true })).not.toMatch(/now/);
+    expect(resetWords(win('five_hour', 10, 2), NOW)).toBe(`resets ${clock(iso(NOW + 2 * H), NOW)}`);
+    expect(resetWords(win('five_hour', 10, 2), NOW, { long: true })).toMatch(/^resets in 2 h \(/);
+  });
+
+  it('an idle account counts 0 for most room and shows its idle window', () => {
+    const idler = seat('idler', [idle('five_hour'), win('weekly_fable', 0, 100)]);
+    const busy = seat('busy', [win('five_hour', 12, 3), win('seven_day', 9, 100)]);
+    const r = mostRoom([busy, idler], NOW);
+    expect(name(r)).toBe('idler');
+    expect([r!.five, r!.seven]).toEqual([0, 0]);
+    expect(tighterWindow(idler, NOW)).toMatchObject({ short: '5 h', used: 0 });
   });
 });
 

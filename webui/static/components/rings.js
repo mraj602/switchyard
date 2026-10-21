@@ -4,12 +4,14 @@ import { h } from './dom.js';
 import { svg } from './ui.js';
 import { seatName, seatIndex } from './seat.js';
 import { clock, pct } from '../format.js';
+import { shownUse, windowPhase } from './windows.js';
 
 const R = 18, C = 2 * Math.PI * R;
 
 function ring(seat, colour, now) {
   const w = (seat.windows || []).find((x) => x.key === 'five_hour');
-  const used = w && w.used_pct != null ? w.used_pct : null;
+  const used = shownUse(w, now);
+  const phase = used == null ? null : windowPhase(w, now);
   const hot = used != null && used >= 90;
   const name = seatName(seat);
   const filled = used == null ? 0 : (Math.min(100, Math.max(0, used)) / 100) * C;
@@ -20,7 +22,7 @@ function ring(seat, colour, now) {
       (() => { const t = svg('text', { x: 24, y: 28, 'text-anchor': 'middle', 'font-size': used != null && used >= 100 ? 9.5 : 10.5, class: `ring-num${hot ? ' hot' : ''}` }); t.textContent = used == null ? '–' : `${Math.round(used)}%`; return t; })()),
     h('span', { class: 'ring-text' },
       h('span', { class: 'ring-name', title: name }, name),
-      h('span', { class: `ring-reset${hot ? ' hot' : ''}` }, w && w.resets_at ? `resets ${clock(w.resets_at, now)}` : used == null ? 'no data' : '')));
+      h('span', { class: `ring-reset${hot ? ' hot' : ''}` }, phase === 'idle' ? 'not started' : w && w.resets_at ? `${phase === 'reset' ? 'reset' : 'resets'} ${clock(w.resets_at, now)}` : used == null ? 'no data' : '')));
 }
 
 export function ringRow(seats, now) {

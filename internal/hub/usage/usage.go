@@ -123,6 +123,13 @@ func num(raw json.RawMessage) *float64 {
 // `utilization` is a window (iguana_necktie and future keys included); model-scoped limits
 // come from `limits[]` items with scope.model.display_name, keyed
 // lower(group || kind) + "_" + lower(model). Values are kept unrounded.
+//
+// The newer `limits[]` shape is also read for the unscoped kinds in limitKeys: such an item
+// is the five_hour / seven_day window when the top-level field is null or missing. When both
+// carry the window the top-level field is kept (its utilization is unrounded; the two agree
+// in every reading seen). `is_active` is not a "started" flag (a weekly_all item with 24 %
+// used reads is_active false), so it only sets Inactive. A window with used 0 and no
+// resets_at is idle: claude.ai's "not started yet" (Sample.Idle, record.md 4.3).
 func WindowsOf(usage json.RawMessage) []Sample {
 	var top map[string]json.RawMessage
 	if json.Unmarshal(usage, &top) != nil {
@@ -157,11 +164,26 @@ func WindowsOf(usage json.RawMessage) []Sample {
 			Model *struct {
 				DisplayName string `json:"display_name"`
 			} `json:"model"`
+			Surface json.RawMessage `json:"surface"`
 		} `json:"scope"`
 	}
 	if raw, ok := top["limits"]; ok && json.Unmarshal(raw, &limits) == nil {
+		have := map[string]bool{}
+		for _, s := range out {
+			have[s.Key] = true
+		}
+		filled := false
 		for _, l := range limits {
 			if l.Scope == nil || l.Scope.Model == nil || l.Scope.Model.DisplayName == "" {
+				key, ok := limitKeys[l.Kind]
+				scoped := l.Scope != nil && len(l.Scope.Surface) > 0 && string(l.Scope.Surface) != "null"
+				if !ok || scoped || have[key] || l.Percent == nil {
+					continue
+				}
+				pct := *l.Percent
+				have[key], filled = true, true
+				out = append(out, Sample{Key: key, UsedPct: &pct, ResetsAt: ParseTime(l.ResetsAt),
+					Inactive: l.IsActive != nil && !*l.IsActive})
 				continue
 			}
 			g := l.Group
@@ -175,9 +197,20 @@ func WindowsOf(usage json.RawMessage) []Sample {
 			out = append(out, Sample{Key: strings.ToLower(g + "_" + l.Scope.Model.DisplayName), UsedPct: &pct,
 				ResetsAt: ParseTime(l.ResetsAt), Inactive: l.IsActive != nil && !*l.IsActive})
 		}
+		if filled { // five_hour / seven_day first, as from the top-level fields
+			sort.SliceStable(out, func(i, j int) bool { return Rank(out[i].Key) < Rank(out[j].Key) })
+		}
 	}
 	return out
 }
+
+// limitKeys maps an unscoped `limits[]` item's kind to the window it describes (record.md
+// 4.3): "session" is the 5-hour window, "weekly_all" the all-models 7-day one.
+var limitKeys = map[string]string{"session": "five_hour", "weekly_all": "seven_day"}
+
+// Idle is a reading of a window that has not started: claude.ai reports 0 % used and no
+// resets_at until the account is next used (record.md 4.3).
+func (s Sample) Idle() bool { return s.UsedPct != nil && *s.UsedPct == 0 && s.ResetsAt.IsZero() }
 
 // StatusLineWindows reads rate_limits.five_hour / seven_day from a status-line payload.
 func StatusLineWindows(payload json.RawMessage) []Sample {

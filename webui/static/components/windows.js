@@ -2,6 +2,9 @@
 
 import { h } from './dom.js';
 import { clock, until, pct, humanKey } from '../format.js';
+import { windowPhase } from './accounts-fmt.js';
+
+export { windowPhase };
 
 const LABELS = {
   five_hour: '5-hour',
@@ -59,24 +62,42 @@ export function paceChip(info, prefix) {
   return h('div', { class: `chip chip-${info.cls}` }, prefix ? `${prefix} · ` : '', info.text);
 }
 
+// The use shown for a window: 0 when idle (not started) or reset, else used_pct; null with no reading.
+export function shownUse(w, now = Date.now()) {
+  if (!w || w.used_pct == null) return null;
+  return windowPhase(w, now) === 'current' ? w.used_pct : 0;
+}
+
+// The reset words of a window: "not started", "reset at Sat 10:10" (passed), "resets 15:48"
+// or '' with no reset time. `long`: "resets in 2 h 10 min (15:48)" and the idle explanation.
+export function resetWords(w, now = Date.now(), long = false) {
+  const phase = windowPhase(w, now);
+  if (phase === 'idle') return long ? 'not started · starts when you next use this account' : 'not started';
+  if (!w.resets_at) return '';
+  if (phase === 'reset') return `reset at ${clock(w.resets_at, now)}`;
+  return long ? `resets ${until(w.resets_at, now)} (${clock(w.resets_at, now)})` : `resets ${clock(w.resets_at, now)}`;
+}
+
 // One meter row. `full` adds the reset countdown and pace line (Accounts page).
 export function windowRow(w, { seatName, full = false, now = Date.now() } = {}) {
-  const used = w.used_pct;
+  const used = shownUse(w, now);
   const hot = used != null && used >= 90;
   const label = windowLabel(w);
-  const value = used == null ? 'no data' : `${pct(used)}${w.resets_at && !full ? ` · resets ${clock(w.resets_at, now)}` : ''}`;
+  const words = used == null ? '' : resetWords(w, now, full);
+  const value = used == null ? 'no data' : pct(used);
   const pace = full ? paceInfo(w, now) : null;
   return h('div', { class: 'win' },
     h('div', { class: 'win-head' },
       h('span', {}, label),
-      h('span', { class: `mono${hot ? ' hot' : ''}` }, value, hot ? h('span', { class: 'hot-tag' }, ' high') : null)),
+      h('span', { class: `mono${hot ? ' hot' : ''}` }, value, hot ? h('span', { class: 'hot-tag' }, ' high') : null,
+        words && !full ? h('span', { class: 'muted win-when' }, ` · ${words}`) : null)),
     h('div', {
       class: 'meter', role: 'meter', 'aria-valuemin': 0, 'aria-valuemax': 100,
       'aria-valuenow': used == null ? undefined : Math.round(used),
       'aria-label': `${seatName ? seatName + ' ' : ''}${label} used`,
     }, h('div', { class: 'meter-fill', style: { width: `${Math.min(100, Math.max(0, used || 0))}%` } })),
-    full && w.resets_at ? h('div', { class: 'win-sub' },
-      `resets ${until(w.resets_at, now)}`, ' (', clock(w.resets_at, now), ')',
+    full && words ? h('div', { class: 'win-sub' },
+      words,
       w.peak_pct != null ? ` · peak ${pct(w.peak_pct)}` : '',
       w.source ? ` · from ${w.source === 'both' ? 'the status line and claude.ai' : w.source === 'web' ? 'claude.ai' : 'the status line'}` : '') : null,
     pace ? h('div', { class: `win-pace pace-${pace.cls}` }, pace.text) : null);
