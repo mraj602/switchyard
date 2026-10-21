@@ -39,7 +39,9 @@ export function SyNeeds({ snapshot, now, height }: AndroidWidgetProps) {
             clickActionData={{ uri: `switchyard://sessions/${encodeURIComponent(r.id)}` }}
           >
             <FlexWidget style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: (r.colour || BG) as Hex, marginRight: 8 }} />
-            <TextWidget text={`${r.seat} · ${r.project} · ${r.state}`} maxLines={1} truncate="END" style={{ fontSize: 12, fontWeight: 'bold', color: FG }} />
+            <FlexWidget style={{ flex: 1 }}>
+              <TextWidget text={`${r.seat} · ${r.project} · ${r.state}`} maxLines={1} truncate="END" style={{ fontSize: 12, fontWeight: 'bold', color: FG }} />
+            </FlexWidget>
             <TextWidget text={r.age} maxLines={1} style={{ fontSize: 11, color: DIM, marginLeft: 6 }} />
           </FlexWidget>
         ))

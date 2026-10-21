@@ -125,7 +125,7 @@ describe('afterRefresh', () => {
     const snap = JSON.parse((await AsyncStorage.getItem(WIDGET_KEY))!);
     expect(snap).toMatchObject({ v: 1, hub: 'hub.example.ts.net', needs_you: NEEDS, private: false });
     expect(snap.top).not.toBeNull();
-    expect(callsOf('androidWidget.requestWidgetUpdate')).toHaveLength(2);
+    expect(callsOf('androidWidget.requestWidgetUpdate')).toHaveLength(6);
     expect(notificationsState.badge).toBe(NEEDS);
     expect(callsOf('widgets.')).toHaveLength(0); // no iOS calls on Android
   });
@@ -214,7 +214,7 @@ describe('onCleared', () => {
     const glue = createGlue(systemGluePlatform(app('android'), manualClock(NOW)));
     await glue.onCleared();
     expect(await AsyncStorage.getItem(WIDGET_KEY)).toBeNull();
-    expect(callsOf('androidWidget.requestWidgetUpdate')).toHaveLength(2);
+    expect(callsOf('androidWidget.requestWidgetUpdate')).toHaveLength(6);
     expect(notificationsState.badge).toBe(0);
   });
 

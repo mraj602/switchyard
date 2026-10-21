@@ -23,7 +23,8 @@ export type WindowKey = 'five_hour' | 'seven_day';
 
 export interface SnapshotWindow {
   pct: number;
-  resets_at: string;
+  /** null: an idle window (not started: 0 %, no reset time yet). */
+  resets_at: string | null;
 }
 
 export interface SnapshotSeat {

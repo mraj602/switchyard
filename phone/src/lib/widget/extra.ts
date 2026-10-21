@@ -94,20 +94,16 @@ export interface RingModel {
   pct: number;
   /** "5 h" / "7 d"; null when idle. */
   window: '5 h' | '7 d' | null;
-  /** "resets 15:48", "reset" or "not started". */
+  /** "resets 15:48", "reset at 10:10" or "not started" (format/windows resetWords). */
   caption: string;
 }
 
 /** The ring of one account; null when the snapshot has no such account (no id: the first one). */
 export function ringModel(snapshot: WidgetSnapshot, seatId: string | undefined, now: number, tz?: string): RingModel | null {
-  const rows: LimitRow[] = limitRows(snapshot, now);
+  const rows: LimitRow[] = limitRows(snapshot, now, tz);
   const r = seatId ? rows.find((x) => x.id === seatId) : rows[0];
   if (!r) return null;
-  let caption: string;
-  if (r.reset) caption = 'reset';
-  else if (!r.resets_at || !r.window) caption = 'not started';
-  else caption = `resets ${resetClock(r.resets_at, now, tz)}`;
-  return { label: r.label, colour: r.colour, pct: r.pct, window: r.window, caption };
+  return { label: r.label, colour: r.colour, pct: r.pct, window: r.window, caption: r.words || 'not started' };
 }
 
 /** An SVG ring (a track and an arc from 12 o'clock) of `size` px, for SvgWidget. */

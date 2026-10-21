@@ -13,6 +13,8 @@ import { androidProps, readSnapshot } from '../../src/lib/widget';
 import { ringSeat, setRingSeat } from '../../src/lib/widget/extra';
 import { SyRing } from './SyRing';
 
+const nowMs = (): number => Date.now();
+
 export function RingConfig({ widgetInfo, renderWidget, setResult }: WidgetConfigurationScreenProps) {
   const [snap, setSnap] = useState<WidgetSnapshot | null | undefined>(undefined);
   const [chosen, setChosen] = useState<string | undefined>(undefined);
@@ -27,7 +29,7 @@ export function RingConfig({ widgetInfo, renderWidget, setResult }: WidgetConfig
 
   const pick = async (id: string) => {
     await setRingSeat(AsyncStorage, widgetInfo.widgetId, id);
-    renderWidget(<SyRing {...androidProps(snap ?? null, Date.now(), undefined, widgetInfo.height, widgetInfo.width, id)} />);
+    renderWidget(<SyRing {...androidProps(snap ?? null, nowMs(), undefined, widgetInfo.height, widgetInfo.width, id)} />);
     setResult('ok');
   };
 

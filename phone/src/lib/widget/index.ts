@@ -22,7 +22,7 @@ import {
 } from '../../contract/snapshot';
 import { validateWidgetSnapshot } from '../../contract/validate';
 import { orderSeats } from '../format/seat';
-import { tighterWindow } from '../format/windows';
+import { resetWords, tighterWindow, windowPhase } from '../format/windows';
 
 export interface SnapshotPrefs {
   private: boolean;
@@ -52,7 +52,10 @@ function seatLabel(s: Seat): string {
 
 function windowOf(s: Seat, key: WindowKey): SnapshotWindow | null {
   const w: Window | undefined = s.windows?.find((x) => x.key === key);
-  if (!w || typeof w.used_pct !== 'number' || !Number.isFinite(w.used_pct) || !w.resets_at) return null;
+  if (!w || typeof w.used_pct !== 'number' || !Number.isFinite(w.used_pct)) return null;
+  // Idle (not started): 0 % and no reset time, kept so the widgets can say "not started".
+  if (windowPhase(w, Date.now()) === 'idle' && !w.resets_at) return { pct: 0, resets_at: null };
+  if (!w.resets_at) return null;
   return { pct: Math.min(100, Math.max(0, Math.round(w.used_pct))), resets_at: w.resets_at };
 }
 
@@ -63,7 +66,7 @@ function earliest(seats: SnapshotSeat[], after: number, skip?: Set<string>): Sna
   for (const s of seats) {
     for (const key of WINDOW_KEYS) {
       const w = s[key];
-      if (!w || skip?.has(resetKey(s.id, key))) continue;
+      if (!w || !w.resets_at || skip?.has(resetKey(s.id, key))) continue;
       const ms = Date.parse(w.resets_at);
       if (!(ms > after)) continue;
       if (!best || ms < bestMs || (ms === bestMs && w.pct > best.pct)) {
@@ -198,7 +201,7 @@ export function resetKeysAt(snapshot: WidgetSnapshot, ms: number): string[] {
   for (const s of snapshot.seats) {
     for (const key of WINDOW_KEYS) {
       const w = s[key];
-      if (w && Date.parse(w.resets_at) <= ms) out.push(resetKey(s.id, key));
+      if (w && w.resets_at && Date.parse(w.resets_at) <= ms) out.push(resetKey(s.id, key));
     }
   }
   return out;
@@ -298,7 +301,7 @@ export function buildTimeline(snapshot: WidgetSnapshot, now: number, tz?: string
   for (const s of snapshot.seats) {
     for (const key of WINDOW_KEYS) {
       const w = s[key];
-      if (!w) continue;
+      if (!w || !w.resets_at) continue;
       const ms = Date.parse(w.resets_at);
       if (ms > now && ms <= horizon && ms !== staleAt) resets.add(ms);
     }
@@ -323,22 +326,35 @@ export interface LimitRow {
   resets_at: string | null;
   /** The window's reset time has passed. */
   reset: boolean;
+  /** Not started (idle): "0 % · not started". */
+  idle: boolean;
+  /** The muted reset words (format/windows `resetWords`): "resets 15:48", "reset at 10:10", "not started". */
+  words: string;
 }
 
 /** Every account in the snapshot, in Accounts order, as the Limits widget draws it (format/windows `tighterWindow`). */
-export function limitRows(snapshot: WidgetSnapshot, now: number): LimitRow[] {
+export function limitRows(snapshot: WidgetSnapshot, now: number, tz?: string): LimitRow[] {
   return snapshot.seats.map((s) => {
     const windows: Window[] = [];
     for (const key of WINDOW_KEYS) {
       const w = s[key];
-      if (w) windows.push({ key, used_pct: w.pct, resets_at: w.resets_at });
+      if (w) windows.push({ key, used_pct: w.pct, resets_at: w.resets_at, ...(w.resets_at ? {} : { state: 'idle' as const }) });
     }
     const t = tighterWindow({ windows }, now);
     const base = { id: s.id, label: s.label, colour: s.colour };
-    if (!t) return { ...base, pct: 0, window: null, resets_at: null, reset: false };
+    if (!t) return { ...base, pct: 0, window: null, resets_at: null, reset: false, idle: true, words: 'not started' };
     const at = t.w?.resets_at ?? null;
     const past = at ? Date.parse(at) <= now : false;
-    return { ...base, pct: Math.min(100, Math.max(0, Math.round(t.used))), window: t.short, resets_at: past ? null : at, reset: past };
+    const idle = !!t.w && windowPhase(t.w, now) === 'idle';
+    return {
+      ...base,
+      pct: Math.min(100, Math.max(0, Math.round(t.used))),
+      window: t.short,
+      resets_at: past ? null : at,
+      reset: past,
+      idle,
+      words: t.w ? resetWords(t.w, now, tz ? { tz } : {}) : '',
+    };
   });
 }
 

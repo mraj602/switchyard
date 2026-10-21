@@ -137,7 +137,7 @@ export function validateWidgetSnapshot(x: unknown, path = 'snapshot'): Problems 
         const win = field(p, s, w, 'object?', at, true);
         if (isObj(win)) {
           field(p, win, 'pct', 'number', `${at}.${w}`);
-          field(p, win, 'resets_at', 'iso', `${at}.${w}`);
+          field(p, win, 'resets_at', 'iso?', `${at}.${w}`);
         }
       }
     });

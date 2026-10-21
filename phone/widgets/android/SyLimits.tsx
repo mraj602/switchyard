@@ -15,8 +15,9 @@ type Hex = `#${string}`;
 export const EMPTY_TEXT = 'Open Switchyard once to load';
 
 function resetText(r: LimitRow, tz?: string): string {
+  if (r.idle) return 'not started';
   if (r.reset) return 'reset';
-  if (!r.resets_at || !r.window) return 'idle';
+  if (!r.resets_at || !r.window) return 'not started';
   return `${r.window} · ${clock(r.resets_at, tz)}`;
 }
 
@@ -49,7 +50,7 @@ export function SyLimits({ snapshot, now, tz, height }: AndroidWidgetProps) {
       </FlexWidget>
     );
   }
-  const all = limitRows(snapshot, now);
+  const all = limitRows(snapshot, now, tz);
   const rows = all.slice(0, rowsThatFit(height, all.length));
   return (
     <FlexWidget style={root} clickAction="OPEN_URI" clickActionData={{ uri: 'switchyard://accounts' }}>
