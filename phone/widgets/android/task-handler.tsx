@@ -6,17 +6,29 @@
 // `updateAndroidWidgets` after every refresh.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { registerWidgetTaskHandler, requestWidgetUpdate, type WidgetInfo, type WidgetTaskHandlerProps } from 'react-native-android-widget';
+import {
+  registerWidgetConfigurationScreen,
+  registerWidgetTaskHandler,
+  requestWidgetUpdate,
+  type WidgetInfo,
+  type WidgetTaskHandlerProps,
+} from 'react-native-android-widget';
 
 import type { KVStore } from '../../src/contract/platform';
 import type { WidgetSnapshot } from '../../src/contract/snapshot';
 import type { LinkRefresh } from '../../src/contract/link';
 import { androidProps, applyLinkRefresh, clearSnapshot, readSnapshot, writeSnapshot } from '../../src/lib/widget';
-import { getAppInfo, systemLink } from '../../src/state/platform';
+import { dropRingSeat, nextRefreshAt, ringSeat } from '../../src/lib/widget/extra';
+import { getAppInfo, systemLink, systemWidgetAlarm } from '../../src/state/platform';
+import { RingConfig } from './RingConfig';
 import { SyLimits } from './SyLimits';
+import { SyMachines } from './SyMachines';
+import { SyNeeds } from './SyNeeds';
+import { SyNextReset } from './SyNextReset';
+import { SyRing } from './SyRing';
 import { SySessions } from './SySessions';
 
-export const ANDROID_WIDGET_NAMES = ['SyLimits', 'SySessions'] as const;
+export const ANDROID_WIDGET_NAMES = ['SyLimits', 'SySessions', 'SyNeeds', 'SyRing', 'SyNextReset', 'SyMachines'] as const;
 type Name = (typeof ANDROID_WIDGET_NAMES)[number];
 
 export interface HandlerDeps {
@@ -25,16 +37,26 @@ export interface HandlerDeps {
   tz?: string;
   /** The link's newest `refresh` frame (push.md 13.5), when the sy-link module is there. */
   linkRefresh?: () => Promise<LinkRefresh | null>;
+  /** Asks the native side to redraw the widgets at this time (epoch ms; 0 cancels): the reset alarm. */
+  alarm?: (atMs: number) => Promise<void>;
 }
 
 const defaults = (): HandlerDeps => {
   let link: ReturnType<typeof systemLink> = null;
+  let alarm: ReturnType<typeof systemWidgetAlarm> = null;
   try {
-    link = systemLink(getAppInfo());
+    const app = getAppInfo();
+    link = systemLink(app);
+    alarm = systemWidgetAlarm(app);
   } catch {
     // no native module yet (a headless start): the stored snapshot alone
   }
-  return { store: AsyncStorage, now: Date.now, ...(link ? { linkRefresh: () => link.getRefresh() } : {}) };
+  return {
+    store: AsyncStorage,
+    now: Date.now,
+    ...(link ? { linkRefresh: () => link.getRefresh() } : {}),
+    ...(alarm ? { alarm } : {}),
+  };
 };
 
 /** The stored snapshot with the link's newest refresh on top (the redraw the service asks for). */
@@ -48,9 +70,36 @@ async function current(d: HandlerDeps): Promise<WidgetSnapshot | null> {
   }
 }
 
-function tree(name: string, snapshot: WidgetSnapshot | null, d: HandlerDeps, info?: Pick<WidgetInfo, 'height'>) {
-  const props = androidProps(snapshot, d.now(), d.tz, info?.height);
-  return name === 'SyLimits' ? <SyLimits {...props} /> : <SySessions {...props} />;
+async function tree(name: string, snapshot: WidgetSnapshot | null, d: HandlerDeps, info?: Pick<WidgetInfo, 'height' | 'width' | 'widgetId'>) {
+  const seat = name === 'SyRing' && info ? await ringSeat(d.store, info.widgetId) : undefined;
+  const props = androidProps(snapshot, d.now(), d.tz, info?.height, info?.width, seat);
+  switch (name) {
+    case 'SyLimits':
+      return <SyLimits {...props} />;
+    case 'SyNeeds':
+      return <SyNeeds {...props} />;
+    case 'SyRing':
+      return <SyRing {...props} />;
+    case 'SyNextReset':
+      return <SyNextReset {...props} />;
+    case 'SyMachines':
+      return <SyMachines {...props} />;
+    default:
+      return <SySessions {...props} />;
+  }
+}
+
+/**
+ * One alarm for the soonest reset still ahead, so the reset ring and Next reset widgets move on
+ * when it happens (the library cannot tick). Each redraw sets the next one. Best effort.
+ */
+export async function scheduleResetRedraw(snapshot: WidgetSnapshot | null, d: HandlerDeps): Promise<void> {
+  if (!d.alarm) return;
+  try {
+    await d.alarm(snapshot ? (nextRefreshAt(snapshot, d.now()) ?? 0) : 0);
+  } catch {
+    // no alarm: the 30-minute period still redraws
+  }
 }
 
 export function createTaskHandler(deps: Partial<HandlerDeps> = {}) {
@@ -61,11 +110,17 @@ export function createTaskHandler(deps: Partial<HandlerDeps> = {}) {
     switch (props.widgetAction) {
       case 'WIDGET_ADDED':
       case 'WIDGET_UPDATE':
-      case 'WIDGET_RESIZED':
-        props.renderWidget(tree(name, await current(d), d, props.widgetInfo));
+      case 'WIDGET_RESIZED': {
+        const snap = await current(d);
+        props.renderWidget(await tree(name, snap, d, props.widgetInfo));
+        await scheduleResetRedraw(snap, d);
+        return;
+      }
+      case 'WIDGET_DELETED':
+        if (name === 'SyRing') await dropRingSeat(d.store, props.widgetInfo.widgetId);
         return;
       default:
-        // WIDGET_CLICK opens switchyard:// links natively (OPEN_URI); WIDGET_DELETED needs nothing.
+        // WIDGET_CLICK opens switchyard:// links natively (OPEN_URI).
         return;
     }
   };
@@ -77,15 +132,17 @@ export const widgetTaskHandler = createTaskHandler();
 export function registerAndroidWidgets(): void {
   if (Platform.OS !== 'android') return;
   registerWidgetTaskHandler(widgetTaskHandler);
+  registerWidgetConfigurationScreen(RingConfig);
 }
 
 async function refresh(snapshot: WidgetSnapshot | null, d: HandlerDeps): Promise<void> {
   await Promise.all(
     ANDROID_WIDGET_NAMES.map((widgetName: Name) => requestWidgetUpdate({ widgetName, renderWidget: (info) => tree(widgetName, snapshot, d, info) })),
   );
+  await scheduleResetRedraw(snapshot, d);
 }
 
-/** After a refresh: store the snapshot and redraw both widgets. */
+/** After a refresh: store the snapshot and redraw every widget. */
 export async function updateAndroidWidgets(snapshot: WidgetSnapshot, deps: Partial<HandlerDeps> = {}): Promise<void> {
   if (Platform.OS !== 'android') return;
   const d = { ...defaults(), ...deps };

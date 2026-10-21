@@ -32,5 +32,7 @@
     <receiver android:name="dev.switchyard.link.ActionReceiver" android:exported="false"/>
     <!-- The exact alarms of 14.4 (task removed, long reconnect timers): an explicit, private receiver. -->
     <receiver android:name="dev.switchyard.link.AlarmReceiver" android:exported="false"/>
+    <!-- The widgets' reset alarm (phone.md P11): an explicit, private receiver. -->
+    <receiver android:name="dev.switchyard.link.WidgetTickReceiver" android:exported="false"/>
   </application>
 </manifest>

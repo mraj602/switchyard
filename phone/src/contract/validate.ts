@@ -3,7 +3,7 @@
 // devserver fixtures, and by the app on data it did not make (push data, cached replies).
 
 import { PAYLOAD_KEYS } from './payload';
-import { SNAPSHOT_LABEL_MAX, SNAPSHOT_MAX_SEATS } from './snapshot';
+import { SNAPSHOT_LABEL_MAX, SNAPSHOT_MAX_MACHINES, SNAPSHOT_MAX_SEATS, SNAPSHOT_NEEDS_LIST } from './snapshot';
 
 type Problems = string[];
 type Obj = Record<string, unknown>;
@@ -137,9 +137,33 @@ export function validateWidgetSnapshot(x: unknown, path = 'snapshot'): Problems 
         const win = field(p, s, w, 'object?', at, true);
         if (isObj(win)) {
           field(p, win, 'pct', 'number', `${at}.${w}`);
-          field(p, win, 'resets_at', 'iso', `${at}.${w}`);
+          field(p, win, 'resets_at', 'iso?', `${at}.${w}`);
         }
       }
+    });
+  }
+  const needs = field(p, o, 'needs_list', 'array', path, true);
+  if (Array.isArray(needs)) {
+    if (needs.length > SNAPSHOT_NEEDS_LIST) p.push(`${path}.needs_list: more than ${SNAPSHOT_NEEDS_LIST}`);
+    if (priv === true && needs.length > 0) p.push(`${path}.needs_list: must be empty in private mode`);
+    needs.forEach((n, i) => {
+      const at = `${path}.needs_list[${i}]`;
+      if (!isObj(n)) return p.push(`${at}: not an object`);
+      for (const k of ['id', 'seat', 'colour', 'project', 'what']) field(p, n, k, 'string', at);
+      field(p, n, 'since', 'iso', at);
+    });
+  }
+  const machines = field(p, o, 'machines', 'array', path, true);
+  if (Array.isArray(machines)) {
+    if (machines.length > SNAPSHOT_MAX_MACHINES) p.push(`${path}.machines: more than ${SNAPSHOT_MAX_MACHINES}`);
+    machines.forEach((m, i) => {
+      const at = `${path}.machines[${i}]`;
+      if (!isObj(m)) return p.push(`${at}: not an object`);
+      field(p, m, 'id', 'string', at);
+      field(p, m, 'name', 'string', at);
+      field(p, m, 'online', 'boolean', at);
+      field(p, m, 'live', 'int', at);
+      field(p, m, 'last_seen', 'iso?', at);
     });
   }
   const counts = field(p, o, 'counts', 'object?', path, true);

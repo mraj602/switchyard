@@ -10,7 +10,7 @@ function pick(seats: SnapshotSeat[], now: number): LiveCountdownProps | null {
   for (const s of seats) {
     for (const key of WINDOWS) {
       const w = s[key];
-      if (!w || w.pct < LIVE_MIN_PCT) continue;
+      if (!w || !w.resets_at || w.pct < LIVE_MIN_PCT) continue;
       const ms = Date.parse(w.resets_at);
       if (!(ms > now) || ms - now > LIVE_MAX_H * 3_600_000) continue;
       // Highest pct; a tie goes to the earlier reset; a full tie keeps the first (Accounts order).

@@ -246,13 +246,13 @@ describe('Android widgets', () => {
     expect(rows(40)).toHaveLength(1);
   });
 
-  it('SyLimits shows a window past its reset as 0% "reset", and an idle account as 0% idle', () => {
+  it('SyLimits shows a window past its reset as 0% "reset", and an idle account as 0% not started', () => {
     const past = { id: 'p', label: 'claude-2', colour: '#654321', five_hour: { pct: 90, resets_at: '2026-10-13T06:36:00.000Z' }, seven_day: { pct: 0, resets_at: '2026-10-13T06:36:00.000Z' } };
     const t = aTexts(renderWidget(<SyLimits {...androidProps({ ...snapshot, seats: [past] }, Date.parse('2026-10-13T06:40:00.000Z'), 'UTC', 400)} />));
     expect(t).toEqual(expect.arrayContaining(['claude-2', '0%', 'reset']));
     const idle = { ...snapshot, seats: [{ id: 'i', label: 'claude-5', colour: '#123456', five_hour: null, seven_day: null }] };
     const it = aTexts(renderWidget(<SyLimits {...androidProps(idle, NOW, 'UTC', 400)} />));
-    expect(it).toEqual(expect.arrayContaining(['claude-5', '0%', 'idle']));
+    expect(it).toEqual(expect.arrayContaining(['claude-5', '0%', 'not started']));
   });
 
   it('both widgets say "Open Switchyard once to load" only without a snapshot, and tap opens Now', () => {
@@ -316,10 +316,10 @@ describe('Android widgets', () => {
     const store = memory();
     await updateAndroidWidgets(snapshot, { store, now: () => NOW, tz: 'UTC' });
     expect(JSON.parse(store.m.get('sy.widget.v1')!)).toEqual(snapshot);
-    expect(callsOf('androidWidget.requestWidgetUpdate').map((c) => (c.args[0] as { widgetName: string }).widgetName)).toEqual(['SyLimits', 'SySessions']);
+    expect(callsOf('androidWidget.requestWidgetUpdate').map((c) => (c.args[0] as { widgetName: string }).widgetName)).toEqual(['SyLimits', 'SySessions', 'SyNeeds', 'SyRing', 'SyNextReset', 'SyMachines']);
     await clearAndroidWidgets({ store, now: () => NOW });
     expect(store.m.size).toBe(0);
-    expect(callsOf('androidWidget.requestWidgetUpdate')).toHaveLength(4);
+    expect(callsOf('androidWidget.requestWidgetUpdate')).toHaveLength(12);
     spy.restore();
   });
 });

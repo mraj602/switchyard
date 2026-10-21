@@ -10,6 +10,12 @@ export const SNAPSHOT_MAX_SEATS = 8;
 /** The iOS widgets draw this many accounts. */
 export const SNAPSHOT_IOS_SEATS = 4;
 
+/** The Needs-you list widget shows this many sessions (P11). */
+export const SNAPSHOT_NEEDS_LIST = 3;
+
+/** The Machines widget shows this many machines (P11). */
+export const SNAPSHOT_MAX_MACHINES = 6;
+
 /** Labels are cut to this many characters (P11). */
 export const SNAPSHOT_LABEL_MAX = 12;
 
@@ -17,7 +23,8 @@ export type WindowKey = 'five_hour' | 'seven_day';
 
 export interface SnapshotWindow {
   pct: number;
-  resets_at: string;
+  /** null: an idle window (not started: 0 %, no reset time yet). */
+  resets_at: string | null;
 }
 
 export interface SnapshotSeat {
@@ -34,6 +41,29 @@ export interface SnapshotTop {
   /** The short state word: "asked", "perm", "failed", … */
   what: string;
   since: string;
+}
+
+/** One waiting session of the Needs-you list widget (no message text: only what `top` already holds, plus the route id). */
+export interface SnapshotNeed {
+  /** The session id, for the tap target `switchyard://sessions/<id>`. */
+  id: string;
+  seat: string;
+  colour: string;
+  project: string;
+  /** The short state word: "asked", "perm", "failed". */
+  what: string;
+  since: string;
+}
+
+/** One machine of the Machines widget. */
+export interface SnapshotMachine {
+  id: string;
+  name: string;
+  /** Not silent. */
+  online: boolean;
+  /** Live sessions. */
+  live: number;
+  last_seen: string | null;
 }
 
 export interface SnapshotNextReset {
@@ -62,6 +92,10 @@ export interface WidgetSnapshot {
   /** null in private mode, or when nothing needs you. */
   top: SnapshotTop | null;
   seats: SnapshotSeat[];
+  /** Up to 3 waiting sessions, oldest first; empty in private mode. Absent in a snapshot written by an older app. */
+  needs_list?: SnapshotNeed[];
+  /** Up to 6 machines in the hub's order. Absent in a snapshot written by an older app. */
+  machines?: SnapshotMachine[];
   next_reset: SnapshotNextReset | null;
   private: boolean;
   /** Absent in a snapshot written by an older app. */

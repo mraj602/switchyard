@@ -1,13 +1,17 @@
 // Widget snapshot and timeline (phone.md P11). Owner: WP-W. Pure: no React, no native module.
-import type { Overview, Seat, Window } from '../../contract/api';
-import { WIDGET_KEY } from '../../contract/constants';
+import type { Overview, Seat, Session, Window } from '../../contract/api';
+import { WIDGET_KEY, WIDGET_RING_KEY } from '../../contract/constants';
 import type { LinkRefresh } from '../../contract/link';
 import type { KVStore } from '../../contract/platform';
 import {
   SNAPSHOT_LABEL_MAX,
   SNAPSHOT_IOS_SEATS,
+  SNAPSHOT_MAX_MACHINES,
   SNAPSHOT_MAX_SEATS,
+  SNAPSHOT_NEEDS_LIST,
   TIMELINE_MAX,
+  type SnapshotMachine,
+  type SnapshotNeed,
   type SnapshotNextReset,
   type SnapshotSeat,
   type SnapshotTop,
@@ -18,7 +22,7 @@ import {
 } from '../../contract/snapshot';
 import { validateWidgetSnapshot } from '../../contract/validate';
 import { orderSeats } from '../format/seat';
-import { tighterWindow } from '../format/windows';
+import { resetWords, tighterWindow, windowPhase } from '../format/windows';
 
 export interface SnapshotPrefs {
   private: boolean;
@@ -48,7 +52,10 @@ function seatLabel(s: Seat): string {
 
 function windowOf(s: Seat, key: WindowKey): SnapshotWindow | null {
   const w: Window | undefined = s.windows?.find((x) => x.key === key);
-  if (!w || typeof w.used_pct !== 'number' || !Number.isFinite(w.used_pct) || !w.resets_at) return null;
+  if (!w || typeof w.used_pct !== 'number' || !Number.isFinite(w.used_pct)) return null;
+  // Idle (not started): 0 % and no reset time, kept so the widgets can say "not started".
+  if (windowPhase(w, Date.now()) === 'idle' && !w.resets_at) return { pct: 0, resets_at: null };
+  if (!w.resets_at) return null;
   return { pct: Math.min(100, Math.max(0, Math.round(w.used_pct))), resets_at: w.resets_at };
 }
 
@@ -59,7 +66,7 @@ function earliest(seats: SnapshotSeat[], after: number, skip?: Set<string>): Sna
   for (const s of seats) {
     for (const key of WINDOW_KEYS) {
       const w = s[key];
-      if (!w || skip?.has(resetKey(s.id, key))) continue;
+      if (!w || !w.resets_at || skip?.has(resetKey(s.id, key))) continue;
       const ms = Date.parse(w.resets_at);
       if (!(ms > after)) continue;
       if (!best || ms < bestMs || (ms === bestMs && w.pct > best.pct)) {
@@ -88,6 +95,7 @@ export function buildSnapshot(overview: Overview, accounts: Seat[], now: number,
   }));
 
   const needs = overview.needs_you ?? [];
+  const projectOf = (x: Session): string => x.project || x.name || x.title || x.cwd?.split('/').filter(Boolean).pop() || 'session';
   const count = overview.counts?.needs_you ?? needs.length;
   const first = needs[0];
   const top: SnapshotTop | null =
@@ -95,10 +103,34 @@ export function buildSnapshot(overview: Overview, accounts: Seat[], now: number,
       ? null
       : {
           seat: (first.seat_label || first.seat || '').slice(0, SNAPSHOT_LABEL_MAX),
-          project: first.project || first.name || first.title || first.cwd?.split('/').filter(Boolean).pop() || 'session',
+          project: projectOf(first),
           what: whatOf(first.state),
           since: first.state_since,
         };
+
+  // The waiting sessions, oldest first (what the Needs-you widget lists); nothing in private mode.
+  const needs_list: SnapshotNeed[] = prefs.private
+    ? []
+    : needs
+        .filter((x) => x.id && x.state_since && Number.isFinite(Date.parse(x.state_since)))
+        .sort((a, b) => Date.parse(a.state_since) - Date.parse(b.state_since))
+        .slice(0, SNAPSHOT_NEEDS_LIST)
+        .map((x) => ({
+          id: x.id,
+          seat: [...(x.seat_label || x.seat || '')].slice(0, SNAPSHOT_LABEL_MAX).join(''),
+          colour: x.seat_colour || FALLBACK_COLOUR,
+          project: projectOf(x),
+          what: whatOf(x.state),
+          since: x.state_since,
+        }));
+
+  const machines: SnapshotMachine[] = (overview.machines ?? []).slice(0, SNAPSHOT_MAX_MACHINES).map((m) => ({
+    id: m.id,
+    name: [...(m.name || m.id)].slice(0, SNAPSHOT_LABEL_MAX).join(''),
+    online: !m.silent,
+    live: countOf(m.live_sessions),
+    last_seen: m.last_seen && Number.isFinite(Date.parse(m.last_seen)) ? m.last_seen : null,
+  }));
 
   return {
     v: 1,
@@ -107,6 +139,8 @@ export function buildSnapshot(overview: Overview, accounts: Seat[], now: number,
     needs_you: count,
     top,
     seats,
+    needs_list,
+    machines,
     next_reset: earliest(seats, now),
     private: prefs.private,
     counts: {
@@ -148,6 +182,7 @@ export function applyLinkRefresh(snapshot: WidgetSnapshot | null, refresh: LinkR
     needs_you: needs,
     ...(snapshot.counts ? { counts: { ...snapshot.counts, needs_you: needs } } : {}),
     top: needs === 0 ? null : snapshot.top,
+    ...(snapshot.needs_list ? { needs_list: needs === 0 ? [] : snapshot.needs_list } : {}),
     seats,
     next_reset: earliest(seats, at),
   };
@@ -166,7 +201,7 @@ export function resetKeysAt(snapshot: WidgetSnapshot, ms: number): string[] {
   for (const s of snapshot.seats) {
     for (const key of WINDOW_KEYS) {
       const w = s[key];
-      if (w && Date.parse(w.resets_at) <= ms) out.push(resetKey(s.id, key));
+      if (w && w.resets_at && Date.parse(w.resets_at) <= ms) out.push(resetKey(s.id, key));
     }
   }
   return out;
@@ -266,7 +301,7 @@ export function buildTimeline(snapshot: WidgetSnapshot, now: number, tz?: string
   for (const s of snapshot.seats) {
     for (const key of WINDOW_KEYS) {
       const w = s[key];
-      if (!w) continue;
+      if (!w || !w.resets_at) continue;
       const ms = Date.parse(w.resets_at);
       if (ms > now && ms <= horizon && ms !== staleAt) resets.add(ms);
     }
@@ -291,22 +326,35 @@ export interface LimitRow {
   resets_at: string | null;
   /** The window's reset time has passed. */
   reset: boolean;
+  /** Not started (idle): "0 % · not started". */
+  idle: boolean;
+  /** The muted reset words (format/windows `resetWords`): "resets 15:48", "reset at 10:10", "not started". */
+  words: string;
 }
 
 /** Every account in the snapshot, in Accounts order, as the Limits widget draws it (format/windows `tighterWindow`). */
-export function limitRows(snapshot: WidgetSnapshot, now: number): LimitRow[] {
+export function limitRows(snapshot: WidgetSnapshot, now: number, tz?: string): LimitRow[] {
   return snapshot.seats.map((s) => {
     const windows: Window[] = [];
     for (const key of WINDOW_KEYS) {
       const w = s[key];
-      if (w) windows.push({ key, used_pct: w.pct, resets_at: w.resets_at });
+      if (w) windows.push({ key, used_pct: w.pct, resets_at: w.resets_at, ...(w.resets_at ? {} : { state: 'idle' as const }) });
     }
     const t = tighterWindow({ windows }, now);
     const base = { id: s.id, label: s.label, colour: s.colour };
-    if (!t) return { ...base, pct: 0, window: null, resets_at: null, reset: false };
+    if (!t) return { ...base, pct: 0, window: null, resets_at: null, reset: false, idle: true, words: 'not started' };
     const at = t.w?.resets_at ?? null;
     const past = at ? Date.parse(at) <= now : false;
-    return { ...base, pct: Math.min(100, Math.max(0, Math.round(t.used))), window: t.short, resets_at: past ? null : at, reset: past };
+    const idle = !!t.w && windowPhase(t.w, now) === 'idle';
+    return {
+      ...base,
+      pct: Math.min(100, Math.max(0, Math.round(t.used))),
+      window: t.short,
+      resets_at: past ? null : at,
+      reset: past,
+      idle,
+      words: t.w ? resetWords(t.w, now, tz ? { tz } : {}) : '',
+    };
   });
 }
 
@@ -346,10 +394,14 @@ export interface AndroidWidgetProps {
   tz?: string;
   /** The widget's current height, so the Limits widget draws as many rows as fit. */
   height?: number;
+  /** The widget's current width (the Machines widget lays out as many per line as fit). */
+  width?: number;
+  /** The account an Account-ring widget was configured with (a seat id). */
+  seat?: string;
 }
 
-export function androidProps(snapshot: WidgetSnapshot | null, now: number, tz?: string, height?: number): AndroidWidgetProps {
-  return { snapshot, now, ...(tz ? { tz } : {}), ...(height ? { height } : {}) };
+export function androidProps(snapshot: WidgetSnapshot | null, now: number, tz?: string, height?: number, width?: number, seat?: string): AndroidWidgetProps {
+  return { snapshot, now, ...(tz ? { tz } : {}), ...(height ? { height } : {}), ...(width ? { width } : {}), ...(seat ? { seat } : {}) };
 }
 
 // ------------------------------------------------------------------ storage (Android)
@@ -373,4 +425,5 @@ export async function readSnapshot(store: KVStore): Promise<WidgetSnapshot | nul
 
 export async function clearSnapshot(store: KVStore): Promise<void> {
   await store.removeItem(WIDGET_KEY);
+  await store.removeItem(WIDGET_RING_KEY);
 }

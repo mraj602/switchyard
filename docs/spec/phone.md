@@ -440,7 +440,7 @@ then gets the 401 that shows Pair, P3).
   "timer"`) and `AccountsMedium` (`systemMedium`: up to 4 rings with pct and reset time).
   The app calls `updateTimeline(entries)` after every refresh. Widget components are pure
   props → `@expo/ui/swift-ui` trees, with no hooks or state (an expo-widgets rule).
-- **Android** (`react-native-android-widget`), both resizable (`resizeMode: horizontal|vertical`),
+- **Android** (`react-native-android-widget`), six widgets, all resizable except the ring (`resizeMode: horizontal|vertical`),
   `updatePeriodMillis: 1800000` (the library's minimum). They replace the earlier `SyNeedsYou`
   (2×2) and `SyAccounts` (4×2); iOS keeps `NeedsYouSmall` and `AccountsMedium`.
   - `SyLimits` (target 4×3): every visible account (up to 8) in Accounts order, each as its
@@ -455,7 +455,45 @@ then gets the 401 that shows Pair, P3).
     ("Needs you: api · asked"; no project in private mode). A cell opens Sessions with its
     filter (`?filter=working`, `?filter=done`); Needs input and the highlight open Now; the
     rest opens Sessions.
-  - Both show "updated 3 min ago" (`agoWords(as_of, now)`) and, only when no snapshot has been
+  - Four more widgets (same dark card, drawn from the same snapshot, no network):
+    - `SyNeeds` (4×2, resizable): header "Needs you · N waiting" (N = `counts.needs_you`), then the
+      top 3 waiting sessions oldest first from `needs_list`: account colour dot, "account ·
+      project · state" (asked, needs permission, failed) and its age ("4 min"). A row opens
+      `switchyard://sessions/<id>`; the rest opens Now. Nothing waiting: "Nothing needs you".
+      Private mode: `needs_list` is empty, so it shows the count and "Open Switchyard to see
+      which".
+    - `SyRing` (2×2, `widgetFeatures: 'reconfigurable'`): one account, picked on the widget's
+      configuration screen (`RingConfig`, registered with `registerWidgetConfigurationScreen`;
+      Android opens it on placement and from Reconfigure). The pick is stored per widget id
+      under `sy.widget.ring.v1` ({widgetId: seatId}, never a secret; dropped on
+      `WIDGET_DELETED` and on unpair). It draws a ring (`SvgWidget`) of the tighter of 5 h and
+      7 d with the %, the window and the reset words from `resetWords` (format/windows):
+      "resets 15:48", "reset at 10:10" or, for an idle account, "0 %" and "not started". Tap:
+      Accounts with that seat open (`?seat=`). An account that no longer exists asks to
+      Reconfigure.
+    - `SyNextReset` (2×1, resizable wider): "Next reset · claude-2 · 5 h" and the soonest reset
+      across accounts as a clock time ("15:48", "Thu 09:00" when not today). Idle windows (no
+      reset time) are ignored. Tap: Accounts.
+    - `SyMachines` (4×1, resizable): header "Machines · 2 of 3 online", each machine with an
+      online dot and "2 live", "idle" or "silent 1 h" (age of `last_seen`); as many per line
+      as the width fits (about 104 dp each) and as many lines as the height fits. Tap: Machines.
+    - **No ticking countdown.** react-native-android-widget draws RemoteViews from a fixed set
+      of widgets and has no Chronometer or timer view, and a widget cannot redraw itself every
+      second. So the reset is shown as a clock time, and an alarm redraws the widgets when it
+      passes: after every render the handler asks the sy-link module `scheduleWidgetRefresh(at)`
+      for the soonest reset still ahead plus 5 s (`nextRefreshAt`); `WidgetTick.kt` sets one
+      `AlarmManager.setAndAllowWhileIdle` alarm (rough: it may be minutes late, and it needs no
+      exact-alarm permission) whose receiver sends `ACTION_APPWIDGET_UPDATE` to every widget of
+      the app, which runs the task handler (no network) and schedules the next one. A reboot
+      loses the alarm; the widgets' first redraw after boot sets it again.
+    - The snapshot gains `needs_list` (up to 3 `{id, seat, colour, project, what, since}`,
+      oldest first, `[]` in private mode, no message text: only what `top` already allows plus
+      the session id for the tap) and `machines` (up to 6 `{id, name, online, live,
+      last_seen}`, from `overview.machines`, names cut to 12). Both are optional, so an older
+      snapshot still validates. A seat window may now be `{pct: 0, resets_at: null}` (an idle
+      window: not started); every widget reads it as 0 % "not started" and the Limits widget
+      shows "not started" instead of skipping it.
+  - Both older widgets show "updated 3 min ago" (`agoWords(as_of, now)`) and, only when no snapshot has been
     written yet (a fresh install, or after unpair), "Open Switchyard once to load"; a tap then
     opens Now.
   - The snapshot (`sy.widget.v1`, no secrets) is written locally after **every** refresh,
@@ -473,7 +511,7 @@ then gets the 401 that shows Pair, P3).
     open. The app calls `requestWidgetUpdate` after each refresh; the sy-link service redraws
     on a `refresh` frame; otherwise the 30-minute period redraws (no network), so "updated N
     min ago" can lag by up to 30 min between refreshes. There is no background fetch.
-    Android shows reset as a clock time, not a ticking timer (no verified countdown primitive).
+    Android shows reset as a clock time, not a ticking timer (the library has no timer view; see the reset alarm above).
 - Neither side reads the keychain or calls the hub. Widgets show only what the app last
   wrote.
 
