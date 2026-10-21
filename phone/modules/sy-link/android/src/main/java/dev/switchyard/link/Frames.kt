@@ -167,6 +167,12 @@ object Payloads {
    * A payload `url` (push.md 5.8: "/#/sessions/<id>?alert=…") as the app's own link
    * (phone.md P7: "switchyard://sessions/<id>?alert=…"). The app's allow-list checks it again.
    */
+  /** Tapping the persistent connection notification (and "stopped" notes) opens Now, never a settings page. */
+  const val CONNECTION_TAP = "switchyard://now"
+
+  /** The connection notification's Settings button. */
+  const val CONNECTION_SETTINGS = "switchyard://settings/notifications"
+
   fun appLink(url: String): String {
     if (!url.startsWith("/#/") || url.contains('\\')) return "switchyard://now"
     val rest = url.removePrefix("/#/")

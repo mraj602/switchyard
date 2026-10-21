@@ -200,6 +200,13 @@ class FramesTest {
     assertEquals(Codec.hex(want), Codec.hex(got))
   }
 
+  @Test fun connectionTapOpensNowNotSettings() {
+    assertEquals("switchyard://now", Payloads.CONNECTION_TAP)
+    assertEquals("switchyard://settings/notifications", Payloads.CONNECTION_SETTINGS)
+    assertEquals("switchyard://now", Payloads.appLink(""))
+    assertEquals("switchyard://now", Payloads.appLink("/#/?x=1"))
+  }
+
   @Test fun appLinksFollowTheAllowList() {
     assertEquals("switchyard://sessions/c41e?alert=al_01", Payloads.appLink("/#/sessions/c41e?alert=al_01"))
     assertEquals("switchyard://now", Payloads.appLink("/#/"))

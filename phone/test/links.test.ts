@@ -178,3 +178,24 @@ describe('nativeIntentToHref (+native-intent)', () => {
     expect(href).toBe('/pair?origin=https%3A%2F%2Fh.ts.net&code=123456');
   });
 });
+
+describe('links the native sy-link notifications carry (Payloads.appLink / CONNECTION_TAP)', () => {
+  it.each<[string, string]>([
+    ['switchyard://now', '/'],
+    ['/now', '/'],
+    ['switchyard://sessions/c41e?alert=al_01', '/sessions/c41e?alert=al_01'],
+    ['switchyard://alerts/al_01', '/alerts/al_01'],
+    ['switchyard://accounts?seat=claude-2', '/accounts?seat=claude-2'],
+    ['switchyard://sessions?filter=needs_you', '/sessions?filter=needs_you'],
+  ])('%s opens %s', (path, href) => {
+    expect(nativeIntentToHref(path)).toBe(href);
+  });
+
+  it('opens a settings page only for the explicit Settings button link', () => {
+    for (const p of ['switchyard://bogus', 'switchyard://settings', 'switchyard://']) {
+      expect(nativeIntentToHref(p)).toBe('/');
+    }
+    expect(nativeIntentToHref('switchyard://settings/notifications')).toBe('/more/settings/notifications');
+    expect(nativeIntentToHref('/settings/notifications')).toBe('/more/settings/notifications');
+  });
+});
