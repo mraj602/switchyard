@@ -182,6 +182,11 @@ func (r *Relay) directory(ctx context.Context, device, id string) (peers.PeersRe
 	if err != nil {
 		return rep, err
 	}
+	// The asking device's own certificate too, so its agent can tell (and say) that the
+	// other machines will refuse it while it has no owner signature (peers.md 3.2 blocked).
+	if c, err := r.Keys.Cert(ctx, device); err == nil {
+		rep.Certs[device] = c.Doc
+	}
 	for _, s := range all {
 		if s.MachineID == mine {
 			continue

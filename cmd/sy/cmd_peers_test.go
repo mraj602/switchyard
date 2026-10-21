@@ -169,6 +169,44 @@ func TestPeersSendStdin(t *testing.T) {
 	}
 }
 
+// sendStdin is `sy peers send <to> --stdin` with text on standard input.
+func sendStdin(t *testing.T, to, text string) (int, string, string) {
+	t.Helper()
+	r, wr, _ := os.Pipe()
+	old := os.Stdin
+	os.Stdin = r
+	defer func() { os.Stdin = old; r.Close() }()
+	go func() { wr.WriteString(text); wr.Close() }()
+	return runPeersSy("peers", "send", to, "--stdin")
+}
+
+// --stdin takes 64 KiB of multi-byte text whole, refuses more as too_big (exit 6) even when
+// the input is far larger than the cap and the cut would fall inside a character, and keeps
+// Unicode as it is (CRLF becomes LF).
+func TestPeersSendStdinLimits(t *testing.T) {
+	w := newPeersWorld(t)
+	full := strings.Repeat("é", peerspkg.MaxTextBytes/2)
+	if code, out, errs := sendStdin(t, "worker", full); code != 0 {
+		t.Fatalf("64 KiB: %d %q %q", code, out, errs)
+	}
+	for _, text := range []string{full + "é", strings.Repeat("日", 3*peerspkg.MaxTextBytes) + "x"} {
+		code, out, _ := sendStdin(t, "worker", text)
+		if code != 6 || !strings.HasPrefix(out, "not delivered: ") || !strings.Contains(out, "limit is 65536") {
+			t.Errorf("%d bytes: %d %q", len(text), code, out)
+		}
+	}
+	if code, out, _ := sendStdin(t, "worker", "héllo 👋🏽 日本語\r\nzwei\n"); code != 0 {
+		t.Fatalf("unicode: %d %q", code, out)
+	}
+	if !w.b.Wait(2, 2*time.Second) {
+		t.Fatal("not delivered")
+	}
+	got := w.b.All()
+	if len(got) != 2 || !strings.HasSuffix(got[0].Wrapper.Body, "\n\n"+full) || !strings.HasSuffix(got[1].Wrapper.Body, "\n\nhéllo 👋🏽 日本語\nzwei\n") {
+		t.Errorf("%d frames; last body %q", len(got), got[len(got)-1].Wrapper.Body)
+	}
+}
+
 func TestPeersSendExitCodes(t *testing.T) {
 	w := newPeersWorld(t)
 	// Not allowed: exit 5, one line on stdout.

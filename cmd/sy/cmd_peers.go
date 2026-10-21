@@ -147,17 +147,34 @@ func peersList(args []string, stdout, stderr io.Writer) error {
 		}
 		return nil
 	}
+	return printPeerList(stdout, entries)
+}
+
+// printPeerList is the table of `sy peers list`; a blocked session (another machine that
+// cannot be reached now) says why, and a closing line says what the owner does about it.
+func printPeerList(stdout io.Writer, entries []peerspkg.ListEntry) error {
 	tw := tabwriter.NewWriter(stdout, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "HANDLE\tACCOUNT\tPROJECT\tSTATE\tCAN")
+	certs := false
 	for _, le := range entries {
 		can := le.Can
-		if le.MayAsk && can != "none" {
+		switch {
+		case le.Blocked != "" && can != "none":
+			can += " (blocked: " + le.Blocked + ")"
+			certs = certs || peerspkg.FixedByCerts(le.Blocked)
+		case le.MayAsk && can != "none":
 			can += " (may ask for approval)"
 		}
 		// Local entries carry the full folder, remote ones its base name: show the base name for both.
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", le.Handle, le.AccountLabel, baseName(le.Project), le.State, can)
 	}
-	return tw.Flush()
+	if err := tw.Flush(); err != nil {
+		return err
+	}
+	if certs {
+		fmt.Fprintf(stdout, "\nBlocked sessions on other machines cannot be messaged yet: %s.\n", peerspkg.CertFix)
+	}
+	return nil
 }
 
 // peersSend is `sy peers send <to> <text> [--ttl] [--wait] [--stdin]`. Flags may come before
@@ -187,9 +204,16 @@ func peersSend(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	to := pos[0]
 	var text string
 	if *useStdin {
-		b, err := io.ReadAll(io.LimitReader(stdin, 2*int64(peerspkg.MaxTextBytes)))
+		// Read one byte past the cap: text cut at the cap could end inside a UTF-8 character
+		// and be refused as not_text, when what is wrong is its size.
+		limit := 2 * int64(peerspkg.MaxTextBytes)
+		b, err := io.ReadAll(io.LimitReader(stdin, limit+1))
 		if err != nil {
 			return fmt.Errorf("read the text from stdin: %w", err)
+		}
+		if int64(len(b)) > limit {
+			fmt.Fprintln(stdout, peerspkg.Describe(peerspkg.Refuse(peerspkg.CodeTooBig, "the text is over %d bytes; the limit is %d", limit, peerspkg.MaxTextBytes)))
+			return peersExit(peerspkg.ExitLimits, nil)
 		}
 		text = string(b)
 	} else {

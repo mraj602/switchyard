@@ -25,6 +25,9 @@ type Session struct {
 	Remote bool
 	Device string
 	State  string
+	// Blocked is why messages to this remote session cannot go now although the matrix may
+	// allow them (Reachability: certificates; "" when they can).
+	Blocked string
 }
 
 // ListEntry is one line of `sy peers list --json` (peers.md 3.2).
@@ -43,6 +46,10 @@ type ListEntry struct {
 	// MayAsk marks a pair whose delivery Claude Code will likely hold for approval because
 	// the two sessions' permission classes differ (peers.md 8.5).
 	MayAsk bool `json:"may_ask_approval,omitempty"`
+	// Blocked is why a session on another machine cannot be reached now although `can`
+	// says the matrix allows it (link keys not owner-certified, a revoked machine; peers.md
+	// 3.2). A send to it is refused with the same reason and the fix.
+	Blocked string `json:"blocked,omitempty"`
 }
 
 // AccountLabel is the label shown for an account on this machine: the slots.labels entry for
@@ -133,7 +140,7 @@ func (e Env) Entries(dir []Session, from *Session, all bool) []ListEntry {
 			Can: "none",
 		}
 		if s.Remote {
-			le.State = s.State
+			le.State, le.Blocked = s.State, s.Blocked
 			if s.Device != "" {
 				d := s.Device
 				le.Device = &d

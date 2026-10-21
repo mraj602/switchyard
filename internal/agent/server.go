@@ -322,6 +322,10 @@ func finalDetail(handle string, f peers.Final) string {
 	case peers.CodeTargetGone:
 		return handle + " has ended"
 	case peers.CodeRejected:
+		if f.Detail == peers.ReasonUncertified {
+			return handle + "'s machine refused it (uncertified): one of the two machines' link keys has no owner signature. To fix it, " +
+				peers.CertFix + ". Do not retry until then."
+		}
 		return handle + "'s machine refused it (" + f.Detail + "); do not retry"
 	}
 	return handle + "'s machine could not deliver it (" + f.Detail + ")"
