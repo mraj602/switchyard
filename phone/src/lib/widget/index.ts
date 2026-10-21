@@ -1,13 +1,17 @@
 // Widget snapshot and timeline (phone.md P11). Owner: WP-W. Pure: no React, no native module.
-import type { Overview, Seat, Window } from '../../contract/api';
-import { WIDGET_KEY } from '../../contract/constants';
+import type { Overview, Seat, Session, Window } from '../../contract/api';
+import { WIDGET_KEY, WIDGET_RING_KEY } from '../../contract/constants';
 import type { LinkRefresh } from '../../contract/link';
 import type { KVStore } from '../../contract/platform';
 import {
   SNAPSHOT_LABEL_MAX,
   SNAPSHOT_IOS_SEATS,
+  SNAPSHOT_MAX_MACHINES,
   SNAPSHOT_MAX_SEATS,
+  SNAPSHOT_NEEDS_LIST,
   TIMELINE_MAX,
+  type SnapshotMachine,
+  type SnapshotNeed,
   type SnapshotNextReset,
   type SnapshotSeat,
   type SnapshotTop,
@@ -88,6 +92,7 @@ export function buildSnapshot(overview: Overview, accounts: Seat[], now: number,
   }));
 
   const needs = overview.needs_you ?? [];
+  const projectOf = (x: Session): string => x.project || x.name || x.title || x.cwd?.split('/').filter(Boolean).pop() || 'session';
   const count = overview.counts?.needs_you ?? needs.length;
   const first = needs[0];
   const top: SnapshotTop | null =
@@ -95,10 +100,34 @@ export function buildSnapshot(overview: Overview, accounts: Seat[], now: number,
       ? null
       : {
           seat: (first.seat_label || first.seat || '').slice(0, SNAPSHOT_LABEL_MAX),
-          project: first.project || first.name || first.title || first.cwd?.split('/').filter(Boolean).pop() || 'session',
+          project: projectOf(first),
           what: whatOf(first.state),
           since: first.state_since,
         };
+
+  // The waiting sessions, oldest first (what the Needs-you widget lists); nothing in private mode.
+  const needs_list: SnapshotNeed[] = prefs.private
+    ? []
+    : needs
+        .filter((x) => x.id && x.state_since && Number.isFinite(Date.parse(x.state_since)))
+        .sort((a, b) => Date.parse(a.state_since) - Date.parse(b.state_since))
+        .slice(0, SNAPSHOT_NEEDS_LIST)
+        .map((x) => ({
+          id: x.id,
+          seat: [...(x.seat_label || x.seat || '')].slice(0, SNAPSHOT_LABEL_MAX).join(''),
+          colour: x.seat_colour || FALLBACK_COLOUR,
+          project: projectOf(x),
+          what: whatOf(x.state),
+          since: x.state_since,
+        }));
+
+  const machines: SnapshotMachine[] = (overview.machines ?? []).slice(0, SNAPSHOT_MAX_MACHINES).map((m) => ({
+    id: m.id,
+    name: [...(m.name || m.id)].slice(0, SNAPSHOT_LABEL_MAX).join(''),
+    online: !m.silent,
+    live: countOf(m.live_sessions),
+    last_seen: m.last_seen && Number.isFinite(Date.parse(m.last_seen)) ? m.last_seen : null,
+  }));
 
   return {
     v: 1,
@@ -107,6 +136,8 @@ export function buildSnapshot(overview: Overview, accounts: Seat[], now: number,
     needs_you: count,
     top,
     seats,
+    needs_list,
+    machines,
     next_reset: earliest(seats, now),
     private: prefs.private,
     counts: {
@@ -148,6 +179,7 @@ export function applyLinkRefresh(snapshot: WidgetSnapshot | null, refresh: LinkR
     needs_you: needs,
     ...(snapshot.counts ? { counts: { ...snapshot.counts, needs_you: needs } } : {}),
     top: needs === 0 ? null : snapshot.top,
+    ...(snapshot.needs_list ? { needs_list: needs === 0 ? [] : snapshot.needs_list } : {}),
     seats,
     next_reset: earliest(seats, at),
   };
@@ -346,10 +378,14 @@ export interface AndroidWidgetProps {
   tz?: string;
   /** The widget's current height, so the Limits widget draws as many rows as fit. */
   height?: number;
+  /** The widget's current width (the Machines widget lays out as many per line as fit). */
+  width?: number;
+  /** The account an Account-ring widget was configured with (a seat id). */
+  seat?: string;
 }
 
-export function androidProps(snapshot: WidgetSnapshot | null, now: number, tz?: string, height?: number): AndroidWidgetProps {
-  return { snapshot, now, ...(tz ? { tz } : {}), ...(height ? { height } : {}) };
+export function androidProps(snapshot: WidgetSnapshot | null, now: number, tz?: string, height?: number, width?: number, seat?: string): AndroidWidgetProps {
+  return { snapshot, now, ...(tz ? { tz } : {}), ...(height ? { height } : {}), ...(width ? { width } : {}), ...(seat ? { seat } : {}) };
 }
 
 // ------------------------------------------------------------------ storage (Android)
@@ -373,4 +409,5 @@ export async function readSnapshot(store: KVStore): Promise<WidgetSnapshot | nul
 
 export async function clearSnapshot(store: KVStore): Promise<void> {
   await store.removeItem(WIDGET_KEY);
+  await store.removeItem(WIDGET_RING_KEY);
 }

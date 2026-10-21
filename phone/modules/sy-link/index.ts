@@ -22,6 +22,7 @@ type Native = {
   openBatterySettings(): Promise<void>;
   sendLocalTest(): Promise<void>;
   getRefresh(): Promise<string | null>;
+  scheduleWidgetRefresh(atMs: number): Promise<void>;
   reset(): Promise<void>;
   checkUpdate(origin: string, token: string): Promise<UpdateInfo | null>;
   installUpdate(info: UpdateInfo): Promise<'started' | 'refused'>;
@@ -80,6 +81,8 @@ export const getRefresh = (): Promise<LinkRefresh | null> =>
       return null;
     }
   });
+/** Redraw the Android widgets at `atMs` (epoch ms; 0 cancels): a rough alarm for the next limit reset (P11). */
+export const scheduleWidgetRefresh = (atMs: number): Promise<void> => call((n) => n.scheduleWidgetRefresh(atMs));
 /** Unpair: keys, pins and storage deleted. */
 export const reset = (): Promise<void> => call((n) => n.reset());
 

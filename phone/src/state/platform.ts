@@ -56,4 +56,9 @@ export function systemLink(app: AppInfo): LinkLike | null {
   return app.platform === 'android' && SyLink.available ? SyLink : null;
 }
 
+/** The widgets' reset alarm (sy-link `scheduleWidgetRefresh`, phone.md P11) on Android; null elsewhere or without the module. */
+export function systemWidgetAlarm(app: AppInfo): ((atMs: number) => Promise<void>) | null {
+  return app.platform === 'android' && SyLink.available ? (atMs) => SyLink.scheduleWidgetRefresh(atMs) : null;
+}
+
 export const systemFetch: FetchLike = (url, init) => fetch(url, init as RequestInit) as unknown as ReturnType<FetchLike>;

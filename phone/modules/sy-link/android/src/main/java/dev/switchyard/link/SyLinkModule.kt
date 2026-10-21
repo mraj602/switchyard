@@ -60,6 +60,12 @@ class SyLinkModule : Module() {
       }
     }
 
+    // The widgets' reset alarm (WidgetTick): epoch ms, or 0 to cancel.
+    AsyncFunction("scheduleWidgetRefresh") { atMs: Double ->
+      WidgetTick.schedule(ctx, atMs.toLong())
+      Unit
+    }
+
     AsyncFunction("configure") { cfg: Map<String, Any?> ->
       val origin = cfg["origin"] as? String ?: throw bad("origin")
       val device = cfg["device"] as? String ?: throw bad("device")

@@ -63,6 +63,62 @@
       }
     }
   ],
+  "needs_list": [
+    {
+      "id": "c41e0000-0000-4000-8000-000000000005",
+      "seat": "client",
+      "colour": "#9A7400",
+      "project": "data-pipeline",
+      "what": "failed",
+      "since": "2026-10-13T06:18:11.742Z"
+    },
+    {
+      "id": "c41e0000-0000-4000-8000-000000000003",
+      "seat": "work",
+      "colour": "#6A4FD6",
+      "project": "api",
+      "what": "asked",
+      "since": "2026-10-13T06:23:11.742Z"
+    },
+    {
+      "id": "c41e0000-0000-4000-8000-000000000004",
+      "seat": "client",
+      "colour": "#9A7400",
+      "project": "storefront",
+      "what": "perm",
+      "since": "2026-10-13T06:26:11.742Z"
+    }
+  ],
+  "machines": [
+    {
+      "id": "m_laptop",
+      "name": "laptop",
+      "online": true,
+      "live": 9,
+      "last_seen": "2026-10-13T06:27:03.742Z"
+    },
+    {
+      "id": "m_gpu",
+      "name": "gpu-box",
+      "online": true,
+      "live": 5,
+      "last_seen": "2026-10-13T06:26:40.742Z"
+    },
+    {
+      "id": "m_vps",
+      "name": "old-vps",
+      "online": false,
+      "live": 1,
+      "last_seen": "2026-10-13T03:27:11.742Z"
+    },
+    {
+      "id": "m_oci",
+      "name": "home-box",
+      "online": true,
+      "live": 0,
+      "last_seen": "2026-10-13T06:26:31.742Z"
+    }
+  ],
   "next_reset": {
     "seat": "client",
     "window": "five_hour",

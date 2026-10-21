@@ -65,7 +65,8 @@ describe('buildSnapshot', () => {
     expect(pub.top).not.toBeNull();
     expect(priv.top).toBeNull();
     expect(priv.private).toBe(true);
-    expect({ ...priv, top: pub.top, private: false }).toEqual(pub);
+    expect({ ...priv, top: pub.top, needs_list: pub.needs_list, private: false }).toEqual(pub);
+    expect(priv.needs_list).toEqual([]);
     expect(validateWidgetSnapshot(priv)).toEqual([]);
     expect(JSON.stringify(priv)).not.toContain('data-pipeline');
   });

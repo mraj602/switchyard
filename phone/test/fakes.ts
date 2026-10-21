@@ -421,6 +421,9 @@ export const syLink = {
   async sendLocalTest() {
     rec('link.sendLocalTest', []);
   },
+  async scheduleWidgetRefresh(atMs: number) {
+    rec('link.scheduleWidgetRefresh', [atMs]);
+  },
   async getRefresh() {
     rec('link.getRefresh', []);
     return linkState.refresh;
