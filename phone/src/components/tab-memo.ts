@@ -121,10 +121,37 @@ export function useTabProfiles(supported: boolean | null): string[] | null {
   return supported === false ? [] : profiles;
 }
 
+// ---- the sign-in hint the owner dismissed (per seat; local, a flag only)
+
+export const TAB_HINT_KEY = 'sy.tabs.hint.v1';
+
+export async function readHintDismissed(): Promise<Record<string, true>> {
+  try {
+    const raw = await AsyncStorage.getItem(TAB_HINT_KEY);
+    const x: unknown = raw ? JSON.parse(raw) : {};
+    const out: Record<string, true> = {};
+    if (x && typeof x === 'object' && !Array.isArray(x)) {
+      for (const [k, v] of Object.entries(x)) if (v === true && /^seat_[0-9A-HJKMNP-TV-Z]{26}$/.test(k)) out[k] = true;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/** Remember (or forget) that the owner dismissed the sign-in hint for one seat. */
+export async function setHintDismissed(seat: string, on: boolean): Promise<void> {
+  const all = await readHintDismissed();
+  if (on) all[seat] = true;
+  else delete all[seat];
+  await AsyncStorage.setItem(TAB_HINT_KEY, JSON.stringify(all)).catch(() => undefined);
+}
+
 /** Sign out a seat's tab (deletes its profile) and forget what it showed. */
 export async function signOutTab(seat: string): Promise<boolean> {
   const ok = await SyTabs.deleteProfile(seat);
   await forgetMemo(seat);
+  await setHintDismissed(seat, false); // a fresh sign-in gets its hint again
   profilesChanged();
   return ok;
 }

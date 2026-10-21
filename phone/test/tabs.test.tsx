@@ -6,10 +6,11 @@ import ClaudeTabScreen from '../src/components/screens/ClaudeTabScreen';
 import AccountsScreen from '../src/components/screens/AccountsScreen';
 import NowScreen from '../src/components/screens/NowScreen';
 import SettingsScreen from '../src/components/screens/SettingsScreen';
+import { readHintDismissed, setHintDismissed } from '../src/components/tab-memo';
 import { openInClaude, resetTabsSupport } from '../src/components/tabs';
 import type { Seat, Session } from '../src/contract/api';
 import {
-  assessTab, claudeUrl, LOAD_TIMEOUT_MS, openTarget, profileFor, REFUSAL_GRACE_MS, SIGN_IN_NOTE, TAB_HOME, tabRows, verdictText,
+  assessTab, claudeUrl, HINT_START, LOAD_TIMEOUT_MS, nextHint, showSignInHint, openTarget, profileFor, REFUSAL_GRACE_MS, SIGN_IN_NOTE, TAB_HOME, tabRows, verdictText,
   type TabEventAt,
 } from '../src/lib/tabs';
 import { callsOf, tabsState } from './fakes';
@@ -176,12 +177,11 @@ describe('screens', () => {
     expect(routerMock.router.push).toHaveBeenLastCalledWith(`/tabs/${A}?url=${encodeURIComponent(LINK_A)}`);
   });
 
-  it('the tab binds the seat, loads the link and says how to sign in', async () => {
+  it('the tab binds the seat and loads the link', async () => {
     await show(<ClaudeTabScreen seat={B} url={LINK_B} />);
     expect(await screen.findByTestId('tab-view')).toBeTruthy();
     expect(tabsState.view).toMatchObject({ seat: B, url: LINK_B });
     expect(screen.getByText('beta')).toBeTruthy();
-    expect(screen.getByText(SIGN_IN_NOTE)).toBeTruthy();
     expect(screen.queryByTestId('tab-fallback')).toBeNull();
   });
 
@@ -347,5 +347,75 @@ describe('screens', () => {
     await render(<AccountsScreen />, { wrapper: h.Wrapper });
     await fireEvent.press(await screen.findByText('Switch to the new address'));
     expect(await screen.findByText(/Could not reach the new address yet/)).toBeTruthy();
+  });
+});
+
+describe('sign-in hint (P17.3)', () => {
+  const NOTE = SIGN_IN_NOTE;
+  const ev = (state: TabEventAt['state'], url?: string, extra: Partial<TabEventAt> = {}) => ({ state, url, ...extra });
+  const fold = (events: ReturnType<typeof ev>[]) => events.reduce(nextHint, HINT_START);
+  const send = (e: Record<string, unknown>) => act(async () => tabsState.view!.onTabState!({ nativeEvent: e } as never));
+
+  it('shows on sign-in pages and hides once signed in, across navigation', () => {
+    expect(showSignInHint(HINT_START, false)).toBe(false);
+    for (const u of ['https://claude.ai/login', 'https://claude.ai/magic-link', 'https://claude.ai/oauth/x', 'https://accounts.google.com/o/oauth2', 'https://anthropic.com/login']) {
+      expect(showSignInHint(fold([ev('loaded', u, { height: 800 })]), false)).toBe(true);
+    }
+    const h = fold([ev('loaded', 'https://claude.ai/login', { height: 800 }), ev('url', 'https://claude.ai/new')]);
+    expect(showSignInHint(h, false)).toBe(false);
+    expect(showSignInHint(nextHint(h, ev('url', 'https://claude.ai/settings')), false)).toBe(false);
+    expect(showSignInHint(nextHint(h, ev('loading', 'https://claude.ai/chat/1')), false)).toBe(false);
+    expect(showSignInHint(nextHint(h, ev('loaded', 'https://claude.ai/new', { height: 0 })), false)).toBe(false);
+    expect(showSignInHint(nextHint(h, ev('account', undefined, { status: 401 })), false)).toBe(true);
+    expect(showSignInHint(nextHint(h, ev('account', undefined, { account: '0b9a2f3e-1111-2222-3333-444455556666' })), false)).toBe(false);
+  });
+
+  it('magic-link and oauth pages show it only while not known to be signed in', () => {
+    expect(showSignInHint(fold([ev('loaded', 'https://claude.ai/magic-link', { height: 800 })]), false)).toBe(true);
+    const signed = fold([ev('url', 'https://claude.ai/new')]);
+    expect(showSignInHint(nextHint(signed, ev('url', 'https://claude.ai/oauth/authorize?x=1')), false)).toBe(false);
+    expect(showSignInHint(nextHint(signed, ev('url', 'https://claude.ai/magic-link')), false)).toBe(false);
+  });
+
+  it('comes back on the login page after a sign-out, and stays hidden once dismissed', () => {
+    const out = fold([ev('url', 'https://claude.ai/new'), ev('url', 'https://claude.ai/login')]);
+    expect(showSignInHint(out, false)).toBe(true);
+    expect(showSignInHint(out, true)).toBe(false);
+  });
+
+  it('the screen shows it on the login page, hides it after sign-in, and remembers a dismissal per account', async () => {
+    await show(<ClaudeTabScreen seat={A} url="https://claude.ai/login" />);
+    await screen.findByTestId('tab-view');
+    expect(screen.queryByText(NOTE)).toBeNull();
+    await send({ state: 'loaded', url: 'https://claude.ai/login', height: 800 });
+    expect(screen.getByText(NOTE)).toBeTruthy();
+    await send({ state: 'url', url: 'https://claude.ai/new' });
+    expect(screen.queryByText(NOTE)).toBeNull();
+    await send({ state: 'url', url: 'https://claude.ai/login' });
+    expect(screen.getByText(NOTE)).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('tab-hint-dismiss'));
+    expect(screen.queryByText(NOTE)).toBeNull();
+    expect((await readHintDismissed())[A]).toBe(true);
+    expect((await readHintDismissed())[B]).toBeUndefined();
+  });
+
+  it('a dismissal stored for this account keeps the hint hidden; another account still shows it', async () => {
+    await setHintDismissed(A, true);
+    await show(<ClaudeTabScreen seat={B} url="https://claude.ai/login" />);
+    await screen.findByTestId('tab-view');
+    await act(async () => undefined);
+    await send({ state: 'loaded', url: 'https://claude.ai/login', height: 800 });
+    expect(screen.getByText(NOTE)).toBeTruthy();
+    await setHintDismissed(A, false);
+  });
+
+  it('a stored dismissal hides it for that account', async () => {
+    await setHintDismissed(A, true);
+    await show(<ClaudeTabScreen seat={A} url="https://claude.ai/login" />);
+    await screen.findByTestId('tab-view');
+    await act(async () => undefined);
+    await send({ state: 'loaded', url: 'https://claude.ai/login', height: 800 });
+    expect(screen.queryByText(NOTE)).toBeNull();
+    await setHintDismissed(A, false);
   });
 });

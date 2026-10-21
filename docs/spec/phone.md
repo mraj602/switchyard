@@ -846,8 +846,14 @@ opens in B's tab. **Open claude.ai** on an Accounts card opens the seat's tab at
 ### P17.3 Screens
 
 - `/tabs/[seat]?url=` (`ClaudeTabScreen`): a header with the account's dot and name,
-  **Open in browser** and **Close**, then the `TabView`. A strip says: "Sign in with your email
-  and the code claude.ai sends. Google sign-in does not work inside apps."
+  **Open in browser** and **Close**, then the `TabView`. The sign-in hint ("Sign in with your email
+  and the code claude.ai sends. Google sign-in does not work inside apps.") shows with a **×** only
+  while the tab is on a sign-in page (claude.ai `/login`, `/logout`, a `anthropic.com` or
+  `claude.com` hop, Google's sign-in) or is known signed out (the account check answered 401),
+  using the P17.7 rule over this visit's events. Once the tab is signed in it stays hidden across
+  navigation; `/magic-link` and `/oauth` pages show it only while the tab is not known to be
+  signed in. Nothing loaded yet shows nothing. **×** hides it for that account for good (AsyncStorage
+  `sy.tabs.hint.v1`, seat ids only); Settings → Sign out (clear this tab) brings it back.
 - Accounts (P17.8): a compact list; a row opens in place and shows where its login is signed in
   and offers **Open claude.ai**, **Sign in on this phone** or **Fix this tab** (P17.7).
 - Settings → **Claude tabs**: one row per profile (seat name, or "Removed account" for a seat

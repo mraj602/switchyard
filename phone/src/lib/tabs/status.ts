@@ -73,6 +73,49 @@ export function nextMemo(prev: TabMemo | undefined, e: Pick<TabEventAt, 'state' 
   return prev;
 }
 
+/** claude.ai pages that belong to sign-in but also serve a signed-in tab (OAuth consent): the URL alone decides nothing. */
+const WEAK_SIGN_IN_PATHS = ['/magic-link', '/oauth', '/sso', '/signup'];
+
+/** A page where the tab is certainly not signed in: isSignInUrl, or Google's sign-in. */
+export function isSignInPage(u: unknown): boolean {
+  if (isSignInUrl(u)) return true;
+  const x = parse(u);
+  return !!x && under(hostOf(x), 'accounts.google.com');
+}
+
+function isWeakSignInPage(u: unknown): boolean {
+  const x = parse(u);
+  if (!x || !under(hostOf(x), 'claude.ai')) return false;
+  const p = x.pathname.replace(/\/+$/, '');
+  return WEAK_SIGN_IN_PATHS.some((w) => p === w || p.startsWith(`${w}/`));
+}
+
+/** What one open tab knows of its sign-in right now: the P17.7 rule over this visit's events. */
+export type HintState = { signedIn: boolean | null; url: string | null };
+export const HINT_START: HintState = { signedIn: null, url: null };
+
+/** Fold one tab event into the hint state (same rule as nextMemo, plus the page the tab is on). */
+export function nextHint(prev: HintState, e: Pick<TabEventAt, 'state' | 'url' | 'status' | 'height' | 'account'>): HintState {
+  const nav0 = (e.state === 'loading' || e.state === 'loaded' || e.state === 'url') && typeof e.url === 'string';
+  if (nav0 && isWeakSignInPage(e.url)) return { signedIn: prev.signedIn, url: e.url as string };
+  const memo = nextMemo(prev.signedIn === null ? undefined : { signed_in: prev.signedIn, account: null, at: 0 }, e, 0);
+  const signedIn = memo ? memo.signed_in : prev.signedIn;
+  const nav = (e.state === 'loading' || e.state === 'loaded' || e.state === 'url') && typeof e.url === 'string';
+  return { signedIn, url: nav ? (e.url as string) : prev.url };
+}
+
+/**
+ * P17.3: the "email and code" hint shows only while the tab is on a sign-in page or is known to
+ * be signed out, never once signed in on a normal claude.ai page, and never after the owner
+ * dismissed it for this account. Unknown (nothing loaded yet) shows nothing.
+ */
+export function showSignInHint(h: HintState, dismissed: boolean): boolean {
+  if (dismissed) return false;
+  if (isSignInPage(h.url)) return true;
+  if (isWeakSignInPage(h.url)) return h.signedIn !== true;
+  return h.signedIn === false;
+}
+
 /** Stored memos, checked: bad seats and entries are dropped. */
 export function readMemos(x: unknown): TabMemos {
   const out: TabMemos = {};
