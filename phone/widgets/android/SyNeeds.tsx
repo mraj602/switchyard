@@ -4,6 +4,7 @@
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
 
 import { agoWords, type AndroidWidgetProps } from '../../src/lib/widget';
+import { Brand } from './Brand';
 import { needsRows, needsRowsThatFit } from '../../src/lib/widget/extra';
 import { BG, DIM, EMPTY_TEXT, FG, NEEDS, ROOT, type Hex } from './common';
 
@@ -13,8 +14,8 @@ export function SyNeeds({ snapshot, now, height }: AndroidWidgetProps) {
   if (!snapshot) {
     return (
       <FlexWidget style={ROOT} clickAction="OPEN_URI" clickActionData={{ uri: 'switchyard://now' }}>
-        <TextWidget text="Needs you" style={{ fontSize: 14, fontWeight: 'bold', color: FG }} />
-        <TextWidget text={EMPTY_TEXT} style={{ fontSize: 12, color: DIM }} />
+        <Brand title="Switchyard · Needs you" />
+        <TextWidget text={EMPTY_TEXT} style={{ fontSize: 12, color: DIM, marginTop: 4 }} />
       </FlexWidget>
     );
   }
@@ -23,8 +24,9 @@ export function SyNeeds({ snapshot, now, height }: AndroidWidgetProps) {
   return (
     <FlexWidget style={ROOT} clickAction="OPEN_URI" clickActionData={{ uri: 'switchyard://now' }}>
       <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', justifyContent: 'space-between' }}>
-        <TextWidget text={waiting > 0 ? `Needs you · ${waiting} waiting` : 'Needs you'} maxLines={1} style={{ fontSize: 12, fontWeight: 'bold', color: waiting > 0 ? NEEDS : FG }} />
-        <TextWidget text={`updated ${agoWords(snapshot.as_of, now)}`} maxLines={1} style={{ fontSize: 10, color: DIM }} />
+        <Brand title="Switchyard · Needs you" />
+        <TextWidget text={waiting > 0 ? `${waiting} waiting` : 'all clear'} maxLines={1} style={{ fontSize: 11, fontWeight: 'bold', color: waiting > 0 ? NEEDS : DIM }} />
+        <TextWidget text={`updated ${agoWords(snapshot.as_of, now)}`} maxLines={1} style={{ fontSize: 9, color: DIM }} />
       </FlexWidget>
       {waiting === 0 ? (
         <TextWidget text={EMPTY_LIST} style={{ fontSize: 13, color: DIM, marginTop: 10 }} />

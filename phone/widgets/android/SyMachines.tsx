@@ -4,6 +4,7 @@
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
 
 import { agoWords, type AndroidWidgetProps } from '../../src/lib/widget';
+import { Brand } from './Brand';
 import { machineGrid, machineRows, machinesHeader } from '../../src/lib/widget/extra';
 import { DIM, EMPTY_TEXT, FG, OFFLINE, ONLINE, ROOT } from './common';
 
@@ -12,8 +13,8 @@ export function SyMachines({ snapshot, now, width, height }: AndroidWidgetProps)
   if (!snapshot) {
     return (
       <FlexWidget style={ROOT} {...open}>
-        <TextWidget text="Machines" style={{ fontSize: 12, fontWeight: 'bold', color: FG }} />
-        <TextWidget text={EMPTY_TEXT} style={{ fontSize: 12, color: DIM }} />
+        <Brand title="Switchyard · Machines" />
+        <TextWidget text={EMPTY_TEXT} style={{ fontSize: 12, color: DIM, marginTop: 4 }} />
       </FlexWidget>
     );
   }
@@ -24,8 +25,9 @@ export function SyMachines({ snapshot, now, width, height }: AndroidWidgetProps)
   return (
     <FlexWidget style={ROOT} {...open}>
       <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', justifyContent: 'space-between' }}>
-        <TextWidget text={all.length ? machinesHeader(snapshot) : 'Machines'} maxLines={1} style={{ fontSize: 12, fontWeight: 'bold', color: FG }} />
-        <TextWidget text={`updated ${agoWords(snapshot.as_of, now)}`} maxLines={1} style={{ fontSize: 10, color: DIM }} />
+        <Brand title="Switchyard" />
+        <TextWidget text={all.length ? machinesHeader(snapshot) : 'Machines'} maxLines={1} style={{ fontSize: 11, fontWeight: 'bold', color: FG }} />
+        <TextWidget text={`updated ${agoWords(snapshot.as_of, now)}`} maxLines={1} style={{ fontSize: 9, color: DIM }} />
       </FlexWidget>
       {all.length === 0 ? <TextWidget text="No machines yet" style={{ fontSize: 12, color: DIM, marginTop: 6 }} /> : null}
       {lines.map((line, i) => (

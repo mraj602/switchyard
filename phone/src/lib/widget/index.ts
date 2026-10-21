@@ -398,10 +398,12 @@ export interface AndroidWidgetProps {
   width?: number;
   /** The account an Account-ring widget was configured with (a seat id). */
   seat?: string;
+  /** The window of the 5 h | 7 d toggle (Limits and ring widgets); default 5 h. */
+  win?: '5 h' | '7 d';
 }
 
-export function androidProps(snapshot: WidgetSnapshot | null, now: number, tz?: string, height?: number, width?: number, seat?: string): AndroidWidgetProps {
-  return { snapshot, now, ...(tz ? { tz } : {}), ...(height ? { height } : {}), ...(width ? { width } : {}), ...(seat ? { seat } : {}) };
+export function androidProps(snapshot: WidgetSnapshot | null, now: number, tz?: string, height?: number, width?: number, seat?: string, win?: '5 h' | '7 d'): AndroidWidgetProps {
+  return { snapshot, now, ...(tz ? { tz } : {}), ...(height ? { height } : {}), ...(width ? { width } : {}), ...(seat ? { seat } : {}), ...(win ? { win } : {}) };
 }
 
 // ------------------------------------------------------------------ storage (Android)

@@ -2,6 +2,8 @@
 export const BG = '#17191B'; // the brand ink (theme.ts, the launcher icon)
 export const FG = '#ECEEEF';
 export const DIM = '#9AA1A8';
+export const ACCENT = '#E8B04B'; // the brand gold
+export const INK = '#17191B';
 export const NEEDS = '#FF9F0A';
 export const OFFLINE = '#F0877D';
 export const ONLINE = '#4FC38A';

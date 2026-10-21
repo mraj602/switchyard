@@ -7,7 +7,7 @@ import type { Overview, Seat } from '../src/contract/api';
 import { SNAPSHOT_MAX_MACHINES, SNAPSHOT_NEEDS_LIST, type WidgetSnapshot } from '../src/contract/snapshot';
 import { validateWidgetSnapshot } from '../src/contract/validate';
 import { androidProps, buildSnapshot, limitRows } from '../src/lib/widget';
-import { dropRingSeat, machineGrid, machineRows, needsRows, nextRefreshAt, nextResetModel, resetClock, ringModel, ringSeat, ringSvg, setRingSeat, shortAge } from '../src/lib/widget/extra';
+import { windowChoice, dropRingSeat, machineGrid, machineRows, needsRows, nextRefreshAt, nextResetModel, resetClock, ringModel, ringSeat, ringSvg, setRingSeat, shortAge } from '../src/lib/widget/extra';
 import { createTaskHandler } from '../widgets/android/task-handler';
 import { SyLimits } from '../widgets/android/SyLimits';
 import { SyMachines } from '../widgets/android/SyMachines';
@@ -138,7 +138,8 @@ describe('SyNeeds', () => {
   it('normal: header with the count, rows, one tap target each', () => {
     const s = snap();
     const t = texts(<SyNeeds {...androidProps(s, NOW + MIN)} />);
-    expect(t[0]).toBe(`Needs you · ${s.counts!.needs_you} waiting`);
+    expect(t[0]).toBe('Switchyard · Needs you');
+    expect(t[1]).toBe(`${s.counts!.needs_you} waiting`);
     expect(t.some((x) => /· (asked|needs permission|failed)$/.test(x))).toBe(true);
     expect(uris(<SyNeeds {...androidProps(s, NOW)} />).filter((u) => u.startsWith('switchyard://sessions/'))).toHaveLength(needsRows(s, NOW).length);
   });
@@ -152,7 +153,8 @@ describe('SyNeeds', () => {
   it('empty: Nothing needs you', () => {
     const t = texts(<SyNeeds {...androidProps(snap({ needs_you: 0, counts: { working: 1, needs_you: 0, done: 0 }, needs_list: [], top: null }), NOW)} />);
     expect(t).toContain('Nothing needs you');
-    expect(t[0]).toBe('Needs you');
+    expect(t[0]).toBe('Switchyard · Needs you');
+    expect(t[1]).toBe('all clear');
   });
   it('private: the count without a list', () => {
     const t = texts(<SyNeeds {...androidProps(buildSnapshot(overview, accounts, NOW, { ...PREFS, private: true }), NOW)} />);
@@ -173,10 +175,10 @@ describe('SyRing', () => {
     const t = texts(el);
     expect(t).toContain(s.seats[0]!.label);
     expect(t.some((x) => /^\d+ %$/.test(x))).toBe(true);
-    expect(t.some((x) => /^(5 h|7 d)$/.test(x))).toBe(true);
+    expect(t).toEqual(expect.arrayContaining(['5 h', '7 d']));
     expect(t.some((x) => /^resets /.test(x))).toBe(true);
     expect(uris(el)).toContain(`switchyard://accounts?seat=${id}`);
-    expect(allOf(renderWidget(el), 'Android.SvgWidget')).toHaveLength(1);
+    expect(allOf(renderWidget(el), 'Android.SvgWidget')).toHaveLength(2); // the mark and the ring
   });
   it('idle: 0 % and not started', () => {
     const idle = snap({ seats: [{ id: 'i', label: 'idle', colour: '#222222', five_hour: { pct: 0, resets_at: null } }] });
@@ -209,12 +211,13 @@ describe('SyNextReset', () => {
     const s = snap();
     const n = nextResetModel(s, NOW, 'UTC')!;
     const el = <SyNextReset {...androidProps(s, NOW, 'UTC')} />;
-    expect(texts(el)).toEqual([`Next reset · ${n.seat} · ${n.window}`, n.at]);
+    expect(texts(el)).toEqual(['Switchyard · Next reset', n.at, `  ${n.seat} · ${n.window}`]);
+    expect(texts(<SyNextReset {...androidProps(s, NOW, 'UTC', 40, 110)} />)[0]).toBe('Switchyard');
     expect(uris(el)).toContain('switchyard://accounts');
   });
   it('nothing ahead (all idle or passed)', () => {
     const t = texts(<SyNextReset {...androidProps(snap({ seats: [{ id: 'i', label: 'i', colour: '#222222', five_hour: { pct: 0, resets_at: null } }] }), NOW)} />);
-    expect(t).toEqual(['Next reset', 'None ahead']);
+    expect(t).toEqual(['Switchyard · Next reset', 'None ahead']);
   });
 });
 
@@ -226,7 +229,8 @@ describe('SyMachines', () => {
   it('normal: header, live and silent notes, taps Machines', () => {
     const el = <SyMachines {...androidProps(snap({ machines: ms(3) }), NOW, undefined, 70, 320)} />;
     const t = texts(el);
-    expect(t[0]).toBe('Machines · 2 of 3 online');
+    expect(t).toContain('Machines · 2 of 3 online');
+    expect(t[0]).toBe('Switchyard');
     expect(t).toContain(' 2 live');
     expect(machineRows(snap({ machines: ms(3) }), NOW)[1]!.note).toBe('silent 1 h');
     expect(uris(el)).toContain('switchyard://machines');
@@ -238,6 +242,64 @@ describe('SyMachines', () => {
   });
   it('empty', () => {
     expect(texts(<SyMachines {...androidProps(snap({ machines: [] }), NOW)} />)).toContain('No machines yet');
+  });
+});
+
+describe('brand header and the 5 h | 7 d toggle', () => {
+  const all = [
+    ['SyLimits', (p: ReturnType<typeof androidProps>) => <SyLimits {...p} />],
+    ['SyRing', (p: ReturnType<typeof androidProps>) => <SyRing {...p} />],
+    ['SyNeeds', (p: ReturnType<typeof androidProps>) => <SyNeeds {...p} />],
+    ['SyNextReset', (p: ReturnType<typeof androidProps>) => <SyNextReset {...p} />],
+    ['SyMachines', (p: ReturnType<typeof androidProps>) => <SyMachines {...p} />],
+  ] as const;
+  it.each(all)('%s draws the mark and the word Switchyard, with and without a snapshot', (_n, make) => {
+    for (const s of [null, snap()]) {
+      const tree = renderWidget(make(androidProps(s, NOW, 'UTC', undefined, undefined, snap().seats[0]!.id)));
+      expect(allOf(tree, 'Android.SvgWidget')[0]!.props.svg).toContain('#E8B04B');
+      expect(texts(make(androidProps(s, NOW, 'UTC', undefined, undefined, snap().seats[0]!.id))).some((x) => x.startsWith('Switchyard'))).toBe(true);
+    }
+  });
+
+  it('the toggle has a 5 h and a 7 d segment, the selected one highlighted', () => {
+    const tree = renderWidget(<SyLimits {...androidProps(snap(), NOW, 'UTC', 300, undefined, undefined, '7 d')} />);
+    const segs = [tree, ...tree.queryAll(() => true)].filter((n) => n.props.clickAction === 'SY_TOGGLE_WINDOW');
+    expect(segs.map((n) => (n.props.clickActionData as { window: string }).window)).toEqual(['5 h', '7 d']);
+    expect(segs.map((n) => n.props.style as { backgroundColor: string }).map((s) => s.backgroundColor)).toEqual(['#2A2E32', '#E8B04B']);
+  });
+
+  it('the ring shows the selected window of its account', () => {
+    const s = snap();
+    const id = s.seats[0]!.id;
+    const five = ringModel(s, id, NOW, 'UTC', '5 h')!;
+    const seven = ringModel(s, id, NOW, 'UTC', '7 d')!;
+    expect(five.window).toBe('5 h');
+    expect(seven.window).toBe('7 d');
+    expect([five.pct, five.caption]).not.toEqual([seven.pct, seven.caption]);
+  });
+
+  it('a toggle tap stores the choice for that widget and redraws, without the app; update keeps it; delete drops it', async () => {
+    const store = memoryKV();
+    const s = snap();
+    await store.setItem('sy.widget.v1', JSON.stringify(s));
+    const out: { props: { win?: string } }[] = [];
+    const h = createTaskHandler({ store, now: () => NOW });
+    const info = { widgetName: 'SyLimits', widgetId: 9, width: 300, height: 300 };
+    const call = (widgetAction: string, extra: object = {}) => h({ widgetInfo: info, widgetAction, renderWidget: (t: unknown) => out.push(t as never), ...extra } as never);
+    await call('WIDGET_UPDATE');
+    expect(out.pop()!.props.win).toBe('5 h');
+    await call('WIDGET_CLICK', { clickAction: 'SY_TOGGLE_WINDOW', clickActionData: { window: '7 d' } });
+    expect(out.pop()!.props.win).toBe('7 d');
+    expect(await windowChoice(store, 9)).toBe('7 d');
+    await call('WIDGET_UPDATE');
+    expect(out.pop()!.props.win).toBe('7 d');
+    // another widget keeps its own choice; junk or other clicks do nothing
+    expect(await windowChoice(store, 10)).toBe('5 h');
+    await call('WIDGET_CLICK', { clickAction: 'SY_TOGGLE_WINDOW', clickActionData: { window: 'x' } });
+    await call('WIDGET_CLICK', { clickAction: 'OPEN_URI', clickActionData: { uri: 'switchyard://now' } });
+    expect(out).toHaveLength(0);
+    await call('WIDGET_DELETED');
+    expect(await windowChoice(store, 9)).toBe('5 h');
   });
 });
 

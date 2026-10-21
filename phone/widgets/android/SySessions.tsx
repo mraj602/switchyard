@@ -4,6 +4,7 @@
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
 
 import { agoWords, sessionTally, type AndroidWidgetProps } from '../../src/lib/widget';
+import { Brand } from './Brand';
 
 const BG = '#17191B';
 const FG = '#ECEEEF';
@@ -27,8 +28,8 @@ export function SySessions({ snapshot, now, height }: AndroidWidgetProps) {
   if (!snapshot) {
     return (
       <FlexWidget style={root} clickAction="OPEN_URI" clickActionData={{ uri: 'switchyard://now' }}>
-        <TextWidget text="Sessions" style={{ fontSize: 14, fontWeight: 'bold', color: FG }} />
-        <TextWidget text={EMPTY_TEXT} style={{ fontSize: 12, color: DIM }} />
+        <Brand title="Switchyard · Sessions" />
+        <TextWidget text={EMPTY_TEXT} style={{ fontSize: 12, color: DIM, marginTop: 4 }} />
       </FlexWidget>
     );
   }
@@ -38,7 +39,7 @@ export function SySessions({ snapshot, now, height }: AndroidWidgetProps) {
   return (
     <FlexWidget style={root} clickAction="OPEN_URI" clickActionData={{ uri: 'switchyard://sessions' }}>
       <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', justifyContent: 'space-between' }}>
-        <TextWidget text="Sessions" style={{ fontSize: 12, fontWeight: 'bold', color: FG }} />
+        <Brand title="Switchyard · Sessions" />
         <TextWidget text={`updated ${agoWords(snapshot.as_of, now)}`} maxLines={1} style={{ fontSize: 10, color: DIM }} />
       </FlexWidget>
       <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', marginTop: 6 }}>

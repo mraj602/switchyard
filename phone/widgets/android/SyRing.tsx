@@ -1,47 +1,53 @@
 // Android Account ring widget (phone.md P11): one account, chosen when the widget is placed
-// (and again from "Reconfigure"): a ring of the tighter of 5 h and 7 d with the %, the window,
-// and when it resets. react-native-android-widget has no Chronometer or other ticking view, so
-// the reset reads as a clock time ("resets 15:48") and an alarm redraws it at the reset
-// (sy-link scheduleWidgetRefresh, WidgetTick.kt). An idle account is "0 %" "not started".
+// (and again from "Reconfigure"): a ring of the selected window (the 5 h | 7 d toggle, kept per
+// widget) with the %, and when it resets. react-native-android-widget has no Chronometer or
+// other ticking view, so the reset reads as a clock time ("resets 15:48") and an alarm redraws
+// it at the reset (sy-link scheduleWidgetRefresh, WidgetTick.kt). An idle window is "0 %" "not
+// started". Header: the Switchyard mark and name, then the account and the toggle.
 import { FlexWidget, OverlapWidget, SvgWidget, TextWidget } from 'react-native-android-widget';
 
 import type { AndroidWidgetProps } from '../../src/lib/widget';
 import { ringModel, ringSvg } from '../../src/lib/widget/extra';
+import { Brand, WindowToggle } from './Brand';
 import { DIM, EMPTY_TEXT, FG, ROOT, type Hex } from './common';
 
-export function SyRing({ snapshot, now, tz, seat }: AndroidWidgetProps) {
+export function SyRing({ snapshot, now, tz, seat, win }: AndroidWidgetProps) {
   const open = (uri: string) => ({ clickAction: 'OPEN_URI' as const, clickActionData: { uri } });
+  const selected = win ?? '5 h';
   if (!snapshot) {
     return (
       <FlexWidget style={ROOT} {...open('switchyard://now')}>
-        <TextWidget text="Account" style={{ fontSize: 14, fontWeight: 'bold', color: FG }} />
-        <TextWidget text={EMPTY_TEXT} style={{ fontSize: 12, color: DIM }} />
+        <Brand title="Switchyard" />
+        <TextWidget text={EMPTY_TEXT} style={{ fontSize: 12, color: DIM, marginTop: 4 }} />
       </FlexWidget>
     );
   }
-  const m = ringModel(snapshot, seat, now, tz);
+  const m = ringModel(snapshot, seat, now, tz, selected);
   if (!m) {
     return (
       <FlexWidget style={ROOT} {...open('switchyard://accounts')}>
-        <TextWidget text="Account" style={{ fontSize: 14, fontWeight: 'bold', color: FG }} />
-        <TextWidget text="Account not found. Hold the widget and choose Reconfigure." style={{ fontSize: 12, color: DIM }} />
+        <Brand title="Switchyard" />
+        <TextWidget text="Account not found. Hold the widget and choose Reconfigure." style={{ fontSize: 12, color: DIM, marginTop: 4 }} />
       </FlexWidget>
     );
   }
   const href = seat ? `switchyard://accounts?seat=${encodeURIComponent(seat)}` : 'switchyard://accounts';
   return (
-    <FlexWidget style={{ ...ROOT, padding: 10, alignItems: 'center' }} {...open(href)}>
-      <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', justifyContent: 'space-between' }}>
-        <TextWidget text={m.label} maxLines={1} truncate="END" style={{ fontSize: 11, fontWeight: 'bold', color: m.colour as Hex }} />
-        <TextWidget text={m.window ?? ''} style={{ fontSize: 11, color: DIM }} />
+    <FlexWidget style={{ ...ROOT, padding: 8, alignItems: 'center' }} {...open(href)}>
+      <FlexWidget style={{ width: 'match_parent' }}>
+        <Brand title="Switchyard" />
       </FlexWidget>
-      <OverlapWidget style={{ width: 84, height: 84, marginTop: 4 }}>
-        <SvgWidget svg={ringSvg(m.pct, m.colour, 84, 9)} style={{ width: 84, height: 84 }} />
+      <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', alignItems: 'center', justifyContent: 'space-between', marginTop: 3 }}>
+        <TextWidget text={m.label} maxLines={1} truncate="END" style={{ fontSize: 11, fontWeight: 'bold', color: m.colour as Hex }} />
+        <WindowToggle selected={selected} />
+      </FlexWidget>
+      <OverlapWidget style={{ width: 58, height: 58, marginTop: 4 }}>
+        <SvgWidget svg={ringSvg(m.pct, m.colour, 58, 7)} style={{ width: 58, height: 58 }} />
         <FlexWidget style={{ width: 'match_parent', height: 'match_parent', alignItems: 'center', justifyContent: 'center' }}>
-          <TextWidget text={`${m.pct} %`} style={{ fontSize: 17, fontWeight: 'bold', color: FG }} />
+          <TextWidget text={`${m.pct} %`} style={{ fontSize: 14, fontWeight: 'bold', color: FG }} />
         </FlexWidget>
       </OverlapWidget>
-      <TextWidget text={m.caption} maxLines={1} style={{ fontSize: 11, color: DIM, marginTop: 2 }} />
+      <TextWidget text={m.caption} maxLines={1} style={{ fontSize: 10, color: DIM, marginTop: 2 }} />
     </FlexWidget>
   );
 }

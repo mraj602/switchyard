@@ -18,8 +18,9 @@ import type { KVStore } from '../../src/contract/platform';
 import type { WidgetSnapshot } from '../../src/contract/snapshot';
 import type { LinkRefresh } from '../../src/contract/link';
 import { androidProps, applyLinkRefresh, clearSnapshot, readSnapshot, writeSnapshot } from '../../src/lib/widget';
-import { dropRingSeat, nextRefreshAt, ringSeat } from '../../src/lib/widget/extra';
+import { dropRingSeat, dropWindowChoice, nextRefreshAt, ringSeat, setWindowChoice, windowChoice } from '../../src/lib/widget/extra';
 import { getAppInfo, systemLink, systemWidgetAlarm } from '../../src/state/platform';
+import { TOGGLE_ACTION } from './Brand';
 import { RingConfig } from './RingConfig';
 import { SyLimits } from './SyLimits';
 import { SyMachines } from './SyMachines';
@@ -72,7 +73,8 @@ async function current(d: HandlerDeps): Promise<WidgetSnapshot | null> {
 
 async function tree(name: string, snapshot: WidgetSnapshot | null, d: HandlerDeps, info?: Pick<WidgetInfo, 'height' | 'width' | 'widgetId'>) {
   const seat = name === 'SyRing' && info ? await ringSeat(d.store, info.widgetId) : undefined;
-  const props = androidProps(snapshot, d.now(), d.tz, info?.height, info?.width, seat);
+  const win = (name === 'SyRing' || name === 'SyLimits') && info ? await windowChoice(d.store, info.widgetId) : undefined;
+  const props = androidProps(snapshot, d.now(), d.tz, info?.height, info?.width, seat, win);
   switch (name) {
     case 'SyLimits':
       return <SyLimits {...props} />;
@@ -118,9 +120,18 @@ export function createTaskHandler(deps: Partial<HandlerDeps> = {}) {
       }
       case 'WIDGET_DELETED':
         if (name === 'SyRing') await dropRingSeat(d.store, props.widgetInfo.widgetId);
+        if (name === 'SyRing' || name === 'SyLimits') await dropWindowChoice(d.store, props.widgetInfo.widgetId);
         return;
+      case 'WIDGET_CLICK': {
+        // The 5 h | 7 d toggle: keep the choice for this widget and redraw; the app stays closed.
+        // Every other tap is an OPEN_URI, which Android opens natively.
+        const w = props.clickActionData?.window;
+        if (props.clickAction !== TOGGLE_ACTION || (w !== '5 h' && w !== '7 d')) return;
+        await setWindowChoice(d.store, props.widgetInfo.widgetId, w);
+        props.renderWidget(await tree(name, await current(d), d, props.widgetInfo));
+        return;
+      }
       default:
-        // WIDGET_CLICK opens switchyard:// links natively (OPEN_URI).
         return;
     }
   };

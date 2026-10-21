@@ -1,9 +1,11 @@
 // Pure helpers of the Needs-you list, Account ring, Next reset and Machines widgets (phone.md
 // P11). No React, no native module: props in, plain data out.
-import { WIDGET_RING_KEY } from '../../contract/constants';
+import type { Window } from '../../contract/api';
+import { WIDGET_RING_KEY, WIDGET_WINDOW_KEY } from '../../contract/constants';
 import type { KVStore } from '../../contract/platform';
 import type { SnapshotMachine, WidgetSnapshot } from '../../contract/snapshot';
-import { limitRows, nextResetAt, type LimitRow } from './index';
+import { resetWords, shownUse, windowPhase } from '../format/windows';
+import { nextResetAt } from './index';
 
 /** "now", "4 min", "2 h", "3 d": a compact age for rows. */
 export function shortAge(from: number | string, now: number): string {
@@ -92,18 +94,49 @@ export interface RingModel {
   label: string;
   colour: string;
   pct: number;
-  /** "5 h" / "7 d"; null when idle. */
-  window: '5 h' | '7 d' | null;
+  window: LimitWindow;
   /** "resets 15:48", "reset at 10:10" or "not started" (format/windows resetWords). */
   caption: string;
 }
 
-/** The ring of one account; null when the snapshot has no such account (no id: the first one). */
-export function ringModel(snapshot: WidgetSnapshot, seatId: string | undefined, now: number, tz?: string): RingModel | null {
-  const rows: LimitRow[] = limitRows(snapshot, now, tz);
+/** The window a Limits or ring widget shows (the 5 h | 7 d toggle; default 5 h). */
+export type LimitWindow = '5 h' | '7 d';
+
+/** One account's selected window as a row of the Limits widget or the ring. */
+export interface WindowRow {
+  id: string;
+  label: string;
+  colour: string;
+  pct: number;
+  /** Not started (or no reading for this window): "0 % · not started". */
+  idle: boolean;
+  /** "resets 15:48", "reset at 10:10" or "not started" (format/windows resetWords). */
+  words: string;
+}
+
+/** Every account's `win` window: its % and reset words (windows.ts `shownUse`, `resetWords`). */
+export function windowRows(snapshot: WidgetSnapshot, win: LimitWindow, now: number, tz?: string): WindowRow[] {
+  const key = win === '5 h' ? 'five_hour' : 'seven_day';
+  return snapshot.seats.map((s) => {
+    const base = { id: s.id, label: s.label, colour: s.colour };
+    const sw = s[key];
+    if (!sw) return { ...base, pct: 0, idle: true, words: 'not started' };
+    const w: Window = { key, used_pct: sw.pct, resets_at: sw.resets_at, ...(sw.resets_at ? {} : { state: 'idle' as const }) };
+    return {
+      ...base,
+      pct: Math.min(100, Math.max(0, Math.round(shownUse(w, now) ?? 0))),
+      idle: windowPhase(w, now) === 'idle',
+      words: resetWords(w, now, tz ? { tz } : {}) || 'not started',
+    };
+  });
+}
+
+/** The ring of one account's `win` window; null when the snapshot has no such account (no id: the first one). */
+export function ringModel(snapshot: WidgetSnapshot, seatId: string | undefined, now: number, tz?: string, win: LimitWindow = '5 h'): RingModel | null {
+  const rows = windowRows(snapshot, win, now, tz);
   const r = seatId ? rows.find((x) => x.id === seatId) : rows[0];
   if (!r) return null;
-  return { label: r.label, colour: r.colour, pct: r.pct, window: r.window, caption: r.words || 'not started' };
+  return { label: r.label, colour: r.colour, pct: r.pct, window: win, caption: r.words };
 }
 
 /** An SVG ring (a track and an arc from 12 o'clock) of `size` px, for SvgWidget. */
@@ -153,9 +186,9 @@ export function nextRefreshAt(snapshot: WidgetSnapshot, now: number): number | n
 
 type RingMap = Record<string, string>;
 
-async function readMap(store: KVStore): Promise<RingMap> {
+async function readMap(store: KVStore, key = WIDGET_RING_KEY): Promise<RingMap> {
   try {
-    const raw = await store.getItem(WIDGET_RING_KEY);
+    const raw = await store.getItem(key);
     const x: unknown = raw ? JSON.parse(raw) : {};
     if (!x || typeof x !== 'object' || Array.isArray(x)) return {};
     return Object.fromEntries(Object.entries(x as Record<string, unknown>).filter(([, v]) => typeof v === 'string')) as RingMap;
@@ -167,6 +200,24 @@ async function readMap(store: KVStore): Promise<RingMap> {
 /** The account (seat id) each ring widget was configured with, by widget id. */
 export async function ringSeat(store: KVStore, widgetId: number): Promise<string | undefined> {
   return (await readMap(store))[String(widgetId)];
+}
+
+/** The window a Limits or ring widget shows, by widget id (default 5 h). */
+export async function windowChoice(store: KVStore, widgetId: number): Promise<LimitWindow> {
+  return (await readMap(store, WIDGET_WINDOW_KEY))[String(widgetId)] === '7 d' ? '7 d' : '5 h';
+}
+
+export async function setWindowChoice(store: KVStore, widgetId: number, win: LimitWindow): Promise<void> {
+  const m = await readMap(store, WIDGET_WINDOW_KEY);
+  m[String(widgetId)] = win;
+  await store.setItem(WIDGET_WINDOW_KEY, JSON.stringify(m));
+}
+
+export async function dropWindowChoice(store: KVStore, widgetId: number): Promise<void> {
+  const m = await readMap(store, WIDGET_WINDOW_KEY);
+  if (!(String(widgetId) in m)) return;
+  delete m[String(widgetId)];
+  await store.setItem(WIDGET_WINDOW_KEY, JSON.stringify(m));
 }
 
 export async function setRingSeat(store: KVStore, widgetId: number, seatId: string): Promise<void> {
