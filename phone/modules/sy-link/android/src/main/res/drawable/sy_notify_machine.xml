@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Switchyard notification small icon "machine" (direction A, the mark with a corner badge): a single
+     white filled path on transparent; Android tints it. Generated from the approved glyph SVGs. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+  android:width="24dp"
+  android:height="24dp"
+  android:viewportWidth="24"
+  android:viewportHeight="24">
+  <path
+    android:fillColor="#FFFFFFFF"
+    android:fillType="evenOdd"
+    android:pathData="M2 21 L4.53 21 L10.40 10.73 L16.27 21 L18.80 21 L10.40 6.30ZM6.15 21 L8.68 21 L10.40 17.99 L12.12 21 L14.65 21 L10.40 13.56ZM17.45 1.81 L16.82 1.96 L16.22 2.21 L15.67 2.55 L15.17 2.97 L14.75 3.47 L14.41 4.02 L14.16 4.62 L14.01 5.25 L13.96 5.90 L14.01 6.55 L14.16 7.18 L14.41 7.78 L14.75 8.33 L15.17 8.83 L15.67 9.25 L16.22 9.59 L16.82 9.84 L17.45 9.99 L18.10 10.04 L18.75 9.99 L19.38 9.84 L19.98 9.59 L20.53 9.25 L21.03 8.83 L21.45 8.33 L21.79 7.78 L21.92 7.47 L21.66 7.58 L21.15 7.70 L20.63 7.74 L20.11 7.70 L19.60 7.58 L19.12 7.38 L18.67 7.10 L18.27 6.76 L17.93 6.37 L17.66 5.92 L17.46 5.44 L17.34 4.93 L17.30 4.41 L17.34 3.88 L17.46 3.37 L17.66 2.89 L17.93 2.44 L18.27 2.05 L18.56 1.80 L18.10 1.76Z"/>
+</vector>

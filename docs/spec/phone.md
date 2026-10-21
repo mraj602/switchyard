@@ -274,10 +274,36 @@ the permission prompt only once a channel exists):
 | `sy_limits` | Limits | DEFAULT | `limit_80`, `limit_95`, `reset` |
 | `sy_machines` | Machines | LOW | `machine_silent` |
 | `sy_test` | Test | DEFAULT | test pushes |
-| `sy_connection` | Connection | MIN | N1: the link service's persistent notification (push.md 14.4) |
+| `sy_connection` | Connection (always on) | MIN | N1: the link service's persistent notification (push.md 14.4) |
 
 The `sy-link` module creates the same channels natively (it posts link notifications itself),
-with the same ids, so either side may create them first.
+with the same ids, so either side may create them first. A channel that already exists keeps
+its importance and every setting the user changed; the module re-creates it under the same id
+only to bring its name up to date (Android applies just the name and description), so the
+rename of `sy_connection` from "Connection" to "Connection (always on)" reaches existing installs.
+
+**P6.1a Notification icons** (the `sy-link` module's own notes; direction A, "the mark with a
+corner badge"). Every small icon is the Switchyard double chevron with a kind badge in the
+top-right corner, one white filled path as a 24 dp vector (`sy_notify_<kind>.xml` in the
+module's `res/drawable`, so it ships through autolinking and survives `expo prebuild`). The
+alert colour behind it is the brand gold `#E8B04B`; the always-on connection note is grey
+`#8A9099`.
+
+| Kind | Small icon (badge) | Large icon badge | Used for |
+| --- | --- | --- | --- |
+| `connection` | hairline mark, no badge | none | the persistent note (14.4) and the "stopped" note |
+| `needs_you` | dot | gold | `needs_permission`, `asked` |
+| `failed` | exclamation | red `#E5534B` | `failed` |
+| `limit` | gauge | orange `#F0883E` | `limit_80`, `limit_95` |
+| `reset` | return arrow | green `#3FB68B` | `reset` |
+| `machine` | crescent | grey `#9AA4AE` | `machine_silent` |
+| `summary` | stacked ticks | gold | summaries |
+| `generic` | mark only | none | tests and any trigger the app does not know |
+
+The large icon is the app tile (ink disc, gold mark) with the kind badge bottom-right behind a
+cut-out ring; the module draws it as a bitmap at runtime from the same path data (cached per
+kind). The connection note has no large icon. Notes posted by the expo-notifications JS path
+keep the single `notification_icon`.
 
 **P6.2 Categories:**
 

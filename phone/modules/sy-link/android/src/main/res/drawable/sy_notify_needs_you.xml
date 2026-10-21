@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Switchyard notification small icon "needs_you" (direction A, the mark with a corner badge): a single
+     white filled path on transparent; Android tints it. Generated from the approved glyph SVGs. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+  android:width="24dp"
+  android:height="24dp"
+  android:viewportWidth="24"
+  android:viewportHeight="24">
+  <path
+    android:fillColor="#FFFFFFFF"
+    android:fillType="evenOdd"
+    android:pathData="M2 21 L4.53 21 L10.40 10.73 L16.27 21 L18.80 21 L10.40 6.30ZM6.15 21 L8.68 21 L10.40 17.99 L12.12 21 L14.65 21 L10.40 13.56ZM21.85 5.31 L21.71 4.73 L21.48 4.18 L21.17 3.67 L20.78 3.22 L20.33 2.83 L19.82 2.52 L19.27 2.29 L18.69 2.15 L18.10 2.11 L17.51 2.15 L16.93 2.29 L16.38 2.52 L15.87 2.83 L15.42 3.22 L15.03 3.67 L14.72 4.18 L14.49 4.73 L14.35 5.31 L14.30 5.90 L14.35 6.49 L14.49 7.07 L14.72 7.62 L15.03 8.13 L15.42 8.58 L15.87 8.97 L16.38 9.28 L16.93 9.51 L17.51 9.65 L18.10 9.70 L18.69 9.65 L19.27 9.51 L19.82 9.28 L20.33 8.97 L20.78 8.58 L21.17 8.13 L21.48 7.62 L21.71 7.07 L21.85 6.49 L21.89 5.90Z"/>
+</vector>

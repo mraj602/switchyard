@@ -21,11 +21,20 @@ import androidx.core.app.NotificationManagerCompat
 class Notifier(private val ctx: Context, private val store: Store) : Sink {
   private val nm get() = NotificationManagerCompat.from(ctx)
 
-  /** Called by the service and before any post; idempotent (the app's JS makes the same ids). */
+  /**
+   * Called by the service and before any post; idempotent (the app's JS makes the same ids). A
+   * channel that already exists is created again under the same id with its current importance:
+   * Android then updates only the name (and description) and keeps everything the user chose, so a
+   * rename reaches existing installs without touching importance.
+   */
   fun ensureChannels() {
     val m = ctx.getSystemService(NotificationManager::class.java) ?: return
     for ((id, name, importance) in Channels.ALL) {
-      if (m.getNotificationChannel(id) != null) continue
+      val existing = m.getNotificationChannel(id)
+      if (existing != null) {
+        if (existing.name?.toString() != name) m.createNotificationChannel(NotificationChannel(id, name, existing.importance))
+        continue
+      }
       val ch = NotificationChannel(id, name, importance)
       if (id == Channels.CONNECTION) {
         ch.setShowBadge(false)
@@ -36,13 +45,14 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
     }
   }
 
-  private fun icon(): Int {
-    val r = ctx.resources.getIdentifier("notification_icon", "drawable", ctx.packageName)
-    return if (r != 0) r else R.drawable.sy_link_notify
-  }
+  /** The small icon for a kind (phone.md P6.1a); each is one white path that Android tints with [color]. */
+  private fun icon(kind: IconKind): Int = iconRes(kind)
 
-  /** The brand accent behind the small icon: expo-notifications' notification_icon_color, else the icon gold. */
-  private fun color(): Int {
+  /** The accent behind the small icon: gold for alerts, grey for the always-on connection note. */
+  private fun color(kind: IconKind): Int = if (kind == IconKind.CONNECTION) CONNECTION_GREY else alertColor()
+
+  /** The brand accent: expo-notifications' notification_icon_color, else the icon gold. */
+  private fun alertColor(): Int {
     val r = ctx.resources.getIdentifier("notification_icon_color", "color", ctx.packageName)
     return if (r != 0) ctx.getColor(r) else BRAND_ACCENT
   }
@@ -89,7 +99,7 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
     // An action meant for another hub is dropped (phone.md P6.4): its buttons are not offered.
     val sameHub = n.origin == null || store.origin == null || sameOrigin(n.origin, store.origin!!)
     val b = NotificationCompat.Builder(ctx, n.channel)
-      .setSmallIcon(icon()).setColor(color())
+      .setSmallIcon(icon(n.iconKind)).setColor(color(n.iconKind))
       .setContentTitle(n.title)
       .setContentText(n.body)
       .setStyle(NotificationCompat.BigTextStyle().bigText(n.body))
@@ -97,6 +107,7 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
       .setAutoCancel(true)
       .setContentIntent(openIntent(n))
       .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+    NotifyIcons.large(n.iconKind)?.let { b.setLargeIcon(it) }
     n.whenMs?.let { b.setWhen(it).setShowWhen(true) }
     if (sameHub && (n.snooze != null || n.seen != null)) {
       b.addAction(0, "Open", openIntent(n))
@@ -145,7 +156,7 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
     val open = appPending(NotifyIds.CONNECTION, Payloads.CONNECTION_TAP)
     val settings = appPending(NotifyIds.CONNECTION + 1, Payloads.CONNECTION_SETTINGS)
     return NotificationCompat.Builder(ctx, Channels.CONNECTION)
-      .setSmallIcon(icon()).setColor(color())
+      .setSmallIcon(icon(IconKind.CONNECTION)).setColor(color(IconKind.CONNECTION))
       .setContentTitle("Switchyard")
       .setContentText(text)
       .setOngoing(true)
@@ -163,7 +174,7 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
     ensureChannels()
     notify(
       NotifyIds.forTag("sy-link-stopped"),
-      NotificationCompat.Builder(ctx, Channels.NEEDS_YOU).setSmallIcon(icon()).setColor(color()).setContentTitle("Switchyard").setContentText(why)
+      NotificationCompat.Builder(ctx, Channels.NEEDS_YOU).setSmallIcon(icon(IconKind.CONNECTION)).setColor(alertColor()).setContentTitle("Switchyard").setContentText(why)
         .setContentIntent(appPending(NotifyIds.forTag("sy-link-stopped"), Payloads.CONNECTION_TAP))
         .setAutoCancel(true).build(),
     )
@@ -191,6 +202,21 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
   companion object {
     /** #E8B04B, the gold of phone/assets/src/icon.svg (app.config.ts BRAND_ACCENT). */
     const val BRAND_ACCENT: Int = 0xFFE8B04B.toInt()
+
+    /** The shade circle of the always-on connection note: grey, so it never reads as an alert. */
+    const val CONNECTION_GREY: Int = 0xFF8A9099.toInt()
+
+    /** The drawable (res/drawable/sy_notify_*.xml, shipped by this module) for a kind. */
+    fun iconRes(kind: IconKind): Int = when (kind) {
+      IconKind.CONNECTION -> R.drawable.sy_notify_connection
+      IconKind.NEEDS_YOU -> R.drawable.sy_notify_needs_you
+      IconKind.FAILED -> R.drawable.sy_notify_failed
+      IconKind.LIMIT -> R.drawable.sy_notify_limit
+      IconKind.RESET -> R.drawable.sy_notify_reset
+      IconKind.MACHINE -> R.drawable.sy_notify_machine
+      IconKind.SUMMARY -> R.drawable.sy_notify_summary
+      IconKind.GENERIC -> R.drawable.sy_notify_generic
+    }
 
     fun sameOrigin(a: String, b: String): Boolean = norm(a) == norm(b)
 

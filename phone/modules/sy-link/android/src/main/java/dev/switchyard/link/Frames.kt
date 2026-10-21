@@ -116,9 +116,16 @@ data class AlertNote(
   val seen: String?,
   val origin: String?,
   val missed: Int,
+  /** The payload's `trigger` (push.md 6.5); null for tests and payloads without one. */
+  val trigger: String? = null,
 ) {
+  /** The small icon and large-icon badge for this note. */
+  val iconKind get() = Payloads.iconKindFor(type, trigger)
   val id get() = NotifyIds.forTag(tag.ifEmpty { alert ?: "sy" })
 }
+
+/** Which notification glyph a note gets (phone.md P6.1a). `CONNECTION` is used by the link service's own notes. */
+enum class IconKind { CONNECTION, NEEDS_YOU, FAILED, LIMIT, RESET, MACHINE, SUMMARY, GENERIC }
 
 object Payloads {
   private val ACTION_TOKEN = Regex("^a1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$")
@@ -130,6 +137,18 @@ object Payloads {
     trigger == "limit_80" || trigger == "limit_95" || trigger == "reset" -> Channels.LIMITS
     trigger == "machine_silent" -> Channels.MACHINES
     else -> Channels.NEEDS_YOU
+  }
+
+  /** The glyph for a payload: by type first (summary, test), then by trigger; anything else is the plain mark. */
+  fun iconKindFor(type: String, trigger: String?): IconKind = when {
+    type == "test" -> IconKind.GENERIC
+    type == "summary" -> IconKind.SUMMARY
+    trigger == "needs_permission" || trigger == "asked" -> IconKind.NEEDS_YOU
+    trigger == "failed" -> IconKind.FAILED
+    trigger == "limit_80" || trigger == "limit_95" -> IconKind.LIMIT
+    trigger == "reset" -> IconKind.RESET
+    trigger == "machine_silent" -> IconKind.MACHINE
+    else -> IconKind.GENERIC
   }
 
   fun alert(o: JSONObject, frameTag: String): AlertNote? {
@@ -153,6 +172,7 @@ object Payloads {
       seen = token("seen"),
       origin = o.optString("origin").ifEmpty { null },
       missed = o.optInt("missed", 0),
+      trigger = o.optString("trigger").ifEmpty { null },
     )
   }
 

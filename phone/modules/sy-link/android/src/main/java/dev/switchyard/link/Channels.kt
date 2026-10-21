@@ -14,7 +14,7 @@ object Channels {
     Triple(LIMITS, "Limits", 3),
     Triple(MACHINES, "Machines", 2),
     Triple(TEST, "Test", 3),
-    Triple(CONNECTION, "Connection", 1),
+    Triple(CONNECTION, "Connection (always on)", 1),
   )
 
   const val GROUP = "sy"

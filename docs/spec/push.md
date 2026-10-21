@@ -1321,7 +1321,7 @@ Made by `prepareKeys()` before the claim (phone.md P2):
 | Concern | Design |
 | --- | --- |
 | Start | `start()` from JS after pairing and on each app start while instant delivery is on; `BootReceiver` (boot, app update); the watchdog. `startForegroundService`, then `goForeground()` (14.2) within 5 s. |
-| Persistent notification | Channel `sy_connection` (importance MIN, no badge, no sound): "Connected to hub · 2 min", "Reconnecting… (next try in 20 s)", "Not connected: <reason>". Tapping it opens Now (`switchyard://now`), like any other notification, never a settings page; its **Settings** button opens Settings → Notifications (`switchyard://settings/notifications`, phone.md P7). Every notification the module posts has a content intent that names the app's launcher activity, so a tap always starts the app (a notification with none makes Samsung open the app's notification settings). It can be hidden in Android's settings. |
+| Persistent notification | Channel `sy_connection` (name "Connection (always on)", importance MIN, no badge, no sound; small icon `sy_notify_connection`, grey, no large icon, phone.md P6.1a): "Connected to hub · 2 min", "Reconnecting… (next try in 20 s)", "Not connected: <reason>". Tapping it opens Now (`switchyard://now`), like any other notification, never a settings page; its **Settings** button opens Settings → Notifications (`switchyard://settings/notifications`, phone.md P7). Every notification the module posts has a content intent that names the app's launcher activity, so a tap always starts the app (a notification with none makes Samsung open the app's notification settings). It can be hidden in Android's settings. |
 | Connection | OkHttp `WebSocket` to the first working `urls` entry, subprotocol `sy-link.1`, `pingInterval` = `ping_s` (default 180; Settings allows 300–600 on the tailnet), read timeout 0, connect timeout 15 s. `ping_s` is the claim reply's (or `setPingInterval`'s); the `welcome`'s `ping_s` is not applied over the phone's own choice. Long-poll (link.md 2.1) after 3 failed handshakes while `GET /health` answers; while on long-poll the WebSocket is tried again every 30 min. In long-poll mode, pending actions (14.6) go in the `up` frames of the poll requests. |
 | Login | link.md 3: the challenge's hub signature and fingerprint are checked against the pin from pairing (`h=`); `hello` is signed with `sy_link_sign`. |
 | Reconnect | 1, 2, 5, 10, 20, 30, 60 s, then 120 s, each ±20 % jitter; reset after a connection that lasted 60 s. `registerDefaultNetworkCallback`: a new default network (Wi-Fi ↔ mobile, a VPN such as Tailscale coming up) reconnects at once with the backoff reset. |
@@ -1352,7 +1352,8 @@ Per frame, under the wake lock:
      link; anything else opens the app at the payload's `url` mapped to the app link
      (`/#/sessions/x` → `switchyard://sessions/x`, phone.md P7). The `auto` rule's `/health`
      probe of phone.md P6.4 is not run natively. Private payloads carry the hub's private text
-     (5.5). `when` = the payload's `ts`. A `missed` count emits `refresh` to JS.
+     (5.5). The small and large icons follow the trigger (phone.md P6.1a: the mark with a
+     kind badge; `summary` and `test` by type, unknown triggers the plain mark). `when` = the payload's `ts`. A `missed` count emits `refresh` to JS.
    - `alert` with `type: "dismiss"`: cancel the tag's notification.
    - `refresh`: store the snapshot and ask the widgets to redraw (an `APPWIDGET_UPDATE`
      broadcast to the app's widget providers, which runs `react-native-android-widget`'s

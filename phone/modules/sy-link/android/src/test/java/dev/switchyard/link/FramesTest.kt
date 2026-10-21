@@ -213,4 +213,40 @@ class FramesTest {
     assertEquals("switchyard://now", Payloads.appLink("//evil.example/#/x"))
     assertEquals("switchyard://now", Payloads.appLink("/#/\\evil"))
   }
+
+  @Test fun everyKindMapsToItsIcon() {
+    fun k(type: String, trigger: String?) = Payloads.iconKindFor(type, trigger)
+    assertEquals(IconKind.NEEDS_YOU, k("alert", "needs_permission"))
+    assertEquals(IconKind.NEEDS_YOU, k("alert", "asked"))
+    assertEquals(IconKind.FAILED, k("alert", "failed"))
+    assertEquals(IconKind.LIMIT, k("alert", "limit_80"))
+    assertEquals(IconKind.LIMIT, k("alert", "limit_95"))
+    assertEquals(IconKind.RESET, k("alert", "reset"))
+    assertEquals(IconKind.MACHINE, k("alert", "machine_silent"))
+    assertEquals(IconKind.SUMMARY, k("summary", null))
+    assertEquals(IconKind.SUMMARY, k("summary", "asked"))
+    assertEquals(IconKind.GENERIC, k("test", null))
+    assertEquals(IconKind.GENERIC, k("test", "failed"))
+    assertEquals(IconKind.GENERIC, k("alert", null))
+    assertEquals(IconKind.GENERIC, k("alert", "something_new"))
+  }
+
+  @Test fun aParsedAlertCarriesItsTriggerIntoTheIcon() {
+    val p = TestPhone()
+    p.processor().onText(alertFrame(p, 1), "nonce")
+    assertEquals("asked", p.sink.posted[0].trigger)
+    assertEquals(IconKind.NEEDS_YOU, p.sink.posted[0].iconKind)
+  }
+
+  @Test fun everyBadgedKindHasBadgePathData() {
+    for (k in listOf("needs_you", "failed", "limit", "reset", "machine", "summary")) {
+      assertTrue(k, NotifyIconPaths.BADGES[k]!!.startsWith("M"))
+    }
+    assertTrue(NotifyIconPaths.MARK.startsWith("M"))
+  }
+
+  @Test fun theConnectionChannelIsNamedAlwaysOn() {
+    assertEquals("Connection (always on)", Channels.ALL.first { it.first == Channels.CONNECTION }.second)
+    assertEquals(1, Channels.ALL.first { it.first == Channels.CONNECTION }.third)
+  }
 }

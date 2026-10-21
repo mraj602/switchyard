@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Switchyard notification small icon "connection" (direction A, the mark with a corner badge): a single
+     white filled path on transparent; Android tints it. Generated from the approved glyph SVGs. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+  android:width="24dp"
+  android:height="24dp"
+  android:viewportWidth="24"
+  android:viewportHeight="24">
+  <path
+    android:fillColor="#FFFFFFFF"
+    android:fillType="evenOdd"
+    android:pathData="M20.45 21 L12 6.21 L3.55 21 L5.10 21 L12 8.93 L18.90 21ZM16.13 21 L12 13.77 L7.87 21 L9.42 21 L12 16.49 L14.58 21Z"/>
+</vector>

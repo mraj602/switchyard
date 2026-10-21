@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Switchyard notification small icon "limit" (direction A, the mark with a corner badge): a single
+     white filled path on transparent; Android tints it. Generated from the approved glyph SVGs. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+  android:width="24dp"
+  android:height="24dp"
+  android:viewportWidth="24"
+  android:viewportHeight="24">
+  <path
+    android:fillColor="#FFFFFFFF"
+    android:fillType="evenOdd"
+    android:pathData="M2 21 L4.53 21 L10.40 10.73 L16.27 21 L18.80 21 L10.40 6.30ZM6.15 21 L8.68 21 L10.40 17.99 L12.12 21 L14.65 21 L10.40 13.56ZM15.42 7.67 L15.59 7.27 L15.82 6.89 L16.11 6.55 L16.44 6.27 L16.82 6.04 L17.23 5.87 L17.66 5.76 L18.32 5.74 L18.97 5.87 L19.38 6.04 L19.76 6.27 L20.11 6.57 L18.50 7.28 L18.10 7.22 L17.69 7.29 L17.32 7.48 L17.16 7.61 L16.92 7.94 L16.79 8.34 L16.78 8.54 L16.84 8.95 L16.92 9.15 L17.10 9.41 L19.10 9.41 L19.28 9.15 L19.36 8.95 L19.41 8.75 L19.41 8.38 L20.39 6.91 L20.61 7.27 L20.78 7.67 L20.88 8.10 L20.92 8.58 L22.64 8.51 L22.58 7.80 L22.51 7.45 L22.31 6.84 L21.95 6.14 L21.53 5.57 L21.08 5.11 L20.80 4.89 L20.19 4.51 L19.47 4.21 L18.84 4.06 L18.49 4.02 L17.71 4.02 L17.36 4.06 L16.73 4.21 L16.01 4.51 L15.46 4.85 L15.12 5.11 L14.67 5.57 L14.45 5.85 L14.04 6.51 L13.79 7.11 L13.68 7.52 L13.61 7.87 L13.56 8.51 L15.28 8.58 L15.32 8.10Z"/>
+</vector>
