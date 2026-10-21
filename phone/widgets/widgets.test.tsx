@@ -16,8 +16,8 @@ import { AccountsMedium } from './ios/AccountsMedium';
 import { NeedsYouSmall } from './ios/NeedsYouSmall';
 import { ResetCountdown } from './ios/ResetCountdown';
 import { clearIos, endCountdown, resetAdapter, startCountdown, syncCountdown, updateTimelines } from './ios/adapter';
-import { SyAccounts } from './android/SyAccounts';
-import { SyNeedsYou } from './android/SyNeedsYou';
+import { SyLimits } from './android/SyLimits';
+import { SySessions } from './android/SySessions';
 import { clearAndroidWidgets, createTaskHandler, registerAndroidWidgets, updateAndroidWidgets } from './android/task-handler';
 
 const FIX = join(__dirname, '../test/fixtures/hub');
@@ -213,61 +213,83 @@ describe('Android widgets', () => {
     return { m, getItem: async (k) => m.get(k) ?? null, setItem: async (k, v) => void m.set(k, v), removeItem: async (k) => void m.delete(k) };
   };
   const aTexts = (n: TestInstance) => allOf(n, 'Android.TextWidget').map((t) => String(t.props.text));
-  const info = (widgetName: string) => ({ widgetName, widgetId: 1, height: 100, width: 100, screenInfo: { screenHeightDp: 1, screenWidthDp: 1, density: 1, densityDpi: 1 } });
+  const uris = (n: TestInstance) => [n, ...allOf(n, 'Android.FlexWidget')].map((x) => (x.props.clickActionData as { uri?: string } | undefined)?.uri).filter(Boolean);
+  const info = (widgetName: string, height = 100) => ({ widgetName, widgetId: 1, height, width: 100, screenInfo: { screenHeightDp: 1, screenWidthDp: 1, density: 1, densityDpi: 1 } });
+  const AGO = NOW + 3 * 60_000;
 
-  it('SyNeedsYou renders the count, the top item and the reset as a clock time', () => {
-    const tree = renderWidget(<SyNeedsYou {...androidProps(snapshot, NOW, 'UTC')} />);
+  it('SySessions shows running, needs input and done, the needs-you highlight and "updated 3 min ago"', () => {
+    const tree = renderWidget(<SySessions {...androidProps(snapshot, AGO, 'UTC')} />);
     expect(tree.type).toBe('Android.FlexWidget');
-    expect(tree.props.clickActionData).toEqual({ uri: 'switchyard://now' });
-    expect(aTexts(tree)).toEqual(['Needs you', '3', 'data-pipeline · failed', 'client resets 06:36']);
-  });
-
-  it('SyNeedsYou in private mode has no project', () => {
-    expect(aTexts(renderWidget(<SyNeedsYou {...androidProps(privateSnapshot, NOW, 'UTC')} />)).join('|')).not.toContain('data-pipeline');
-  });
-
-  it('SyAccounts renders up to four columns with bars, pct and clock times', () => {
-    const tree = renderWidget(<SyAccounts {...androidProps(snapshot, NOW, 'UTC')} />);
+    expect(tree.props.clickActionData).toEqual({ uri: 'switchyard://sessions' });
     const t = aTexts(tree);
-    expect(t).toEqual(expect.arrayContaining(['personal', '62%', 'resets 08:07', 'work', 'client', '100%', 'resets 06:36', 'research', '8%', '7d 48%']));
-    expect(allOf(tree, 'Android.TextWidget').filter((x) => x.props.text === '62%')).toHaveLength(1);
+    expect(t).toEqual(['Sessions', 'updated 3 min ago', '5', 'Running', '3', 'Needs input', '3', 'Done', 'Needs you: data-pipeline · failed']);
+    expect(uris(tree)).toEqual(expect.arrayContaining(['switchyard://sessions?filter=working', 'switchyard://now', 'switchyard://sessions?filter=done']));
   });
 
-  it('SyAccounts shows a window past its reset as 0% "reset"', () => {
-    const t = aTexts(renderWidget(<SyAccounts {...androidProps(snapshot, Date.parse('2026-10-13T06:40:00.000Z'), 'UTC')} />));
-    expect(t).toContain('reset');
-    expect(t).toContain('0%');
+  it('SySessions in private mode names no project, and has no highlight when nothing needs you', () => {
+    expect(aTexts(renderWidget(<SySessions {...androidProps(privateSnapshot, NOW)} />))).toContain('Needs you: 3 waiting');
+    const calm = { ...snapshot, needs_you: 0, top: null, counts: { working: 1, needs_you: 0, done: 2 } };
+    expect(aTexts(renderWidget(<SySessions {...androidProps(calm, NOW)} />)).join('|')).not.toContain('Needs you');
   });
 
-  it('both widgets say "Open Switchyard to set up" without a snapshot', () => {
-    expect(aTexts(renderWidget(<SyNeedsYou {...androidProps(null, NOW)} />))).toContain('Open Switchyard to set up');
-    expect(aTexts(renderWidget(<SyAccounts {...androidProps(null, NOW)} />))).toContain('Open Switchyard to set up');
+  it('SyLimits shows every account with its tighter window, % and reset time, and "updated 3 min ago"', () => {
+    const tree = renderWidget(<SyLimits {...androidProps(snapshot, AGO, 'UTC', 400)} />);
+    const t = aTexts(tree);
+    expect(t).toEqual(expect.arrayContaining(['Limits', 'updated 3 min ago', 'personal', '62%', '5 h · 08:07', 'work', 'client', '100%', '5 h · 06:36', 'research']));
+    expect(uris(tree)).toContain('switchyard://accounts?seat=seat_client');
   });
 
-  it('the task handler renders the stored snapshot for WIDGET_UPDATE', async () => {
-    const store = memory(JSON.stringify(snapshot));
-    const handler = createTaskHandler({ store, now: () => NOW, tz: 'UTC' });
-    const rendered: React.ReactElement[] = [];
-    await handler({ widgetInfo: info('SyNeedsYou'), widgetAction: 'WIDGET_UPDATE', renderWidget: (w: unknown) => void rendered.push(w as React.ReactElement) } as never);
-    expect(rendered).toHaveLength(1);
-    expect(aTexts(renderWidget(rendered[0]!))).toContain('3');
-    await handler({ widgetInfo: info('SyAccounts'), widgetAction: 'WIDGET_ADDED', renderWidget: (w: unknown) => void rendered.push(w as React.ReactElement) } as never);
-    expect(aTexts(renderWidget(rendered[1]!))).toContain('work');
+  it('SyLimits draws only the rows that fit the height', () => {
+    const rows = (h: number) => aTexts(renderWidget(<SyLimits {...androidProps(snapshot, NOW, 'UTC', h)} />)).filter((x) => x.endsWith('%'));
+    expect(rows(400)).toHaveLength(4);
+    expect(rows(104)).toHaveLength(2);
+    expect(rows(40)).toHaveLength(1);
   });
 
-  it('the task handler says "Open Switchyard to set up" with no snapshot (and with a broken one)', async () => {
-    for (const store of [memory(), memory('{"v":1}')]) {
-      const handler = createTaskHandler({ store, now: () => NOW });
-      const rendered: React.ReactElement[] = [];
-      await handler({ widgetInfo: info('SyNeedsYou'), widgetAction: 'WIDGET_UPDATE', renderWidget: (w: unknown) => void rendered.push(w as React.ReactElement) } as never);
-      expect(aTexts(renderWidget(rendered[0]!))).toContain('Open Switchyard to set up');
+  it('SyLimits shows a window past its reset as 0% "reset", and an idle account as 0% idle', () => {
+    const past = { id: 'p', label: 'claude-2', colour: '#654321', five_hour: { pct: 90, resets_at: '2026-10-13T06:36:00.000Z' }, seven_day: { pct: 0, resets_at: '2026-10-13T06:36:00.000Z' } };
+    const t = aTexts(renderWidget(<SyLimits {...androidProps({ ...snapshot, seats: [past] }, Date.parse('2026-10-13T06:40:00.000Z'), 'UTC', 400)} />));
+    expect(t).toEqual(expect.arrayContaining(['claude-2', '0%', 'reset']));
+    const idle = { ...snapshot, seats: [{ id: 'i', label: 'claude-5', colour: '#123456', five_hour: null, seven_day: null }] };
+    const it = aTexts(renderWidget(<SyLimits {...androidProps(idle, NOW, 'UTC', 400)} />));
+    expect(it).toEqual(expect.arrayContaining(['claude-5', '0%', 'idle']));
+  });
+
+  it('both widgets say "Open Switchyard once to load" only without a snapshot, and tap opens Now', () => {
+    for (const C of [SyLimits, SySessions]) {
+      const none = renderWidget(<C {...androidProps(null, NOW)} />);
+      expect(aTexts(none)).toContain('Open Switchyard once to load');
+      expect(none.props.clickActionData).toEqual({ uri: 'switchyard://now' });
+      expect(aTexts(renderWidget(<C {...androidProps(snapshot, NOW)} />)).join('|')).not.toContain('Open Switchyard');
     }
   });
 
-  it('the task handler ignores clicks, deletes and unknown widgets', async () => {
+  it('the task handler renders the stored snapshot for WIDGET_UPDATE, ADDED and RESIZED', async () => {
+    const store = memory(JSON.stringify(snapshot));
+    const handler = createTaskHandler({ store, now: () => NOW, tz: 'UTC' });
+    const rendered: React.ReactElement[] = [];
+    const render = (w: unknown) => void rendered.push(w as React.ReactElement);
+    await handler({ widgetInfo: info('SySessions'), widgetAction: 'WIDGET_UPDATE', renderWidget: render } as never);
+    expect(aTexts(renderWidget(rendered[0]!))).toContain('Running');
+    await handler({ widgetInfo: info('SyLimits', 400), widgetAction: 'WIDGET_ADDED', renderWidget: render } as never);
+    expect(aTexts(renderWidget(rendered[1]!))).toContain('work');
+    await handler({ widgetInfo: info('SyLimits', 40), widgetAction: 'WIDGET_RESIZED', renderWidget: render } as never);
+    expect(aTexts(renderWidget(rendered[2]!)).filter((x) => x.endsWith('%'))).toHaveLength(1);
+  });
+
+  it('the task handler says "Open Switchyard once to load" with no snapshot (and with a broken one)', async () => {
+    for (const store of [memory(), memory('{"v":1}')]) {
+      const handler = createTaskHandler({ store, now: () => NOW });
+      const rendered: React.ReactElement[] = [];
+      await handler({ widgetInfo: info('SySessions'), widgetAction: 'WIDGET_UPDATE', renderWidget: (w: unknown) => void rendered.push(w as React.ReactElement) } as never);
+      expect(aTexts(renderWidget(rendered[0]!))).toContain('Open Switchyard once to load');
+    }
+  });
+
+  it('the task handler ignores clicks, deletes and unknown widgets (including the removed ones)', async () => {
     const handler = createTaskHandler({ store: memory(JSON.stringify(snapshot)), now: () => NOW });
     const render = jest.fn();
-    for (const [name, action] of [['SyNeedsYou', 'WIDGET_CLICK'], ['SyNeedsYou', 'WIDGET_DELETED'], ['Other', 'WIDGET_UPDATE']] as const) {
+    for (const [name, action] of [['SySessions', 'WIDGET_CLICK'], ['SyLimits', 'WIDGET_DELETED'], ['SyAccounts', 'WIDGET_UPDATE'], ['Other', 'WIDGET_UPDATE']] as const) {
       await handler({ widgetInfo: info(name), widgetAction: action, renderWidget: render } as never);
     }
     expect(render).not.toHaveBeenCalled();
@@ -282,12 +304,19 @@ describe('Android widgets', () => {
     spy.restore();
   });
 
+  it('the app entry registers the handler (a headless widget task mounts no screen)', () => {
+    const entry = readFileSync(join(__dirname, '../index.js'), 'utf8');
+    expect(entry).toContain('registerAndroidWidgets()');
+    expect(entry).toContain("import 'expo-router/entry'");
+    expect(JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8')).main).toBe('index.js');
+  });
+
   it('updateAndroidWidgets stores the snapshot and redraws both widgets; clear drops it', async () => {
     const spy = jest.replaceProperty(Platform, 'OS', 'android');
     const store = memory();
     await updateAndroidWidgets(snapshot, { store, now: () => NOW, tz: 'UTC' });
     expect(JSON.parse(store.m.get('sy.widget.v1')!)).toEqual(snapshot);
-    expect(callsOf('androidWidget.requestWidgetUpdate').map((c) => (c.args[0] as { widgetName: string }).widgetName)).toEqual(['SyNeedsYou', 'SyAccounts']);
+    expect(callsOf('androidWidget.requestWidgetUpdate').map((c) => (c.args[0] as { widgetName: string }).widgetName)).toEqual(['SyLimits', 'SySessions']);
     await clearAndroidWidgets({ store, now: () => NOW });
     expect(store.m.size).toBe(0);
     expect(callsOf('androidWidget.requestWidgetUpdate')).toHaveLength(4);

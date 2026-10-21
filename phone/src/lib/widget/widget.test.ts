@@ -9,8 +9,13 @@ import {
   buildSnapshot,
   buildTimeline,
   clearSnapshot,
+  agoWords,
+  applyLinkRefresh,
   clock,
   emptyTimeline,
+  limitRows,
+  rowsThatFit,
+  sessionTally,
   nextResetAt,
   readSnapshot,
   resetKey,
@@ -37,7 +42,7 @@ describe('buildSnapshot', () => {
     expect(validateWidgetSnapshot(snap)).toEqual([]);
   });
 
-  it('keeps the host name only, at most 4 seats in Accounts order, labels cut to 12', () => {
+  it('keeps the host name only, at most 8 seats in Accounts order, labels cut to 12', () => {
     const many: Seat[] = [5, 3, 1, 4, 2, 0].map((order) => ({
       id: `s${order}`,
       account: `a${order}`,
@@ -49,7 +54,7 @@ describe('buildSnapshot', () => {
     many.push({ id: 'hid', account: 'x', org: 'o', label: 'hidden', order: -1, hidden: true });
     const snap = buildSnapshot(overview, many, NOW, prefs);
     expect(snap.hub).toBe('hub.example.ts.net');
-    expect(snap.seats.map((s) => s.id)).toEqual(['s0', 's1', 's2', 's3']);
+    expect(snap.seats.map((s) => s.id)).toEqual(['s0', 's1', 's2', 's3', 's4', 's5']);
     expect(snap.seats[3]?.label).toBe('a-very-long-'.slice(0, SNAPSHOT_LABEL_MAX));
     expect(snap.seats[3]?.label).toHaveLength(SNAPSHOT_LABEL_MAX);
   });
@@ -184,6 +189,82 @@ describe('rows and next reset', () => {
     expect(rows[0]).toMatchObject({ window: 'five_hour', pct: 62, other: { window: 'seven_day', pct: 48 } });
     expect(nextResetAt(snapshot, NOW)?.seat).toBe('client');
     expect(nextResetAt(snapshot, NOW + 24 * 24 * H)).toBeNull();
+  });
+});
+
+describe('Limits and Sessions widget data', () => {
+  const win = (pct: number, at: number) => ({ pct, resets_at: iso(at) });
+  const snap = (seats: WidgetSnapshot['seats'], extra: Partial<WidgetSnapshot> = {}): WidgetSnapshot => ({
+    v: 1, as_of: iso(NOW), hub: 'h', needs_you: 0, top: null, seats, next_reset: null, private: false, ...extra,
+  });
+
+  it('shows every visible account (up to 8), idle and unread ones at 0%', () => {
+    const seats: Seat[] = Array.from({ length: 7 }, (_, i) => ({
+      id: `c${i + 1}`, account: `a${i}`, org: 'o', label: `claude-${i + 1}`, order: i, colour: '#112233',
+      windows: i === 0 ? [{ key: 'five_hour', used_pct: 30, resets_at: iso(NOW + H) }] : [],
+    }));
+    const s = buildSnapshot(overview, seats, NOW, { private: false, origin: 'https://h' });
+    expect(validateWidgetSnapshot(s)).toEqual([]);
+    const rows = limitRows(s, NOW);
+    expect(rows.map((r) => r.label)).toEqual(['claude-1', 'claude-2', 'claude-3', 'claude-4', 'claude-5', 'claude-6', 'claude-7']);
+    expect(rows.map((r) => r.pct)).toEqual([30, 0, 0, 0, 0, 0, 0]);
+    expect(rows[1]).toMatchObject({ window: null, resets_at: null, reset: false });
+  });
+
+  it('shows the tighter of 5 h and 7 d with that window\'s reset (a tie shows 7 d)', () => {
+    const s = snap([
+      { id: 'a', label: 'a', colour: '#111111', five_hour: win(70, NOW + H), seven_day: win(40, NOW + 50 * H) },
+      { id: 'b', label: 'b', colour: '#222222', five_hour: win(10, NOW + H), seven_day: win(60, NOW + 50 * H) },
+      { id: 'c', label: 'c', colour: '#333333', five_hour: win(20, NOW + H), seven_day: win(20, NOW + 50 * H) },
+    ]);
+    const r = limitRows(s, NOW);
+    expect(r[0]).toMatchObject({ pct: 70, window: '5 h', resets_at: iso(NOW + H) });
+    expect(r[1]).toMatchObject({ pct: 60, window: '7 d', resets_at: iso(NOW + 50 * H) });
+    expect(r[2]).toMatchObject({ pct: 20, window: '7 d' });
+  });
+
+  it('a window past its reset reads 0% "reset"; a missing window counts as 0%', () => {
+    const s = snap([
+      { id: 'a', label: 'a', colour: '#111111', five_hour: win(90, NOW - H), seven_day: win(10, NOW + H) },
+      { id: 'b', label: 'b', colour: '#222222', five_hour: null, seven_day: win(5, NOW + H) },
+    ]);
+    const r = limitRows(s, NOW);
+    expect(r[0]).toMatchObject({ pct: 10, window: '7 d' });
+    expect(r[1]).toMatchObject({ pct: 5, window: '7 d' });
+    const later = limitRows(snap([{ id: 'a', label: 'a', colour: '#111111', five_hour: win(90, NOW - H), seven_day: win(0, NOW - H) }]), NOW);
+    expect(later[0]).toMatchObject({ pct: 0, reset: true, resets_at: null });
+  });
+
+  it('counts running, needs input and done from the overview', () => {
+    const s = buildSnapshot(overview, accounts, NOW, { private: false, origin: 'https://h' });
+    expect(s.counts).toEqual({ working: 5, needs_you: 3, done: 3 });
+    expect(sessionTally(s)).toEqual({ running: 5, needsInput: 3, done: 3 });
+    // an older snapshot has no counts: only needs-you is known
+    const old = { ...s } as Partial<WidgetSnapshot>;
+    delete old.counts;
+    expect(sessionTally(old as WidgetSnapshot)).toEqual({ running: 0, needsInput: 3, done: 0 });
+  });
+
+  it('a link refresh moves the needs-you count into the tally too', () => {
+    const s = buildSnapshot(overview, accounts, NOW, { private: false, origin: 'https://h' });
+    const r = applyLinkRefresh(s, { v: 1, needs_you: 1, seats: [], ts: iso(NOW + 1000) })!;
+    expect(r.counts).toEqual({ working: 5, needs_you: 1, done: 3 });
+  });
+
+  it('words the age: just now, minutes, hours, days', () => {
+    expect(agoWords(iso(NOW), NOW + 20_000)).toBe('just now');
+    expect(agoWords(iso(NOW), NOW + 3 * 60_000)).toBe('3 min ago');
+    expect(agoWords(iso(NOW), NOW + 5 * H)).toBe('5 h ago');
+    expect(agoWords(iso(NOW), NOW + 72 * H)).toBe('3 d ago');
+    expect(agoWords('nope', NOW)).toBe('');
+  });
+
+  it('draws as many rows as the height allows, between 1 and the account count', () => {
+    expect(rowsThatFit(undefined, 7)).toBe(4);
+    expect(rowsThatFit(80, 7)).toBe(1);
+    expect(rowsThatFit(200, 7)).toBe(5);
+    expect(rowsThatFit(900, 7)).toBe(7);
+    expect(rowsThatFit(900, 2)).toBe(2);
   });
 });
 

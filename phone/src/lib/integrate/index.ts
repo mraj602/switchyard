@@ -174,20 +174,25 @@ export async function widgetSteps(
   const live = ctx.live ?? (() => true);
   if (!live()) return;
   if (d.overview) await quietly(() => p.notifications.setBadgeCountAsync(needsYouCount(d.overview)));
-  if (!ctx.me || !ctx.origin || !live()) return;
+  if (!ctx.origin || !live()) return;
   let snap: WidgetSnapshot | null;
   try {
-    snap = snapshotOf(d, now, ctx.me, ctx.settings, ctx.origin);
+    // Before GET /v1/me has answered the private pref is unknown: assume the hub's, else private.
+    snap = snapshotOf(d, now, ctx.me, ctx.settings ?? (ctx.me ? null : { private: true }), ctx.origin);
   } catch {
     return;
   }
   if (!snap) return;
   const s = snap;
-  if (ctx.me.device.prefs?.widgets === true) {
-    await quietly(() => p.updateTimelines(s, now));
-    if (!live()) return;
-    await quietly(() => p.updateAndroidWidgets(s));
-  }
+  // The Android widgets read the snapshot this app writes locally: it is written on every
+  // refresh, whatever `prefs.widgets` says (that pref only asks the hub for refresh frames over
+  // the link). Writing it only when the pref was true left a widget with no snapshot, so it only
+  // ever said "Open Switchyard".
+  if (ctx.me?.device.prefs?.widgets === true) await quietly(() => p.updateTimelines(s, now));
+  if (!live()) return;
+  await quietly(() => p.updateAndroidWidgets(s));
+  if (!live()) return;
+  if (!ctx.me) return;
   if (!live()) return;
   await quietly(() => p.syncCountdown(s, now, ctx.wantStart));
 }

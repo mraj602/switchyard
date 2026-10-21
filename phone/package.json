@@ -4,7 +4,7 @@
   "description": "Switchyard phone app (Expo): the hub's screens, native pushes with Open, Snooze and Seen, widgets and a Live Activity. Unofficial; not affiliated with Anthropic.",
   "license": "MIT",
   "private": true,
-  "main": "expo-router/entry",
+  "main": "index.js",
   "engines": {
     "node": ">=22.13"
   },

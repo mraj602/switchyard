@@ -54,11 +54,25 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
     val i = if (n.tap == "claude" && n.remoteUrl != null) {
       Intent(Intent.ACTION_VIEW, Uri.parse(n.remoteUrl))
     } else {
-      Intent(Intent.ACTION_VIEW, Uri.parse(Payloads.appLink(n.url))).setPackage(ctx.packageName)
+      appIntent(Payloads.appLink(n.url))
     }
     i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     return PendingIntent.getActivity(ctx, n.id, i, flags())
   }
+
+  /**
+   * The app's own launcher activity at a switchyard:// link. Naming the component (not just the
+   * package) means the tap always starts the app, never a chooser or a fall back to the app's
+   * notification settings.
+   */
+  private fun appIntent(link: String): Intent {
+    val i = Intent(Intent.ACTION_VIEW, Uri.parse(link)).setPackage(ctx.packageName)
+    ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.component?.let { i.setComponent(it) }
+    return i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+  }
+
+  private fun appPending(code: Int, link: String): PendingIntent =
+    PendingIntent.getActivity(ctx, code, appIntent(link), flags())
 
   private fun actionIntent(n: AlertNote, action: String, token: String): PendingIntent {
     val i = Intent(ctx, ActionReceiver::class.java)
@@ -120,7 +134,7 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
     }
   }
 
-  /** The persistent notification of 14.4 (channel sy_connection). Tapping it opens Settings → Notifications. */
+  /** The persistent notification of 14.4 (channel sy_connection). Tapping it opens Now; its Settings button opens Settings → Notifications. */
   fun connection(): Notification {
     val text = when (store.status) {
       "connected" -> "Connected to hub" + (store.connectedSince?.let { " · ${ago(it)}" } ?: "")
@@ -128,12 +142,8 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
       "connecting" -> "Connecting…"
       else -> "Not connected" + (store.lastError?.let { ": $it" } ?: "")
     }
-    val open = PendingIntent.getActivity(
-      ctx, NotifyIds.CONNECTION,
-      Intent(Intent.ACTION_VIEW, Uri.parse("switchyard://settings/notifications")).setPackage(ctx.packageName)
-        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-      flags(),
-    )
+    val open = appPending(NotifyIds.CONNECTION, Payloads.CONNECTION_TAP)
+    val settings = appPending(NotifyIds.CONNECTION + 1, Payloads.CONNECTION_SETTINGS)
     return NotificationCompat.Builder(ctx, Channels.CONNECTION)
       .setSmallIcon(icon()).setColor(color())
       .setContentTitle("Switchyard")
@@ -144,6 +154,7 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
       .setPriority(NotificationCompat.PRIORITY_MIN)
       .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
       .setContentIntent(open)
+      .addAction(0, "Settings", settings)
       .build()
   }
 
@@ -153,6 +164,7 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
     notify(
       NotifyIds.forTag("sy-link-stopped"),
       NotificationCompat.Builder(ctx, Channels.NEEDS_YOU).setSmallIcon(icon()).setColor(color()).setContentTitle("Switchyard").setContentText(why)
+        .setContentIntent(appPending(NotifyIds.forTag("sy-link-stopped"), Payloads.CONNECTION_TAP))
         .setAutoCancel(true).build(),
     )
   }

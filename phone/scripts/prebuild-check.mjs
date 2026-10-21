@@ -61,7 +61,7 @@ try {
     check(/android:scheme="switchyard"/.test(manifest), 'switchyard intent filter');
     const receivers = [...manifest.matchAll(/<receiver[\s\S]*?<\/receiver>/g)].map((m) => m[0]).filter((r) => r.includes('android.appwidget.action.APPWIDGET_UPDATE'));
     check(receivers.length === 2, `two AppWidgetProvider receivers (found ${receivers.length})`);
-    for (const name of ['SyNeedsYou', 'SyAccounts']) check(receivers.some((r) => r.includes(name)), `widget receiver ${name}`);
+    for (const name of ['SySessions', 'SyLimits']) check(receivers.some((r) => r.includes(name)), `widget receiver ${name}`);
     check(/<application[^>]*android:allowBackup="false"/.test(manifest), 'allowBackup="false"');
     check(!/<application[^>]*android:usesCleartextTraffic="true"/.test(manifest), 'no cleartext in release');
     const xml = findFiles(path.join(app, 'android', 'app', 'src', 'main', 'res'), /\.xml$/);

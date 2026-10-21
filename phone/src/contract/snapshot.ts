@@ -4,8 +4,11 @@
 
 export const SNAPSHOT_VERSION = 1;
 
-/** Most seats a snapshot holds (P11). */
-export const SNAPSHOT_MAX_SEATS = 4;
+/** Most seats a snapshot holds (P11): the Android Limits widget shows as many as fit; iOS draws the first 4. */
+export const SNAPSHOT_MAX_SEATS = 8;
+
+/** The iOS widgets draw this many accounts. */
+export const SNAPSHOT_IOS_SEATS = 4;
 
 /** Labels are cut to this many characters (P11). */
 export const SNAPSHOT_LABEL_MAX = 12;
@@ -40,6 +43,16 @@ export interface SnapshotNextReset {
   pct: number;
 }
 
+/** The Now/Sessions counts (Overview.counts) the Sessions widget shows. */
+export interface SnapshotCounts {
+  /** State working: "Running". */
+  working: number;
+  /** needs_permission, asked, failed: "Needs input". */
+  needs_you: number;
+  /** Finished a turn, idle: "Done". */
+  done: number;
+}
+
 export interface WidgetSnapshot {
   v: 1;
   as_of: string;
@@ -51,6 +64,8 @@ export interface WidgetSnapshot {
   seats: SnapshotSeat[];
   next_reset: SnapshotNextReset | null;
   private: boolean;
+  /** Absent in a snapshot written by an older app. */
+  counts?: SnapshotCounts;
 }
 
 /** One entry of the widget timeline (buildTimeline, P11). */

@@ -149,26 +149,37 @@ describe('afterRefresh', () => {
     expect(await AsyncStorage.getItem(WIDGET_KEY)).toBeNull();
   });
 
-  it('widgets off: no widget data at all, but the badge is still set', async () => {
+  it('widgets pref off or never set: the Android snapshot is still written (the pref only gates hub refresh frames and iOS)', async () => {
     onPlatform('android');
-    const glue = createGlue(systemGluePlatform(app('android'), manualClock(NOW)));
-    glue.setContext(ctx(meWith({ widgets: false })));
-    await glue.afterRefresh(data);
-    expect(await AsyncStorage.getItem(WIDGET_KEY)).toBeNull();
-    expect(callsOf('androidWidget.')).toHaveLength(0);
-    expect(notificationsState.badge).toBe(NEEDS);
+    for (const prefs of [{ widgets: false }, {}]) {
+      await AsyncStorage.removeItem(WIDGET_KEY);
+      const glue = createGlue(systemGluePlatform(app('android'), manualClock(NOW)));
+      glue.setContext(ctx(meWith(prefs)));
+      await glue.afterRefresh(data);
+      expect(JSON.parse((await AsyncStorage.getItem(WIDGET_KEY))!)).toMatchObject({ v: 1, needs_you: NEEDS });
+      expect(callsOf('androidWidget.requestWidgetUpdate').length).toBeGreaterThanOrEqual(2);
+      expect(notificationsState.badge).toBe(NEEDS);
+    }
   });
 
-  it('before GET /v1/me: widgets wait, and run once me arrives', async () => {
+  it('iOS with the widgets pref off: no timeline is written', async () => {
+    onPlatform('ios');
+    const glue = createGlue(systemGluePlatform(app('ios'), manualClock(NOW)));
+    glue.setContext(ctx(meWith({ widgets: false })));
+    await glue.afterRefresh(data);
+    expect(callsOf('widgets.updateTimeline')).toHaveLength(0);
+  });
+
+  it('before GET /v1/me: the Android snapshot is written at once, private, and rewritten once me arrives', async () => {
     onPlatform('android');
     const glue = createGlue(systemGluePlatform(app('android'), manualClock(NOW)));
     glue.setContext(ctx(null));
     await glue.afterRefresh(data);
-    expect(await AsyncStorage.getItem(WIDGET_KEY)).toBeNull();
+    expect(JSON.parse((await AsyncStorage.getItem(WIDGET_KEY))!)).toMatchObject({ private: true, top: null });
     expect(notificationsState.badge).toBe(NEEDS);
     glue.setContext(ctx(meWith({ widgets: true })));
     await flush(40);
-    expect(await AsyncStorage.getItem(WIDGET_KEY)).toBeTruthy();
+    expect(JSON.parse((await AsyncStorage.getItem(WIDGET_KEY))!)).toMatchObject({ private: false });
   });
 
   it('errors never escape', async () => {

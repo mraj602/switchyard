@@ -5,6 +5,7 @@ import type { LinkRefresh } from '../../contract/link';
 import type { KVStore } from '../../contract/platform';
 import {
   SNAPSHOT_LABEL_MAX,
+  SNAPSHOT_IOS_SEATS,
   SNAPSHOT_MAX_SEATS,
   TIMELINE_MAX,
   type SnapshotNextReset,
@@ -17,6 +18,7 @@ import {
 } from '../../contract/snapshot';
 import { validateWidgetSnapshot } from '../../contract/validate';
 import { orderSeats } from '../format/seat';
+import { tighterWindow } from '../format/windows';
 
 export interface SnapshotPrefs {
   private: boolean;
@@ -69,7 +71,7 @@ function earliest(seats: SnapshotSeat[], after: number, skip?: Set<string>): Sna
   return best;
 }
 
-/** At most 4 seats in Accounts order; `top` null in private mode; labels cut to 12. */
+/** At most 8 seats in Accounts order; `top` null in private mode; labels cut to 12. */
 export function buildSnapshot(overview: Overview, accounts: Seat[], now: number, prefs: SnapshotPrefs): WidgetSnapshot {
   const source = accounts.length > 0 ? accounts : overview.seats;
   // The hub's order (the owner's drag-and-drop order, `seat.order`; seats without one last).
@@ -107,7 +109,16 @@ export function buildSnapshot(overview: Overview, accounts: Seat[], now: number,
     seats,
     next_reset: earliest(seats, now),
     private: prefs.private,
+    counts: {
+      working: countOf(overview.counts?.working),
+      needs_you: count,
+      done: countOf(overview.counts?.done),
+    },
   };
+}
+
+function countOf(n: number | undefined): number {
+  return typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
 }
 
 /**
@@ -135,6 +146,7 @@ export function applyLinkRefresh(snapshot: WidgetSnapshot | null, refresh: LinkR
     ...snapshot,
     as_of: new Date(at).toISOString(),
     needs_you: needs,
+    ...(snapshot.counts ? { counts: { ...snapshot.counts, needs_you: needs } } : {}),
     top: needs === 0 ? null : snapshot.top,
     seats,
     next_reset: earliest(seats, at),
@@ -180,11 +192,11 @@ export interface SeatRow {
   other: { window: WindowKey; pct: number; reset: boolean } | null;
 }
 
-/** Up to 4 rows; windows named in `reset` show 0% and "reset". */
+/** Up to 4 rows (the iOS widgets); windows named in `reset` show 0% and "reset". */
 export function seatRows(snapshot: WidgetSnapshot, reset: string[]): SeatRow[] {
   const done = new Set(reset);
   const rows: SeatRow[] = [];
-  for (const s of snapshot.seats.slice(0, SNAPSHOT_MAX_SEATS)) {
+  for (const s of snapshot.seats.slice(0, SNAPSHOT_IOS_SEATS)) {
     const present = WINDOW_KEYS.filter((k) => s[k]);
     const main = present[0];
     if (!main) continue;
@@ -208,7 +220,7 @@ export function seatRows(snapshot: WidgetSnapshot, reset: string[]): SeatRow[] {
 
 /** What a widget component renders for one timeline entry. Plain JSON: it crosses to Swift. */
 export interface WidgetTimelineProps {
-  /** null: nothing written yet ("Open Switchyard to set up"). */
+  /** null: nothing written yet ("Open Switchyard once to load"). */
   snapshot: WidgetSnapshot | null;
   /** Windows whose reset has passed by this entry read "reset" at 0% (see resetKey). */
   reset: string[];
@@ -267,15 +279,77 @@ export function buildTimeline(snapshot: WidgetSnapshot, now: number, tz?: string
 
 // ------------------------------------------------------------------ Android
 
-/** Props of the Android widgets (resets as clock times, "resets 17:00"). */
-export interface AndroidWidgetProps {
-  snapshot: WidgetSnapshot | null; // null: "Open Switchyard to set up"
-  now: number;
-  tz?: string;
+/** One account of the Limits widget: the tighter of 5 h and 7 d. An idle or unread account is 0%. */
+export interface LimitRow {
+  id: string;
+  label: string;
+  colour: string;
+  pct: number;
+  /** "5 h" or "7 d"; null when the account has no reading (0%, idle). */
+  window: '5 h' | '7 d' | null;
+  /** That window's reset; null when idle or already past ("reset"). */
+  resets_at: string | null;
+  /** The window's reset time has passed. */
+  reset: boolean;
 }
 
-export function androidProps(snapshot: WidgetSnapshot | null, now: number, tz?: string): AndroidWidgetProps {
-  return { snapshot, now, ...(tz ? { tz } : {}) };
+/** Every account in the snapshot, in Accounts order, as the Limits widget draws it (format/windows `tighterWindow`). */
+export function limitRows(snapshot: WidgetSnapshot, now: number): LimitRow[] {
+  return snapshot.seats.map((s) => {
+    const windows: Window[] = [];
+    for (const key of WINDOW_KEYS) {
+      const w = s[key];
+      if (w) windows.push({ key, used_pct: w.pct, resets_at: w.resets_at });
+    }
+    const t = tighterWindow({ windows }, now);
+    const base = { id: s.id, label: s.label, colour: s.colour };
+    if (!t) return { ...base, pct: 0, window: null, resets_at: null, reset: false };
+    const at = t.w?.resets_at ?? null;
+    const past = at ? Date.parse(at) <= now : false;
+    return { ...base, pct: Math.min(100, Math.max(0, Math.round(t.used))), window: t.short, resets_at: past ? null : at, reset: past };
+  });
+}
+
+/** The three counts of the Sessions widget (labels as the Now screen words them). */
+export interface SessionTally {
+  running: number;
+  needsInput: number;
+  done: number;
+}
+
+export function sessionTally(snapshot: WidgetSnapshot): SessionTally {
+  const c = snapshot.counts;
+  return { running: c?.working ?? 0, needsInput: c?.needs_you ?? snapshot.needs_you, done: c?.done ?? 0 };
+}
+
+/** "just now", "3 min ago", "2 h ago", "4 d ago". */
+export function agoWords(asOf: string, now: number): string {
+  const t = Date.parse(asOf);
+  if (!Number.isFinite(t)) return '';
+  const m = Math.max(0, Math.floor((now - t) / 60_000));
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m} min ago`;
+  const h = Math.floor(m / 60);
+  return h < 48 ? `${h} h ago` : `${Math.floor(h / 24)} d ago`;
+}
+
+/** How many account rows fit a widget `heightDp` tall (header and padding taken off), 1..8. */
+export function rowsThatFit(heightDp: number | undefined, total: number): number {
+  const fit = heightDp && heightDp > 0 ? Math.floor((heightDp - 44) / 30) : 4;
+  return Math.max(1, Math.min(total, SNAPSHOT_MAX_SEATS, fit));
+}
+
+/** Props of the Android widgets (resets as clock times, "resets 17:00"). */
+export interface AndroidWidgetProps {
+  snapshot: WidgetSnapshot | null; // null: "Open Switchyard once to load"
+  now: number;
+  tz?: string;
+  /** The widget's current height, so the Limits widget draws as many rows as fit. */
+  height?: number;
+}
+
+export function androidProps(snapshot: WidgetSnapshot | null, now: number, tz?: string, height?: number): AndroidWidgetProps {
+  return { snapshot, now, ...(tz ? { tz } : {}), ...(height ? { height } : {}) };
 }
 
 // ------------------------------------------------------------------ storage (Android)

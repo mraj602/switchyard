@@ -33,7 +33,7 @@ Code map (wave 0): `phone/src/contract/` is the TypeScript side of this spec:
 | --- | --- |
 | `api.ts` | Mirrors of the api.yaml schemas the app reads or sends (`Overview`, `Session`, `Seat`, `Window`, `AlertBrief`, `Alert`, `Me`, `Device`, `DevicePrefs`, `PushTarget`, `PairClaim`, `PairClaimReply`, `PushSettings`, `ActionReply`, …) |
 | `payload.ts` | `Payload` (exactly Go `model.Payload`, `PAYLOAD_KEYS` in Go's key order), `RefreshData`, `AndroidChannelId` |
-| `snapshot.ts` | `WidgetSnapshot` v1 (P11), `TimelineEntry`, `SNAPSHOT_MAX_SEATS` 4, `SNAPSHOT_LABEL_MAX` 12, `TIMELINE_MAX` 8 |
+| `snapshot.ts` | `WidgetSnapshot` v1 (P11), `TimelineEntry`, `SNAPSHOT_MAX_SEATS` 8 (`SNAPSHOT_IOS_SEATS` 4), `SNAPSHOT_LABEL_MAX` 12, `TIMELINE_MAX` 8 |
 | `live.ts` | `LiveCountdownProps` (P12), `LIVE_MAX_H` 8, `LIVE_MIN_PCT` 80, `LIVE_END_AFTER_MS`, `LIVE_ACTIVITY_NAME` |
 | `routes.ts` | `SCHEME`, `AppRoute`, route paths, the hash routes and incoming hosts of P7 |
 | `constants.ts` | Storage keys (`sy.hub.v1`, `sy.cache.v1`, `sy.widget.v1`, `sy.local.v1`), category and action ids, channels (P6.1), timeouts, the `ACTION_TOKEN` pattern |
@@ -317,6 +317,16 @@ dropped too. Each notification's Snooze or Seen runs once: the `sy-link` module'
 the response listener share the AsyncStorage key `sy.acted.v1` (`"<id>|<action>"`, the last
 50, never a token).
 
+**Native taps.** The notifications the `sy-link` module posts itself carry their own content
+intent: an `ACTION_VIEW` of `Payloads.appLink(url)` (the payload's route as `switchyard://…`, Now
+when it has none or it is refused) aimed at the app's launcher activity by component name, or
+the Claude link when `tap` says so. The persistent connection notification and the "stopped"
+note open `switchyard://now`; only the connection notification's **Settings** button opens
+`switchyard://settings/notifications`. No notification is posted without a content intent
+(Android 14 on Samsung answers a tap on one by opening the app's notification settings), and
+no tap leads to a settings page except that button. `test/links.test.ts` checks that each of
+these links resolves to the item or Now; the JUnit `FramesTest` checks the native side's link.
+
 The listener is registered at module scope in `app/_layout.tsx`. On cold start,
 `getLastNotificationResponseAsync()` is read once and then cleared, so a response is never
 handled twice. Foreground notifications are shown (`setNotificationHandler`: banner, list, badge)
@@ -377,8 +387,9 @@ then gets the 401 that shows Pair, P3).
   - `switchyard://machines[?machine=<id>]`
   - `switchyard://alerts/<al_…>`
   - `switchyard://pair?u=…&s=…&c=…[&h=…&k=…]`
-  - `switchyard://settings/notifications` (N1: the link's persistent notification, push.md
-    14.4; `switchyard://settings` alone stays off the list)
+  - `switchyard://settings/notifications` (N1: the **Settings** button of the link's persistent
+    notification, push.md 14.4; the notification's own tap opens `switchyard://now`;
+    `switchyard://settings` alone stays off the list)
 
   Ids must match `^[A-Za-z0-9_.:-]{1,80}$`.
 - `hashToRoute(url)` maps a payload `url` (push.md 5.8: `/#/sessions/<id>?alert=…`,
@@ -391,7 +402,8 @@ then gets the 401 that shows Pair, P3).
   `origin`, `secret`, `code` (`/pair?origin=…&secret=…&code=…`), which the Pair screen reads;
   it shows a confirm card for them and claims only on that tap (and, when already paired,
   asks "Unpair from <host>?" after it).
-- Widgets link to `switchyard://now` and `switchyard://accounts?seat=<id>`. The Live
+- Widgets link to `switchyard://now`, `switchyard://sessions[?filter=working|done]` and
+  `switchyard://accounts?seat=<id>`. The Live
   Activity links to `switchyard://accounts?seat=<id>`.
 
 ## P11. Widgets
@@ -416,7 +428,7 @@ then gets the 401 that shows Pair, P3).
 }
 ```
 
-- `buildSnapshot(overview, accounts, now, prefs)` (pure). There are at most 4 seats, ordered
+- `buildSnapshot(overview, accounts, now, prefs)` (pure). There are at most 8 seats (iOS draws 4), ordered
   as the Accounts screen orders them: the hub's order (`seat.order`, set by the owner's
   drag-and-drop on the board, pwa.md 3.0; seats without one last). `top` is null in private mode. Labels are cut to 12
   characters.
@@ -428,11 +440,40 @@ then gets the 401 that shows Pair, P3).
   "timer"`) and `AccountsMedium` (`systemMedium`: up to 4 rings with pct and reset time).
   The app calls `updateTimeline(entries)` after every refresh. Widget components are pure
   props → `@expo/ui/swift-ui` trees, with no hooks or state (an expo-widgets rule).
-- **Android** (`react-native-android-widget`): `SyNeedsYou` (target 2×2 cells) and
-  `SyAccounts` (4×2), `updatePeriodMillis: 1800000` (the library's minimum). The task handler
-  reads the last snapshot from AsyncStorage key `sy.widget.v1` (no secrets) and renders it.
-  The app calls `requestWidgetUpdate` after each refresh. Android shows reset as a clock time
-  ("resets 17:00"), not a ticking timer (no verified countdown primitive).
+- **Android** (`react-native-android-widget`), both resizable (`resizeMode: horizontal|vertical`),
+  `updatePeriodMillis: 1800000` (the library's minimum). They replace the earlier `SyNeedsYou`
+  (2×2) and `SyAccounts` (4×2); iOS keeps `NeedsYouSmall` and `AccountsMedium`.
+  - `SyLimits` (target 4×3): every visible account (up to 8) in Accounts order, each as its
+    colour, the tighter of 5 h and 7 d (`tighterWindow`, a tie shows 7 d) as a bar and %, and
+    that window's reset as a clock time ("5 h · 17:00"). An account with no reading, or a
+    window whose reset has passed, reads 0% ("idle" / "reset"). It draws as many rows as the
+    height allows (`rowsThatFit`, about 30 dp a row). A row opens `switchyard://accounts?seat=<id>`,
+    the rest `switchyard://accounts`.
+  - `SySessions` (target 3×2): **Running** (`counts.working`), **Needs input**
+    (`counts.needs_you`: needs_permission, asked, failed) and **Done** (`counts.done`), as the
+    Sessions screen's filters count them, and, when something needs you, a highlight line
+    ("Needs you: api · asked"; no project in private mode). A cell opens Sessions with its
+    filter (`?filter=working`, `?filter=done`); Needs input and the highlight open Now; the
+    rest opens Sessions.
+  - Both show "updated 3 min ago" (`agoWords(as_of, now)`) and, only when no snapshot has been
+    written yet (a fresh install, or after unpair), "Open Switchyard once to load"; a tap then
+    opens Now.
+  - The snapshot (`sy.widget.v1`, no secrets) is written locally after **every** refresh,
+    whatever `prefs.widgets` says: that pref only asks the hub for `refresh` frames over the
+    link and gates the iOS timelines. (Writing it only when the pref was true left a widget
+    with nothing to show.) Before `GET /v1/me` has answered, the snapshot is written as private.
+    `buildSnapshot` adds `counts` {working, needs_you, done} from `overview.counts` and keeps up
+    to 8 seats (`SNAPSHOT_MAX_SEATS`; iOS draws the first 4); `counts` is optional, so an older
+    snapshot still validates and reads 0 for running and done.
+  - The task handler reads the last snapshot (plus the link's newest `refresh` frame,
+    `applyLinkRefresh`, which also moves `counts.needs_you`) and renders it on add, update and
+    resize; the widget never calls the hub. It is registered in `phone/index.js`, the app's
+    entry (`package.json` `main`), because Android runs a widget update in a headless JS task
+    with no screen: a handler registered in `app/_layout.tsx` is not there when the app is not
+    open. The app calls `requestWidgetUpdate` after each refresh; the sy-link service redraws
+    on a `refresh` frame; otherwise the 30-minute period redraws (no network), so "updated N
+    min ago" can lag by up to 30 min between refreshes. There is no background fetch.
+    Android shows reset as a clock time, not a ticking timer (no verified countdown primitive).
 - Neither side reads the keychain or calls the hub. Widgets show only what the app last
   wrote.
 
@@ -594,7 +635,7 @@ pins of P1:
 
 | # | Fact | Result |
 | --- | --- | --- |
-| 1 | `expo prebuild --platform android --no-install --clean` succeeds with every P13 plugin; the manifest has `POST_NOTIFICATIONS`, the `switchyard` intent filter, two `AppWidgetProvider` receivers (`.widget.SyNeedsYou`, `.widget.SyAccounts`) and `allowBackup="false"` | **Checked.** Needed one change: POST_NOTIFICATIONS is only merged from expo-notifications' library manifest at Gradle time, so P13 now lists it in `android.permissions`. Two `appwidget-provider` XML files are generated; react-native-android-widget's plugin writes to the right path (no doubled `android/android`). Cleartext is off in release. |
+| 1 | `expo prebuild --platform android --no-install --clean` succeeds with every P13 plugin; the manifest has `POST_NOTIFICATIONS`, the `switchyard` intent filter, two `AppWidgetProvider` receivers (`.widget.SySessions`, `.widget.SyLimits`) and `allowBackup="false"` | **Checked.** Needed one change: POST_NOTIFICATIONS is only merged from expo-notifications' library manifest at Gradle time, so P13 now lists it in `android.permissions`. Two `appwidget-provider` XML files are generated; react-native-android-widget's plugin writes to the right path (no doubled `android/android`). Cleartext is off in release. |
 | 2 | `expo prebuild --platform ios --no-install --clean` succeeds on Linux, with `Info.plist`, entitlements and the widget extension target | **Checked.** `ios/ExpoWidgetsTarget/` holds `NeedsYouSmall.swift`, `AccountsMedium.swift`, `index.swift` (the bundle, which includes `WidgetLiveActivity()`), `Info.plist` and its entitlements. The App Group is on the app and the extension, `aps-environment` on the app, the app-extension target is in `project.pbxproj`, and every target is iOS 16.4. Pods are not installed (`--no-install`), so this proves config, not compilation (risk 6 stays for the native compile). The iOS prebuild check stays in `make phone-check` and CI's `check` job. |
 | 3 | `expo-widgets@57.0.22` and `react-native-android-widget@0.22.1` coexist | **Checked.** Both plugins run in the same config without duplicate keys; each platform's prebuild generates its own widget set and the other plugin leaves it alone (`expo-widgets` has `enableAndroid: false`). No fallback needed. |
 | 4 | `jest-expo` renders `@expo/ui/swift-ui` widget trees through the mock | **Checked**, with `test/render-widget.ts` rather than RNTL's `render` (P14). `test/widget-mock.test.tsx` renders a `VStack` with a timer `Text` and an Android `FlexWidget`. |

@@ -1,20 +1,22 @@
 // Android widget task handler and app-side adapter (phone.md P11). The handler reads the last
 // WidgetSnapshot from AsyncStorage key sy.widget.v1 (never a secret) and renders it; it never
-// reads the keychain or calls the hub. Register once at module scope in the app entry
-// (`registerAndroidWidgets()`); the app calls `updateAndroidWidgets` after every refresh.
+// reads the keychain or calls the hub. The handler is registered in phone/index.js (the app's
+// entry), not in a screen: Android starts the widget's headless task with no UI mounted, and a
+// handler registered inside app/_layout.tsx would not exist then. The app calls
+// `updateAndroidWidgets` after every refresh.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { registerWidgetTaskHandler, requestWidgetUpdate, type WidgetTaskHandlerProps } from 'react-native-android-widget';
+import { registerWidgetTaskHandler, requestWidgetUpdate, type WidgetInfo, type WidgetTaskHandlerProps } from 'react-native-android-widget';
 
 import type { KVStore } from '../../src/contract/platform';
 import type { WidgetSnapshot } from '../../src/contract/snapshot';
 import type { LinkRefresh } from '../../src/contract/link';
 import { androidProps, applyLinkRefresh, clearSnapshot, readSnapshot, writeSnapshot } from '../../src/lib/widget';
 import { getAppInfo, systemLink } from '../../src/state/platform';
-import { SyAccounts } from './SyAccounts';
-import { SyNeedsYou } from './SyNeedsYou';
+import { SyLimits } from './SyLimits';
+import { SySessions } from './SySessions';
 
-export const ANDROID_WIDGET_NAMES = ['SyNeedsYou', 'SyAccounts'] as const;
+export const ANDROID_WIDGET_NAMES = ['SyLimits', 'SySessions'] as const;
 type Name = (typeof ANDROID_WIDGET_NAMES)[number];
 
 export interface HandlerDeps {
@@ -26,7 +28,12 @@ export interface HandlerDeps {
 }
 
 const defaults = (): HandlerDeps => {
-  const link = systemLink(getAppInfo());
+  let link: ReturnType<typeof systemLink> = null;
+  try {
+    link = systemLink(getAppInfo());
+  } catch {
+    // no native module yet (a headless start): the stored snapshot alone
+  }
   return { store: AsyncStorage, now: Date.now, ...(link ? { linkRefresh: () => link.getRefresh() } : {}) };
 };
 
@@ -41,9 +48,9 @@ async function current(d: HandlerDeps): Promise<WidgetSnapshot | null> {
   }
 }
 
-function tree(name: string, snapshot: WidgetSnapshot | null, d: HandlerDeps) {
-  const props = androidProps(snapshot, d.now(), d.tz);
-  return name === 'SyAccounts' ? <SyAccounts {...props} /> : <SyNeedsYou {...props} />;
+function tree(name: string, snapshot: WidgetSnapshot | null, d: HandlerDeps, info?: Pick<WidgetInfo, 'height'>) {
+  const props = androidProps(snapshot, d.now(), d.tz, info?.height);
+  return name === 'SyLimits' ? <SyLimits {...props} /> : <SySessions {...props} />;
 }
 
 export function createTaskHandler(deps: Partial<HandlerDeps> = {}) {
@@ -55,7 +62,7 @@ export function createTaskHandler(deps: Partial<HandlerDeps> = {}) {
       case 'WIDGET_ADDED':
       case 'WIDGET_UPDATE':
       case 'WIDGET_RESIZED':
-        props.renderWidget(tree(name, await current(d), d));
+        props.renderWidget(tree(name, await current(d), d, props.widgetInfo));
         return;
       default:
         // WIDGET_CLICK opens switchyard:// links natively (OPEN_URI); WIDGET_DELETED needs nothing.
@@ -66,7 +73,7 @@ export function createTaskHandler(deps: Partial<HandlerDeps> = {}) {
 
 export const widgetTaskHandler = createTaskHandler();
 
-/** Call at module scope of the app entry (Android only). */
+/** Call at module scope of the app entry, phone/index.js (Android only). */
 export function registerAndroidWidgets(): void {
   if (Platform.OS !== 'android') return;
   registerWidgetTaskHandler(widgetTaskHandler);
@@ -74,7 +81,7 @@ export function registerAndroidWidgets(): void {
 
 async function refresh(snapshot: WidgetSnapshot | null, d: HandlerDeps): Promise<void> {
   await Promise.all(
-    ANDROID_WIDGET_NAMES.map((widgetName: Name) => requestWidgetUpdate({ widgetName, renderWidget: () => tree(widgetName, snapshot, d) })),
+    ANDROID_WIDGET_NAMES.map((widgetName: Name) => requestWidgetUpdate({ widgetName, renderWidget: (info) => tree(widgetName, snapshot, d, info) })),
   );
 }
 
@@ -86,7 +93,7 @@ export async function updateAndroidWidgets(snapshot: WidgetSnapshot, deps: Parti
   await refresh(snapshot, d);
 }
 
-/** Unpair: drop the snapshot and show "Open Switchyard to set up". */
+/** Unpair: drop the snapshot and show "Open Switchyard once to load". */
 export async function clearAndroidWidgets(deps: Partial<HandlerDeps> = {}): Promise<void> {
   if (Platform.OS !== 'android') return;
   const d = { ...defaults(), ...deps };
