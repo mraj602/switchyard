@@ -85,6 +85,10 @@ try {
     const props = read('android', 'gradle.properties');
     const minSdk = /android\.minSdkVersion=(\d+)/.exec(props);
     check(!!minSdk && Number(minSdk[1]) >= 31, `minSdkVersion 31 (found ${minSdk ? minSdk[1] : 'none'})`);
+    // The notification glyphs ship from the sy-link module's res (autolinked into the app).
+    const kinds = ['connection', 'needs_you', 'failed', 'limit', 'reset', 'machine', 'summary', 'generic'];
+    const missing = kinds.filter((k) => !fs.existsSync(path.join(app, 'modules', 'sy-link', 'android', 'src', 'main', 'res', 'drawable', `sy_notify_${k}.xml`)));
+    check(missing.length === 0, `sy-link notification icons present${missing.length ? ` (missing ${missing.join(', ')})` : ''}`);
   } else {
     const plists = findFiles(path.join(app, 'ios'), /^Info\.plist$/);
     const mainPlist = plists.find((f) => !/Widget|Extension|ExpoWidgetsTarget/i.test(path.relative(path.join(app, 'ios'), f)));
