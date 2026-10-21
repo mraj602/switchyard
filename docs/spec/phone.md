@@ -879,22 +879,27 @@ the tab status). Calm and compact: seven accounts fit on one screen.
   under it **Expand all** / **Collapse all** (text button, from two accounts up).
 - **Most room right now:** "Most room right now: claude-2 (5 h 0% · 7 d 3%)", the board's and
   the hub's rule. Among visible accounts the *effective use* of a window is 0 when its
-  `resets_at` has passed, or when the account has no reading for it but has one for the other
+  `resets_at` has passed or it is idle (api.yaml `Window.state` `idle`: claude.ai has not
+  started it, 0 % with no reset time), or when the account has no reading for it but has one for the other
   window; otherwise its `used_pct` (a reading older than 6 hours counts until its reset). An
   account with no reading at all is skipped. Score = the larger of the two; lowest wins, ties go
   to the lower 7 d, then the lower 5 h use, then list order; named only under 80%. An idle
   account therefore has the most room.
 - **One row per account:** colour dot, name, one bar for the tighter of the 5 h and 7 d windows
-  (effective use; a tie shows 7 d) with "5 h" or "7 d" and the percentage (red from 90%), and
-  that window's reset time beside the bar ("resets 15:48", "resets Sun 09:00"). No reading:
-  "no data".
+  (effective use; a tie shows 7 d, or 5 h when the account has no 7 d window) with "5 h" or "7 d"
+  and the percentage (red from 90%), and that window's reset words beside the bar ("resets
+  15:48", "resets Sun 09:00"; "reset at Sat 10:10" once that time has passed, never "resets now";
+  "not started" for an idle window, which shows 0 %). No reading: "no data". The words are
+  `resetWords` in `lib/format/windows.ts` (with `windowPhase` and `shownUse`); the Now rings use
+  the same phases ("not started", "reset 10:10").
 - **One status line, only when something needs attention**, the first of: the phone tab is
   signed in as another account (**claude-6**, or an account no seat has) > near its limit (a
   runaway 5 h pace or 5 h at 90% or more: "Near the 5-hour limit: full by 15:48"; 7 d at 90% or
   more: "7-day limit nearly used, resets Sun 09:00") > "Claude Code signed out on **machine**".
   Others are counted as "+N".
 - **Tap to open in place** (`LayoutAnimation`; `?seat=` opens that row): every window (label,
-  % used, meter, "resets in 2 h 10 min (15:48)", peak, pace); **Signed in** (the Claude Code
+  % used, meter, "resets in 2 h 10 min (15:48)", "reset at Sat 10:10" or "not started · starts
+  when you next use this account", peak, pace); **Signed in** (the Claude Code
   line per machine, the phone tab line with "as of the tab's last visit", and its action: **Open
   claude.ai**, **Sign in on this phone** or **Fix this tab**, which opens the Phone-12 sheet of
   P17.7); then the plan and organisation, email, live sessions and when claude.ai usage was

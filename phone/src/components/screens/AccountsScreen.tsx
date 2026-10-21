@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { LayoutAnimation, Modal, Pressable, Text, View } from 'react-native';
 import type { Seat } from '../../contract/api';
 import {
-  agoLabel, clock, mostRoom, paceInfo, pct, planLabel, plural, seatIndex, seatName, sortWindows, tighterWindow, until, windowLabel, worstPace,
+  agoLabel, mostRoom, paceInfo, pct, planLabel, plural, resetWords, seatIndex, seatName, shownUse, sortWindows, tighterWindow, windowLabel, windowPhase, worstPace,
 } from '../../lib/format';
 import {
   attention, codeLine, fixChoices, phoneTab, phoneTabLine, TAB_LOGIN, TAB_PRIVACY_NOTE, tabAction, type Line, type PhoneTab,
@@ -216,7 +216,7 @@ function AccountRow({ seat, colour, now, highlight, expanded, onToggle, canCount
   const name = seatName(seat);
   const worst = worstPace(ws, now);
   const tight = tighterWindow(seat, now);
-  const resetAt = tight?.w?.resets_at && Date.parse(tight.w.resets_at) > now ? tight.w.resets_at : null;
+  const resetLine = tight?.w ? resetWords(tight.w, now) : '';
   const att = attention(seat, tab, now);
   const attColour = tab.kind === 'other' || tab.kind === 'stranger' ? t.needs : tight && tight.used >= 90 ? t.bad : t.needs;
   const webAt = seat.web_raw_at;
@@ -252,7 +252,7 @@ function AccountRow({ seat, colour, now, highlight, expanded, onToggle, canCount
             <View style={{ flex: 1 }}>
               <Meter value={tight.used} colour={colour} label={`${name} ${tight.short} used`} />
             </View>
-            {resetAt ? <Text testID={`reset-${seat.id}`} style={{ color: t.muted, fontSize: 12 }}>{`resets ${clock(resetAt, now)}`}</Text> : null}
+            {resetLine ? <Text testID={`reset-${seat.id}`} style={{ color: t.muted, fontSize: 12 }}>{resetLine}</Text> : null}
           </View>
         ) : null}
         {att ? (
@@ -272,17 +272,20 @@ function AccountRow({ seat, colour, now, highlight, expanded, onToggle, canCount
           {ws.length ? (
             ws.map((w) => {
               const p = paceInfo(w, now);
+              const used = shownUse(w, now);
+              const idle = windowPhase(w, now) === 'idle';
+              const when = idle ? 'not started · starts when you next use this account' : resetWords(w, now, { long: true });
               return (
                 <View key={w.key} style={{ gap: 4 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                     <Text style={{ color: t.text }}>{windowLabel(w)}</Text>
-                    <Text style={{ color: w.used_pct != null && w.used_pct >= 90 ? t.bad : t.text }}>
-                      {w.used_pct == null ? 'no data' : `${pct(w.used_pct)} used`}
+                    <Text style={{ color: used != null && used >= 90 ? t.bad : t.text }}>
+                      {used == null ? 'no data' : `${pct(used)} used`}
                     </Text>
                   </View>
-                  <Meter value={w.used_pct} colour={colour} label={`${name} ${windowLabel(w)} used`} />
-                  {w.resets_at ? (
-                    <Muted>{`resets ${until(w.resets_at, now)} (${clock(w.resets_at, now)})${w.peak_pct != null ? ` · peak ${pct(w.peak_pct)}` : ''}`}</Muted>
+                  <Meter value={used} colour={colour} label={`${name} ${windowLabel(w)} used`} />
+                  {when ? (
+                    <Muted>{`${when}${w.peak_pct != null ? ` · peak ${pct(w.peak_pct)}` : ''}`}</Muted>
                   ) : null}
                   {p ? <Text style={{ color: tone(p.cls), fontSize: 13 }}>{p.text}</Text> : null}
                 </View>

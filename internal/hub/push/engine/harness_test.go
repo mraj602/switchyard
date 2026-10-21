@@ -360,6 +360,21 @@ func (h *harness) sample(email string, ts time.Duration, pct float64, resets tim
 	h.ingest(r)
 }
 
+// webIdle ingests a claude.ai reading of the seat of email whose 5-hour window has not
+// started (0 %, resets_at null), as claude.ai reports an idle account.
+func (h *harness) webIdle(email string, ts time.Duration) {
+	h.t.Helper()
+	seat, _ := h.seatMeta(email)
+	seat.Src = "claude_ai"
+	r, err := record.NewWebUsage(record.Meta{Machine: h.machine, Seat: seat, Client: "switchyard-desktop/0.0.0-test", Now: at(ts)},
+		record.WebUsagePayload{TabID: "t_idle", Usage: json.RawMessage(`{"five_hour":{"utilization":0,"resets_at":null},"seven_day":null,
+			"limits":[{"kind":"session","group":"session","percent":0,"resets_at":null,"is_active":true}]}`)})
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	h.ingest(r)
+}
+
 // ---------------------------------------------------------------- reading
 
 func (h *harness) alerts() []model.Alert {

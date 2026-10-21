@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -19,6 +20,89 @@ type WindowRow struct {
 	Samples             int
 	UpdatedAt           int64
 	Sources             []string // statusline, web
+	// Idle: the newest reading of this key is claude.ai's "not started" (0 %, no resets_at),
+	// newer than every usage_window of the key. ResetsAt and StartedAt are 0, Final is 0 and
+	// UpdatedAt is that reading's ts. Only from Windows(…, current = true).
+	Idle bool
+}
+
+// idleSQL finds, per seat and key, the newest idle claude.ai reading (used 0, no resets_at;
+// record.md 4.3). Status-line samples are left out: a status line without a reset time says
+// nothing about whether the window has started.
+const idleSQL = `SELECT seat_id, window_key, max(ts) FROM limit_sample
+	WHERE source = 'web' AND resets_at IS NULL AND used_pct = 0`
+
+type queryer interface {
+	QueryContext(ctx context.Context, q string, args ...any) (*sql.Rows, error)
+}
+
+// idleReadings returns seat → key → ts of the newest idle reading (seat "" = every seat).
+func idleReadings(ctx context.Context, q queryer, seat string) (map[string]map[string]int64, error) {
+	query, args := idleSQL, []any{}
+	if seat != "" {
+		query += ` AND seat_id = ?`
+		args = append(args, seat)
+	}
+	rows, err := q.QueryContext(ctx, query+` GROUP BY seat_id, window_key`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]map[string]int64{}
+	for rows.Next() {
+		var s, k string
+		var ts int64
+		if err := rows.Scan(&s, &k, &ts); err != nil {
+			return nil, err
+		}
+		if out[s] == nil {
+			out[s] = map[string]int64{}
+		}
+		out[s][k] = ts
+	}
+	return out, rows.Err()
+}
+
+// withIdle puts an idle window in place of a key's current window when claude.ai's newest
+// reading of that key is idle and newer than the window (or the key has no window yet).
+func withIdle(rows []WindowRow, idle map[string]int64, keys []string) []WindowRow {
+	if len(idle) == 0 {
+		return rows
+	}
+	want := func(k string) bool {
+		if len(keys) == 0 {
+			return true
+		}
+		for _, x := range keys {
+			if x == k {
+				return true
+			}
+		}
+		return false
+	}
+	seen := map[string]bool{}
+	for i := range rows {
+		seen[rows[i].Key] = true
+		if ts, ok := idle[rows[i].Key]; ok && ts > rows[i].UpdatedAt {
+			rows[i] = idleRow(rows[i].Key, ts)
+		}
+	}
+	extra := make([]string, 0, len(idle))
+	for k := range idle {
+		if !seen[k] && want(k) {
+			extra = append(extra, k)
+		}
+	}
+	sort.Strings(extra)
+	for _, k := range extra {
+		rows = append(rows, idleRow(k, idle[k]))
+	}
+	return rows
+}
+
+func idleRow(key string, ts int64) WindowRow {
+	zero := 0.0
+	return WindowRow{Key: key, Final: &zero, UpdatedAt: ts, Sources: []string{"web"}, Idle: true}
 }
 
 func nf(v sql.NullFloat64) *float64 {
@@ -30,7 +114,8 @@ func nf(v sql.NullFloat64) *float64 {
 }
 
 // Windows returns a seat's windows, newest reset first. keys filters by key; since keeps
-// windows that reset at or after it. With current, only the newest window per key.
+// windows that reset at or after it. With current, only the newest window per key, replaced
+// by an idle window (WindowRow.Idle) when claude.ai's newest reading of the key is idle.
 func (s *Store) Windows(ctx context.Context, seat string, keys []string, since time.Time, current bool) ([]WindowRow, error) {
 	args := []any{seat}
 	q := `SELECT w.window_key, w.resets_at, coalesce(w.started_at, 0), w.peak_pct, w.final_pct, w.unused_pct, w.samples, w.updated_at,
@@ -67,7 +152,15 @@ func (s *Store) Windows(ctx context.Context, seat string, keys []string, since t
 		}
 		out = append(out, w)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil || !current {
+		return out, err
+	}
+	rows.Close()
+	idle, err := idleReadings(ctx, s.r, seat)
+	if err != nil {
+		return nil, err
+	}
+	return withIdle(out, idle[seat], keys), nil
 }
 
 // SampleRow is api.yaml LimitSample.

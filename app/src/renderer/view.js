@@ -168,18 +168,24 @@ export function windowLabel(w) {
   return w.label || humanKey(w.key);
 }
 
-/** Windows in strip order: 5h, 7d, then the rest by key. `primary` marks the two always shown. */
+/**
+ * Windows in strip order: 5h, 7d, then the rest by key. `primary` marks the two always shown.
+ * `reset` is the words after the %: "15:10", "reset at Sat 10:10" once that time has passed (0 %
+ * since), "not started" for an idle window (0 % with no reset time: claude.ai has not started
+ * it; api.yaml Window.state idle), else ''.
+ */
 export function windowRows(tab, now = Date.now()) {
   const rank = (k) => (k === 'five_hour' ? 0 : k === 'seven_day' ? 1 : 2);
   return [...(tab.windows || [])]
     .sort((a, b) => rank(a.key) - rank(b.key) || String(a.key).localeCompare(String(b.key)))
-    .map((w) => ({
-      key: w.key,
-      label: windowLabel(w),
-      used: typeof w.used_pct === 'number' && Number.isFinite(w.used_pct) ? w.used_pct : null,
-      reset: clock(w.resets_at, now),
-      primary: rank(w.key) < 2,
-    }));
+    .map((w) => {
+      let used = typeof w.used_pct === 'number' && Number.isFinite(w.used_pct) ? w.used_pct : null;
+      const at = Date.parse(w.resets_at || '');
+      let reset = clock(w.resets_at, now);
+      if (used === 0 && !w.resets_at) reset = 'not started';
+      else if (used !== null && reset && at <= now) [used, reset] = [0, `reset at ${reset}`];
+      return { key: w.key, label: windowLabel(w), used, reset, primary: rank(w.key) < 2 };
+    });
 }
 
 /**

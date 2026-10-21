@@ -6,6 +6,7 @@ import {
   switchState, shareSpec, SHARE_SWITCHES, isPrimary, loginCommand, SHARE_FOLDER_RE, fitTabs, progressText, nameList, missingNotice, mismatchNotice, adoptLabel, signOutLabel, adoptConfirm, adoptToast,
 } from './view.js';
 import { SHARE_SPEC_PATTERN } from '../shared/ipc.js';
+import { clock } from '../shared/format.js';
 
 const NOW = new Date(2026, 9, 13, 14, 0, 0).getTime();
 const local = (h, m, day = 13) => new Date(2026, 9, day, h, m, 0).toISOString();
@@ -74,6 +75,17 @@ test('window rows: 5h and 7d first, unknown keys under their raw name', () => {
   assert.equal(rows[2].used, null);
   assert.deepEqual(rows.map((r) => r.primary), [true, true, false, false]);
   assert.equal(windowLabel({ key: 'x', label: 'Sonnet week' }), 'Sonnet week');
+});
+
+test('window rows: an idle window is 0 % not started; a passed reset is 0 % "reset at"', () => {
+  const passed = new Date(NOW - 3 * 86400000).toISOString();
+  const rows = windowRows(tab({
+    windows: [
+      { key: 'five_hour', label: null, used_pct: 0, resets_at: null },
+      { key: 'seven_day', label: null, used_pct: 64, resets_at: passed },
+    ],
+  }), NOW);
+  assert.deepEqual(rows.map((r) => [r.used, r.reset]), [[0, 'not started'], [0, `reset at ${clock(passed, NOW)}`]]);
 });
 
 test('reading status covers every state', () => {

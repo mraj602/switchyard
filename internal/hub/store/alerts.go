@@ -287,7 +287,8 @@ type AlertRoomRow struct {
 	Seat, Label, Email string
 	Name               string // the board's name of the seat (SeatDisplayNames)
 	Hidden             bool
-	// HasWindow: the current window of the key has a reading (Used, ResetsAt, UpdatedAt).
+	// HasWindow: the current window of the key has a reading (Used, ResetsAt, UpdatedAt);
+	// ResetsAt is 0 for an idle window (not started, 0 %).
 	HasWindow bool
 	Used      float64
 	ResetsAt  int64
@@ -352,7 +353,28 @@ func (tx *Tx) AlertRoom(key string, now int64) ([]AlertRoomRow, error) {
 			r.HasWindow, r.Used, r.ResetsAt, r.UpdatedAt = true, used, resets, updated
 		}
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+	// An idle reading newer than the window (or with no window) is the current window, as in
+	// the overview (Store.Windows): 0 % used, no reset time.
+	idle, err := idleReadings(tx.ctx, tx, "")
+	if err != nil {
+		return nil, err
+	}
+	for seat, keys := range idle {
+		i, ok := at[seat]
+		if !ok {
+			continue
+		}
+		r := &out[i]
+		r.HasReading = true
+		if ts, ok := keys[key]; ok && (!r.HasWindow || ts > r.UpdatedAt) {
+			r.HasWindow, r.Used, r.ResetsAt, r.UpdatedAt = true, 0, 0, ts
+		}
+	}
+	return out, nil
 }
 
 // AlertCurrentReset is the resets_at of a seat's current window of key (0 if none).

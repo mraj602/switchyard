@@ -235,7 +235,8 @@ function accountRow(seat, colour, now, highlight, live, canMove) {
     h('div', { class: `meter acct-meter${hot ? ' hot' : ''}`, role: 'meter', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.round(t.used), 'aria-label': `${name} ${t.label} used` },
       h('div', { class: 'meter-fill', style: { width: `${Math.min(100, Math.max(0, t.used))}%` } })),
     h('span', { class: `mono acct-pct${hot ? ' hot' : ''}` }, pct(t.used)),
-    t.resets_at ? h('span', { class: 'muted small acct-reset', 'data-key': `reset-${seat.id}` }, `resets ${clock(t.resets_at, now)}`) : null)
+    t.phase === 'idle' ? h('span', { class: 'muted small acct-reset', 'data-key': `reset-${seat.id}` }, 'not started')
+      : t.resets_at ? h('span', { class: 'muted small acct-reset', 'data-key': `reset-${seat.id}` }, `${t.phase === 'reset' ? 'reset at' : 'resets'} ${clock(t.resets_at, now)}`) : null)
     : h('div', { class: 'acct-bar muted small' }, 'No usage yet');
   return h('article', { class: `seat-card acct${isOpen ? ' is-open' : ''}${highlight ? ' highlight' : ''}${drag.id === seat.id ? ' seat-dragging' : ''}${dropClass}`, id: `seat-${seat.id}`, style: { '--seat': colour }, 'aria-label': name,
     onkeydown: canMove ? (e) => { if (e.altKey) keyMove(e, seat, true); } : undefined },

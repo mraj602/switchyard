@@ -416,7 +416,11 @@ account in a hidden or background start until the window is shown.
   and Ctrl/Cmd+, opens Settings.
 - Under an account tab sits a 40 px strip: 5h and 7d bars, per-model weeks, reset times, the
   reading state (on, off, retrying, stopped + Resume) and "last read 14:05". Numbers come from
-  the hub seat (`/v1/accounts`) when known, else from the local parse marked "local".
+  the hub seat (`/v1/accounts`) when known, else from the local parse marked "local"
+  (`shared/usage.js` `windowsOf`, the same top-level and model-scoped rules as the hub,
+  record.md 4.3). An idle window (0 % with no reset time: claude.ai has not started it) reads
+  "0% · not started"; a window whose reset time has passed reads "0% · reset at Sat 10:10"
+  (the window reset; nothing is known to be used since), never a countdown to a passed time.
 - Settings (native, `DeskAccounts`):
   - **Account tabs:** name, seat label and colour (editable with an owner session, through
     `seat:update`), reading switch, send-to-hub switch, warning status, Remove.
