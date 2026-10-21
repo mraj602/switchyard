@@ -28,6 +28,9 @@ export const WIDGET_KEY = 'sy.widget.v1';
 /** AsyncStorage key of the account each Account-ring widget shows: {[widgetId]: seatId} (P11; ids only, never a secret). */
 export const WIDGET_RING_KEY = 'sy.widget.ring.v1';
 
+/** AsyncStorage key of the window ("5 h" or "7 d") each Limits and ring widget shows: {[widgetId]: window} (P11). */
+export const WIDGET_WINDOW_KEY = 'sy.widget.window.v1';
+
 /**
  * AsyncStorage key of the app's own settings (P12): `{auto_countdown: boolean}`. Local to this
  * install, not a hub pref; never a token or secret.

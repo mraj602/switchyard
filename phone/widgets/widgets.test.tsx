@@ -222,7 +222,7 @@ describe('Android widgets', () => {
     expect(tree.type).toBe('Android.FlexWidget');
     expect(tree.props.clickActionData).toEqual({ uri: 'switchyard://sessions' });
     const t = aTexts(tree);
-    expect(t).toEqual(['Sessions', 'updated 3 min ago', '5', 'Running', '3', 'Needs input', '3', 'Done', 'Needs you: data-pipeline · failed']);
+    expect(t).toEqual(['Switchyard · Sessions', 'updated 3 min ago', '5', 'Running', '3', 'Needs input', '3', 'Done', 'Needs you: data-pipeline · failed']);
     expect(uris(tree)).toEqual(expect.arrayContaining(['switchyard://sessions?filter=working', 'switchyard://now', 'switchyard://sessions?filter=done']));
   });
 
@@ -235,7 +235,7 @@ describe('Android widgets', () => {
   it('SyLimits shows every account with its tighter window, % and reset time, and "updated 3 min ago"', () => {
     const tree = renderWidget(<SyLimits {...androidProps(snapshot, AGO, 'UTC', 400)} />);
     const t = aTexts(tree);
-    expect(t).toEqual(expect.arrayContaining(['Limits', 'updated 3 min ago', 'personal', '62%', '5 h · 08:07', 'work', 'client', '100%', '5 h · 06:36', 'research']));
+    expect(t).toEqual(expect.arrayContaining(['Switchyard · Limits', 'updated 3 min ago', '5 h', '7 d', 'personal', '62%', 'resets 08:07', 'work', 'client', '100%', 'resets 06:36', 'research']));
     expect(uris(tree)).toContain('switchyard://accounts?seat=seat_client');
   });
 
@@ -246,10 +246,16 @@ describe('Android widgets', () => {
     expect(rows(40)).toHaveLength(1);
   });
 
+  it('SyLimits shows the 7 d window for every account when toggled, with its reset time', () => {
+    const t = aTexts(renderWidget(<SyLimits {...androidProps(snapshot, NOW, 'UTC', 400, undefined, undefined, '7 d')} />));
+    expect(t).toEqual(expect.arrayContaining(['personal', '48%', 'resets Fri 15:27']));
+    expect(t.filter((x) => x.startsWith('resets ') || x === 'not started').length).toBe(4);
+  });
+
   it('SyLimits shows a window past its reset as 0% "reset", and an idle account as 0% not started', () => {
     const past = { id: 'p', label: 'claude-2', colour: '#654321', five_hour: { pct: 90, resets_at: '2026-10-13T06:36:00.000Z' }, seven_day: { pct: 0, resets_at: '2026-10-13T06:36:00.000Z' } };
     const t = aTexts(renderWidget(<SyLimits {...androidProps({ ...snapshot, seats: [past] }, Date.parse('2026-10-13T06:40:00.000Z'), 'UTC', 400)} />));
-    expect(t).toEqual(expect.arrayContaining(['claude-2', '0%', 'reset']));
+    expect(t).toEqual(expect.arrayContaining(['claude-2', '0%', 'reset at 06:36']));
     const idle = { ...snapshot, seats: [{ id: 'i', label: 'claude-5', colour: '#123456', five_hour: null, seven_day: null }] };
     const it = aTexts(renderWidget(<SyLimits {...androidProps(idle, NOW, 'UTC', 400)} />));
     expect(it).toEqual(expect.arrayContaining(['claude-5', '0%', 'not started']));

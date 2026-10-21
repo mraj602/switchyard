@@ -519,6 +519,23 @@ then gets the 401 that shows Pair, P3).
       snapshot still validates. A seat window may now be `{pct: 0, resets_at: null}` (an idle
       window: not started); every widget reads it as 0 % "not started" and the Limits widget
       shows "not started" instead of skipping it.
+  - **Brand header and the window toggle (all six).** Every widget's header row starts with the
+    gold double-chevron mark (`assets/src/mark.svg`, inline in `widgets/android/Brand.tsx`,
+    drawn with `SvgWidget`) and "Switchyard", or "Switchyard · Limits" / "· Sessions" / "·
+    Needs you" where there is room; the 2×1 and 2×2 widgets show the mark and "Switchyard"
+    only. `SyLimits` and `SyRing` have a tappable **5 h | 7 d** segmented toggle in the header
+    (default 5 h): the widget then shows that window's % and reset words for every account (the
+    ring: for its account), "resets 15:48" or, when idle, "0% · not started" (`windowRows`,
+    from `windows.ts` `shownUse` and `resetWords`; an account without that window reads
+    "not started"). The choice is per widget id, key `sy.widget.window.v1`
+    ({widgetId: "5 h"|"7 d"}, dropped on `WIDGET_DELETED`). A segment's `clickAction` is
+    `SY_TOGGLE_WINDOW` with `{window}`: the task handler gets `WIDGET_CLICK`, stores it and calls
+    `renderWidget` with no app start; any other tap is still an `OPEN_URI`.
+  - **Previews.** `app.config.ts` gives each widget `previewImage` (`assets/widget-previews/
+    sy-*.png`, 2× PNG, under 40 KB each). They are rendered from an HTML replica of each
+    widget's layout with sample data at the widget's dp size
+    (`scripts/gen-widget-previews.py`: headless Chrome, no sandbox, transparent corners); keep
+    the replica in step with the widgets by hand. The library has no `previewLayout`.
   - Both older widgets show "updated 3 min ago" (`agoWords(as_of, now)`) and, only when no snapshot has been
     written yet (a fresh install, or after unpair), "Open Switchyard once to load"; a tap then
     opens Now.

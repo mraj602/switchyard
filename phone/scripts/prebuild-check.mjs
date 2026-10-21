@@ -60,13 +60,18 @@ try {
     }
     check(/android:scheme="switchyard"/.test(manifest), 'switchyard intent filter');
     const receivers = [...manifest.matchAll(/<receiver[\s\S]*?<\/receiver>/g)].map((m) => m[0]).filter((r) => r.includes('android.appwidget.action.APPWIDGET_UPDATE'));
-    check(receivers.length === 2, `two AppWidgetProvider receivers (found ${receivers.length})`);
-    for (const name of ['SySessions', 'SyLimits']) check(receivers.some((r) => r.includes(name)), `widget receiver ${name}`);
+    // The widget list is read from app.config.ts (ANDROID_WIDGETS), so it cannot drift from this check.
+    const cfg = fs.readFileSync(path.join(phone, 'app.config.ts'), 'utf8');
+    const block = cfg.slice(cfg.indexOf('export const ANDROID_WIDGETS'));
+    const widgetNames = [...block.slice(0, block.indexOf('] as const')).matchAll(/^\s{4}name: '([A-Za-z0-9]+)'/gm)].map((m) => m[1]);
+    check(widgetNames.length > 0, `app.config.ts lists Android widgets (${widgetNames.join(', ')})`);
+    check(receivers.length === widgetNames.length, `${widgetNames.length} AppWidgetProvider receivers (found ${receivers.length})`);
+    for (const name of widgetNames) check(receivers.some((r) => r.includes(`.widget.${name}"`)), `widget receiver ${name}`);
     check(/<application[^>]*android:allowBackup="false"/.test(manifest), 'allowBackup="false"');
     check(!/<application[^>]*android:usesCleartextTraffic="true"/.test(manifest), 'no cleartext in release');
     const xml = findFiles(path.join(app, 'android', 'app', 'src', 'main', 'res'), /\.xml$/);
     const infos = xml.filter((f) => fs.readFileSync(f, 'utf8').includes('<appwidget-provider'));
-    check(infos.length === 2, `two appwidget-provider infos (found ${infos.length})`);
+    check(infos.length === widgetNames.length, `${widgetNames.length} appwidget-provider infos (found ${infos.length})`);
     check(!fs.existsSync(path.join(app, 'android', 'android')), 'no doubled android/android path');
     // The link build (P13, push.md 14.2). The sy-link module's own manifest is merged
     // by Gradle, so its entries are read there; the app's must carry no FCM entry.
