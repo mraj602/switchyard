@@ -227,7 +227,7 @@ describe('applyLinkRefresh', () => {
     const linkRefresh = jest.fn(async () => ({ v: 1 as const, needs_you: 7, seats: [], ts: new Date(NOW + 1000).toISOString() }));
     const rendered: unknown[] = [];
     const handler = createTaskHandler({ store, now: () => NOW + 1000, linkRefresh });
-    await handler({ widgetInfo: { widgetName: 'SyNeedsYou' }, widgetAction: 'WIDGET_UPDATE', renderWidget: (t: unknown) => rendered.push(t) } as never);
+    await handler({ widgetInfo: { widgetName: 'SySessions' }, widgetAction: 'WIDGET_UPDATE', renderWidget: (t: unknown) => rendered.push(t) } as never);
     expect(linkRefresh).toHaveBeenCalled();
     expect(JSON.stringify((rendered[0] as { props: unknown }).props)).toContain('7');
   });

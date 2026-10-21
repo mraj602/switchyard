@@ -69,5 +69,10 @@
     "resets_at": "2026-10-13T06:36:11.742Z",
     "pct": 100
   },
-  "private": false
+  "private": false,
+  "counts": {
+    "working": 5,
+    "needs_you": 3,
+    "done": 3
+  }
 }

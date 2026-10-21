@@ -142,6 +142,8 @@ export function validateWidgetSnapshot(x: unknown, path = 'snapshot'): Problems 
       }
     });
   }
+  const counts = field(p, o, 'counts', 'object?', path, true);
+  if (isObj(counts)) for (const k of ['working', 'needs_you', 'done']) field(p, counts, k, 'int', `${path}.counts`);
   const nr = field(p, o, 'next_reset', 'object?', path);
   if (isObj(nr)) {
     field(p, nr, 'seat', 'string', `${path}.next_reset`);
