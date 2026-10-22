@@ -32,13 +32,13 @@ type Heartbeat struct {
 	Backlog    *int64 // X-Sy-Backlog, nil = not sent
 	SyVersion  string // from the batch's client "sy/x.y.z", "" = unknown
 
-	// Phase 5 (machines.md 3.4, 6.1).
+	// machines.md 3.4, 6.1.
 	Reach         string // "direct", "forward", "pull"; "" = not said, keeps the stored value
 	BacklogOldest int64  // client ts (ms) of the oldest unanswered record; 0 = none/not sent
 }
 
 // MachineHeartbeat updates last_seen, last_record (never backwards), backlog, version and
-// (phase 5) reach. A report of the backlog (Backlog or BacklogOldest set) also sets
+// reach. A report of the backlog (Backlog or BacklogOldest set) also sets
 // backlog_at to LastSeen and backlog_oldest to BacklogOldest (NULL when 0: the oldest
 // record is only reported while more than one batch is queued).
 func (tx *Tx) MachineHeartbeat(h Heartbeat) error {

@@ -365,7 +365,7 @@ type SlotView struct {
 	ClaudeVersion *string `json:"claude_version"`
 }
 
-// MachineView is api.yaml Machine (phase 5 fields: machines.md 6.1).
+// MachineView is api.yaml Machine (machines.md 6.1).
 type MachineView struct {
 	ID           string     `json:"id"`
 	Name         string     `json:"name"`

@@ -19,7 +19,7 @@ import (
 //
 // Key: PBKDF2-HMAC-SHA256 (crypto/pbkdf2, standard library since Go 1.24) over the passphrase,
 // 600 000 iterations, 32 bytes. scrypt and argon2 live in golang.org/x/crypto, which this
-// project does not depend on (go.mod does not change in phase 5), so PBKDF2 is the strongest
+// project does not depend on, so PBKDF2 is the strongest
 // stock choice; the iteration count is in the header, so a later release can raise it.
 // Each chunk's nonce is the prefix plus its index (uint32, big endian) and its additional data
 // is "syxe1" plus the index plus a last-chunk flag, so chunks cannot be reordered, dropped or
@@ -195,8 +195,7 @@ func (d *syxeReader) more() (bool, error) {
 		n, err = d.r.Read(b[:])
 	}
 	if n == 1 {
-		d.peek, d.have = b[:1:1], true
-		d.peek = []byte{b[0]}
+		d.peek, d.have = []byte{b[0]}, true
 		return true, nil
 	}
 	if err == io.EOF {

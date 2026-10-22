@@ -13,8 +13,7 @@ import (
 )
 
 // Rules, hub settings and hub secrets for the alert engine (push.md 2, 3.4, 3.7, 8).
-// Names carry Rule/Alert prefixes: other phase 4 files of this package are written in
-// parallel.
+// Names carry Rule/Alert prefixes so they stay apart from the rest of the package.
 
 // Setting keys of push.md 2.
 const (

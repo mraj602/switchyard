@@ -161,7 +161,7 @@ func TestSchemaV3Seeds(t *testing.T) {
 	}
 }
 
-// seedV4 builds a v4 database at path (migrations 0001..0004, as a phase 5 hub left it) and
+// seedV4 builds a v4 database at path (migrations 0001..0004, as a v4 hub left it) and
 // runs seed on it.
 func seedV4(t *testing.T, path string, seed ...string) {
 	t.Helper()
@@ -274,7 +274,7 @@ func TestSchemaV5BackfillsLookSrc(t *testing.T) {
 	}
 }
 
-// A v5 hub (phase 7) with a Web Push target, an ntfy target and deliveries for both.
+// A v5 hub with a Web Push target, an ntfy target and deliveries for both.
 const v5Push = `INSERT OR IGNORE INTO owner (id, created_at) VALUES ('owner', 0);
 INSERT INTO push_target (id, kind, device_id, name, endpoint, keys, created_at, updated_at) VALUES
   ('pt_web', 'webpush', NULL, 'iPhone · Safari', 'https://web.push.apple.com/x', '{"p256dh":"p","auth":"a"}', 1, 1),

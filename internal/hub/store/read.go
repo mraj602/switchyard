@@ -134,7 +134,7 @@ type SessionView struct {
 	// the open rule, the days window and the order use. Null when nothing is known
 	// (imported history with no times).
 	Activity Time `json:"activity_at"`
-	// Alert is the open alert of this session's current episode (phase 4), or null.
+	// Alert is the open alert of this session's current episode, or null.
 	Alert *model.AlertBrief `json:"alert"`
 
 	// FocusTarget/FocusLink: the terminal's focus URL and the machine allowed to see it

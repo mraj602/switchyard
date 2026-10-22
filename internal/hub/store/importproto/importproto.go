@@ -1,5 +1,5 @@
 // Package importproto is the one-off importer from the prototype's usage.db into the hub
-// (`sy hub import-prototype`, docs/phases/0.md). It opens a *copy* of the prototype
+// (`sy hub import-prototype`). It opens a *copy* of the prototype
 // database read-only, turns its rows into ordinary records (hook_event, web_usage,
 // token_rows, slot_info) and feeds them through the hub's own ingest, so the typed tables
 // and session states are built exactly as for live records. A few facts that no record
@@ -10,7 +10,7 @@
 // row's identity), and every record comes from the device dev_import, so running the
 // importer twice adds nothing.
 //
-// Phase 0 leftover, built in phase 2. Depends on: record, identity, hub/store, hub/ingest,
+// Depends on: record, identity, hub/store, hub/ingest,
 // hub/usage.
 package importproto
 
