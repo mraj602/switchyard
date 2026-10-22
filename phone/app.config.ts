@@ -22,7 +22,7 @@ export const VERSION_CODE = (() => {
   return major * 10000 + minor * 100 + patch;
 })();
 
-// Assets are added by the screens WP (phone/assets/**); the config works without them.
+// The config also works without the images in phone/assets/.
 const asset = (rel: string): string | undefined =>
   existsSync(join(__dirname, rel)) ? `./${rel}` : undefined;
 

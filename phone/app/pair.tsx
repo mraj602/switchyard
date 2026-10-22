@@ -1,4 +1,4 @@
-// Pair screen (phone.md P2, PhonePair.dc.html). Owner: WP-P.
+// Pair screen (phone.md P2).
 // Scan the QR (or open a switchyard://pair link) or type an address and code; claim; keep the
 // token in the keychain through the state layer; then go to Now. `pairWith` resolves only after
 // the integration's onPaired (src/lib/integrate: GET /v1/rules, the notifications prompt and

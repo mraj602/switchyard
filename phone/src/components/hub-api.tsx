@@ -1,5 +1,5 @@
-// What the screens need from the app core (phases/8.md). WP-S codes against this interface only;
-// WP-I's glue (src/state/glue.tsx, `HubGlue`) derives it from WP-P's `useHub()` state plus the
+// What the screens need from the app core (phone.md P3). The screens code against this interface only;
+// the glue (src/state/glue.tsx, `HubGlue`) derives it from the `useHub()` state plus the
 // integration (push state, snooze_min, countdown) and renders <HubApiProvider> in
 // app/_layout.tsx. Tests pass a fake (test/screen-harness.tsx).
 import { createContext, useContext, type ReactNode } from 'react';
@@ -32,8 +32,8 @@ export interface HubApi {
   /** Settings "snooze_min" of the hub (GET /v1/rules); labels the Snooze button. Default 15. */
   snoozeMin?: number;
   /**
-   * "Count down on Lock Screen" (iOS, P12). WP-W's live module decides which card qualifies and
-   * starts the Live Activity; WP-I wires it here. Absent (Android, or not wired): no button.
+   * "Count down on Lock Screen" (iOS, P12). The live module decides which card qualifies and
+   * starts the Live Activity; the glue wires it here. Absent (Android, or not wired): no button.
    */
   countdown?: { can(seatId: string): boolean; start(seatId: string): Promise<void> };
   /**

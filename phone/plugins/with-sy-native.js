@@ -25,8 +25,6 @@
 //          mipmap (app.config.ts android.adaptiveIcon) as the centre icon. AppTheme's window
 //          background is the same ink, so the gap between the splash and the first React frame
 //          is not a white flash.
-//
-// Wave 0 skeleton; owned by WP-W from wave 1 on (phases/8.md).
 const {
   AndroidConfig,
   withAndroidColors,

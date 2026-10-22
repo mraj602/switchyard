@@ -1,6 +1,6 @@
-// Fact 4 (phases/8.md wave 0): jest-expo renders an @expo/ui/swift-ui widget tree through the
+// jest-expo renders an @expo/ui/swift-ui widget tree through the
 // recording mock, and an Android widget tree through the react-native-android-widget mock.
-// WP-W's component tests use the same pattern: render the pure props → tree component with
+// The widget component tests use the same pattern: render the pure props → tree component with
 // test/render-widget.ts (not RNTL's render, which rejects text outside an RN <Text>), then
 // walk the host elements ("SwiftUI.Text", "Android.TextWidget", …).
 import { Text, VStack } from '@expo/ui/swift-ui';

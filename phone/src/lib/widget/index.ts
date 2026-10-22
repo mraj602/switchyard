@@ -1,4 +1,4 @@
-// Widget snapshot and timeline (phone.md P11). Owner: WP-W. Pure: no React, no native module.
+// Widget snapshot and timeline (phone.md P11). Pure: no React, no native module.
 import type { Overview, Seat, Session, Window } from '../../contract/api';
 import { WIDGET_KEY, WIDGET_RING_KEY } from '../../contract/constants';
 import type { LinkRefresh } from '../../contract/link';

@@ -1,9 +1,8 @@
-# The phase 8 phone app (phone/): typecheck, lint, jest, the secrets check and both prebuild
-# checks on every change; an unsigned Android debug compile and an iOS simulator compile on
-# demand. Nothing is signed, uploaded or submitted, and no EAS command runs here. Design:
-# docs/phases/8.md "CI job design". GitHub Actions is blocked by a billing problem, so
-# `make phone-check` is the gate until it runs. Action SHAs re-checked with `git ls-remote`
-# on 2026-10-13 (actions/setup-java v6.0.1, released 2026-09-09).
+# The phone app (phone/, Android only): typecheck, lint, jest, the secrets check and the prebuild
+# checks on every change; an unsigned Android debug compile and the JVM unit tests of the native
+# modules on demand. Nothing is signed, uploaded or submitted, and no EAS command runs here.
+# Design: docs/spec/phone.md P14. `make phone-check` is the same gate locally. Action SHAs
+# re-checked with `git ls-remote` on 2026-10-13 (actions/setup-java v6.0.1, released 2026-09-09).
 name: phone
 
 on:
@@ -11,7 +10,7 @@ on:
   pull_request:
     paths: ["phone/**", "internal/hub/push/**", ".github/workflows/phone.yml"]
   push:
-    branches: [main, phase-8]
+    branches: [main]
     paths: ["phone/**", "internal/hub/push/**", ".github/workflows/phone.yml"]
 
 permissions:
@@ -44,7 +43,7 @@ jobs:
       - run: node scripts/check-no-secrets.mjs
       # prebuild --no-install --clean into a temporary copy of phone/, then assert (phone.md P14)
       - run: node scripts/prebuild-check.mjs android
-      - run: node scripts/prebuild-check.mjs ios # wave 0 fact 2: the iOS prebuild works on Linux
+      - run: node scripts/prebuild-check.mjs ios # the iOS sources stay buildable; the prebuild runs on Linux. No iOS app is released
 
   # native compile, unsigned debug, never uploaded
   android-debug:
@@ -76,7 +75,7 @@ jobs:
       - run: ./gradlew :app:assembleDebug :sy-link:testDebugUnitTest :sy-tabs:testDebugUnitTest --no-daemon
         working-directory: phone/android
 
-  # native compile for the simulator, no signing
+  # compile check of the iOS sources for the simulator, no signing (no iOS app is released)
   ios-sim:
     if: github.event_name == 'workflow_dispatch'
     needs: check

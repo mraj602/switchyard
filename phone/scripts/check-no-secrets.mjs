@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Secrets check (phases/8.md hard rule 1): no signing or push credential may live in the
+// Secrets check (docs/spec/phone.md P13): no signing or push credential may live in the
 // repository. Fails when a credential-shaped file exists under phone/ (outside node_modules
 // and the prebuild output, which .gitignore keeps out) or is tracked anywhere by git, or when
 // a tracked phone/ text file contains a private key block.
@@ -76,7 +76,7 @@ if (git) {
 }
 
 if (problems.length) {
-  console.error('secrets check failed (phases/8.md hard rule 1):');
+  console.error('secrets check failed (docs/spec/phone.md P13):');
   for (const p of problems) console.error(`  ${p}`);
   process.exit(1);
 }

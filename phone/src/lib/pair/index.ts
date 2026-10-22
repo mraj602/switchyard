@@ -1,4 +1,4 @@
-// Pairing input and claim (phone.md P2). Owner: WP-P.
+// Pairing input and claim (phone.md P2).
 import { DEVICE_KIND, PAIR_PROBE_TIMEOUT_MS, REQUEST_TIMEOUT_MS } from '../../contract/constants';
 import type { DeviceKeysNew, PairClaim, PairClaimReply } from '../../contract/api';
 import type { ClaimLink, LinkConfig } from '../../contract/link';

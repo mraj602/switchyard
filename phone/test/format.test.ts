@@ -1,4 +1,4 @@
-// Format parity (phases/8.md WP-S): src/lib/format and webui/static/format.js give the same
+// Format parity: src/lib/format and webui/static/format.js give the same
 // output over one case table. The table is written by scripts/dump-format-cases.mjs from the
 // webui's own functions, under TZ=UTC. The port must equal format.js in any zone; it must also
 // equal the table's stored output when the device zone is UTC (the zone the table was made in).

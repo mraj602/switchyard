@@ -126,7 +126,7 @@ app-deps:
 app-test:
 	cd app && { test -d node_modules || $(NPM) ci --ignore-scripts; } && $(NPM) run lint && $(NPM) test
 
-# The phone app (docs/phases/8.md "Local gates"). No target here signs, uploads or runs eas.
+# The phone app (docs/spec/phone.md P13, P14). No target here signs, uploads or runs eas.
 phone-deps:
 	cd phone && $(NPM) ci
 

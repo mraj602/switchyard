@@ -1,4 +1,4 @@
-// The app core's state (phone.md P3 to P5). Owner: WP-P. The single source of truth: the
+// The app core's state (phone.md P3 to P5). The single source of truth: the
 // screens read it through `HubApi` (src/components/hub-api.tsx), which src/state/glue.tsx
 // derives from `useHub()`; app/_layout.tsx and the Pair screen use `useHub()` directly.
 // `HubContext` is exported so tests can provide a fake value (see `HubTestProvider`).

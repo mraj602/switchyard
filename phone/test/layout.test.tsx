@@ -1,6 +1,6 @@
 // app/_layout.tsx (phone.md P3, P6.4, P11): the Android widget handler, the
 // state hooks and initNotifications once at module scope; unpaired goes to Pair; paired stays
-// where it is. expo-router and WP-N's initNotifications are mocked.
+// where it is. expo-router and initNotifications are mocked.
 import { act, render } from '@testing-library/react-native';
 import { SECURE_HUB_KEY } from '../src/contract/constants';
 import { secureState } from './fakes';

@@ -156,7 +156,7 @@ export async function signOutTab(seat: string): Promise<boolean> {
   return ok;
 }
 
-/** Phone-12 "Use this tab for <other> instead": the profile, and its memo, become `to`'s. */
+/** "Use this tab for <other> instead": the profile, and its memo, become `to`'s. */
 export async function giveTab(from: string, to: string): Promise<boolean> {
   const ok = await SyTabs.moveProfile(from, to);
   await moveMemo(from, to);

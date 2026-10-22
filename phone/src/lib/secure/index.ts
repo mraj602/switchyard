@@ -1,5 +1,5 @@
-// The keychain entry of the paired hub (phone.md P3). Owner: WP-P. The token lives only here:
-// never in logs, AsyncStorage, widget data, pushes, links or errors (hard rule 3).
+// The keychain entry of the paired hub (phone.md P3). The token lives only here:
+// never in logs, AsyncStorage, widget data, pushes, links or errors (phone.md P3).
 import { SECURE_HUB_KEY, SECURE_REVOKE_KEY } from '../../contract/constants';
 import type { SecureStoreLike, SecureStoreOptions } from '../../contract/platform';
 

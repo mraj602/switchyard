@@ -10,7 +10,7 @@ coverage/
 /ios/
 /android/
 
-# Credentials (hard rule 1). They live outside the repository.
+# Credentials (docs/spec/phone.md P13). They live outside the repository.
 *.p8
 *.p12
 *.mobileprovision

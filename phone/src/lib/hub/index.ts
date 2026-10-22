@@ -1,4 +1,4 @@
-// Hub client (phone.md P3). Owner: WP-P.
+// Hub client (phone.md P3).
 // Pure: fetch and the clock are injected; errors and logs carry the path and status, never
 // the token or a response body.
 import type {

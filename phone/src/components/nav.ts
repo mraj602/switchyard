@@ -1,5 +1,5 @@
 // Navigation between the screens (P4's route table). Plain hrefs: the screens do not need
-// WP-N's link mapping, only the alert redirect does.
+// the deep-link mapping (src/lib/links), only the alert redirect does.
 import { router } from 'expo-router';
 
 const enc = encodeURIComponent;

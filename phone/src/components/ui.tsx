@@ -197,7 +197,7 @@ export function Chip({ label, on, onPress, count, testID }: { label: string; on:
 }
 
 export function Btn({ label, onPress, onLongPress, kind = 'plain', disabled, testID }: {
-  /** `outline`: the accent's border on no fill (design Phone-11's + Add account). */
+  /** `outline`: the accent's border on no fill. */
   label: string; onPress: () => void; onLongPress?: () => void; kind?: 'plain' | 'primary' | 'danger' | 'outline'; disabled?: boolean; testID?: string;
 }) {
   const t = useTheme();

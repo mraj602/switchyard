@@ -1,6 +1,5 @@
-// Notification actions across pairings (phase 8 review): an act goes only to the pairing that
-// issued the notification (finding 2), and each tap acts once even when two JS runtimes both see
-// it (finding 9). Offline: fetch is a fake.
+// Notification actions across pairings: an act goes only to the pairing that
+// issued the notification, and each tap acts once even when two JS runtimes both see it. Offline: fetch is a fake.
 import * as ExpoNotifications from 'expo-notifications';
 import type { Clock, FetchLike, KVStore, RequestInitLike } from '../src/contract/platform';
 import { ACTED_KEY } from '../src/contract/constants';
@@ -84,7 +83,7 @@ function perform(f: ReturnType<typeof fakeFetch>, over: Partial<PerformDeps> = {
   };
 }
 
-describe('acts go only to the pairing that issued them (finding 2)', () => {
+describe('acts go only to the pairing that issued them', () => {
   it('decideResponse keeps when the notification arrived and the origin its payload names', () => {
     expect(decideResponse(resp('seen', payload({ origin: 'https://old.ts.net' }), 'n1', PAIRED - 5), null)).toEqual({
       kind: 'act',
@@ -121,7 +120,7 @@ describe('acts go only to the pairing that issued them (finding 2)', () => {
 
 });
 
-describe('one act per tap (finding 9)', () => {
+describe('one act per tap', () => {
   const seen: Decision = { kind: 'act', token: SEEN_TOKEN, action: 'seen' };
 
   it('two JS runtimes act once on one Seen (only the shared storage remembers)', async () => {

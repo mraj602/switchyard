@@ -1,5 +1,5 @@
 // Adapters from the native modules to the platform interfaces of src/contract/platform.ts.
-// Owner: WP-P. The only place (with app/) where src code imports expo-* for state.
+// The only place (with app/) where src code imports expo-* for state.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';

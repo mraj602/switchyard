@@ -7,7 +7,7 @@ import type { Seat } from '../../contract/api';
 import { clock, seatName, seatUse } from '../format';
 import type { TabEventAt } from './index';
 
-/** Phone-12 and Settings → Claude tabs: what the account check does, and does not. */
+/** Settings → Claude tabs: what the account check does, and does not. */
 export const TAB_PRIVACY_NOTE =
   'Switchyard asks claude.ai only "which account is this?" inside the tab. It never reads your chats or sends the page anywhere.';
 
@@ -130,7 +130,7 @@ export function readMemos(x: unknown): TabMemos {
   return out;
 }
 
-/** The phone tab of one seat (Phone-11's second line). */
+/** The phone tab of one seat. */
 export type PhoneTab =
   | { kind: 'unsupported' }
   | { kind: 'none' } // no tab profile on this phone
@@ -179,7 +179,7 @@ export function tabAction(v: PhoneTab): TabAction {
 export type Part = { t: string; b?: boolean };
 export type Line = { tone: 'ok' | 'muted' | 'warn'; parts: Part[] };
 
-/** Phone-11 "Phone tab: …"; null where there are no tabs. */
+/** "Phone tab: …"; null where there are no tabs. */
 export function phoneTabLine(v: PhoneTab): Line | null {
   switch (v.kind) {
     case 'unsupported':
@@ -205,7 +205,7 @@ const names = (xs: string[]): Part[] => xs.flatMap((n, i) => (i ? [{ t: ', ' }, 
 const uniq = (xs: (string | null | undefined)[]) => [...new Set(xs.filter((x): x is string => !!x))];
 
 /**
- * Phone-11 "Claude Code: signed in on mraj602, worker · signed out on X", from the hub: the
+ * "Claude Code: signed in on laptop, server · signed out on X", from the hub: the
  * machines with a folder logged in to the seat (Seat.places with a slot), and those with a
  * folder that logged out of it and is not also signed in there (Seat.signed_out).
  */
@@ -224,7 +224,7 @@ export function codeLine(seat: Seat): Line {
   return { tone: inOn.length ? 'ok' : 'muted', parts };
 }
 
-/** Phone-12: what "Fix this tab" offers. `use` only when the other seat has no tab on this phone. */
+/** What "Fix this tab" offers. `use` only when the other seat has no tab on this phone. */
 export function fixChoices(v: PhoneTab, profiles: string[] | null): { signOut: true; use: Seat | null } | null {
   if (v.kind === 'stranger') return { signOut: true, use: null };
   if (v.kind !== 'other') return null;

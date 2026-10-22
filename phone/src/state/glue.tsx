@@ -1,6 +1,6 @@
 // The glue between the app core and the screens, notifications, widgets and the Live Activity
-// (phases/8.md wave 2, WP-I). The logic is pure in src/lib/integrate; this file binds the real
-// modules and renders the screens' `HubApiProvider` from `useHub()`: WP-P's provider is the one
+// (phone.md P6, P11, P12). The logic is pure in src/lib/integrate; this file binds the real
+// modules and renders the screens' `HubApiProvider` from `useHub()`: the provider is the one
 // source of truth, and the screens' `HubApi` is derived from it here.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';

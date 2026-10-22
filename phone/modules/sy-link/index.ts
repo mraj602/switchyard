@@ -93,6 +93,6 @@ export function addListener(event: string, cb: (s: LinkState) => void): Subscrip
   return native.addListener(event, (p) => cb(p as LinkState));
 }
 
-// The updater (phone.md P16), same module; N2 builds it.
+// The updater (phone.md P16), same module.
 export const checkUpdate = (origin: string, token: string): Promise<UpdateInfo | null> => call((n) => n.checkUpdate(origin, token));
 export const installUpdate = (info: UpdateInfo): Promise<'started' | 'refused'> => call((n) => n.installUpdate(info));

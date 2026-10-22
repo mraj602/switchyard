@@ -1,4 +1,4 @@
-// The wave 2 glue (phases/8.md WP-I): the state hooks after a refresh, on unpair and on pairing,
+// The glue (src/state/glue.tsx): the state hooks after a refresh, on unpair and on pairing,
 // the start-up registration, the Lock Screen countdown and the
 // auto countdown, and the unified provider rendering a screen. Offline: the hub is a fake
 // fetch and every native module is a recording fake (test/fakes.ts).
@@ -218,7 +218,7 @@ describe('onCleared', () => {
     expect(notificationsState.badge).toBe(0);
   });
 
-  it("removes the old hub's notifications, so their Snooze and Seen can't be pressed later (finding 2)", async () => {
+  it("removes the old hub's notifications, so their Snooze and Seen can't be pressed later", async () => {
     notificationsState.presented = [{ request: { identifier: 'old', content: { data: {} } } }];
     const glue = createGlue(systemGluePlatform(app('ios'), manualClock(NOW)));
     await glue.onCleared();
@@ -226,7 +226,7 @@ describe('onCleared', () => {
     expect(notificationsState.presented).toEqual([]);
   });
 
-  it('a refresh of the old pairing still running writes nothing after the clearing (finding 4)', async () => {
+  it('a refresh of the old pairing still running writes nothing after the clearing', async () => {
     let releaseTimeline: () => void = () => {};
     const timelineGate = new Promise<void>((r) => (releaseTimeline = r));
     const p = fakePlatform({ updateTimelines: jest.fn(() => timelineGate as unknown as void) });
@@ -263,7 +263,7 @@ describe('onPaired and start-up registration', () => {
     expect(glue.view()).toMatchObject({ pushState: 'registered', snoozeMin: 30 });
   });
 
-  it('"Turn on notifications" again keeps widget refresh off when the person turned it off (finding 8)', async () => {
+  it('"Turn on notifications" again keeps widget refresh off when the person turned it off', async () => {
     const glue = createGlue(systemGluePlatform(app('android'), manualClock(NOW)));
     const { client, calls: hubCalls } = clientOf(hubReplies({ widgets: false }));
     await glue.enablePush(client);

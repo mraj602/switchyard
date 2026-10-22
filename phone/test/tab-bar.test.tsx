@@ -1,4 +1,4 @@
-// The tab bar and page frame on Android 15 edge to edge (T3 emulator findings): no
+// The tab bar and page frame on Android 15 edge to edge: no
 // missing-icon glyph in the tabs, and the page title clear of the status bar.
 import { render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';

@@ -1,4 +1,4 @@
-// Contract test (phases/8.md wave 0): the TS validators accept what the Go side really emits.
+// Contract test: the TS validators accept what the Go side really emits.
 // - Devserver replies: test/fixtures/hub/ (scripts/dump-fixtures.sh).
 // - The P11 snapshot example: test/fixtures/widget-snapshot.v1.json.
 import * as fs from 'node:fs';

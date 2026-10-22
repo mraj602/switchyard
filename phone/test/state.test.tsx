@@ -1,5 +1,5 @@
 // The app state (phone.md P3, P5): start-up, 401, pairing, unpairing, `me`, and the
-// notification bridge (decisions through WP-N's performDecision). All offline. Seen and Snooze
+// notification bridge (decisions through performDecision). All offline. Seen and Snooze
 // are the screens' (src/components/alert-actions.tsx, test/screens.test.tsx).
 import { act, render } from '@testing-library/react-native';
 import * as Notifications from 'expo-notifications';
@@ -232,7 +232,7 @@ describe('pairing and unpairing', () => {
   const deletes = (f: FakeFetch) => f.calls.filter((c) => c.init.method === 'DELETE');
   const down: FakeFetch['handler'] = (url, init) => (init.method === 'DELETE' ? Promise.reject(new Error('down')) : hubReplies(url, init));
 
-  it('unpair while the hub cannot be reached clears locally and keeps a pending revoke in the keychain (finding 2)', async () => {
+  it('unpair while the hub cannot be reached clears locally and keeps a pending revoke in the keychain', async () => {
     const h = await mount({ paired: true, handler: down });
     await act(async () => {
       await h.api().unpair();
@@ -247,7 +247,7 @@ describe('pairing and unpairing', () => {
     expect([...h.cache.items.values()].join()).not.toContain(TOKEN);
   });
 
-  it('the next start retries DELETE /v1/devices/self until the hub confirms it (finding 2)', async () => {
+  it('the next start retries DELETE /v1/devices/self until the hub confirms it', async () => {
     const first = await mount({ paired: true, handler: down });
     await act(async () => {
       await first.api().unpair();
@@ -313,7 +313,7 @@ describe('pairing and unpairing', () => {
     expect(Object.keys(h.secureMem.dump())).toEqual([SECURE_HUB_KEY]);
   });
 
-  it('unpair stops polling first: a refresh in flight writes no cache and runs no widget step after it (finding 4)', async () => {
+  it('unpair stops polling first: a refresh in flight writes no cache and runs no widget step after it', async () => {
     const after = jest.fn(async () => {});
     stateHooks.afterRefresh = after;
     const h = await mount({ paired: true });
@@ -349,7 +349,7 @@ describe('pairing and unpairing', () => {
   });
 });
 
-describe('a stale 401 (finding 3)', () => {
+describe('a stale 401', () => {
   it('a 401 from the old client after "Unpair and pair" does not clear the new pairing', async () => {
     const h = await mount({ paired: true });
     const oldClient = h.api().client!;
@@ -383,7 +383,7 @@ describe('a stale 401 (finding 3)', () => {
   });
 });
 
-describe('a locked keychain at start (finding 7)', () => {
+describe('a locked keychain at start', () => {
   function lockable() {
     const mem = createMemorySecureStore();
     const state = { locked: true };

@@ -139,7 +139,7 @@ describe('HubClient requests', () => {
     await expect(client(lookalike).me()).rejects.toMatchObject({ code: 'redirect' });
   });
 
-  it('an explicit default port is the same origin (review finding 5)', async () => {
+  it('an explicit default port is the same origin', async () => {
     const f = fakeFetch(() => response(200, {}, { url: `${ORIGIN}/v1/me` }));
     const c = createHubClient({ origin: `${ORIGIN}:443`, token: TOKEN, fetch: f, clock: manualClock() });
     expect(c.origin).toBe(ORIGIN);
@@ -153,7 +153,7 @@ describe('HubClient requests', () => {
     await expect(client(h).me()).rejects.toMatchObject({ code: 'redirect' });
   });
 
-  it('revokeDevice: done on 2xx, 401 and 404; retry on 5xx, a redirect or no answer (finding 2)', async () => {
+  it('revokeDevice: done on 2xx, 401 and 404; retry on 5xx, a redirect or no answer', async () => {
     const r = { origin: ORIGIN, token: TOKEN };
     const at = (h: () => ReturnType<typeof response> | Promise<never>) => revokeDevice({ fetch: fakeFetch(h), clock: manualClock() }, r);
     await expect(at(() => response(204))).resolves.toBe('done');
@@ -192,7 +192,7 @@ describe('HubClient requests', () => {
     expect(normalizeOrigin('https://[::1]')).toBe('https://[::1]');
   });
 
-  it('asks for redirect: error and treats any 3xx as fatal, without following it (review finding 6)', async () => {
+  it('asks for redirect: error and treats any 3xx as fatal, without following it', async () => {
     let unauthorized = 0;
     for (const status of [301, 302, 303, 307, 308]) {
       const f = fakeFetch(() => response(status, '', { headers: { get: (n) => (n.toLowerCase() === 'location' ? 'https://evil.example/' : null) } }));
@@ -247,7 +247,7 @@ describe('401', () => {
   });
 });
 
-describe('errors never carry the token or a body (hard rule 3)', () => {
+describe('errors never carry the token or a body (phone.md P3)', () => {
   const failures: [string, () => FakeFetch][] = [
     ['network error naming the token', () => fakeFetch(() => Promise.reject(new Error(`failed Bearer ${TOKEN}`)))],
     ['401 with the token in the body', () => fakeFetch(() => response(401, { error: `bad ${TOKEN} ${BODY_SECRET}`, code: 'unauthorized' }))],

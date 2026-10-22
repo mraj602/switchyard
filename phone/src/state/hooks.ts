@@ -1,4 +1,4 @@
-// Extension points of the app state (phone.md P3, P5). Owner: WP-P. WP-I fills them at module
+// Extension points of the app state (phone.md P3, P5). The glue fills them at module
 // scope in app/_layout.tsx with `installStateHooks(createGlue(...))` (src/state/glue.tsx, logic
 // in src/lib/integrate): the provider calls them and never imports notify, widget or live.
 import type { HubData } from '../lib/data';

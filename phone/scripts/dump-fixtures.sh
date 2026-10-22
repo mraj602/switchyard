@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Saves the mock hub's replies (webui/devserver) as the app's fixtures (phases/8.md wave 0):
+# Saves the mock hub's replies (webui/devserver) as the app's fixtures:
 # phone/test/fixtures/hub/*.json. Pairs as a phone with the devserver's fixed pair secret
 # (cookie: false, so the claim reply carries the bearer token), then reads every endpoint the
 # app uses with that bearer. The devserver's data is relative to the time it starts, so

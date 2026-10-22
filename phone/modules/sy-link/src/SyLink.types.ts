@@ -50,7 +50,7 @@ export type LinkRefresh = {
   ts: string;
 };
 
-/** The updater (phone.md P16), N2. */
+/** The updater (phone.md P16). */
 export type UpdateInfo = {
   version: string;
   build: number;

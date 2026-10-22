@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Prebuild sanity check (phases/8.md test plan, wave 0 facts 1-3). Copies phone/ to a temp
+// Prebuild sanity check (docs/spec/phone.md P14). Copies phone/ to a temp
 // directory (node_modules symlinked), runs `expo prebuild --platform <p> --no-install --clean`
 // there, and asserts the generated native config. The real tree is never touched, nothing
 // is signed or uploaded, and the copy is deleted afterwards (set SY_KEEP_PREBUILD=1 to keep it).

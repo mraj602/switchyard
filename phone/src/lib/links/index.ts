@@ -1,4 +1,4 @@
-// Deep links (phone.md P7). Owner: WP-N. Pure: no URL class, no platform imports.
+// Deep links (phone.md P7). Pure: no URL class, no platform imports.
 // Two vocabularies map onto AppRoute: a push payload's `url` (a PWA hash route) and an incoming
 // switchyard:// URL (the allow-list). Anything else is refused (null) or opens Now.
 import { INCOMING_HOSTS, ROUTE_ID, ROUTE_PATHS, SCHEME } from '../../contract/routes';

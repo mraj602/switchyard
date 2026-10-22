@@ -1,4 +1,4 @@
-// Entry points of the widgets and the Live Activity for the app (phone.md P11, P12). WP-I wires:
+// Entry points of the widgets and the Live Activity for the app (phone.md P11, P12). The app wires them as follows:
 //   - index.js (the app entry), module scope: `registerAndroidWidgets()` (Android task handler);
 //   - after every data refresh:
 //       const snap = buildSnapshot(overview, accounts, now, {private, origin});

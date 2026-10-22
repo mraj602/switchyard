@@ -1,5 +1,5 @@
 // Writes test/fixtures/format-cases.json: the shared case table of src/lib/format and
-// webui/static/format.js (phases/8.md WP-S). Each case is {fn, args, want}; `want` is what the
+// webui/static/format.js. Each case is {fn, args, want}; `want` is what the
 // webui's format.js returns, run here under TZ=UTC. The jest test (test/format.test.ts) runs
 // the port, and format.js itself when it is present, over the same table.
 //

@@ -1,4 +1,4 @@
-// Live Activity choice and end policy (phone.md P12). Owner: WP-W. Pure.
+// Live Activity choice and end policy (phone.md P12). Pure.
 import { LIVE_END_AFTER_MS, LIVE_MAX_H, LIVE_MIN_PCT, type LiveCountdownProps } from '../../contract/live';
 import type { SnapshotSeat, WidgetSnapshot, WindowKey } from '../../contract/snapshot';
 

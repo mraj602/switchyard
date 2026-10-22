@@ -43,9 +43,9 @@ class SyTabsModule : Module() {
       try {
         ProfileStore.getInstance().deleteProfile(name).also { setPending(name, false) }
       } catch (e: IllegalStateException) {
-        // WebView keeps the profile of a closed (destroyed) tab "in use" for the rest of the
-        // process (found on the emulator: the delete failed with no tab open, even after a GC).
-        // Wipe what a sign-in leaves, hide it, and delete it for real when the app next starts.
+        // The WebView implementation can keep the profile of a closed (destroyed) tab "in use"
+        // until the process ends, so the delete is refused with no tab open. Wipe what a sign-in
+        // leaves (cookies, web storage), hide the profile, and delete it when the app next starts.
         wipe(name)
         setPending(name, true)
         true

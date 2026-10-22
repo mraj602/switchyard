@@ -1,5 +1,5 @@
 // The app state (phone.md P3, P5): keychain entry, hub client, poller, cache and the data
-// reducer, behind `useHub()`. Owner: WP-P. Every platform service is a prop, so tests run it
+// reducer, behind `useHub()`. Every platform service is a prop, so tests run it
 // with the in-memory fakes and no native module.
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -244,7 +244,7 @@ export function HubProvider({ deps: initialDeps, navigate, openUrl, children }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client]);
 
-  // Notification decisions (WP-N's performDecision) need the origin and the client. While the
+  // Notification decisions (performDecision in src/lib/notify) need the origin and the client. While the
   // keychain is loading or locked the bridge keeps them queued.
   useEffect(() => {
     if (status === 'loading' || status === 'locked') return;

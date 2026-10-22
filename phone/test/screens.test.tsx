@@ -1,4 +1,4 @@
-// Screen tests on the devserver fixtures (phases/8.md WP-S accept list). The hub API is a fake
+// Screen tests on the devserver fixtures. The hub API is a fake
 // (test/screen-harness.tsx); fetch stays off.
 import { Alert as RNAlert, Linking } from 'react-native';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';

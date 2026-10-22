@@ -1,4 +1,4 @@
-// Offline fakes for the hub client tests (WP-P): a recording fetch, a manual clock, an app-state
+// Offline fakes for the hub client tests: a recording fetch, a manual clock, an app-state
 // source and an in-memory KV store. No network; nothing here is imported by src/.
 import type { AppStateSource, Clock, FetchLike, KVStore, RequestInitLike, ResponseLike } from '../src/contract/platform';
 

@@ -1,5 +1,5 @@
-// Phone tabs (phone.md P4): Now, Sessions, Accounts, More. Wave 0 skeleton; owned by WP-S
-// from wave 1 on (the screens are app/(tabs)/index.tsx, sessions.tsx, accounts.tsx, more.tsx).
+// Phone tabs (phone.md P4): Now, Sessions, Accounts, More (the screens are app/(tabs)/index.tsx,
+// sessions.tsx, accounts.tsx, more.tsx).
 import { Tabs } from 'expo-router';
 import type { BottomTabBarButtonProps } from 'expo-router/tabs';
 import { Pressable, type ColorValue } from 'react-native';

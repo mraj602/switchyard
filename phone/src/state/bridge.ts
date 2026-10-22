@@ -1,11 +1,11 @@
 // Module-scope bridge between `initNotifications` (called once at module scope in
 // app/_layout.tsx, so a cold-start response is read exactly once) and the provider, which only
 // exists after the first render. Decisions that arrive early wait here, with their response,
-// until the provider has loaded the keychain entry. Owner: WP-P.
+// until the provider has loaded the keychain entry.
 import type { Decision, NotificationResponseLike } from '../lib/notify';
 
 type Handler = {
-  /** Runs the decision through WP-N's performDecision; an act dismisses `response`'s notification. */
+  /** Runs the decision through performDecision (src/lib/notify); an act dismisses `response`'s notification. */
   run(d: Decision, response?: NotificationResponseLike): Promise<void>;
   onReceived(): void;
   probe(): Promise<boolean>;

@@ -2,7 +2,7 @@
 // typed precisely; the hub may add fields (clients ignore unknown keys). Times are RFC 3339
 // UTC strings with milliseconds ("2026-10-13T14:02:00.000Z"), or null.
 //
-// Wave 0 contract (docs/spec/phone.md). Changes go through WP-0's owner.
+// The contract of docs/spec/phone.md; keep it in step with api.yaml.
 
 export type Iso = string;
 

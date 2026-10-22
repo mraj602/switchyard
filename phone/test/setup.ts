@@ -1,4 +1,4 @@
-// Jest setup (phone.md P1, phases/8.md wave 0): every native module the app uses is a small
+// Jest setup (phone.md P1): every native module the app uses is a small
 // recording fake from test/fakes.ts, and the network is off.
 
 jest.mock('expo-notifications', () => jest.requireActual('./fakes').notifications);
@@ -14,7 +14,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
-// No test touches the network (hard rule 6): code under test gets an injected fetch.
+// No test touches the network (phone.md P1): code under test gets an injected fetch.
 const offline = () => Promise.reject(new Error('network is off in tests: inject a fetch'));
 (globalThis as { fetch: unknown }).fetch = offline;
 

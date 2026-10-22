@@ -79,7 +79,7 @@ describe('SecureHub', () => {
     expect(await createSecureHub(mem, secureOptions(1)).load()).toEqual({ origin: 'https://h', token: 't', device: '', name: '', paired_at: '' });
   });
 
-  it('keeps unconfirmed unpairings under their own key with the same option, at most four (finding 2)', async () => {
+  it('keeps unconfirmed unpairings under their own key with the same option, at most four', async () => {
     const mem = createMemorySecureStore();
     const r = recording(mem);
     const sh = createSecureHub(r.s, secureOptions(KEYCHAIN_ACCESSIBLE));

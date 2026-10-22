@@ -1,4 +1,4 @@
-// App state (phone.md P3 to P5). Owner: WP-P; the glue (WP-I) is ./glue.
+// App state (phone.md P3 to P5). The glue is ./glue.
 // Screens read `useHubApi()` (src/components/hub-api.tsx); `useHub()` is the app core's state.
 export { HubContext, HubTestProvider, useHub, useHubData } from './context';
 export type { HubState, PairStatus } from './context';

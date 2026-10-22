@@ -1,4 +1,4 @@
-// Hard rule 3 (phases/8.md): the device token lives only in expo-secure-store. It never reaches
+// Token hygiene (phone.md P3): the device token lives only in expo-secure-store. It never reaches
 // logs, AsyncStorage, the cache, the widget keys, a notification call, or an error message.
 // The static half (no console in src, app) is also an eslint rule (`no-console`, eslint.config.js).
 import AsyncStorage from '@react-native-async-storage/async-storage';

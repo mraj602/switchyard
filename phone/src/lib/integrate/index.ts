@@ -1,5 +1,5 @@
-// The integration of the app core with notifications, widgets and the Live Activity (phases/8.md
-// wave 2, WP-I): what runs after a refresh, on pairing, on start, on unpair, and the auto
+// The integration of the app core with notifications, widgets and the Live Activity (phone.md P6, P11, P12):
+// what runs after a refresh, on pairing, on start, on unpair, and the auto
 // countdown. Pure: every platform piece (the widget adapters, storage, fetch, the clock) is an
 // argument, so tests drive it through the recording fakes and the app binds the real modules
 // (src/state/glue.tsx).
@@ -245,7 +245,7 @@ export function createGlue(p: GluePlatform): Glue {
   let startedFor: HubClient | null = null;
   let lastData: Pick<HubData, 'overview' | 'accounts'> | null = null;
   // The pairing generation: bumped by onCleared, so a refresh of the old pairing
-  // that is still running writes no widget, badge or Live Activity after it (review finding 4).
+  // that is still running writes no widget, badge or Live Activity after it.
   let gen = 0;
   let view: GlueView = { pushState, snoozeMin: DEFAULT_SNOOZE_MIN, autoCountdown };
   const subs = new Set<() => void>();

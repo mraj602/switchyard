@@ -21,7 +21,7 @@ describe('parsePairInput', () => {
     });
   });
 
-  it('drops an explicit default port, so later same-origin checks match (finding 5)', () => {
+  it('drops an explicit default port, so later same-origin checks match', () => {
     expect(parsePairInput(`https://hub.example.ts.net:443/#/pair?s=${S}`, prod)).toEqual({ ok: true, input: { origin: 'https://hub.example.ts.net', secret: S } });
     expect(parsePairInput(`switchyard://pair?u=${encodeURIComponent('https://hub.example.ts.net:443')}&s=${S}`, prod)).toEqual({
       ok: true,
@@ -209,7 +209,7 @@ describe('claim', () => {
     expect(f.calls.map((c) => c.url)).toEqual(['https://hub.test.ts.net/health', 'https://hub.test.ts.net/v1/pair/claim']);
   });
 
-  it('probes GET /health without credentials and without following redirects before sending the secret (finding 6)', async () => {
+  it('probes GET /health without credentials and without following redirects before sending the secret', async () => {
     const f = fakeFetch(() => response(200, ok));
     await claim({ fetch: f, clock: manualClock(), app }, { origin: 'https://hub.test.ts.net', secret: S });
     expect(f.calls.map((c) => c.url)).toEqual(['https://hub.test.ts.net/health', 'https://hub.test.ts.net/v1/pair/claim']);
@@ -245,7 +245,7 @@ describe('claim', () => {
     }
   });
 
-  it('keeps the origin without the default port (finding 5)', async () => {
+  it('keeps the origin without the default port', async () => {
     const f = fakeFetch(() => response(200, ok));
     const hub = await claim({ fetch: f, clock: manualClock(), app }, { origin: 'https://hub.test.ts.net:443', code: '482913' });
     expect(hub.origin).toBe('https://hub.test.ts.net');

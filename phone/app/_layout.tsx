@@ -1,8 +1,8 @@
-// Root layout (phone.md P3, P6.4, P11, P12). Owner: WP-P; wiring: WP-I.
+// Root layout (phone.md P3, P6.4, P11, P12).
 // Module scope (once, guarded against Fast Refresh): the Android widget task handler, the
-// integration's state hooks, and WP-N's initNotifications, so a cold-start notification
+// integration's state hooks, and initNotifications, so a cold-start notification
 // response is read exactly once; its decisions reach the hub through
-// `bridge`, which the provider installs after it has read the keychain. The tree: WP-P's
+// `bridge`, which the provider installs after it has read the keychain. The tree: the
 // HubProvider (the one source of truth), the glue that derives the screens' HubApi from it,
 // and the gate: unpaired (including a 401 on any call) goes to Pair.
 import * as Linking from 'expo-linking';

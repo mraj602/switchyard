@@ -1,4 +1,4 @@
-// Notifications (phone.md P6). Owner: WP-N.
+// Notifications (phone.md P6).
 // Pure: takes a Notifications-shaped object (expo-notifications' API surface it uses), fetch
 // and a clock. No token, title, body or response body ever reaches an error or a log (hard
 // rule 3): failures are reported as states and status codes only.

@@ -1,5 +1,5 @@
-// Screen test harness (WP-S): the devserver fixtures behind a fake HubApi, a fake HubClient of
-// jest mocks, and a small reducer standing in for WP-P's (the real one is not needed to test
+// Screen test harness: the devserver fixtures behind a fake HubApi, a fake HubClient of
+// jest mocks, and a small reducer standing in for the provider's (the real one is not needed to test
 // screens, only the actions the screens dispatch). Nothing here touches the network.
 import { useReducer, type ReactNode } from 'react';
 import type { Alert, AlertBrief, Device, Me, Overview, Seat, Session } from '../src/contract/api';

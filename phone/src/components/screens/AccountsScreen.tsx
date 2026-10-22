@@ -1,9 +1,9 @@
-// Accounts (PhoneAccounts; designs Phone-Accounts-Compact, Phone-Account-Detail, Phone-11/12): a
+// Accounts (phone.md P4, P17.7): a
 // calm list, one row per login: its dot, name and one bar for the tighter of the 5 h and 7 d
 // limits with that window's reset time, and one status line only when something needs attention.
 // Tapping a row opens it in place: every window with its reset, pace and peak, where the login
 // is signed in (Claude Code on each machine, from the hub, and this phone's claude.ai tab, P17.7)
-// with the matching action (Open claude.ai, Sign in on this phone, Fix this tab: the Phone-12
+// with the matching action (Open claude.ai, Sign in on this phone, Fix this tab: its
 // sheet), the details, and "Count down on Lock Screen" where the Live Activity qualifies (iOS).
 // "+ Add account" is in the header (a tab for a hub account this phone has none for).
 import { useState } from 'react';
@@ -177,7 +177,7 @@ function AddAccount({ seats, profiles }: { seats: Seat[]; profiles: string[] | n
   );
 }
 
-/** One status line (Phone-11): an icon by tone, then the words, names in bold. */
+/** One status line: an icon by tone, then the words, names in bold. */
 function StatusLine({ line, testID }: { line: Line; testID: string }) {
   const t = useTheme();
   const colour = line.tone === 'ok' ? t.ok : line.tone === 'warn' ? t.needs : t.muted;
@@ -317,7 +317,7 @@ function AccountRow({ seat, colour, now, highlight, expanded, onToggle, canCount
   );
 }
 
-/** Phone-12: the tab of `seat` is signed in as another account. */
+/** The tab of `seat` is signed in as another account. */
 function FixSheet({ seat, tab, profiles, colourOf, onClose, onSignOut, onUse }: {
   seat: Seat; tab: PhoneTab; profiles: string[] | null; colourOf: (id: string) => string;
   onClose: () => void; onSignOut: () => void; onUse: (other: Seat) => void;

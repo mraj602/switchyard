@@ -137,7 +137,7 @@ describe('registerForPush', () => {
     expect(d.patched).toEqual([{ tz: 'Europe/London', widgets: true }]);
   });
 
-  it('sends widgets: true only when the device never had prefs.widgets (finding 8)', async () => {
+  it('sends widgets: true only when the device never had prefs.widgets', async () => {
     for (const [currentPrefs, want] of [
       [async () => ({ widgets: false }), { tz: 'Europe/London' }],
       [async () => ({ widgets: true }), { tz: 'Europe/London' }],
