@@ -152,6 +152,10 @@ object Updates {
     if (Codec.hex(md.digest()) != sha256.lowercase()) throw UpdateException("the update changed after its check")
   }
 
+  /** Whether `origin` (from the app's JS) is the paired hub's stored origin; the update check sends the token only there. */
+  fun isPairedOrigin(origin: String, stored: String?): Boolean =
+    stored != null && origin.trimEnd('/').lowercase().removeSuffix(":443") == stored.trimEnd('/').lowercase().removeSuffix(":443")
+
   /** Whether the hub's bearer token may go with this request: only to the paired hub's own origin. */
   fun sendsToken(url: String, origin: String?): Boolean =
     origin != null && (url == origin.trimEnd('/') || url.startsWith(origin.trimEnd('/') + "/"))

@@ -151,6 +151,18 @@ object Payloads {
     else -> IconKind.GENERIC
   }
 
+  /**
+   * A payload `remote_url` the tap may open in the browser: https, no user info, default port,
+   * host claude.ai or a subdomain. Anything else is null, and the tap opens the app instead.
+   */
+  fun claudeUrl(u: String?): String? {
+    if (u == null || u.length > 8192 || u.any { it.isWhitespace() || it == '\\' }) return null
+    val uri = try { java.net.URI(u) } catch (_: Exception) { return null }
+    if (uri.scheme?.lowercase() != "https" || uri.rawUserInfo != null || !(uri.port == -1 || uri.port == 443)) return null
+    val h = uri.host?.lowercase()?.removeSuffix(".") ?: return null
+    return if (h == "claude.ai" || h.endsWith(".claude.ai")) u else null
+  }
+
   fun alert(o: JSONObject, frameTag: String): AlertNote? {
     if (o.optInt("v", 0) != 1) return null
     val type = o.optString("type", "")
@@ -165,7 +177,7 @@ object Payloads {
       channel = channelFor(type, o.optString("trigger").ifEmpty { null }),
       whenMs = o.optString("ts").takeIf { it.isNotEmpty() && it != "null" }?.let(::parseIso),
       url = o.optString("url", "/#/"),
-      remoteUrl = o.optString("remote_url").takeIf { it.startsWith("https://") },
+      remoteUrl = claudeUrl(o.optString("remote_url")),
       tap = o.optString("tap", "auto"),
       alert = o.optString("alert").ifEmpty { null },
       snooze = token("snooze"),

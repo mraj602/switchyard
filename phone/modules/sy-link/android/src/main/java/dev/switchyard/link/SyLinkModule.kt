@@ -178,10 +178,15 @@ class SyLinkModule : Module() {
     AsyncFunction("checkUpdate") { origin: String, token: String ->
       val o = origin.trimEnd('/')
       if (!o.startsWith("https://") && !o.startsWith("http://")) throw CodedException("ERR_SY_UPDATE", "sy-link: origin must be an http(s) address", null)
+      // The token goes only to the paired hub's own origin. Without a stored origin (no link yet)
+      // the check uses GitHub alone.
+      val stored = store.origin
+      if (stored != null && !Updates.isPairedOrigin(o, stored)) throw CodedException("ERR_SY_UPDATE", "sy-link: origin is not the paired hub", null)
       val installed = ctx.packageManager.getPackageInfo(ctx.packageName, 0).longVersionCode
       try {
-        val offer = UpdateClient(OkFetcher()).check(o, token, installed, Build.VERSION.SDK_INT)
-        updateAuth = if (offer?.source == "hub") o to token else null
+        val hubOrigin = if (stored != null) stored.trimEnd('/') else null
+        val offer = UpdateClient(OkFetcher()).check(hubOrigin, if (hubOrigin != null) token else null, installed, Build.VERSION.SDK_INT)
+        updateAuth = if (offer?.source == "hub" && hubOrigin != null) hubOrigin to token else null
         offer?.toMap()
       } catch (e: UpdateException) {
         throw CodedException("ERR_SY_UPDATE", "sy-link: ${e.message}", null)

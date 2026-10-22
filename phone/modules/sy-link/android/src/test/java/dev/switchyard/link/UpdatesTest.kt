@@ -14,6 +14,15 @@ private fun manifestJson(version: String = "0.9.0", build: Int = 900, minSdk: In
   """{"v":1,"version":"$version","build":$build,"min_sdk":$minSdk,"apk":"switchyard-$version.apk","size":10,"sha256":"$sha","cert_sha256":"$cert","notes":"fixes"$extra}"""
 
 class VersionCompareTest {
+  @Test fun checkUpdateOriginMustBeThePairedHub() {
+    assertTrue(Updates.isPairedOrigin("https://hub.ts.net/", "https://hub.ts.net"))
+    assertTrue(Updates.isPairedOrigin("https://Hub.ts.net:443", "https://hub.ts.net/"))
+    assertFalse(Updates.isPairedOrigin("https://evil.example", "https://hub.ts.net"))
+    assertFalse(Updates.isPairedOrigin("https://hub.ts.net.evil.example", "https://hub.ts.net"))
+    assertFalse(Updates.isPairedOrigin("http://hub.ts.net", "https://hub.ts.net"))
+    assertFalse(Updates.isPairedOrigin("https://hub.ts.net", null))
+  }
+
   @Test fun comparesNumericallyNotAsText() {
     assertTrue(Updates.compareVersions("0.10.0", "0.9.0") > 0)
     assertTrue(Updates.compareVersions("1.0.0", "0.99.99") > 0)

@@ -250,3 +250,25 @@ class FramesTest {
     assertEquals(1, Channels.ALL.first { it.first == Channels.CONNECTION }.third)
   }
 }
+
+class RemoteUrlTest {
+  @Test fun onlyClaudeAiHttpsLinksSurvive() {
+    for (ok in listOf("https://claude.ai/code/session_1", "https://claude.ai", "https://CLAUDE.AI:443/x", "https://www.claude.ai/a?b=c")) {
+      org.junit.Assert.assertEquals(ok, Payloads.claudeUrl(ok))
+    }
+    for (bad in listOf(
+      null, "", "http://claude.ai/x", "https://evil.example/x", "https://claude.ai.evil.example/x", "https://evilclaude.ai/x",
+      "https://user@claude.ai/x", "https://claude.ai:8443/x", "https://claude.ai\\@evil.example/", "https://claude.ai/a b",
+      "intent://claude.ai/#Intent;scheme=https;end", "javascript://claude.ai/%0aalert(1)", "//claude.ai/x",
+    )) {
+      org.junit.Assert.assertNull(bad, Payloads.claudeUrl(bad))
+    }
+  }
+
+  @Test fun anAlertWithAForeignRemoteUrlKeepsNoLink() {
+    val o = org.json.JSONObject().put("v", 1).put("type", "alert").put("tap", "claude").put("remote_url", "https://evil.example/x")
+    org.junit.Assert.assertNull(Payloads.alert(o, "t")!!.remoteUrl)
+    o.put("remote_url", "https://claude.ai/code/s")
+    org.junit.Assert.assertEquals("https://claude.ai/code/s", Payloads.alert(o, "t")!!.remoteUrl)
+  }
+}
