@@ -127,9 +127,10 @@ check = first 4 characters of base32(SHA-256("sy-recovery-v1" ‖ R))
    - automatically when the hub runs on the same machine and the same state folder (merged
      mode: `sy keys init` writes the row as `active` with `confirmed_by = 'cli'` and the hub
      signature of step 3).
-     A hub database on this machine counts as merged mode only when its hub key is the key
-     of the hub this machine is connected to; an old or stopped local hub gets nothing and
-     the proposal goes to the connected hub.
+     A hub database on this machine counts as merged mode only when a hub is running on it
+     (it holds `hub.lock`) and its hub key is the key of the hub this machine is connected
+     to; a folder left from before the hub moved (which may keep the same hub key) gets
+     nothing and the proposal goes to the connected hub.
 3. **Confirmation signature.** On activation the hub adds its own signature to the
    `owner_key` document (`by: hub`, over the same bytes, 4.1) and stores it
    (`owner_key.hub_sig`). The hub uses an owner key only after checking that signature with

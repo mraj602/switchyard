@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"github.com/mraj602/switchyard/internal/client"
 	"github.com/mraj602/switchyard/internal/config"
 	hubcli "github.com/mraj602/switchyard/internal/hub/cli"
+	"github.com/mraj602/switchyard/internal/hub/hublock"
 	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
 	"github.com/mraj602/switchyard/internal/hub/store"
 	"github.com/mraj602/switchyard/internal/keys"
@@ -124,6 +126,11 @@ func realKeysEnv(stdout, stderr io.Writer) (keysEnv, error) {
 			return nil, nil, err
 		}
 		if _, err := os.Stat(db); err != nil {
+			return nil, nil, nil
+		}
+		// A hub that is not running here (a folder left from before the hub moved to another
+		// machine, which may keep the same hub key) is not merged mode.
+		if held, err := hublock.Held(filepath.Dir(db)); err != nil || !held {
 			return nil, nil, nil
 		}
 		k, err := hubkeys.Load(kp)
