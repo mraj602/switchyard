@@ -1,0 +1,251 @@
+# Install
+
+This guide takes you from a fresh clone to a working setup: `sy` on your computer, a hub,
+and more machines when you want them. The desktop app and the Android app have their own
+guides ([desktop.md](desktop.md), [android.md](android.md)).
+
+There are no published releases yet, so everything here builds from source. See
+[Releases](#releases) for what changes once they exist.
+
+## Requirements
+
+| Piece | Needs |
+| --- | --- |
+| `sy` and the hub | Go 1.27 or newer, `make`, `git`. Linux or macOS. Windows builds and runs, with gaps (below). |
+| Claude Code | Installed and on `PATH` as `claude` on every machine whose sessions you want to see. Switchyard is tested against Claude Code 2.1.296 and later. |
+| Desktop app (optional) | Node.js 22 or newer, plus Go to build the bundled `sy` |
+| Android app (optional) | Node.js 22.13 or newer, JDK 17, the Android SDK; a phone with Android 12 or newer |
+| Phone access to the hub | An `https://` address for the hub, for example from `tailscale serve` or Caddy |
+
+**Windows.** `sy` builds for Windows and the setup, hooks, status line and terminal board run
+there, but Windows is less tested than Linux and macOS (CI runs the terminal packages and a
+best-effort setup test). Peers and the owner-key commands are not available on Windows. WSL
+counts as its own Linux machine.
+
+## Words used here
+
+- **Machine:** a computer that runs Claude Code. Every machine runs `sy`.
+- **Hub:** `sy hub serve`, one process with one SQLite file. It stores records from your
+  machines, works out session states and usage, sends alerts and serves the board. It can run
+  on your laptop or on an always-on server.
+- **Board:** the hub's web page. It also installs on a phone as a web app.
+
+## 1. Build and install `sy`
+
+```sh
+git clone https://github.com/mraj602/switchyard.git
+cd switchyard
+make build                                   # writes ./dist/sy
+install -D -m 0755 dist/sy ~/.local/bin/sy   # macOS: mkdir -p ~/.local/bin && cp dist/sy ~/.local/bin/
+sy version
+```
+
+`~/.local/bin` must be on your `PATH`; Claude Code's own installer uses the same folder.
+`go install github.com/mraj602/switchyard/cmd/sy@latest` also works, but it puts `sy` in
+`~/go/bin` and leaves the version as `dev`.
+
+Before changing anything, you can look:
+
+```sh
+sy doctor                 # read-only checks; warnings about "not set up yet" are normal
+sy setup --detect         # what sy sees: Claude Code, your config folders, who is logged in where
+sy setup --dry-run        # the plan sy setup would apply; changes nothing
+```
+
+## 2. Choose where the hub runs
+
+| Setup | Hub runs on | Good for | Trade-off |
+| --- | --- | --- | --- |
+| **Laptop only** ("merged") | Your laptop, `127.0.0.1:8787`, as a user service | One computer, getting started | Alerts for servers pause while the laptop sleeps |
+| **Always-on server** | A home server, NAS or small VPS, in Docker or as a service | Several machines, laptop often closed | One more thing to run |
+
+You can start on the laptop and move the hub later without losing history
+([maintenance.md](maintenance.md#moving-the-hub)).
+
+The hub port is never published on `0.0.0.0`. Machines reach it over loopback, a Tailscale
+tailnet, or HTTPS behind a reverse proxy. A client refuses plain `http://` to any other host
+unless you pass `--insecure-lan`.
+
+## 3a. Hub on your laptop: `sy setup`
+
+`sy setup` does everything for one computer: it labels your Claude Code accounts, sets up
+sharing between them, installs the Switchyard plugin and status line, and (if you choose
+"Just this computer") installs the hub as a user service and connects this machine to it.
+
+```sh
+sy setup
+```
+
+1. **Detect.** It lists Claude Code, every config folder (`~/.claude`, `~/.claude-2`, ...)
+   and which account each is logged in to. Nothing has changed yet.
+2. **Accounts.** Pick a label and colour per folder; add new folders with `a`.
+3. **Sharing.** Choose what the folders share (settings, instructions, skills, plugins, MCP
+   servers, history, prompt history). Logins are never shared or touched.
+   See [accounts.md](accounts.md).
+4. **Hub.** Choose **Just this computer**. Setup installs the hub service
+   (systemd user unit on Linux, a LaunchAgent on macOS, a scheduled task on Windows), makes a
+   machine token, and connects this machine.
+5. **Phone and done.** It can pair a phone now if the hub has an https address, prints a
+   summary of every change and a backup id, and runs `sy doctor`.
+
+Nothing is applied until you accept the plan. Every change is backed up and can be undone
+with `sy setup --undo` (see [accounts.md](accounts.md#plans-backups-and-undo)).
+
+After setup, **restart your open Claude Code sessions** so they load the plugin. Then:
+
+```sh
+sy status                 # local sessions and their states
+sy board --once           # one frame of the board in this terminal
+sy hub owner-link         # a one-time link that signs this browser in to the board as the owner
+```
+
+On Linux, run `loginctl enable-linger "$USER"` once if you want the hub and the timer to keep
+running while you are logged out. Setup tells you when it is needed; it does not run it for you.
+
+Inside Claude Code, `/switchyard:setup` walks through the same steps: it shows the plan,
+asks you, and applies exactly that plan.
+
+## 3b. Hub on a server
+
+Pick one of these on the server. In each case the hub keeps its data in one SQLite file
+(`hub.db`); back it up ([maintenance.md](maintenance.md)).
+
+### Docker (recommended for a server)
+
+The compose file builds the image from this repository and publishes the hub on
+`127.0.0.1:8787` only.
+
+```sh
+git clone https://github.com/mraj602/switchyard.git && cd switchyard/deploy
+docker compose up -d --build
+docker compose ps                         # STATUS becomes "healthy" within about 30 s
+```
+
+To let machines on your tailnet reach it, publish it on the server's Tailscale address with
+the override file:
+
+```sh
+echo "SY_BIND=$(tailscale ip -4 | head -n1)" > .env
+docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d --build
+```
+
+Run `sy` commands for the hub inside the container, for example
+`docker compose exec hub sy hub owner-link`. Data lives in the `switchyard_hub-data` volume.
+
+### systemd user service, no Docker
+
+```sh
+make build && install -D -m 0755 dist/sy ~/.local/bin/sy
+mkdir -p ~/.config/systemd/user
+cp deploy/systemd/switchyard-hub.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now switchyard-hub.service
+loginctl enable-linger "$USER"            # keep it running without a login session
+curl -s http://127.0.0.1:8787/health
+```
+
+The unit listens on `127.0.0.1:8787`. Edit `ExecStart` to add `--public-url` (below) or to
+listen on a tailnet address with `--listen 192.0.2.10:8787 --insecure-lan` (only when the
+address is on a private network or tailnet).
+
+### HTTPS: needed for phones
+
+Phones need the hub on `https://` to install the web app, get notifications and pair the
+Android app. Machines can use plain `http://` over loopback or a tailnet.
+
+- **Tailscale:** on the hub's computer run `tailscale serve --bg 8787`. The hub is then at
+  `https://<name>.<tailnet>.ts.net` (for example `https://hub.example.ts.net`) for every
+  device on your tailnet. Enable HTTPS certificates for the tailnet in the Tailscale admin
+  console first.
+- **Caddy (public address):** keep the hub on loopback, edit the host name in
+  `deploy/Caddyfile`, point DNS at the server, open ports 80 and 443 only, and run
+  `caddy run --config deploy/Caddyfile`. The read API returns project names and session
+  text, so it is never served without a token.
+
+Then tell the hub its address, so pairing QR codes and notification links use it:
+
+- Docker: `echo "SY_PUBLIC_URL=https://hub.example.ts.net" >> .env && docker compose up -d`
+- Service: add `--public-url https://hub.example.ts.net` to `ExecStart`, then
+  `systemctl --user daemon-reload && systemctl --user restart switchyard-hub`
+
+The setting is stored in the database, so once is enough.
+
+More detail, including pulling locked-down servers over SSH from a Docker hub:
+[deploy/README.md](../../deploy/README.md).
+
+### Connect your laptop to the server's hub
+
+Run `sy setup` on the laptop and choose **Connect to my hub**, or connect by hand. The easy
+way is a one-time pairing code:
+
+1. On the hub: `sy hub pair --kind machine` (in Docker: `docker compose exec -it hub sy hub pair --kind machine`).
+   It prints a code such as `482-913` and the command to run.
+2. On the laptop: `sy connect https://hub.example.ts.net --code 482-913`
+
+Or make a token and pass it on stdin, so it never lands in your shell history:
+
+```sh
+sy machine                                             # on the laptop: prints its machine id
+sy hub token create --kind machine --name laptop --machine <id>   # on the hub; printed once
+printf '%s\n' "$TOKEN" | sy connect https://hub.example.ts.net --token-stdin   # on the laptop
+```
+
+`sy connect` checks `/health` and the token, stores the URL in `config.toml` and the token in
+the state folder (mode 0600), sends anything already queued, and installs a timer that runs
+`sy flush` every minute. Records wait in a local outbox while the hub is unreachable and are
+sent without duplicates when it is back.
+
+## 4. More machines
+
+From a computer that can already `ssh` to the new machine (with your keys, and `claude`
+installed there):
+
+```sh
+sy machine add user@server.example.com --dry-run    # prints the steps; runs only a read-only probe
+sy machine add user@server.example.com --name worker
+sy machine list
+```
+
+`sy machine add` copies `sy` over your own `ssh`, connects it to the hub, sets up its
+accounts (you may be asked to log each folder in: Claude Code prints a URL and waits for the
+code), and installs the timer. It picks how the machine reaches the hub (`--reach`):
+
+| Reach | How records travel | Use when |
+| --- | --- | --- |
+| `direct` | The machine posts to the hub over HTTPS or the tailnet | The machine can reach the hub (the default when it can) |
+| `forward` | Through an SSH port forward from your laptop | The machine can reach nothing, but you SSH to it |
+| `pull` | The hub runs `ssh <machine> sy outbox drain --stdio` every minute | A locked-down server the hub can SSH into |
+
+Remove a machine with `sy machine remove worker --revoke`. Details:
+[docs/spec/machines.md](../spec/machines.md).
+
+You can also install by hand on the machine: build `sy` there, run `sy setup`, and choose
+**Connect to my hub** with a pairing code from `sy hub pair --kind machine`.
+
+## 5. Optional pieces
+
+- **Terminal board and Claude Code pane:** `sy board` shows the board in any terminal;
+  `sy term setup --pane` adds a live pane inside Claude Code. See [board.md](board.md).
+- **Desktop app:** [desktop.md](desktop.md).
+- **Android app:** [android.md](android.md).
+- **Peers (sessions messaging across accounts and machines):** [peers.md](peers.md).
+
+## Releases
+
+Switchyard has no published release yet. Until the first one:
+
+- install `sy` from source as above, and upgrade with `git pull && make build` and the same
+  `install` line ([maintenance.md](maintenance.md));
+- build the desktop app with `make app-dist` and the Android APK yourself.
+
+The first release will publish, on GitHub Releases: `sy` archives for Linux, macOS and
+Windows (amd64 and arm64) with a `SHA256SUMS` file and GitHub build attestations, a signed
+Android APK with its signing-certificate fingerprint, and desktop app packages. From then on
+`install/install.sh` (Linux, macOS) and `install/install.ps1` (Windows) install a
+checksum-verified `sy` in one line, and `sy update` upgrades it.
+
+## Next
+
+- [accounts.md](accounts.md): accounts, labels and what the folders share.
+- [alerts.md](alerts.md): what notifies you, and where.
+- [troubleshooting.md](troubleshooting.md): when something does not show up.
