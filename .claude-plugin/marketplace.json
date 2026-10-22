@@ -1,0 +1,12 @@
+{
+  "name": "switchyard",
+  "owner": {"name": "mraj602"},
+  "metadata": {"description": "Switchyard plugins for Claude Code. Unofficial; not affiliated with Anthropic."},
+  "plugins": [
+    {
+      "name": "switchyard",
+      "source": "./plugin/switchyard",
+      "description": "Records session events and limits through the sy command, and adds /switchyard:status, setup, add-account and peers. Needs sy installed."
+    }
+  ]
+}
