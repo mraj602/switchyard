@@ -44,7 +44,7 @@ jobs:
       - run: node scripts/check-no-secrets.mjs
       # prebuild --no-install --clean into a temporary copy of phone/, then assert (phone.md P14)
       - run: node scripts/prebuild-check.mjs android
-      - run: node scripts/prebuild-check.mjs ios # wave 0 fact 2: the iOS prebuild works on Linux
+      - run: node scripts/prebuild-check.mjs ios # the iOS prebuild also runs on Linux
 
   # native compile, unsigned debug, never uploaded
   android-debug:

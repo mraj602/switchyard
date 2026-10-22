@@ -49,12 +49,17 @@ dependency or an asset is added.
    library on the classpath through expo-notifications; Switchyard never initialises it
    (docs/spec/phone.md).
 
+   Build tools and data used while building the Android app (not shipped as code in the
+   APK, listed for completeness):
+   node-forge        (BSD-3-Clause OR GPL-2.0); Switchyard uses it under BSD-3-Clause
+   lightningcss      MPL-2.0, used unmodified by the Metro bundler
+   caniuse-lite      CC-BY-4.0, browser support data, (c) Alexis Deveria and contributors
+
 4. Fonts and icons
 
-   The web board loads IBM Plex Sans and IBM Plex Mono (SIL Open Font License 1.1) from
-   Google Fonts at run time when the browser is online; the font files are not part of this
-   repository or of any build. The desktop app names the same fonts and falls back to system
-   fonts; it does not bundle them.
+   IBM Plex Sans and IBM Plex Mono, Copyright IBM Corp., licensed under the SIL Open Font
+   License 1.1. The web board serves them itself (self-hosted with its static files, together
+   with the OFL text); the desktop app names the same fonts and falls back to system fonts.
 
    Every icon and image in this repository (app/assets, app/build, phone/assets,
    webui/static/icons, scripts/icons) is original Switchyard artwork, drawn from the SVG

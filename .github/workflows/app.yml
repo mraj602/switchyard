@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The root prototype stays live until the person retires it: no change to it may land here.
+  # The legacy prototype at the repo root is frozen until it is removed: no change to it may land here.
   guard:
     runs-on: ubuntu-latest
     steps:
