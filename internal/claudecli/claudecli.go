@@ -1,9 +1,8 @@
 // Package claudecli wraps the `claude` command line that `sy setup` and `sy account` call:
 // `claude --version`, `claude auth status|login`, `claude plugin marketplace
 // add|remove|update|list`, `claude plugin install|uninstall|enable|disable|list`, and
-// `claude agents --json`. Callers depend on the Runner interface; the real implementation
-// (os/exec) is wave 1 (WP-D, other files of this package), and Fake is the in-memory
-// implementation for unit tests.
+// `claude agents --json`. Callers depend on the Runner interface; Exec is the os/exec
+// implementation and Fake the in-memory one for unit tests.
 //
 // Rules every Runner follows (setup.md 5.2, identity.md 3):
 //   - every call takes the config folder and sets CLAUDE_CONFIG_DIR to it, except for the
@@ -13,7 +12,7 @@
 //   - commands that take --json have the JSON line parsed into Result;
 //   - the real runner never reads .credentials.json.
 //
-// Contract: docs/spec/setup.md sections 3, 5.2, 8.2, 13. Phase 3.
+// Contract: docs/spec/setup.md sections 3, 5.2, 8.2, 13.
 package claudecli
 
 import (
@@ -30,7 +29,7 @@ import (
 // DefaultTimeout bounds one non-interactive `claude` call.
 const DefaultTimeout = 60 * time.Second
 
-// ErrNotImplemented is returned by stubs that wave 1 replaces.
+// ErrNotImplemented means this claude build or runner does not offer the operation.
 var ErrNotImplemented = errors.New("claudecli: not implemented")
 
 // ErrNotFound means the claude binary was not found (setup exits 7).
@@ -213,51 +212,4 @@ type Runner interface {
 
 	// Agents runs `claude agents --json` as f.
 	Agents(ctx context.Context, f Folder) ([]Agent, error)
-}
-
-// Unimplemented is a Runner whose every method returns ErrNotImplemented. It is the stand-in
-// until the real runner (WP-D) lands; embed it to implement a subset.
-type Unimplemented struct{}
-
-var _ Runner = Unimplemented{}
-
-func (Unimplemented) Version(context.Context) (VersionInfo, error) {
-	return VersionInfo{}, ErrNotImplemented
-}
-func (Unimplemented) AuthStatus(context.Context, Folder) (AuthStatus, error) {
-	return AuthStatus{}, ErrNotImplemented
-}
-func (Unimplemented) AuthLogin(context.Context, Folder, Stdio) error { return ErrNotImplemented }
-func (Unimplemented) PluginMarketplaceAdd(context.Context, Folder, string) (Result, error) {
-	return Result{}, ErrNotImplemented
-}
-func (Unimplemented) PluginMarketplaceRemove(context.Context, Folder, string) (Result, error) {
-	return Result{}, ErrNotImplemented
-}
-func (Unimplemented) PluginMarketplaceUpdate(context.Context, Folder, string) (Result, error) {
-	return Result{}, ErrNotImplemented
-}
-func (Unimplemented) PluginMarketplaceList(context.Context, Folder) ([]MarketplaceInfo, error) {
-	return nil, ErrNotImplemented
-}
-func (Unimplemented) PluginInstall(context.Context, Folder, string) (Result, error) {
-	return Result{}, ErrNotImplemented
-}
-func (Unimplemented) PluginUpdate(context.Context, Folder, string) (Result, error) {
-	return Result{}, ErrNotImplemented
-}
-func (Unimplemented) PluginUninstall(context.Context, Folder, string) (Result, error) {
-	return Result{}, ErrNotImplemented
-}
-func (Unimplemented) PluginEnable(context.Context, Folder, string) (Result, error) {
-	return Result{}, ErrNotImplemented
-}
-func (Unimplemented) PluginDisable(context.Context, Folder, string) (Result, error) {
-	return Result{}, ErrNotImplemented
-}
-func (Unimplemented) PluginList(context.Context, Folder) ([]PluginInfo, error) {
-	return nil, ErrNotImplemented
-}
-func (Unimplemented) Agents(context.Context, Folder) ([]Agent, error) {
-	return nil, ErrNotImplemented
 }

@@ -39,7 +39,7 @@ type ClaimReply struct {
 		URL     string `json:"url"`
 		Version string `json:"version"`
 	} `json:"hub"`
-	// keys.md 7.3, from F1 hubs: the hub key, the active owner key document (nil until one
+	// keys.md 7.3: the hub key, the active owner key document (nil until one
 	// is active), this device's certificate when keys were sent, and the link settings.
 	HubKey   *PublicKey `json:"hub_key"`
 	OwnerKey *keys.Doc  `json:"owner_key"`

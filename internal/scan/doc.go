@@ -5,5 +5,5 @@
 //
 // Contract: docs/spec/record.md 4.4 to 4.6.
 //
-// Phase 1. Depends on: record, outbox, identity, paths.
+// Depends on: record, outbox, identity, paths.
 package scan

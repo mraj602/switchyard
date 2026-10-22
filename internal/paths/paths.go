@@ -4,7 +4,7 @@
 //
 // Contract: docs/spec/paths.md.
 //
-// Phase 1. Depends on: nothing inside the module.
+// Depends on: nothing inside the module.
 package paths
 
 import (

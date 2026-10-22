@@ -4,5 +4,5 @@
 //
 // Contract: docs/spec/outbox.md.
 //
-// Phase 1. Depends on: record, paths.
+// Depends on: record, paths.
 package outbox

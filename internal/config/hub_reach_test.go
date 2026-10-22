@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestPhase5KeysDefaultsAndSet(t *testing.T) {
+func TestHubReachDirectPushUpdateKeys(t *testing.T) {
 	f, err := Load(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -28,7 +28,7 @@ func TestPhase5KeysDefaultsAndSet(t *testing.T) {
 		"push.direct.after_s":       {"90"},
 		"update.base_url":           {"http://127.0.0.1:9999/releases"},
 		"update.verify_attestation": {"true"},
-		"machines.hub_admin":        {"ssh oci sy"},
+		"machines.hub_admin":        {"ssh hub sy"},
 	} {
 		if err := f.Set(k, args); err != nil {
 			t.Errorf("Set %s: %v", k, err)
@@ -39,15 +39,15 @@ func TestPhase5KeysDefaultsAndSet(t *testing.T) {
 		t.Fatal(err)
 	}
 	if c.Hub.Reach != "forward" || c.Hub.Dial != "127.0.0.1:47830" || !c.Push.Direct.Enabled || c.Push.Direct.Private ||
-		c.Push.Direct.AfterS != 90 || c.Machines.HubAdmin != "ssh oci sy" || !c.Update.VerifyAttestation {
+		c.Push.Direct.AfterS != 90 || c.Machines.HubAdmin != "ssh hub sy" || !c.Update.VerifyAttestation {
 		t.Fatalf("after set: %+v", c)
 	}
 	if u := f.Unknown(); len(u) != 0 {
-		t.Fatalf("phase 5 keys reported unknown: %v", u)
+		t.Fatalf("hub, push.direct and update keys reported unknown: %v", u)
 	}
 }
 
-func TestPhase5Validation(t *testing.T) {
+func TestHubReachDialUpdateValidation(t *testing.T) {
 	f, _ := Load(t.TempDir())
 	bad := map[string][]string{
 		"hub.reach":           {"auto"},

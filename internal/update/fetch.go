@@ -513,4 +513,3 @@ func extractZip(archive, bin string, w io.Writer) error {
 	defer rc.Close()
 	return copyCapped(w, rc, bin)
 }
-

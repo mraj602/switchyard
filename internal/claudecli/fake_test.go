@@ -26,12 +26,6 @@ func TestFolderEnviron(t *testing.T) {
 	}
 }
 
-func TestUnimplemented(t *testing.T) {
-	if _, err := (Unimplemented{}).Version(context.Background()); !errors.Is(err, ErrNotImplemented) {
-		t.Fatal(err)
-	}
-}
-
 func TestFakeAuth(t *testing.T) {
 	ctx := context.Background()
 	f := NewFake()
