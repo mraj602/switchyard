@@ -142,8 +142,7 @@ without the AppIndicator extension), closing the window quits unless "Keep runni
 | Keys | Action |
 | --- | --- |
 | Ctrl/Cmd+0 | Hub tab |
-| Ctrl/Cmd+1 to 9 | Account tabs |
-| Ctrl/Cmd+, | Settings |
+| Ctrl/Cmd+1 to 9 | The first nine account tabs |
 | Ctrl/Cmd+R | Refresh usage |
 | Ctrl/Cmd+Q | Quit |
 

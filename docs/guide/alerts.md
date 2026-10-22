@@ -125,10 +125,22 @@ ntfy server avoids this.
 
 ## Quiet hours
 
-Quiet hours hold every push except `failed` and send one summary when they end ("While you
-were away: 2 sessions still need you"). Set them for the whole hub on the board (Alerts,
-owner), or per device in that device's Settings. A device can also ask for true silence, which
-holds `failed` too.
+Quiet hours hold pushes until the window ends. Rules marked as bypassing quiet hours still
+go out; only `failed` is marked that way by default. Quiet hours are off until you turn them
+on, and the default window is 23:00 to 08:00.
+
+There are two places to set them:
+
+- Hub-wide: on the board, Alerts, owner only. This is the hub's own setting.
+- Per device: in that device's Settings (the phone app or the board's Settings). With "Own
+  quiet hours" on, the device uses its own window. With it off, it follows the hub.
+
+The hours are read in a time zone. If none is set, the hub's zone is used, then UTC.
+
+When the window ends, held alerts that are still open go out as one push if there are
+several ("3 sessions need you"), or as the alert itself if there is one. The settings API
+also has a `critical: false` flag that holds `failed` too. The board and the phone app have
+no control for it.
 
 ## Private pushes
 

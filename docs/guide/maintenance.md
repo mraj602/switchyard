@@ -12,8 +12,10 @@ The hub database is the long-term record. Make a consistent copy while the hub r
 
 ```sh
 sy hub backup                          # <data>/backups/hub-<UTC time>.db
-sy hub backup --to /path/to/hub.db     # or a file of your choice
+sy hub backup --to /path/to/hub.db     # or a file of your choice (it must not exist yet)
 ```
+
+The copy is one complete file. It does not need the `-wal` file.
 
 With Docker (from `deploy/`):
 
@@ -82,12 +84,18 @@ sy doctor
 ```
 
 Running sessions pick up the new binary at their next hook; nothing needs restarting. If the hub
-runs on this machine as a user service, restart it: `systemctl --user restart switchyard-hub`
-(macOS: the hub's LaunchAgent restarts when you log out and in, or run `sy desktop hub stop` and
-`sy desktop hub start`).
+runs on this machine as a user service, restart it. On Linux:
+`systemctl --user restart switchyard-hub`. On macOS, or on either system, run
+`sy desktop hub stop` and then `sy desktop hub start`. They act on the user service that
+`sy setup --hub here` installed (a systemd user unit on Linux, a LaunchAgent on macOS), and exit 4
+if it is not installed. The desktop app's Start and Stop buttons do the same. A stopped service
+starts again at your next login.
 
-The hub migrates its database schema at start, after copying the database file, so an upgrade
-needs no manual step. A machine on an older `sy` keeps working with a newer hub; `sy doctor` says
+The hub migrates its database schema at start. Before it migrates an existing database, it
+writes a full copy next to it, `<data>/hub.db.pre-v<N>-<UTC time>.bak` (`N` is the new schema
+version). An upgrade needs no manual step. Nothing deletes these `.bak` files; remove old ones by
+hand. An older `sy` refuses a database with a newer schema, so to roll back an upgrade, restore
+that `.bak` (see "Restore the hub") and start the older `sy`. A machine on an older `sy` keeps working with a newer hub; `sy doctor` says
 when it should be updated.
 
 ### The hub in Docker
