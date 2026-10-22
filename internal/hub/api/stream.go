@@ -123,7 +123,7 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	}
 	ch, resume, cancel := s.Broker.SubscribeFrom(last, resumeFrom)
 	defer cancel()
-	kicked := s.streams.add(dev.ID)
+	kicked := s.streams.add(dev.ID, auth.ViaOf(dev))
 	defer s.streams.remove(dev.ID, kicked)
 
 	h := w.Header()
@@ -203,24 +203,27 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// streamSet is the open event streams per device id.
+// streamSet is the open event streams per device id. Each stream also remembers the device
+// its board session was opened from (auth.ViaOf): revoking a device revokes those sessions
+// too (store RevokeDeviceCascade), so kicking it ends their streams as well.
 type streamSet struct {
 	mu sync.Mutex
-	m  map[string]map[chan struct{}]struct{}
+	m  map[string]map[chan struct{}]string // device -> stream -> via
 }
 
-// add registers a stream of the device; the channel closes when the device is kicked.
-func (t *streamSet) add(device string) chan struct{} {
+// add registers a stream of the device; the channel closes when the device, or the device
+// via it was opened from, is kicked.
+func (t *streamSet) add(device, via string) chan struct{} {
 	c := make(chan struct{})
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.m == nil {
-		t.m = map[string]map[chan struct{}]struct{}{}
+		t.m = map[string]map[chan struct{}]string{}
 	}
 	if t.m[device] == nil {
-		t.m[device] = map[chan struct{}]struct{}{}
+		t.m[device] = map[chan struct{}]string{}
 	}
-	t.m[device][c] = struct{}{}
+	t.m[device][c] = via
 	return c
 }
 
@@ -233,14 +236,23 @@ func (t *streamSet) remove(device string, c chan struct{}) {
 	}
 }
 
-// kick ends every open stream of the devices.
+// kick ends every open stream of the devices and of the sessions opened from them.
 func (t *streamSet) kick(devices ...string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	gone := make(map[string]bool, len(devices))
 	for _, d := range devices {
-		for c := range t.m[d] {
-			close(c)
+		gone[d] = true
+	}
+	for d, streams := range t.m {
+		for c, via := range streams {
+			if gone[d] || (via != "" && gone[via]) {
+				close(c)
+				delete(streams, c)
+			}
 		}
-		delete(t.m, d)
+		if len(streams) == 0 {
+			delete(t.m, d)
+		}
 	}
 }

@@ -273,3 +273,37 @@ func TestLoginRefusedWhenParentRevokedInCreate(t *testing.T) {
 	}
 	_ = phone
 }
+
+// Revoking a device revokes the board sessions opened from it (login:<id>), so their open
+// streams end at once too, not at the next ping.
+func TestStreamOfBoardSessionEndsWhenItsDeviceIsRevoked(t *testing.T) {
+	h := startHub(t, "") // pings every hour: only the kick can end the stream in time
+	ctx := context.Background()
+	desk, err := auth.Create(ctx, h.st, auth.CreateRequest{Kind: "desktop", Name: "laptop", Machine: newMachineID()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	board, err := auth.Create(ctx, h.st, auth.CreateRequest{Kind: "browser", Name: "board via laptop",
+		CreatedBy: "login:" + desk.Device.ID, Parent: desk.Device.ID, Scopes: []string{"read"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner := ownerSessionToken(t, h.st)
+	ch, cancel := openStream(t, h, "", board.Token, "")
+	defer cancel()
+	next(t, ch, "hello", 2*time.Second)
+	if code, body := h.do("DELETE", "/v1/devices/"+desk.Device.ID, owner.Token, nil); code != http.StatusNoContent {
+		t.Fatalf("revoke: %d %s", code, body)
+	}
+	deadline := time.After(3 * time.Second)
+	for {
+		select {
+		case _, ok := <-ch:
+			if !ok {
+				return
+			}
+		case <-deadline:
+			t.Fatal("stream of a board session was not closed when its device was revoked")
+		}
+	}
+}
