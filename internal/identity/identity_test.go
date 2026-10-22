@@ -421,9 +421,7 @@ func fakeRunner(t *testing.T, out []byte, err error, called *[]string) Runner {
 		if _, ok := ctx.Deadline(); !ok {
 			t.Error("no timeout on auth status")
 		}
-		for _, kv := range env {
-			*called = append(*called, kv)
-		}
+		*called = append(*called, env...)
 		return out, err
 	}
 }

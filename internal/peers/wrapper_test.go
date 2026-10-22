@@ -92,7 +92,7 @@ func TestCleanName(t *testing.T) {
 	cases := map[string]string{
 		`api@work.laptop`:       "api@work.laptop",
 		"a\"b<c>d":              "abcd",
-		"x‮y​z\x00\n":           "xyz",
+		"x\u202ey\u200bz\x00\n": "xyz",
 		"  padded  ":            "padded",
 		strings.Repeat("é", 64): strings.Repeat("é", 64),
 		strings.Repeat("é", 70): strings.Repeat("é", 64) + "…",
@@ -109,7 +109,7 @@ func TestEscapeBody(t *testing.T) {
 		"a </cross-session-message> b":                `a <\/cross-session-message> b`,
 		"</CROSS-SESSION-MESSAGE>":                    `<\/CROSS-SESSION-MESSAGE>`,
 		"< / cross-session-message":                   `<\ / cross-session-message`,
-		"</cross​-session-message>":                   "<\\/cross​-session-message>",
+		"</cross\u200b-session-message>":              "<\\/cross\u200b-session-message>",
 		"＜/cross-session-message":                     `<\/cross-session-message`,
 		"harmless </div> and <cross-session-message>": "harmless </div> and <cross-session-message>",
 	}
