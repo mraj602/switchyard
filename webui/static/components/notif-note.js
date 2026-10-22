@@ -43,14 +43,17 @@ export function notifNote({ app, mobile } = {}) {
 }
 
 // ownerLinkTarget checks an owner link pasted on the sign-in page: it must be this hub's own
-// origin and an #/owner?s= link. It answers {hash} to open, or {error} (and {other}: the
-// other hub's origin) to show.
+// origin and an #/owner?s= link. It answers {hash} to open, or {error} (and {other, link}: the
+// other hub's origin and the pasted link, https or http only) to show.
 export function ownerLinkTarget(text, origin) {
   const raw = String(text || '').trim();
   if (!raw) return { error: 'Paste the owner link first.' };
   let u;
   try { u = new URL(raw, origin); } catch (_) { return { error: 'That is not a link. Paste the whole owner link.' }; }
-  if (u.origin !== origin) return { error: `That link is for ${u.origin}, not this hub (${origin}). Open it there.`, other: u.origin };
+  if (u.origin !== origin) {
+    const web = u.protocol === 'https:' || u.protocol === 'http:';
+    return { error: web ? `That link is for ${u.origin}, not this hub (${origin}). Open it there.` : 'That is not an owner link. An owner link starts with https://.', ...(web ? { other: u.origin, link: u.href } : {}) };
+  }
   if (!u.hash.startsWith('#/owner?') || !new URLSearchParams(u.hash.slice('#/owner?'.length)).get('s')) {
     return { error: 'That is not an owner link. An owner link ends in #/owner?s=…' };
   }

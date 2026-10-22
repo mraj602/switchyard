@@ -12,6 +12,7 @@ import { quietHours } from '../components/quiet.js';
 import { seatIndex, seatName } from '../components/seat.js';
 import { notifiable, targetKindText } from '../components/targets.js';
 import { clock, day, deviceLabel } from '../format.js';
+import { hashOfLink } from '../route.js';
 import { isOwner, canPush, inApp } from '../store.js';
 import { ownerHow } from '../components/notif-note.js';
 import {
@@ -269,7 +270,7 @@ function recent() {
       : list.length === 0 ? h('p', { class: 'calm' }, 'No alerts yet. They appear here when something needs you.')
       : h('ul', { class: 'panel log' }, list.map((a) => h('li', { class: 'log-row' },
         h('time', { class: 'mono small log-time', datetime: a.fired_at || a.created_at }, clock(a.fired_at || a.created_at)),
-        h('a', { class: 'log-title', href: a.url || '#/' }, a.title || TRIGGER_LABEL[a.trigger] || a.trigger),
+        h('a', { class: 'log-title', href: hashOfLink(a.url) }, a.title || TRIGGER_LABEL[a.trigger] || a.trigger),
         h('span', { class: `log-outcome out-${a.status}`, title: reasonText(a.reason) }, OUTCOME[a.status] || a.status)))),
     cancelled ? h('p', { class: 'muted small' }, '“Cancelled”: you answered in the terminal before the wait ran out, so no notification was sent.') : null);
 }

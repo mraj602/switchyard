@@ -90,7 +90,7 @@ export function sameKey(buf, b64) {
 
 // ntfy://host/topic for the ntfy app (uncertain support; the server and topic always work).
 export function ntfyLink(server, topic) {
-  try { return `ntfy://${new URL(server).host}/${topic}`; } catch (_) { return ''; }
+  try { return `ntfy://${new URL(server).host}/${encodeURIComponent(topic)}`; } catch (_) { return ''; }
 }
 
 // ---- installing the board, and the Switchyard phone app -----------------------------------

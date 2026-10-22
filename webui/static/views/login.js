@@ -59,7 +59,7 @@ function ownerLinkForm() {
       e.preventDefault();
       const t = ownerLinkTarget(input.value, location.origin);
       if (t.error) {
-        err.replaceChildren(t.error, ...(t.other ? [' ', h('a', { href: input.value.trim() }, `Open ${t.other}`)] : []));
+        err.replaceChildren(t.error, ...(t.other ? [' ', h('a', { href: t.link, rel: 'noopener noreferrer' }, `Open ${t.other}`)] : []));
         err.hidden = false;
         input.focus();
         return;

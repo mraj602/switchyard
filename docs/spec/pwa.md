@@ -283,15 +283,26 @@ therefore changes `sw.js`, which is how browsers notice an update. `/health` gai
 
 **Update flow.**
 
-1. The browser fetches `sw.js` on navigation; the page also calls `registration.update()` on
-   `visibilitychange` → visible when the last check is over an hour old (an installed iOS app
-   is often resumed, not reloaded).
+1. The browser fetches `sw.js` on navigation (the worker is registered with
+   `updateViaCache: "none"`, so neither it nor `sw-lib.js` comes from the HTTP cache); the
+   page also calls `registration.update()` at start and on `visibilitychange` → visible when
+   the last check is over 15 minutes old (an installed iOS app is often resumed, not reloaded).
 2. A new worker installs (precaches the new shell) and waits; it does **not** call
    `skipWaiting` on its own, so a running page never mixes old and new files.
 3. The page sees `registration.waiting` and shows "New version ready · Reload". Tapping it
-   posts `{type: "skip-waiting"}`; on `controllerchange` the page reloads once.
-4. If `/health`'s `ui` differs from the running build and no worker is waiting (a browser that
-   checked too early), the banner offers "Reload" too.
+   posts `{type: "skip-waiting"}`; on `controllerchange` the page reloads once (every change
+   of worker after the page had one, including the first update of a page that was opened
+   before any worker existed).
+4. The page also applies a waiting worker without a tap when that costs nothing
+   (`components/update-policy.js`): within 15 s of its own start, or while it is in the
+   background (`visibilitychange` → hidden); never while a field has focus, and not twice
+   within a minute (`sessionStorage`), so a build that cannot take over causes no reload
+   loop. An installed app that is never closed therefore moves to the new build the next
+   time it is backgrounded.
+5. If `/health`'s `ui` differs from the running build and no worker is waiting (a browser that
+   checked too early), the banner offers "Reload" too. That Reload first asks the browser to
+   update the worker and waits for it to install (at most 10 s) before taking over; a plain
+   reload would still be answered from the old worker's copy of the files.
 
 ## 5. Notifications in the service worker
 

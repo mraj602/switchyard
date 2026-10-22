@@ -40,6 +40,7 @@ const ASSETS = [
   'components/swipe.js',
   'components/targets.js',
   'components/ui.js',
+  'components/update-policy.js',
   'components/windows.js',
   'format.js',
   'icons/apple-touch-icon-180.png',

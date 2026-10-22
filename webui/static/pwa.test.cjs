@@ -133,6 +133,7 @@ test('ntfyLink', async () => {
   const { ntfyLink } = await mod('platform.js');
   assert.equal(ntfyLink('https://ntfy.sh', 'sy-abc'), 'ntfy://ntfy.sh/sy-abc');
   assert.equal(ntfyLink('not a url', 'x'), '');
+  assert.equal(ntfyLink('https://ntfy.sh', 'a/b?c'), 'ntfy://ntfy.sh/a%2Fb%3Fc');
 });
 
 test('format: untilShort style countdown helpers stay stable', async () => {
@@ -258,4 +259,16 @@ test('platform: install copy per browser', async () => {
   assert.match(installHint(UA.iphone, { ios: true }), /Add to Home Screen/);
   assert.match(installHint('Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0'), /Firefox/);
   assert.match(installHint(UA.pixel, { standalone: true }), /^Installed/);
+});
+
+test('autoApplyOk: a waiting build applies by itself only when that costs nothing', async () => {
+  const { autoApplyOk } = await mod('components/update-policy.js');
+  const base = { waiting: true, editing: false, hidden: false, pageAgeMs: 2000, sinceLastAutoMs: null };
+  assert.equal(autoApplyOk(base), true, 'just started');
+  assert.equal(autoApplyOk({ ...base, pageAgeMs: 10 * 60e3 }), false, 'in use: the banner asks');
+  assert.equal(autoApplyOk({ ...base, pageAgeMs: 10 * 60e3, hidden: true }), true, 'in the background');
+  assert.equal(autoApplyOk({ ...base, waiting: false }), false, 'nothing waiting');
+  assert.equal(autoApplyOk({ ...base, editing: true }), false, 'a field has focus');
+  assert.equal(autoApplyOk({ ...base, sinceLastAutoMs: 5000 }), false, 'no reload loop');
+  assert.equal(autoApplyOk({ ...base, sinceLastAutoMs: 120e3 }), true);
 });

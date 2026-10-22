@@ -984,6 +984,9 @@ async function pwaFlow() {
   // update: the hub switches to another build
   await fetch(BASE + '/_dev/build', { method: 'POST', body: JSON.stringify({ hash: 'ffffffffffff' }), headers: { 'Content-Type': 'application/json' } });
   await page.evaluate(() => { location.hash = '#/'; });
+  // A page this young would take the new build by itself (checked below); stop that here so the
+  // banner and its Reload button are what is tested.
+  await page.evaluate(() => sessionStorage.setItem('sy.autoUpdateAt', String(Date.now())));
   await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration()).update(); });
   try { await page.waitForSelector('.banner-update', { timeout: 8000 }); } catch (e) { fail('"New version ready" never appeared after the build changed'); }
   await shot(page, 'phone-update-banner');
@@ -992,6 +995,22 @@ async function pwaFlow() {
   await sleep(500);
   const build1 = await page.evaluate(() => new Promise((res) => { navigator.serviceWorker.addEventListener('message', (e) => e.data.type === 'build' && res(e.data.build)); navigator.serviceWorker.controller.postMessage({ type: 'build' }); }));
   if (build1 !== 'ffffffffffff' || build1 === build0) fail(`reloaded page runs build ${build1}, expected ffffffffffff (was ${build0})`);
+  // A page that has only just started applies the next build without a tap.
+  await page.evaluate(() => sessionStorage.removeItem('sy.autoUpdateAt'));
+  await fetch(BASE + '/_dev/build', { method: 'POST', body: JSON.stringify({ hash: 'eeeeeeeeeeee' }), headers: { 'Content-Type': 'application/json' } });
+  await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration()).update(); }).catch(() => {});
+  let build2 = '';
+  for (let i = 0; i < 40 && build2 !== 'eeeeeeeeeeee'; i++) {
+    await sleep(250);
+    build2 = await page.evaluate(() => new Promise((res) => {
+      const c = navigator.serviceWorker.controller;
+      if (!c) { res(''); return; }
+      navigator.serviceWorker.addEventListener('message', (e) => e.data.type === 'build' && res(e.data.build));
+      c.postMessage({ type: 'build' });
+      setTimeout(() => res(''), 500);
+    })).catch(() => '');
+  }
+  if (build2 !== 'eeeeeeeeeeee') fail(`a freshly started page did not take the new build by itself (running ${build2 || 'unknown'})`);
   await fetch(BASE + '/_dev/build', { method: 'POST', body: JSON.stringify({ hash: '' }), headers: { 'Content-Type': 'application/json' } });
   await ctx.close();
 
