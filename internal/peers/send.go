@@ -103,7 +103,9 @@ func (e Env) SendWith(c Caller, to, text string, o SendOpts) (SendResult, *Refus
 	if p, ok := e.matrix().(pauser); ok && p.Paused() {
 		return SendResult{}, &Refusal{Code: CodePaused, Detail: "peers are paused"}
 	}
-	dir := e.Directory()
+	// The hub is asked first, so the sender and the local sessions carry their canonical
+	// handles (the envelope's from.handle, the header's reply line).
+	dir, all, remoteErr := e.directoryAll()
 	var sender *Session
 	for i := range dir {
 		if dir[i].Entry.SessionID == c.Entry.SessionID {
@@ -112,15 +114,6 @@ func (e Env) SendWith(c Caller, to, text string, o SendOpts) (SendResult, *Refus
 	}
 	if sender == nil {
 		return SendResult{}, Refuse(CodeNotASession, "this session's inbox socket is not answering")
-	}
-	all := dir
-	var remoteErr error
-	if e.Remote != nil {
-		rs, err := e.Remote.Sessions()
-		if err != nil {
-			remoteErr = err
-		}
-		all = append(append([]Session(nil), dir...), rs...)
 	}
 	target, _, rf := Resolve(all, to)
 	if rf != nil {

@@ -230,8 +230,8 @@ secret is in it. Sessions of the same account are not a reason to print it (nati
 - The hub's `peers` frame lists the **other** machines' live sessions (session events in the
   last 7 days, not ended or gone) with `machine` (the name), `machine_id`, `state` and
   `device`, and no `can`: the asking agent works `can` out with its own matrix and threads,
-  like for its local sessions. The hub makes the handle the same way; an account with no seat
-  label is shown by the first 8 characters of its uuid.
+  like for its local sessions. The same frame carries `mine`: the asking machine's own
+  sessions as the hub names them (below), and each entry may carry `aliases`.
 
 - Filtered for the asking session: only sessions it may start a thread with (`can: "start"`)
   or reply to in an open thread (`can: "reply"`). `--all` (terminal only) shows the rest with
@@ -240,14 +240,36 @@ secret is in it. Sessions of the same account are not a reason to print it (nati
   to the **name part** when needed (`api-2@work.laptop`), so the `@label.machine` suffix stays
   addressable by prefix. Spaces and `@"<>` in a name, label or machine part are replaced by `-`
   or removed, so a handle never needs quoting. `name` is the registry's session name, else the project folder's base name.
+- **One handle everywhere.** Machines label the same account differently (`slots.labels`, else
+  the folder's name: the laptop's `~/.claude` is `claude`, the worker's `~/.claude-1` is
+  `claude-1`), so a handle made with the viewing machine's label would differ per machine
+  and a handle copied from one machine would not resolve on another. The **canonical**
+  handle uses the account's label at the hub: the seat's label (identity.md 5.6), else the
+  first 8 characters of the account uuid (`peers.CanonicalLabel`). The hub makes every
+  session's handle, its own `-2` included, and every machine shows exactly that one: the
+  other machines' sessions from `sessions`, its own from `mine`, matched by session id. A
+  local session the hub has not named yet takes the hub's label for its account when the
+  hub's answer has exactly one, else this machine's label; its name part is made unique
+  against the handles already taken. Without a hub (or before its first answer, or a hub
+  older than `mine`) a machine uses its own labels, as before.
+- **Aliases** (`aliases` in `list --json`, omitted when none) are the other handles of the
+  same session that still resolve (3.3): the one with the label the session's own machine
+  shows for its slot (this machine's label for a local session; the slot folder's name for
+  one elsewhere, which the hub adds, since it knows the folder), and, for a session on
+  another machine, one per label this machine shows for that account. So the laptop's
+  `personal-82@claude.laptop` and the canonical `personal-82@claude-1.mraj602` both reach the
+  same session from the worker, and the worker's own label works on the worker.
 - Same account on the same machine is listed too (`local: true`): it works through Switchyard
   as well, although Claude's native `/peers` already reaches it.
 
 ### 3.3 Addressing
 
-`sy peers send <to>` takes a handle, a unique prefix of a handle (`api-worker`, `api-worker@work`),
-a session id or a unique prefix of at least 8 characters, or `@<name>`. Ambiguous → exit 2
-listing the candidates.
+`sy peers send <to>` takes, in this order: a canonical handle; an alias (3.2); a session id;
+`@<name>`; a unique prefix of a canonical handle (`api-worker`, `api-worker@work`); a unique
+prefix of an alias; a unique prefix of a session id of at least 8 characters. Matching
+ignores case. The first step that matches decides, so a canonical handle always wins over
+another session's alias. Several matches in a step (an alias two sessions share, a prefix)
+→ ambiguous, exit 2, the line naming the candidates by their canonical handles.
 
 ## 4. Sending
 
@@ -624,6 +646,8 @@ device key** (`by: "device"`, Ed25519 over `"sy-doc-v1\npeer_envelope\n" ‖ bod
   uncertified key.
 - `exp` is at most `created_at` + 24 h; `size` is the text's length in bytes. `from.label` is
   the sender's account label, for the receiver's header line only (it decides nothing).
+  `from.handle` and `from.label` are the sender's **canonical** ones (3.2): a send asks the hub
+  for its directory first, so the sending agent has its own sessions' names from `mine`.
 - `hop` is the hop chain to carry (8.5); Switchyard has none of its own to add, so it is `""`
   unless the sending session's frame carried one.
 - A `desktop` certificate counts as a machine's (the desktop app runs the agent, keys.md
@@ -703,10 +727,10 @@ The agent connects to the target's `messagingSocketPath` and writes one line, th
 | `from` (frame and attribute) | `uds:` + the agent's reply socket for this sender (8.6), with every byte outside `A-Za-z0-9:_/.-` percent-encoded, at most 300 characters. |
 | `from-session` | The sending session id. |
 | `hop-chain` | The envelope's `hop`: comma-separated 24-hex tokens, at most 32 kept (the last ones). Omitted when empty. The agent never adds a token of its own (it has none that Claude Code computes). |
-| `from-name` | The sender's handle, with `"<>` and every control, format, surrogate and line/paragraph-separator character removed, trimmed, and cut to 64 code points; a cut name ends in `…`, as Claude Code's own cleaner does. |
+| `from-name` | The sender's canonical handle (3.2; the same handle the header's two lines name), with `"<>` and every control, format, surrogate and line/paragraph-separator character removed, trimmed, and cut to 64 code points; a cut name ends in `…`, as Claude Code's own cleaner does. |
 | `from-mode` | The envelope's `mode` (local path: the sender's session file). |
 | `from-plugin` | Omitted. |
-| Body | The `[Switchyard]` header line, the reply line, a blank line, then the text. Any `</cross-session-message` lookalike in the text is escaped as Claude Code's own builder does: the opening `<` (or a fullwidth/small look-alike of it) becomes `<\`, so `</cross-session-message` is written `<\/cross-session-message`; the match is case-insensitive and tolerates zero-width characters between letters. `internal/peers` ports a simplified form of Claude Code 2.1.300's pattern (`EscapeBody`); the E10 golden settles the rest. |
+| Body | The `[Switchyard]` header line, the reply line, a blank line, then the text. The reply line names the sender by a handle the **receiving** machine resolves: its canonical handle. The receiving agent takes it from its own last hub directory answer when that has the sender's session (cached only: asking the hub there would wait on the link the message came on), else from the envelope, which a current sender fills with its canonical handle (8.2); a sender older than canonical handles signs its own label, which the hub's folder alias (3.2) still resolves in most cases. Any `</cross-session-message` lookalike in the text is escaped as Claude Code's own builder does: the opening `<` (or a fullwidth/small look-alike of it) becomes `<\`, so `</cross-session-message` is written `<\/cross-session-message`; the match is case-insensitive and tolerates zero-width characters between letters. `internal/peers` ports a simplified form of Claude Code 2.1.300's pattern (`EscapeBody`); the E10 golden settles the rest. |
 | `file_attachments` | Never sent. |
 
 The wrapper builder is a Go port with golden tests from the lab capture (E10). If the builder's
@@ -948,7 +972,11 @@ captured on reply sockets.
 - **Unit (`internal/peers`):** matrix evaluation tables (every cell, diagonal, paused, reply
   rule, opener narrowed); `keys.Widens` (including against the version-1 baseline when a machine
   has no document); loop guard (reset by human, `max_turns` edge, 0 never refuses, pause and
-  auto-resume); `keys.TurnsWiden` (no limit is the highest value); rate buckets with the fake clock; content cleaning and the secret list
+  auto-resume); `keys.TurnsWiden` (no limit is the highest value); handles (3.2, 3.3: the hub's
+  canonical handle wins locally, an unnamed local session takes the hub's label for its
+  account, aliases for local and remote labels, no aliases without a hub, an alias two
+  sessions share is ambiguous, a canonical handle wins over an alias, the envelope and the
+  reply line carry the canonical handle; `peerlink` Names from the cached answer only); rate buckets with the fake clock; content cleaning and the secret list
   (positive and negative); wrapper builder goldens (attribute order, escaping, `from-name`
   cleaning, hop-chain cut to 32); `uds:` encoding; registry reader fixtures (torn, dead pid,
   recycled pid, `.key` files never opened, proven by the recording file system); ancestry with
@@ -989,7 +1017,11 @@ captured on reply sockets.
   `max_turns` 0, 50 unattended round trips all delivered and counted by all three parties,
   and a fast exchange stopped by the rate with a `retry in` that works; an idle target
   delivered and an ended one `target_gone`; unknown handles and the address forms across
-  machines; the hub out of reach (`hub_unreachable` for other machines, same-machine sends
+  machines; one account labelled `claude` on the laptop and `claude-1` on the worker (seat
+  label `claude-1`): both machines list the same canonical handle with the other labels as
+  aliases, sends by the canonical handle, by the laptop's form from the worker and by each
+  machine's own label all deliver, and the reply line of a delivered message, in either
+  direction and on the same machine, resolves at its receiver; the hub out of reach (`hub_unreachable` for other machines, same-machine sends
   spooled for the audit) and back; 64 KiB across machines including text that JSON escaping
   makes six times longer, one byte more `too_big`, Unicode kept and controls removed; and a
   world with no owner key (`blocked` in the list, the refusal with the fix, same-machine

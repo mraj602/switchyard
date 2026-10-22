@@ -3,17 +3,12 @@ package peers
 // List is the session list for the caller StartPID reaches (peers.md 3.2). Inside a session
 // it is what that session may reach (all is ignored there: `--all` is terminal only, 3.2);
 // at a terminal only all is allowed. asked says the list is from a session's point of view.
+// With a hub, its answer comes first, so this machine's sessions show their canonical
+// handles; when the hub cannot be asked the list shows this machine only.
 func (e Env) List(all bool) (entries []ListEntry, asked bool, rf *Refusal) {
-	dir := e.Directory()
-	var from *Session
 	caller, rf := e.Whoami()
 	switch {
 	case rf == nil:
-		for i := range dir {
-			if dir[i].Entry.SessionID == caller.Entry.SessionID {
-				from = &dir[i]
-			}
-		}
 	case rf.Code == CodeNotASession && all:
 		// A terminal: every session, no asking session.
 	case rf.Code == CodeNotASession:
@@ -21,18 +16,14 @@ func (e Env) List(all bool) (entries []ListEntry, asked bool, rf *Refusal) {
 	default:
 		return nil, false, rf
 	}
-	return e.Entries(append(dir, e.remoteSessions()...), from, from == nil), from != nil, nil
-}
-
-// remoteSessions are the other machines' sessions when the agent has a hub (none on error:
-// the list then shows this machine only).
-func (e Env) remoteSessions() []Session {
-	if e.Remote == nil {
-		return nil
+	dir, everyone, _ := e.directoryAll()
+	var from *Session
+	if rf == nil {
+		for i := range dir {
+			if dir[i].Entry.SessionID == caller.Entry.SessionID {
+				from = &dir[i]
+			}
+		}
 	}
-	rs, err := e.Remote.Sessions()
-	if err != nil {
-		return nil
-	}
-	return rs
+	return e.Entries(everyone, from, from == nil), from != nil, nil
 }

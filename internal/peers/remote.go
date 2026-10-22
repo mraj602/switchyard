@@ -19,6 +19,19 @@ type Remote interface {
 	// Log reports a same-machine delivery for the hub's audit (peer_log), spooling it while
 	// the hub is unreachable (peers.md 9.3).
 	Log(l LocalLog)
+	// Names is how the hub named every session in its last directory answer, this machine's
+	// own included, by session id (peers.md 3.2 canonical handles). It never asks the hub:
+	// nil when no answer came yet.
+	Names() map[string]HubName
+}
+
+// HubName is how the hub names one session: the canonical handle every machine shows, its
+// name part, the account's canonical label, and the aliases the hub knows (peers.md 3.2).
+type HubName struct {
+	Handle, Name, Label, Account string
+	Aliases                      []string
+	// Mine: a session of the machine that asked.
+	Mine bool
 }
 
 // Outgoing is a message to a session on another machine that passed the sender's checks.

@@ -9,20 +9,36 @@ import (
 	"github.com/mraj602/switchyard/internal/peers"
 )
 
-// fakeRemote is a hub with one session on another machine that queues every message.
-type fakeRemote struct{ sent int }
-
-func (r *fakeRemote) Sessions() ([]peers.Session, error) {
-	return []peers.Session{{Entry: peers.RegistryEntry{SessionID: "sess-r"}, Account: "acc-remote", AccountLabel: "remote",
-		Handle: "desk@remote.desk", Name: "desk", MachineName: "desk", Remote: true, Device: "dev_r", Mode: peers.ModePrompting}}, nil
+// fakeRemote is a hub with one session on another machine that queues every message. names
+// is what Names returns (the hub's naming of the last answer); the remote session takes
+// account, aliases from it when set.
+type fakeRemote struct {
+	sent    int
+	last    peers.Outgoing
+	account string
+	aliases []string
+	names   map[string]peers.HubName
 }
 
-func (r *fakeRemote) Send(peers.Outgoing) (*peers.Pending, *peers.Refusal) {
+func (r *fakeRemote) Sessions() ([]peers.Session, error) {
+	acct := r.account
+	if acct == "" {
+		acct = "acc-remote"
+	}
+	return []peers.Session{{Entry: peers.RegistryEntry{SessionID: "sess-r"}, Account: acct, AccountLabel: "remote",
+		Handle: "desk@remote.desk", Aliases: r.aliases, Name: "desk", MachineName: "desk", Remote: true, Device: "dev_r",
+		Mode: peers.ModePrompting}}, nil
+}
+
+func (r *fakeRemote) Send(o peers.Outgoing) (*peers.Pending, *peers.Refusal) {
 	r.sent++
+	r.last = o
 	return &peers.Pending{Expires: time.Now().Add(time.Hour), Wait: func(time.Duration) (peers.Final, bool) { return peers.Final{}, false }}, nil
 }
 
 func (r *fakeRemote) Log(peers.LocalLog) {}
+
+func (r *fakeRemote) Names() map[string]peers.HubName { return r.names }
 
 // The loop guard of a thread to another machine: a human prompt resets the count once, and
 // the count then runs on from there (it must not be reset again by every later send).

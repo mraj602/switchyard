@@ -91,13 +91,26 @@ func (e Env) Receive(in Incoming) ReceiveResult {
 		res.Status, res.Detail = CodeFailed, CodeFailed
 		return res
 	}
-	label := env.From.Label
+	handle, label := env.From.Handle, env.From.Label
 	if label == "" {
 		label = env.From.Account
 	}
+	// The reply line must name the sender the way this machine resolves it: the hub's
+	// canonical handle when the last directory answer has the sender (a sender older than
+	// canonical handles signs its own machine's label), else the envelope's, which a current
+	// sender takes from the same hub (peers.md 3.2, 8.5). The cache only: asking the hub here
+	// would wait on the link this message arrived on.
+	if e.Remote != nil {
+		if n, ok := e.Remote.Names()[env.From.Session]; ok && !n.Mine && n.Handle != "" {
+			handle = n.Handle
+			if n.Label != "" {
+				label = n.Label
+			}
+		}
+	}
 	w := Wrapper{
-		From: addr, FromSession: env.From.Session, Hop: HopTokens(env.Hop), FromName: env.From.Handle, FromMode: env.From.Mode,
-		Body: Header(env.From.Handle, label, in.MachineName, th.ID) + "\n\n" + clean,
+		From: addr, FromSession: env.From.Session, Hop: HopTokens(env.Hop), FromName: handle, FromMode: env.From.Mode,
+		Body: Header(handle, label, in.MachineName, th.ID) + "\n\n" + clean,
 	}
 	if err := WriteFrame(target.Entry.SocketOf(e.Runtime), NewFrame(env.Msg, target.Entry.SessionID, w)); err != nil {
 		res.Status, res.Detail = CodeFailed, CodeFailed

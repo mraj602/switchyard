@@ -155,9 +155,9 @@ func (r *Remote) Sessions() ([]peers.Session, error) {
 		if w.MachineID == r.Env.Machine.ID {
 			continue
 		}
-		s := peers.Session{Entry: peers.RegistryEntry{SessionID: w.Session}, Account: w.Account, AccountLabel: w.AccountLabel,
-			Handle: w.Handle, Name: w.Name, Project: w.Project, MachineName: w.Machine, Remote: true, State: w.State,
-			Mode: peers.ModePrompting}
+		s := peers.Session{Entry: peers.RegistryEntry{SessionID: w.Session}, Account: w.Account,
+			AccountLabel: peers.CanonicalLabel(w.AccountLabel, w.Account), Handle: w.Handle, Aliases: append([]string(nil), w.Aliases...),
+			Name: w.Name, Project: w.Project, MachineName: w.Machine, Remote: true, State: w.State, Mode: peers.ModePrompting}
 		if w.Device != nil {
 			s.Device = *w.Device
 			if b := check(s.Device, w.Machine); b != nil {
@@ -167,6 +167,30 @@ func (r *Remote) Sessions() ([]peers.Session, error) {
 		out = append(out, s)
 	}
 	return out, nil
+}
+
+// Names is peers.Remote: how the hub named every session in its last answer, this machine's
+// own (PeersReply.Mine) included. It never asks the hub, so it is safe while a message from
+// the link is being handled; nil before the first answer.
+func (r *Remote) Names() map[string]peers.HubName {
+	r.mu.Lock()
+	rep := r.cache.reply
+	r.mu.Unlock()
+	if rep == nil {
+		return nil
+	}
+	out := make(map[string]peers.HubName, len(rep.Sessions)+len(rep.Mine))
+	add := func(w peers.WireSession, mine bool) {
+		out[w.Session] = peers.HubName{Handle: w.Handle, Name: w.Name, Label: peers.CanonicalLabel(w.AccountLabel, w.Account),
+			Account: w.Account, Aliases: append([]string(nil), w.Aliases...), Mine: mine}
+	}
+	for _, w := range rep.Sessions {
+		add(w, w.MachineID == r.Env.Machine.ID)
+	}
+	for _, w := range rep.Mine {
+		add(w, true)
+	}
+	return out
 }
 
 // reachability returns the check of peers.Reachability for the machines of one directory
@@ -648,7 +672,10 @@ func (r *Remote) check(q peers.QueuedPeerMsg, now time.Time) peers.PeerResultUp 
 	if env.To.Machine != "" && env.To.Machine != r.Env.Machine.ID {
 		return peers.PeerResultUp{Status: peers.CodeRejected, Detail: peers.ReasonWrongDevice}
 	}
-	got := r.Env.Receive(peers.Incoming{Env: env, MachineName: cert.Body.Name, Open: func() (string, error) { return env.Open(box) }})
+	// The receiving env names sessions with the hub's last answer (Names, the cache only).
+	env2 := r.Env
+	env2.Remote = r
+	got := env2.Receive(peers.Incoming{Env: env, MachineName: cert.Body.Name, Open: func() (string, error) { return env.Open(box) }})
 	res := peers.PeerResultUp{Status: got.Status, Detail: got.Detail}
 	if !got.HumanAt.IsZero() {
 		res.HumanAt = got.HumanAt.UTC().Format(time.RFC3339Nano)
