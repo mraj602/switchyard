@@ -3231,12 +3231,14 @@ components:
           properties:
             session: {type: string}
             device: {type: string}
+            device_name: {type: string, description: "The device's name; empty when it is gone"}
             account: {type: string}
         to:
           type: object
           properties:
             session: {type: string}
             device: {type: string}
+            device_name: {type: string, description: "The device's name; empty when it is gone"}
             account: {type: string}
         kind: {type: string, enum: [start, reply]}
         size: {type: integer}

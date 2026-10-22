@@ -437,8 +437,8 @@ export interface PeerAuditEntry {
 export interface PeerMessage {
   id: string;
   thread: string;
-  from: { session?: string; device?: string; account?: string };
-  to: { session?: string; device?: string; account?: string };
+  from: { session?: string; device?: string; device_name?: string; account?: string };
+  to: { session?: string; device?: string; device_name?: string; account?: string };
   kind: 'start' | 'reply';
   size: number;
   local?: boolean;

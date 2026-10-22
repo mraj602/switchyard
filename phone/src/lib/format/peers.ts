@@ -151,10 +151,14 @@ export function auditWho(e: Pick<PeerAuditEntry, 'actor' | 'detail'>, label: (id
   return e.actor || '';
 }
 
+/** "claude-1 on mraj602 → claude-6 on worker": the account, and the machine when the hub names it. */
 export function messageWho(m: Pick<PeerMessage, 'from' | 'to'>, label: (id: string) => string = (x) => x): string {
-  const a = m.from?.account;
-  const b = m.to?.account;
-  return `${a ? label(a) : '?'} → ${b ? label(b) : '?'}`;
+  const side = (x: PeerMessage['from'] | undefined): string => {
+    const a = x?.account;
+    const d = x?.device_name;
+    return (a ? label(a) : '?') + (d ? ` on ${d}` : '');
+  };
+  return `${side(m.from)} → ${side(m.to)}`;
 }
 
 const OUTCOME: Record<string, string> = {

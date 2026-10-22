@@ -260,6 +260,9 @@ func TestPeersDirectoryAndMessages(t *testing.T) {
 	if msg["from"].(map[string]any)["account"] != "acc-1" || msg["status"] != "queued" || msg["final_at"] != nil {
 		t.Errorf("message %v", msg)
 	}
+	if n, ok := msg["from"].(map[string]any)["device_name"]; !ok || n != "" {
+		t.Errorf("a device the hub does not know has an empty device_name: %v", msg["from"])
+	}
 	if st, _ := h.call("GET", "/v1/peers/messages?limit=0", h.owner, nil); st != 400 {
 		t.Errorf("limit 0: %d", st)
 	}

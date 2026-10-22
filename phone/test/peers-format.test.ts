@@ -57,6 +57,7 @@ describe('audit sentences', () => {
     expect(auditWho({ actor: 'phone', detail: {} })).toBe('phone');
     expect(auditWho({ actor: 'hub', detail: { from: 'a', to: 'b' } }, (x) => x.toUpperCase())).toBe('A → B');
     expect(messageWho({ from: { account: A }, to: {} })).toBe('acct-a → ?');
+    expect(messageWho({ from: { account: A, device_name: 'mraj602' }, to: { account: 'b', device_name: 'worker' } })).toBe('acct-a on mraj602 → b on worker');
     expect(outcomeLabel('target_gone')).toBe('target gone');
     expect(sizeLabel(12)).toBe('12 B');
     expect(sizeLabel(34000)).toBe('34 KB');

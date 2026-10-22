@@ -130,11 +130,27 @@ func (s *Server) peerMessages(w http.ResponseWriter, r *http.Request) {
 		keysFail(w, err)
 		return
 	}
+	// The sending and receiving machines by name, so the board can say which device is which.
+	names := map[string]string{}
+	name := func(id string) string {
+		if id == "" {
+			return ""
+		}
+		if n, ok := names[id]; ok {
+			return n
+		}
+		d, err := s.Store().DeviceDetailByID(r.Context(), id)
+		if err != nil {
+			d.Name = ""
+		}
+		names[id] = d.Name
+		return d.Name
+	}
 	out := []map[string]any{}
 	for _, m := range rows {
 		e := map[string]any{"id": m.ID, "thread": m.Thread,
-			"from": map[string]string{"session": m.FromSession, "device": m.FromDevice, "account": m.FromAcct},
-			"to":   map[string]string{"session": m.ToSession, "device": m.ToDevice, "account": m.ToAcct},
+			"from": map[string]string{"session": m.FromSession, "device": m.FromDevice, "device_name": name(m.FromDevice), "account": m.FromAcct},
+			"to":   map[string]string{"session": m.ToSession, "device": m.ToDevice, "device_name": name(m.ToDevice), "account": m.ToAcct},
 			"kind": m.Kind, "size": m.Size, "local": m.Local, "status": m.Status, "detail": nullable(m.Detail),
 			"created_at": msTime(m.CreatedAt), "final_at": nil}
 		if m.FinalAt != 0 {
