@@ -163,7 +163,7 @@ func (e *Engine) Act(ctx context.Context, token string) (model.AlertBrief, bool,
 		}
 		return a.AlertBrief, model.ErrBadToken
 	})
-	return b, applied, err
+	return b, applied && err == nil, err // a failed commit rolls the change back
 }
 
 // actionKey returns the action-token key. It never changes once made, so it is read once

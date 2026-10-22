@@ -256,6 +256,10 @@ func (e *Engine) Start(ctx context.Context) error {
 	e.markAwake(now)
 	e.nextSweep = now.UnixMilli() // first pass sweeps
 	if err := e.startup(ctx, now); err != nil {
+		// No loop is running: let Stop return instead of waiting for it.
+		e.mu.Lock()
+		e.started = false
+		e.mu.Unlock()
 		return err
 	}
 	go e.loop()

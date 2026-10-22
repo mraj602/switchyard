@@ -13,6 +13,20 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
 
+// ssh expands %-tokens in file names, so a state folder with a % in it is written doubled.
+func TestWriteConfigEscapesPercentInPaths(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "100% state")
+	tg := store.PullTarget{ID: "pt_01JA", Name: "gpu", Host: "gpu-box", Port: 22, User: "me", HostKeys: []string{hostKeyA}}
+	if err := pull.WriteConfig(dir, []store.PullTarget{tg}); err != nil {
+		t.Fatal(err)
+	}
+	cfg, _ := os.ReadFile(filepath.Join(dir, "ssh_config"))
+	want := `UserKnownHostsFile "` + strings.ReplaceAll(filepath.Join(dir, "known_hosts"), "%", "%%") + `"`
+	if !strings.Contains(string(cfg), want) {
+		t.Fatalf("ssh_config does not escape %%:\n%s", cfg)
+	}
+}
+
 func TestWriteConfigGeneratesTheDocumentedBlock(t *testing.T) {
 	dir := t.TempDir()
 	tgs := []store.PullTarget{

@@ -166,7 +166,6 @@ func (h *harness) stop() {
 	h.eng = nil
 }
 
-// at is T0 + d.
 // tamperToken returns tok with one character in the middle of its MAC replaced by a different
 // one. Rewriting the trailing characters is not reliable: they may already hold the replacement,
 // or carry only base64 padding bits that the decoder ignores, which leaves the token valid.
@@ -181,6 +180,7 @@ func tamperToken(tok string) string {
 	return string(bad)
 }
 
+// at is T0 + d.
 func at(d time.Duration) time.Time { return T0.Add(d) }
 
 // advanceTo moves the clock to T0 + d, stepping through every scheduler timer on the way so
