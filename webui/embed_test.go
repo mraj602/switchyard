@@ -305,3 +305,16 @@ func TestBuildHashChangesWithAnyFile(t *testing.T) {
 		t.Errorf("sw.js body %q", w.Body.String())
 	}
 }
+
+func TestCSPAllowsNoOtherOrigin(t *testing.T) {
+	if strings.Contains(CSP(), "http") {
+		t.Errorf("the policy names another origin, but the board loads everything from the hub: %s", CSP())
+	}
+	b, err := fs.ReadFile(FS(), "index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "https://") {
+		t.Error("index.html links another origin (fonts are served from the hub)")
+	}
+}

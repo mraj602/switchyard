@@ -270,7 +270,7 @@ therefore changes `sw.js`, which is how browsers notice an update. `/health` gai
 | App shell: every file in `ASSETS` (a constant list in `sw.js`; a Go test checks it equals the embedded files minus tests and dev files) | Precached on `install`; served cache-first | `sy-shell-<build>` |
 | Navigations (`/`, `/index.html`) | Network first, 4 s timeout, then the cached `index.html` | shell |
 | `GET` of `/v1/me`, `/v1/overview`, `/v1/sessions`, `/v1/sessions/<id>` (last 20), `/v1/accounts`, `/v1/machines`, `/v1/alerts`, `/v1/rules`, `/v1/devices/self`, `/v1/push/config` | Network first, 6 s timeout; a 200 is stored; on failure the stored copy is returned with header `X-Sy-Cached-At: <ms>`; nothing stored → 503 JSON | `sy-data` |
-| `/v1/stream`, every non-GET, `/v1/actions/*`, cross-origin (Google Fonts) | Not intercepted (`respondWith` is not called) | — |
+| `/v1/stream`, every non-GET, `/v1/actions/*`, cross-origin | Not intercepted (`respondWith` is not called) | — |
 
 - `api.js` sees `X-Sy-Cached-At` and sets `store.offline = {since}`; the shell shows
   "Offline · showing 14:02" and disables Seen/Snooze/test buttons. The stream's existing

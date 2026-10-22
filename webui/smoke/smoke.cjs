@@ -29,7 +29,7 @@ const OWNER = process.env.OWNER_SECRET;
 const OUT = process.env.OUT_DIR;
 const CHROME = process.env.CHROME || '/usr/bin/google-chrome';
 const SIZES = [['desk', 1440, 900], ['phone', 390, 844]];
-const ANDROID = 'Mozilla/5.0 (Linux; Android 14; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36';
+const ANDROID = 'Mozilla/5.0 (Linux; Android 14; Phone X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36';
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1';
 const ASKED = 'c41e0000-0000-4000-8000-000000000003';
 const PERM = 'c41e0000-0000-4000-8000-000000000004';
@@ -58,14 +58,14 @@ async function newPage(ctx, sizeName, w, hgt, opts = {}) {
   page.tag = tag;
   page.on('console', (msg) => {
     const t = msg.text() + (msg.location().url || '');
-    if (msg.type() === 'error' && !/fonts\.g|ERR_|401|409|Failed to load resource: the server responded/.test(t)) fail(tag(`console: ${msg.text()}`));
+    if (msg.type() === 'error' && !/ERR_|401|409|Failed to load resource: the server responded/.test(t)) fail(tag(`console: ${msg.text()}`));
   });
   page.on('pageerror', (e) => fail(tag(`pageerror: ${e.message}`)));
   await page.setRequestInterception(true);
-  page.on('request', (req) => (/fonts\.(googleapis|gstatic)\.com/.test(req.url()) ? req.abort() : req.continue()));
+  page.on('request', (req) => (/^https?:/.test(req.url()) && !req.url().startsWith(BASE) ? (fail(`request to another origin: ${req.url()}`), req.abort()) : req.continue()));
   page.on('requestfailed', (req) => {
     if (page.expectOffline) return;
-    if (!/fonts\./.test(req.url()) && !/\/v1\/stream|session\/login/.test(req.url()) && !(req.failure() && /ABORTED/.test(req.failure().errorText))) {
+    if (!/\/v1\/stream|session\/login/.test(req.url()) && !(req.failure() && /ABORTED/.test(req.failure().errorText))) {
       fail(tag(`request failed: ${req.method()} ${req.url()} ${req.failure() && req.failure().errorText}`));
     }
   });
@@ -217,8 +217,8 @@ async function phoneFlow(sizeName, w, hgt) {
   if (/s=|c=/.test(addr)) fail(page.tag(`pairing left the secret in the address bar: ${addr}`));
   await shot(page, `${sizeName}-pair-done`);
   if (!(await page.cookies()).some((c) => c.name === 'sy_session')) fail(page.tag('claim did not set the sy_session cookie'));
-  // The name is editable once paired (two Android phones both guess "Pixel 9 · Chrome").
-  const typed = `Pixel 9 · Chrome (${sizeName})`;
+  // The name is editable once paired (two Android phones both guess "Phone X · Chrome").
+  const typed = `Phone X · Chrome (${sizeName})`;
   await page.$eval('[data-key=paired-name]', (e) => { e.value = ''; e.dispatchEvent(new Event('input')); });
   await page.type('[data-key=paired-name]', typed);
   await page.click('[data-key=save-name]');
@@ -538,7 +538,7 @@ async function machinesFlow(page, sizeName) {
   await want('[data-key="reach-m_vps"]', /^Collected by the hub every 1 min$/, 'pull chip');
   await want('#machine-m_gpu .kv', /1,240 waiting to send \(oldest \d+ h\)/, 'backlog with its age');
   await want('#machine-m_gpu', /0\.4\.2[\s\S]*older than hub 0\.5\.0/i, 'older version');
-  await want('#machine-m_oci', /holding 37 updates because the hub is too old/i, 'held records');
+  await want('#machine-m_cloud', /holding 37 updates because the hub is too old/i, 'held records');
   await want('[data-key="pull-state-m_vps"]', /^Collecting · failing: ssh: connect/, 'failing pull');
   await want('[data-key="alert-m_vps"]', /^Quiet-machine notification sent/, 'silent alert');
   await want('[data-key="status-m_vps"]', /^Quiet /, 'quiet status');
@@ -547,8 +547,8 @@ async function machinesFlow(page, sizeName) {
   if (first !== 'm_vps') fail(page.tag(`machines: silent machine is not first (${first})`));
 
   // Pull now (accepted), Rename, Show removed.
-  await press(page, 'pull-m_oci');
-  try { await page.waitForFunction(() => /Pulling home-box now/.test(document.body.textContent), { timeout: 4000 }); } catch (e) { fail(page.tag('Pull now showed no confirmation')); }
+  await press(page, 'pull-m_cloud');
+  try { await page.waitForFunction(() => /Pulling cloud-box now/.test(document.body.textContent), { timeout: 4000 }); } catch (e) { fail(page.tag('Pull now showed no confirmation')); }
   await page.evaluate(() => { window.prompt = () => 'gpu-renamed'; window.confirm = () => true; });
   await press(page, 'rename-m_gpu');
   try { await page.waitForFunction(() => /gpu-renamed/.test((document.querySelector('#machine-m_gpu h2') || {}).textContent || ''), { timeout: 4000 }); } catch (e) { fail(page.tag('Rename did not show the new name')); }
@@ -567,8 +567,8 @@ async function machinesFlow(page, sizeName) {
   await visit(page, sizeName, 'o-machines-states', '#/machines', '[data-key="pull-state-m_pull-frozen"]');
 
   // Remove: the card leaves the list.
-  await press(page, 'remove-m_oci');
-  try { await page.waitForFunction(() => !document.querySelector('.page > .grid-machines #machine-m_oci'), { timeout: 4000 }); } catch (e) { fail(page.tag('Remove left the card on the list')); }
+  await press(page, 'remove-m_cloud');
+  try { await page.waitForFunction(() => !document.querySelector('.page > .grid-machines #machine-m_cloud'), { timeout: 4000 }); } catch (e) { fail(page.tag('Remove left the card on the list')); }
 
   // Add machine dialog: the two commands.
   await page.evaluate(() => { location.hash = '#/more/devices'; });
