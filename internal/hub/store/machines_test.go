@@ -13,7 +13,7 @@ type machineRow struct {
 	backlogOldest  sql.NullInt64
 	backlogAt      sql.NullInt64
 	held           int
-	lastSeen, ver  sql.NullString
+	ver            sql.NullString
 	lastSeenMillis sql.NullInt64
 }
 
@@ -30,7 +30,7 @@ func readMachine(t *testing.T, s *Store, id string) machineRow {
 
 // Heartbeat writes reach, backlog_oldest and backlog_at only when it has something to say
 // (machines.md 3.4, 6.1) and leaves what a previous heartbeat stored otherwise.
-func TestHeartbeatPhase5Fields(t *testing.T) {
+func TestHeartbeatKeepsReachAndBacklogAge(t *testing.T) {
 	ctx := context.Background()
 	s, err := Open(ctx, filepath.Join(t.TempDir(), "hub.db"), Options{})
 	if err != nil {
@@ -57,7 +57,7 @@ func TestHeartbeatPhase5Fields(t *testing.T) {
 	beat(Heartbeat{LastSeen: 2000, Backlog: n(0), SyVersion: "0.4.2"})
 	r := readMachine(t, s, m)
 	if r.reach.Valid || r.held != 0 || r.backlogOldest.Valid {
-		t.Fatalf("after a phase 4 heartbeat: %+v", r)
+		t.Fatalf("after a heartbeat with nothing to say: %+v", r)
 	}
 	if !r.backlogAt.Valid || r.backlogAt.Int64 != 2000 {
 		t.Fatalf("a backlog report sets backlog_at: %+v", r)
