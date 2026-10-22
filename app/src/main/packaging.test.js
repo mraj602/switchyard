@@ -15,10 +15,15 @@ const yml = readFileSync(appDir + 'electron-builder.yml', 'utf8');
 const pkg = JSON.parse(readFileSync(appDir + 'package.json', 'utf8'));
 const afterPack = require('../../build/after-pack.cjs');
 
+test('electron-builder.yml parses (electron-builder reads it with js-yaml)', () => {
+  const cfg = require('js-yaml').load(yml);
+  assert.match(cfg.linux.synopsis, /^Unofficial /);
+});
+
 test('electron-builder.yml: no publishing, no signing, no updater', () => {
   assert.match(yml, /^publish: null$/m);
   // Public builds say what they are: unofficial, and no one else's publisher info.
-  assert.match(yml, /synopsis: Unofficial /);
+  assert.match(yml, /synopsis: "Unofficial /);
   assert.match(yml, /Not affiliated with, endorsed by or sponsored by Anthropic/);
   assert.equal(pkg.license, 'Apache-2.0');
   assert.ok(pkg.author);

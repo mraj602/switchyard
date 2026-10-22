@@ -55,7 +55,7 @@ linux:
   # libnotify desktop-entry hint; the .desktop file has that name and StartupWMClass, so GNOME
   # and KDE match the window, the dock and notifications to it (and show its icon).
   syncDesktopName: true
-  synopsis: Unofficial desktop app for Switchyard: Claude account tabs, web usage and the hub board (not affiliated with Anthropic)
+  synopsis: "Unofficial desktop app for Switchyard: Claude account tabs, web usage and the hub board (not affiliated with Anthropic)"
   description: Unofficial, self-hosted tool. Not affiliated with, endorsed by or sponsored by Anthropic. Claude and claude.ai are trademarks of Anthropic.
   maintainer: Switchyard contributors <noreply@switchyard.invalid>
 
