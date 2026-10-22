@@ -209,7 +209,7 @@ func TestPeersDirectoryAndMessages(t *testing.T) {
 	now := time.Now().UnixMilli()
 	const machine = "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K"
 	err := h.st.Write(ctx, func(tx *store.Tx) error {
-		if _, err := tx.EnsureMachine(machine, "worker", now); err != nil {
+		if _, err := tx.EnsureMachine(machine, "gpu-box", now); err != nil {
 			return err
 		}
 		seat, err := tx.UpsertSeat(store.SeatKey{Account: "acc-1", Org: "org-1"}, now)
@@ -241,7 +241,7 @@ func TestPeersDirectoryAndMessages(t *testing.T) {
 		t.Fatalf("peers: %d %v", st, m)
 	}
 	s := ss[0].(map[string]any)
-	if s["handle"] != "api@work.worker" || s["machine"] != machine || s["machine_name"] != "worker" || s["agent"] != false || s["state"] != "working" {
+	if s["handle"] != "api@work.gpu-box" || s["machine"] != machine || s["machine_name"] != "gpu-box" || s["agent"] != false || s["state"] != "working" {
 		t.Errorf("session %v", s)
 	}
 	st, m = h.call("GET", "/v1/peers/messages?session=sess-1", h.owner, nil)
