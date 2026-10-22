@@ -24,15 +24,18 @@ export function proposerName(pending, devices) {
 
 // One device's certification: certified (the owner key signed its certificate) or hub-signed
 // only (it works, but is not owner-certified yet: keys.md 4.2).
+// A phone needs only the hub signature (keys.md 4.2: the hub learned its keys under the QR seal),
+// so it is never waiting for sy keys certify.
 export function certState(dev) {
-  return dev && dev.keys && dev.keys.owner_signed ? 'certified' : 'hub-signed';
+  if (dev && dev.keys && dev.keys.owner_signed) return 'certified';
+  return dev && dev.kind === 'phone' ? 'phone' : 'hub-signed';
 }
-export const CERT_WORD = { certified: 'Certified', 'hub-signed': 'Hub-signed only' };
+export const CERT_WORD = { certified: 'Certified', phone: 'Hub-signed (enough for a phone)', 'hub-signed': 'Hub-signed only' };
 
 export const CERTIFY_HINT = 'Run sy keys certify --all on the owner machine.';
 
 // The devices that still need certifying.
-export const uncertifiedList = (devices) => (devices || []).filter((d) => certState(d) !== 'certified');
+export const uncertifiedList = (devices) => (devices || []).filter((d) => certState(d) === 'hub-signed');
 export const uncertified = (devices) => uncertifiedList(devices).length;
 
 export const INIT_CMD = 'sy keys init';

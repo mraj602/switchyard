@@ -238,7 +238,7 @@ settings shows (the app embeds the board; it has no keys screen of its own). The
   normal terminal, with a copy button); a proposal waiting (the fingerprint in groups of four,
   who proposed it and when, "Is this the fingerprint your terminal printed?", the 24-hour expiry,
   and **Yes, it matches: confirm** for an owner session); owner key active but machines
-  hub-signed only (`sy keys certify --all` with a copy button, and which machines are waiting);
+  hub-signed only (`sy keys certify --all` with a copy button, and which machines are waiting; a phone is never waiting, as its hub signature is enough, keys.md 4.2);
   all certified ("Peers between machines can now message each other"). The API does not say which
   machines have pinned the owner key, so there is no pin step. A replacement proposal while a key
   is active is shown under "A new owner key is waiting to replace this one".

@@ -45,6 +45,9 @@ test('certification: certified or hub-signed only', () => {
   assert.equal(K.uncertified([cert, plain, plain]), 2);
   assert.equal(K.uncertifiedList([cert, plain])[0].id, 'b');
   assert.equal(K.uncertified(undefined), 0);
+  const phone = { id: 'p', kind: 'phone', keys: {} };
+  assert.equal(K.certState(phone), 'phone');
+  assert.equal(K.uncertified([cert, phone]), 0);
   assert.equal(K.CERT_WORD['hub-signed'], 'Hub-signed only');
   assert.match(K.CERTIFY_HINT, /sy keys certify --all/);
 });

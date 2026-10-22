@@ -117,7 +117,7 @@ function deviceRows(k) {
     const c = certState(d);
     return h('div', { class: 'row status-row', 'data-key': `key-dev-${d.id}` },
       h('span', { class: 'row-text' }, h('b', {}, d.name), h('span', { class: 'muted small' }, d.kind)),
-      h('span', { class: c === 'certified' ? 'status-ok' : 'status-warn', 'data-state': c }, CERT_WORD[c]));
+      h('span', { class: c !== 'hub-signed' ? 'status-ok' : 'status-warn', 'data-state': c }, CERT_WORD[c]));
   }));
 }
 
