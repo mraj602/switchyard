@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# CI guard (docs/phases/6.md "CI job design"): the root Electron prototype stays live until the
-# person retires it, so no commit on this branch may change it. Lists
+# CI guard: the root Electron prototype (the legacy app that predates app/) is kept as it is
+# until it is retired, so no commit on this branch may change it. Lists
 # `git diff --name-only <base>...HEAD` and fails on any prototype path.
 #
 #   app/scripts/check-prototype-untouched.sh [<base>]     (default base: origin/main)
 #
 # Skipped when the head commit's message carries [prototype-retire], which is reserved for the
-# person's own manual retirement commit.
+# maintainer's own retirement commit.
 set -euo pipefail
 
 base="${1:-origin/main}"
@@ -32,7 +32,7 @@ bad="$(printf '%s\n' "$changed" | grep -E "${protected_dirs}|${protected_files}"
 if [ -n "$bad" ]; then
   echo "check-prototype-untouched: these prototype files changed since ${base}:" >&2
   printf '  %s\n' $bad >&2
-  echo "The prototype stays as it is until it is retired (docs/phases/6.md)." >&2
+  echo "The legacy prototype stays as it is until it is retired." >&2
   exit 1
 fi
 echo "check-prototype-untouched: no prototype file changed since ${base}"

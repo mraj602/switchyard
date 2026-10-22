@@ -1,4 +1,4 @@
-// Partition names and the user agent of an account tab (C1, C2). Owned by WP-B.
+// Partition names and the user agent of an account tab (C1, C2).
 
 import { TAB_ID_RE, TAB_PARTITION_PREFIX } from '../../shared/constants.js';
 
@@ -20,8 +20,10 @@ const PLATFORM_TOKEN = {
 };
 
 /**
- * A plain Chrome user agent that names the real platform (Cloudflare treats the `Electron/x`
- * token as a bot signal; the prototype said X11 Linux on every OS).
+ * A plain Chrome user agent that names the real platform. claude.ai's bot protection
+ * (Cloudflare) rejects Electron's default user agent, which carries an `Electron/x` token, so
+ * account tabs send the ordinary Chrome one instead. Policy note: the tab therefore identifies
+ * itself as Chrome, not as Switchyard.
  * @param {{platform: string, chrome: string}} p  chrome = process.versions.chrome
  */
 export function userAgentFor({ platform, chrome }) {

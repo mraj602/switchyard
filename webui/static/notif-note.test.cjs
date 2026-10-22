@@ -43,6 +43,14 @@ test('a pasted owner link must be for this hub', () => {
   const other = ownerLinkTarget('https://other.example/#/owner?s=abcdefghijklmnopqrstuv', o);
   assert.match(other.error, /not this hub/);
   assert.equal(other.other, 'https://other.example');
+  assert.equal(other.link, 'https://other.example/#/owner?s=abcdefghijklmnopqrstuv');
+  // Only an http(s) link is offered as a link to follow (never javascript: or data:).
+  for (const bad of ['javascript:alert(1)', 'data:text/html,x']) {
+    const r = ownerLinkTarget(bad, o);
+    assert.ok(r.error, bad);
+    assert.equal(r.other, undefined, bad);
+    assert.equal(r.link, undefined, bad);
+  }
   assert.match(ownerLinkTarget(`${o}/#/pair?s=x&c=1`, o).error, /not an owner link/);
   assert.match(ownerLinkTarget(`${o}/#/owner`, o).error, /not an owner link/);
   assert.match(ownerLinkTarget('', o).error, /Paste/);

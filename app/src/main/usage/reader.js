@@ -2,7 +2,6 @@
 // lint allows executeJavaScript only here). It reads the same endpoints claude.ai's Settings →
 // Usage page uses, from inside that tab's own session, from an isolated world (1001). It reads
 // numbers only: no chats, no cookies. Undocumented endpoints: they may change without notice.
-// Owned by WP-B.
 
 import { ACTIVE_ORG_COOKIE, READER_MAX_BYTES, READER_WORLD_ID, STOP_STATUSES, UUID_PATTERN } from '../../shared/constants.js';
 import { ACCOUNT_KEYS, ORG_KEYS, pickKeys } from '../../shared/record.js';

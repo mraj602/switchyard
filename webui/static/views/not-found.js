@@ -1,4 +1,4 @@
-// Any hash route the board does not know: say so, and offer the way back (G6).
+// Any hash route the board does not know: say so, and offer the way back.
 
 import { h } from '../components/dom.js';
 

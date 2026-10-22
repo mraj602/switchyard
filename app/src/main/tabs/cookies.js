@@ -1,5 +1,5 @@
 // Cookie flushing: `cookies.flushStore()` every 30 s and before quitting, so a crash never
-// costs a login (Chromium writes cookies lazily). Owned by WP-B.
+// costs a login (Chromium writes cookies lazily).
 
 export const FLUSH_INTERVAL_MS = 30_000;
 

@@ -4,6 +4,7 @@
 // State lives in `pwa`; call subscribe(fn) to redraw when it changes.
 
 import { getHealth } from './api.js';
+import { autoApplyOk } from './components/update-policy.js';
 
 export const pwa = {
   supported: 'serviceWorker' in navigator,
@@ -41,22 +42,61 @@ export const updateReady = () =>
   pwa.waiting || (!!pwa.build && !!pwa.hubBuild && pwa.build !== pwa.hubBuild);
 
 // Take over with the waiting worker; the page reloads once on controllerchange. Without a
-// waiting worker (the build check above), just reload.
+// waiting worker (the build check above), ask the browser for the new worker first: a plain
+// reload would still be answered by the old worker's copy of the files.
 let reloading = false;
-export function applyUpdate() {
-  const w = pwa.registration && pwa.registration.waiting;
-  if (w) w.postMessage({ type: 'skip-waiting' });
+export async function applyUpdate() {
+  const reg = pwa.registration;
+  if (!reg) { location.reload(); return; }
+  if (!reg.waiting) { try { await reg.update(); } catch (_) { /* offline */ } }
+  const inst = reg.installing;
+  if (!reg.waiting && inst) {
+    await Promise.race([
+      new Promise((resolve) => {
+        const done = () => { if (['installed', 'activated', 'redundant'].includes(inst.state)) resolve(); };
+        inst.addEventListener('statechange', done);
+        done();
+      }),
+      new Promise((resolve) => setTimeout(resolve, 10e3)),
+    ]);
+  }
+  if (reg.waiting) reg.waiting.postMessage({ type: 'skip-waiting' });
   else location.reload();
+}
+
+const PAGE_START = Date.now();
+const AUTO_KEY = 'sy.autoUpdateAt';
+const editing = () => {
+  const a = document.activeElement;
+  return !!a && (a.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(a.tagName));
+};
+function lastAutoAge() {
+  try { const t = Number(sessionStorage.getItem(AUTO_KEY)); return t ? Date.now() - t : null; } catch (_) { return null; }
+}
+
+// Apply a waiting update without a click when that costs nothing (see update-policy.js).
+export function applyIfIdle() {
+  const w = pwa.registration && pwa.registration.waiting;
+  const ok = autoApplyOk({
+    waiting: !!w, editing: editing(), hidden: document.visibilityState === 'hidden',
+    pageAgeMs: Date.now() - PAGE_START, sinceLastAutoMs: lastAutoAge(),
+  });
+  if (!ok) return false;
+  try { sessionStorage.setItem(AUTO_KEY, String(Date.now())); } catch (_) { /* no storage */ }
+  applyUpdate();
+  return true;
 }
 
 function watch(reg) {
   const track = (w) => {
     if (!w) return;
-    const check = () => { if (w.state === 'installed' && navigator.serviceWorker.controller) { pwa.waiting = true; emit(); } };
+    const check = () => {
+      if (w.state === 'installed' && navigator.serviceWorker.controller) { pwa.waiting = true; emit(); applyIfIdle(); }
+    };
     w.addEventListener('statechange', check);
     check();
   };
-  if (reg.waiting && navigator.serviceWorker.controller) { pwa.waiting = true; emit(); }
+  if (reg.waiting && navigator.serviceWorker.controller) { pwa.waiting = true; emit(); applyIfIdle(); }
   track(reg.installing);
   reg.addEventListener('updatefound', () => track(reg.installing));
 }
@@ -80,12 +120,15 @@ export async function initPwa() {
   window.addEventListener('appinstalled', () => { pwa.installEvent = null; emit(); });
   if (!pwa.supported) return;
 
-  const hadController = !!navigator.serviceWorker.controller;
+  let hadController = !!navigator.serviceWorker.controller;
   pwa.controlled = hadController;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    pwa.controlled = !!navigator.serviceWorker.controller;
-    // The first activation claims the page: nothing to reload. An update the user asked for does.
-    if (hadController && !reloading) { reloading = true; location.reload(); }
+    const was = hadController;
+    hadController = !!navigator.serviceWorker.controller;
+    pwa.controlled = hadController;
+    // The first activation claims the page: nothing to reload. Every later change of worker is
+    // an update, and the page reloads once to load its files.
+    if (was && !reloading) { reloading = true; location.reload(); }
     else { askBuild(); emit(); }
   });
   navigator.serviceWorker.addEventListener('message', (e) => {
@@ -94,7 +137,7 @@ export async function initPwa() {
   });
 
   try {
-    pwa.registration = await navigator.serviceWorker.register('sw.js', { scope: '/' });
+    pwa.registration = await navigator.serviceWorker.register('sw.js', { scope: '/', updateViaCache: 'none' });
   } catch (_) {
     pwa.supported = false; // insecure context or blocked
     emit();
@@ -107,6 +150,7 @@ export async function initPwa() {
 
   // An installed iOS app is often resumed, not reloaded.
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && Date.now() - pwa.checkedAt > 3600e3) checkForUpdate();
+    if (document.visibilityState === 'hidden') applyIfIdle();
+    else if (Date.now() - pwa.checkedAt > 900e3) checkForUpdate();
   });
 }

@@ -1,6 +1,5 @@
 // Shared constants of the desktop app (docs/spec/desktop.md). Pure data: no Node, no
 // Electron, so main, the renderer (served from app://shell/shared/) and tests all import it.
-// Wave 0 owns this file; a change goes to desktop.md first.
 
 // ---- C1 folders and identity
 
@@ -35,7 +34,7 @@ export const PROTOTYPE_DESKTOP_ENTRY = 'switchyard.desktop';
 /** The prototype's hook port: never bound, never connected to. */
 export const PROTOTYPE_HOOK_PORT = 47821;
 
-/** Command-line flags (C1, WP-E, WP-F). */
+/** Command-line flags (C1). */
 export const FLAG_BACKGROUND = '--background';
 export const FLAG_AUTOSTART = '--autostart'; // --autostart=on|off
 

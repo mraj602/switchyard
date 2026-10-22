@@ -12,13 +12,13 @@ type Data struct {
 	Seats    []M
 	Sessions []M
 	Machines []M
-	// StateMachines (fixtures_p5.go): one machine per pull state, appended to Machines by
+	// StateMachines (fixtures_machines.go): one machine per pull state, appended to Machines by
 	// POST /_dev/pull-states.
 	StateMachines []M
 	// SelfMachine is the machine id the signed-in device is bound to (DELETE answers 409 for it); empty by default.
 	SelfMachine string
 
-	// Phase 4 (fixtures_p4.go).
+	// Identity, devices and push (fixtures_devices.go).
 	Alerts   []M // full Alert objects, any order
 	Devices  []M
 	Targets  []M // PushTarget objects; "device" names the owning device
@@ -161,8 +161,8 @@ func Fixtures(now time.Time) *Data {
 			"backlog": 212, "silent": true, "live_sessions": 1,
 			"slots": []M{{"folder": "~/.claude", "launcher": "claude", "seat": "seat_personal", "logged_in": true, "claude_version": "2.1.280"}}},
 	}
-	d.phase4(now)
-	d.phase5(now)
+	d.deviceFixtures(now)
+	d.machineFixtures(now)
 	return d
 }
 

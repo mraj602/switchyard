@@ -1,6 +1,6 @@
 // Pure formatting helpers for the shell (percent, reset times in local time, relative times).
 // No Node, no DOM: the renderer imports it from app://shell/shared/format.js, tests from disk.
-// Owned by WP-D. Times are RFC 3339 strings; every function returns '' (or '–' for a percent)
+// Times are RFC 3339 strings; every function returns '' (or '–' for a percent)
 // when the input is missing or unparseable, so a view never prints "NaN" or "Invalid Date".
 
 const MIN = 60e3;

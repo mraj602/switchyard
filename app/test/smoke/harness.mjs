@@ -1,4 +1,4 @@
-// Helpers for the Electron smoke tests (docs/phases/6.md "Electron smoke") and the packaged e2e.
+// Helpers for the Electron smoke tests (docs/spec/desktop.md) and the packaged e2e.
 //
 // Every run lives in a temp folder: HOME, SY_HOME, the XDG folders, SY_APP_USER_DATA and the
 // D-Bus address all point into it, so nothing touches the real home, the real ~/.claude*, the

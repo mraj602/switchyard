@@ -91,7 +91,7 @@ async function guarded(fn) {
     store.errorStatus = e.status || 0;
     // The live badge belongs to the stream alone (openStream's onStatus): a read that failed
     // (a 404 for a deleted session, a 403, even a network error) says nothing about the open
-    // stream, and nothing would set the badge back to live while it stays open (UI audit G5).
+    // stream, and nothing would set the badge back to live while it stays open.
     emit();
     return undefined;
   }
@@ -312,7 +312,7 @@ export async function start() {
     onStatus: (s) => {
       if (store.live === s) return;
       if (s !== 'live' && store.live === 'live') {
-        // A short drop is normal: the badge says "Reconnecting…" only once it lasts (G5).
+        // A short drop is normal: the badge says "Reconnecting…" only once it lasts.
         clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(emit, RECONNECT_GRACE + 100);
         // The hub ends a revoked device's stream at once: ask now whether this sign-in still

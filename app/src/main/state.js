@@ -2,16 +2,16 @@
 // and the selected view, and pushes it to the shell debounced 100 ms. Never holds tokens or
 // secrets: every field is copied by name from the bus payloads, nothing is passed through.
 //
-// Owned by WP-A. Contract: docs/spec/desktop.md C3 ShellState. It registers the two A
+// Contract: docs/spec/desktop.md C3 ShellState. It registers the two
 // channels: state:get (the snapshot) and view:select (window.select, then a push).
 //
 // Where each part comes from:
-// - tabs: bus 'tabs' (TabInfo, B), in that order, merged with the newest bus 'usage' payload of
-//   each tab (B) and the seat label and colour from hub.seats() (C) when the tab's seat
+// - tabs: bus 'tabs' (TabInfo), in that order, merged with the newest bus 'usage' payload of
+//   each tab and the seat label and colour from hub.seats() when the tab's seat
 //   {account, org} matches a hub seat.
 // - view: window.selected().
-// - hub: bus 'hub' (HubState, C); needs_you from bus 'needs_you' when newer.
-// - settings: bus 'settings' (E), else the stored settings (store.get().settings) with
+// - hub: bus 'hub' (HubState); needs_you from bus 'needs_you' when newer.
+// - settings: bus 'settings', else the stored settings (store.get().settings) with
 //   autostart false.
 // - banners: setBanner(key, banner|null), for notices main wants to keep on screen.
 // - about: deps.about (app, Electron and Chromium versions, platform), when boot gives it.
@@ -120,7 +120,7 @@ export function tabState(info, usage, seats, infos = []) {
     seat: !mismatch && typeof look?.id === 'string' && SEAT_ID_RE.test(look.id) ? look.id : null,
     reading,
     // C5: shown once a tab could read (signed in) and the accepted version is older, unless
-    // the person said "Not now" (reading off).
+    // the user said "Not now" (reading off).
     needs_warning: signedIn && reading !== READING_OFF && accepted < WARNING_VERSION,
     send_to_hub: info.send_to_hub !== false,
     read_state: readState,

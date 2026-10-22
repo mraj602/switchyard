@@ -77,7 +77,7 @@ var scenarios = map[string]func(d *Data, now time.Time){
 	},
 	// Two accounts whose emails start the same, with no labels: the board must tell them apart.
 	"collide": func(d *Data, now time.Time) {
-		emails := map[string]string{"seat_personal": "you@work.example", "seat_work": "you@example.com", "seat_client": "mraj602@gmail.com"}
+		emails := map[string]string{"seat_personal": "alex.kim@work.example", "seat_work": "alex.kim@mail.example", "seat_client": "akim@mail.example"}
 		for _, s := range d.Seats {
 			if e, ok := emails[s["id"].(string)]; ok {
 				s["email"], s["label"] = e, nil

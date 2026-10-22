@@ -1,9 +1,9 @@
 // What platform is this? Pure functions over a user-agent string and a few flags, so node
 // can test them (pwa.md 7). Nothing here touches the DOM at import.
 
-// Guess "iPhone · Safari" or "Pixel 9 · Chrome" for the device name sent when pairing.
+// Guess "iPhone · Safari" or "Phone X · Chrome" for the device name sent when pairing.
 export function deviceName(ua = '', uaData = null) {
-  // A scripted browser says so in its user agent; name it for what it is (DV1).
+  // A scripted browser says so in its user agent; name it for what it is.
   if (/HeadlessChrome\//.test(ua)) return 'Headless Chrome';
   const brand = (() => {
     if (/Edg(e|A|iOS)?\//.test(ua)) return 'Edge';
@@ -88,14 +88,14 @@ export function sameKey(buf, b64) {
   return bytesToUrlBase64(buf) === b64.replace(/=+$/, '');
 }
 
-// ntfy://host/topic for the ntfy app (uncertain support; the server and topic always work).
+// ntfy://host/topic opens the ntfy app on devices that register that scheme; the server and topic shown beside it work everywhere.
 export function ntfyLink(server, topic) {
-  try { return `ntfy://${new URL(server).host}/${topic}`; } catch (_) { return ''; }
+  try { return `ntfy://${new URL(server).host}/${encodeURIComponent(topic)}`; } catch (_) { return ''; }
 }
 
 // ---- installing the board, and the Switchyard phone app -----------------------------------
 
-// How to install the board as an app in this browser (SE3), or '' when the page itself can
+// How to install the board as an app in this browser, or '' when the page itself can
 // offer the install prompt. `ios` and `standalone` come from the page.
 export function installHint(ua = '', { ios = false, standalone = false } = {}) {
   if (standalone) return 'Installed: you are running the app.';

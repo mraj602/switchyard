@@ -20,11 +20,11 @@ const TITLE = { phone: 'Add a phone', machine: 'Add a machine', desktop: 'Add th
 
 export async function load({ route }) {
   st.error = null;
-  // Only the owner may list devices; anyone else would get a 403 (DV5).
+  // Only the owner may list devices; anyone else would get a 403.
   if (!isOwner()) { again(); return; }
   try { st.devices = (await listDevices()).devices; } catch (e) { if (e.name !== 'AuthError') st.error = e.message; }
   // A link (?add=phone) opens the dialog, but a code is made only on a click: reloading or
-  // going Back must not make another one (DV4).
+  // going Back must not make another one.
   const add = route.query.get('add');
   if (KINDS.includes(add) && !(st.dialog && st.dialog.kind === add)) st.dialog = { kind: add, ask: true };
   again();
@@ -153,7 +153,7 @@ function dialog() {
       h('p', { class: 'muted small' }, 'Expires in ', h('span', { 'data-countdown': '' }, countdown(d.left || 0)), ' · works once'),
     ];
     // Only a phone can use the QR code and the link; a machine or the desktop app takes the
-    // code through a command (DV2).
+    // code through a command.
     body = d.kind === 'phone'
       ? h('div', { class: 'pair-box' },
         qrSvg(c.qr, 'QR code to pair'),
@@ -219,7 +219,7 @@ function deviceRow(d, now, all) {
     if (!name || name === d.name) return;
     patchDevice(d.id, { name: name.trim() }).then((u) => { Object.assign(d, u); again(); }).catch((ex) => toast(ex.message));
   };
-  // Created time and address tell apart two devices with the same name (DV1).
+  // Created time and address tell apart two devices with the same name.
   return h('li', { class: `dev-row${d.revoked_at ? ' is-revoked' : ''}`, 'data-device': d.id },
     h('div', { class: 'dev-main' },
       h('div', { class: 'strong', 'data-key': `dev-name-${d.id}` }, label, d.current ? h('span', { class: 'tag' }, 'this device') : null),

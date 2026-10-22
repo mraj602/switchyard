@@ -5,6 +5,13 @@
   "version": "0.6.0",
   "description": "Switchyard desktop app: claude.ai account tabs, web usage and the hub board. Unofficial; not affiliated with Anthropic.",
   "license": "Apache-2.0",
+  "author": "Switchyard contributors",
+  "homepage": "https://github.com/mraj602/switchyard",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mraj602/switchyard.git",
+    "directory": "app"
+  },
   "private": true,
   "type": "module",
   "main": "src/main/index.js",

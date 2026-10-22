@@ -1,4 +1,4 @@
-// A scripted hub and a fake `sy` for unit tests (WP-C). Plain Node, no Electron.
+// A scripted hub and a fake `sy` for unit tests. Plain Node, no Electron.
 //
 //   const hub = await startFakeHub();            // listens on 127.0.0.1:<port>
 //   hub.url                                       // 'http://127.0.0.1:<port>'

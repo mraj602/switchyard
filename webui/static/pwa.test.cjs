@@ -21,7 +21,7 @@ const mod = async (f) => {
 };
 
 const UA = {
-  pixel: 'Mozilla/5.0 (Linux; Android 14; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
+  android: 'Mozilla/5.0 (Linux; Android 14; Phone X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
   reduced: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
   iphone: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
   iphoneOld: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.3 Mobile/15E148 Safari/604.1',
@@ -51,7 +51,7 @@ test('parseRoute covers every screen', async () => {
   assert.deepEqual(r('#/owner?s=xyz'), ['owner', 'owner', '']);
   assert.deepEqual(r('#/alerts/al_9'), ['alertRedirect', 'alerts', 'al_9']);
   assert.deepEqual(r('#/login'), ['login', 'login', '']);
-  // Unknown routes show "page not found" instead of quietly showing Now (G6).
+  // Unknown routes show "page not found" instead of quietly showing Now.
   assert.deepEqual(r('#/nonsense'), ['notfound', 'notfound', '']);
   assert.deepEqual(r('#/nonsense/page'), ['notfound', 'notfound', '']);
   assert.deepEqual(r('#/more/nonsense'), ['notfound', 'notfound', '']);
@@ -68,7 +68,7 @@ test('public views and tabs', async () => {
 
 test('deviceName guesses a readable name', async () => {
   const { deviceName } = await mod('platform.js');
-  assert.equal(deviceName(UA.pixel), 'Pixel 9 · Chrome');
+  assert.equal(deviceName(UA.android), 'Phone X · Chrome');
   assert.equal(deviceName(UA.reduced), 'Android · Chrome');
   assert.equal(deviceName(UA.iphone), 'iPhone · Safari');
   assert.equal(deviceName('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/140.0.0.0 Safari/537.36'), 'Headless Chrome');
@@ -83,20 +83,20 @@ test('deviceName guesses a readable name', async () => {
 test('platform checks', async () => {
   const p = await mod('platform.js');
   assert.equal(p.isIOS(UA.iphone), true);
-  assert.equal(p.isIOS(UA.pixel), false);
+  assert.equal(p.isIOS(UA.android), false);
   assert.equal(p.isIOS(UA.mac, 5, 'MacIntel'), true); // iPadOS posing as a Mac
   assert.equal(p.isIOS(UA.mac, 0, 'MacIntel'), false);
-  assert.equal(p.isMobile(UA.pixel), true);
+  assert.equal(p.isMobile(UA.android), true);
   assert.equal(p.isMobile(UA.linuxChrome), false);
   assert.equal(JSON.stringify(p.iosVersion(UA.iphone)), '[17,4]');
-  assert.equal(p.iosVersion(UA.pixel), null);
+  assert.equal(p.iosVersion(UA.android), null);
   assert.equal(p.iosNeedsUpgrade(UA.iphoneOld), true);
   assert.equal(p.iosNeedsUpgrade(UA.iphone), false);
 });
 
 test('notificationState follows pwa.md 6', async () => {
   const { notificationState } = await mod('platform.js');
-  const base = { ua: UA.pixel, standalone: false, hasPush: true, hasNotification: true, permission: 'default', subscribed: false };
+  const base = { ua: UA.android, standalone: false, hasPush: true, hasNotification: true, permission: 'default', subscribed: false };
   assert.equal(notificationState(base), 'off');
   assert.equal(notificationState({ ...base, permission: 'denied' }), 'blocked');
   assert.equal(notificationState({ ...base, permission: 'granted', subscribed: true }), 'on');
@@ -133,6 +133,7 @@ test('ntfyLink', async () => {
   const { ntfyLink } = await mod('platform.js');
   assert.equal(ntfyLink('https://ntfy.sh', 'sy-abc'), 'ntfy://ntfy.sh/sy-abc');
   assert.equal(ntfyLink('not a url', 'x'), '');
+  assert.equal(ntfyLink('https://ntfy.sh', 'a/b?c'), 'ntfy://ntfy.sh/a%2Fb%3Fc');
 });
 
 test('format: untilShort style countdown helpers stay stable', async () => {
@@ -145,7 +146,7 @@ test('platform: app pair link encodes origin, secret and code', async () => {
   const p = await mod('platform.js');
   assert.equal(p.appPairLink('https://hub.example.ts.net', 'sec/ret+1', '482-913'),
     'switchyard://pair?u=https%3A%2F%2Fhub.example.ts.net&s=sec%2Fret%2B1&c=482913');
-  assert.equal(p.appPairLink('http://100.64.0.7:7777', 'abc', ''), 'switchyard://pair?u=http%3A%2F%2F100.64.0.7%3A7777&s=abc');
+  assert.equal(p.appPairLink('http://192.0.2.7:7777', 'abc', ''), 'switchyard://pair?u=http%3A%2F%2F192.0.2.7%3A7777&s=abc');
   assert.equal(p.appPairLink('https://h', '', '482913'), '');
   // the QR's keys.md 7 pins ride along, so the app can seal its keys into the claim
   assert.equal(p.appPairLink('https://h', 'abc', '482913', 'a2b3c4d5e6f7g2h3i4j5k6l7', 'k/ey+1'),
@@ -217,23 +218,23 @@ test('live: old done, ended and bare imported sessions are not open', async () =
 test('seat names: short, and told apart when they collide', async () => {
   const S = await mod('components/seat.js');
   const seats = [
-    { id: 'a', email: 'you@work.example' },
-    { id: 'b', email: 'you@example.com' },
-    { id: 'c', email: 'mraj602@gmail.com' },
+    { id: 'a', email: 'alex.kim@work.example' },
+    { id: 'b', email: 'alex.kim@mail.example' },
+    { id: 'c', email: 'akim@mail.example' },
     { id: 'd', label: 'work', email: 'w@x.io' },
   ];
   const names = S.displayNames(seats);
-  assert.equal(names.get('c'), 'mraj602');
+  assert.equal(names.get('c'), 'akim');
   assert.equal(names.get('d'), 'work');
   assert.notEqual(names.get('a'), names.get('b'));
-  assert.match(names.get('a'), /workco/);
-  assert.match(names.get('b'), /gmail/);
+  assert.match(names.get('a'), /work/);
+  assert.match(names.get('b'), /mail/);
 });
 
 test('targets: who can get a notification', async () => {
   const T = await mod('components/targets.js');
   const devs = [
-    { id: 'd1', name: 'Pixel', targets: [{ id: 't1', kind: 'link', status: 'ok', enabled: true }] },
+    { id: 'd1', name: 'Phone', targets: [{ id: 't1', kind: 'link', status: 'ok', enabled: true }] },
     { id: 'd2', name: 'iPad', targets: [{ id: 't2', kind: 'webpush', status: 'gone', enabled: true }] },
     { id: 'd3', name: 'Old', revoked_at: '2026-10-01T00:00:00Z', targets: [{ id: 't3', kind: 'webpush', status: 'ok' }] },
     { id: 'd4', name: 'Laptop', targets: [] },
@@ -254,8 +255,20 @@ test('platform: install copy per browser', async () => {
   assert.match(installHint(UA.linuxChrome), /install icon/);
   assert.doesNotMatch(installHint(UA.linuxChrome), /Dock/);
   assert.match(installHint(UA.mac), /Add to Dock/);
-  assert.match(installHint(UA.pixel), /Install app/);
+  assert.match(installHint(UA.android), /Install app/);
   assert.match(installHint(UA.iphone, { ios: true }), /Add to Home Screen/);
   assert.match(installHint('Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0'), /Firefox/);
-  assert.match(installHint(UA.pixel, { standalone: true }), /^Installed/);
+  assert.match(installHint(UA.android, { standalone: true }), /^Installed/);
+});
+
+test('autoApplyOk: a waiting build applies by itself only when that costs nothing', async () => {
+  const { autoApplyOk } = await mod('components/update-policy.js');
+  const base = { waiting: true, editing: false, hidden: false, pageAgeMs: 2000, sinceLastAutoMs: null };
+  assert.equal(autoApplyOk(base), true, 'just started');
+  assert.equal(autoApplyOk({ ...base, pageAgeMs: 10 * 60e3 }), false, 'in use: the banner asks');
+  assert.equal(autoApplyOk({ ...base, pageAgeMs: 10 * 60e3, hidden: true }), true, 'in the background');
+  assert.equal(autoApplyOk({ ...base, waiting: false }), false, 'nothing waiting');
+  assert.equal(autoApplyOk({ ...base, editing: true }), false, 'a field has focus');
+  assert.equal(autoApplyOk({ ...base, sinceLastAutoMs: 5000 }), false, 'no reload loop');
+  assert.equal(autoApplyOk({ ...base, sinceLastAutoMs: 120e3 }), true);
 });

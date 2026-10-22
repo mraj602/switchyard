@@ -2,7 +2,7 @@
 // no Node, no Electron, so main/security.js, the tabs and hub modules, the renderer and the tests
 // all share one set of rules. Every function takes untrusted input and never throws.
 //
-// Owned by WP-A. The policies themselves (what each view may load, what goes to the system
+// The policies themselves (what each view may load, what goes to the system
 // browser) are applied by main/security.js; this file only answers questions about a URL.
 
 import {

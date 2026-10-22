@@ -1,6 +1,6 @@
 // Cadence helpers for web usage reading (C5): jitter, error backoff and the test-time scaling
 // of the cadence. Pure functions with an injectable random source, so scheduler tests are
-// deterministic. Owned by WP-B.
+// deterministic.
 
 import { BACKOFF_MS, CADENCE } from './constants.js';
 

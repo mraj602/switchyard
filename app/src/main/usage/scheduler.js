@@ -13,7 +13,6 @@
 // is tracked, later ones PERIOD ± JITTER after the previous read; cancel() bumps a sequence
 // number so a read in flight is dropped by its owner after its await (ctx.cancelled()).
 // stopAll() is final (shutdown): after it no read starts and no timer is armed.
-// Owned by WP-B.
 
 import { backoffDelay, jitter } from '../../shared/backoff.js';
 

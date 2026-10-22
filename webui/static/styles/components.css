@@ -102,7 +102,7 @@ body.dragging-seat, body.dragging-seat * { cursor: grabbing !important; user-sel
 /* live badge */
 .live { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #2E8540; }
-/* Connecting or reconnecting is normal for a moment: neutral grey, not red (G5). */
+/* Connecting or reconnecting is normal for a moment: neutral grey, not red. */
 .live-idle { color: var(--muted); }
 .live-idle .live-dot { background: var(--muted); }
 .live-warn .live-dot { background: var(--needs); }
@@ -290,7 +290,7 @@ select, input[type="password"], input[type="text"] { border: 1px solid var(--btn
 .ana-cell.lvl-3 { background: color-mix(in srgb, var(--accent) 80%, var(--track)); }
 .ana-cell.lvl-4 { background: var(--accent); }
 
-/* ---- shared pieces added with the UI audit fixes ------------------------------------------- */
+/* ---- shared pieces ------------------------------------------- */
 /* A title block: h1, the More pills, a line under them. */
 .head-title { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
 .head-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; width: 100%; }
@@ -322,9 +322,9 @@ select, input[type="password"], input[type="text"] { border: 1px solid var(--btn
 .history-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; background: var(--panel); border: 1px dashed var(--hair); border-radius: var(--radius); padding: 12px 16px; font-size: 14px; }
 
 @media (max-width: 820px) {
-  /* Empty cells leave no orphan dashes in the phone card rows (S6). */
+  /* Empty cells leave no orphan dashes in the phone card rows. */
   .srow td.is-empty { display: none; }
-  /* A long machine name is cut, never drawn over the context figure (S5). */
+  /* A long machine name is cut, never drawn over the context figure. */
   .c-machine { min-width: 0; overflow: hidden; }
   .c-machine .machine-chip { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
   /* The machine card fits 320 px (M4). */
@@ -341,7 +341,7 @@ select, input[type="password"], input[type="text"] { border: 1px solid var(--btn
 @media (min-width: 821px) {
   .card > .btn, .override-form > .btn, .kill .btn { align-self: flex-start; }
 }
-/* Long account and machine names never widen the sidebar, a select or a table column (LN2). */
+/* Long account and machine names never widen the sidebar, a select or a table column. */
 @media (min-width: 821px) { .nav { min-width: 0; max-width: 232px; } }
 .nav-accounts a { min-width: 0; }
 .filters select { max-width: 14em; text-overflow: ellipsis; }

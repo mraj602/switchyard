@@ -1,4 +1,4 @@
-// Start-up wiring and shutdown of the main process (docs/phases/6.md WP-I). index.js imports
+// Start-up wiring and shutdown of the main process (docs/spec/desktop.md C1, C2). index.js imports
 // Electron and calls boot(); everything here takes Electron and the modules as arguments, so
 // a unit test runs it on plain Node with the fakes. Modules talk only through bus.js and their
 // create() interfaces; none imports another module's internals.
@@ -67,10 +67,10 @@ export const ASSETS_DIR = nodePath.join(APP_DIR, 'assets');
 /** The app icon for the window and notifications (Linux, Windows; a macOS bundle has its own). */
 export const ICON_PATH = nodePath.join(ASSETS_DIR, 'icon.png');
 
-/** A pending `sy flush` at quit may wait this long (6.md WP-I: ≤ 5 s); the outbox keeps the records anyway. */
+/** A pending `sy flush` at quit may wait this long (at most 5 s); the outbox keeps the records anyway. */
 export const QUIT_FLUSH_MAX_MS = 5_000;
 
-/** test-hooks.js (WP-A) is imported only when unpackaged; null when packaged or absent. */
+/** test-hooks.js is imported only when unpackaged; null when packaged or absent. */
 async function defaultTestHooks(app) {
   if (app.isPackaged) return null;
   try {

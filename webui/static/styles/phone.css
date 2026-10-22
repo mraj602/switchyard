@@ -1,4 +1,4 @@
-/* Phase 4: the installable app. Panels and rows, switches, rings, swipe rows, banners,
+/* The installable app. Panels and rows, switches, rings, swipe rows, banners,
    dialogs, the pair screen, Alerts/Settings/Devices. Phone tweaks are at the end. */
 
 .col { display: flex; flex-direction: column; gap: 12px; }
@@ -75,7 +75,7 @@ input.sw:disabled { cursor: default; }
 .ring-track { stroke: var(--track); }
 .ring-num { fill: var(--ink); font-family: var(--mono); }
 .ring-num.hot { fill: var(--failed); }
-/* At most two lines (a told-apart name like "you · gmail" needs the second), then cut (LN1). */
+/* At most two lines (a told-apart name like "alex.kim · mail" needs the second), then cut. */
 .ring-name { font-size: 12px; font-weight: 600; max-width: 100%; text-align: center; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
 .ring-text { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; max-width: 100%; }
 .ring-reset { font-size: 11px; color: var(--muted); text-align: center; overflow-wrap: anywhere; line-height: 1.3; }
@@ -154,7 +154,7 @@ dialog.dialog[open] { display: flex; flex-direction: column; gap: 14px; }
 .cmd { margin: 0; background: #17191B; color: #ECEEEF; border: 1px solid var(--hair); border-radius: 10px; padding: 12px 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .session-actions .copy, .session-actions .btn { flex: 0 0 auto; }
 
-/* ---- the pair screen: the same light/dark tokens as every other page (P1, P6) ------------------ */
+/* ---- the pair screen: the same light/dark tokens as every other page ------------------ */
 .pair-screen {
   min-height: 100vh; min-height: 100dvh; background: var(--ground); color: var(--ink);
   padding: calc(22px + env(safe-area-inset-top)) 22px calc(22px + env(safe-area-inset-bottom));
@@ -214,7 +214,7 @@ dialog.dialog[open] { display: flex; flex-direction: column; gap: 14px; }
   .swipe .needs-card.swipe-settle { transition: transform 0.2s ease; }
 
   .page-head { flex-direction: column; align-items: stretch; }
-  /* Chips wrap, so every filter (Ended too) is in view at 320 px (S2). */
+  /* Chips wrap, so every filter (Ended too) is in view at 320 px. */
   .filters { flex-wrap: wrap; width: 100%; min-width: 0; max-width: 100%; }
   .chips { flex-wrap: wrap; gap: 6px; }
   .chip-btn { padding: 5px 11px; min-height: 34px; }

@@ -2,7 +2,7 @@
 // caps, and the argv allow-list (main/sy/commands.js, the only builder). Every result of a
 // desktop command is the JSON of C4; a non-zero exit is {ok: false, exit, error}.
 //
-// Owned by WP-C. Contract: docs/spec/desktop.md C4, C11. Every method resolves; none rejects.
+// Contract: docs/spec/desktop.md C4, C11. Every method resolves; none rejects.
 // A success carries `ok: true` next to the fields of the C4 JSON, so callers check `ok` first.
 
 import { FLUSH_DEBOUNCE_MS } from '../../shared/constants.js';

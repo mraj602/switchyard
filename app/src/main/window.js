@@ -1,7 +1,7 @@
 // The one BrowserWindow (1440×940, min 720×500) and the view layout: top bar 48 px, strip
 // 40 px under an account tab, the active view fills the rest, the others setVisible(false).
 //
-// Owned by WP-A. Contract: docs/spec/desktop.md C8 layout.
+// Contract: docs/spec/desktop.md C8 layout.
 //
 // The shell is the window's own webContents and fills the whole window; it draws the top bar,
 // the strip and Settings. Account tabs and the hub view are WebContentsViews stacked over it
@@ -10,7 +10,7 @@
 // window, guards it (security.guardView / guardSession, kind 'shell') and loads app://shell/.
 // It shows the window on 'ready-to-show' unless startHidden.
 //
-// Additions beyond the wave 0 stub: onSelect(fn) → off (the hub module creates its view when
+// Also: onSelect(fn) → off (the hub module creates its view when
 // 'hub' is first selected; state.js pushes the new view), layout() and bounds() for tests.
 
 import { SHELL_URL, VIEW_SHELL, VIEW_TAB, VIEW_HUB } from '../shared/constants.js';
@@ -55,7 +55,7 @@ export function create(deps) {
     backgroundColor,
     title: deps.title ?? 'Switchyard',
     // Linux and Windows: the menu (Switchyard, Edit, View) stays one Alt press away instead of a
-    // second bar above the app's own top bar (desktop UI audit). macOS keeps its menu bar.
+    // second bar above the app's own top bar. macOS keeps its menu bar.
     autoHideMenuBar: true,
     // The window icon (X11 _NET_WM_ICON, the Windows taskbar). On Wayland the shell finds the
     // icon through the app_id, which package.json desktopName sets (switchyard-desktop).

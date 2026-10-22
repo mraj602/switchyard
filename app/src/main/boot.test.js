@@ -80,7 +80,7 @@ test('boot creates the modules in START_ORDER, with paths, security, schemes, ip
   for (const later of ['protocol.handle', 'store.load', 'sy', 'hub', 'window', 'state', 'tabs', 'usage', 'tray', 'notify', 'menu', 'background.start']) {
     assert.equal(at(later).ready, true, `${later} must run after ready`);
   }
-  // The start order of the wave 2 brief.
+  // The start order documented in boot.js.
   const before = (a, b) => assert.ok(idx(a) >= 0 && idx(b) >= 0 && idx(a) < idx(b), `${a} before ${b}`);
   before('paths', 'background.claim');
   before('background.claim', 'store.load');
@@ -187,7 +187,7 @@ test('only main/index.js imports electron, and only main/sy/ imports child_proce
   }
 });
 
-// The shared fake (test/fakes/electron.js) behaves as the wave 1 tests rely on.
+// The shared fake (test/fakes/electron.js) behaves as the module tests rely on.
 test('fake electron: safeStorage, ipcMain, protocol, sessions and recording', async () => {
   const a = fakeElectron({ safeStorageKey: 'k1' });
   const b = fakeElectron({ safeStorageKey: 'k2' });

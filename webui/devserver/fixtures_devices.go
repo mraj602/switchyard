@@ -7,15 +7,15 @@ import (
 
 // Fixed ids the app and tests can rely on.
 const (
-	devLaptop = "dev_laptop"
-	devGPU    = "dev_gpu"
-	devPixel  = "dev_pixel"
-	devIPad   = "dev_ipad"
-	devBoard  = "dev_board" // the plain board login
-	devPhone  = "dev_phone" // the phone paired through the mock claim
-	devOwner  = "dev_owner" // the owner session
+	devLaptop  = "dev_laptop"
+	devGPU     = "dev_gpu"
+	devAndroid = "dev_android"
+	devIPad    = "dev_ipad"
+	devBoard   = "dev_board" // the plain board login
+	devPhone   = "dev_phone" // the phone paired through the mock claim
+	devOwner   = "dev_owner" // the owner session
 
-	targetPixel = "pt_pixel"
+	targetPhone = "pt_phone"
 	targetIPad  = "pt_ipad"
 )
 
@@ -53,12 +53,12 @@ func newDevice(now time.Time, id, kind, name, hint string, scopes []string, crea
 	return M{
 		"id": id, "kind": kind, "name": name, "hint": hint, "scopes": scopes, "owner_session": false, "machine": nil,
 		"created_at": ts(now.Add(-created)), "created_by": createdBy,
-		"last_used_at": ts(now.Add(-time.Minute)), "last_used_ip": "100.64.0.7",
+		"last_used_at": ts(now.Add(-time.Minute)), "last_used_ip": "192.0.2.7",
 		"expires_at": nil, "revoked_at": nil, "prefs": defaultPrefs(),
 	}
 }
 
-func (d *Data) phase4(now time.Time) {
+func (d *Data) deviceFixtures(now time.Time) {
 	ago := func(x time.Duration) string { return ts(now.Add(-x)) }
 	in := func(x time.Duration) string { return ts(now.Add(x)) }
 	min, hour := time.Minute, time.Hour
@@ -89,14 +89,14 @@ func (d *Data) phase4(now time.Time) {
 	lap["machine"] = "m_laptop"
 	gpu := newDevice(now, devGPU, "machine", "gpu-box", "sy_m_…q9Zx", []string{"write"}, 12*24*hour, "pair:pc_01JA0002")
 	gpu["machine"] = "m_gpu"
-	pixel := newDevice(now, devPixel, "phone", "Pixel 9 · Chrome", "sy_p_…k3Qz", []string{"read", "push"}, 6*24*hour, "pair:pc_01JA0003")
+	android := newDevice(now, devAndroid, "phone", "Phone X · Chrome", "sy_p_…k3Qz", []string{"read", "push"}, 6*24*hour, "pair:pc_01JA0003")
 	ipad := newDevice(now, devIPad, "phone", "iPad · Safari", "sy_p_…m7Lw", []string{"read", "push"}, 3*24*hour, "pair:pc_01JA0004")
 	ipad["last_used_at"] = ago(30 * hour)
-	d.Devices = []M{lap, gpu, pixel, ipad}
+	d.Devices = []M{lap, gpu, android, ipad}
 
 	d.Targets = []M{
-		{"id": targetPixel, "kind": "webpush", "device": devPixel, "name": "Pixel 9 · Chrome", "endpoint_host": "fcm.googleapis.com",
-			"endpoint": "https://fcm.googleapis.com/fcm/send/dev-pixel-endpoint", "server": nil, "topic": nil, "token_set": false,
+		{"id": targetPhone, "kind": "webpush", "device": devAndroid, "name": "Phone X · Chrome", "endpoint_host": "fcm.googleapis.com",
+			"endpoint": "https://fcm.googleapis.com/fcm/send/dev-phone-endpoint", "server": nil, "topic": nil, "token_set": false,
 			"enabled": true, "status": "ok", "last_ok_at": ago(2 * min), "last_error": nil, "last_error_at": nil, "created_at": ago(6 * 24 * hour)},
 		{"id": targetIPad, "kind": "webpush", "device": devIPad, "name": "iPad · Safari", "endpoint_host": "web.push.apple.com",
 			"endpoint": "https://web.push.apple.com/dev-ipad-endpoint", "server": nil, "topic": nil, "token_set": false,
@@ -137,7 +137,7 @@ func (d *Data) phase4(now time.Time) {
 	fired["body"] = "Bash(npm run deploy -- --prod)"
 	fired["url"] = "/#/sessions/" + sPerm + "?alert=al_fired"
 	fired["since_at"] = ago(1 * min)
-	fired["deliveries"] = []M{delivery(targetPixel, "Pixel 9 · Chrome", 1, "sent", ago(30*time.Second)), delivery(targetIPad, "iPad · Safari", 1, "gone", ago(30*time.Second))}
+	fired["deliveries"] = []M{delivery(targetPhone, "Phone X · Chrome", 1, "sent", ago(30*time.Second)), delivery(targetIPad, "iPad · Safari", 1, "gone", ago(30*time.Second))}
 	fired["deliveries"].([]M)[1]["http_status"] = 410
 
 	snoozed := alert("al_snoozed", "limit_80", "snoozed", ago(55*min))
@@ -147,7 +147,7 @@ func (d *Data) phase4(now time.Time) {
 	snoozed["title"] = "client · 5-hour window at 80%"
 	snoozed["body"] = "work has 59% left"
 	snoozed["url"] = "/#/accounts?seat=seat_client"
-	snoozed["deliveries"] = []M{delivery(targetPixel, "Pixel 9 · Chrome", 1, "sent", ago(40*min))}
+	snoozed["deliveries"] = []M{delivery(targetPhone, "Phone X · Chrome", 1, "sent", ago(40*min))}
 
 	seen := alert("al_seen", "failed", "seen", ago(9*min))
 	seen["fired_at"], seen["fire_count"], seen["seen_at"] = ago(8*min), 1, ago(6*min)
@@ -156,7 +156,7 @@ func (d *Data) phase4(now time.Time) {
 	seen["body"] = "5-hour limit reached. Resets soon. work has 59% left"
 	seen["url"] = "/#/sessions/" + sFailed + "?alert=al_seen"
 	seen["since_at"] = ago(9 * min)
-	seen["deliveries"] = []M{delivery(targetPixel, "Pixel 9 · Chrome", 1, "sent", ago(8*min))}
+	seen["deliveries"] = []M{delivery(targetPhone, "Phone X · Chrome", 1, "sent", ago(8*min))}
 
 	cancelled := alert("al_cancelled", "needs_permission", "cancelled", ago(35*min))
 	cancelled["reason"], cancelled["ended_at"] = "answered", ago(34*min)
@@ -171,7 +171,7 @@ func (d *Data) phase4(now time.Time) {
 	closed["title"] = "old-vps silent 1 h"
 	closed["body"] = "1 session was working when it went quiet."
 	closed["url"] = "/#/machines?machine=m_vps"
-	closed["deliveries"] = []M{delivery(targetPixel, "Pixel 9 · Chrome", 1, "sent", ago(4*hour))}
+	closed["deliveries"] = []M{delivery(targetPhone, "Phone X · Chrome", 1, "sent", ago(4*hour))}
 
 	skipped := alert("al_skipped", "asked", "skipped", ago(3*hour))
 	skipped["reason"] = "remote_control"

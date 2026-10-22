@@ -73,11 +73,11 @@ test('tighter picks the higher of 5 h and 7 d, with its own reset', () => {
 
 test('attention: near limit comes before signed out; extra issues follow', () => {
   const places = [{ machine: 'm1', machine_name: 'laptop', slot: '~/.claude' }];
-  const so = [{ machine: 'm2', machine_name: 'mraj602', slot: '~/.claude-2' }, { machine: 'm1', machine_name: 'laptop', slot: '~/.claude-3' }];
+  const so = [{ machine: 'm2', machine_name: 'desktop', slot: '~/.claude-2' }, { machine: 'm1', machine_name: 'laptop', slot: '~/.claude-3' }];
   const near = { ...seat('a', { ...win('five_hour', 91, 2), pace: { band: 'runaway', full_at: at(1) } }, win('seven_day', 10, 60)), places, signed_out: so };
   const list = plain(attention(near, NOW));
   assert.deepEqual(list.map((x) => x.kind), ['near', 'signed_out']);
-  assert.deepEqual(list[1].machines, ['mraj602']); // laptop is also signed in there
+  assert.deepEqual(list[1].machines, ['desktop']); // laptop is also signed in there
   const week = seat('b', win('five_hour', 10, 2), win('seven_day', 92, 60));
   assert.equal(attention(week, NOW)[0].key, 'seven_day');
   assert.deepEqual(plain(attention(seat('c', win('five_hour', 10, 2), win('seven_day', 85, 60)), NOW)), []);

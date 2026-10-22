@@ -8,7 +8,7 @@ const DEFAULT = { enabled: false, start: '23:00', end: '08:00' };
 
 // opts: { value: QuietHours|null, hubValue, onSave(qh|null), disabled, device: bool }
 // For a device, value null means "follow the hub"; the control shows the hub's setting then.
-// The hours are read in the setting's own time zone, so the zone is always shown (G9); when
+// The hours are read in the setting's own time zone, so the zone is always shown; when
 // the hub has none the browser's zone is assumed and said so.
 export function quietHours({ value, hubValue, onSave, disabled, device }) {
   const eff = value || hubValue || DEFAULT;

@@ -1,6 +1,6 @@
 // Main process entry (package.json "main"). The only module that imports Electron; it hands
 // it to boot(), which creates every module and wires the start-up and shutdown order
-// (boot.js header). Owned by WP-I.
+// (boot.js header).
 //
 // Before anything else (before `ready`): a packaged app started with a remote debugging switch
 // exits with code 1, unless its build allowed it (cdp.js, C2).

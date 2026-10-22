@@ -1,5 +1,5 @@
 // A mock of the preload's `window.sy` with fixtures, so the renderer runs in a plain browser
-// (development, screenshots, the headless check of WP-I). Excluded from the package.
+// (development, screenshots, the headless smoke). Excluded from the package.
 // Pick a scenario with ?scenario=<name>&view=<hub|settings|<tab id>>:
 //   default | empty | missing | wrong[&shared=1][&unknown=1] | no_sy | needs_pairing | removed | direct_pairing | unreachable | board_blocked | owner | stopped | dark-data | warning
 // It is a mock: no network, no storage, nothing leaves the page.

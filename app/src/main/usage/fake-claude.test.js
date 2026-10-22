@@ -1,5 +1,5 @@
 // Tests of the fake claude.ai itself (test/fakes/claude/), so the smoke and e2e tests of
-// wave 2 can trust it.
+// tests of the usage module can trust it.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 

@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func TestPhase5MachineFixturesMatchAPISpec(t *testing.T) {
+func TestMachineFixturesMatchAPISpec(t *testing.T) {
 	schemas := loadSchemas(t)
 	d := Fixtures(time.Date(2026, 10, 12, 14, 3, 22, 0, time.UTC))
 	reach, status := map[string]bool{}, map[string]bool{}

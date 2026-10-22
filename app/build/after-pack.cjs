@@ -1,6 +1,6 @@
 'use strict';
 // electron-builder afterPack hook: flips the Electron fuses of the packaged binary
-// (docs/spec/desktop.md C2). It runs before any signing; there is no signing in phase 6.
+// (docs/spec/desktop.md C2). It runs before any signing (builds are never signed here).
 //
 // @electron/fuses 2.x is ESM only and needs Node >= 22.12, so it is loaded with import().
 

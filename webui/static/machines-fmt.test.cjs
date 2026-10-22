@@ -104,16 +104,16 @@ test('lifetime: an owner link lifetime in words (pairing.md 4)', () => {
 
 test('deviceLabel: later twins get their place, the first and unique names stay', () => {
   const all = [
-    { id: 'dev_b', name: 'pixel 9 · chrome', created_at: '2026-10-12T09:00:00.000Z' },
-    { id: 'dev_a', name: 'Pixel 9 · Chrome', created_at: '2026-10-10T09:00:00.000Z' },
+    { id: 'dev_b', name: 'phone x · chrome', created_at: '2026-10-12T09:00:00.000Z' },
+    { id: 'dev_a', name: 'Phone X · Chrome', created_at: '2026-10-10T09:00:00.000Z' },
     { id: 'dev_c', name: 'iPhone · Safari', created_at: '2026-10-11T09:00:00.000Z' },
-    { id: 'dev_d', name: 'Pixel 9 · Chrome', created_at: '2026-10-14T09:00:00.000Z' },
+    { id: 'dev_d', name: 'Phone X · Chrome', created_at: '2026-10-14T09:00:00.000Z' },
   ];
-  assert.equal(F.deviceLabel(all[1], all), 'Pixel 9 · Chrome');
-  assert.equal(F.deviceLabel(all[0], all), 'pixel 9 · chrome · 2');
-  assert.equal(F.deviceLabel(all[3], all), 'Pixel 9 · Chrome · 3');
+  assert.equal(F.deviceLabel(all[1], all), 'Phone X · Chrome');
+  assert.equal(F.deviceLabel(all[0], all), 'phone x · chrome · 2');
+  assert.equal(F.deviceLabel(all[3], all), 'Phone X · Chrome · 3');
   assert.equal(F.deviceLabel(all[2], all), 'iPhone · Safari');
-  assert.equal(F.deviceLabel(all[1], null), 'Pixel 9 · Chrome');
+  assert.equal(F.deviceLabel(all[1], null), 'Phone X · Chrome');
 });
 
 test('subtitleOf: a session named after its folder does not repeat it', () => {

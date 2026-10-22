@@ -1,4 +1,4 @@
-// Pure view helpers of the shell (WP-D): everything that decides what to show, with no DOM, so
+// Pure view helpers of the shell: everything that decides what to show, with no DOM, so
 // node --test covers it. app.js turns these results into elements.
 // Shared code is imported as '../shared/<file>.js': that resolves to src/shared/ on disk (tests,
 // a static server rooted at src/) and to app://shell/shared/ under the protocol (C2 mapping).

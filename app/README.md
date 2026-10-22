@@ -1,16 +1,16 @@
 # Switchyard desktop app (`app/`)
 
-The phase 6 desktop app: one tab per claude.ai account (each in its own signed-in session),
+The desktop app: one tab per claude.ai account (each in its own signed-in session),
 the web usage of each account sent to your hub, and the hub board in a Hub view, with OS
 notifications and a tray badge when a session needs you. Unofficial; not affiliated with
 Anthropic.
 
-It is a separate package from the root prototype (`main.js`, `shell/`, ...), which stays live
-until you retire it. Both can run at the same time: they use different user data folders
+It is a separate package from the legacy prototype at the repository root (`main.js`,
+`shell/`, ...), which is kept until it is retired. Both can run at the same time: they use different user data folders
 (`switchyard-desktop` here, `switchyard` for the prototype) and this app never opens the
 prototype's folder.
 
-Specs: `docs/spec/desktop.md` (contracts C1-C12), `docs/phases/6.md` (work packages, test plan).
+Spec: `docs/spec/desktop.md` (contracts C1-C12).
 
 ## Develop
 
@@ -53,7 +53,7 @@ IPC table, pure helpers used by both sides).
 ```
 npm run lint           # node --check + the security lint (scripts/lint-security.mjs)
 npm test               # unit tests, plain Node: no display, no Electron binary needed
-npm run smoke          # Electron smoke S1-S12 (Linux: under xvfb-run)
+npm run smoke          # Electron smoke S1-S15 (Linux: under xvfb-run)
 npm run e2e            # the packaged AppImage end to end (after npm run dist:linux)
 ```
 
@@ -73,10 +73,10 @@ fuses are flipped (`ELECTRON_RUN_AS_NODE=1` does not run Node), the bundled `sy`
 no `sy` on `PATH`, and after `sy connect` the app pairs and the Hub view shows the signed-in
 board. The Chromium sandbox stays on: on Ubuntu 24.04 that needs
 `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`. The packaged app ignores the
-test variables, so the usage read itself is covered by the smoke (S4), not here.
+test variables, so the usage read itself is covered by the smoke, not here.
 
 CI: `.github/workflows/app.yml` (unit tests on Linux, macOS and Windows; smoke; packaging; e2e).
-Its `guard` job fails when a commit changes the root prototype
+Its `guard` job fails when a commit changes the legacy prototype at the repository root
 (`scripts/check-prototype-untouched.sh`).
 
 ## Package

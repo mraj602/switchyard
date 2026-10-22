@@ -1,4 +1,4 @@
-// Small stand-ins for the other work packages' modules, so WP-B's tabs/ and usage/ tests run on
+// Small stand-ins for the other modules, so the tabs/ and usage/ tests run on
 // plain Node: an in-memory store with store.js's interface, a recording `sy`, an `ipc` that
 // keeps its handlers, and a `security` / `window` that record what tabs/ asks of them.
 

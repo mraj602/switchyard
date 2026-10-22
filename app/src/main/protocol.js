@@ -2,7 +2,7 @@
 // app://shell/shared/<path> serves src/shared/<path>; traversal → 403, extension allow-list,
 // the CSP and other headers of shared/constants.js.
 //
-// Owned by WP-A. Contract: docs/spec/desktop.md C2.
+// Contract: docs/spec/desktop.md C2.
 //
 // The path is checked on the raw URL text, before any normalisation, so `app://shell/../x`
 // and `app://shell/%2e%2e/x` are refused (403) rather than quietly folded into the root.

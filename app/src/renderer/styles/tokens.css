@@ -1,5 +1,5 @@
 /* The hub board's colour tokens (webui/static/styles/base.css), copied so the shell matches the
-   board. Light is the default; dark follows prefers-color-scheme. Owned by WP-D. */
+   board. Light is the default; dark follows prefers-color-scheme. */
 
 :root {
   --ground: #F3F4F1;

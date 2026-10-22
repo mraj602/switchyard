@@ -311,15 +311,16 @@ read is logged as a failure and not retried, because the outbox may hold some of
 
 **Warning (versioned, `WARNING_VERSION = 1`).** It is shown as a dialog in the shell the first
 time a tab could read (after sign-in), and again whenever the version is raised. The text is
-final unless the person changes it:
+final unless the maintainers change it:
 
 > **Read usage for this account?**
 > Every 5 minutes, Switchyard runs a small script inside this tab that reads the same numbers
 > claude.ai shows under Settings → Usage. It reads numbers only: no chats, no cookies. They go
 > to your own hub.
-> This uses an internal claude.ai endpoint, not a public API. It may stop working, and
+> This uses claude.ai’s own undocumented usage endpoint, not an official API, and nothing is
+> requested until you allow it. It may stop working, and
 > automated access may not be allowed by Anthropic's consumer terms, so it could get this
-> account flagged. Switchyard is unofficial and not affiliated with Anthropic.
+> account flagged. Switchyard is unofficial and not affiliated with Anthropic. Whether to turn this on is your choice.
 > You can turn reading off for this account at any time in its usage bar or in Settings.
 > **[Read usage for this account]  [Not now]**
 

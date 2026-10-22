@@ -2,7 +2,7 @@
 // records (shared/record.js) published through sy.append / sy.flushSoon, local strip windows
 // (shared/usage.js), the usage:* handlers and the usage bus event.
 //
-// Owned by WP-B. Contract: docs/spec/desktop.md C5.
+// Contract: docs/spec/desktop.md C5.
 // It reads tab facts from store.get().tabs and the live view from tabs.view(id); it learns of
 // added and removed tabs from the bus `tabs` event, and hooks each tab's webContents events
 // (did-finish-load, did-navigate-in-page) itself, so tabs/ and usage/ meet only through

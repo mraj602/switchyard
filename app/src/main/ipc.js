@@ -3,7 +3,7 @@
 // validate) before calling the owner's handler. Registering a channel not in the table throws.
 // Handlers are registered by their owning module through register(); push goes through send().
 //
-// Owned by WP-A. Contract: docs/spec/desktop.md C3.
+// Contract: docs/spec/desktop.md C3.
 //
 // Notes for the other modules:
 // - A handler gets the validated, cleaned argument object only (never the IPC event). An
