@@ -155,6 +155,39 @@ func TestThreadResumeRefusalReported(t *testing.T) {
 	}
 }
 
+// hookSender runs during each Send, as another local send's report would.
+type hookSender struct{ during func() }
+
+func (s *hookSender) Send(context.Context, any) error {
+	if s.during != nil {
+		s.during()
+	}
+	return nil
+}
+
+// A line spooled while a flush is sending the spool is not lost when the flush removes the
+// file it emptied.
+func TestSpoolLineAddedDuringFlushIsKept(t *testing.T) {
+	r, _, _ := resumeSetup(t, false)
+	r.spool(peers.PeerLogUp{T: link.TypePeerLog, Msg: "m-old"})
+	done := make(chan struct{})
+	hs := &hookSender{}
+	hs.during = func() {
+		hs.during = nil
+		go func() { r.spool(peers.PeerLogUp{T: link.TypePeerLog, Msg: "m-new"}); close(done) }()
+		select { // the appender finishes now unless the flush holds the spool
+		case <-done:
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+	r.Link = hs
+	r.flushSpool()
+	<-done
+	if b, err := os.ReadFile(r.spoolPath()); err != nil || !strings.Contains(string(b), `"m-new"`) || strings.Contains(string(b), `"m-old"`) {
+		t.Fatalf("spool %q %v", b, err)
+	}
+}
+
 // The zero Remote refuses: a wiring that forgets the setting never widens.
 func TestThreadResumeZeroValueRefuses(t *testing.T) {
 	r, _, get := resumeSetup(t, true)
