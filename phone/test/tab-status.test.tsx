@@ -1,4 +1,4 @@
-// Which account is signed in where (phone.md P17.7; designs Phone-11 and Phone-12): the URL and account rules, the
+// Which account is signed in where (phone.md P17.7): the URL and account rules, the
 // memo of each tab's last visit, the Accounts card lines and actions, and the Fix this tab sheet
 // on the sy-tabs fake.
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -151,14 +151,14 @@ describe('codeLine (from the hub: Seat.places and Seat.signed_out)', () => {
   const out = (machine_name: string) => ({ machine: `m_${machine_name}`, machine_name, slot: '~/.claude', since: '2026-10-12T09:00:00.000Z' });
 
   it('signed in on each machine once, then signed out where it is not also signed in', () => {
-    const l = codeLine({ ...SA, places: [place('worker', '~/.claude'), place('worker', '~/.claude-2'), place('desk', null, 't_1')], signed_out: [out('mraj602'), out('worker')] });
-    expect(text(l)).toBe('Claude Code: signed in on worker · signed out on mraj602');
-    expect(bold(l)).toEqual(['worker', 'mraj602']);
+    const l = codeLine({ ...SA, places: [place('server', '~/.claude'), place('server', '~/.claude-2'), place('desk', null, 't_1')], signed_out: [out('laptop'), out('server')] });
+    expect(text(l)).toBe('Claude Code: signed in on server · signed out on laptop');
+    expect(bold(l)).toEqual(['server', 'laptop']);
     expect(l.tone).toBe('ok');
   });
 
   it('two machines, signed out only, or nowhere', () => {
-    expect(text(codeLine({ ...SA, places: [place('mraj602', '~/.claude'), place('worker', '~/.claude')] }))).toBe('Claude Code: signed in on mraj602, worker');
+    expect(text(codeLine({ ...SA, places: [place('laptop', '~/.claude'), place('server', '~/.claude')] }))).toBe('Claude Code: signed in on laptop, server');
     expect(codeLine({ ...SA, signed_out: [out('x')] })).toEqual({ tone: 'muted', parts: [{ t: 'Claude Code: ' }, { t: 'signed out on ' }, { t: 'x', b: true }] });
     expect(text(codeLine({ ...SA, places: [place('desk', null, 't_1')] }))).toBe('Claude Code: not signed in on any machine');
   });
@@ -169,9 +169,9 @@ describe('codeLine (from the hub: Seat.places and Seat.signed_out)', () => {
 function data() {
   const d = freshData();
   const base = d.accounts[0]!;
-  const places = [{ machine: 'm_w', machine_name: 'worker', slot: '~/.claude', tab_id: null }];
+  const places = [{ machine: 'm_w', machine_name: 'server', slot: '~/.claude', tab_id: null }];
   const seats = [
-    { ...base, id: A, label: 'claude-7', account: ACC_A, hidden: false, places, signed_out: [{ machine: 'm_r', machine_name: 'mraj602', slot: '~/.claude', since: '2026-10-12T09:00:00.000Z' }] },
+    { ...base, id: A, label: 'claude-7', account: ACC_A, hidden: false, places, signed_out: [{ machine: 'm_r', machine_name: 'laptop', slot: '~/.claude', since: '2026-10-12T09:00:00.000Z' }] },
     { ...base, id: B, label: 'claude-6', account: ACC_B, hidden: false, places, signed_out: [] },
   ] as Seat[];
   return { accounts: seats, overview: { ...d.overview!, seats } };
@@ -205,7 +205,7 @@ describe('screens', () => {
   it('Accounts: both lines and Sign in on this phone for a seat without a tab', async () => {
     await show(<AccountsScreen />);
     await fireEvent.press(await screen.findByTestId('expand-all'));
-    expect(screen.getByTestId(`code-${A}`)).toHaveTextContent('Claude Code: signed in on worker · signed out on mraj602');
+    expect(screen.getByTestId(`code-${A}`)).toHaveTextContent('Claude Code: signed in on server · signed out on laptop');
     expect(screen.getByTestId(`phonetab-${A}`)).toHaveTextContent('Phone tab: not signed in');
     expect(screen.getByTestId(`tab-${A}`)).toHaveTextContent('Sign in on this phone');
     await fireEvent.press(screen.getByTestId(`tab-${A}`));

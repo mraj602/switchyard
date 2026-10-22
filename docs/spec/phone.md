@@ -942,7 +942,7 @@ never by email.
 
    No line and no action where tabs are not supported.
 5. **Claude Code line**, from the hub (`Seat.places` with a `slot`: signed in; `Seat.signed_out`:
-   a folder that logged out of this seat, api.yaml): "Claude Code: signed in on **mraj602**,
+   a folder that logged out of this seat, api.yaml): "Claude Code: signed in on **laptop**,
    **worker** · signed out on **x**" (machine names, each once; a machine where it is also
    signed in is not listed as signed out), or "Claude Code: not signed in on any machine".
 6. **Fix this tab** (design Phone-12), a bottom sheet: "<seat>'s tab is signed in as <other>",

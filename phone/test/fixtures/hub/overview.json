@@ -162,17 +162,17 @@
       "last_seen": "2026-10-13T06:26:31.742Z",
       "linger": true,
       "live_sessions": 0,
-      "name": "home-box",
+      "name": "cloud-box",
       "os": "Ubuntu 24.04",
       "pull": {
         "interval_s": 60,
         "last_error": null,
         "last_ok": "2026-10-13T06:26:31.742Z",
         "last_try": "2026-10-13T06:26:31.742Z",
-        "name": "home-box",
+        "name": "cloud-box",
         "next_at": "2026-10-13T06:27:31.742Z",
         "state": "ok",
-        "target": "ubuntu@home-box"
+        "target": "ubuntu@cloud-box"
       },
       "reach": "pull",
       "record_v": 2,

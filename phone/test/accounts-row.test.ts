@@ -99,7 +99,7 @@ describe('tighterWindow', () => {
 
 describe('attention', () => {
   const none: PhoneTab = { kind: 'none' };
-  const out = { machine: 'm1', machine_name: 'mraj602', slot: 's', since: iso(NOW) };
+  const out = { machine: 'm1', machine_name: 'laptop', slot: 's', since: iso(NOW) };
   const text = (r: ReturnType<typeof attention>) => r?.line.parts.map((p) => p.t).join('');
 
   it('is null when nothing needs attention', () => {
@@ -114,7 +114,7 @@ describe('attention', () => {
     expect(r!.more).toBe(2);
     expect(text(attention(s, none, NOW))).toMatch(/^7-day limit nearly used, resets /);
     expect(attention(s, none, NOW)!.more).toBe(1);
-    expect(text(attention(seat('y', [win('five_hour', 1, 1)], { signed_out: [out] }), none, NOW))).toBe('Claude Code signed out on mraj602');
+    expect(text(attention(seat('y', [win('five_hour', 1, 1)], { signed_out: [out] }), none, NOW))).toBe('Claude Code signed out on laptop');
   });
 
   it('flags a runaway 5 h pace with when it is full', () => {
