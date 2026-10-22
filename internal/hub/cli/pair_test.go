@@ -216,7 +216,7 @@ func TestPhonePairWaitsForTheClaim(t *testing.T) {
 	}
 	st, _ := store.Open(context.Background(), db, store.Options{NoBackupBeforeMigrate: true})
 	defer st.Close()
-	if _, err := pair.NewService(st, "").Claim(context.Background(), "1.1.1.1", pair.ClaimRequest{Secret: first.Secret, Name: "Pixel", ExpectKind: "phone", Cookie: true}); err != nil {
+	if _, err := pair.NewService(st, "").Claim(context.Background(), "1.1.1.1", pair.ClaimRequest{Secret: first.Secret, Name: "Phone", ExpectKind: "phone", Cookie: true}); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -238,7 +238,7 @@ func TestPhonePairWaitsForTheClaim(t *testing.T) {
 			Scopes         []string
 		}
 	}
-	if err := json.Unmarshal([]byte(lines[1]), &second); err != nil || !second.Claimed || second.Device.Kind != "phone" || second.Device.Name != "Pixel" ||
+	if err := json.Unmarshal([]byte(lines[1]), &second); err != nil || !second.Claimed || second.Device.Kind != "phone" || second.Device.Name != "Phone" ||
 		strings.Join(second.Device.Scopes, ",") != "read,push" || !strings.HasPrefix(second.Device.ID, "dev_") {
 		t.Errorf("claimed line %s (%v)", lines[1], err)
 	}

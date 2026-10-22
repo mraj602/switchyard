@@ -70,7 +70,7 @@ func TestRenderGolden(t *testing.T) {
 		})), TextOptions{}},
 		{"failed_rate_limit", sessionAlert(model.TriggerFailed, with(model.Facts{Seat: "client", Project: "data-pipeline", Machine: "gpu-box"},
 			func(f *model.Facts) { f.State, f.Detail, f.ResetsAt = "failed", "rate_limit", resets })), TextOptions{Room: room}},
-		{"failed_shared_name", sessionAlert(model.TriggerFailed, with(model.Facts{Seat: "alex · gmail", Project: "etl", Machine: "gpu-box"},
+		{"failed_shared_name", sessionAlert(model.TriggerFailed, with(model.Facts{Seat: "alex · example", Project: "etl", Machine: "gpu-box"},
 			func(f *model.Facts) { f.State, f.Detail = "failed", "rate_limit" })), TextOptions{}},
 		{"failed_auth", sessionAlert(model.TriggerFailed, with(work, func(f *model.Facts) {
 			f.State, f.Detail = "failed", "authentication_failed"

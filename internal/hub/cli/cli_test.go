@@ -45,7 +45,7 @@ func run(t *testing.T, args ...string) (string, error) {
 func TestTokenLifecycleBackupPrune(t *testing.T) {
 	dir := t.TempDir()
 	db := filepath.Join(dir, "hub.db")
-	out, err := run(t, "token", "create", "--kind", "phone", "--name", "pixel", "--db", db, "--json")
+	out, err := run(t, "token", "create", "--kind", "phone", "--name", "phone-a", "--db", db, "--json")
 	if err != nil {
 		t.Fatal(out, err)
 	}
@@ -63,18 +63,18 @@ func TestTokenLifecycleBackupPrune(t *testing.T) {
 		t.Errorf("machine token without --machine accepted: %s", out)
 	}
 	out, err = run(t, "token", "list", "--db", db)
-	if err != nil || !strings.Contains(out, "pixel") || strings.Contains(out, c.Token) {
+	if err != nil || !strings.Contains(out, "phone-a") || strings.Contains(out, c.Token) {
 		t.Fatalf("list (must not show the token): %s %v", out, err)
 	}
-	if out, err := run(t, "token", "revoke", "pixel", "--db", db, "--yes"); err != nil {
+	if out, err := run(t, "token", "revoke", "phone-a", "--db", db, "--yes"); err != nil {
 		t.Fatal(out, err)
 	}
 	out, _ = run(t, "token", "list", "--db", db)
-	if strings.Contains(out, "pixel") {
+	if strings.Contains(out, "phone-a") {
 		t.Errorf("revoked device still listed: %s", out)
 	}
 	out, _ = run(t, "token", "list", "--db", db, "--all")
-	if !strings.Contains(out, "pixel") {
+	if !strings.Contains(out, "phone-a") {
 		t.Errorf("--all hides revoked: %s", out)
 	}
 

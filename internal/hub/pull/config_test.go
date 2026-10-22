@@ -30,7 +30,7 @@ func TestWriteConfigEscapesPercentInPaths(t *testing.T) {
 func TestWriteConfigGeneratesTheDocumentedBlock(t *testing.T) {
 	dir := t.TempDir()
 	tgs := []store.PullTarget{
-		{ID: "pt_01JA", Name: "gpu", Host: "gpu-box.tailnet.ts.net", Port: 22, User: "me", HostKeys: []string{hostKeyA}},
+		{ID: "pt_01JA", Name: "gpu", Host: "gpu-box.example.ts.net", Port: 22, User: "me", HostKeys: []string{hostKeyA}},
 		{ID: "pt_01JB", Name: "odd", Host: "10.0.0.7", Port: 2222, User: "dev", HostKeys: []string{hostKeyA, hostKeyB}},
 	}
 	if err := pull.WriteConfig(dir, tgs); err != nil {
@@ -38,7 +38,7 @@ func TestWriteConfigGeneratesTheDocumentedBlock(t *testing.T) {
 	}
 	cfg, _ := os.ReadFile(filepath.Join(dir, "ssh_config"))
 	for _, want := range []string{
-		"Host sy-pt_01JA\n  HostName gpu-box.tailnet.ts.net\n  Port 22\n  User me\n  HostKeyAlias sy-pt_01JA\n",
+		"Host sy-pt_01JA\n  HostName gpu-box.example.ts.net\n  Port 22\n  User me\n  HostKeyAlias sy-pt_01JA\n",
 		"  UserKnownHostsFile " + filepath.Join(dir, "known_hosts") + "\n",
 		"  GlobalKnownHostsFile /dev/null\n  StrictHostKeyChecking yes\n  UpdateHostKeys no\n",
 		"  IdentityFile " + filepath.Join(dir, "id_ed25519") + "\n  IdentitiesOnly yes\n  IdentityAgent none\n  BatchMode yes\n",
