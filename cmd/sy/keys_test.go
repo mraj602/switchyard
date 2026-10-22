@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/mraj602/switchyard/internal/client"
 	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
 	"github.com/mraj602/switchyard/internal/hub/pair"
+	"github.com/mraj602/switchyard/internal/hub/store"
 	"github.com/mraj602/switchyard/internal/keys"
 )
 
@@ -308,5 +310,24 @@ func TestKeysRecoverTrustOwnerAndMerged(t *testing.T) {
 	mfp := m.initOwner()
 	if o, _ := m.ks.ActiveOwner(ctx); o == nil || o.FP != mfp {
 		t.Fatal("merged init did not activate the key")
+	}
+
+	// A local hub that is not the pinned one (an old, stopped hub) is not merged mode: the
+	// key goes to the connected hub as a proposal and the local hub is left alone.
+	s := newKeysRig(t)
+	lst, err := store.Open(ctx, filepath.Join(t.TempDir(), "hub.db"), store.Options{NoBackupBeforeMigrate: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { lst.Close() })
+	lhk, _ := hubkeys.FromSeed(bytes.Repeat([]byte{2}, 32))
+	local := hubkeys.New(lst, lhk)
+	s.env.merged = func(context.Context) (*hubkeys.Service, func(), error) { return local, func() {}, nil }
+	s.initOwner()
+	if o, _ := local.ActiveOwner(ctx); o != nil {
+		t.Fatal("init activated the key on a local hub that is not the pinned hub")
+	}
+	if !strings.Contains(s.out.String(), "Proposed owner key") {
+		t.Fatalf("init did not propose to the connected hub: %s", s.out.String())
 	}
 }

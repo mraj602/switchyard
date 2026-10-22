@@ -354,6 +354,17 @@ func keysInit(ctx context.Context, env keysEnv, args []string) error {
 	if err != nil {
 		return err
 	}
+	if ks != nil {
+		// A hub database on this machine is merged mode only when it is the hub this machine
+		// is connected to; an old or stopped local hub must not take the proposal meant for
+		// the real one.
+		if hub, err := env.hub(); err == nil {
+			if _, fp, err := hubTrust(ctx, env, hub); err == nil && fp != ks.Key.FP {
+				closeHub()
+				ks, closeHub = nil, nil
+			}
+		}
+	}
 	if closeHub != nil {
 		defer closeHub()
 	}
