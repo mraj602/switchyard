@@ -172,7 +172,11 @@ func (s *Set) nextObj() int {
 func objName(n int) string { return fmt.Sprintf("%06d", n) }
 
 // Abs resolves a path relative to the set (a PathState.Saved value) to an absolute path.
-func (s *Set) Abs(rel string) string { return filepath.Join(s.Dir, filepath.FromSlash(rel)) }
+// The result never leaves the set: a "../" in a manifest cannot reach a file outside it.
+func (s *Set) Abs(rel string) string {
+	sep := string(filepath.Separator)
+	return filepath.Join(s.Dir, filepath.Clean(sep+filepath.FromSlash(rel)))
+}
 
 // Info is one line of `sy setup --undo-list`.
 type Info struct {
