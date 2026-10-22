@@ -14,6 +14,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/mraj602/switchyard/internal/atomicfile"
 )
 
 // MaxRowsPerBatch is the most rows one token_rows record may carry (record.md 4.4).
@@ -150,11 +152,7 @@ func (s *Scanner) saveOffsets() error {
 	if err := os.MkdirAll(filepath.Dir(s.opts.OffsetsPath), 0o700); err != nil {
 		return err
 	}
-	tmp := s.opts.OffsetsPath + ".tmp"
-	if err := os.WriteFile(tmp, b, 0o600); err != nil {
-		return err
-	}
-	return os.Rename(tmp, s.opts.OffsetsPath)
+	return atomicfile.Write(s.opts.OffsetsPath, b, 0o600)
 }
 
 type root struct {

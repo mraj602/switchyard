@@ -208,7 +208,7 @@ func NewSessionList(m Meta, p SessionListPayload) (*Record, error) {
 		}
 		if _, ok := obj["messagingSocketPath"]; ok {
 			delete(obj, "messagingSocketPath")
-			redacted = append(redacted, fmt.Sprintf("sessions[].messagingSocketPath"))
+			redacted = append(redacted, "sessions[].messagingSocketPath")
 		}
 		paths, err := filterObject(obj)
 		if err != nil {
