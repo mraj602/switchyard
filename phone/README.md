@@ -1,44 +1,103 @@
 # Switchyard phone app (`phone/`)
 
-The hub's screens (Now, Sessions, Session, Accounts, More) as an Expo / React Native app,
-native notifications with **Open**, **Snooze 15 min** and **Seen**, and small and medium
-home-screen widgets. It is a `phone` device on your hub (scopes `read` and `push`): it reads,
-snoozes and marks seen, nothing else. Unofficial; not affiliated with Anthropic.
+The hub's screens (Now, Sessions, Session, Accounts, More) as an Expo / React Native app, native
+notifications with **Open**, **Snooze 15 min** and **Seen**, and home-screen widgets. It is a
+`phone` device on your hub (scopes `read` and `push`): it reads, snoozes and marks seen, nothing
+else. Unofficial; not affiliated with Anthropic.
 
-Specs: `docs/spec/phone.md` (the app, P1 to P15), `docs/spec/push.md` sections 13 and 14 (the
-link), `docs/phases/8.md` (work split, tests, decisions, risks, manual steps).
+**Android only.** There is no iOS release. Some iOS source (widgets, Live Activity adapters) stays
+in the tree and is kept compiling by the checks, but nothing here builds, signs or ships an iOS
+app, and no iOS feature is promised. Android 12 (API 31) or newer.
 
-**Nothing in this repository signs, builds for a store or uploads.** Your keystore, the build
-and every check on a real phone are the manual steps below, done by you. No credential file
-ever goes into the repo (`scripts/check-no-secrets.mjs` fails the check if one appears).
+Specs: `docs/spec/phone.md` (the app, P1 onwards) and `docs/spec/push.md` sections 13 and 14 (the
+link).
 
-## The Android build (link only)
+**Nothing in this repository signs for a store or uploads anything.** Your release keystore, if
+you make release builds, stays outside the repository (see "Release builds" below).
+`scripts/check-no-secrets.mjs` fails the check if a credential file appears.
 
-The app delivers notifications over its own connection to your hub, the `link` (the `sy-link`
-module in `modules/sy-link`, `docs/spec/push.md` sections 13 and 14). That is its only push
-path, so pushes are Android only: there is no Expo account, no EAS, no Firebase project and no
-Google push service, and the hub needs no outbound access to any push service. `app.config.ts`
-sets `minSdkVersion` 31 and drops expo-notifications' FCM entry point (`plugins/with-sy-native.js`).
-Pair the phone by scanning the hub's QR (its keys go in sealed), then check Settings →
-Notifications (battery optimisation, the maker guide, "Verified by QR"). Build the APK yourself
-with `expo prebuild` and Gradle (phone.md P13); nothing here signs or uploads it.
+## Prerequisites
 
-### Release build and updates (N2): you run it
+- Node 22.13 or newer (and npm).
+- A JDK, 17 or newer (21 works).
+- The Android SDK (command-line tools are enough) with `ANDROID_HOME` pointing at it, and the
+  platform and build-tools that Gradle asks for (it downloads what it can accept the licenses
+  for: run `sdkmanager --licenses` once).
+- Expo Go does not have the `sy-link` module, so use a development or debug build, not Expo Go.
 
-`make phone-apk-release` does `expo prebuild` and Gradle `assembleRelease` on your laptop and
-signs with **your own keystore**. It refuses to start without one, and nothing it needs is ever
-written into the repo. No agent and no CI job runs it, and nothing is uploaded.
+## Build an unsigned debug APK (contributors)
 
-Create the keystore once, outside the repository (a secrets folder; keep two offline copies,
-because losing it means every phone must uninstall and reinstall). This is the command; no
-`make` target runs it for you:
+```sh
+cd phone
+npm ci
+npm run check                 # tsc, eslint, jest (offline), the secrets check
+npx expo prebuild --platform android --no-install --clean   # writes the untracked phone/android/
+```
+
+Then, from the repository root:
+
+```sh
+make phone-android-debug      # prebuild + ./gradlew :app:assembleDebug
+```
+
+The APK lands in `phone/android/app/build/outputs/apk/debug/`. It is signed with the debug key
+that the generated project carries, which is fine for your own phone and never for distribution.
+`SY_APP_VARIANT=development` (set by that make target) lets the pair screen accept `http://`
+hubs on loopback and LAN addresses; leave it unset for a build that only accepts `https://`.
+
+JVM unit tests of the native modules (what CI runs after the prebuild):
+
+```sh
+cd phone/android && ./gradlew :sy-link:testDebugUnitTest :sy-tabs:testDebugUnitTest
+```
+
+### A self-contained APK for emulator tests
+
+`phone/scripts/e2e-android-apk.sh` builds the Gradle release variant (JavaScript bundled in, no
+Metro) signed with the debug key and with cleartext allowed, for `test/e2e/android/run.sh`:
+
+```sh
+SY_E2E_GRADLE_ARGS=-PreactNativeArchitectures=arm64-v8a SY_E2E_APK=/tmp/app-e2e.apk \
+  phone/scripts/e2e-android-apk.sh
+```
+
+By default it builds x86_64 only (for the emulator). Do not distribute it.
+
+## Pair the app with a hub
+
+1. Run a hub (see the repository README) that your phone can reach over `https://` (for example
+   a Tailscale hostname).
+2. In the hub's web board open Settings → Phones → **Add phone** (or run `sy phone pair` on the
+   hub). It shows a QR code and a six-digit code.
+3. In the app, scan the QR code, or type the hub's address and the code. The QR also carries the
+   hub's key fingerprint, so the phone can check it is talking to the right hub; typing the code
+   works but the hub key is then trusted on first use (Settings → Notifications says which).
+4. Allow notifications when Android asks (Android 13 and newer), then open Settings →
+   Notifications to check the connection, the battery guide for your phone's maker and "Send
+   test notification".
+
+To try the app against the mock hub: `go run ./cmd/webui-dev` (repository root, loopback only),
+build with `SY_APP_VARIANT=development`, and pair by typing its address and the code it prints.
+From an Android emulator the host is `10.0.2.2`.
+
+## Release builds (the maintainer)
+
+`make phone-apk-release` runs `expo prebuild` and Gradle `assembleRelease` and signs with your
+own keystore. It refuses to start without one, and nothing it needs is ever written into the
+repository (`*.jks`, `*.keystore` and friends are git-ignored; the build also refuses a keystore
+or properties file inside the repository). Signing is injected by
+`scripts/sy-release-signing.init.gradle` from the environment, because `expo prebuild`
+regenerates `android/` each time.
+
+Create the keystore once, outside the repository (keep two offline copies: losing it means every
+phone must uninstall and reinstall):
 
 ```sh
 keytool -genkeypair -v -keystore ~/secrets/switchyard-release.jks -alias switchyard \
   -keyalg RSA -keysize 4096 -validity 10000
 ```
 
-Then give the build the keystore, either in your shell:
+Then give the build the keystore, in your shell:
 
 ```sh
 export SY_ANDROID_KEYSTORE=~/secrets/switchyard-release.jks
@@ -54,59 +113,35 @@ The passwords go to Gradle and keytool through the environment only and are neve
 
 Output in `phone/dist/`: `switchyard-<version>.apk`, `SHA256SUMS` and `manifest.json` (version,
 versionCode as `build`, size, sha256, the signing certificate's SHA-256 as `cert_sha256`, min
-sdk). The certificate fingerprint is printed too: publish it with the release, and compare it
-after a build with `keytool -list -v -keystore <your keystore>`. Then, by hand, publish the three
-files as a GitHub release tagged `phone-vX.Y.Z` (the hub mirrors it daily, `docs/spec/phone.md`
-P16.2; the app installs it after checking the checksum and that the signing key is yours).
-`SY_RELEASE_NOTES` fills the manifest's `notes`. The Android `versionCode` is
-`MAJOR*10000 + MINOR*100 + PATCH` of the app version, so bump `version` in `app.config.ts` and
-`package.json` for each release.
+sdk). Publish the three files as a GitHub release tagged `phone-vX.Y.Z` (the hub mirrors it
+daily, `docs/spec/phone.md` P16.2; the app installs an update only after checking the checksum
+and that the signing key is the one it is already signed with). `SY_RELEASE_NOTES` fills the
+manifest's `notes`. The Android `versionCode` is `MAJOR*10000 + MINOR*100 + PATCH` of the app
+version, so bump `version` in `app.config.ts` and `package.json` together for each release.
+
+A fork that publishes its own releases changes `DEFAULT_REPO` in
+`modules/sy-link/android/src/main/java/dev/switchyard/link/UpdateClient.kt` (and the hub's
+`version.Repo`).
 
 ## Environment (read by `app.config.ts`; none of them is a secret)
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `SY_APP_ID` | `dev.switchyard.app.local` | Android package (and bundle id). Use your own reverse-DNS id |
-| `SY_APP_VARIANT` | release | `development` allows cleartext `http://` to loopback and LAN hubs (`--insecure-lan` testing); anything else is a release config |
+| `SY_APP_ID` | `dev.switchyard.app.local` | Android package. Use your own reverse-DNS id for builds you distribute |
+| `SY_APP_VARIANT` | release | `development` allows cleartext `http://` to loopback and LAN hubs; anything else is a release configuration |
 
-## Develop
+## Layout
 
-Node 22.13 or newer. Expo Go does not have the `sy-link` module, so use a development build.
+`app/` (expo-router routes, thin), `src/contract/` (TypeScript mirrors of the hub's JSON),
+`src/lib/` (decisions, pure and tested; no React Native or Expo import), `src/state/` (keychain,
+client, poller, cache; `glue.tsx` binds notifications and widgets to it, with the logic in
+`src/lib/integrate/`), `src/components/` (screens and UI), `widgets/` (Android widgets with
+`react-native-android-widget`; iOS widget sources are kept compiling only), `modules/sy-link`
+(the push connection and updater, Kotlin), `modules/sy-tabs` (claude.ai account tabs, Kotlin),
+`plugins/` (config plugins).
 
-```
-cd phone
-npm ci
-npm run check            # tsc, eslint, jest (offline), the secrets check
-npm start                # Metro for a development build (expo start --dev-client)
-```
-
-Or from the repo root: `make phone-deps`, `make phone-check` (adds both prebuild checks,
-which run `expo prebuild` into a temporary copy) and `make phone-android-debug` (optional:
-an unsigned debug compile with `ANDROID_HOME` and JDK 17+; the APK is for your own phone,
-never distributed).
-
-To try the app against the mock hub: `go run ./cmd/webui-dev` (from the repo root, it listens
-on loopback), build with `SY_APP_VARIANT=development`, and pair by typing its address and the
-code it prints.
-
-`ios/` and `android/` are generated by `expo prebuild` (continuous native generation). They
-are git-ignored and never edited by hand: every native change is a config plugin
-(`plugins/with-sy-native.js`) or a library option in `app.config.ts`.
-
-Layout (phone.md P1): `app/` (expo-router routes, thin), `src/contract/` (TypeScript mirrors
-of the hub's JSON), `src/lib/` (all decisions, pure and tested; no React Native or Expo
-import), `src/state/` (the app state: keychain, client, poller, cache; `glue.tsx` binds
-notifications, widgets and the Live Activity to it, with the logic in `src/lib/integrate/`), `src/components/` (screens and UI),
-`widgets/` (iOS `expo-widgets` and Android
-`react-native-android-widget` components).
-
-## Builds (you)
-
-Build locally, with your own toolchain (`ANDROID_HOME`, JDK 17+): `npx expo run:android` for a
-development build, `make phone-apk-release` for the signed APK above. Agents never run them.
-
-For the APK: install it on the phone and allow installs from unknown sources for the app
-you open it with.
+`android/` and `ios/` are generated by `expo prebuild`, git-ignored, and never edited by hand:
+every native change is a config plugin or a library option in `app.config.ts`.
 
 ## When pushes stop
 
@@ -118,12 +153,13 @@ whether it is connected.
 ## Privacy
 
 Notifications travel over the app's own encrypted connection to your hub: no third party sees
-them. Turn on **Private pushes** in the app's Settings (or the hub default) and pushes say only
-"1 session needs you"; the details load from your hub when you open them. The device token stays
-in the OS keychain and never appears in logs, widgets, pushes or links.
+them, and the app uses no Firebase project or Google push service for delivery. Turn on
+**Private pushes** in the app's Settings (or the hub default) and pushes say only "1 session needs
+you"; the details load from your hub when you open them. The device token stays in the Android
+Keystore-backed secure store and never appears in logs, widgets, pushes or links.
 
-In a claude.ai account tab (Android), Switchyard asks claude.ai only "which account is this?"
-(the account id, as the desktop app does) so Accounts can say whether the tab matches its
-account. It never reads your chats, the page or the tab's cookies, and sends nothing from the
-tab to your hub; what it remembers (signed in or not, the account id, when) stays on the phone
-(`docs/spec/phone.md` P17.7).
+In a claude.ai account tab, Switchyard asks claude.ai only "which account is this?" (the account
+id, as the desktop app does) so Accounts can say whether the tab matches its account. It never
+reads your chats, the page or the tab's cookies, and sends nothing from the tab to your hub; what
+it remembers (signed in or not, the account id, when) stays on the phone (`docs/spec/phone.md`
+P17.7).
