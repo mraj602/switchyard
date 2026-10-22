@@ -1,0 +1,49 @@
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      go:
+        patterns: ["*"]
+
+  # The desktop app. The repository-root package.json is the legacy prototype and is not listed.
+  - package-ecosystem: npm
+    directory: /app
+    schedule:
+      interval: weekly
+    groups:
+      app-electron:
+        patterns: ["electron", "electron-builder", "@electron/*"]
+      app:
+        patterns: ["*"]
+
+  # The Android app. Expo SDK packages move together; upgrade them with `npx expo install --fix`
+  # in one pull request rather than one by one.
+  - package-ecosystem: npm
+    directory: /phone
+    schedule:
+      interval: weekly
+    groups:
+      phone-expo:
+        patterns: ["expo", "expo-*", "@expo/*", "react", "react-native", "react-dom", "@react-native/*"]
+      phone:
+        patterns: ["*"]
+
+  # The Python tools the spec check uses in CI.
+  - package-ecosystem: pip
+    directory: /scripts/ci
+    schedule:
+      interval: weekly
+    groups:
+      spec-tools:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

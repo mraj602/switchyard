@@ -1,0 +1,34 @@
+name: Feature request
+description: Suggest a change or a new capability.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Open questions and ideas you want to discuss first are welcome in Discussions.
+        Switchyard never switches or rotates accounts automatically, never reads or sends Claude credentials or claude.ai cookies, and is for your own accounts only; requests that need those are out of scope.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should Switchyard do? Which component (sy, hub, board, desktop app, Android app, plugin)?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Other ways you considered, including existing settings or tools.
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contributing
+      options:
+        - label: I would like to work on this (see CONTRIBUTING.md; behaviour changes start with a spec change).
