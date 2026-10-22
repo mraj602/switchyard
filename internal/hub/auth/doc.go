@@ -3,5 +3,5 @@
 //
 // Contract: docs/spec/tokens.md.
 //
-// Phase 2. Depends on: hub/store.
+// Depends on: hub/store.
 package auth

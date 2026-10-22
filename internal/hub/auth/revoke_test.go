@@ -8,12 +8,12 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
 
-// Review phase 4 finding 8: a device that is already revoked still gets its targets deleted
+// A device that is already revoked still gets its targets deleted
 // and its unsent deliveries skipped.
 func TestRevokeCascadeCleansAlreadyRevokedDevice(t *testing.T) {
 	_, st, _ := newAuth(t)
 	ctx := context.Background()
-	phone, _ := Create(ctx, st, CreateRequest{Kind: "phone", Name: "pixel"})
+	phone, _ := Create(ctx, st, CreateRequest{Kind: "phone", Name: "phone"})
 	err := st.Write(ctx, func(tx *store.Tx) error {
 		for _, q := range []string{
 			`INSERT INTO alert (id, episode, trigger, status, created_at, facts, updated_at) VALUES ('al_1', 'e1', 'asked', 'fired', 1, '{}', 1)`,

@@ -8,24 +8,6 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
 
-// Phase 5 operations (machines.md 6.2) follow the phase 4 pattern (routes_phase4.go): listed
-// here once with the scopes of api.yaml, 501 until a handler file registers a factory with
-// Register from init(), and server.go never changes again. `GET /v1/machines` (with its new
-// `all` parameter) is a phase 2 operation and stays in server.go.
-
-// phase5Routes: method, path, x-scopes exactly as api.yaml. Reserved is filled in by Routes().
-var phase5Routes = []Route{
-	{Method: "PATCH", Path: "/v1/machines/{id}", Scopes: []string{"owner"}},
-	{Method: "DELETE", Path: "/v1/machines/{id}", Scopes: []string{"owner"}},
-	{Method: "POST", Path: "/v1/machines/{id}/pull", Scopes: []string{"owner"}},
-	{Method: "GET", Path: "/v1/push/direct-policy", Scopes: []string{"write"}},
-}
-
-func isPhase5(method, path string) bool { return inTable(phase5Routes, method, path) }
-
-// phase5RoutesNow returns the table with Reserved set from the registry.
-func phase5RoutesNow() []Route { return withReserved(phase5Routes) }
-
 // PullStatus is a pull target's health (api.yaml PullStatus; machines.md 3.4, 6.1). The
 // times are RFC 3339 strings (empty = null is written as a JSON null by the pointer fields).
 type PullStatus struct {

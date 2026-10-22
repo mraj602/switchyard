@@ -141,8 +141,6 @@ func pairFail(w http.ResponseWriter, err error) {
 	}
 }
 
-// pairDropSession revokes the session behind the request's cookie when it is a board or
-// owner session: a new cookie replaces it, as on logout.
 // pairDesktopVia is the desktop device whose board session sends this request (its cookie), or
 // nil: an owner link opened in the desktop app's Hub view stays tied to that app.
 func pairDesktopVia(r *http.Request, s *Server) *store.Device {
@@ -173,6 +171,8 @@ func pairViaDevice(ctx context.Context, s *Server, d store.Device) *store.Device
 	return &p
 }
 
+// pairDropSession revokes the session behind the request's cookie when it is a board or
+// owner session: a new cookie replaces it, as on logout.
 func pairDropSession(r *http.Request, s *Server) {
 	if c, err := r.Cookie(auth.CookieName); err == nil {
 		if d, err := s.Auth.Lookup(r.Context(), c.Value); err == nil && auth.IsSessionDevice(d) {

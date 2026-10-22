@@ -14,8 +14,8 @@ import (
 	"github.com/mraj602/switchyard/internal/keys"
 )
 
-// F1 key endpoints (keys.md 3.3, 4.2, 6; api.yaml tag keys). Every handler answers 503 when
-// the server has no hub signing key (Config.Keys nil: tests and pre-F1 setups).
+// Key endpoints (keys.md 3.3, 4.2, 6; api.yaml tag keys). Every handler answers 503 when
+// the server has no hub signing key (Config.Keys nil: tests and hubs without a key).
 
 func init() {
 	reg := func(method, path string, h func(*Server, http.ResponseWriter, *http.Request)) {

@@ -241,7 +241,7 @@ func TestCookieCSRFRules(t *testing.T) {
 func TestPairCodesAPI(t *testing.T) {
 	h := newPairHub(t)
 	owner := h.ownerCookie()
-	phone, _ := h.phoneCookie("Pixel 9 · Chrome")
+	phone, _ := h.phoneCookie("Android · Chrome")
 
 	if r := h.call("POST", "/v1/pair/codes", map[string]any{"kind": "phone", "url": pairHubURL}, opts{cookie: phone}); r.code != 403 {
 		t.Errorf("a phone made a code: %d", r.code)
@@ -267,13 +267,13 @@ func TestPairCodesAPI(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	r = h.call("POST", "/v1/pair/codes", map[string]any{"kind": "phone", "name": "Anna's phone"}, opts{cookie: owner})
+	r = h.call("POST", "/v1/pair/codes", map[string]any{"kind": "phone", "name": "Alex's phone"}, opts{cookie: owner})
 	if r.code != 201 {
 		t.Fatalf("make code: %d %s", r.code, r.body)
 	}
 	c := r.json(t)
 	code, secret := c["code"].(string), c["secret"].(string)
-	if len(code) != 7 || code[3] != '-' || len(secret) != 22 || c["kind"] != "phone" || c["name"] != "Anna's phone" || c["command"] != nil {
+	if len(code) != 7 || code[3] != '-' || len(secret) != 22 || c["kind"] != "phone" || c["name"] != "Alex's phone" || c["command"] != nil {
 		t.Errorf("code reply %v", c)
 	}
 	if want := "https://pub.example.ts.net/#/pair?s=" + secret + "&c=" + strings.Replace(code, "-", "", 1); c["url"] != want {
@@ -309,7 +309,7 @@ func TestPairCodesAPI(t *testing.T) {
 		t.Errorf("status %d %s", r.code, r.body)
 	}
 	// Claim it by the typed code, from "another" address, and watch the status change.
-	cl := h.call("POST", "/v1/pair/claim", map[string]any{"code": code, "name": "Anna's phone"}, opts{xff: "198.51.100.7"})
+	cl := h.call("POST", "/v1/pair/claim", map[string]any{"code": code, "name": "Alex's phone"}, opts{xff: "198.51.100.7"})
 	if cl.code != 200 {
 		t.Fatalf("claim: %d %s", cl.code, cl.body)
 	}
@@ -398,7 +398,7 @@ func TestClaimAPI(t *testing.T) {
 		t.Errorf("the replaced owner session stayed valid: %d", r.code)
 	}
 
-	// Token mode (CLI, phase 8): the token is in the body, the reply is not cacheable.
+	// Token mode (CLI and the phone app): the token is in the body, the reply is not cacheable.
 	m := mk("machine")
 	mid := "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K"
 	if r := h.call("POST", "/v1/pair/claim", map[string]any{"code": m.Digits, "expect_kind": "phone", "machine": mid}, opts{}); r.code != 409 {
@@ -508,7 +508,7 @@ func TestDevicesAPI(t *testing.T) {
 	h := newPairHub(t)
 	owner := h.ownerCookie()
 	phone, phoneID := h.phoneCookie("iPhone · Safari")
-	phone2, phone2ID := h.phoneCookie("Pixel 9 · Chrome")
+	phone2, phone2ID := h.phoneCookie("Android · Chrome")
 	h.insertTargets(t, phoneID, "pt_one")
 
 	// List: owner only.
@@ -570,11 +570,11 @@ func TestDevicesAPI(t *testing.T) {
 	}
 
 	// PATCH name and prefs.
-	r = h.call("PATCH", "/v1/devices/self", map[string]any{"name": "  Anna's iPhone ", "prefs": map[string]any{
+	r = h.call("PATCH", "/v1/devices/self", map[string]any{"name": "  Alex's iPhone ", "prefs": map[string]any{
 		"mute": []string{"limit_80"}, "private": true, "tap": "claude", "tz": "Asia/Kolkata",
 		"quiet_hours": map[string]any{"enabled": true, "start": "22:30", "end": "07:00", "critical": false}}}, opts{cookie: phone})
 	got := r.json(t)
-	if r.code != 200 || got["name"] != "Anna's iPhone" {
+	if r.code != 200 || got["name"] != "Alex's iPhone" {
 		t.Fatalf("patch: %d %s", r.code, r.body)
 	}
 	p := got["prefs"].(map[string]any)
@@ -596,7 +596,7 @@ func TestDevicesAPI(t *testing.T) {
 		{}, {"name": ""}, {"name": strings.Repeat("n", 61)}, {"prefs": map[string]any{"tap": "loud"}},
 		{"prefs": map[string]any{"mute": []string{"nonsense"}}}, {"prefs": map[string]any{"quiet_hours": map[string]any{"start": "25:00", "end": "07:00"}}},
 		{"prefs": map[string]any{"tz": "Not A Zone!"}}, {"prefs": "text"},
-		// Review phase 4 finding 7: well-formed but not a real zone.
+		// Well-formed but not a real zone.
 		{"prefs": map[string]any{"tz": "Mars/Olympus"}},
 		{"prefs": map[string]any{"quiet_hours": map[string]any{"start": "22:00", "end": "07:00", "tz": "Mars/Olympus"}}},
 	} {
@@ -740,7 +740,7 @@ func TestStreamEndsAtOnceOnRevoke(t *testing.T) {
 	h := &pairHub{hub: startHubPing(t, "", time.Hour)}
 	h.svc = pair.NewService(h.st, api.PairPepperPath)
 	owner := h.ownerCookie()
-	phone, phoneID := h.phoneCookie("Pixel 9 · Chrome")
+	phone, phoneID := h.phoneCookie("Android · Chrome")
 	req, _ := http.NewRequest("GET", h.http.URL+"/v1/stream", nil)
 	req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: phone})
 	res, err := http.DefaultClient.Do(req)

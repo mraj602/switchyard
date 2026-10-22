@@ -11,7 +11,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
 
-// Review finding 13: /health and ingest agree on an unparseable hub.frozen: both say frozen.
+// /health and ingest agree on an unparseable hub.frozen: both say frozen.
 func TestHealthTreatsUnparseableFrozenAsFrozen(t *testing.T) {
 	h := startHub(t, "")
 	tok := h.token("machine")
@@ -30,7 +30,7 @@ func TestHealthTreatsUnparseableFrozenAsFrozen(t *testing.T) {
 	}
 }
 
-// Review finding 10: a pairing claim is refused with the frozen 503 while the hub is frozen,
+// A pairing claim is refused with the frozen 503 while the hub is frozen,
 // and the code stays usable after the unfreeze.
 func TestPairClaimRefusedWhileFrozen(t *testing.T) {
 	h := newPairHub(t)

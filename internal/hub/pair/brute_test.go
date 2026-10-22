@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// Review phase 4 finding 2: concurrent typed guesses must not outrun the failure counters.
+// Concurrent typed guesses must not outrun the failure counters.
 // 20 addresses x 20 simultaneous wrong guesses: at most 5 per IP and 20 hub-wide may reach
 // the database.
 func TestConcurrentTypedGuessesRespectLockouts(t *testing.T) {

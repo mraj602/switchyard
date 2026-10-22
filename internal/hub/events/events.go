@@ -6,7 +6,7 @@
 // start time in milliseconds times 1000, so an id from an earlier run is always lower than
 // any id of this one and can be told apart (reset reason hub_restarted).
 //
-// Phase 2. Depends on: nothing inside the module.
+// Depends on: nothing inside the module.
 package events
 
 import (

@@ -4,5 +4,5 @@
 //
 // Contract: docs/spec/api.yaml.
 //
-// Phase 2. Depends on: hub/store, hub/auth, hub/ingest, hub/state, hub/usage, webui.
+// Depends on: hub/store, hub/auth, hub/ingest, hub/state, hub/usage, webui.
 package api
