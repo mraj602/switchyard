@@ -171,6 +171,12 @@ func TestSessionFileRejectsUnsafeIDsAndPrunes(t *testing.T) {
 	if _, ok := peers.ReadSessionFile(f.state, "../x"); ok {
 		t.Error("read with unsafe id")
 	}
+	if err := peers.MarkDelivered(f.state, "../../escaped", f.now); err == nil {
+		t.Error("a delivery stamp with an unsafe id must be refused")
+	}
+	if _, err := os.Stat(filepath.Join(f.state, "escaped")); err == nil {
+		t.Error("the delivery stamp was written outside peers/delivered")
+	}
 	c := hookCtx(f, 1)
 	peers.UpdateSessionFile(c, peers.HookEvent{SessionID: "old", Name: "SessionStart"})
 	p := filepath.Join(peers.SessionsDir(f.state), "old.json")

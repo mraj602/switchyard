@@ -26,9 +26,11 @@ var ErrForbidden = errors.New("identity: refusing to access a credentials file")
 var claudeFolder = regexp.MustCompile(`^\.claude([-_].+)?$`)
 
 // Forbidden reports whether name is a file sy must never open: .credentials.json,
-// sessions/*.key, or anything under a Claude folder's daemon/ folder.
+// sessions/*.key, or anything under a Claude folder's daemon/ folder. Names are compared
+// without case: the default file systems of macOS and Windows ignore it, so
+// ".Credentials.json" opens the same file there.
 func Forbidden(name string) bool {
-	clean := filepath.ToSlash(filepath.Clean(name))
+	clean := strings.ToLower(filepath.ToSlash(filepath.Clean(name)))
 	parts := strings.Split(clean, "/")
 	base := parts[len(parts)-1]
 	if base == ".credentials.json" {
