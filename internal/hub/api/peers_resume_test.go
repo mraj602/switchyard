@@ -132,7 +132,7 @@ func TestPeerThreadResume(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	phone, err := auth.Create(ctx, h.st, auth.CreateRequest{Kind: "phone", Name: "pixel"})
+	phone, err := auth.Create(ctx, h.st, auth.CreateRequest{Kind: "phone", Name: "phone"})
 	if err != nil {
 		t.Fatal(err)
 	}
