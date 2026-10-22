@@ -234,7 +234,7 @@ func TestEnsureKeyUsesKeygenWithoutSecretsInArgv(t *testing.T) {
 	}
 }
 
-// Review finding 11: a jump host cannot be pinned, so it is refused with a clear reason
+// A jump host cannot be pinned, so it is refused with a clear reason
 // instead of being written as an unpinned ProxyJump.
 func TestProxyJumpIsRefused(t *testing.T) {
 	tg := store.PullTarget{ID: "pt_01JA", Name: "gpu", Host: "gpu-box", Port: 22, User: "me", Jump: "bastion", HostKeys: []string{hostKeyA}}

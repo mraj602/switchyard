@@ -599,7 +599,7 @@ func TestSessionBudgetEndsWithByeAndMore(t *testing.T) {
 	if ep.hub.Outcome != pull.OutcomeOK || !ep.hub.More || ep.hub.Batches != 2 {
 		t.Fatalf("%+v", ep.hub)
 	}
-	// Review finding 7: the hub's budget bye is a clean end for the remote, not a failure.
+	// The hub's budget bye is a clean end for the remote, not a failure.
 	if ep.remote.Err != nil || ep.remote.ProtocolErr || !ep.remote.Bye || ep.remote.Batches != 2 {
 		t.Fatalf("remote %+v", ep.remote)
 	}

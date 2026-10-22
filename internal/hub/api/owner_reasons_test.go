@@ -10,7 +10,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
 
-// UI audit O1: a refused owner sign-in says why (pairing.md 4): used, expired, cancelled or
+// A refused owner sign-in says why (pairing.md 4): used, expired, cancelled or
 // unknown, with when.
 func TestOwnerSignInReasons(t *testing.T) {
 	h := newPairHub(t)

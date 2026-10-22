@@ -12,7 +12,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
 
-// Review finding 8: `sy hub pull run` with no name leaves the runs to a live hub (it only
+// `sy hub pull run` with no name leaves the runs to a live hub (it only
 // schedules them) and runs in-process when no hub is alive.
 func TestPullRunWithoutNameAsksALiveHub(t *testing.T) {
 	f := newPullFixture(t)
@@ -49,7 +49,7 @@ func TestPullRunWithoutNameAsksALiveHub(t *testing.T) {
 	}
 }
 
-// Review finding 3: a `sy hub serve` on the data folder (hub.lock) stops a second serve and
+// A `sy hub serve` on the data folder (hub.lock) stops a second serve and
 // an import, whatever address it listens on.
 func TestHubLockStopsSecondServeAndImport(t *testing.T) {
 	t.Setenv("SY_STATE_DIR", t.TempDir())

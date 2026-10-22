@@ -8,7 +8,7 @@ import (
 	"github.com/mraj602/switchyard/internal/outbox"
 )
 
-// Review finding 12: peek reads (and may quarantine corrupt lines) only as the flush.lock
+// Peek reads (and may quarantine corrupt lines) only as the flush.lock
 // holder, so it refuses while a flush or drain holds the lock.
 func TestOutboxDrainPeekTakesTheFlushLock(t *testing.T) {
 	_, dir := drainEnv(t)

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// G2 (UI re-audit): a list that makes a session done backdates state_since to the session's
+// A list that makes a session done backdates state_since to the session's
 // newest activity before the list (ListObs.LastActive, its last hook event, its current
 // since), never past the list's ts. A list only sees "idle now"; the time it ran (on a new
 // hub: the import) says nothing about when the turn ended.

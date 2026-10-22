@@ -22,7 +22,7 @@ import (
 
 func (s *setupHome) state() string { return filepath.Join(s.syHome, "state") }
 
-// Finding 1: `account remove --unshare` makes independent copies; `sy tick` never copies a
+// `account remove --unshare` makes independent copies; `sy tick` never copies a
 // copy's edits over the primary.
 func TestUnshareThenTickLeavesPrimary(t *testing.T) {
 	h := detecttest.Laptop(t)
@@ -45,7 +45,7 @@ func TestUnshareThenTickLeavesPrimary(t *testing.T) {
 	}
 }
 
-// Finding 1 + StateEq on folders: undo of an unshare keeps what was written in the copy
+// Undo of an unshare keeps what was written in the copy
 // since (skipped, exit 5); without new work it restores the link.
 func TestUndoOfUnshareKeepsNewWork(t *testing.T) {
 	h := detecttest.Laptop(t)
@@ -68,7 +68,7 @@ func TestUndoOfUnshareKeepsNewWork(t *testing.T) {
 	}
 }
 
-// Finding 4: a set left in-progress while another command holds setup.lock is that
+// A set left in-progress while another command holds setup.lock is that
 // command's live run: sy setup refuses (exit 2) and never undoes it; a dry run does not
 // report it as interrupted.
 func TestInProgressSetIsNotUndoneWhileLocked(t *testing.T) {
@@ -115,7 +115,7 @@ func TestInProgressSetIsNotUndoneWhileLocked(t *testing.T) {
 	}
 }
 
-// Finding 4: sy tick skips its share sync (and succeeds) while setup.lock is held.
+// `sy tick` skips its share sync (and succeeds) while setup.lock is held.
 func TestTickSkipsShareWhileLocked(t *testing.T) {
 	h := detecttest.Laptop(t)
 	s := newSetupHome(t, h)
@@ -158,7 +158,7 @@ func TestTickSkipsShareWhileLocked(t *testing.T) {
 	}
 }
 
-// Finding 12: the timer and the hub service are in the uninstall plan, and nothing is
+// The timer and the hub service are in the uninstall plan, and nothing is
 // removed without --yes or a terminal, even when the plan has no other action.
 func TestUninstallAsksBeforeRemovingTimerAndService(t *testing.T) {
 	h := detecttest.Laptop(t)
@@ -185,7 +185,7 @@ func TestUninstallAsksBeforeRemovingTimerAndService(t *testing.T) {
 	}
 }
 
-// Finding 13: uninstall keeps the ledger record of what it left as is (a launcher changed
+// Uninstall keeps the ledger record of what it left as is (a launcher changed
 // by the person), so a later doctor or uninstall still knows it.
 func TestUninstallKeepsRecordsOfWhatItLeft(t *testing.T) {
 	h := detecttest.Laptop(t)
@@ -208,7 +208,7 @@ func TestUninstallKeepsRecordsOfWhatItLeft(t *testing.T) {
 	}
 }
 
-// Finding 13: account remove does not overwrite a ledger it cannot read.
+// `sy account remove` does not overwrite a ledger it cannot read.
 func TestAccountRemoveRefusesUnreadableLedger(t *testing.T) {
 	h := detecttest.Laptop(t)
 	s := newSetupHome(t, h)

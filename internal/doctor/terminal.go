@@ -1,6 +1,6 @@
 package doctor
 
-// The terminal checks of docs/spec/terminal.md T11 (phase 7). Each one runs only when its
+// The terminal checks of docs/spec/terminal.md T11. Each one runs only when its
 // piece is on (a ledger entry, a token file, config terminal.titles, Warp found), so a
 // machine with no terminal pieces gets no extra line. Nothing here writes outside a temp
 // folder (the title fixture) and nothing prints the board token.

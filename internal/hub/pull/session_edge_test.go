@@ -36,7 +36,7 @@ func TestSessionTransientStoreErrorIsAFailureNotARefusal(t *testing.T) {
 	}
 }
 
-// Review finding 14: a hello cannot bind a machine that uploads directly right now.
+// A hello cannot bind a machine that uploads directly right now.
 func TestFirstHelloDoesNotBindADirectMachine(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
@@ -74,7 +74,7 @@ func TestFirstHelloDoesNotBindADirectMachine(t *testing.T) {
 	}
 }
 
-// Review finding 11: a "Pull now" that arrives while a run is going is not overwritten by
+// A "Pull now" that arrives while a run is going is not overwritten by
 // the run's own next time.
 func TestSchedulerKeepsPullNowMadeDuringARun(t *testing.T) {
 	e := newEnv(t)
@@ -97,7 +97,7 @@ func TestSchedulerKeepsPullNowMadeDuringARun(t *testing.T) {
 	}
 }
 
-// Review finding 9: a successful drain session prunes old day files under flush.lock.
+// A successful drain session prunes old day files under flush.lock.
 func TestDrainPrunesOldDayFilesAtTheEnd(t *testing.T) {
 	e := newEnv(t)
 	e.fill(3)
@@ -120,7 +120,7 @@ func TestDrainPrunesOldDayFilesAtTheEnd(t *testing.T) {
 	}
 }
 
-// Review finding 11: ExecStarter kills ssh when its context ends and Wait returns even if a
+// ExecStarter kills ssh when its context ends and Wait returns even if a
 // child keeps the pipes open.
 func TestExecStarterWaitDelayBoundsAHungChild(t *testing.T) {
 	if _, err := os.Stat("/bin/sh"); err != nil || testing.Short() {
