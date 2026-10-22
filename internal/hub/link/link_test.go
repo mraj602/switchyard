@@ -329,6 +329,10 @@ func TestSupersedeIdleAndLimits(t *testing.T) {
 	}
 	waitFor(t, "last_close", func() bool { return f.state(m).LastClose == "4408 idle" })
 
+	// The frame checks run without the short idle, which a 1 MiB write on a loaded machine
+	// can outlast.
+	f = newFix(t)
+	m = f.machine(10)
 	c := f.dial(m)
 	c.WS.Write(f.ctx, websocket.MessageBinary, []byte("{}"))
 	if code := closed(t, c); code != link.CloseBadFrame {
