@@ -1,5 +1,5 @@
-// Package terminal is the phase 7 end-to-end suite (docs/phases/7.md, "End to end",
-// scenarios E1..E11; docs/spec/terminal.md T2, T3, T6, T7, T10, T11): the real `sy` binary,
+// Package terminal is the end-to-end suite for the terminal features (scenarios E1..E11;
+// docs/spec/terminal.md T2, T3, T6, T7, T10, T11): the real `sy` binary,
 // built once with `-tags fakeopen`, against a temp home laid out like the laptop of
 // setup.md 11 (detecttest.Laptop), a real `sy hub serve` on a free loopback port, a second
 // machine ("gpu-box", its own HOME and SY_HOME), the fakeclaude of the setup suite on PATH

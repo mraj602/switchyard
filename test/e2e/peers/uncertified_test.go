@@ -66,7 +66,7 @@ func TestUncertifiedMachines(t *testing.T) {
 	// Same machine, two accounts: works.
 	loc := w.worker.send("side", toWorker, "same machine without certificates", 0, 0)
 	delivered(t, loc, loc.Status)
-	onlyContent(t, w.worker.session("worker").inbox, 1)
+	onlyContent(t, w.worker.session("builder").inbox, 1)
 
 	// Listed, but blocked: this machine pins no owner key (there is none).
 	e := entryFor(t, w.laptop.list("api"), toWorker)
@@ -96,10 +96,10 @@ func TestUncertifiedMachines(t *testing.T) {
 	if err := keys.SetPin(keys.Path(w.laptop.state, keys.OwnerPinFile), keys.NewPin(h.owner.Public().(ed25519.PublicKey), keys.PinLocal, h.clk.Now())); err != nil {
 		t.Fatal(err)
 	}
-	if e := entryFor(t, w.laptop.list("api"), toWorker); e.Blocked != "worker"+"'s link keys are not owner-certified" {
+	if e := entryFor(t, w.laptop.list("api"), toWorker); e.Blocked != "gpu-box"+"'s link keys are not owner-certified" {
 		t.Fatalf("after certifying the laptop only: %+v", e)
 	}
-	if e := entryFor(t, w.worker.list("worker"), toAPI); e.Blocked != peers.BlockedNoOwnerPin {
+	if e := entryFor(t, w.worker.list("builder"), toAPI); e.Blocked != peers.BlockedNoOwnerPin {
 		t.Fatalf("the worker before it pins the owner key: %+v", e)
 	}
 
@@ -121,9 +121,9 @@ func TestUncertifiedMachines(t *testing.T) {
 	}
 	rep := w.laptop.send("api", toWorker, "now certified", 0, 0)
 	delivered(t, rep, rep.Status)
-	back := w.worker.send("worker", toAPI, "and back", 0, 0)
+	back := w.worker.send("builder", toAPI, "and back", 0, 0)
 	delivered(t, back, back.Status)
-	onlyContent(t, w.worker.session("worker").inbox, 2)
+	onlyContent(t, w.worker.session("builder").inbox, 2)
 	onlyContent(t, w.laptop.session("api").inbox, 1)
 }
 
@@ -149,7 +149,7 @@ func TestSenderNotCertified(t *testing.T) {
 		t.Errorf("detail %q", rf.Detail)
 	}
 	// The worker (certified) sees the laptop as the blocker.
-	if e := entryFor(t, w.worker.list("worker"), toAPI); e.Blocked != "laptop's link keys are not owner-certified" {
+	if e := entryFor(t, w.worker.list("builder"), toAPI); e.Blocked != "laptop's link keys are not owner-certified" {
 		t.Fatalf("worker's view %+v", e)
 	}
 }

@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	toWorker = "worker@personal.worker"
-	toSide   = "side@other.worker"
+	toWorker = "builder@personal.gpu-box"
+	toSide   = "side@other.gpu-box"
 	toAPI    = "api@work.laptop"
 )
 
@@ -74,8 +74,8 @@ func noMore(t *testing.T, in *fakeinbox.Server, n int) {
 func TestSSHAddedMachineExchanges(t *testing.T) {
 	h := newHub(t, 30)
 	laptop := h.newMachine("laptop", laptopID, sessionSpec{slot: ".claude-2", label: "work", account: accWork, pid: 500, id: "sess-api", name: "api"})
-	worker := h.newMachineWith((*testHub).pairSSH, "worker", workerID,
-		sessionSpec{slot: ".claude-5", label: "personal", account: accPersonal, pid: 600, id: "sess-worker", name: "worker"})
+	worker := h.newMachineWith((*testHub).pairSSH, "gpu-box", workerID,
+		sessionSpec{slot: ".claude-5", label: "personal", account: accPersonal, pid: 600, id: "sess-builder", name: "builder"})
 	c, err := h.ks.Cert(h.ctx, worker.device)
 	if err != nil || c.Body.Reg != keys.RegSSH || !c.OwnerSigned {
 		t.Fatalf("worker cert at the hub: reg %s owner-signed %v, %v", c.Body.Reg, c.OwnerSigned, err)
@@ -89,10 +89,10 @@ func TestSSHAddedMachineExchanges(t *testing.T) {
 	const hello, answer = "okapi-tern-2208 to the ssh-added worker", "lemur-wren-5531 back over its link"
 	rep := laptop.send("api", toWorker, hello, 0, 0)
 	delivered(t, rep, rep.Status)
-	if got := onlyContent(t, worker.session("worker").inbox, 1); got[0].Outcome != fakeinbox.Deliver || !strings.Contains(got[0].Wrapper.Body, hello) {
+	if got := onlyContent(t, worker.session("builder").inbox, 1); got[0].Outcome != fakeinbox.Deliver || !strings.Contains(got[0].Wrapper.Body, hello) {
 		t.Fatalf("worker got %s %q", got[0].Outcome, got[0].Wrapper.Body)
 	}
-	back := worker.send("worker", toAPI, answer, 0, 0)
+	back := worker.send("builder", toAPI, answer, 0, 0)
 	delivered(t, back, back.Status)
 	if got := onlyContent(t, laptop.session("api").inbox, 1); got[0].Outcome != fakeinbox.Deliver || !strings.Contains(got[0].Wrapper.Body, answer) {
 		t.Fatalf("laptop got %s %q", got[0].Outcome, got[0].Wrapper.Body)
@@ -109,7 +109,7 @@ func TestDeliverAndReply(t *testing.T) {
 
 	rep := w.laptop.send("api", toWorker, hello, 0, 0)
 	delivered(t, rep, rep.Status)
-	in := w.worker.session("worker").inbox
+	in := w.worker.session("builder").inbox
 	got := onlyContent(t, in, 1)
 	if got[0].Outcome != fakeinbox.Deliver {
 		t.Fatalf("outcome %s (%s), want deliver with no prompt", got[0].Outcome, got[0].Reason)
@@ -126,7 +126,7 @@ func TestDeliverAndReply(t *testing.T) {
 	}
 
 	// The reply, as the header says.
-	back := w.worker.send("worker", toAPI, answer, 0, 0)
+	back := w.worker.send("builder", toAPI, answer, 0, 0)
 	delivered(t, back, back.Status)
 	if back.Thread != rep.Thread {
 		t.Errorf("reply thread %s, want %s", back.Thread, rep.Thread)
@@ -231,7 +231,7 @@ func (h *testHub) relayAnyway(device string, u link.Up, tamper func(*keys.Doc)) 
 // caught by the envelope signature.
 func TestTamperedAtHub(t *testing.T) {
 	w := newWorld(t, 30)
-	in := w.worker.session("worker").inbox
+	in := w.worker.session("builder").inbox
 	w.h.setRogue(func(ctx context.Context, device string, u link.Up) (bool, string, any, error) {
 		if u.T != link.TypePeerMsg {
 			return false, "", nil, nil
@@ -273,7 +273,7 @@ func TestTamperedAtHub(t *testing.T) {
 // reconnects; one whose TTL passes first becomes expired and the sender's machine is told.
 func TestOfflineThenExpiry(t *testing.T) {
 	w := newWorld(t, 30)
-	in := w.worker.session("worker").inbox
+	in := w.worker.session("builder").inbox
 	w.worker.disconnect()
 
 	const text = "okapi-heron-5150 while you were away"
@@ -317,7 +317,7 @@ func TestOfflineThenExpiry(t *testing.T) {
 // refused by the senders and by the hub); sy peers off stops one machine.
 func TestKillSwitches(t *testing.T) {
 	w := newWorld(t, 30)
-	in := w.worker.session("worker").inbox
+	in := w.worker.session("builder").inbox
 
 	w.worker.disconnect()
 	queued := w.laptop.send("api", toWorker, "queued before the pause", 0, -1)
@@ -375,7 +375,7 @@ func TestKillSwitches(t *testing.T) {
 	}
 	noMore(t, in, 0)
 	// And the worker sends nothing either.
-	refusedWith(t, w.worker.send("worker", toAPI, "from an off machine", 0, 0).Refusal(), peers.CodeOff)
+	refusedWith(t, w.worker.send("builder", toAPI, "from an off machine", 0, 0).Refusal(), peers.CodeOff)
 }
 
 // The loop guard counts the turns of a thread across both machines; the hub keeps its own
@@ -384,7 +384,7 @@ func TestLoopGuardAcrossMachines(t *testing.T) {
 	w := newWorld(t, 2)
 	rep := w.laptop.send("api", toWorker, "turn one", 0, 0)
 	delivered(t, rep, rep.Status)
-	back := w.worker.send("worker", toAPI, "turn two", 0, 0)
+	back := w.worker.send("builder", toAPI, "turn two", 0, 0)
 	delivered(t, back, back.Status)
 	refusedWith(t, w.laptop.send("api", toWorker, "turn three", 0, 0).Refusal(), peers.CodeLoopGuard)
 
@@ -397,7 +397,7 @@ func TestLoopGuardAcrossMachines(t *testing.T) {
 	if rows[0].Status != "refused" || rows[0].Detail != peers.CodeLoopGuard {
 		t.Fatalf("hub row %+v", rows[0])
 	}
-	onlyContent(t, w.worker.session("worker").inbox, 1)
+	onlyContent(t, w.worker.session("builder").inbox, 1)
 }
 
 // The rates bind at the sender and, for a sender that forgot its limits, at the hub.
@@ -422,7 +422,7 @@ func TestRateLimits(t *testing.T) {
 	if limited != 1 {
 		t.Fatalf("hub rows refused as rate_limited: %d, want 1", limited)
 	}
-	onlyContent(t, w.worker.session("worker").inbox, peers.SessionBurst)
+	onlyContent(t, w.worker.session("builder").inbox, peers.SessionBurst)
 }
 
 // A sender that forgot its limits and threads and keeps sending envelopes the hub refuses
@@ -431,7 +431,7 @@ func TestHubRateLimitsRefusedEnvelopes(t *testing.T) {
 	w := newWorld(t, 2)
 	rep := w.laptop.send("api", toWorker, "turn one", 0, 0)
 	delivered(t, rep, rep.Status)
-	back := w.worker.send("worker", toAPI, "turn two", 0, 0)
+	back := w.worker.send("builder", toAPI, "turn two", 0, 0)
 	delivered(t, back, back.Status)
 	var last *peers.Refusal
 	for i := 0; i < peers.SessionBurst+3; i++ {
@@ -464,8 +464,8 @@ func TestAckTimeoutIsQueuedUnconfirmed(t *testing.T) {
 	if len(ts.Threads) != 1 || ts.Threads[0].Turns != 1 {
 		t.Errorf("threads %+v", ts.Threads)
 	}
-	res := peers.SendResult{Status: "queued", Unconfirmed: true, Target: peers.Session{Handle: "worker"}, Msg: rep.Msg}
-	if !strings.Contains(res.Line(), "queued for worker") || !strings.Contains(res.Line(), "not confirmed") {
+	res := peers.SendResult{Status: "queued", Unconfirmed: true, Target: peers.Session{Handle: "builder"}, Msg: rep.Msg}
+	if !strings.Contains(res.Line(), "queued for builder") || !strings.Contains(res.Line(), "not confirmed") {
 		t.Errorf("line %q", res.Line())
 	}
 }
@@ -488,7 +488,7 @@ func TestRevokedTarget(t *testing.T) {
 	if rf == nil || (rf.Code != peers.CodeUnknownTarget && rf.Code != peers.CodeRejected) {
 		t.Fatalf("refusal %v", rf)
 	}
-	noMore(t, w.worker.session("worker").inbox, 0)
+	noMore(t, w.worker.session("builder").inbox, 0)
 	for _, r := range w.h.rows() {
 		if r.Status != "refused" {
 			t.Errorf("row %+v", r)
@@ -506,7 +506,7 @@ func TestSeenWriteFailureStillAcks(t *testing.T) {
 	}
 	rep := w.laptop.send("api", toWorker, "once despite the failure", 0, 0)
 	delivered(t, rep, rep.Status)
-	in := w.worker.session("worker").inbox
+	in := w.worker.session("builder").inbox
 	onlyContent(t, in, 1)
 	w.h.waitRow(rep.Msg, "delivered")
 	noMore(t, in, 1)
@@ -528,7 +528,7 @@ func TestReplayDeliveredOnce(t *testing.T) {
 	})
 	rep := w.laptop.send("api", toWorker, "only once", 0, 0)
 	delivered(t, rep, rep.Status)
-	in := w.worker.session("worker").inbox
+	in := w.worker.session("builder").inbox
 	onlyContent(t, in, 1)
 	w.h.setRogue(nil)
 

@@ -1,5 +1,5 @@
 #!/bin/sh
-# S1 fresh install (docs/phases/3.md WP-G) and S1b (undo keeps a folder with a login).
+# S1 fresh install and S1b (undo keeps a folder with a login).
 # Home: only ~/.claude, logged in. install.sh from the local server, then
 # sy setup --yes --json --add work:amber,client --hub later; undo puts every file back.
 . "$(dirname "$0")/../lib/common.sh"

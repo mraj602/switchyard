@@ -1,5 +1,5 @@
 #!/bin/sh
-# S8 install script (docs/phases/3.md WP-G; grew out of the wave 1 smoke test S0): only
+# S8 install script: only
 # install.sh against the local release server. Covers: latest and --version installs, --bin-dir,
 # a tampered archive, a missing checksum line, the non-TTY hint, and replacing sy while a
 # process of the old one runs (a sleeping fake, then a real `sy hook` kept alive on stdin).

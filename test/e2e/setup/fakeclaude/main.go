@@ -1,5 +1,5 @@
 // Command fakeclaude is a stand-in for the `claude` binary, for the end-to-end tests of
-// `sy setup` (docs/phases/3.md WP-D). It mimics, with files on disk, everything `sy` calls:
+// `sy setup`. It mimics, with files on disk, everything `sy` calls:
 //
 //	claude --version
 //	claude auth status --json | auth login --claudeai

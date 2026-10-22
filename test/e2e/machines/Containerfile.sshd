@@ -1,5 +1,5 @@
-# Machines E2E image (docs/phases/5.md, "End to end over real SSH"): a plain Ubuntu server
-# with sshd, a user "dev" that accepts the per-run test key, and the phase 3 fake claude on
+# Machines E2E image: a plain Ubuntu server
+# with sshd, a user "dev" that accepts the per-run test key, and the fake claude on
 # the PATH of non-interactive shells (/usr/local/bin). No sy inside: `sy machine add`
 # installs it. Host keys are generated here, at build time, so the harness can read them
 # back and write a known_hosts that is checked strictly (no test turns host key checking off).

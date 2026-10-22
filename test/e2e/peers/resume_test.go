@@ -71,7 +71,7 @@ func stopThread(t *testing.T, w *world) string {
 	t.Helper()
 	rep := w.laptop.send("api", toWorker, "turn one", 0, 0)
 	delivered(t, rep, rep.Status)
-	back := w.worker.send("worker", toAPI, "turn two", 0, 0)
+	back := w.worker.send("builder", toAPI, "turn two", 0, 0)
 	delivered(t, back, back.Status)
 	refusedWith(t, w.laptop.send("api", toWorker, "turn three", 0, 0).Refusal(), peers.CodeLoopGuard)
 	rows := w.h.rows()
@@ -86,7 +86,7 @@ func stopThread(t *testing.T, w *world) string {
 // message is delivered.
 func TestThreadResumeAcrossMachines(t *testing.T) {
 	h := newHub(t, 2)
-	h.mayWiden = map[string]bool{"laptop": true, "worker": true}
+	h.mayWiden = map[string]bool{"laptop": true, "gpu-box": true}
 	w := newWorldOn(h)
 	thread := stopThread(t, w)
 
@@ -113,9 +113,9 @@ func TestThreadResumeAcrossMachines(t *testing.T) {
 
 	rep := w.laptop.send("api", toWorker, "turn three, after the resume", 0, 0)
 	delivered(t, rep, rep.Status)
-	onlyContent(t, w.worker.session("worker").inbox, 2)
+	onlyContent(t, w.worker.session("builder").inbox, 2)
 	// The guard counts again from the resume: max_turns more, then a stop.
-	back := w.worker.send("worker", toAPI, "turn four", 0, 0)
+	back := w.worker.send("builder", toAPI, "turn four", 0, 0)
 	delivered(t, back, back.Status)
 	refusedWith(t, w.laptop.send("api", toWorker, "turn five", 0, 0).Refusal(), peers.CodeLoopGuard)
 }
@@ -179,5 +179,5 @@ func TestThreadResumeRefusedByStrictMachine(t *testing.T) {
 	if !strings.Contains(rf.Detail, peers.CodeLoopGuard) {
 		t.Errorf("detail %q", rf.Detail)
 	}
-	onlyContent(t, w.worker.session("worker").inbox, 1)
+	onlyContent(t, w.worker.session("builder").inbox, 1)
 }

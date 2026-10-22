@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Rebuild testdata/ from this machine's real data. Redacted output only ever lands in testdata/.
+# MAINTAINER ONLY: rebuilds testdata/ from the maintainer's real ~/.claude* folders and usage.db, and
+# (without capdir) spends real Claude usage. Contributors do not need it; the committed testdata/ is
+# what the tests use. Redacted output only ever lands in testdata/.
 # usage: scripts/fixtures/regenerate.sh [capdir]   (capdir = dir holding cap1..8.jsonl from capture-runs.sh;
 #        default: runs capture-runs.sh into a temp dir, which spends a little real Claude usage)
 set -eu
