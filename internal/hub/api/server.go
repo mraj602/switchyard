@@ -291,7 +291,7 @@ func (w *statusWriter) Flush() {
 func (w *statusWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 // logRequests logs method, path (never the query: ?token= must not reach a log), status,
-// duration and device.
+// duration and remote address.
 func (s *Server) logRequests(next http.Handler) http.Handler {
 	if s.cfg.Log == nil {
 		return next
@@ -300,7 +300,16 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 		start := time.Now()
 		sw := &statusWriter{ResponseWriter: w}
 		next.ServeHTTP(sw, r)
-		s.cfg.Log.Printf("%s %s %d %dB %s %s", r.Method, r.URL.Path, sw.status, sw.bytes,
+		s.cfg.Log.Printf("%s %s %d %dB %s %s", r.Method, logPath(r.URL.Path), sw.status, sw.bytes,
 			time.Since(start).Round(time.Millisecond), r.RemoteAddr)
 	})
+}
+
+// logPath is the path as the request log shows it. An action URL's last segment is its
+// token, the only credential of POST /v1/actions/{token} (push.md 8), so it is cut.
+func logPath(p string) string {
+	if strings.HasPrefix(p, "/v1/actions/") {
+		return "/v1/actions/…"
+	}
+	return p
 }
