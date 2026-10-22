@@ -34,7 +34,7 @@ function SyNeedsYou({ needsYou }: Props) {
   );
 }
 
-describe('widget component mocks (fact 4)', () => {
+describe('widget component mocks', () => {
   it('renders a swift-ui tree with a timer text', () => {
     const tree = renderWidget(<NeedsYouSmall needsYou={2} resetsAt="2026-10-13T17:00:00.000Z" />);
     expect(tree.type).toBe('SwiftUI.VStack');
