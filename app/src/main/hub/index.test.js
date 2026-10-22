@@ -105,10 +105,10 @@ test('sy not connected to a hub, and forward mode (dial) are refused', async () 
   t.sy.state.info = info(null, { hub: { connected: false, url: null, reachable: false } });
   await t.h.start();
   assert.equal(lastHub(t).status, 'not_connected');
-  t.sy.state.info = info(t.hub.url, { hub: { dial: 'ssh oci' } });
+  t.sy.state.info = info(t.hub.url, { hub: { dial: 'ssh gpu-box' } });
   await t.h.stop();
   const t2 = await harness();
-  t2.sy.state.info = info(t2.hub.url, { hub: { dial: 'ssh oci' } });
+  t2.sy.state.info = info(t2.hub.url, { hub: { dial: 'ssh gpu-box' } });
   await t2.h.start();
   assert.equal(lastHub(t2).status, 'dial');
   assert.match(lastHub(t2).error, /forward mode is not supported/);
@@ -682,7 +682,7 @@ test('a URL change at a later info drops the view and the stream', async () => {
 });
 
 test('pairError: exit 1 shows sy\'s own message; exit 4 without a code is not called "no admin channel"', () => {
-  assert.equal(pairError({ exit: 1, error: '--hub-admin ssh oci sy: exec: "ssh": not found' }, false), 'Pairing failed: --hub-admin ssh oci sy: exec: "ssh": not found');
+  assert.equal(pairError({ exit: 1, error: '--hub-admin ssh gpu-box sy: exec: "ssh": not found' }, false), 'Pairing failed: --hub-admin ssh gpu-box sy: exec: "ssh": not found');
   assert.equal(pairError({ exit: 1 }, false), 'Pairing failed.');
   assert.match(pairError({ exit: 4 }, false), /machines\.hub_admin/);
   assert.doesNotMatch(pairError({ exit: 4 }, false), /no admin channel/i);

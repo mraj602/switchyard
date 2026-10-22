@@ -2,7 +2,7 @@
 // board assigns teal, violet, gold, blue in seat order.
 //
 // Names: the owner's label, else the part of the email before the @. When two accounts would
-// read alike ("you" and "you"), each gets its domain too ("you · client").
+// read alike ("alex.kim" and "alexkim"), each gets its domain too ("alexkim · work").
 // seatIndex() remembers the board's seats, so seatName() gives every page the same name.
 
 const FALLBACK = ['#0E7C76', '#6A4FD6', '#9A7400', '#2F6FDE'];
@@ -21,7 +21,7 @@ const domainOf = (email) => {
   const d = email && String(email).includes('@') ? String(email).split('@')[1] : '';
   return d ? d.split('.')[0] : '';
 };
-// "you" and "you" look the same to a reader.
+// "Alex.Kim" and "alexkim" look the same to a reader.
 const squash = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 const baseName = (seat) => seat.label || prefixOf(seat.email) || seat.id;

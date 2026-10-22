@@ -149,12 +149,12 @@ func TestPhase4ResponsesMatchAPISpec(t *testing.T) {
 	if key, err := base64.RawURLEncoding.DecodeString(cfg["vapid_public_key"].(string)); err != nil || len(key) != 65 || key[0] != 4 {
 		t.Errorf("vapid key is not an uncompressed P-256 point: %v %d", err, len(key))
 	}
-	check(t, schemas, "PushTestResult", "test", owner.want(200, "POST", "/v1/push/targets/"+targetPixel+"/test", nil))
+	check(t, schemas, "PushTestResult", "test", owner.want(200, "POST", "/v1/push/targets/"+targetPhone+"/test", nil))
 	devs := owner.want(200, "GET", "/v1/devices", nil)
 	each(t, devs["devices"], func(x any) { check(t, schemas, "Device", "devices", x) })
 
 	phone := newClient(t, ts)
-	reply := phone.want(200, "POST", "/v1/pair/claim", M{"secret": PairSecret, "name": "Pixel 9 · Chrome", "cookie": true, "expect_kind": "phone"})
+	reply := phone.want(200, "POST", "/v1/pair/claim", M{"secret": PairSecret, "name": "Phone X · Chrome", "cookie": true, "expect_kind": "phone"})
 	check(t, schemas, "PairClaimReply", "claim", reply)
 	if _, has := reply["token"]; has {
 		t.Error("cookie claim returned the token")
@@ -335,9 +335,9 @@ func TestActionTokens(t *testing.T) {
 func TestDevicesAndSelfDelete(t *testing.T) {
 	_, ts := newServer(t)
 	phone := newClient(t, ts)
-	phone.want(200, "POST", "/v1/pair/claim", M{"secret": PairSecret, "name": "Pixel", "cookie": true})
+	phone.want(200, "POST", "/v1/pair/claim", M{"secret": PairSecret, "name": "Phone", "cookie": true})
 	phone.want(403, "GET", "/v1/devices", nil)
-	phone.want(403, "PATCH", "/v1/devices/"+devPixel, M{"name": "x"})
+	phone.want(403, "PATCH", "/v1/devices/"+devAndroid, M{"name": "x"})
 	d := phone.want(200, "PATCH", "/v1/devices/self", M{"prefs": M{"mute": []string{"limit_80"}, "tap": "claude", "tz": "Asia/Kolkata"}})
 	p := d["prefs"].(map[string]any)
 	if p["tap"] != "claude" || p["private"] != nil || len(p["mute"].([]any)) != 1 {
@@ -345,7 +345,7 @@ func TestDevicesAndSelfDelete(t *testing.T) {
 	}
 	phone.want(400, "PATCH", "/v1/devices/self", M{"prefs": M{"tap": "carrier-pigeon"}})
 	// Register, upsert, test, remove.
-	body := M{"kind": "webpush", "endpoint": "https://fcm.googleapis.com/fcm/send/abc", "keys": M{"p256dh": "BNcR", "auth": "tBHI"}, "name": "Pixel"}
+	body := M{"kind": "webpush", "endpoint": "https://fcm.googleapis.com/fcm/send/abc", "keys": M{"p256dh": "BNcR", "auth": "tBHI"}, "name": "Phone"}
 	t1 := phone.want(201, "POST", "/v1/push/targets", body)
 	t2 := phone.want(201, "POST", "/v1/push/targets", body)
 	if t1["id"] != t2["id"] || t1["device"] != devPhone {
@@ -355,7 +355,7 @@ func TestDevicesAndSelfDelete(t *testing.T) {
 	if got := phone.want(200, "GET", "/v1/push/targets", nil)["targets"].([]any); len(got) != 1 {
 		t.Errorf("phone sees %d targets", len(got))
 	}
-	phone.want(404, "POST", "/v1/push/targets/"+targetPixel+"/test", nil) // not its own
+	phone.want(404, "POST", "/v1/push/targets/"+targetPhone+"/test", nil) // not its own
 	phone.want(200, "POST", "/v1/push/targets/"+t1["id"].(string)+"/test", nil)
 	phone.want(429, "POST", "/v1/push/targets/"+t1["id"].(string)+"/test", nil)
 	nt := phone.want(201, "POST", "/v1/push/targets", M{"kind": "ntfy"})
@@ -406,9 +406,9 @@ func TestPairCodeLifecycle(t *testing.T) {
 		t.Error("new code is not live")
 	}
 	phone := newClient(t, ts)
-	phone.want(200, "POST", "/v1/pair/claim", M{"code": "482-913", "name": "Pixel", "cookie": true})
+	phone.want(200, "POST", "/v1/pair/claim", M{"code": "482-913", "name": "Phone", "cookie": true})
 	st := owner.want(200, "GET", "/v1/pair/codes/pc_dev1", nil)
-	if st["status"] != "claimed" || st["device"].(map[string]any)["name"] != "Pixel" {
+	if st["status"] != "claimed" || st["device"].(map[string]any)["name"] != "Phone" {
 		t.Errorf("status = %v", st)
 	}
 }

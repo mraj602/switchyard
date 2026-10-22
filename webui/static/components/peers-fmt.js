@@ -218,7 +218,7 @@ export function auditWho(e, label = (x) => x) {
 }
 
 // One message of GET /v1/peers/messages: who → whom (by account).
-// "claude-1 on mraj602 → claude-6 on worker": the account, and the machine when the hub names it.
+// "claude-1 on laptop → claude-6 on gpu-box": the account, and the machine when the hub names it.
 export function messageWho(m, label = (x) => x) {
   const side = (x) => {
     const a = (x && x.account) || '', d = (x && x.device_name) || '';

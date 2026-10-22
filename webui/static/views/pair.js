@@ -20,7 +20,7 @@ const ios = () => isIOS(ua(), navigator.maxTouchPoints, navigator.platform);
 const mobile = () => isMobile(ua(), navigator.maxTouchPoints, navigator.platform);
 const kindGuess = () => (mobile() ? 'phone' : 'browser');
 // The name the hub gets: what the person typed, prefilled with a guess from the browser.
-// Two Android phones in Chrome both guess "Pixel 9 · Chrome", so the field is there to change it.
+// Two Android phones in Chrome both guess "Phone X · Chrome", so the field is there to change it.
 const guessName = () => deviceName(ua(), navigator.userAgentData || null);
 
 // paired: this page claimed a code and set the session cookie, but "Open the app" has not
@@ -168,7 +168,7 @@ function done() {
 const WAITING = 'Waiting for permission… Answer the browser’s prompt.';
 
 // The device's name, editable once paired (PATCH /v1/devices/self): the QR link pairs at
-// once with the browser's guess, so this is where a second "Pixel 9 · Chrome" gets its own name.
+// once with the browser's guess, so this is where a second "Phone X · Chrome" gets its own name.
 function nameForm() {
   return h('form', {
     class: 'col pair-form', 'data-key': 'paired-name-form',

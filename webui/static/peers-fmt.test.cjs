@@ -81,7 +81,7 @@ test('audit sentences show metadata only', () => {
   assert.equal(P.auditWho({ actor: 'phone', detail: {} }), 'phone');
   assert.equal(P.auditWho({ actor: 'hub', detail: { from: 'a', to: 'b' } }, (x) => x.toUpperCase()), 'A → B');
   assert.equal(P.messageWho({ from: { account: A }, to: {} }, (x) => x), 'acct-a → ?');
-  assert.equal(P.messageWho({ from: { account: A, device_name: 'mraj602' }, to: { account: 'b', device_name: 'worker' } }, (x) => x), 'acct-a on mraj602 → b on worker');
+  assert.equal(P.messageWho({ from: { account: A, device_name: 'laptop' }, to: { account: 'b', device_name: 'gpu-box' } }, (x) => x), 'acct-a on laptop → b on gpu-box');
   assert.equal(P.outcomeLabel('target_gone'), 'target gone');
   assert.equal(P.sizeLabel(12), '12 B');
   assert.equal(P.sizeLabel(34000), '34 KB');

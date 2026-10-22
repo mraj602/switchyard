@@ -43,10 +43,10 @@ func (d *Data) phase5(now time.Time) {
 		"alert": M{"id": "al_silent_vps", "trigger": "machine_silent", "status": "fired", "reason": nil, "due_at": ago(165 * min),
 			"fired_at": ago(165 * min), "fire_count": 1, "snoozed_until": nil, "seen_at": nil}})
 
-	oci := M{"id": "m_oci", "name": "home-box", "os": "Ubuntu 24.04", "arch": "arm64", "sy_version": "0.6.0", "version_status": "newer",
+	oci := M{"id": "m_cloud", "name": "cloud-box", "os": "Ubuntu 24.04", "arch": "arm64", "sy_version": "0.6.0", "version_status": "newer",
 		"last_seen": ago(40 * time.Second), "last_record": ago(40 * time.Second), "backlog": 37, "backlog_oldest": ago(20 * min), "backlog_at": ago(40 * time.Second),
 		"silent": false, "live_sessions": 0, "reach": "pull", "record_v": 2, "held": 37, "direct_push": false, "timer_ok": true, "linger": true,
-		"pull":  pull("home-box", "ubuntu@home-box", "ok", ago(40*time.Second), ago(40*time.Second), nil, in(20*time.Second)),
+		"pull":  pull("cloud-box", "admin@cloud-box", "ok", ago(40*time.Second), ago(40*time.Second), nil, in(20*time.Second)),
 		"alert": nil, "slots": []M{}}
 	d.Machines = append(d.Machines, oci)
 

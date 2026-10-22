@@ -63,7 +63,7 @@ test('golden: machine_silent', () => {
 
 test('title falls back from label to the email local part to Unattributed', () => {
   const t = (s, seat) => notifyText({ alert: { id: 'a', trigger: 'asked' }, session: s, seat }).title;
-  assert.equal(t(session({ seat_label: null }), { email: 'you@example.com' }), 'alex · api');
+  assert.equal(t(session({ seat_label: null }), { email: 'alex@example.com' }), 'alex · api');
   assert.equal(t(session({ seat_label: null, seat: null }), null), 'Unattributed · api');
   assert.equal(t(session({ project: null }), null), 'work');
 });

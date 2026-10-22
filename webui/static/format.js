@@ -178,8 +178,8 @@ export function lifetime(ttlS) {
 }
 
 // deviceLabel is a device's name as lists show it. Two Android phones in Chrome both guess
-// "Pixel 9 · Chrome", so when devices of `all` share a name, the first one paired keeps it
-// and the later ones get their place: "Pixel 9 · Chrome · 2". A unique name shows as it is.
+// "Phone X · Chrome", so when devices of `all` share a name, the first one paired keeps it
+// and the later ones get their place: "Phone X · Chrome · 2". A unique name shows as it is.
 export function deviceLabel(d, all) {
   const name = (d && d.name) || '';
   if (!d || !Array.isArray(all)) return name;

@@ -1,7 +1,7 @@
 // What platform is this? Pure functions over a user-agent string and a few flags, so node
 // can test them (pwa.md 7). Nothing here touches the DOM at import.
 
-// Guess "iPhone · Safari" or "Pixel 9 · Chrome" for the device name sent when pairing.
+// Guess "iPhone · Safari" or "Phone X · Chrome" for the device name sent when pairing.
 export function deviceName(ua = '', uaData = null) {
   // A scripted browser says so in its user agent; name it for what it is (DV1).
   if (/HeadlessChrome\//.test(ua)) return 'Headless Chrome';

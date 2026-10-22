@@ -29,7 +29,7 @@ func TestDevScenarios(t *testing.T) {
 	for _, s := range ov["seats"].([]any) {
 		m := s.(map[string]any)
 		labels[m["id"].(string)] = m["label"]
-		if m["id"] == "seat_work" && m["email"] != "you@example.com" {
+		if m["id"] == "seat_work" && m["email"] != "alex.kim@mail.example" {
 			t.Errorf("collide: work email = %v", m["email"])
 		}
 	}
