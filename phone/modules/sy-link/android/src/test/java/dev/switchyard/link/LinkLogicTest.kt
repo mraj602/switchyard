@@ -3,6 +3,7 @@ package dev.switchyard.link
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -294,6 +295,16 @@ class SharedHttpTest {
     } finally {
       c.shutdown()
     }
+  }
+}
+
+class ActionPostTest {
+  // A malformed origin (or token) must come back as "unreachable", not as an exception that kills
+  // the receiver's or the service's worker thread.
+  @Test fun aMalformedOriginIsNotACrash() {
+    assertNull(LinkClient.postAction("not a url", "a1.x.y", 500))
+    assertNull(LinkClient.postAction("", "a1.x.y", 500))
+    assertNull(LinkClient.postAction("https://", "a1.x.y", 500))
   }
 }
 

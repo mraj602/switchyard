@@ -352,6 +352,8 @@ class LinkClient(
       timed(1500).newCall(Request.Builder().url("$origin/health").build()).execute().use { it.code in 200..599 && !it.isRedirect }
     } catch (_: IOException) {
       false
+    } catch (_: IllegalArgumentException) {
+      false // a stored origin that is not a URL
     }
   }
 
@@ -439,6 +441,8 @@ class LinkClient(
         .execute().use { it.code }
     } catch (_: IOException) {
       null
+    } catch (_: IllegalArgumentException) {
+      null // an origin or token that is not a URL: nothing to send, and not a crash of the caller's thread
     }
 
     /** The action transport without a link (no service, or no client yet): `POST <origin>/v1/actions/<token>` only. */
