@@ -1,5 +1,5 @@
 // Package peerlink is the agent's path to sessions on other machines (docs/spec/peers.md 3.1
-// hub source, 8.2, 8.4, 9.3; PE2). It implements peers.Remote over the link (the hub's
+// hub source, 8.2, 8.4, 9.3). It implements peers.Remote over the link (the hub's
 // directory with `peers_list`, envelopes with `peer_msg`, same-machine audit with
 // `peer_log`) and linkclient.PeerHandler (queued `peer_msg`, `peer_status` and
 // `peer_thread_resume`, the hub's ephemeral answers). It does not import linkclient: the client is reached through Sender.

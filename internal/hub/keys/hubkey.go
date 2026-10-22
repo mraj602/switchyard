@@ -3,7 +3,7 @@
 // re-verification of every stored document when it is loaded. The formats and checks are in
 // internal/keys; this package adds the database and the hub key.
 //
-// Contract: docs/spec/keys.md 3.3-3.4, 4, 6, 7.1. F1. Depends on: keys, hub/store, paths.
+// Contract: docs/spec/keys.md 3.3-3.4, 4, 6, 7.1. Depends on: keys, hub/store, paths.
 package hubkeys
 
 import (

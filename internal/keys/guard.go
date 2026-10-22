@@ -103,7 +103,7 @@ func (e *GuardError) Is(target error) bool { return target == ErrGuard }
 func CheckNotUnderClaude() error { return DefaultGuard().Check() }
 
 // Check runs the guard in keys.md 8's order; the first hit refuses: Windows (no owner-key
-// commands in F1), this process's environment, its ancestors, then a terminal.
+// commands there yet), this process's environment, its ancestors, then a terminal.
 func (g Guard) Check() error {
 	if g.GOOS == "windows" {
 		return &GuardError{Reason: "owner-key commands are not available on Windows yet; use the board's owner sign-in"}

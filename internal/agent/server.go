@@ -24,7 +24,7 @@ type Config struct {
 	Load func() (env peers.Env, enabled bool, err error)
 	// Link is the link client (nil: same-machine only).
 	Link LinkClient
-	// Remote reaches sessions on other machines through the link (PE2; nil: this machine
+	// Remote reaches sessions on other machines through the link (nil: this machine
 	// only).
 	Remote peers.Remote
 	// LogPath is <state>/logs/agent.log; empty logs nowhere.

@@ -386,7 +386,7 @@ func (s *Service) Certs(ctx context.Context) (map[string]DeviceKeyInfo, error) {
 	return out, nil
 }
 
-// RegisterKeys is PUT /v1/devices/{id}/keys: keys for a device paired before F1, or new
+// RegisterKeys is PUT /v1/devices/{id}/keys: keys for a device paired before link keys existed, or new
 // keys for a `tofu` device without an owner signature. A device registered under the QR
 // seal or SSH, or owner-certified, is refused with 409 ("re-pair this device"): a stolen
 // bearer must not downgrade it to keys of its own. Replaced keys go into the next

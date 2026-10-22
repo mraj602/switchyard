@@ -172,7 +172,7 @@ func start(t *testing.T, cfg Config) (*Client, chan error, func()) {
 	return c, done, stop
 }
 
-// A machine stores the matrix and revocation list it is sent, hands peer frames to the PE2
+// A machine stores the matrix and revocation list it is sent, hands peer frames to the peer
 // handler and acks them all.
 func TestMachineGetsDocsAndPeerFrames(t *testing.T) {
 	hb := newHub(t)

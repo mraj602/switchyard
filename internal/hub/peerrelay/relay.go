@@ -1,5 +1,5 @@
 // Package peerrelay is the hub's half of peer messages across machines (docs/spec/peers.md
-// 8.3, 9.2, 10, 11; PE2): it answers `peers_list` with the session directory, checks and
+// 8.3, 9.2, 10, 11): it answers `peers_list` with the session directory, checks and
 // queues `peer_msg` envelopes for the target machine, turns `peer_result` and expiry into
 // `peer_status` for the sender, records `peer_log` lines, and relays the owner's thread
 // resume (`peer_thread_resume`, peers.md 6.3) to both machines, recording a machine that
