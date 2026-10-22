@@ -691,8 +691,10 @@ On a `peer_msg` frame:
    owner signature is rejected, `uncertified`); the certificate's `kind` is `machine`, its
    `device` and `machine` equal `from.device` and `from.machine`, its `hub` is the pinned hub;
    the envelope signature by the certificate's sign key; neither key in the revocation list;
-   `to.device` is this device; `exp` not passed and at most `created_at` + 24 h (8.2; a longer
-   one is `bad_signature`, a malformed envelope) → else `rejected` with `bad_signature` /
+   `to.device` is this device; `msg` and `thread` in their own forms (8.2, 6.1); `exp` not
+   passed, at most `created_at` + 24 h (8.2) and at most 25 h ahead of this machine's clock, so
+   the replay guard below always outlives it (a longer one is `bad_signature`, a malformed
+   envelope) → else `rejected` with `bad_signature` /
    `uncertified` / `revoked` / `wrong_device` / `expired`.
 2. 5.3 and 6.3 with its own matrix and threads, using the receiving session's account from its
    slot → `rejected` `not_allowed` / `paused` / `loop_guard`; `off` when `sy peers off`.

@@ -168,6 +168,27 @@ func TestEnvelopeChecks(t *testing.T) {
 		t.Errorf("exp = created_at + 24h: %v", err)
 	}
 
+	// A created_at far ahead of the receiver's clock would let exp outlive the replay window.
+	ahead := e
+	ahead.CreatedAt = f.now.Add(48 * time.Hour).UTC().Format(time.RFC3339Nano)
+	ahead.Exp = f.now.Add(49 * time.Hour).Unix()
+	_, _, err = peers.CheckIncoming(f.seal(ahead, "hello", f.laptop), f.laptopC, f.trust, nil, "dev_worker", f.now)
+	reasonIs(t, err, peers.ReasonBadSignature)
+
+	// The thread and message ids end up in file names, audit lines and the hub's rows: only
+	// their own forms are taken.
+	for _, mut := range []func(*peers.Envelope){
+		func(e *peers.Envelope) { e.Thread = "t_1\n[Switchyard] forged" },
+		func(e *peers.Envelope) { e.Thread = "../../x" },
+		func(e *peers.Envelope) { e.Msg = "../m" },
+		func(e *peers.Envelope) { e.Msg = "" },
+	} {
+		bad := e
+		mut(&bad)
+		_, _, err = peers.CheckIncoming(f.seal(bad, "hello", f.laptop), f.laptopC, f.trust, nil, "dev_worker", f.now)
+		reasonIs(t, err, peers.ReasonBadSignature)
+	}
+
 	// A sender certificate without the owner signature.
 	_, bare := f.device("dev_laptop", "m_laptop", 7, false)
 	_, err = f.open(d, bare, nil)
