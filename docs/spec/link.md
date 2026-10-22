@@ -386,7 +386,7 @@ The fields below are the JSON object inside `body` (4.1), each with `"v":1`.
 | `challenge` | 3.1 (the one frame not in the 4.1 shape: it comes before the device is known) |
 | `welcome` | 3.3 |
 | `action_result` | `id`, `status` (HTTP-like: 200, 400, 401, 404, 410, 429), `applied`, `alert` (AlertBrief) |
-| `peers` | `id`, `sessions` (the other machines' sessions, peers.md 3.2 without `can`, with `machine_id`), `certs` (device id → `device_cert` document of each machine's agent that a listed session runs on, and of the asking device itself, so its agent can tell that receivers will refuse it while its certificate has no owner signature; peers.md 3.2 `blocked`, 8.2) |
+| `peers` | `id`, `sessions` (the other machines' sessions, peers.md 3.2 without `can`, with `machine_id`; each with its canonical `handle` and, when it has any, `aliases`), `mine` (the asking machine's own sessions in the same form, so its agent shows and signs the canonical handles; omitted when none), `certs` (device id → `device_cert` document of each machine's agent that a listed session runs on, and of the asking device itself, so its agent can tell that receivers will refuse it while its certificate has no owner signature; peers.md 3.2 `blocked`, 8.2) |
 | `peer_ack` | `msg`, `status` (`queued` or `refused`), `detail?` (the reason word, or `offline`), `exp?` (peers.md 8.2, 8.3) |
 | `notice` | `code`, `message`: `unknown_type`, `forbidden`, `rate_limited`, `queue_full`, `draining` (hub shutting down; reconnect in 5–15 s) |
 

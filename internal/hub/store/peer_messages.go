@@ -20,21 +20,23 @@ type PeerSession struct {
 	ID, Name, Project, Cwd string
 	Account, AccountLabel  string // the session's seat
 	MachineID, MachineName string
+	SlotFolder             string // the slot's folder ("~/.claude-2"), "" when none
 	State                  string // session_state.state, "" when none yet
 	Live                   bool   // not ended or gone, on a machine that was not removed
 }
 
 const peerSessionSelect = `SELECT s.id, coalesce(s.name, ''), coalesce(s.project, ''), coalesce(s.cwd, ''),
 	coalesce(se.account_uuid, ''), coalesce(se.label, ''), coalesce(s.machine_id, ''), coalesce(m.name, ''),
-	coalesce(st.state, ''),
+	coalesce(sl.folder, ''), coalesce(st.state, ''),
 	(s.ended_at IS NULL AND coalesce(st.state, '') NOT IN ('ended', 'gone') AND m.removed_at IS NULL)
 	FROM session s LEFT JOIN seat se ON se.id = s.seat_id LEFT JOIN machine m ON m.id = s.machine_id
-	LEFT JOIN session_state st ON st.session_id = s.id`
+	LEFT JOIN slot sl ON sl.id = s.slot_id LEFT JOIN session_state st ON st.session_id = s.id`
 
 func scanPeerSession(sc interface{ Scan(...any) error }) (PeerSession, error) {
 	var p PeerSession
 	var live int
-	err := sc.Scan(&p.ID, &p.Name, &p.Project, &p.Cwd, &p.Account, &p.AccountLabel, &p.MachineID, &p.MachineName, &p.State, &live)
+	err := sc.Scan(&p.ID, &p.Name, &p.Project, &p.Cwd, &p.Account, &p.AccountLabel, &p.MachineID, &p.MachineName, &p.SlotFolder,
+		&p.State, &live)
 	p.Live = live == 1
 	return p, err
 }

@@ -17,8 +17,9 @@ one line. Switchyard only relays what the user's matrix allows; you never decide
 2. Pick the target from the user's description (project, machine, account, name), or, when
    you coordinate on your own, from what your task needs. If two sessions fit, ask the user
    which one (or, with no one to ask, send to none); do not guess.
-3. Send one concise message with the handle, the text on standard input, in a quoted heredoc so
-   the shell never expands it:
+3. Send one concise message with the `handle` exactly as listed (it is the same on every
+   machine; `aliases`, when present, are older forms that also work), the text on standard
+   input, in a quoted heredoc so the shell never expands it:
 
    ```
    sy peers send api-worker@work.worker --stdin <<'EOF'

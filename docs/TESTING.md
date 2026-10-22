@@ -313,6 +313,12 @@ If the worker's sessions show `start (blocked: ...)`, the link keys are not owne
 (K1 not done): the line under the table names the steps, and a send is refused with the same
 reason without reaching the hub. Same-machine messages (K3) work without certified keys.
 
+Handles are the same on both machines: run `sy peers list --all` on the worker too and check the
+laptop's sessions carry the handles the laptop itself shows (the account part is the hub's label
+for the account, not each machine's folder name; the folder-name forms appear as `aliases` in
+`--json` and still work). A reply sent with the `Reply with:` line of a received message must be
+`delivered`.
+
 Ask Claude on the laptop to message that handle. **Pass:** `delivered`; the worker's agent log shows
 one line with ids and sizes and no text; the hub's audit (`sy peers audit`) has the metadata and no
 text. Then: stop the worker's agent (`sy agent disable` there), send again and expect `queued ...

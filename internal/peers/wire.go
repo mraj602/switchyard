@@ -63,26 +63,34 @@ type PeersListUp struct {
 }
 
 // WireSession is one session of the hub's directory (peers.md 3.2, without `can`, which the
-// asking agent works out with its own matrix and threads).
+// asking agent works out with its own matrix and threads). Handle is the canonical handle,
+// made with the seat's label (AccountLabel; the account uuid's first 8 characters when the
+// seat has none), so every machine shows the same one. Aliases are other handles that still
+// name the session: the one with its slot folder's name as the label (what its own machine
+// shows when no label is set there), when that differs.
 type WireSession struct {
-	Session      string  `json:"session"`
-	Handle       string  `json:"handle"`
-	Name         string  `json:"name"`
-	Account      string  `json:"account"`
-	AccountLabel string  `json:"account_label"`
-	Machine      string  `json:"machine"` // the machine's name
-	MachineID    string  `json:"machine_id"`
-	Project      string  `json:"project"`
-	State        string  `json:"state"`
-	Device       *string `json:"device"`
+	Session      string   `json:"session"`
+	Handle       string   `json:"handle"`
+	Name         string   `json:"name"`
+	Account      string   `json:"account"`
+	AccountLabel string   `json:"account_label"`
+	Aliases      []string `json:"aliases,omitempty"`
+	Machine      string   `json:"machine"` // the machine's name
+	MachineID    string   `json:"machine_id"`
+	Project      string   `json:"project"`
+	State        string   `json:"state"`
+	Device       *string  `json:"device"`
 }
 
 // PeersReply is the hub's `peers` answer: other machines' sessions and the certificates of
-// their agents' devices.
+// their agents' devices. Mine are the asking machine's own sessions as the hub names them,
+// so its agent shows, and puts in its envelopes, the handles every other machine sees
+// (peers.md 3.2). A hub older than this field sends none.
 type PeersReply struct {
 	V        int                 `json:"v"`
 	ID       string              `json:"id"`
 	Sessions []WireSession       `json:"sessions"`
+	Mine     []WireSession       `json:"mine,omitempty"`
 	Certs    map[string]keys.Doc `json:"certs"`
 }
 

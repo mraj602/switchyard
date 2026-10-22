@@ -144,16 +144,20 @@ func (r *Relay) Directory(ctx context.Context) ([]peers.WireSession, error) {
 		if w.Name == "" || w.Name == "." || w.Name == "/" {
 			w.Name = "session-" + short(s.ID)
 		}
-		label := peers.HandlePart(s.AccountLabel)
-		if label == "" {
-			label = short(s.Account)
-		}
-		base := func() string { return w.Name + "@" + label + "." + peers.HandlePart(s.MachineName) }
+		// The canonical handle: the seat's label, the same for every machine that shows the
+		// session (peers.md 3.2). The slot folder's name, which the session's own machine
+		// shows when no label is set there, stays an alias.
+		label := peers.CanonicalLabel(s.AccountLabel, s.Account)
+		machine := peers.HandlePart(s.MachineName)
+		base := func() string { return peers.MakeHandle(w.Name, label, machine) }
 		count[base()]++
 		if n := count[base()]; n > 1 {
 			w.Name += fmt.Sprintf("-%d", n)
 		}
 		w.Handle = base()
+		if fl := peers.FolderLabel(s.SlotFolder); fl != "" && fl != label {
+			w.Aliases = []string{peers.MakeHandle(w.Name, fl, machine)}
+		}
 		if d, ok := agents[s.MachineID]; ok {
 			w.Device = &d
 		}
@@ -169,8 +173,9 @@ func short(s string) string {
 	return s
 }
 
-// directory answers peers_list: the other machines' sessions, and the certificate of each
-// agent device they run on.
+// directory answers peers_list: the other machines' sessions, the asking machine's own (mine:
+// their canonical handles, so its agent uses the names everyone else sees), and the
+// certificate of each agent device the others run on.
 func (r *Relay) directory(ctx context.Context, device, id string) (peers.PeersReply, error) {
 	rep := peers.PeersReply{V: 1, ID: id, Sessions: []peers.WireSession{}, Certs: map[string]keys.Doc{}}
 	var mine string
@@ -189,6 +194,9 @@ func (r *Relay) directory(ctx context.Context, device, id string) (peers.PeersRe
 	}
 	for _, s := range all {
 		if s.MachineID == mine {
+			if mine != "" {
+				rep.Mine = append(rep.Mine, s)
+			}
 			continue
 		}
 		rep.Sessions = append(rep.Sessions, s)

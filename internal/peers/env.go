@@ -217,3 +217,31 @@ func HandlePart(s string) string {
 	}, strings.TrimSpace(s))
 	return strings.Trim(s, "-.")
 }
+
+// CanonicalLabel is the account part of a canonical handle (peers.md 3.2): the hub's seat
+// label, else the first 8 characters of the account uuid. The hub and every agent make it
+// the same way, so a session has one handle on every machine.
+func CanonicalLabel(seatLabel, account string) string {
+	if l := HandlePart(seatLabel); l != "" {
+		return l
+	}
+	if len(account) > 8 {
+		account = account[:8]
+	}
+	return HandlePart(account)
+}
+
+// FolderLabel is the label a machine shows for a slot when no label is set for it: the
+// folder's name without its dot ("~/.claude-2" → "claude-2").
+func FolderLabel(folder string) string {
+	folder = strings.TrimRight(strings.ReplaceAll(folder, `\`, "/"), "/")
+	if i := strings.LastIndexByte(folder, '/'); i >= 0 {
+		folder = folder[i+1:]
+	}
+	return HandlePart(strings.TrimPrefix(folder, "."))
+}
+
+// MakeHandle is `<name>@<label>.<machine>` from parts already cleaned by HandlePart.
+func MakeHandle(name, label, machine string) string {
+	return name + "@" + label + "." + machine
+}

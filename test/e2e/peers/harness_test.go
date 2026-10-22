@@ -309,10 +309,14 @@ func eventually(d time.Duration, f func() bool) bool {
 
 // ---- machines ----
 
+// sessionSpec is one session. label is the slot's label on its machine (slots.labels); ""
+// sets none, so the machine shows the folder's name. seat is the label of the account's seat
+// at the hub ("" means label).
 type sessionSpec struct {
 	slot, label, account string
 	pid                  int
 	id, name             string
+	seat                 string
 }
 
 type session struct {
@@ -514,9 +518,21 @@ func (h *testHub) newMachineWith(pair func(*testHub, *machine, auth.Created, key
 	// registry file, a bypass-mode session file and a fake inbox; the same session at the hub.
 	for i, sp := range specs {
 		slot := filepath.Join(m.home, sp.slot)
+		email := sp.account + "@example.test"
+		if sp.label != "" {
+			email = sp.label + "@example.test"
+		}
+		seatLabel := sp.seat
+		if seatLabel == "" {
+			seatLabel = sp.label
+		}
 		m.write(filepath.Join(slot, "settings.json"), "{}")
-		m.write(filepath.Join(slot, ".claude.json"), mustJSON(map[string]any{"oauthAccount": map[string]string{
-			"accountUuid": sp.account, "organizationUuid": "org-1", "emailAddress": sp.label + "@example.test"}}))
+		state := filepath.Join(slot, ".claude.json")
+		if sp.slot == ".claude" {
+			state = filepath.Join(m.home, ".claude.json") // the default slot keeps its state beside the folder
+		}
+		m.write(state, mustJSON(map[string]any{"oauthAccount": map[string]string{
+			"accountUuid": sp.account, "organizationUuid": "org-1", "emailAddress": email}}))
 		start := 4000 + i*100
 		m.proc(sp.pid, 1, "claude", "/home/u/.local/share/claude/versions/2.1.300", start, "HOME="+m.home, "CLAUDE_CONFIG_DIR="+slot)
 		m.proc(sp.pid+1, sp.pid, "bash", "/usr/bin/bash", start+1, "CLAUDECODE=1")
@@ -534,11 +550,11 @@ func (h *testHub) newMachineWith(pair func(*testHub, *machine, auth.Created, key
 		m.sessions = append(m.sessions, &session{sessionSpec: sp, inbox: in})
 		now := h.clk.Now().UnixMilli()
 		if err := h.st.Write(h.ctx, func(tx *store.Tx) error {
-			seat, err := tx.UpsertSeat(store.SeatKey{Account: sp.account, Org: "org-1", Email: sp.label + "@example.test"}, now)
+			seat, err := tx.UpsertSeat(store.SeatKey{Account: sp.account, Org: "org-1", Email: email}, now)
 			if err != nil {
 				return err
 			}
-			if err := tx.SeatLook(seat, sp.label, "", nil); err != nil {
+			if err := tx.SeatLook(seat, seatLabel, "", nil); err != nil {
 				return err
 			}
 			slotID, err := tx.EnsureSlot(id, "~/"+sp.slot, now)
@@ -583,7 +599,9 @@ func (h *testHub) newMachineWith(pair func(*testHub, *machine, auth.Created, key
 func (m *machine) env() peers.Env {
 	labels := map[string]string{}
 	for _, s := range m.sessions {
-		labels["~/"+s.slot] = s.label
+		if s.label != "" {
+			labels["~/"+s.slot] = s.label
+		}
 	}
 	m.mu.Lock()
 	ov := m.override

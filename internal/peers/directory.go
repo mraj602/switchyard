@@ -14,12 +14,15 @@ type Session struct {
 	Account      string
 	AccountLabel string
 	Handle       string
-	Name         string
-	Project      string
-	Mode         Mode // from the session file; prompting when there is none
-	File         SessionFile
-	HasFile      bool
-	MachineName  string
+	// Aliases are other handles that name the session too (peers.md 3.3): the ones with an
+	// account label other than the canonical one that a machine shows for it.
+	Aliases     []string
+	Name        string
+	Project     string
+	Mode        Mode // from the session file; prompting when there is none
+	File        SessionFile
+	HasFile     bool
+	MachineName string
 	// Remote: the session runs on another machine; Device is that machine's agent device
 	// ("" when it runs none, so it cannot be reached) and State the hub's session state.
 	Remote bool
@@ -32,17 +35,19 @@ type Session struct {
 
 // ListEntry is one line of `sy peers list --json` (peers.md 3.2).
 type ListEntry struct {
-	Session      string  `json:"session"`
-	Handle       string  `json:"handle"`
-	Name         string  `json:"name"`
-	Account      string  `json:"account"`
-	AccountLabel string  `json:"account_label"`
-	Machine      string  `json:"machine"`
-	Project      string  `json:"project"`
-	State        string  `json:"state"`
-	Local        bool    `json:"local"`
-	Can          string  `json:"can"` // start | reply | none
-	Device       *string `json:"device"`
+	Session string `json:"session"`
+	Handle  string `json:"handle"`
+	// Aliases: other handles of the same session that sy peers send accepts (peers.md 3.3).
+	Aliases      []string `json:"aliases,omitempty"`
+	Name         string   `json:"name"`
+	Account      string   `json:"account"`
+	AccountLabel string   `json:"account_label"`
+	Machine      string   `json:"machine"`
+	Project      string   `json:"project"`
+	State        string   `json:"state"`
+	Local        bool     `json:"local"`
+	Can          string   `json:"can"` // start | reply | none
+	Device       *string  `json:"device"`
 	// MayAsk marks a pair whose delivery Claude Code will likely hold for approval because
 	// the two sessions' permission classes differ (peers.md 8.5).
 	MayAsk bool `json:"may_ask_approval,omitempty"`
@@ -53,8 +58,8 @@ type ListEntry struct {
 }
 
 // AccountLabel is the label shown for an account on this machine: the slots.labels entry for
-// the slot, else the folder's name without its dot ("claude-2"). (The hub's seat label wins
-// once the agent has the hub source.)
+// the slot, else the folder's name without its dot ("claude-2"). With a hub, the hub's seat
+// label wins for the handle and this one stays an alias (nameLocal).
 func (e Env) accountLabel(slotName string) string {
 	if l := HandlePart(e.SlotLabels[slotName]); l != "" {
 		return l
@@ -105,18 +110,129 @@ func (e Env) Directory() []Session {
 		}
 		return a.PID < b.PID
 	})
-	// Unique handles.
-	count := map[string]int{}
-	for i := range out {
-		base := out[i].Name + "@" + out[i].AccountLabel + "." + HandlePart(e.Machine.Name)
-		count[base]++
-		if n := count[base]; n > 1 {
-			out[i].Name += "-" + strconv.Itoa(n)
-			base = out[i].Name + "@" + out[i].AccountLabel + "." + HandlePart(e.Machine.Name)
+	e.nameLocal(out)
+	return out
+}
+
+// nameLocal gives the local sessions their handles (peers.md 3.2). A session the hub named
+// takes the hub's canonical handle, so this machine shows and sends the handle every other
+// machine sees; the others are named here with the hub's label for their account when the
+// hub knows exactly one, else with this machine's label, and made unique by -2, -3 on the
+// name part. Whenever the canonical label differs from this machine's own label for the
+// slot, the handle with the local label stays an alias.
+func (e Env) nameLocal(out []Session) {
+	machine := HandlePart(e.Machine.Name)
+	var names map[string]HubName
+	if e.Remote != nil {
+		names = e.Remote.Names()
+	}
+	hubLabel := map[string]string{}
+	mixed := map[string]bool{}
+	for _, n := range names {
+		if n.Account == "" || n.Label == "" {
+			continue
 		}
-		out[i].Handle = base
+		if l, ok := hubLabel[n.Account]; ok && l != n.Label {
+			mixed[n.Account] = true
+		}
+		hubLabel[n.Account] = n.Label
+	}
+	taken := map[string]bool{}
+	for i := range out {
+		n, ok := names[out[i].Entry.SessionID]
+		if !ok || !n.Mine || n.Handle == "" || taken[strings.ToLower(n.Handle)] {
+			continue
+		}
+		local := out[i].AccountLabel
+		out[i].Name, out[i].Handle = n.Name, n.Handle
+		if n.Label != "" {
+			out[i].AccountLabel = n.Label
+		}
+		out[i].Aliases = addAlias(append([]string(nil), n.Aliases...), n.Handle, MakeHandle(n.Name, local, machine))
+		taken[strings.ToLower(n.Handle)] = true
+	}
+	for i := range out {
+		if out[i].Handle != "" {
+			continue
+		}
+		local, label := out[i].AccountLabel, out[i].AccountLabel
+		if l, ok := hubLabel[out[i].Account]; ok && !mixed[out[i].Account] {
+			label = l
+		}
+		name := out[i].Name
+		for k := 1; ; k++ {
+			cand := name
+			if k > 1 {
+				cand = name + "-" + strconv.Itoa(k)
+			}
+			if h := MakeHandle(cand, label, machine); !taken[strings.ToLower(h)] {
+				out[i].Name, out[i].Handle = cand, h
+				taken[strings.ToLower(h)] = true
+				break
+			}
+		}
+		out[i].AccountLabel = label
+		out[i].Aliases = addAlias(nil, out[i].Handle, MakeHandle(out[i].Name, local, machine))
+	}
+}
+
+// addAlias appends each alias that differs from the handle and from the ones already there.
+func addAlias(list []string, handle string, aliases ...string) []string {
+	for _, a := range aliases {
+		if a == "" || strings.EqualFold(a, handle) {
+			continue
+		}
+		dup := false
+		for _, b := range list {
+			if strings.EqualFold(a, b) {
+				dup = true
+				break
+			}
+		}
+		if !dup {
+			list = append(list, a)
+		}
+	}
+	return list
+}
+
+// localLabels maps each account a managed slot is logged in to to the labels this machine
+// shows for it (several slots may share an account).
+func (e Env) localLabels() map[string][]string {
+	out := map[string][]string{}
+	login := e.loginReader()
+	for _, slot := range e.Slots() {
+		if l, err := login(slot); err == nil && l.HasSeat && l.Seat.Account != "" {
+			out[l.Seat.Account] = append(out[l.Seat.Account], e.accountLabel(slot.Name))
+		}
 	}
 	return out
+}
+
+// directoryAll is the directory a send or a list works with: this machine's sessions and,
+// with a hub, the other machines' (remoteErr when the hub could not be asked). The hub is
+// asked first, so the local sessions take the canonical handles of that answer. A remote
+// session gains an alias for every label this machine shows for its account, so a handle
+// typed with this machine's own label for the account still reaches it.
+func (e Env) directoryAll() (local, all []Session, remoteErr error) {
+	var rs []Session
+	if e.Remote != nil {
+		rs, remoteErr = e.Remote.Sessions()
+	}
+	local = e.Directory()
+	all = append([]Session(nil), local...)
+	if len(rs) == 0 {
+		return local, all, remoteErr
+	}
+	labels := e.localLabels()
+	for _, s := range rs {
+		s.Aliases = append([]string(nil), s.Aliases...)
+		for _, l := range labels[s.Account] {
+			s.Aliases = addAlias(s.Aliases, s.Handle, MakeHandle(s.Name, l, HandlePart(s.MachineName)))
+		}
+		all = append(all, s)
+	}
+	return local, all, remoteErr
 }
 
 // Entries builds the list entries as seen from `from` (nil at a terminal, with all true).
@@ -134,7 +250,7 @@ func (e Env) Entries(dir []Session, from *Session, all bool) []ListEntry {
 			continue
 		}
 		le := ListEntry{
-			Session: s.Entry.SessionID, Handle: s.Handle, Name: s.Name, Account: s.Account,
+			Session: s.Entry.SessionID, Handle: s.Handle, Aliases: s.Aliases, Name: s.Name, Account: s.Account,
 			AccountLabel: s.AccountLabel, Machine: s.MachineName, Project: s.Project,
 			State: s.Entry.Status, Local: !s.Remote && from != nil && from.Account != "" && from.Account == s.Account,
 			Can: "none",
@@ -192,9 +308,10 @@ func party(s Session) Party {
 	return Party{Session: s.Entry.SessionID, Account: s.Account, Label: s.AccountLabel}
 }
 
-// Resolve finds the session a `sy peers send <to>` names (peers.md 3.3): a handle, a unique
-// prefix of one, a session id or a unique prefix of at least 8 characters, or `@<name>`.
-// Several matches are an ambiguity: the candidates' handles are returned.
+// Resolve finds the session a `sy peers send <to>` names (peers.md 3.3): a handle or an alias
+// of one, a unique prefix of either, a session id or a unique prefix of at least 8
+// characters, or `@<name>`. A canonical handle wins over an alias. Several matches are an
+// ambiguity: the candidates' (canonical) handles are returned.
 func Resolve(dir []Session, to string) (Session, []string, *Refusal) {
 	to = strings.TrimSpace(to)
 	if to == "" {
@@ -210,8 +327,19 @@ func Resolve(dir []Session, to string) (Session, []string, *Refusal) {
 		return m
 	}
 	lower := strings.ToLower(to)
+	anyAlias := func(s Session, match func(string) bool) bool {
+		for _, a := range s.Aliases {
+			if match(strings.ToLower(a)) {
+				return true
+			}
+		}
+		return false
+	}
 	steps := []func() []Session{
 		func() []Session { return pick(func(s Session) bool { return strings.ToLower(s.Handle) == lower }) },
+		func() []Session {
+			return pick(func(s Session) bool { return anyAlias(s, func(a string) bool { return a == lower }) })
+		},
 		func() []Session { return pick(func(s Session) bool { return s.Entry.SessionID == to }) },
 		func() []Session {
 			if strings.HasPrefix(to, "@") && len(to) > 1 {
@@ -222,6 +350,9 @@ func Resolve(dir []Session, to string) (Session, []string, *Refusal) {
 		},
 		func() []Session {
 			return pick(func(s Session) bool { return strings.HasPrefix(strings.ToLower(s.Handle), lower) })
+		},
+		func() []Session {
+			return pick(func(s Session) bool { return anyAlias(s, func(a string) bool { return strings.HasPrefix(a, lower) }) })
 		},
 		func() []Session {
 			if len(to) < 8 {
