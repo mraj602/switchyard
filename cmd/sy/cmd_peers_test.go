@@ -189,6 +189,11 @@ func TestPeersSendStdinLimits(t *testing.T) {
 	if code, out, errs := sendStdin(t, "worker", full); code != 0 {
 		t.Fatalf("64 KiB: %d %q %q", code, out, errs)
 	}
+	// The inbox reads each connection on its own goroutine: wait for this frame, so the
+	// small one sent next cannot be recorded before it.
+	if !w.b.Wait(1, 2*time.Second) {
+		t.Fatal("64 KiB not delivered")
+	}
 	for _, text := range []string{full + "é", strings.Repeat("日", 3*peerspkg.MaxTextBytes) + "x"} {
 		code, out, _ := sendStdin(t, "worker", text)
 		if code != 6 || !strings.HasPrefix(out, "not delivered: ") || !strings.Contains(out, "limit is 65536") {
