@@ -29,9 +29,6 @@ import (
 // DefaultTimeout bounds one non-interactive `claude` call.
 const DefaultTimeout = 60 * time.Second
 
-// ErrNotImplemented means this claude build or runner does not offer the operation.
-var ErrNotImplemented = errors.New("claudecli: not implemented")
-
 // ErrNotFound means the claude binary was not found (setup exits 7).
 var ErrNotFound = errors.New("claudecli: claude not found")
 
