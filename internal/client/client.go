@@ -42,10 +42,27 @@ func New(baseURL, token string) *Client {
 }
 
 func (c *Client) http() *http.Client {
-	if c.HTTP != nil {
-		return c.HTTP
+	hc := c.HTTP
+	if hc == nil {
+		hc = &http.Client{Timeout: 20 * time.Second}
 	}
-	return &http.Client{Timeout: 20 * time.Second}
+	// The Authorization header must never follow a redirect from https to plain http (Go
+	// keeps it for a same-host redirect). A copy leaves the caller's client alone.
+	out := *hc
+	prev := out.CheckRedirect
+	out.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if len(via) > 0 && via[0].URL.Scheme == "https" && req.URL.Scheme != "https" {
+			return errors.New("refusing a redirect from https to plain http")
+		}
+		if prev != nil {
+			return prev(req, via)
+		}
+		if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		return nil
+	}
+	return &out
 }
 
 func (c *Client) endpoint(p string) string { return strings.TrimRight(c.BaseURL, "/") + p }
