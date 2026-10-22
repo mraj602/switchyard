@@ -395,7 +395,7 @@ func TestRow22ActionTokenReplay(t *testing.T) {
 		t.Fatal(seenBy)
 	}
 	// Tampered and expired tokens.
-	if _, _, err := h.eng.Act(h.ctx, tok.Seen[:len(tok.Seen)-2]+"AA"); err != model.ErrBadMAC {
+	if _, _, err := h.eng.Act(h.ctx, tamperToken(tok.Seen)); err != model.ErrBadMAC {
 		t.Fatal(err)
 	}
 	if _, _, err := h.eng.Act(h.ctx, "a1.!!"); err != model.ErrBadToken {

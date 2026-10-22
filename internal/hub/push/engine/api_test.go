@@ -263,8 +263,8 @@ func TestAPIActionTokens(t *testing.T) {
 		t.Fatalf("seen action: %+v", res)
 	}
 	for tok, want := range map[string]int{
-		"garbage":                             400,
-		acts.Seen[:len(acts.Seen)-4] + "AAAA": 401,
+		"garbage":              400,
+		tamperToken(acts.Seen): 401,
 	} {
 		if st, b := r.call("POST", "/v1/actions/"+tok, "", nil); st != want {
 			t.Fatalf("token %q = %d, want %d: %s", tok, st, want, b)
