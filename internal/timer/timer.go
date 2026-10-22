@@ -1,6 +1,6 @@
 // Package timer installs the OS timer that runs `sy flush` every minute and at boot:
 // a systemd user timer on Linux, a LaunchAgent on macOS, and instructions plus a Task
-// Scheduler XML file on Windows (plan section 8, docs/phases/2.md).
+// Scheduler XML file on Windows (docs/spec/setup.md).
 //
 // Nothing here touches the real system unless the caller hands in a real Runner and the
 // user's real home folder; tests use a fake home and a recording Runner.
@@ -337,6 +337,9 @@ func installSystemd(e Env, res *Result) error {
 	}
 	// Linger keeps the user's timers running after logout (needed on SSH servers). We only
 	// say so; changing it needs the user's decision.
+	if e.User == "" {
+		return nil
+	}
 	out, err := e.Runner.Run("loginctl", "show-user", e.User, "--property=Linger")
 	if err != nil || !strings.Contains(string(out), "Linger=yes") {
 		note := "To keep the timer running when you are logged out (SSH servers), run once:\n  loginctl enable-linger " + e.User

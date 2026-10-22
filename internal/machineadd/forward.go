@@ -128,7 +128,7 @@ func Adopted(c sshx.Config, target, socket string) (port int, ok bool) {
 	return 0, false
 }
 
-// blockRe finds the block of a machine.
+// blockRange finds the block of a machine: its start, its end and whether it exists.
 func blockRange(content []byte, machine string) (int, int, bool) {
 	head := []byte("# sy-forward v1 machine=" + machine + " ")
 	i := bytes.Index(content, head)
@@ -239,8 +239,6 @@ type ForwardResult struct {
 	Set     string // backup set id, when something was written
 }
 
-// journal runs fn with the two files journaled as write_file entries of a new backup set,
-// holding setup.lock. command is recorded in the manifest.
 // lockWait takes setup.lock, waiting up to 30 seconds for another command (a second add
 // running at the same time) to finish; apply.Lock itself never waits.
 func lockWait(stateDir string) (func(), error) {
@@ -254,16 +252,8 @@ func lockWait(stateDir string) (func(), error) {
 	}
 }
 
-func journal(stateDir, command string, now time.Time, paths []string, fn func() error) (string, error) {
-	unlock, err := lockWait(stateDir)
-	if err != nil {
-		return "", err
-	}
-	defer unlock()
-	return journalLocked(stateDir, command, now, paths, fn)
-}
-
-// journalLocked is journal for a caller that already holds setup.lock.
+// journalLocked runs fn with the paths journaled as write_file entries of a new backup set
+// (command goes in the manifest); the caller holds setup.lock. A failing fn rolls the set back.
 func journalLocked(stateDir, command string, now time.Time, paths []string, fn func() error) (string, error) {
 	set, err := backup.Create(stateDir, backup.Header{Command: command, SyVersion: version.Version}, now)
 	if err != nil {
