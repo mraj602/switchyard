@@ -120,7 +120,7 @@ func Import(ctx context.Context, st *store.Store, src string, opt Options) (*Rep
 	if _, err := os.Stat(src); err != nil {
 		return nil, err
 	}
-	db, err := sql.Open("sqlite", "file:"+src+"?mode=ro&_pragma=query_only(1)&_pragma=busy_timeout(5000)")
+	db, err := sql.Open("sqlite", store.FileURI(src, "mode=ro&_pragma=query_only(1)&_pragma=busy_timeout(5000)"))
 	if err != nil {
 		return nil, err
 	}

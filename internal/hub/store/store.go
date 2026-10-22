@@ -52,11 +52,18 @@ func dsn(path string, busy time.Duration, readOnly bool) string {
 	} else {
 		q.Set("_txlock", "immediate")
 	}
+	return FileURI(path, q.Encode())
+}
+
+// FileURI is the SQLite "file:" URI of a database path with the given query string. The path
+// is escaped, so a data folder containing '?', '#' or '%' still names the file it should.
+func FileURI(path, query string) string {
 	p := filepath.ToSlash(path)
 	if runtime.GOOS == "windows" && !strings.HasPrefix(p, "/") {
 		p = "/" + p
 	}
-	return "file:" + p + "?" + q.Encode()
+	u := url.URL{Scheme: "file", Path: p, RawQuery: query, OmitHost: true}
+	return u.String()
 }
 
 // Open opens (creating if needed) the database at path and migrates it to the newest

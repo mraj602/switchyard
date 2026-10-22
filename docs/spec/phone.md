@@ -14,7 +14,7 @@ widget refresh frames) is [push.md 13](push.md#13-the-link-channel-n1).
 Related: pairing.md 2.2, 3.1 (the QR, `cookie: false`), tokens.md 3 (`phone` scopes),
 push.md 5.4 (`prefs`), 5.5 (texts), 5.8 (deep links), 6.5 (the payload), 8 (action tokens),
 13 (the link channel), pwa.md 3 and 5 (screens and the service worker's tap rule), api.yaml
-(`DevicePrefs.widgets`, `PushSettings.refresh_min`), schema.sql v11.
+(`DevicePrefs.widgets`, `PushSettings.refresh_min`), schema.sql v12.
 
 Section numbers follow phases/8.md's contract: P8 to P10 (the hub side) were push.md 12, which
 is removed; the hub side of widget refresh is push.md 13.5.

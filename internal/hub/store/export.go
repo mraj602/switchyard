@@ -202,11 +202,7 @@ func tableCount(ctx context.Context, db *sql.DB, table string) (int64, error) {
 }
 
 func openRO(path string) (*sql.DB, error) {
-	p := filepath.ToSlash(path)
-	if !strings.HasPrefix(p, "/") {
-		p = "/" + p
-	}
-	db, err := sql.Open("sqlite", "file:"+p+"?mode=ro&_pragma=query_only(1)&_pragma=busy_timeout(2000)")
+	db, err := sql.Open("sqlite", FileURI(path, "mode=ro&_pragma=query_only(1)&_pragma=busy_timeout(2000)"))
 	if err != nil {
 		return nil, err
 	}
@@ -719,7 +715,7 @@ func existingCounts(ctx context.Context, path string) (map[string]int64, error) 
 
 // lockedCheck fails with ErrHubRunning when another process holds the database.
 func lockedCheck(ctx context.Context, path string) error {
-	db, err := sql.Open("sqlite", "file:"+hubPathURI(path)+"?_pragma=busy_timeout(500)&_txlock=exclusive")
+	db, err := sql.Open("sqlite", FileURI(path, "_pragma=busy_timeout(500)&_txlock=exclusive"))
 	if err != nil {
 		return err
 	}
@@ -733,14 +729,6 @@ func lockedCheck(ctx context.Context, path string) error {
 		return err
 	}
 	return tx.Rollback()
-}
-
-func hubPathURI(path string) string {
-	p := filepath.ToSlash(path)
-	if !strings.HasPrefix(p, "/") {
-		p = "/" + p
-	}
-	return p
 }
 
 // ImportOptions configures Import.
