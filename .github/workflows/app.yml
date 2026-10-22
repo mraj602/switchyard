@@ -1,14 +1,13 @@
-# The phase 6 desktop app (app/): unit tests on three OSes, the Electron smoke under xvfb
-# against a real hub, packaging (never signed, never published) and the packaged-AppImage
-# end-to-end test. Design: docs/phases/6.md "CI job design". Action SHAs re-checked with
-# `git ls-remote` on 2026-10-13.
+# The desktop app (app/): unit tests on three OSes, the Electron smoke under xvfb against a
+# real hub, packaging (never signed, never published) and the packaged-AppImage end-to-end
+# test. Spec: docs/spec/desktop.md. Action SHAs re-checked with `git ls-remote` on 2026-10-13.
 name: app
 
 on:
   workflow_dispatch:
   pull_request:
   push:
-    branches: [main, phase-6]
+    branches: [main]
     paths: ["app/**", "cmd/sy/**", "internal/**", "testdata/usage/**", ".github/workflows/app.yml"]
 
 permissions:
@@ -19,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The root prototype stays live until the person retires it: no change to it may land here.
+  # The legacy prototype at the repo root is frozen until it is removed: no change to it may land here.
   guard:
     runs-on: ubuntu-latest
     steps:
@@ -57,7 +56,7 @@ jobs:
       - run: npm run lint
       - run: npm test
 
-  # S1-S12 (docs/phases/6.md "Electron smoke"): a real `sy hub serve` built from this commit,
+  # The Electron smoke (app/test/smoke): a real `sy hub serve` built from this commit,
   # the fake claude.ai, a temp HOME. The harness passes --ozone-platform=x11 and
   # --password-store=basic (never a real keyring).
   smoke:
@@ -148,7 +147,7 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  # The packaged AppImage with the sandbox on, no sy on PATH (docs/phases/6.md "End to end"). It
+  # The packaged AppImage with the sandbox on, no sy on PATH (app/test/e2e). It
   # is driven over --remote-debugging-port, which only the e2e build allows: scripts/dist-e2e.sh
   # bakes switchyard.allowCdp=true into its asar (dist/e2e/). Its AppImage is never uploaded.
   e2e:

@@ -1,8 +1,9 @@
-# The phone app (phone/, Android only): typecheck, lint, jest, the secrets check and the prebuild
-# checks on every change; an unsigned Android debug compile and the JVM unit tests of the native
-# modules on demand. Nothing is signed, uploaded or submitted, and no EAS command runs here.
-# Design: docs/spec/phone.md P14. `make phone-check` is the same gate locally. Action SHAs
-# re-checked with `git ls-remote` on 2026-10-13 (actions/setup-java v6.0.1, released 2026-09-09).
+# The Android app (phone/): typecheck, lint, jest, the secrets check and both prebuild checks
+# on every change; an unsigned Android debug compile on main and on demand, and an iOS
+# simulator compile on demand only (the iOS code is kept compiling but is not released).
+# Nothing is signed, uploaded or submitted, and no EAS command runs here. `make phone-check`
+# runs the same checks locally. Spec: docs/spec/phone.md. Action SHAs re-checked with
+# `git ls-remote` on 2026-10-13 (actions/setup-java v6.0.1, released 2026-09-09).
 name: phone
 
 on:

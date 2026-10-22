@@ -1,0 +1,77 @@
+name: Bug report
+description: Something in Switchyard does not work as documented.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Security problems go through private reporting instead (see SECURITY.md), not here.
+        Please remove tokens, pairing codes, cookies, email addresses, hostnames and IP addresses from anything you paste.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - sy (CLI, setup, hooks, status line)
+        - Hub
+        - Board (browser or web app)
+        - Terminal board or pane
+        - Desktop app
+        - Android app
+        - Alerts and notifications
+        - Peers and keys
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `sy ...`
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `sy version`, the desktop app's About, or the Android app's Settings. For a build from source, the commit.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: Operating system and version; for the hub, how it runs (user service, Docker, systemd); for Android, the phone model and Android version.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: sy doctor output
+      description: Output of `sy doctor` on the affected machine, redacted.
+      render: text
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant log lines, redacted. docs/guide/troubleshooting.md says where the logs are.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched the existing issues.
+          required: true
+        - label: I removed tokens, codes, cookies and personal data from this report.
+          required: true

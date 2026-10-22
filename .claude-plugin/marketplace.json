@@ -1,0 +1,25 @@
+{
+  "name": "switchyard",
+  "owner": {
+    "name": "mraj602",
+    "url": "https://github.com/mraj602"
+  },
+  "metadata": {
+    "description": "Switchyard's Claude Code plugin. Unofficial; not affiliated with Anthropic."
+  },
+  "plugins": [
+    {
+      "name": "switchyard",
+      "source": "./plugin/switchyard",
+      "description": "Records session events and limits through the sy command for a self-hosted Switchyard hub, and adds setup, status, account and peers skills. Needs sy installed. Unofficial; not affiliated with Anthropic.",
+      "author": {
+        "name": "mraj602"
+      },
+      "homepage": "https://github.com/mraj602/switchyard",
+      "repository": "https://github.com/mraj602/switchyard",
+      "license": "Apache-2.0",
+      "keywords": ["switchyard", "sessions", "usage", "accounts", "notifications"],
+      "category": "productivity"
+    }
+  ]
+}

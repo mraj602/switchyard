@@ -17,3 +17,22 @@ coverage.*
 /phone/android/
 /phone/ios/
 /scripts/fixtures/private-words.txt
+
+# Credentials and signing material: never committed (phone/.gitignore has the same rules)
+*.keystore
+*.jks
+*.p12
+*.p8
+*.pem
+*.key
+.env.*
+!.env.example
+google-services.json
+GoogleService-Info.plist
+*.apk
+*.aab
+*.syx
+
+# OS and editor litter
+.DS_Store
+*.log
