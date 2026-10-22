@@ -111,7 +111,7 @@ func TestConfigRejectsPlainHTTPDirectServer(t *testing.T) {
 	if err := config.CheckDirectServer("http://ntfy.example.com"); err == nil {
 		t.Fatal("public http accepted")
 	}
-	if err := config.CheckDirectServer("http://192.168.1.5:8080"); err != nil {
+	if err := config.CheckDirectServer("http://10.0.0.5:8080"); err != nil {
 		t.Fatal(err)
 	}
 }
