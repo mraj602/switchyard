@@ -267,7 +267,7 @@ func connect(ctx context.Context, deps connectDeps, args []string, stdout, stder
 		}
 	}
 	// hub.dial and hub.reach are written only when they change, so a plain connect leaves a
-	// config.toml exactly as before phase 5. --keep-token changes only hub.url (machines.md
+	// config.toml exactly as before. --keep-token changes only hub.url (machines.md
 	// 8.3) unless --dial or --reach is given: then that is saved too (a repoint of a forward
 	// machine passes them), never silently dropped.
 	if !*keepToken || *dial != "" || *reach != "" {
@@ -432,7 +432,7 @@ func claimMachineToken(ctx context.Context, deps connectDeps, url, code string) 
 	return rep.Token, nil
 }
 
-// keepClaimedKeys checks an F1 claim reply (keys.md 7.3) and pins the hub key (tofu) and a
+// keepClaimedKeys checks a claim reply (keys.md 7.3) and pins the hub key (tofu) and a
 // confirmed owner key. A reply that does not hold up gives the new token back (best effort)
 // and fails; so does a hub key other than the one this machine pinned before.
 func keepClaimedKeys(ctx context.Context, deps connectDeps, url string, hc *http.Client, rep *client.ClaimReply, dk keys.DeviceKeys, sent keys.DeviceKeysNew) error {

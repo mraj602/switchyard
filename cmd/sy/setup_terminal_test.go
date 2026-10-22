@@ -1,6 +1,6 @@
 package main
 
-// `sy setup --terminal …` (docs/phases/7.md WP-I): the terminal pieces join the setup plan,
+// `sy setup --terminal …`: the terminal pieces join the setup plan,
 // one backup set, one undo; `sy term titles on` with a stale sy-local updates the switchyard
 // plugin so the title hooks run.
 

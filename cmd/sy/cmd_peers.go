@@ -274,7 +274,7 @@ func peersOffOn(off bool, args []string, stdout, stderr io.Writer) error {
 }
 
 // peersAgent calls the agent when it runs; agent.ErrNoAgent means it does not, and the caller
-// takes the direct path (peers.md 8.5 "PE1 without the agent"). Any other error is final:
+// takes the direct path (peers.md 8.5, without the agent). Any other error is final:
 // the request may have been handled, so it is never repeated.
 func peersAgent(pe peerEnv, req agent.Request) (agent.Reply, error) {
 	if c, rf := pe.Env.Whoami(); rf == nil {

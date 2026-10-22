@@ -1,6 +1,6 @@
 package main
 
-// End-to-end tests of `sy setup` and `sy account` (docs/phases/3.md WP-F): the sy binary
+// End-to-end tests of `sy setup` and `sy account`: the sy binary
 // against fakeclaude, in a fixture home of internal/setup/detect/detecttest. Nothing here
 // touches the real HOME: HOME, SY_HOME and PATH all point into t.TempDir folders.
 

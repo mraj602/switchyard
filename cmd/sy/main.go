@@ -21,9 +21,12 @@ import (
 // command is one subcommand. run gets the arguments after the subcommand name.
 type command struct {
 	summary string
-	phase   int // the build phase that implements it; 0 = available now
 	run     func(args []string, stdout, stderr io.Writer) error
 }
+
+// exitNotImplemented is the exit status of a command this build does not have (`sy machine
+// add` reads it from an older sy on a remote machine).
+const exitNotImplemented = 3
 
 // errUsage means the arguments were wrong; the usage text has already been printed.
 var errUsage = errors.New("usage")
@@ -63,13 +66,13 @@ func commands() map[string]command {
 		"setup":       {summary: "Set up accounts, sharing, hub and phone (--undo reverses a run)", run: runSetup},
 		"account":     {summary: "Add, log in, label, share and remove accounts", run: runAccount},
 		"uninstall":   {summary: "Remove the plugin, status line, timer and launchers", run: runUninstall},
-		"update":      {summary: "Update sy from a release (--machines updates every added machine)", phase: 5, run: runUpdate},
-		"direct-push": {summary: "Send session pushes straight to ntfy when the hub is unreachable", phase: 5, run: runDirectPush},
-		"desktop":     {summary: "Hub actions for the desktop app as JSON (info, token, owner-link, hub)", phase: 6, run: runDesktop},
-		"board":       {summary: "Session board in this terminal (--once, --json, --follow --ndjson; connect, disconnect)", phase: 7, run: runBoard},
-		"term":        {summary: "Terminal pieces: pane, titles, Warp tabs and plugin (setup, titles, warp, off, status, focus)", phase: 7, run: runTerm},
-		"open":        {summary: "List accounts, or open one in a new Warp tab or this terminal", phase: 7, run: runOpen},
-		"ssh":         {summary: "ssh that lets the server's sessions be focused in this tab", phase: 7, run: runSSH},
+		"update":      {summary: "Update sy from a release (--machines updates every added machine)", run: runUpdate},
+		"direct-push": {summary: "Send session pushes straight to ntfy when the hub is unreachable", run: runDirectPush},
+		"desktop":     {summary: "Hub actions for the desktop app as JSON (info, token, owner-link, hub)", run: runDesktop},
+		"board":       {summary: "Session board in this terminal (--once, --json, --follow --ndjson; connect, disconnect)", run: runBoard},
+		"term":        {summary: "Terminal pieces: pane, titles, Warp tabs and plugin (setup, titles, warp, off, status, focus)", run: runTerm},
+		"open":        {summary: "List accounts, or open one in a new Warp tab or this terminal", run: runOpen},
+		"ssh":         {summary: "ssh that lets the server's sessions be focused in this tab", run: runSSH},
 		"keys":        {summary: "Owner key, certificates, revocations and pins (init, status, certify, revoke, ...)", run: runKeys},
 	}
 }
@@ -89,10 +92,13 @@ func dispatch(args []string, stdout, stderr io.Writer) int {
 	switch name {
 	case "-h", "--help", "help":
 		if name == "help" && len(rest) > 0 {
-			if c, ok := cmds[rest[0]]; ok {
-				fmt.Fprintf(stdout, "sy %s: %s\n", rest[0], c.summary)
-				return 0
+			c, ok := cmds[rest[0]]
+			if !ok {
+				fmt.Fprintf(stderr, "sy: unknown command %q\n", rest[0])
+				return 2
 			}
+			fmt.Fprintf(stdout, "sy %s: %s\n", rest[0], c.summary)
+			return 0
 		}
 		usage(stdout, cmds)
 		return 0
@@ -105,15 +111,6 @@ func dispatch(args []string, stdout, stderr io.Writer) int {
 		usage(stderr, cmds)
 		return 2
 	}
-	if c.run == nil {
-		// Not built yet. `sy hook` must never fail a Claude Code session, so even the
-		// placeholder exits 0 for it.
-		fmt.Fprintf(stderr, "sy %s: not implemented yet (phase %d)\n", name, c.phase)
-		if name == "hook" || name == "statusline" {
-			return 0
-		}
-		return 3
-	}
 	if err := c.run(rest, stdout, stderr); err != nil {
 		var ee *exitError
 		if errors.As(err, &ee) {
@@ -122,7 +119,10 @@ func dispatch(args []string, stdout, stderr io.Writer) int {
 			}
 			return ee.code
 		}
-		if errors.Is(err, errUsage) || errors.Is(err, flag.ErrHelp) {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0 // -h: the flag package has printed the usage
+		}
+		if errors.Is(err, errUsage) {
 			return 2
 		}
 		fmt.Fprintf(stderr, "sy %s: %v\n", name, err)
@@ -145,11 +145,7 @@ func usage(w io.Writer, cmds map[string]command) {
 	sort.Strings(names)
 	for _, n := range names {
 		c := cmds[n]
-		note := ""
-		if c.phase > 0 {
-			note = fmt.Sprintf(" (phase %d)", c.phase)
-		}
-		fmt.Fprintf(w, "  %-11s %s%s\n", n, c.summary, note)
+		fmt.Fprintf(w, "  %-11s %s\n", n, c.summary)
 	}
 }
 

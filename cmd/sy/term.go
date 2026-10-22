@@ -4,10 +4,9 @@ package main
 // warp on|off and off plan with plan.Terminal and apply through internal/setup/apply, so
 // every change holds setup.lock, is journaled in a backup set, updates the ledger's
 // `terminal` block and is reversed by `sy setup --undo`. status only reads. `focus` is
-// routed to term_focus.go (WP-F).
+// routed to term_focus.go.
 //
-// Phase 7, WP-E. WP-I reuses termFacts, termContents and termAfterApply for
-// `sy setup --terminal` and `sy uninstall`.
+// `sy setup --terminal` and `sy uninstall` reuse termFacts, termContents and termAfterApply.
 
 import (
 	"bytes"

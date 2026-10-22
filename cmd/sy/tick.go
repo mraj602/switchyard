@@ -2,7 +2,7 @@ package main
 
 // `sy tick` is what the OS timer runs every minute (timer.Command): the share sync of
 // setup.md 5.4/5.7 (MCP servers and Windows synced copies, a no-op when nothing changed),
-// `sy scan`, `sy agents` at most every 5 minutes, then (phase 5) the hub.json refresh every
+// `sy scan`, `sy agents` at most every 5 minutes, then the hub.json refresh every
 // 6 hours, machine_info on change or every 6 hours, the hourly direct-push policy, then
 // `sy flush`, then the direct-push check (machines.md 5.4, 6.3, 7.2).
 

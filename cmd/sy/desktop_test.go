@@ -268,7 +268,7 @@ func TestDesktopPrefixAdminBatchModeNoSecretInArgv(t *testing.T) {
 	}
 	d := deskSandbox(t)
 	noRealService(t, &fakeService{})
-	connectSandbox(t, d, "https://hub.example.ts.net", "machines.hub_admin", "ssh oci sy")
+	connectSandbox(t, d, "https://hub.example.ts.net", "machines.hub_admin", "ssh hub-host sy")
 	bin := t.TempDir()
 	rec := filepath.Join(bin, "argv.txt")
 	script := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> " + rec + "\ncase \"$*\" in\n" +
@@ -298,7 +298,7 @@ func TestDesktopPrefixAdminBatchModeNoSecretInArgv(t *testing.T) {
 		t.Fatalf("ssh ran %d times: %q", len(lines), argv)
 	}
 	for _, l := range lines {
-		if !strings.HasPrefix(l, "-o BatchMode=yes oci ") {
+		if !strings.HasPrefix(l, "-o BatchMode=yes hub-host") {
 			t.Errorf("ssh argv does not start with BatchMode: %q", l)
 		}
 	}
@@ -312,7 +312,7 @@ func TestDesktopPrefixAdminBatchModeNoSecretInArgv(t *testing.T) {
 func TestDesktopBadHubAdminInfoStillWorks(t *testing.T) {
 	d := deskSandbox(t)
 	noRealService(t, &fakeService{})
-	connectSandbox(t, d, "https://hub.example.ts.net", "machines.hub_admin", "ssh -o StrictHostKeyChecking=no oci sy")
+	connectSandbox(t, d, "https://hub.example.ts.net", "machines.hub_admin", "ssh -o StrictHostKeyChecking=no hub-host sy")
 	code, out, errb := runDesk(t, "", "info", "--json")
 	var info desktop.Info
 	if code != 0 || json.Unmarshal([]byte(out), &info) != nil {

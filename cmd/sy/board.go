@@ -27,7 +27,7 @@ import (
 // `sy board` (docs/spec/terminal.md T1, T4): the session board in this terminal. This file
 // owns the flags, the modes (--once, --json, --follow --ndjson, the interactive TUI of
 // internal/board/tui) and the call that picks a source. `connect` and `disconnect` are
-// routed to board_connect.go (WP-B).
+// routed to board_connect.go.
 //
 // Read only: nothing here writes outside stdout (and `<state>` through the source's own
 // cache), nothing types into another terminal, and the board token never reaches this file.
@@ -69,7 +69,7 @@ var (
 	// boardOpenURL opens an https://claude.ai/ link through the T7 opener (the `o` key).
 	// nil means the key answers "not available in this build".
 	boardOpenURL = openRemoteURL
-	// boardFocus brings the row's tab forward: `sy term focus --session <id>` (WP-F).
+	// boardFocus brings the row's tab forward: `sy term focus --session <id>`.
 	boardFocus = func(ctx context.Context, id string) error {
 		var out, errb bytes.Buffer
 		if err := runTermFocus([]string{"--session", id}, &out, &errb); err != nil {

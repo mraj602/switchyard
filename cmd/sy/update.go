@@ -205,6 +205,9 @@ func updateMain(ctx context.Context, e updateEnv, args []string, stdout, stderr 
 	fs.StringVar(&f.machines, "machines", "", "also update every added machine: all or name,name")
 	fs.StringVar(&f.postUpdate, "post-update", "", "internal: run the steps after an update; the value is the old version")
 	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return err
+		}
 		return errUsage
 	}
 	if fs.NArg() > 0 {

@@ -2,10 +2,8 @@ package main
 
 // `sy open [<label>] [--here]` (docs/spec/terminal.md T1, T8): list accounts, or open one in
 // a new Warp tab (its tab config) or in this terminal. It never picks an account for the
-// person (plan section 13: "it may suggest which account has room; you choose"), and it
+// person (it may suggest which account has room; you choose), and it
 // writes nothing.
-//
-// Phase 7, WP-E.
 
 import (
 	"context"

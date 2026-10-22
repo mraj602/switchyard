@@ -31,7 +31,7 @@ func hubPairResult(err error) error {
 	case errors.Is(err, cli.ErrExpired):
 		return exitWith(3, nil)
 	case errors.Is(err, cli.ErrNotImplemented):
-		return exitWith(exitNotImplemented, err) // phase 5 stubs
+		return exitWith(exitNotImplemented, err) // an older sy without the command
 	}
 	return err
 }

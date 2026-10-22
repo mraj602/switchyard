@@ -8,7 +8,7 @@ import (
 	"github.com/mraj602/switchyard/internal/setup/detect/detecttest"
 )
 
-func TestSetupPhase5HubFlags(t *testing.T) {
+func TestSetupHubFlagConflictsAreUsageErrors(t *testing.T) {
 	s := newSetupHome(t, detecttest.Laptop(t))
 	for _, args := range [][]string{
 		{"setup", "--dry-run", "--hub", "later", "--hub-dial", "127.0.0.1:47830"},

@@ -1,6 +1,6 @@
 package main
 
-// Regression tests for the phase 3 review findings at the command layer: unshare, the setup
+// Regression tests at the command layer: unshare, the setup
 // lock, uninstall's confirmation and ledger, usage errors and --purge.
 
 import (
