@@ -1,4 +1,4 @@
-// Package importproto is the one-off importer from the prototype's usage.db into the hub
+// Package importproto imports a usage.db from the earlier Electron prototype into the hub
 // (`sy hub import-prototype`). It opens a *copy* of the prototype
 // database read-only, turns its rows into ordinary records (hook_event, web_usage,
 // token_rows, slot_info) and feeds them through the hub's own ingest, so the typed tables
@@ -10,8 +10,7 @@
 // row's identity), and every record comes from the device dev_import, so running the
 // importer twice adds nothing.
 //
-// Depends on: record, identity, hub/store, hub/ingest,
-// hub/usage.
+// Depends on: record, identity, hub/store, hub/ingest, hub/usage.
 package importproto
 
 import (
