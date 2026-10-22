@@ -313,8 +313,15 @@ func (o *Outbox) Prune(keepDays int) (removed []string, err error) {
 	}
 	if ents, err := os.ReadDir(o.Dir); err == nil {
 		for _, e := range ents {
-			if strings.HasSuffix(e.Name(), ".compact.tmp") {
-				_ = os.Remove(filepath.Join(o.Dir, e.Name()))
+			n := e.Name()
+			switch {
+			case strings.HasSuffix(n, ".compact.tmp"):
+				_ = os.Remove(filepath.Join(o.Dir, n))
+			case strings.HasPrefix(n, ".") && strings.HasSuffix(n, ".tmp"):
+				// A crashed atomic write (atomicfile.TempName); a young one may be in use.
+				if fi, err := e.Info(); err == nil && o.now().Sub(fi.ModTime()) > time.Hour {
+					_ = os.Remove(filepath.Join(o.Dir, n))
+				}
 			}
 		}
 	}
