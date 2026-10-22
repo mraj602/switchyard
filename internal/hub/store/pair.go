@@ -56,7 +56,7 @@ func (tx *Tx) LiveCodeHashExists(hash []byte, now int64) (bool, error) {
 func (tx *Tx) CancelOldestLiveCodes(keep int, now int64) (int, error) {
 	res, err := tx.exec(`UPDATE pair_code SET cancelled_at = ? WHERE id IN (
 		SELECT id FROM pair_code WHERE code_hash IS NOT NULL AND claimed_at IS NULL AND cancelled_at IS NULL AND expires_at > ?
-		ORDER BY created_at DESC, id DESC LIMIT -1 OFFSET ?)`, now, now, keep)
+		ORDER BY created_at DESC, rowid DESC LIMIT -1 OFFSET ?)`, now, now, keep)
 	if err != nil {
 		return 0, err
 	}
@@ -70,7 +70,7 @@ func (tx *Tx) CancelOldestLiveCodes(keep int, now int64) (int, error) {
 func (tx *Tx) CancelOldestLiveBoardOwnerLinks(keep int, now int64) (int, error) {
 	res, err := tx.exec(`UPDATE pair_code SET cancelled_at = ? WHERE id IN (
 		SELECT id FROM pair_code WHERE kind = 'owner' AND created_by GLOB 'owner:*' AND claimed_at IS NULL AND cancelled_at IS NULL
-		AND expires_at > ? ORDER BY created_at DESC, id DESC LIMIT -1 OFFSET ?)`, now, now, keep)
+		AND expires_at > ? ORDER BY created_at DESC, rowid DESC LIMIT -1 OFFSET ?)`, now, now, keep)
 	if err != nil {
 		return 0, err
 	}
