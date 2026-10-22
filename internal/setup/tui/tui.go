@@ -8,7 +8,7 @@
 // Every screen's answers map one-to-one onto model.Choices (the flags of setup.md 4). Run
 // never writes a file and never runs a command: quitting (`q`) changes nothing.
 //
-// Phase 3, WP-F. Depends on: setup/model, identity (Tilde).
+// Depends on: setup/model, identity (Tilde).
 package tui
 
 import (
@@ -34,7 +34,7 @@ type Options struct {
 	Raw bool
 }
 
-// Screen names, in order (the screens of docs/design/screens/).
+// Screen names, in order.
 var Screens = []string{"Main", "SetupSharing (accounts)", "SetupSharing (sharing)", "SetupHub", "SetupDone"}
 
 const (

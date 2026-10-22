@@ -1,6 +1,6 @@
 package apply_test
 
-// Regression tests for the phase 3 review findings on undo, rollback and crash recovery:
+// Regression tests for undo, rollback and crash recovery:
 // undo never deletes or overwrites what the person made after the run.
 
 import (

@@ -2,7 +2,7 @@
 // `--json` report. Settings `env` values and `mcpServers` values never appear in either:
 // text prints pointers only, JSON replaces those values with "<redacted>".
 //
-// Phase 3, WP-A. Depends on: setup/model, identity (Tilde).
+// Depends on: setup/model, identity (Tilde).
 package render
 
 import (

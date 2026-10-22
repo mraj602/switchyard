@@ -6,7 +6,7 @@
 // Code never sees a half-written tree. Every hook command in the copy calls `sy` by absolute
 // path (hooks then work when Claude Code is started without ~/.local/bin on PATH).
 //
-// Phase 3, WP-D. Depends on: plugin (embed), claudecli, model.
+// Depends on: plugin (embed), claudecli, model.
 package pluginmkt
 
 import (
@@ -35,7 +35,7 @@ const (
 	MarketplaceName = "sy-local"
 	PluginName      = plugin.Name // "switchyard"
 	PluginID        = PluginName + "@" + MarketplaceName
-	PaneName        = plugin.PaneName // "switchyard-pane", phase 7
+	PaneName        = plugin.PaneName // "switchyard-pane"
 	PaneID          = PaneName + "@" + MarketplaceName
 )
 
@@ -162,7 +162,7 @@ func setVersion(doc []byte, version string) []byte {
 }
 
 // MarketplaceJSON renders .claude-plugin/marketplace.json. It lists both plugins: switchyard
-// and the opt-in pane mod (phase 7), which is installed only by `sy term setup --pane`.
+// and the opt-in pane mod, which is installed only by `sy term setup --pane`.
 func MarketplaceJSON(version, description, paneDescription string) []byte {
 	doc := fmt.Sprintf(`{
   "name": %s,

@@ -8,5 +8,5 @@
 // symlink target, mode kept, temp+rename) and adds the .claude.json mode: Claude Code's lock
 // directory, the live-session skip and the post-edit checks.
 //
-// Phase 3 wave 1, WP-C. Depends on: nothing outside the standard library.
+// Depends on: nothing outside the standard library.
 package jsonedit

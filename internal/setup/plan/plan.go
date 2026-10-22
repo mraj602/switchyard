@@ -3,7 +3,7 @@
 // (setup.md 5, 6, 9.1, 10). It reads no file and runs no command; everything it knows is in
 // the State that detect built.
 //
-// Phase 3, WP-A. Depends on: setup/model, setup/launcher, setup/statuswrap, identity (Tilde).
+// Depends on: setup/model, setup/launcher, setup/statuswrap, identity (Tilde).
 package plan
 
 import (

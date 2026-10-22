@@ -99,7 +99,7 @@ func grepLine(b []byte, sub string) string {
 }
 
 // The recorded stream the mod's tests read (testdata/view-stream.ndjson) is the same text as
-// hooks/fixtures.ts (tests cannot read files), its first line is wave 0's golden View, and the
+// hooks/fixtures.ts (tests cannot read files), its first line is the golden View, and the
 // lines the mod must drop do not decode while the rest do.
 func TestPaneViewStreamFixture(t *testing.T) {
 	paneFS := plugin.PaneFS()
@@ -136,7 +136,7 @@ func TestPaneViewStreamFixture(t *testing.T) {
 	ga, _ := json.Marshal(a)
 	gb, _ := json.Marshal(b)
 	if !bytes.Equal(ga, gb) {
-		t.Error("line 1 is not wave 0's golden View")
+		t.Error("line 1 is not the golden View")
 	}
 
 	wantOK := []bool{true, false, true, false, true}

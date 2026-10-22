@@ -8,11 +8,11 @@ import (
 	"github.com/mraj602/switchyard/internal/claudecli"
 )
 
-// ErrNotImplemented is returned by the Unimplemented* stand-ins that wave 1 replaces.
+// ErrNotImplemented is returned by the Unimplemented* stand-ins, which embed in a partial implementation or a test fake.
 var ErrNotImplemented = errors.New("setup: not implemented")
 
 // Sharer is the file-system and JSON editing side of apply, implemented by internal/share
-// (WP-C) and internal/jsonedit through it. Every method is atomic with respect to its path
+// and internal/jsonedit through it. Every method is atomic with respect to its path
 // (temp name + rename), refuses to follow a path through a forbidden file (.credentials.json),
 // and never touches the login. Callers (internal/setup/apply) save originals into the backup
 // set *before* calling, unless a method takes a save location.
@@ -96,7 +96,7 @@ type MCPSkip struct {
 }
 
 // PluginInstaller installs and removes the switchyard plugin (setup.md 5.2), implemented by
-// internal/setup/pluginmkt (WP-D) on a claudecli.Runner. All calls run as the given folder.
+// internal/setup/pluginmkt on a claudecli.Runner. All calls run as the given folder.
 type PluginInstaller interface {
 	// WriteMarketplace writes <dir> (the marketplace tree: .claude-plugin/marketplace.json
 	// "sy-local" and plugins/switchyard) from the embedded plugin with hook commands rewritten
@@ -130,7 +130,7 @@ type ServiceStatus struct {
 }
 
 // Service installs the hub user service (systemd user unit, launchd agent, Task Scheduler),
-// implemented by internal/service (WP-D).
+// implemented by internal/service .
 type Service interface {
 	Install(ctx context.Context, spec ServiceSpec) error
 	Uninstall(ctx context.Context, name string) error
@@ -142,7 +142,7 @@ type Service interface {
 type ConnectRequest struct {
 	URL   string
 	Token string
-	// Phase 5: Dial and Reach for hub.dial and hub.reach; Pull sets hub.reach = "pull" with no
+	// Dial and Reach for hub.dial and hub.reach; Pull sets hub.reach = "pull" with no
 	// URL and no token and installs the timer (machines.md 3.4).
 	Dial        string
 	Reach       string
@@ -158,7 +158,7 @@ type ConnectResult struct {
 }
 
 // Connector wraps internal/client's connect (tokens.md 4): HTTPS rule, /health, token
-// proof, <state>/token, hub.url, timer. Implemented by the command layer (WP-F).
+// proof, <state>/token, hub.url, timer. Implemented by the command layer .
 type Connector interface {
 	Connect(ctx context.Context, req ConnectRequest) (ConnectResult, error)
 	// MintMachineToken makes a machine token against the local hub data folder

@@ -10,7 +10,7 @@
 // `--sso` or `--console` to claude. `--relay` (8.2) is not implemented: it is a stretch task
 // behind a build tag until proven, and the `needs` command is the fallback.
 //
-// Phase 3, WP-D. Depends on: claudecli, model.
+// Depends on: claudecli, model.
 package account
 
 import (

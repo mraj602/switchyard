@@ -94,7 +94,7 @@ Hub
   ( ) Connect to my hub
   ( ) I'll run the hub on another server
   ( ) Later
-  Tailscale is up: the hub can be reached at laptop.tailnet.ts.net if you run `tailscale serve`.
+  Tailscale is up: the hub can be reached at laptop.example.ts.net if you run `tailscale serve`.
 
 ↑↓ choose · Enter continue · Esc back · q quit
 [H[2Jsy setup — 5/5 SetupDone

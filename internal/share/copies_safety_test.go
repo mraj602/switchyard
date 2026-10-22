@@ -24,7 +24,7 @@ func managedAll(t *testing.T, state string) []string {
 	return out
 }
 
-// Regression (review finding 1/9): after an undo restored a folder's own file where a synced
+// Regression: after an undo restored a folder's own file where a synced
 // copy was, the next sync must not copy that file into the shared primary. The ledger no
 // longer lists the path as a copy, so SyncCopies leaves it alone.
 func TestSyncCopiesSkipsPathsTheLedgerDropped(t *testing.T) {

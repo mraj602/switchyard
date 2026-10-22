@@ -9,6 +9,6 @@
 // Nothing here ever reads or writes `.credentials.json` or any `.claude.json` key but
 // `mcpServers`; log lines and results carry server names, never values.
 //
-// Phase 3 wave 1, WP-C. Depends on: internal/setup/model, internal/jsonedit,
+// Depends on: internal/setup/model, internal/jsonedit,
 // internal/atomicfile, internal/identity (the Forbidden guard).
 package share

@@ -11,7 +11,7 @@ import (
 	"github.com/mraj602/switchyard/internal/setup/testtree"
 )
 
-// Run by the Windows CI job (phase 3, WP-G): junction create, detect by reparse tag, replace
+// Run by the Windows CI job: junction create, detect by reparse tag, replace
 // of a real directory, snapshot type.
 func TestJunctionRoundTrip(t *testing.T) {
 	b := testtree.New(t, "")

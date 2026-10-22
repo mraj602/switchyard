@@ -7,8 +7,8 @@
 // (7.2) and the ledger (9.3). Optional fields use omitempty; fields the spec always prints
 // have no omitempty. Golden files: testdata/setup/*.json.
 //
-// Stability: wave 1 packages code against this package in parallel. Add fields freely
-// (always with omitempty and a doc comment); renaming or removing needs the orchestrator.
+// Stability: other packages code against this one. Add fields freely (always with
+// omitempty and a doc comment); renaming or removing one changes the wire format.
 //
-// Contract: docs/spec/setup.md. Phase 3. Depends on: internal/claudecli (types only).
+// Contract: docs/spec/setup.md. Depends on: internal/claudecli (types only).
 package model

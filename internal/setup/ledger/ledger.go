@@ -2,7 +2,7 @@
 // installed now (setup.md 9.3), and updates it from a finished backup manifest: Update
 // after an apply, Revert after an undo. `sy uninstall` and `sy doctor` plan from it.
 //
-// Phase 3 WP-B. Depends on: internal/atomicfile, internal/setup/model.
+// Depends on: internal/atomicfile, internal/setup/model.
 package ledger
 
 import (
@@ -79,7 +79,7 @@ func Update(prev model.Ledger, p model.Plan, m model.Manifest) model.Ledger {
 		if !ok {
 			continue
 		}
-		l = updateTerminal(l, a, e) // phase 7: the ledger's terminal block (terminal.go)
+		l = updateTerminal(l, a, e) // the ledger's terminal block (terminal.go)
 		switch a.Op {
 		case model.OpJSONSet, model.OpJSONDelete:
 			updateJSON(&l, a)

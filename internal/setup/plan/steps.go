@@ -282,7 +282,7 @@ func (p *planner) planHub() error {
 			p.warn("the hub stops when you log out; run `loginctl enable-linger`")
 		}
 	case model.HubPull:
-		// Phase 5 (machines.md 3.4): the hub pulls this machine over SSH. No URL, no token.
+		// (machines.md 3.4): the hub pulls this machine over SSH. No URL, no token.
 		if !connected && h.Reach == model.HubPull && h.TimerActive {
 			p.out.Keep = append(p.out.Keep, model.Keep{What: "hub", Note: "pulled over SSH (already set up)"})
 			return nil
@@ -294,7 +294,7 @@ func (p *planner) planHub() error {
 		if url == "" {
 			return fmt.Errorf("--hub join needs a URL")
 		}
-		// Phase 5: reach and dial as asked (forward when a dial is given), compared with now.
+		// reach and dial as asked (forward when a dial is given), compared with now.
 		reach := p.c.Reach
 		if reach == "" && p.c.Dial != "" {
 			reach = "forward"

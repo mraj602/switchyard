@@ -114,7 +114,7 @@ func TestRunUnderSh(t *testing.T) {
 }
 
 // Regression: a label or folder with a newline must not end the marker/comment line and
-// inject a command (review finding: label from a hand-edited config.toml).
+// inject a command (a label from a hand-edited config.toml).
 func TestInterpolatedValuesStayOnOneLine(t *testing.T) {
 	// A folder with a newline keeps it inside the quoted sh value (that is the folder's real
 	// name; Check refuses it anyway), but never in a comment line.

@@ -11,7 +11,7 @@
 // The package never opens `.credentials.json`, and a `.claude.json` is handled as metadata
 // plus the recorded JSON keys only (never saved whole: it holds the login).
 //
-// Phase 3 WP-B. Depends on: internal/atomicfile, internal/setup/model.
+// Depends on: internal/atomicfile, internal/setup/model.
 package backup
 
 import (

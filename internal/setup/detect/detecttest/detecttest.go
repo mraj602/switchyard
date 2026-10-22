@@ -66,7 +66,7 @@ func (h *Home) Deps() detect.Deps {
 		ShellProbe: func(context.Context, []string) (string, error) { return "", nil },
 		HubProbe:   func(context.Context, string) model.HubState { return model.HubState{} },
 		Tailscale: func(context.Context) *model.Tailscale {
-			return &model.Tailscale{Up: true, DNSName: "laptop.tailnet.ts.net"}
+			return &model.Tailscale{Up: true, DNSName: "laptop.example.ts.net"}
 		},
 	}
 }

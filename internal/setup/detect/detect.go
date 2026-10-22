@@ -5,7 +5,7 @@
 // goes through identity.FS, which refuses it), reads a `.claude.json` only for its
 // `mcpServers` key (values are hashed, never kept), and creates nothing.
 //
-// Phase 3, WP-A. Depends on: identity, config, claudecli, setup/model, setup/launcher,
+// Depends on: identity, config, claudecli, setup/model, setup/launcher,
 // setup/statuswrap.
 package detect
 
@@ -373,8 +373,8 @@ func (x *detector) detectSwitchyard(ctx context.Context) {
 		x.st.Hub = h
 		x.st.Hub.URL = url
 	}
-	// Phase 5: how the hub is reached (machines.md 3). "direct" is the default and is not
-	// recorded, so states from before phase 5 read the same.
+	// how the hub is reached (machines.md 3). "direct" is the default and is not
+	// recorded,.
 	if x.cfg != nil {
 		if v, err := x.cfg.Get("hub.reach"); err == nil {
 			if s, _ := v.(string); s != "" && s != "direct" {

@@ -1,4 +1,4 @@
-// Package testtree is the test helper of phase 3: it builds fake-home trees (files, folders,
+// Package testtree is a test helper: it builds fake-home trees (files, folders,
 // symlinks, modes, mtimes) in a temporary folder and snapshots a tree byte for byte, so apply
 // followed by undo can be proven to give back exactly the same tree (setup.md 7.3 guarantee).
 //
@@ -10,7 +10,7 @@
 // Only for tests; it calls t.Fatal on errors. Mode and symlink checks are meaningful on
 // Unix; on Windows the package builds and round-trips but modes are not exact.
 //
-// Phase 3 wave 0. Depends on: nothing.
+// Depends on: nothing.
 package testtree
 
 import (
