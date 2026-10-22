@@ -1,0 +1,62 @@
+Switchyard
+Copyright 2026 mraj602 and Switchyard contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Switchyard is an independent, unofficial project. It is not affiliated with, endorsed by,
+sponsored by or connected to Anthropic, PBC. "Claude" and "Claude Code" are trademarks of
+Anthropic, PBC, used here only to describe compatibility. The Apache License grants no
+rights to use the "Switchyard" name or logo (section 6 of the License).
+
+-------------------------------------------------------------------------------------------
+Third-party components
+-------------------------------------------------------------------------------------------
+
+Maintainer check before each release: this list was written by reading go.mod, the
+package.json files of app/ and phone/, and the asset folders. Re-check it when a
+dependency or an asset is added.
+
+1. Linked into the `sy` binary (Go modules, from go.mod)
+
+   github.com/pelletier/go-toml/v2        MIT
+   golang.org/x/sys                       BSD-3-Clause
+   golang.org/x/term                      BSD-3-Clause
+   modernc.org/sqlite                     BSD-3-Clause (includes SQLite, public domain)
+   modernc.org/libc                       BSD-3-Clause (includes parts of musl libc, MIT)
+   modernc.org/mathutil                   BSD-3-Clause
+   modernc.org/memory                     BSD-3-Clause
+   rsc.io/qr                              BSD-3-Clause
+   github.com/coder/websocket             ISC
+   github.com/dustin/go-humanize          MIT
+   github.com/google/uuid                 BSD-3-Clause
+   github.com/mattn/go-isatty             MIT
+   github.com/ncruces/go-strftime         MIT
+   github.com/remyoudompheng/bigfft       BSD-3-Clause
+
+2. Bundled into the desktop app packages (app/)
+
+   Electron and Chromium, under their own licenses (MIT, BSD-3-Clause and others).
+   electron-builder writes LICENSE.electron.txt and LICENSES.chromium.html into every
+   package. The packages also contain a copy of `sy` (section 1).
+
+3. Bundled into the Android app (phone/)
+
+   React Native, Expo SDK modules, expo-router, react-native-android-widget,
+   react-native-screens, react-native-safe-area-context and
+   @react-native-async-storage/async-storage, each under its own license (MIT for all of
+   them at the pinned versions in phone/package.json), and the AndroidX and Kotlin
+   libraries they pull in (Apache-2.0). The release build keeps the firebase-messaging
+   library on the classpath through expo-notifications; Switchyard never initialises it
+   (docs/spec/phone.md).
+
+4. Fonts and icons
+
+   The web board loads IBM Plex Sans and IBM Plex Mono (SIL Open Font License 1.1) from
+   Google Fonts at run time when the browser is online; the font files are not part of this
+   repository or of any build. The desktop app names the same fonts and falls back to system
+   fonts; it does not bundle them.
+
+   Every icon and image in this repository (app/assets, app/build, phone/assets,
+   webui/static/icons, scripts/icons) is original Switchyard artwork, drawn from the SVG
+   sources in app/build/icons-src, phone/assets/src and scripts/icons. No Anthropic logo or
+   mark is used.

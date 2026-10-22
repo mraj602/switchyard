@@ -2,7 +2,7 @@
   "name": "switchyard-phone",
   "version": "0.8.0",
   "description": "Switchyard phone app (Expo): the hub's screens, native pushes with Open, Snooze and Seen, widgets and a Live Activity. Unofficial; not affiliated with Anthropic.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "private": true,
   "main": "index.js",
   "engines": {
