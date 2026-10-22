@@ -61,7 +61,7 @@ func dsn(path string, busy time.Duration, readOnly bool) string {
 
 // Open opens (creating if needed) the database at path and migrates it to the newest
 // schema. Before migrating an existing database it writes a copy next to it
-// (<path>.pre-v<N>-<UTC time>.bak), as plan section 7 asks.
+// (<path>.pre-v<N>-<UTC time>.bak).
 func Open(ctx context.Context, path string, opt Options) (*Store, error) {
 	if opt.BusyTimeout <= 0 {
 		opt.BusyTimeout = 10 * time.Second
@@ -79,6 +79,11 @@ func Open(ctx context.Context, path string, opt Options) (*Store, error) {
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			return nil, fmt.Errorf("store: %w", err)
 		}
+	}
+	// Create the file private before SQLite does (it would use the umask, usually 0644, and
+	// copy that mode to the -wal and -shm files).
+	if f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600); err == nil {
+		f.Close()
 	}
 	w, err := sql.Open("sqlite", dsn(path, opt.BusyTimeout, false))
 	if err != nil {
@@ -145,7 +150,7 @@ func (tx *Tx) AfterCommit(fn func()) { tx.after = append(tx.after, fn) }
 // Ctx is the context of the transaction.
 func (tx *Tx) Ctx() context.Context { return tx.ctx }
 
-// Now is the hub time at the start of the transaction, in ms.
+// NowMS is the hub time at the start of the transaction, in ms.
 func (tx *Tx) NowMS() int64 { return tx.now.UnixMilli() }
 
 func (tx *Tx) exec(q string, args ...any) (sql.Result, error) {
@@ -183,6 +188,13 @@ func (s *Store) Write(ctx context.Context, fn func(tx *Tx) error) error {
 		return fmt.Errorf("store: begin: %w", err)
 	}
 	tx := &Tx{Tx: t, ctx: ctx, now: s.now()}
+	// A panic in fn must not leave the only writer connection inside an open transaction.
+	defer func() {
+		if p := recover(); p != nil {
+			_ = t.Rollback()
+			panic(p)
+		}
+	}()
 	if err := fn(tx); err != nil {
 		_ = t.Rollback()
 		return err
