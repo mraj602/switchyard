@@ -1,4 +1,4 @@
--- Version 10 (PE3): the `peer_thread_resume` link frame (peers.md 6.3, link.md 6.4).
+-- Version 10: the `peer_thread_resume` link frame (peers.md 6.3, link.md 6.4).
 --
 -- link_queue.type cannot gain 'peer_thread_resume' in place (SQLite cannot change a CHECK), so
 -- the queue is copied aside, dropped and made again with the same rows. Nothing references

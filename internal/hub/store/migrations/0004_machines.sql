@@ -1,4 +1,4 @@
--- Version 4 (phase 5): reach, machine info, backlog age; pull targets. machines.md section 9.
+-- Version 4: reach, machine info, backlog age; pull targets. machines.md section 9.
 
 ALTER TABLE machine ADD COLUMN reach TEXT CHECK (reach IS NULL OR reach IN ('direct', 'forward', 'pull'));
 ALTER TABLE machine ADD COLUMN record_v INTEGER;

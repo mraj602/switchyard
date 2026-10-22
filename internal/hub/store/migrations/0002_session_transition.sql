@@ -1,4 +1,4 @@
--- Version 2 (phase 2): keep every state change of a session (states.md section 3, "History
+-- Version 2: keep every state change of a session (states.md section 3, "History
 -- and since"), including the ones no hook event caused (session_list repairs, gone), so the
 -- session page can show its transition history.
 

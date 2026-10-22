@@ -1,24 +1,25 @@
--- Switchyard hub schema, version 11.
+-- Switchyard hub schema, version 12.
 --
--- One SQLite file (WAL mode). Applied by the hub at start (phase 2) inside one transaction
+-- One SQLite file (WAL mode). Applied by the hub at start inside one transaction
 -- after `PRAGMA foreign_keys = ON`. Later versions add numbered migrations
 -- (internal/hub/store/migrations/NNNN_*.sql; 0001 is version 1 of this file). This file is
 -- always the full current schema, and a test checks that migrations from v1 produce it.
---   v1  phase 0: the first schema.
---   v2  phase 2: session_transition (every state change, not only hook-caused ones).
---   v3  phase 4: pairing, owner sessions, push targets, rules, alerts, deliveries (hub_secret,
+--   v1  the first schema.
+--   v2  session_transition (every state change, not only hook-caused ones).
+--   v3  pairing, owner sessions, push targets, rules, alerts, deliveries (hub_secret,
 --       device.expires_at/prefs; pair_code, channel, push_target, rule, alert, delivery recreated).
---   v4  phase 5: machine reach/record_v/held/backlog_oldest/backlog_at/info/info_at; pull_target
+--   v4  machine reach/record_v/held/backlog_oldest/backlog_at/info/info_at; pull_target
 --       (machines.md 9).
---   v5  phase 6: seat.look_src (desktop.md C10).
---   v6  phase 8: the expo channel row, push_target.meta, delivery.ticket/receipt_at (push.md 12).
---   v7  F1: owner_key, device_key, revocation_doc, link_state, link_queue (keys.md 9, link.md 5).
---   v8  N1: the link channel (channel and push_target recreated with 'link'), delivery.delivered_at
+--   v5  seat.look_src (desktop.md C10).
+--   v6  the expo channel row, push_target.meta, delivery.ticket/receipt_at (push.md 12).
+--   v7  owner_key, device_key, revocation_doc, link_state, link_queue (keys.md 9, link.md 5).
+--   v8  the link channel (channel and push_target recreated with 'link'), delivery.delivered_at
 --       (push.md 13.8).
---   v9  PE1-PE3: matrix_doc, peer_thread, peer_message, peer_audit (peers.md 10).
---   v10 PE3: link_queue recreated with the 'peer_thread_resume' type (peers.md 6.3, link.md 6.4).
+--   v9  matrix_doc, peer_thread, peer_message, peer_audit (peers.md 10).
+--   v10 link_queue recreated with the 'peer_thread_resume' type (peers.md 6.3, link.md 6.4).
 --   v11 the expo channel removed: its channel row, targets, deliveries and access token;
 --       push_target.meta, delivery.ticket/receipt_at (channel, push_target, delivery recreated).
+--   v12 indexes: alert_seat, alert_machine, delivery_target.
 --
 -- Conventions
 --   * Times are INTEGER milliseconds since the Unix epoch, UTC (`*_at`, `ts`).
@@ -26,7 +27,7 @@
 --     Ids made by the hub are TEXT with a prefix + ULID (`dev_…`, `seat_…`).
 --   * JSON is stored as TEXT and checked with json_valid().
 --   * Every table is STRICT. Booleans are INTEGER 0/1 with a CHECK.
---   * `owner_id` is on the tables a future shared hub would partition (plan section 5).
+--   * `owner_id` is on the tables a future shared hub could partition.
 --     It is always 'owner' on a single-user hub.
 --   * Driver: modernc.org/sqlite (pure Go, no cgo). Needs SQLite >= 3.37 for STRICT.
 --
@@ -43,7 +44,7 @@ CREATE TABLE schema_version (
 ) STRICT;
 
 INSERT INTO schema_version (version, applied_at, sy_version)
-VALUES (11, CAST(unixepoch('subsec') * 1000 AS INTEGER), 'spec');
+VALUES (12, CAST(unixepoch('subsec') * 1000 AS INTEGER), 'spec');
 
 -- Hub-wide settings that are not secrets (retention days, last-message policy, …).
 CREATE TABLE setting (
@@ -54,7 +55,7 @@ CREATE TABLE setting (
 
 ---------------------------------------------------------------------------- identity
 
--- The one owner of a single-user hub. Owner login (passkey / password) is phase 4.
+-- The one owner of a single-user hub. Owner login is by passkey or password.
 CREATE TABLE owner (
   id             TEXT    NOT NULL PRIMARY KEY,      -- 'owner'
   name           TEXT,
@@ -102,7 +103,7 @@ CREATE TABLE seat (
 -- first and renumbers every seat 0..n-1; seats are listed by sort_order, created_at, id, so a
 -- new seat (max + 1) or one nobody ordered sorts after the ordered ones. No migration: the column
 -- is in version 1.
--- look_src: v5 (phase 6, desktop.md C10). Who set label and colour last: 'ui' (PATCH /v1/accounts/{seat}),
+-- look_src: v5 (desktop.md C10). Who set label and colour last: 'ui' (PATCH /v1/accounts/{seat}),
 -- 'slot' (slot_info; applies only while look_src is NULL or 'slot'), 'import' (prototype importer).
 
 -- A computer running sy. The id is made by sy on first run (identity.md).
@@ -119,7 +120,7 @@ CREATE TABLE machine (
   backlog       INTEGER,                             -- outbox records queued, as last reported
   removed_at    INTEGER
 , reach TEXT CHECK (reach IS NULL OR reach IN ('direct', 'forward', 'pull')), record_v INTEGER, held INTEGER NOT NULL DEFAULT 0, backlog_oldest INTEGER, backlog_at INTEGER, info TEXT CHECK (info IS NULL OR json_valid(info)), info_at INTEGER) STRICT;
--- reach .. info_at: v4 (phase 5, machines.md 9). reach: how its records reach the hub; record_v: highest record v it
+-- reach .. info_at: v4 (machines.md 9). reach: how its records reach the hub; record_v: highest record v it
 -- writes; held: records it holds back because the hub is too old; backlog_oldest: client ts of its oldest
 -- unanswered record; backlog_at: hub time the backlog was reported; info/info_at: last machine_info payload.
 
@@ -224,7 +225,7 @@ INSERT INTO channel (kind, enabled, settings, updated_at) VALUES
   ('webpush', 1, '{}', 0),
   ('ntfy', 1, '{}', 0),
   ('link', 1, '{}', 0);
--- link: v8 (N1, push.md 13): the Android app's own connection to the hub. v8 recreated channel and
+-- link: v8 (push.md 13): the Android app's own connection to the hub. v8 recreated channel and
 -- push_target to widen the kind CHECK, v11 to narrow it; the other rows were copied unchanged.
 
 -- One place a push goes: a browser subscription, an ntfy topic or a link device.
@@ -445,7 +446,7 @@ CREATE TABLE rollup_daily (
   PRIMARY KEY (day, seat_id, model, project)
 ) STRICT;
 
----------------------------------------------------------------------------- alerts (phase 4)
+---------------------------------------------------------------------------- alerts
 
 -- Global rules: one base rule per trigger plus scoped overrides (push.md 3).
 CREATE TABLE rule (
@@ -498,6 +499,8 @@ CREATE TABLE alert (
 CREATE INDEX alert_due ON alert(due_at) WHERE due_at IS NOT NULL;
 CREATE INDEX alert_open ON alert(session_id) WHERE status IN ('pending', 'fired', 'snoozed', 'seen');
 CREATE INDEX alert_created ON alert(created_at);
+CREATE INDEX alert_seat ON alert(seat_id) WHERE seat_id IS NOT NULL;
+CREATE INDEX alert_machine ON alert(machine_id) WHERE machine_id IS NOT NULL;
 
 -- One attempt to bring one alert (fire) to one target.
 CREATE TABLE delivery (
@@ -520,7 +523,8 @@ CREATE TABLE delivery (
 ) STRICT;
 CREATE INDEX delivery_next ON delivery(next_at) WHERE next_at IS NOT NULL;
 CREATE INDEX delivery_batch ON delivery(batch);
--- delivered_at: v8 (N1, push.md 13.4); v11 recreated delivery without its expo columns.
+CREATE INDEX delivery_target ON delivery(target_id, status, updated_at);
+-- delivered_at: v8 (push.md 13.4); v11 recreated delivery without its expo columns.
 
 -- One remote the hub pulls over SSH (machines.md 3.4).
 CREATE TABLE pull_target (

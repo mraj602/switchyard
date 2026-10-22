@@ -1,4 +1,4 @@
--- Version 3 (phase 4): pairing, owner sessions, push targets, rules, alerts, deliveries.
+-- Version 3: pairing, owner sessions, push targets, rules, alerts, deliveries.
 -- push.md section 9. The v1 placeholders for these tables were never written, so they are
 -- recreated with their final shape.
 

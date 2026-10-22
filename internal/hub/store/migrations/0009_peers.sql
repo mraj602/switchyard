@@ -1,4 +1,4 @@
--- Version 9 (PE1-PE3): the account matrix, peer message metadata, threads and the audit log.
+-- Version 9: the account matrix, peer message metadata, threads and the audit log.
 -- peers.md 10. Message text never reaches these tables: bodies are sealed to the receiving
 -- machine and exist at the hub only inside link_queue while queued.
 

@@ -1,4 +1,4 @@
--- Version 6 (phase 8): the Expo channel for the store app. push.md 12.
+-- Version 6: the Expo channel for the store app (removed again in version 11). push.md 12.
 
 -- channel.kind has allowed 'expo' since v3; the row was never seeded.
 INSERT INTO channel (kind, enabled, settings, updated_at) VALUES ('expo', 1, '{}', 0);

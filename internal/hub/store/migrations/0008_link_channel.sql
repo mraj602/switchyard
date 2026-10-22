@@ -1,4 +1,4 @@
--- Version 8 (N1): the link channel for the Android app (push.md 13).
+-- Version 8: the link channel for the Android app (push.md 13).
 --
 -- channel.kind cannot gain 'link' in place (SQLite cannot change a CHECK) and push_target
 -- references channel(kind), so both tables are copied aside, dropped and made again with the
