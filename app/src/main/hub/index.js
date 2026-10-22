@@ -97,6 +97,7 @@ export function create(deps) {
   let infoTimer = null;
   let refreshTimer = null;
   let inflight = null;
+  let refetchAfter = false; // a refresh asked for while one runs: that one may have read older data
   let lastNeedsYou = '';
   let machineName = String(deps.hostname ?? '');
 
@@ -361,7 +362,11 @@ export function create(deps) {
 
   function refreshOverview() {
     if (stopped) return Promise.resolve();
-    inflight ??= (async () => {
+    if (inflight) {
+      refetchAfter = true;
+      return inflight;
+    }
+    inflight = (async () => {
       try {
         const [ov, acc] = await Promise.all([client.get('/v1/overview'), client.get('/v1/accounts')]);
         for (const r of [ov, acc]) {
@@ -392,6 +397,10 @@ export function create(deps) {
         log.warn?.(`hub: overview failed: ${err?.message ?? err}`);
       } finally {
         inflight = null;
+        if (refetchAfter) {
+          refetchAfter = false;
+          refreshOverview();
+        }
       }
     })();
     return inflight;

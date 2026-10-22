@@ -242,7 +242,7 @@ test('reset refetches the overview', async () => {
   const t = await harness();
   await t.h.start();
   await t.handlers['hub:pair']({});
-  await until(() => t.hub.streamCount() === 1);
+  await until(() => t.hub.streamCount() === 1 && lastHub(t).status === 'ok');
   const base = t.hub.requestsTo('/v1/overview').length;
   t.hub.rawWrite('id: 77\nevent: reset\ndata: {}\n\n');
   await until(() => t.hub.requestsTo('/v1/overview').length > base);
