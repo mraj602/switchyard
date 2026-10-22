@@ -72,7 +72,7 @@ Commands:
   backup             Write a consistent copy of the database (--to file)
   refold             Rebuild every session's state and times from the stored records [--dry-run]
   prune              Delete raw records and fine-grained rows older than --older-than 90d / --before DATE
-  import-prototype   Import the prototype's usage.db (a copy) into the hub database
+  import-prototype   Import usage.db (a copy) from the earlier Electron prototype into the hub database
   pull               Pull servers over SSH: add|list|run|trust|enable|disable|remove|key
   export / import    Move the hub: freeze and pack it / unpack it into an empty hub
   unfreeze           Call off a move: the hub accepts records again
@@ -857,7 +857,7 @@ func importPrototype(args []string, stdout, stderr io.Writer) error {
 	asJSON := fs.Bool("json", false, "print the report as JSON")
 	pos, err := parse(fs, args)
 	if err != nil || len(pos) != 1 {
-		fmt.Fprintln(stderr, "usage: sy hub import-prototype <copy of usage.db> [--db hub.db] [--machine m_…]")
+		fmt.Fprintln(stderr, "usage: sy hub import-prototype <copy of the prototype's usage.db> [--db hub.db] [--machine m_…]")
 		return ErrUsage
 	}
 	ctx := context.Background()

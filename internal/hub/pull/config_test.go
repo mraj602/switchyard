@@ -184,11 +184,11 @@ func TestEnsureKeyMakesAndKeepsTheKey(t *testing.T) {
 		t.Skip("no ssh-keygen")
 	}
 	dir := filepath.Join(t.TempDir(), "pull")
-	pub, err := pull.EnsureKey(context.Background(), dir, "oci", nil)
+	pub, err := pull.EnsureKey(context.Background(), dir, "hub", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(pub, "ssh-ed25519 ") || !strings.HasSuffix(pub, "switchyard-pull@oci") {
+	if !strings.HasPrefix(pub, "ssh-ed25519 ") || !strings.HasSuffix(pub, "switchyard-pull@hub") {
 		t.Fatalf("%q", pub)
 	}
 	st, err := os.Stat(filepath.Join(dir, "id_ed25519"))
@@ -208,7 +208,7 @@ func TestEnsureKeyMakesAndKeepsTheKey(t *testing.T) {
 	}
 	// Lost .pub is rebuilt from the private key.
 	_ = os.Remove(filepath.Join(dir, "id_ed25519.pub"))
-	if rebuilt, err := pull.EnsureKey(context.Background(), dir, "oci", nil); err != nil || !strings.HasPrefix(rebuilt, "ssh-ed25519 ") {
+	if rebuilt, err := pull.EnsureKey(context.Background(), dir, "hub", nil); err != nil || !strings.HasPrefix(rebuilt, "ssh-ed25519 ") {
 		t.Fatalf("%q %v", rebuilt, err)
 	}
 }
