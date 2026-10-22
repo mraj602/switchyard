@@ -1,10 +1,10 @@
 // The one IPC table (docs/spec/desktop.md C3): every channel between the shell and main, its
 // argument schema, its direction, the `window.sy` function name the preload exposes for it
-// and the work package that owns its handler. Pure data and pure validation: main/ipc.js
-// (WP-A) checks every call against it, src/preload/shell.cjs mirrors its names (a test checks
+// and the module that registers its handler. Pure data and pure validation: main/ipc.js
+// checks every call against it, src/preload/shell.cjs mirrors its names (a test checks
 // they agree), and the renderer may import it from app://shell/shared/ipc.js.
 //
-// Wave 0 owns this file. Adding or changing a channel is a contract change: desktop.md C3
+// Adding or changing a channel is a contract change: desktop.md C3
 // first, then this table, then the preload.
 
 import { TAB_ID_PATTERN, TAB_NAME_MAX } from './constants.js';
@@ -44,68 +44,68 @@ export const TOAST_LEVELS = Object.freeze(['info', 'warn', 'error']);
  * subscribes with `window.sy.on(<channel>, cb)`.
  */
 export const CHANNELS = Object.freeze({
-  'state:get': { kind: INVOKE, fn: 'state', owner: 'A', args: null, returns: 'ShellState' },
+  'state:get': { kind: INVOKE, fn: 'state', handler: 'state', args: null, returns: 'ShellState' },
   'view:select': {
-    kind: INVOKE, fn: 'selectView', owner: 'A', returns: 'undefined',
+    kind: INVOKE, fn: 'selectView', handler: 'window', returns: 'undefined',
     args: obj({ view: { type: 'string', max: 18, enum: ['hub', 'settings'], pattern: new RegExp(TAB_ID_PATTERN) } }, ['view']),
   },
   'hub:route': {
-    kind: INVOKE, fn: 'hubRoute', owner: 'C', returns: 'undefined',
+    kind: INVOKE, fn: 'hubRoute', handler: 'hub', returns: 'undefined',
     args: obj({ route: { type: 'string', min: 2, max: 200, pattern: new RegExp(HUB_ROUTE_PATTERN) } }, ['route']),
   },
 
-  'tab:add': { kind: INVOKE, fn: 'addTab', owner: 'B', returns: '{id}', args: obj({ name: TAB_NAME, seat: { type: 'string', max: 31, pattern: new RegExp(SEAT_ID_PATTERN) } }, ['name']) },
-  'tab:update': { kind: INVOKE, fn: 'updateTab', owner: 'B', returns: 'undefined', args: withId({ name: TAB_NAME }) },
-  'tab:remove': { kind: INVOKE, fn: 'removeTab', owner: 'B', returns: 'undefined', args: withId() },
+  'tab:add': { kind: INVOKE, fn: 'addTab', handler: 'tabs', returns: '{id}', args: obj({ name: TAB_NAME, seat: { type: 'string', max: 31, pattern: new RegExp(SEAT_ID_PATTERN) } }, ['name']) },
+  'tab:update': { kind: INVOKE, fn: 'updateTab', handler: 'tabs', returns: 'undefined', args: withId({ name: TAB_NAME }) },
+  'tab:remove': { kind: INVOKE, fn: 'removeTab', handler: 'tabs', returns: 'undefined', args: withId() },
   'tab:reorder': {
-    kind: INVOKE, fn: 'reorderTabs', owner: 'B', returns: 'undefined',
+    kind: INVOKE, fn: 'reorderTabs', handler: 'tabs', returns: 'undefined',
     args: obj({ ids: { type: 'array', items: TAB_ID, max: 100, unique: true } }, ['ids']),
   },
-  'tab:reload': { kind: INVOKE, fn: 'reloadTab', owner: 'B', returns: 'undefined', args: withId() },
-  'tab:home': { kind: INVOKE, fn: 'homeTab', owner: 'B', returns: 'undefined', args: withId() },
-  'tab:external': { kind: INVOKE, fn: 'openTabExternal', owner: 'B', returns: 'undefined', args: withId() },
-  'tab:adopt': { kind: INVOKE, fn: 'adoptTab', owner: 'B', returns: '{name, label, offer}', args: withId() },
-  'tab:logout': { kind: INVOKE, fn: 'logoutTab', owner: 'B', returns: 'undefined', args: withId() },
+  'tab:reload': { kind: INVOKE, fn: 'reloadTab', handler: 'tabs', returns: 'undefined', args: withId() },
+  'tab:home': { kind: INVOKE, fn: 'homeTab', handler: 'tabs', returns: 'undefined', args: withId() },
+  'tab:external': { kind: INVOKE, fn: 'openTabExternal', handler: 'tabs', returns: 'undefined', args: withId() },
+  'tab:adopt': { kind: INVOKE, fn: 'adoptTab', handler: 'tabs', returns: '{name, label, offer}', args: withId() },
+  'tab:logout': { kind: INVOKE, fn: 'logoutTab', handler: 'tabs', returns: 'undefined', args: withId() },
 
   'usage:accept-warning': {
-    kind: INVOKE, fn: 'acceptWarning', owner: 'B', returns: 'undefined',
+    kind: INVOKE, fn: 'acceptWarning', handler: 'usage', returns: 'undefined',
     args: withId({ version: { type: 'int', min: 1, max: 1000 } }, ['version']),
   },
-  'usage:set-reading': { kind: INVOKE, fn: 'setReading', owner: 'B', returns: 'undefined', args: withId({ on: BOOL }, ['on']) },
-  'usage:set-send': { kind: INVOKE, fn: 'setSend', owner: 'B', returns: 'undefined', args: withId({ on: BOOL }, ['on']) },
-  'usage:resume': { kind: INVOKE, fn: 'resumeReading', owner: 'B', returns: 'undefined', args: withId() },
-  'usage:refresh': { kind: INVOKE, fn: 'refreshUsage', owner: 'B', returns: 'undefined', args: obj({ id: TAB_ID }) },
+  'usage:set-reading': { kind: INVOKE, fn: 'setReading', handler: 'usage', returns: 'undefined', args: withId({ on: BOOL }, ['on']) },
+  'usage:set-send': { kind: INVOKE, fn: 'setSend', handler: 'usage', returns: 'undefined', args: withId({ on: BOOL }, ['on']) },
+  'usage:resume': { kind: INVOKE, fn: 'resumeReading', handler: 'usage', returns: 'undefined', args: withId() },
+  'usage:refresh': { kind: INVOKE, fn: 'refreshUsage', handler: 'usage', returns: 'undefined', args: obj({ id: TAB_ID }) },
 
   'hub:pair': {
-    kind: INVOKE, fn: 'pair', owner: 'C', returns: '{ok, error?}',
+    kind: INVOKE, fn: 'pair', handler: 'hub', returns: '{ok, error?}',
     args: obj({ code: { type: 'string', max: 7, pattern: new RegExp(PAIR_CODE_PATTERN) } }), // {} = local or admin channel
   },
   // {} = through sy (local hub or admin channel); {link} = a pasted owner link (own hub's origin only)
-  'hub:owner-sign-in': { kind: INVOKE, fn: 'ownerSignIn', owner: 'C', returns: '{ok, error?}', args: obj({ link: { type: 'string', min: 8, max: 2048 } }) },
-  'hub:owner-sign-out': { kind: INVOKE, fn: 'ownerSignOut', owner: 'C', args: null, returns: '{ok}' },
+  'hub:owner-sign-in': { kind: INVOKE, fn: 'ownerSignIn', handler: 'hub', returns: '{ok, error?}', args: obj({ link: { type: 'string', min: 8, max: 2048 } }) },
+  'hub:owner-sign-out': { kind: INVOKE, fn: 'ownerSignOut', handler: 'hub', args: null, returns: '{ok}' },
   // Connect to a hub without sy: check the address (/health), remember it, pair with the code when given.
   'hub:connect': {
-    kind: INVOKE, fn: 'hubConnect', owner: 'C', returns: '{ok, error?}',
+    kind: INVOKE, fn: 'hubConnect', handler: 'hub', returns: '{ok, error?}',
     args: obj({ url: { type: 'string', min: 1, max: 300 }, code: { type: 'string', max: 7, pattern: new RegExp(PAIR_CODE_PATTERN) } }, ['url']),
   },
   // Revoke this app's device on the hub, forget the token and the board session; forget also drops the remembered address.
-  'hub:unpair': { kind: INVOKE, fn: 'hubUnpair', owner: 'C', returns: '{ok, revoked, warning?}', args: obj({ forget: BOOL }) },
-  'hub:retry': { kind: INVOKE, fn: 'hubRetry', owner: 'C', args: null, returns: '{ok}' },
+  'hub:unpair': { kind: INVOKE, fn: 'hubUnpair', handler: 'hub', returns: '{ok, revoked, warning?}', args: obj({ forget: BOOL }) },
+  'hub:retry': { kind: INVOKE, fn: 'hubRetry', handler: 'hub', args: null, returns: '{ok}' },
   'hub:service': {
-    kind: INVOKE, fn: 'hubService', owner: 'C', returns: '{service, health}',
+    kind: INVOKE, fn: 'hubService', handler: 'hub', returns: '{service, health}',
     args: obj({ action: { type: 'string', max: 6, enum: ['status', 'start', 'stop'] } }, ['action']),
   },
   'seat:update': {
-    kind: INVOKE, fn: 'updateSeat', owner: 'C', returns: '{ok, error?}',
+    kind: INVOKE, fn: 'updateSeat', handler: 'hub', returns: '{ok, error?}',
     args: obj({
       seat: { type: 'string', max: 31, pattern: new RegExp(SEAT_ID_PATTERN) },
       label: { type: 'string', max: 24, pattern: new RegExp(SEAT_LABEL_PATTERN), nullable: true },
       colour: { type: 'string', max: 7, pattern: new RegExp(SEAT_COLOUR_PATTERN), nullable: true },
     }, ['seat']),
   },
-  'accounts:local': { kind: INVOKE, fn: 'localAccounts', owner: 'C', args: null, returns: 'sy account list --json result' },
+  'accounts:local': { kind: INVOKE, fn: 'localAccounts', handler: 'hub', args: null, returns: 'sy account list --json result' },
   'accounts:share': {
-    kind: INVOKE, fn: 'shareAccount', owner: 'C', returns: '{ok, error?}',
+    kind: INVOKE, fn: 'shareAccount', handler: 'hub', returns: '{ok, error?}',
     args: obj({
       folder: { type: 'string', max: 201, pattern: new RegExp(SHARE_FOLDER_PATTERN) },
       share: { type: 'string', max: 200, pattern: new RegExp(SHARE_SPEC_PATTERN) },
@@ -113,14 +113,14 @@ export const CHANNELS = Object.freeze({
   },
 
   'settings:set': {
-    kind: INVOKE, fn: 'setSettings', owner: 'E', returns: 'Settings',
+    kind: INVOKE, fn: 'setSettings', handler: 'settings', returns: 'Settings',
     args: obj({ keep_running: BOOL, notifications: BOOL, autostart: BOOL, start_hidden: BOOL }),
   },
 
   // push (main → shell)
-  state: { kind: PUSH, fn: null, owner: 'A', args: { type: 'any' }, returns: null }, // ShellState, debounced 100 ms
+  state: { kind: PUSH, fn: null, handler: 'state', args: { type: 'any' }, returns: null }, // ShellState, debounced 100 ms
   toast: {
-    kind: PUSH, fn: null, owner: 'A', returns: null,
+    kind: PUSH, fn: null, handler: 'ipc', returns: null,
     args: obj({ level: { type: 'string', max: 5, enum: TOAST_LEVELS }, text: { type: 'string', min: 1, max: 500 } }, ['level', 'text']),
   },
 });
@@ -212,7 +212,7 @@ function check(channel, path, s, v) {
 }
 
 /**
- * Shapes carried over IPC (C3). Documentation only; state.js (WP-A) assembles ShellState.
+ * Shapes carried over IPC (C3). Documentation only; state.js assembles ShellState.
  *
  * @typedef {object} ShellState
  * @property {TabState[]} tabs              in display order
@@ -228,7 +228,7 @@ function check(channel, path, s, v) {
  * @property {string} name
  * @property {string|null} label      seat label from the hub when known
  * @property {string|null} colour     seat colour from the hub when known
- * @property {string|null} seat       hub seat id (seat_…) when known; seat:update needs it (WP-D)
+ * @property {string|null} seat       hub seat id (seat_…) when known; seat:update needs it
  * @property {'on'|'off'|'never_asked'} reading
  * @property {boolean} needs_warning  true when the warning dialog should show (C5)
  * @property {boolean} send_to_hub

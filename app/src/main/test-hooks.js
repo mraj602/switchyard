@@ -1,9 +1,7 @@
 // Test-only overrides (docs/spec/desktop.md C2). boot.js imports this file only when
-// !app.isPackaged, and electron-builder.yml (WP-F) leaves it out of the asar, so a packaged app
+// !app.isPackaged, and electron-builder.yml leaves it out of the asar, so a packaged app
 // cannot be steered by these variables. Each function reads one variable from the env it is
 // given and returns a checked value, or null when it is unset or not acceptable.
-//
-// Owned by WP-A.
 
 import { TEST_ENV } from '../shared/constants.js';
 import { testOrigin } from '../shared/urls.js';

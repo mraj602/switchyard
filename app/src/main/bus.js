@@ -1,22 +1,22 @@
-// The main-process event bus (docs/phases/6.md wave 0): how modules talk without importing
+// The main-process event bus: how modules talk without importing
 // each other's internals. A typed emitter over a closed set of events; emitting or listening
 // to any other name throws, and a payload is checked to be an object. Listeners run
 // synchronously in subscription order; one that throws is reported through `onError` and the
 // others still run. `last(event)` returns the newest payload, so a module created later (for
 // example state.js assembling ShellState) starts from the current picture.
 //
-// Wave 0 owns this file. Events and their payloads:
+// Events and their payloads, and the module that emits each:
 //
-//   tabs       {tabs: TabInfo[]}                     B, after any tab change (add, remove, reorder,
+//   tabs       {tabs: TabInfo[]}                     tabs, after any tab change (add, remove, reorder,
 //                                                    rename, load, sign-in, reading/send flags)
-//   usage      {id, read_state, stopped, retry_at,   B, after every read, stop, resume or off;
+//   usage      {id, read_state, stopped, retry_at,   usage, after every read, stop, resume or off;
 //               last_read, windows, windows_source}  per tab (id = tab id)
-//   hub        HubState (shared/ipc.js)              C, after info, pairing, stream or service changes
-//   needs_you  {count, sessions: [{id, route, title}]}  C, debounced 1 s after `session` events;
+//   hub        HubState (shared/ipc.js)              hub, after info, pairing, stream or service changes
+//   needs_you  {count, sessions: [{id, route, title}]}  hub, debounced 1 s after `session` events;
 //                                                    sessions is at most TRAY_SESSIONS_MAX
-//   alert      {alert, session}                      C, for a stream `alert` with change "fired"
+//   alert      {alert, session}                      hub, for a stream `alert` with change "fired"
 //                                                    (both fetched: /v1/alerts/{id}, /v1/sessions/{id})
-//   settings   Settings (shared/ipc.js)              E, after settings:set or an autostart change
+//   settings   Settings (shared/ipc.js)              settings, after settings:set or an autostart change
 //
 // TabInfo = {id, name, reading, warning_accepted, send_to_hub, stopped, seat, last_url,
 //            signed_in, loaded}  (app-state.json tabs[] plus live view facts)

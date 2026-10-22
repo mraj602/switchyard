@@ -58,7 +58,7 @@ func newDevice(now time.Time, id, kind, name, hint string, scopes []string, crea
 	}
 }
 
-func (d *Data) phase4(now time.Time) {
+func (d *Data) deviceFixtures(now time.Time) {
 	ago := func(x time.Duration) string { return ts(now.Add(-x)) }
 	in := func(x time.Duration) string { return ts(now.Add(x)) }
 	min, hour := time.Minute, time.Hour

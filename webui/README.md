@@ -10,8 +10,8 @@ build step. See `doc.go` for the file layout.
     go run ./cmd/webui-dev -dir webui/static     # mock hub on http://127.0.0.1:8788, prints a login token
 
 `-dir` serves the files from disk so a browser refresh picks up edits; without it the
-embedded copy is used. `-noauth` skips the login page. The mock implements every phase 4
-endpoint in memory. Fixed values (webui/devserver, `p4.go`): `PairSecret`/`PairCode`
+embedded copy is used. `-noauth` skips the login page. The mock implements the identity, pairing, device, push and machine
+endpoints in memory. Fixed values (webui/devserver, `api.go`): `PairSecret`/`PairCode`
 (open `/#/pair?s=<PairSecret>&c=482913`), `OwnerSecret` (`/#/owner?s=<OwnerSecret>`),
 `PhoneToken`, `OwnerToken`. Helpers: `POST /_dev/build {"hash":"..."}` switches the build
 hash (update banner), `POST /_dev/reset`, `POST /_dev/promote`.
@@ -37,7 +37,7 @@ hash (update banner), `POST /_dev/reset`, `POST /_dev/promote`.
   (`webui.CSP()`: no inline script, `worker-src`/`manifest-src` self).
 - `webui.UIBuild()` is the value for `/health` `ui` (the update banner compares it with the
   running build).
-- The read API and the phase 4 API in `docs/spec/api.yaml`; the app starts from `/v1/me`.
+- The read API and the identity, pairing and device API in `docs/spec/api.yaml`; the app starts from `/v1/me`.
 - HTTPS (Tailscale serve) for the service worker and push on phones.
 
 ## Tests

@@ -3,7 +3,7 @@
 // open policies (through shared/urls.js), per-session permission handlers, downloads and
 // certificate errors.
 //
-// Owned by WP-A. Contract: docs/spec/desktop.md C2.
+// Contract: docs/spec/desktop.md C2.
 //
 // How the policies fit together:
 // - Every webContents gets, when it is created, a deny-all window-open handler, a refusal of
@@ -187,7 +187,7 @@ export function create(deps) {
     const out = { ...SAFE_WEB_PREFERENCES };
     for (const [k, v] of Object.entries(extra ?? {})) {
       if (Object.hasOwn(SAFE_WEB_PREFERENCES, k)) throw new Error(`security: webPreferences.${k} is fixed by the baseline`);
-      if (!EXTRA_KEYS.has(k)) throw new Error(`security: webPreferences.${k} is not allowed (ask WP-A)`);
+      if (!EXTRA_KEYS.has(k)) throw new Error(`security: webPreferences.${k} is not allowed`);
       out[k] = v;
     }
     if (out.preload !== undefined && kind !== VIEW_SHELL) throw new Error('security: only the shell has a preload');

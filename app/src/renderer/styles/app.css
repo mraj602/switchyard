@@ -1,4 +1,4 @@
-/* The shell (WP-D). Layout contract with window.js (WP-A): the top bar is 48 px, the strip is
+/* The shell. Layout contract with window.js: the top bar is 48 px, the strip is
    40 px and only under an account tab, and the active native view fills the rest. */
 
 * { box-sizing: border-box; }
@@ -71,7 +71,7 @@ button { cursor: pointer; }
 }
 .strip-id { display: flex; align-items: center; gap: 8px; font-weight: 600; flex: none; max-width: 22%; overflow: hidden; text-overflow: ellipsis; }
 /* A window that does not fit wraps onto a second line that the fixed height hides, so it drops
-   out whole instead of being cut to "7" (desktop UI audit, 1024 px). */
+   out whole instead of being cut to "7". */
 .strip-wins { display: flex; flex-wrap: wrap; align-content: flex-start; align-items: center; column-gap: 16px; height: 40px; min-width: 0; overflow: hidden; flex: 1 1 auto; }
 .win { display: inline-flex; align-items: center; gap: 8px; flex: none; height: 40px; }
 .strip-wins > .status { display: inline-flex; align-items: center; height: 40px; }

@@ -2,14 +2,14 @@ package devserver
 
 import "time"
 
-// Phase 5 machine fixtures (docs/spec/machines.md 6.1): every reach mode, a quiet pulled
+// Machine fixtures (docs/spec/machines.md 6.1): every reach mode, a quiet pulled
 // machine with its silent alert, a newer machine holding records because the hub is too old,
 // a removed machine, and (StateMachines) one pull machine per pull state.
 
 // pullStates are the states of api.yaml PullStatus.
 var pullStates = []string{"new", "ok", "failing", "host_key", "auth", "refused", "disabled", "frozen"}
 
-func (d *Data) phase5(now time.Time) {
+func (d *Data) machineFixtures(now time.Time) {
 	ago := func(x time.Duration) string { return ts(now.Add(-x)) }
 	in := func(x time.Duration) string { return ts(now.Add(x)) }
 	min, hour := time.Minute, time.Hour

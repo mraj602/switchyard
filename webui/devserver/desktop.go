@@ -5,12 +5,12 @@ import (
 	"strings"
 )
 
-// Phase 6 mock (desktop.md C10): PATCH /v1/accounts/{seat} and desktop pairing codes.
+// Desktop mock (desktop.md C10): PATCH /v1/accounts/{seat} and desktop pairing codes.
 
 // DesktopToken is the token a claimed desktop code returns.
 const DesktopToken = "sy_d_devdesktop000000000000000000000000000000"
 
-func (s *Server) phase6Routes() {
+func (s *Server) desktopRoutes() {
 	s.mux.HandleFunc("PATCH /v1/accounts/{seat}", s.guard(s.patchSeat, "owner"))
 	s.mux.HandleFunc("PUT /v1/seats/order", s.guard(s.putSeatOrder, "owner"))
 }

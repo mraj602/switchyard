@@ -80,7 +80,7 @@ func newServer(t *testing.T, static ...fstest.MapFS) (*Server, *httptest.Server)
 	return hub, ts
 }
 
-func TestPhase4FixturesMatchAPISpec(t *testing.T) {
+func TestDeviceFixturesMatchAPISpec(t *testing.T) {
 	schemas := loadSchemas(t)
 	// Alert is allOf(AlertBrief, own props): check against the union.
 	full := &schema{props: map[string]string{}}
@@ -128,7 +128,7 @@ func TestPhase4FixturesMatchAPISpec(t *testing.T) {
 	}
 }
 
-func TestPhase4ResponsesMatchAPISpec(t *testing.T) {
+func TestDeviceResponsesMatchAPISpec(t *testing.T) {
 	schemas := loadSchemas(t)
 	_, ts := newServer(t)
 	owner := newClient(t, ts)

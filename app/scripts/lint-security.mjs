@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // `npm run lint`, part 2: the security lint of docs/spec/desktop.md C2 over src/ (test files
-// excluded). Owned by WP-A. Rules (docs/phases/6.md WP-A), checked on code with comments
+// excluded). Rules checked on code with comments
 // removed:
 //
 //   nodeIntegration / nodeIntegrationInWorker / nodeIntegrationInSubFrames: true,

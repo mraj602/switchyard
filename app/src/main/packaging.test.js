@@ -1,6 +1,6 @@
-// WP-F packaging checks that need no Electron binary: electron-builder.yml, the afterPack
+// Packaging checks that need no Electron binary: electron-builder.yml, the afterPack
 // fuses and scripts/fetch-sy.mjs helpers. (The packed asar contents and the real fuse read
-// are checked against the built package by WP-I and CI.)
+// are checked against the built package by the e2e job.)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
@@ -17,6 +17,12 @@ const afterPack = require('../../build/after-pack.cjs');
 
 test('electron-builder.yml: no publishing, no signing, no updater', () => {
   assert.match(yml, /^publish: null$/m);
+  // Public builds say what they are: unofficial, and no one else's publisher info.
+  assert.match(yml, /synopsis: Unofficial /);
+  assert.match(yml, /Not affiliated with, endorsed by or sponsored by Anthropic/);
+  assert.equal(pkg.license, 'SEE LICENSE IN LICENSE'); // until the project's licence is chosen
+  assert.ok(pkg.author);
+  assert.ok(!/@(gmail|workco|clientco)/.test(yml + JSON.stringify(pkg)));
   assert.match(yml, /^appId: dev\.switchyard\.desktop$/m);
   assert.match(yml, /^productName: Switchyard$/m);
   assert.match(yml, /^asar: true$/m);

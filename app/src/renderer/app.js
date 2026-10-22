@@ -1,9 +1,9 @@
 // The shell renderer (docs/spec/desktop.md C8). Plain ES modules and DOM APIs, no framework,
 // no network (CSP connect-src 'none'): everything goes through window.sy (the preload,
 // shared/ipc.js names). Never innerHTML: elements are made with createElement and textContent.
-// Owned by WP-D. Decisions live in view.js (pure, unit-tested); this file only draws and wires.
+// Decisions live in view.js (pure, unit-tested); this file only draws and wires.
 //
-// Layout contract with window.js (WP-A): top bar 48 px; strip 40 px, only under an account
+// Layout contract with window.js: top bar 48 px; strip 40 px, only under an account
 // tab; the active native view (account tab or hub) covers the rest. Native views sit above this
 // page, so anything the person must see while a tab is selected (dialogs) first asks main to
 // show the shell (selectView 'settings'), and restores the view when the dialog closes.
@@ -1017,7 +1017,7 @@ export function start({ sy, root }) {
       title: 'Read usage for this account?',
       body: h('div', { class: 'dlg', style: { padding: '0' } },
         text('Every 5 minutes, Switchyard runs a small script inside this tab that reads the same numbers claude.ai shows under Settings → Usage. It reads numbers only: no chats, no cookies. They go to your own hub.'),
-        text('This uses an internal claude.ai endpoint, not a public API. It may stop working, and automated access may not be allowed by Anthropic’s consumer terms, so it could get this account flagged. Switchyard is unofficial and not affiliated with Anthropic.'),
+        text('This uses claude.ai’s own undocumented usage endpoint, not an official API, and nothing is requested until you allow it. It may stop working, and automated access may not be allowed by Anthropic’s consumer terms, so it could get this account flagged. Switchyard is unofficial and not affiliated with Anthropic. Whether to turn this on is your choice.'),
         h('p', { class: 'fine', text: 'You can turn reading off for this account at any time in its usage bar or in Settings.' })),
       actions: (d) => [
         h('button', {

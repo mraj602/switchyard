@@ -1,4 +1,4 @@
-// Electron smoke S1–S11, S14, S15 (docs/phases/6.md "Electron smoke"): one app, a real hub, the fake
+// Electron smoke S1–S11, S14, S15 (docs/spec/desktop.md): one app, a real hub, the fake
 // claude.ai and the real sy, all in a temp sandbox. The scenarios build on each other, so they
 // run in order inside one test. Run: `npm run smoke` (Linux: under xvfb-run).
 

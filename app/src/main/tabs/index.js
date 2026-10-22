@@ -2,7 +2,7 @@
 // platform-true Chrome UA, staggered loads, the Cloudflare retry for hidden tabs, lastUrl, cookie
 // flushes, Remove, and the tab:* handlers.
 //
-// Owned by WP-B. Contract: docs/spec/desktop.md C1, C2, C5.
+// Contract: docs/spec/desktop.md C1, C2, C5.
 // The tab list lives in app-state.json (`store`), written only here and by usage/ (reading
 // flags, `stopped`, `seat`). A change is announced with the bus `tabs` event.
 

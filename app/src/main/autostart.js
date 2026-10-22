@@ -25,7 +25,7 @@ export function create(deps) {
   });
   if (DESKTOP_ENTRY === PROTOTYPE_DESKTOP_ENTRY) throw new Error('autostart: refusing the prototype entry name');
 
-  // Quoting as the prototype's desktopEntry, plus `%` (a field code in Exec).
+  // Quoting as the legacy prototype's desktopEntry, plus `%` (a field code in Exec).
   const q = (x) => `"${String(x).replace(/(["\\`$])/g, '\\$1').replace(/%/g, '%%')}"`;
 
   function desktopEntry(background) {

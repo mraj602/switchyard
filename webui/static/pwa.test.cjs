@@ -51,7 +51,7 @@ test('parseRoute covers every screen', async () => {
   assert.deepEqual(r('#/owner?s=xyz'), ['owner', 'owner', '']);
   assert.deepEqual(r('#/alerts/al_9'), ['alertRedirect', 'alerts', 'al_9']);
   assert.deepEqual(r('#/login'), ['login', 'login', '']);
-  // Unknown routes show "page not found" instead of quietly showing Now (G6).
+  // Unknown routes show "page not found" instead of quietly showing Now.
   assert.deepEqual(r('#/nonsense'), ['notfound', 'notfound', '']);
   assert.deepEqual(r('#/nonsense/page'), ['notfound', 'notfound', '']);
   assert.deepEqual(r('#/more/nonsense'), ['notfound', 'notfound', '']);

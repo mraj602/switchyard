@@ -3,7 +3,7 @@
 // persist:sy-hub with the cookie login, owner sign-in, hub:route, the claude.ai handoff,
 // seat:update, and the hub:* and accounts:* handlers.
 //
-// Owned by WP-C. Contract: docs/spec/desktop.md C6, C7. The bus carries the results:
+// Contract: docs/spec/desktop.md C6, C7. The bus carries the results:
 //   hub        HubState + {storage_backend, error}  after info, pairing, stream or overview changes
 //   needs_you  {count, sessions}                    when the needs-you picture changes
 //   alert      {alert, session}                     for a stream `alert` with change "fired"

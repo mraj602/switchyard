@@ -4,8 +4,8 @@
 // {api: 'shell.openExternal', args: [...]}; objects are EventEmitters, so a test can
 // `emit('did-finish-load')` on a fake webContents or `emit('ready')` on app.
 //
-// Wave 0 owns this file. A work package that needs more of Electron asks wave 0's owner (or
-// wraps the fake in its own test helper); keep it a recorder, not a simulator.
+// Keep it a recorder, not a simulator: a test that needs more of Electron wraps the fake in
+// its own helper.
 //
 //   const fake = fakeElectron({ platform: 'linux', appData: '/tmp/x' });
 //   const { app, session, ipcMain } = fake.electron;

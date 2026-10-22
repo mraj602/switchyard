@@ -2,8 +2,8 @@
 // unknown keys kept, a corrupt file moved aside to app-state.json.bad-<ts> and started fresh
 // (with a toast). Writes are serialised.
 //
-// Owned by WP-A. Contract: docs/spec/desktop.md C1. B owns what goes into tabs[], E owns
-// settings; this module only keeps the file sound.
+// Contract: docs/spec/desktop.md C1. The tabs module owns what goes into
+// tabs[] and the settings module what goes into settings; this module only keeps the file sound.
 //
 // - load(): a missing file is a first start (nothing is written until the first update). A
 //   file that is not JSON, not an object, has tabs that is not an array, settings that is
@@ -55,7 +55,7 @@ const stamp = (ms) => new Date(ms).toISOString().replace(/[:.]/g, '-');
 /**
  * @param {{fs: typeof import('node:fs/promises'), path: typeof import('node:path'), file: string,
  *          log: object, now?: () => number, toast?: (level: string, text: string) => void}} deps
- *   toast: optional; called once when a corrupt file was moved aside (WP-I may pass ipc.send).
+ *   toast: optional; called once when a corrupt file was moved aside (boot passes ipc.send).
  * @returns {{
  *   load(): Promise<{state: object, recovered: string|null}>,
  *   get(): object,

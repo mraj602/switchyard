@@ -1,12 +1,12 @@
 // User data folder (C1). Runs before 'ready': sets app.setPath('userData') to
 // <appData>/switchyard-desktop (or SY_APP_USER_DATA, absolute, only when !app.isPackaged, read
 // through test-hooks.js), and refuses any folder whose basename is 'switchyard' in any case, or
-// that lies inside the prototype's <appData>/switchyard folder.
+// that lies inside the legacy prototype's <appData>/switchyard folder.
 //
 // Electron would otherwise derive the folder from productName ('Switchyard'), which on a
-// case-insensitive macOS volume is the prototype's folder (phases/6.md decision 1).
+// case-insensitive macOS volume is the legacy prototype's folder.
 //
-// Owned by WP-A. Contract: docs/spec/desktop.md C1.
+// Contract: docs/spec/desktop.md C1.
 
 import { USER_DATA_DIRNAME, PROTOTYPE_DIRNAME, APP_STATE_FILE, HUB_TOKEN_FILE } from '../shared/constants.js';
 

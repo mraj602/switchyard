@@ -1,4 +1,4 @@
-// Electron smoke S12 (docs/phases/6.md): the renderer's dev page (renderer/dev/index.html, the
+// Electron smoke S12 (docs/spec/desktop.md C8): the renderer's dev page (renderer/dev/index.html, the
 // real renderer against dev/mock-sy.js) loaded in Electron under app://shell/ at 1440×940 and
 // 720×500, with no console errors; screenshots are saved as artifacts.
 

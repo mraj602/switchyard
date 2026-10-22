@@ -43,7 +43,7 @@ type Server struct {
 	subs map[chan event]*sub // open streams and whose token they belong to
 	mux  *http.ServeMux
 
-	// Phase 4 state (p4.go); all guarded by mu.
+	// Identity, device and push state (api.go); all guarded by mu.
 	revoked   map[string]bool // tokens whose device was revoked (cookie gets 401)
 	pair      pairState
 	lastTest  map[string]time.Time
@@ -124,9 +124,9 @@ func (s *Server) routes() {
 	}))
 	s.mux.HandleFunc("GET /v1/machines", read(s.listMachines))
 	s.mux.HandleFunc("GET /v1/stream", s.guard(s.stream, "read"))
-	s.phase4Routes()
-	s.phase5Routes()
-	s.phase6Routes()
+	s.deviceRoutes()
+	s.machineRoutes()
+	s.desktopRoutes()
 	s.peersRoutes()
 	s.keysRoutes()
 	s.analyticsRoutes()

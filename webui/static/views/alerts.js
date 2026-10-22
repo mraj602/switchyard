@@ -1,6 +1,6 @@
 // Alerts and rules (PhoneAlerts / DeskAlerts): which notifications go out, quiet hours, and the
 // log of recent alerts with their outcome. "Alert" is the item on the board; "notification"
-// is what reaches a device (G10).
+// is what reaches a device.
 //
 // - An owner session edits the hub's rules (switches and waits) and overrides.
 // - A push-scoped device (a paired phone) edits only its own mute list and quiet hours.
@@ -199,7 +199,7 @@ function overrides(mode, idx) {
 }
 
 // The same trigger for the same accounts (projects, machines, windows) twice would only
-// conflict; the hub may refuse it as well (AL3).
+// conflict; the hub may refuse it as well.
 const keyOf = (scope, k) => JSON.stringify([...(((scope || {})[k]) || [])].sort());
 const sameScope = (a, b) => ['seats', 'projects', 'machines', 'windows'].every((k) => keyOf(a, k) === keyOf(b, k));
 
@@ -256,7 +256,7 @@ function addOverride(seats, existing) {
       sel('When', Object.entries(TRIGGER_LABEL), 'ov-trigger', 'trigger'),
       sel('For', seatOptions(seats, ''), 'ov-seat', 'seat'),
       sel('Then', [['on', 'Notify'], ['off', 'Do not notify']], 'ov-enabled', 'enabled'),
-      // A wait means nothing when nothing is sent (AL3).
+      // A wait means nothing when nothing is sent.
       form.enabled === 'on' ? sel('Wait', delayOptions(300), 'ov-delay', 'delay') : null),
     h('button', { type: 'submit', class: 'btn', 'data-key': 'ov-add' }, 'Add override'));
   return el;
@@ -275,7 +275,7 @@ function recent() {
     cancelled ? h('p', { class: 'muted small' }, '“Cancelled”: you answered in the terminal before the wait ran out, so no notification was sent.') : null);
 }
 
-// Who can get a notification right now (AL2): the owner sees every device, a paired device
+// Who can get a notification right now: the owner sees every device, a paired device
 // only itself. Null while that is not known yet.
 function receivers() {
   if (isOwner()) return state.devices ? notifiable(state.devices) : null;

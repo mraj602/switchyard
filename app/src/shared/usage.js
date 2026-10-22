@@ -1,7 +1,7 @@
 // Local reading of a claude.ai usage response, for the strip under an account tab
 // (docs/spec/desktop.md C5, C8) and the URL rules the tab and usage modules share.
 // Ported from the prototype's planOf / windowsOf (golden-tested against its output). The hub's
-// numbers win when it knows the seat; this is the fallback, marked "local". Owned by WP-B.
+// numbers win when it knows the seat; this is the fallback, marked "local".
 
 import { NOT_READABLE_PATHS } from './constants.js';
 
@@ -125,7 +125,7 @@ export function chooseOrgs(orgs, activeOrg, seat, account) {
   return { report, pick };
 }
 
-// ---- URLs (claude.ai only; the navigation policy itself is shared/urls.js, WP-A)
+// ---- URLs (claude.ai only; the navigation policy itself is shared/urls.js)
 
 /** True for https://claude.ai[/…], any *.claude.ai host, or `origin` (the test fake's origin). */
 export function isClaudeUrl(url, origin = 'https://claude.ai') {

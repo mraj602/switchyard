@@ -30,11 +30,11 @@ test('the table is the C3 table of desktop.md', () => {
   assert.deepEqual([...PUSH_CHANNELS], spec.push);
 });
 
-test('every channel has a kind, an owner and a unique function name', () => {
+test('every channel has a kind, a handler module and a unique function name', () => {
   const fns = new Set();
   for (const [name, ch] of Object.entries(CHANNELS)) {
     assert.ok([INVOKE, PUSH].includes(ch.kind), name);
-    assert.match(ch.owner, /^[A-HS]$/, name);
+    assert.match(ch.handler, /^(state|window|tabs|usage|hub|settings|ipc)$/, name);
     if (ch.kind === INVOKE) {
       assert.match(ch.fn, /^[a-z][A-Za-z]+$/, name);
       assert.ok(!fns.has(ch.fn), `${name}: ${ch.fn} twice`);

@@ -6,10 +6,10 @@ import (
 	"time"
 )
 
-// The phase 5 machine endpoints (docs/spec/machines.md 6.2): GET /v1/machines?all=true and
+// The machine endpoints (docs/spec/machines.md 6.2): GET /v1/machines?all=true and
 // the three owner operations.
 
-func (s *Server) phase5Routes() {
+func (s *Server) machineRoutes() {
 	g := s.guard
 	m := s.mux.HandleFunc
 	m("PATCH /v1/machines/{id}", g(s.patchMachine, "owner"))

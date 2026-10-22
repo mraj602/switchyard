@@ -6,7 +6,7 @@
 //      OUT_DIR (screenshots).
 //
 // Per size (1440 and 390 px wide):
-//   board login, every screen, live updates, keyboard      (the phase 2 checks)
+//   board login, every screen, live updates, keyboard   
 //   a phone claim by QR secret, the phone screens, Seen from the row menu, swipe Snooze
 //   an owner sign-in, Alerts/Settings/Devices and the Add phone dialog
 //   Settings → Peers as the owner (grid, pause/resume, widen, audit) and as a paired phone (narrow only)
@@ -99,7 +99,7 @@ async function visit(page, sizeName, name, hash, sel) {
 }
 
 async function checkSidebar(page, sizeName) {
-  // The sidebar must run the full height of the page (known leftover from phase 2).
+  // The sidebar must run the full height of the page .
   const r = await page.evaluate(() => {
     const nav = document.getElementById('nav').getBoundingClientRect();
     return { nav: Math.round(nav.height), page: document.documentElement.scrollHeight };
@@ -109,7 +109,7 @@ async function checkSidebar(page, sizeName) {
 
 async function resetHub() { await fetch(BASE + '/_dev/reset', { method: 'POST' }); }
 
-// ---- fixes from the UI audit: not found, imported history, open sessions, live badge ----------
+// ---- not found, imported history, open sessions, live badge ----------
 
 async function auditChecks(page, sizeName) {
   const t = (m) => page.tag(`audit fixes: ${m}`);
@@ -147,7 +147,7 @@ async function auditChecks(page, sizeName) {
   await page.waitForFunction(() => !document.querySelector('[data-key=history]'), { timeout: 6000 }).catch(() => {});
 }
 
-// ---- the board login flow (phase 2 checks) -------------------------------------------------
+// ---- the board login flow  -------------------------------------------------
 
 async function boardFlow(sizeName, w, hgt) {
   const ctx = await browser.createBrowserContext();
@@ -330,7 +330,7 @@ async function ownerFlow(sizeName, w, hgt) {
     .catch(() => fail(page.tag('expired owner link does not say its 1 minute lifetime')));
   await shot(page, `${sizeName}-o-expired`);
   await page.goto(`${BASE}/#/owner?s=${OWNER}`, { waitUntil: 'networkidle2' });
-  // An owner link lands on Now with a toast (O3).
+  // An owner link lands on Now with a toast.
   try { await page.waitForSelector('.page-now', { timeout: 6000 }); } catch (e) { fail(page.tag('owner link did not land on Now')); }
   if (!/signed in as the owner/.test(await page.evaluate(() => (document.getElementById('toasts') || {}).textContent || ''))) fail(page.tag('owner sign-in showed no toast'));
   if (/s=/.test(await page.evaluate(() => location.hash))) fail(page.tag('owner secret left in the address'));

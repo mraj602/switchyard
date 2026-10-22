@@ -24,7 +24,7 @@ const kindGuess = () => (mobile() ? 'phone' : 'browser');
 const guessName = () => deviceName(ua(), navigator.userAgentData || null);
 
 // paired: this page claimed a code and set the session cookie, but "Open the app" has not
-// started the app yet. The router signs in instead of sending the person back here.
+// started the app yet. The router signs in instead of sending the user back here.
 export const paired = () => st.phase === 'done';
 
 export function load(ctx) {
@@ -113,7 +113,7 @@ async function startScan(video) {
 
 // ---- screen ---------------------------------------------------------------------------------
 
-// What a paired device may do (P4): read, and manage its own notifications; never type.
+// What a paired device may do: read, and manage its own notifications; never type.
 const note = () => h('p', { class: 'pair-note' }, `This ${mobile() ? 'phone' : 'browser'} gets its own key. It can see sessions and usage and manage its own notifications (Seen, Snooze, mute, quiet hours); it can’t type into a session or see your Claude logins. Remove it any time from Devices.`);
 
 // "Have the Switchyard app? Open in app": the link carries the one-time secret, so it is only put in the page.
@@ -217,7 +217,7 @@ function typedForm() {
 // One <video> for the life of the page, so a redraw does not drop the camera stream.
 const videoEl = h('video', { class: 'camera-video', playsinline: true, muted: true, 'aria-label': 'Camera view' });
 
-// Only where this browser can read a QR code itself (P2); otherwise the phone's camera app
+// Only where this browser can read a QR code itself; otherwise the phone's camera app
 // opens the QR's link, and this page is just the typed code.
 function camera() {
   if (!canScan() || !mobile()) return null;

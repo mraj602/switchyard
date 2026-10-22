@@ -1,4 +1,4 @@
-// End to end with the bundled `sy` (docs/phases/6.md "End to end with the bundled sy"): the
+// End to end with the bundled `sy` (docs/spec/desktop.md C11): the
 // packaged AppImage, the Chromium sandbox on (no --no-sandbox), no `sy` on PATH, a temp HOME.
 //
 //   1. the asar holds the app's code and nothing else (no tests, no dev page, no test hooks,

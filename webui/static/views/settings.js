@@ -1,6 +1,6 @@
 // Settings: who gets notifications (this browser, the Android app), this device's
 // preferences, install, hub and app version, sign out or unpair (pwa.md 6). ntfy is under
-// Advanced (SE1).
+// Advanced.
 
 import { h } from '../components/dom.js';
 import { section, select, toggle, toast, moreTabs, details } from '../components/ui.js';
@@ -30,7 +30,7 @@ export async function load({ onLogout }) {
     getPushConfig().then((c) => { st.config = c; }).catch(() => {}),
     getRules().then((r) => { st.hub = r.settings; }).catch(() => {}),
   ];
-  // Only the owner may list devices; anyone else would get a 403 (DV5).
+  // Only the owner may list devices; anyone else would get a 403.
   if (isOwner()) jobs.push(listDevices().then((r) => { st.devices = r.devices; }).catch(() => {}));
   const res = await Promise.allSettled(jobs);
   const bad = res.find((r) => r.status === 'rejected' && r.reason && r.reason.name !== 'AuthError');

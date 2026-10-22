@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// Tokens and secrets of the phase 4 mock. Cookie `sy_session` holds one of the three
+// Tokens and secrets of the mock. Cookie `sy_session` holds one of the three
 // tokens (DefaultToken is the plain board login: read only).
 const (
 	PhoneToken  = "sy_p_devphone00000000000000000000000000000000"
@@ -327,7 +327,7 @@ func (s *Server) seenAlert(a M) bool {
 
 // ---- routes -------------------------------------------------------------------------
 
-func (s *Server) phase4Routes() {
+func (s *Server) deviceRoutes() {
 	g := s.guard
 	m := s.mux.HandleFunc
 	m("GET /v1/me", g(s.me))

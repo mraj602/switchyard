@@ -107,7 +107,7 @@ async function render() {
       return;
     }
     if (authed && route.view === 'login') { go('#/'); return; }
-    // The owner view opens Settings after a sign-in; the board lands on Now instead (O3).
+    // The owner view opens Settings after a sign-in; the board lands on Now instead.
     if (authed && ownerSignedIn && route.view === 'settings') {
       ownerSignedIn = false;
       location.replace('#/');
@@ -153,7 +153,7 @@ async function render() {
 }
 
 // What makes a page load again. A one-time link (#/owner?s=…, #/pair?s=…&c=…) loads again
-// for every new secret or code, even in the same tab (G13); once the page drops the secret
+// for every new secret or code, even in the same tab; once the page drops the secret
 // from the address bar the key stays, so the result stays on screen.
 function routeKey(route, last = '') {
   const base = `${route.view}/${route.id || ''}`;

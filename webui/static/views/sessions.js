@@ -141,7 +141,7 @@ function table(ordered, now, idx) {
 }
 
 function sessionRow(s, now, idx) {
-  // The last line is what Claude said or asked; never the hub's internal `detail` code (G4).
+  // The last line is what Claude said or asked; never the hub's internal `detail` code.
   // A session that needs you reads like its card on Now (a full limit names its reset, N9).
   const last = s.needs_you ? askText(s, idx, now) : (s.last_message || s.question || '');
   const ctx = s.context_pct;

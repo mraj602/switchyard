@@ -95,7 +95,7 @@ export async function logout() {
   try { return await postJSON('/v1/session/logout'); } finally { clearCachedData(); }
 }
 
-// ---- phase 4: who am I, pairing, owner sign-in -----------------------------------------
+// ---- who am I, pairing, owner sign-in -----------------------------------------
 
 export const getMe = () => getJSON('/v1/me');
 export const claimPair = (body) => postJSON('/v1/pair/claim', { cookie: true, ...body }, { anon: true });

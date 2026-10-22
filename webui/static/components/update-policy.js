@@ -1,4 +1,4 @@
-// When the page may switch itself to a waiting build without the person pressing "Reload".
+// When the page may switch itself to a waiting build without the user pressing "Reload".
 // Pure, so node can test it (pwa.test.cjs): no imports.
 //
 // A waiting worker keeps a running page on its old files, which is safe but, in an installed
