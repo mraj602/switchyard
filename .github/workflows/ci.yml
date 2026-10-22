@@ -1,5 +1,5 @@
-# Go side only (sy and the hub). The Electron prototype's tests need a display and are
-# not run in CI.
+# Go side (sy and the hub), the Claude Code pane mod and the end-to-end suites. The legacy
+# Electron prototype at the repo root is not tested in CI.
 name: ci
 
 on:
@@ -59,7 +59,7 @@ jobs:
       - name: release build has no test seams
         run: scripts/ci/check-release-seams.sh
 
-  # Phase 7 (docs/phases/7.md): the terminal packages and everything they touch must work on
+  # The terminal packages (docs/spec/terminal.md) and everything they touch must work on
   # Windows too (Warp tab_configs path, opener argv, no HOME reads). Required, unlike the
   # best-effort setup e2e below.
   go-windows:
@@ -109,7 +109,7 @@ jobs:
       - name: pane-check self-test (the forbidden fixture must fail)
         run: scripts/pane-check.sh --self-test
 
-  # Terminal end to end (docs/phases/7.md WP-E): sy board / term / open / ssh against a fake
+  # Terminal end to end (test/e2e/terminal): sy board / term / open / ssh against a fake
   # opener (-tags fakeopen), a temp HOME and no real terminal.
   terminal-e2e:
     name: terminal e2e
@@ -128,7 +128,7 @@ jobs:
       - name: terminal scenarios
         run: make e2e-terminal
 
-  # Setup end-to-end (docs/phases/3.md WP-G): the scenarios S1-S8 of test/e2e/setup against
+  # Setup end-to-end (test/e2e/setup): the scenarios S1-S8 of test/e2e/setup against
   # `sy` built from this commit and a fake `claude`, as a non-root user in a fresh Fedora and
   # Ubuntu container. Docker has no `--systemd=always`, so the `--hub here` scenario (s6b) is
   # reported as skipped here; it runs with podman on a developer machine.
@@ -153,7 +153,7 @@ jobs:
       - name: scenarios in the ${{ matrix.distro }} container
         run: make e2e-setup-${{ matrix.distro }} E2E_ENGINE=docker
 
-  # Machines end-to-end (docs/phases/5.md, M3): `sy machine add --reach pull` against a real
+  # Machines end-to-end (test/e2e/machines): `sy machine add --reach pull` against a real
   # sshd container, the hub pulling its records over SSH, then `sy machine remove`. The host
   # keys are checked strictly; the container has no systemd, and the operator side runs with a
   # temp HOME.
