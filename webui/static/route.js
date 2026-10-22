@@ -11,6 +11,7 @@
 //   #/more/devices           Devices (owner)
 //   #/more/analytics         Analytics
 //   #/more/peers             Settings → Peers: account matrix, Pause all peers, audit
+//   #/more/keys              Settings → Keys: hub and owner key, certificates, the next step
 //   #/pair?s=<secret>&c=<digits>   Pairing
 //   #/owner?s=<secret>       Owner sign-in
 //   #/alerts/<id>            Redirects to the alert's deep link
@@ -23,7 +24,7 @@ export const PUBLIC_VIEWS = new Set(['login', 'pair', 'owner']);
 // Which bottom-tab (phone) is lit for a page.
 export const TAB_OF = {
   now: 'now', sessions: 'sessions', accounts: 'accounts',
-  machines: 'more', alerts: 'more', settings: 'more', devices: 'more', peers: 'more', analytics: 'more', more: 'more',
+  machines: 'more', alerts: 'more', settings: 'more', devices: 'more', peers: 'more', keys: 'more', analytics: 'more', more: 'more',
   notfound: '',
 };
 
@@ -49,6 +50,7 @@ export function parseRoute(hash) {
     if (b === 'settings') return { page: 'settings', view: 'settings', query };
     if (b === 'analytics') return { page: 'analytics', view: 'analytics', query };
     if (b === 'peers') return { page: 'peers', view: 'peers', query };
+    if (b === 'keys') return { page: 'keys', view: 'keys', query };
     if (b === 'devices') return { page: 'devices', view: 'devices', query };
     if (!b) return { page: 'more', view: 'more', query };
     return notFound;

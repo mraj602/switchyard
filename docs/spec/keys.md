@@ -119,7 +119,7 @@ check = first 4 characters of base32(SHA-256("sy-recovery-v1" ‖ R))
    `POST /v1/keys/owner` with a self-signed `owner_key` document (4.1) and the machine's own
    bearer token. The hub stores it as `owner_key.state = 'pending'`.
 2. The proposal becomes active when confirmed:
-   - on the board, Settings → Keys, by an **owner session** (pairing.md 4): "Owner key
+   - on the board, Settings → Keys (`#/more/keys`, pwa.md 3.2), by an **owner session** (pairing.md 4): "Owner key
      `k7q2-m4xa-…` proposed by laptop at 09:00. Is this the fingerprint your terminal
      printed?" → `POST /v1/keys/owner/confirm`; or
    - on the hub machine: `sy hub keys confirm-owner <fp>` (direct database access and

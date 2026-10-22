@@ -215,3 +215,8 @@ export function openStream({ onEvent, onStatus, onResync, initialId }) {
     if (es) es.close();
   };
 }
+
+// ---- keys (keys.md 3.3) ---------------------------------------------------------------------
+
+export const getKeys = () => getJSON('/v1/keys');
+export const confirmOwnerKey = (fp) => postJSON('/v1/keys/owner/confirm', { fp });

@@ -97,6 +97,7 @@ Hash routes (phase 2 had `#/`, `#/sessions`, `#/sessions/<id>`, `#/accounts`, `#
 | `#/more/alerts` | Alerts and rules (`PhoneAlerts`) | Rule list (5 below), quiet hours, recent pushes from `GET /v1/alerts` with outcome (open, seen, snoozed, cancelled + the "cancelled means you answered first" note) |
 | `#/more/settings` | Settings | Hub address, version, live status; notifications (6); private pushes, tap behaviour, own quiet hours (device prefs); ntfy topic (push.md 7); install status; app version + "Check for update"; **Unpair this phone** |
 | `#/more/peers` | Settings → Peers (PE3) | The account matrix, **Pause all peers**, the audit list (3.1); under More on phones and a Peers entry in the desktop sidebar; linked from Settings |
+| `#/more/keys` | Settings → Keys (3.2) | The next step to take, the hub key, the owner key (pending ones confirmed by an owner session), each device's certificate state, the revocation version; a Keys entry in the desktop sidebar and a pill in the More tabs |
 | `#/more/analytics` | Analytics | `GET /v1/analytics/{report}` (analytics.md): range chips (7, 30, 90 days), a seat filter, totals, a daily cost bar chart, by model, by project, a weekday by hour heatmap, limit hits; read scope, so also for a read-only phone |
 | `#/more/devices` | Devices (owner; `DeskAlerts` "Paired phones") | `GET /v1/devices`, rename, revoke, test push per target, Add phone / Add machine (QR dialog, pairing.md 2.4) |
 | `#/pair?s=…&c=…` | Pairing (`PhonePair`) | pairing.md 5: an editable device name (prefilled), and leaving before **Open the app** starts the app rather than bouncing back here (5.1) |
@@ -105,7 +106,7 @@ Hash routes (phase 2 had `#/`, `#/sessions`, `#/sessions/<id>`, `#/accounts`, `#
 | `#/login` | Sign in | Unchanged token login; adds "Pair with a code instead" |
 
 Navigation: phone bottom tabs **Now, Sessions, Accounts, More** (plan section 12); desktop
-sidebar Now, Sessions, Accounts, Machines, Alerts, Settings, Peers (+ Devices for the owner). `nav.js` gets a `phone`/`desk`
+sidebar Now, Sessions, Accounts, Machines, Alerts, Settings, Peers, Keys (+ Devices for the owner). `nav.js` gets a `phone`/`desk`
 flag per item; CSS decides as today.
 
 Start-up: `GET /v1/me`. 401 → pair screen when running installed (`display-mode:
@@ -225,6 +226,28 @@ The desktop app's Hub tab shows this same page.
   whom by account, kind, size and outcome. Never message text: the page shows only the keys it
   knows and ignores the rest.
 - Desktop: the app's Hub view (desktop.md C7) is this page; the app adds nothing of its own.
+
+### 3.2 Keys (`#/more/keys`)
+
+`views/keys.js`, with its sentences and the step logic in `components/keys-fmt.js`. It reads `GET
+/v1/keys` (and, for an owner, `GET /v1/devices` to name the machine that proposed a key) and
+confirms with `POST /v1/keys/owner/confirm` (keys.md 3.3). It is also what the desktop app's Hub
+settings shows (the app embeds the board; it has no keys screen of its own). The page never signs.
+
+- **Next step** comes first and shows only the current step: no owner key (`sy keys init`, in a
+  normal terminal, with a copy button); a proposal waiting (the fingerprint in groups of four,
+  who proposed it and when, "Is this the fingerprint your terminal printed?", the 24-hour expiry,
+  and **Yes, it matches: confirm** for an owner session); owner key active but machines
+  hub-signed only (`sy keys certify --all` with a copy button, and which machines are waiting);
+  all certified ("Peers between machines can now message each other"). The API does not say which
+  machines have pinned the owner key, so there is no pin step. A replacement proposal while a key
+  is active is shown under "A new owner key is waiting to replace this one".
+- **Owner key** (one line on what it is for, the active fingerprint, when it was confirmed, and a
+  "Replace the owner key" fold-out: `sy keys init --replace`), **Devices** (certified / hub-signed
+  only, from `devices`, which owner and write sign-ins get; others see a note) and **Hub key**
+  (fingerprint, revocations version).
+- A sign-in that is not an owner sees the same page read-only, with "confirming an owner key
+  needs an owner session"; it never gets `pending`, so it sees "No owner key is active yet".
 
 ## 4. Service worker and offline
 

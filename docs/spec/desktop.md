@@ -362,6 +362,7 @@ account in a hidden or background start until the window is shown.
 - Owner sign-in: `sy desktop owner-link --json` → `loadURL(<link>)`. The board's `#/owner`
   route does the rest. When the 30-day owner session expires, the board drops back to its
   read cookie on the next login, and Settings shows "Sign in as owner".
+- Keys: Settings → Keys (keys.md 3.3, pwa.md 3.2) is the board's `#/more/keys` page, shown in this view (Hub settings); the app has no keys screen of its own. Confirming a pending owner key needs the owner sign-in above; until then the page is read-only and says so.
 - Peers: Settings → Peers (peers.md 5, 11) is the board's `#/more/peers` page (pwa.md 3.1), shown
   in this view; the app has no peers screen of its own. The desktop token is read-only, so the
   page enables its controls (matrix edits, Pause all peers, resume) only after the owner

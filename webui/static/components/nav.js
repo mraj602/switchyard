@@ -41,6 +41,7 @@ const ITEMS = [
   { id: 'settings', href: '#/more/settings', label: 'Settings', icon: 'M12 15a3 3 0 100-6 3 3 0 000 6zM19 12l2-1-1-3-2 .5-1.5-1.5.5-2-3-1-1 2h-2l-1-2-3 1 .5 2L6.5 8.5 4.5 8l-1 3 2 1v2l-2 1 1 3 2-.5L8 19.5l-.5 2 3 1 1-2h2l1 2 3-1-.5-2 1.5-1.5 2 .5 1-3-2-1z', where: 'desk' },
   { id: 'analytics', href: '#/more/analytics', label: 'Analytics', icon: 'M5 20V10M12 20V4M19 20v-7', where: 'desk' },
   { id: 'peers', href: '#/more/peers', label: 'Peers', icon: 'M4 7h12l-3-3M20 17H8l3 3', where: 'desk' },
+  { id: 'keys', href: '#/more/keys', label: 'Keys', icon: 'M15 7a4 4 0 11-3.9 5H4v-2h2v2M6 12v2', where: 'desk' },
   { id: 'devices', href: '#/more/devices', label: 'Devices', icon: 'M8 3h8a1 1 0 011 1v16a1 1 0 01-1 1H8a1 1 0 01-1-1V4a1 1 0 011-1zM11 18h2', where: 'desk', owner: true },
   { id: 'more', href: '#/more', label: 'More', icon: 'M5 12h.01M12 12h.01M19 12h.01', where: 'phone' },
 ];

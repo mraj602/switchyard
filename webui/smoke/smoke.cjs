@@ -10,6 +10,7 @@
 //   a phone claim by QR secret, the phone screens, Seen from the row menu, swipe Snooze
 //   an owner sign-in, Alerts/Settings/Devices and the Add phone dialog
 //   Settings → Peers as the owner (grid, pause/resume, widen, audit) and as a paired phone (narrow only)
+//   Settings → Keys: a paired phone reads it; the owner compares and confirms a pending owner key, then sees Certify
 //   Resume thread: absent for a paired phone on the unresumed stop; the owner clicks it, sees the toast and the button go
 // Once (phone viewport, Android user agent unless noted): manifest and installability,
 // service worker control and caches, offline banner, update banner, push display, push
@@ -827,6 +828,49 @@ async function peersFlow(sizeName, w, hgt) {
   await resetHub();
 }
 
+// ---- Settings → Keys (keys.md 3.3): confirm a pending owner key, then the certify step ----------------
+
+async function keysFlow(sizeName, w, hgt) {
+  const t = (p, m) => p.tag(`keys: ${m}`);
+  const txt = (p, sel) => p.$eval(sel, (e) => e.textContent.trim()).catch(() => null);
+  const grouped = 'k7q2-m4xa-pz3c-ufh6-2wbe-q5no';
+  // A paired phone (read + push) sees a read-only page: no device list, no Confirm, a note.
+  const pctx = await browser.createBrowserContext();
+  const ppage = await newPage(pctx, sizeName, w, hgt, { ua: ANDROID, label: 'keys-phone' });
+  await ppage.goto(`${BASE}/#/pair?s=${SECRET}&c=${CODE}`, { waitUntil: 'networkidle2' });
+  await ppage.waitForSelector('[data-key=paired-as]');
+  await ppage.click('[data-key=pair-continue]');
+  await ppage.waitForSelector('.needs-card');
+  await visit(ppage, sizeName, 'device-keys', '#/more/keys', '[data-key=keys-page]');
+  if (!/Hub key/.test(await ppage.evaluate(() => document.body.innerText))) fail(t(ppage, 'no Hub key section'));
+  if (await ppage.$('[data-key=confirm-owner-key]')) fail(t(ppage, 'a device sees Confirm'));
+  if (await ppage.$('[data-key=key-devices]')) fail(t(ppage, 'a read-only device sees the device list'));
+  if (!(await ppage.$('[data-key=keys-read-only]'))) fail(t(ppage, 'no read-only note'));
+  await pctx.close();
+
+  // The owner sees the pending key, compares and confirms; the next step becomes Certify.
+  const octx = await browser.createBrowserContext();
+  const opage = await newPage(octx, sizeName, w, hgt, { label: 'keys-owner', mobile: false });
+  await opage.goto(`${BASE}/#/owner?s=${OWNER}`, { waitUntil: 'networkidle2' });
+  await opage.waitForSelector('.page-now');
+  await visit(opage, sizeName, 'owner-keys-pending', '#/more/keys', '[data-key=key-pending]');
+  if ((await txt(opage, '[data-key=pending-fp]')) !== grouped) fail(t(opage, `pending fingerprint is ${await txt(opage, '[data-key=pending-fp]')}`));
+  const pend = await txt(opage, '[data-key=key-pending]');
+  if (!/proposed by laptop/.test(pend) || !/Is this the fingerprint your terminal printed\?/.test(pend)) fail(t(opage, `pending text: ${pend}`));
+  if (!/it is deleted/.test((await txt(opage, '[data-key=pending-expiry]')) || '')) fail(t(opage, 'no expiry line'));
+  await opage.click('[data-key=confirm-owner-key]');
+  try { await opage.waitForSelector('[data-key=keys-step-certify]', { timeout: 6000 }); } catch (e) { fail(t(opage, 'no Certify step after Confirm')); }
+  await sleep(350);
+  if ((await txt(opage, '[data-key=owner-fp]')) !== grouped) fail(t(opage, 'active owner key not shown'));
+  if (!/sy keys certify --all/.test((await txt(opage, '[data-key=cmd-keys-certify]')) || '')) fail(t(opage, 'certify command missing'));
+  const states = await opage.$$eval('[data-key^=key-dev-] [data-state]', (e) => e.map((x) => x.dataset.state));
+  if (states.join() !== 'certified,hub-signed') fail(t(opage, `device states ${states}`));
+  if (!(await opage.$('[data-key=certify-hint]'))) fail(t(opage, 'no certify hint'));
+  await shot(opage, `${sizeName}-owner-keys-certify`);
+  await octx.close();
+  await resetHub();
+}
+
 // ---- installability, worker, offline, update, push, iPhone ---------------------------------------
 
 async function pwaFlow() {
@@ -986,6 +1030,7 @@ async function pwaFlow() {
       await phoneFlow(sizeName, w, hgt);
       await ownerFlow(sizeName, w, hgt);
       await peersFlow(sizeName, w, hgt);
+      await keysFlow(sizeName, w, hgt);
     }
     await pwaFlow();
   } finally {

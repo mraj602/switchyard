@@ -388,3 +388,7 @@ select, input[type="password"], input[type="text"] { border: 1px solid var(--btn
   .acct-issue:empty { display: none; }
   .acct-detail { padding: 4px 14px 16px 14px; }
 }
+
+/* Settings → Keys */
+.key-fp { overflow-wrap: anywhere; }
+.key-fp-big .key-fp { font-size: 1.25rem; font-weight: 600; letter-spacing: 0.02em; }

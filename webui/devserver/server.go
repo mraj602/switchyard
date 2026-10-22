@@ -51,6 +51,7 @@ type Server struct {
 	seq       int
 
 	peerState *peersState // peers.go; made on first use
+	keyState  *keysState  // keys.go; made on first use
 }
 
 // sub is one open /v1/stream: a revoke closes end, as on the real hub.
@@ -127,6 +128,7 @@ func (s *Server) routes() {
 	s.phase5Routes()
 	s.phase6Routes()
 	s.peersRoutes()
+	s.keysRoutes()
 	s.analyticsRoutes()
 	if s.opts.Dev {
 		s.mux.HandleFunc("POST /_dev/promote", s.promote)

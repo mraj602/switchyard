@@ -22,6 +22,7 @@ export function render({ store }) {
       item('#/machines', 'Machines', `${plural(store.overview.machines.length, 'machine')} reporting to this hub`),
       item('#/more/settings', 'Settings', `Notifications, this ${mobile ? 'phone' : 'device'}, app version`),
       item('#/more/peers', 'Peers', 'Which accounts’ sessions may message each other, and how to pause them'),
+      item('#/more/keys', 'Keys', 'The owner key, and which machines are certified'),
       owner ? item('#/more/devices', 'Devices', 'Phones, browsers and machines paired with this hub; add a phone') : null,
       item('#/more/analytics', 'Analytics', 'Tokens and their cost at API prices, by day, model and project')),
     owner ? null : ownerHintNode({ app: inApp(), lead: 'Devices needs an owner sign-in.', key: 'more-owner-hint' }));
