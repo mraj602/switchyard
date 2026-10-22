@@ -13,7 +13,7 @@ import (
 
 const evilLabel = "x/../../evil\ntouch /tmp/pwned"
 
-// Regression (review finding): `sy config set slots.labels.<folder>` refuses a label that
+// `sy config set slots.labels.<folder>` refuses a label that
 // is not `^[a-z0-9][a-z0-9-]{0,23}$` and leaves config.toml as it was.
 func TestConfigSetRejectsInvalidLabel(t *testing.T) {
 	h := detecttest.Laptop(t)

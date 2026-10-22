@@ -42,7 +42,7 @@ type Env struct {
 	Dirs   paths.Dirs
 	Config config.Config
 	// Admin is the admin channel of machines.md 4.4 (nil: none) and AdminName how the person
-	// gave it ("local", "ssh oci sy").
+	// gave it ("local", "ssh hub-host sy").
 	Admin     machineadd.Admin
 	AdminName string
 	// AdminErr is why the configured admin channel (machines.hub_admin) could not be used,
@@ -261,7 +261,7 @@ var (
 	digitsRE = regexp.MustCompile(`^\d{3}[- ]?\d{3}$`)
 )
 
-// notConnected is the exit 4 of the actions that need the hub's address.
+// needHub is the hub address of the actions that need one; exit 4 when there is none.
 func (e Env) needHub() (string, error) {
 	if e.Config.Hub.Dial != "" {
 		return "", fail(ExitNotHere, "forward mode (hub.dial) is not supported in the desktop app")

@@ -24,7 +24,7 @@
     "hook_ms": 0
   },
   "payload": {
-    "cwd": "/tmp/claude-1000/-home-user-projects-personal/92757a3d-04cd-4927-8177-c75bc52051b4/scratchpad/proj1",
+    "cwd": "/tmp/example/proj1",
     "effort": {
       "level": "medium"
     },
@@ -34,6 +34,6 @@
     "session_id": "76cef052-a659-422c-b1eb-36dea6e22655",
     "tool_name": "Bash",
     "tool_use_id": "toolu_0137sKoat468MF15fdTsLRGx",
-    "transcript_path": "/home/user/.claude-3/projects/-tmp-claude-1000--home-user-projects-personal-92757a3d-04cd-4927-8177-c75bc52051b4-scratchpad-proj1/76cef052-a659-422c-b1eb-36dea6e22655.jsonl"
+    "transcript_path": "/home/user/.claude-3/projects/-tmp-example-proj1/76cef052-a659-422c-b1eb-36dea6e22655.jsonl"
   }
 }

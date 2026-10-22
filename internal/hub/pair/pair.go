@@ -164,7 +164,7 @@ type Service struct {
 	Rand io.Reader
 
 	// Keys, when set, registers device keys at claim time and adds h= and k= to the QR
-	// (keys.md 7). Nil: pairing as before F1.
+	// (keys.md 7). Nil: pairing without device keys.
 	Keys *hubkeys.Service
 
 	pepperPath string
@@ -362,7 +362,6 @@ func NormalizeCode(s string) (string, bool) {
 	return d, len(d) == 6
 }
 
-// cleanName removes control characters and trims.
 // trimName cuts a made-up name to MaxNameLen runes.
 func trimName(s string) string {
 	if r := []rune(s); len(r) > MaxNameLen {
@@ -371,6 +370,7 @@ func trimName(s string) string {
 	return s
 }
 
+// cleanName removes control characters and trims.
 func cleanName(s string) string {
 	return strings.TrimSpace(strings.Map(func(r rune) rune {
 		if unicode.IsControl(r) {

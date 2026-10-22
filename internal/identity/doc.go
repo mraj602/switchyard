@@ -4,5 +4,5 @@
 //
 // Contract: docs/spec/identity.md.
 //
-// Phase 1. Depends on: paths, record.
+// Depends on: atomicfile.
 package identity

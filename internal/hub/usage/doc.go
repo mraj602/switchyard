@@ -3,5 +3,5 @@
 //
 // Contract: docs/spec/schema.sql (limit_sample, web_usage, usage_window).
 //
-// Phase 2. Depends on: record, hub/store.
+// Depends on: record, hub/store.
 package usage

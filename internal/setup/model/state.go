@@ -158,7 +158,7 @@ type HubState struct {
 	ServiceInstalled bool `json:"service_installed,omitempty"`
 	ServiceActive    bool `json:"service_active,omitempty"`
 	LingerOff        bool `json:"linger_off,omitempty"` // Linux: `loginctl show-user -p Linger` is "no"
-	// Phase 5: hub.reach when it is not "direct", and hub.dial.
+	// hub.reach when it is not "direct", and hub.dial.
 	Reach string `json:"reach,omitempty"`
 	Dial  string `json:"dial,omitempty"`
 }

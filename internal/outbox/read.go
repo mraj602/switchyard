@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mraj602/switchyard/internal/atomicfile"
 )
 
 const (
@@ -94,7 +96,9 @@ func (o *Outbox) writeFileAtomic(name string, data []byte) error {
 	if err := os.MkdirAll(o.Dir, 0o700); err != nil {
 		return err
 	}
-	tmp := filepath.Join(o.Dir, name+".tmp")
+	// A unique name: corrupt.marks.json is written by every process that reads the outbox,
+	// not only the flusher, and two writers must not share one temp file.
+	tmp := filepath.Join(o.Dir, atomicfile.TempName(name))
 	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err

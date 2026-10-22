@@ -43,7 +43,7 @@ func newLinkRig(t *testing.T) *linkRig {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c, err := auth.Create(context.Background(), ks.Store, auth.CreateRequest{Kind: "machine", Name: "worker", Machine: m.ID})
+	c, err := auth.Create(context.Background(), ks.Store, auth.CreateRequest{Kind: "machine", Name: "gpu-box", Machine: m.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,7 +233,7 @@ func TestKeysDevicePinSSHThenAgentEnable(t *testing.T) {
 	bad := h
 	other, _ := keys.NewDeviceKeys(time.Now(), rand.Reader)
 	op, _ := other.Public()
-	raw, _ := json.Marshal(keys.NewCertBody(dev.Device, "machine", "worker", r.mid, op, keys.RegSSH, r.ks.Key.FP, time.Now()))
+	raw, _ := json.Marshal(keys.NewCertBody(dev.Device, "machine", "gpu-box", r.mid, op, keys.RegSSH, r.ks.Key.FP, time.Now()))
 	bad.Cert = keys.NewDoc(keys.TypeDeviceCert, raw)
 	if err := r.ks.Key.Sign(&bad.Cert); err != nil {
 		t.Fatal(err)
@@ -261,7 +261,7 @@ func TestKeysDevicePinSSHThenAgentEnable(t *testing.T) {
 	evil := h
 	ek, _ := hubkeys.FromSeed(bytes.Repeat([]byte{9}, 32))
 	evil.HubKey = machineadd.PubKey{Pub: keys.B64(ek.Pub), FP: ek.FP}
-	raw, _ = json.Marshal(keys.NewCertBody(dev.Device, "machine", "worker", r.mid, dev.Keys, keys.RegSSH, ek.FP, time.Now()))
+	raw, _ = json.Marshal(keys.NewCertBody(dev.Device, "machine", "gpu-box", r.mid, dev.Keys, keys.RegSSH, ek.FP, time.Now()))
 	evil.Cert = keys.NewDoc(keys.TypeDeviceCert, raw)
 	if err := ek.Sign(&evil.Cert); err != nil {
 		t.Fatal(err)

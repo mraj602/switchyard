@@ -288,7 +288,7 @@ func machineAdd(ctx context.Context, e *machineEnv, args []string, stdout, stder
 	fs.IntVar(&o.Port, "port", 0, "forward port on the remote (47830-47849)")
 	fs.BoolVar(&o.ForwardSocket, "forward-socket", false, "forward to a Unix socket instead of a port")
 	fs.StringVar(&o.PullFrom, "pull-from", "", "from= addresses for the hub's key (pull)")
-	hubAdmin := fs.String("hub-admin", "", "local, or a command prefix that runs sy on the hub host (\"ssh oci sy\")")
+	hubAdmin := fs.String("hub-admin", "", "local, or a command prefix that runs sy on the hub host (\"ssh hub-host sy\")")
 	fs.BoolVar(&o.CodeStdin, "code-stdin", false, "read a machine pairing code from stdin")
 	fs.StringVar(&o.Version, "version", "", "release to install (default this sy's version)")
 	fs.StringVar(&o.Binary, "binary", "", "install this file instead of a release")

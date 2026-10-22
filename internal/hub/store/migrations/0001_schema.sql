@@ -1,6 +1,6 @@
 -- Switchyard hub schema, version 1.
 --
--- One SQLite file (WAL mode). Applied by the hub at start (phase 2) inside one transaction
+-- One SQLite file (WAL mode). Applied by the hub at start inside one transaction
 -- after `PRAGMA foreign_keys = ON`. Later versions add numbered migrations; this file is
 -- always the full current schema, and a test checks that migrations from v1 produce it.
 --
@@ -10,7 +10,7 @@
 --     Ids made by the hub are TEXT with a prefix + ULID (`dev_…`, `seat_…`).
 --   * JSON is stored as TEXT and checked with json_valid().
 --   * Every table is STRICT. Booleans are INTEGER 0/1 with a CHECK.
---   * `owner_id` is on the tables a future shared hub would partition (plan section 5).
+--   * `owner_id` is on the tables a future shared hub could partition.
 --     It is always 'owner' on a single-user hub.
 --   * Driver: modernc.org/sqlite (pure Go, no cgo). Needs SQLite >= 3.37 for STRICT.
 --
@@ -38,7 +38,7 @@ CREATE TABLE setting (
 
 ---------------------------------------------------------------------------- identity
 
--- The one owner of a single-user hub. Owner login (passkey / password) is phase 4.
+-- The one owner of a single-user hub. Owner login is by passkey or password.
 CREATE TABLE owner (
   id             TEXT    NOT NULL PRIMARY KEY,      -- 'owner'
   name           TEXT,
@@ -136,7 +136,7 @@ CREATE TABLE web_seat (
   label         TEXT,
   first_seen    INTEGER NOT NULL,
   last_seen     INTEGER NOT NULL,
-  stopped_reason TEXT,                               -- 401/403/429 stop (decision 1)
+  stopped_reason TEXT,                               -- 401/403/429 stop
   PRIMARY KEY (machine_id, tab_id)
 ) STRICT;
 
@@ -161,7 +161,7 @@ CREATE TABLE device (
 ) STRICT;
 CREATE INDEX device_machine ON device(machine_id);
 
--- One-time pairing codes (phase 4). The code itself is never stored, only its hash.
+-- One-time pairing codes. The code itself is never stored, only its hash.
 CREATE TABLE pair_code (
   id            TEXT    NOT NULL PRIMARY KEY,       -- 'pc_' + ULID
   code_hash     BLOB    NOT NULL UNIQUE CHECK (length(code_hash) = 32),
@@ -173,7 +173,7 @@ CREATE TABLE pair_code (
   device_id     TEXT    REFERENCES device(id)
 ) STRICT;
 
--- Where pushes go for a phone or browser (phase 4).
+-- Where pushes go for a phone or browser.
 CREATE TABLE channel (
   id            TEXT    NOT NULL PRIMARY KEY,       -- 'ch_' + ULID
   owner_id      TEXT    NOT NULL DEFAULT 'owner' REFERENCES owner(id),
@@ -378,7 +378,7 @@ CREATE TABLE rollup_daily (
   PRIMARY KEY (day, seat_id, model, project)
 ) STRICT;
 
----------------------------------------------------------------------------- alerts (phase 4)
+---------------------------------------------------------------------------- alerts
 
 CREATE TABLE rule (
   id            TEXT    NOT NULL PRIMARY KEY,       -- 'rule_' + ULID

@@ -1,7 +1,7 @@
 # Deploying the hub
 
 The hub is `sy hub serve`: one process, one SQLite file. This folder has what you need to run
-it as a container on an always-on server (your OCI box), or as a user service on your laptop
+it as a container on an always-on server (a small VPS or a home server), or as a user service on your laptop
 ("merged mode"), and how to point machines at it.
 
 | File | What |
@@ -21,7 +21,7 @@ the server itself if you use Claude Code there) is a **machine** that sends reco
 
 ---
 
-## A. Hub on the OCI server, machines over Tailscale (decision 3)
+## A. Hub on an always-on server, machines over Tailscale
 
 Needs: Docker with the compose plugin on the server, and Tailscale on the server and on every
 machine (the free Personal plan is enough).
@@ -76,9 +76,9 @@ server `docker compose exec hub sy hub pair --kind machine` prints a one-time co
 
 ```sh
 # Use the server's Tailscale name (MagicDNS) or its 100.x address.
-sy connect http://oci-server:8787 --token sy_m_...
+sy connect http://hub-server:8787 --token sy_m_...
 # or keep the token out of your shell history:
-printf '%s\n' "$TOKEN" | sy connect http://oci-server:8787 --token-stdin
+printf '%s\n' "$TOKEN" | sy connect http://hub-server:8787 --token-stdin
 ```
 
 `sy connect` checks `GET /health`, checks the token (it stores nothing for a rejected one),
@@ -156,8 +156,8 @@ on the laptop, add `--public-url https://<laptop>.<tailnet>.ts.net` to `ExecStar
 over Tailscale: start it with `--listen <tailscale ip>:8787 --insecure-lan` (edit `ExecStart`)
 and connect them as in section A, step 3.
 
-On macOS use a LaunchAgent for the hub instead of the systemd unit (`sy setup` will install
-it in phase 3).
+On macOS use a LaunchAgent for the hub instead of the systemd unit (`sy setup` does not install
+one yet).
 
 ### Check list when nothing shows up
 
@@ -169,14 +169,14 @@ it in phase 3).
 
 ---
 
-## C. The phone app and pushes (phase 4)
+## C. The phone app and pushes
 
 The board is also an installable phone app that gets pushes when a session needs you
 (pairing.md, push.md, pwa.md). Three things are needed on the server:
 
 1. **HTTPS on the hub's address (required for the phone app).** Service workers, "Add to Home
    Screen" and Web Push only work in a secure context, so the phone must open the hub over
-   `https://`. On the OCI server, with the hub published on loopback (leave `SY_BIND` out),
+   `https://`. On the server, with the hub published on loopback (leave `SY_BIND` out),
    run once:
 
    ```sh
@@ -231,7 +231,7 @@ trusts it only from loopback.
 
 ---
 
-## D. Pulling servers from a Docker hub (phase 5)
+## D. Pulling servers from a Docker hub
 
 A server that cannot reach the hub (no Tailscale, a locked-down network) can be **pulled**:
 the hub opens an SSH connection to it every minute and drains its outbox (machines.md 3.4).
@@ -243,7 +243,7 @@ From the laptop, with SSH to both the hub host and the server:
 
 ```sh
 sy machine add dev@gpu-box --reach pull \
-  --hub-admin "ssh oci docker compose -f $HOME/switchyard/deploy/docker-compose.yml exec -T hub sy"
+  --hub-admin "ssh hub-server docker compose -f $HOME/switchyard/deploy/docker-compose.yml exec -T hub sy"
 ```
 
 That installs `sy` on the server, adds one `restrict,command="… sy outbox drain --stdio"`
@@ -262,7 +262,7 @@ A target in `host_key` stops until you check the server really changed its key a
 `sy hub pull trust gpu-box`. `sy machine remove gpu-box` takes the `authorized_keys` line out
 again.
 
-## E. Moving the hub (phase 5)
+## E. Moving the hub
 
 To move the hub to another server (or from the laptop to a container), export it, import it
 on the new host, and point the machines at the new address (machines.md 8):

@@ -97,7 +97,7 @@ func recvBody(t *testing.T, c *linktest.Conn) (linktest.Msg, linkBody) {
 
 func TestLinkAlertAckAndSeenDismissesOnOtherPhone(t *testing.T) {
 	r := newLinkRig(t)
-	a, b := r.phone(1, "pixel-a"), r.phone(2, "pixel-b")
+	a, b := r.phone(1, "phone-a"), r.phone(2, "phone-b")
 	ca, cb := r.dial(a), r.dial(b)
 	r.advanceTo(500 * time.Millisecond)
 	r.askQ(s1, 0)
@@ -159,7 +159,7 @@ func TestLinkAlertAckAndSeenDismissesOnOtherPhone(t *testing.T) {
 
 func TestLinkDismissCollapsesUndeliveredAlert(t *testing.T) {
 	r := newLinkRig(t)
-	p := r.phone(3, "pixel-c")
+	p := r.phone(3, "phone-c")
 	r.advanceTo(500 * time.Millisecond)
 	r.askQ(s1, 0)
 	r.advanceTo(60 * time.Second)
@@ -187,7 +187,7 @@ func TestLinkSenderOutcomes(t *testing.T) {
 	if res := s.Send(r.ctx, model.Target{Kind: model.KindLink, DeviceID: "dev_gone"}, m); res.Outcome != model.OutcomeGone {
 		t.Fatalf("no device: %+v", res)
 	}
-	p := r.phone(4, "pixel-d")
+	p := r.phone(4, "phone-d")
 	if res := s.Send(r.ctx, model.Target{Kind: model.KindLink, DeviceID: p.ID}, m); res.Outcome != model.OutcomeSent {
 		t.Fatalf("sent: %+v", res)
 	}

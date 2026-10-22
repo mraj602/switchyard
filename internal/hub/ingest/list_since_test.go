@@ -24,7 +24,7 @@ func sessionList(t *testing.T, machine string, at time.Time, items ...map[string
 	return r
 }
 
-// G2/G1/N1 of the UI re-audit: a session first seen idle by a session_list (sy set up on a
+// A session first seen idle by a session_list (sy set up on a
 // machine with old Claude processes still running) is done since its last transcript row,
 // not since the list ran, whichever of the list and the transcript import the hub gets
 // first; so an idle process from last week is dormant, not open, although it is listed.

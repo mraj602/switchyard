@@ -3,9 +3,9 @@
 // found through SHA256SUMS, every archive is verified against it, and nothing downloaded is
 // run before verification.
 //
-// Phase 5. This file is the contract that work packages A (machine add, which needs the
-// archive for the remote's os/arch) and D (the updater) share: the types and the Fetcher seam.
-// Resolve, Fetch and Extract are in fetch.go; WP-A fakes them in tests through Fetcher.
+// This file holds the types and the Fetcher seam that `sy machine add` (which needs the
+// archive for the remote's os/arch) and `sy update` share. Resolve, Fetch and Extract are in
+// fetch.go; tests fake them through Fetcher.
 package update
 
 import (
@@ -71,7 +71,7 @@ type Archive struct {
 	SHA256  string // lower-case hex of the archive, equal to the SHA256SUMS line
 }
 
-// Fetcher is the seam WP-A codes against and fakes in tests: the three calls above as an
+// Fetcher is the seam callers code against and tests fake: the three calls above as an
 // interface. Real is the package-level implementation.
 type Fetcher interface {
 	Resolve(ctx context.Context, src Source, version string) (Release, error)

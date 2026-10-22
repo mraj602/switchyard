@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Remote is the agent's path to other machines (PE2, peers.md 3.1 hub source, 8.2): the hub's
+// Remote is the agent's path to other machines (peers.md 3.1 hub source, 8.2): the hub's
 // session directory and the envelope relay. internal/peerlink implements it over the link.
 // Env.Remote nil means this machine only (the direct path of 8.5, or an agent with no hub).
 type Remote interface {

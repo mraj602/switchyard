@@ -17,7 +17,7 @@ import (
 // GET /v1/analytics/{report} (docs/spec/analytics.md, api.yaml analytics): the prototype's
 // analytics (core/analytics.js) on the hub. Scopes come from the route table. A "day" is a
 // day of the hub's time zone (hub.tz, else $TZ, else UTC), the same zone the alert rules use.
-// Routed from server.go like the phase 2 read endpoints.
+// Routed from server.go like the other read endpoints.
 const (
 	analyticsDefaultDays = 30
 	analyticsMaxDays     = 366

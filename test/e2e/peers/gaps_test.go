@@ -54,7 +54,7 @@ func TestNoTurnLimitLongConversation(t *testing.T) {
 	for i := 0; i < rounds; i++ {
 		rep := w.laptop.send("api", toWorker, fmt.Sprintf("question %d", i), 0, 0)
 		delivered(t, rep, rep.Status)
-		back := w.worker.send("worker", toAPI, fmt.Sprintf("answer %d", i), 0, 0)
+		back := w.worker.send("builder", toAPI, fmt.Sprintf("answer %d", i), 0, 0)
 		delivered(t, back, back.Status)
 		if thread == "" {
 			thread = rep.Thread
@@ -64,7 +64,7 @@ func TestNoTurnLimitLongConversation(t *testing.T) {
 		}
 		w.h.clk.Advance(3 * time.Minute)
 	}
-	onlyContent(t, w.worker.session("worker").inbox, rounds)
+	onlyContent(t, w.worker.session("builder").inbox, rounds)
 	got := onlyContent(t, w.laptop.session("api").inbox, rounds)
 	if !strings.Contains(got[rounds-1].Wrapper.Body, fmt.Sprintf("answer %d", rounds-1)) {
 		t.Fatalf("last reply %q", got[rounds-1].Wrapper.Body)
@@ -103,7 +103,7 @@ func TestNoTurnLimitStillRateLimited(t *testing.T) {
 	w.h.clk.Advance(10 * time.Second)
 	rep := w.laptop.send("api", toWorker, "after the wait", 0, 0)
 	delivered(t, rep, rep.Status)
-	onlyContent(t, w.worker.session("worker").inbox, peers.SessionBurst+1)
+	onlyContent(t, w.worker.session("builder").inbox, peers.SessionBurst+1)
 }
 
 // An idle target (a session waiting at its prompt: registry "idle", hub state "done") gets
@@ -128,7 +128,7 @@ func TestIdleAndEndedTargets(t *testing.T) {
 	}
 
 	// The worker's session exits without a SessionEnd reaching the hub: the hub still lists it.
-	s := w.worker.session("worker")
+	s := w.worker.session("builder")
 	s.inbox.Close()
 	if err := os.Remove(filepath.Join(w.worker.home, s.slot, "sessions", fmt.Sprint(s.pid)+".json")); err != nil {
 		t.Fatal(err)
@@ -149,7 +149,7 @@ func TestIdleAndEndedTargets(t *testing.T) {
 // names the candidates (exit 2).
 func TestUnknownAndAmbiguousHandles(t *testing.T) {
 	w := newWorld(t, peers.NoTurnLimit)
-	rf := w.laptop.send("api", "nobody@nowhere.worker", "hello?", 0, 0).Refusal()
+	rf := w.laptop.send("api", "nobody@nowhere.gpu-box", "hello?", 0, 0).Refusal()
 	refusedWith(t, rf, peers.CodeUnknownTarget)
 	if line := peers.Describe(rf); !strings.Contains(line, "sy peers list") {
 		t.Errorf("line %q", line)
@@ -163,13 +163,13 @@ func TestUnknownAndAmbiguousHandles(t *testing.T) {
 		t.Errorf("the hub saw %d messages", n)
 	}
 	// Other machines' sessions resolve by a handle prefix, by @name and by an id prefix of 8+.
-	for i, to := range []string{"worker@personal", "@worker", "sess-wor"} {
+	for i, to := range []string{"builder@personal", "@builder", "sess-bui"} {
 		rep := w.laptop.send("api", to, "by "+to, 0, 0)
 		delivered(t, rep, rep.Status)
 		if rep.To != toWorker {
 			t.Errorf("%q went to %q", to, rep.To)
 		}
-		onlyContent(t, w.worker.session("worker").inbox, i+1)
+		onlyContent(t, w.worker.session("builder").inbox, i+1)
 	}
 }
 
@@ -188,7 +188,7 @@ func TestHubDownThenBack(t *testing.T) {
 	w.worker.disconnect()
 	loc := w.worker.send("side", toWorker, "same machine, no hub", 0, 0)
 	delivered(t, loc, loc.Status)
-	onlyContent(t, w.worker.session("worker").inbox, 1)
+	onlyContent(t, w.worker.session("builder").inbox, 1)
 	if _, err := os.Stat(filepath.Join(w.worker.state, "agent", "audit-out.jsonl")); err != nil {
 		t.Fatalf("no spooled audit line: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestHubDownThenBack(t *testing.T) {
 	w.worker.connect(matrixV)
 	rep := w.laptop.send("api", toWorker, "hub is back", 0, 0)
 	delivered(t, rep, rep.Status)
-	onlyContent(t, w.worker.session("worker").inbox, 2)
+	onlyContent(t, w.worker.session("builder").inbox, 2)
 	// The spool is flushed with the next report that gets through.
 	loc2 := w.worker.send("side", toWorker, "and the spool goes out", 0, 0)
 	delivered(t, loc2, loc2.Status)
@@ -212,7 +212,7 @@ func TestHubDownThenBack(t *testing.T) {
 func TestSizeAndUnicodeAcrossMachines(t *testing.T) {
 	w := newWorld(t, peers.NoTurnLimit)
 	w.h.clk.Freeze()
-	in := w.worker.session("worker").inbox
+	in := w.worker.session("builder").inbox
 	n := 0
 	for _, text := range []string{
 		strings.Repeat("a", peers.MaxTextBytes),

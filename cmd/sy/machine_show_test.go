@@ -6,8 +6,7 @@ import (
 	"testing"
 )
 
-// Every phase 5 stub has been replaced by its work package; `sy machine` without a
-// subcommand keeps its old behaviour.
+// `sy machine` without a subcommand shows this machine.
 
 func TestMachineShowStillWorks(t *testing.T) {
 	home := t.TempDir()

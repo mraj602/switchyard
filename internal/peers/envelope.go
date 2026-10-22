@@ -179,7 +179,7 @@ func ParseEnvelope(raw []byte) (Envelope, error) {
 	if err := json.Unmarshal(raw, &e); err != nil {
 		return Envelope{}, err
 	}
-	if e.V != 1 || e.Msg == "" || e.Thread == "" || (e.Kind != KindStart && e.Kind != KindReply) ||
+	if e.V != 1 || !safeID.MatchString(e.Msg) || !ValidThreadID(e.Thread) || (e.Kind != KindStart && e.Kind != KindReply) ||
 		e.From.Session == "" || e.From.Device == "" || e.To.Session == "" || e.To.Device == "" || e.Sealed == "" ||
 		e.From.Session == e.To.Session || !safeID.MatchString(e.From.Session) || !safeID.MatchString(e.To.Session) {
 		return Envelope{}, errors.New("malformed envelope")
@@ -213,9 +213,14 @@ func VerifyEnvelope(doc keys.Doc, sender keys.Cert) (Envelope, error) {
 	return e, nil
 }
 
+// ClockSkew is how far ahead of the receiver's clock an envelope's exp may be beyond MaxTTL
+// (peers.md 8.4 step 1). It keeps every acceptable exp inside seen.json's replay window.
+const ClockSkew = time.Hour
+
 // CheckIncoming is peers.md 8.4 step 1 on the receiving machine: the sender's certificate
 // (hub and owner signatures with this machine's pins, machine kind, not revoked), the envelope
-// signature by its key, the device and machine it names, to.device = self, exp not passed.
+// signature by its key, the device and machine it names, to.device = self, exp not passed and
+// not more than MaxTTL + ClockSkew ahead.
 func CheckIncoming(doc, cert keys.Doc, t keys.Trust, rev *keys.RevocationBody, self string, now time.Time) (Envelope, keys.Cert, error) {
 	// The certificate names the device it is for; which device that must be comes from the
 	// envelope, read only after the signature verifies.
@@ -236,6 +241,12 @@ func CheckIncoming(doc, cert keys.Doc, t keys.Trust, rev *keys.RevocationBody, s
 	}
 	if now.Unix() > e.Exp {
 		return Envelope{}, keys.Cert{}, envErr(ReasonExpired, "expired at %s", time.Unix(e.Exp, 0).UTC().Format(time.RFC3339))
+	}
+	// A replayed message is caught by its id only while seen.json remembers it (48 h): an exp
+	// further ahead would outlive that window.
+	if e.Exp > now.Add(MaxTTL+ClockSkew).Unix() {
+		return Envelope{}, keys.Cert{}, envErr(ReasonBadSignature, "exp %s is too far ahead of this machine's clock",
+			time.Unix(e.Exp, 0).UTC().Format(time.RFC3339))
 	}
 	return e, c, nil
 }

@@ -1,7 +1,7 @@
 # The link (`/v1/link`)
 
-Status: spec v1, F0. Built in F1 (`internal/link` shared frame code, `internal/hub/link` the hub
-side, `internal/agent` the machine client) and N1 (the Android client, push.md 14). Keys and
+Status: spec v1. Implemented in `internal/link` (shared frame code), `internal/hub/link` (the hub
+side) and `internal/agent` (the machine client) and the Android client (push.md 14). Keys and
 documents: [keys.md](keys.md). What travels on it: alerts (push.md 13), peer messages
 ([peers.md](peers.md)), the matrix and revocations. Schema v7 (`link_state`, `link_queue`).
 Unofficial; not affiliated with Anthropic.
@@ -54,8 +54,7 @@ cannot, and tags are limited to `[A-Za-z0-9_:.-]{0,64}` (5.3).
 - **Messages** are WebSocket text messages, one JSON object each, at most 1 MiB (the library's
   read limit; larger → close 4413). Binary messages → close 4400.
 - **Library.** `github.com/coder/websocket` (ISC, no dependencies of its own), the newest
-  release at least two weeks old when F1 starts. It is the one new module the foundation
-  adds; the standard library has no WebSocket server. Its `Accept` checks `Origin`: the hub
+  release at least two weeks old when it was adopted. It is the one WebSocket dependency; the standard library has no WebSocket server. Its `Accept` checks `Origin`: the hub
   accepts no `Origin` (native clients) or its own origin only.
 - **Pings.** The device sends a WebSocket ping every `ping_s` seconds (default **180**, from
   `welcome`; the app may raise it to 300–600 on the tailnet, push.md 14.4); the hub answers
@@ -94,7 +93,7 @@ frames go over plain HTTPS: `POST /v1/link/poll`, JSON in and out, no bearer.
 
 ### 2.2 Exposure
 
-On a hub reachable through Tailscale Funnel (plan addendum step N3), Funnel forwards **only**
+On a hub reachable through Tailscale Funnel, Funnel forwards **only**
 the `/v1/link` prefix (`/v1/link` and `/v1/link/poll`) to the hub; the board and the rest of the
 API stay on the tailnet. `sy doctor` on the hub checks this from the outside (`/v1/health` must
 not answer on the Funnel name). The hub itself does not distinguish the two paths: the
@@ -402,7 +401,7 @@ device that asked, on its TLS connection, at once, and hold nothing a session re
 | `peer_msg` | machines | `{"v":1,"doc","cert"}` (peers.md 8.3): the sender's envelope, as the sender signed it (its own seal to this machine inside), and the sender's certificate. |
 | `peer_status` | machines | `{"v":1,"msg","status","detail","at"}`: the final state of a message this machine sent. |
 | `peer_thread_resume` | machines | `{"v":1,"thread","by","at"}`: the owner resumed a thread the loop guard stopped (peers.md 6.3); `by` is the device that asked. |
-| `matrix` | machines (phones in PE3) | The newest matrix document, wire form (keys.md 4.1). |
+| `matrix` | machines (including phones) | The newest matrix document, wire form (keys.md 4.1). |
 | `revoke` | machines | The newest revocation document, wire form (keys.md 6). |
 
 A signed document inside a frame is verified twice: the frame by the hub key, the document by
@@ -419,7 +418,7 @@ signature but the frame's (the hub alone makes it).
   the hub" (push.md 14.4). An agent on 4403 stops and `sy agent status` says why.
 - A connected machine receives new `matrix` and `revoke` frames immediately; one that is
   reconnecting receives them when it logs in, and `known` (3.2) catches anything missed.
-  "Within one ping" (plan addendum B) is the upper bound for a live connection that dropped
+  "Within one ping" is the upper bound for a live connection that dropped
   silently: the device notices within `ping_s` and reconnects.
 - The hub, while revoking, also refuses any link login by the device (3.2 step 2): there is no
   window where a revoked device can reconnect and receive.
@@ -455,7 +454,7 @@ after a connection that lasted 60 s. A network change resets it to zero (push.md
 - `sy hub doctor`: a device disconnected for more than 1 h with queued alerts (warning); a
   queue at more than 80 % of its cap; `hub_sign.key` missing or not 0600.
 
-## 10. Tests (F1)
+## 10. Tests
 
 - **Goldens** in `internal/link/testdata/` (shared with the Kotlin tests, push.md 14.10), made
   by `go test ./internal/link -update` from fixed seeds: the hub Ed25519 seed `0x01…01`, a

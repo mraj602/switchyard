@@ -5,9 +5,9 @@
 //
 // The file is held as a generic TOML document so keys this version does not know are
 // carried through a rewrite untouched. Comments are not preserved (go-toml/v2 does not
-// keep them); see docs/phases/1.md for the library choice.
+// keep them).
 //
-// Phase 1. Depends on: paths (the caller passes paths.Dirs.Config.Path).
+// Depends on: paths (the caller passes paths.Dirs.Config.Path).
 package config
 
 import (
@@ -43,7 +43,7 @@ type Config struct {
 		URL         string `toml:"url"`
 		InsecureLAN bool   `toml:"insecure_lan"`
 		// Reach is how this machine's records reach the hub: direct, forward or pull
-		// (machines.md 3; phase 5). Dial is the forward end ("127.0.0.1:47830" or
+		// (machines.md 3). Dial is the forward end ("127.0.0.1:47830" or
 		// "unix:<path>") the client connects to while keeping URL for TLS and Host.
 		Reach string `toml:"reach"`
 		Dial  string `toml:"dial"`
@@ -96,7 +96,7 @@ type Config struct {
 		MCP        any      `toml:"mcp"`
 		MCPExclude []string `toml:"mcp_exclude"`
 	} `toml:"share"`
-	// Terminal is the [terminal] table of docs/spec/terminal.md T12 (phase 7).
+	// Terminal is the [terminal] table of docs/spec/terminal.md T12.
 	Terminal struct {
 		// Titles is written only by `sy term titles on|off` (a config_set in its plan).
 		Titles       bool   `toml:"titles"`
@@ -105,9 +105,9 @@ type Config struct {
 		Source       string `toml:"source"` // auto | hub | local
 		ASCII        bool   `toml:"ascii"`
 	} `toml:"terminal"`
-	// Peers is the [peers] table of docs/spec/peers.md (PE1). Enabled turns on the session
-	// files `sy hook` writes (2.4); `sy agent enable` (PE2) sets it too. Delivery is the
-	// inbox delivery mode chosen by the PE0 probe (8.5): honest | accept | courier.
+	// Peers is the [peers] table of docs/spec/peers.md. Enabled turns on the session
+	// files `sy hook` writes (2.4); `sy agent enable` sets it too. Delivery is the
+	// inbox delivery mode chosen by the delivery probe (8.5): honest | accept | courier.
 	Peers struct {
 		Enabled  bool   `toml:"enabled"`
 		Delivery string `toml:"delivery"`

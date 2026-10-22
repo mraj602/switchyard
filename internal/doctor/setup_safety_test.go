@@ -12,8 +12,8 @@ import (
 	"github.com/mraj602/switchyard/internal/setup/model"
 )
 
-// Finding 6: a refused MCP pass (it would have removed every server) is a warning naming
-// the folders, and the removal log is shown; finding 4: a set in progress while setup.lock
+// A refused MCP pass (it would have removed every server) is a warning naming
+// the folders, and the removal log is shown; a set in progress while setup.lock
 // is held is a run still going, not an interrupted one.
 func TestSetupChecksMCPGuardAndLiveRun(t *testing.T) {
 	e := newFakeHome(t, `{"hooks":{`+allHooks+`}}`)

@@ -3,7 +3,7 @@
 // re-verification of every stored document when it is loaded. The formats and checks are in
 // internal/keys; this package adds the database and the hub key.
 //
-// Contract: docs/spec/keys.md 3.3-3.4, 4, 6, 7.1. F1. Depends on: keys, hub/store, paths.
+// Contract: docs/spec/keys.md 3.3-3.4, 4, 6, 7.1. Depends on: keys, hub/store, paths.
 package hubkeys
 
 import (
@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -110,15 +111,35 @@ func LoadOrCreate(path string) (*HubKey, error) {
 	if err := tmp.Close(); err != nil {
 		return nil, err
 	}
-	if err := os.Link(tmp.Name(), path); err != nil {
-		if k, rerr := Load(path); rerr == nil {
-			return k, nil
-		}
-		if rerr := os.Rename(tmp.Name(), path); rerr != nil {
-			return nil, err
+	err = os.Link(tmp.Name(), path)
+	switch {
+	case err == nil, errors.Is(err, fs.ErrExist):
+		// Ours, or another creator's that won: either way the file at path is the key, and
+		// an existing key file is never replaced.
+	default:
+		// No hard links on this file system: create the file exclusively instead.
+		if werr := writeExclusive(path, seed); werr != nil && !errors.Is(werr, fs.ErrExist) {
+			return nil, werr
 		}
 	}
 	return Load(path)
+}
+
+// writeExclusive writes b to a new file at path (mode 0600); fs.ErrExist when there is one.
+func writeExclusive(path string, b []byte) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(b); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		f.Close()
+		return err
+	}
+	return f.Close()
 }
 
 // Sign adds the hub's signature to a document.

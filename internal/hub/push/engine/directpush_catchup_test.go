@@ -13,9 +13,9 @@ import (
 	"github.com/mraj602/switchyard/internal/record"
 )
 
-// Phase 5 (WP-C): direct_push records, the catch-up hold, the frozen pause, removed machines
-// and the pull hello (push.md 3.1, 3.3, 3.6; machines.md 5.5, 6.2, 8.1). Same harness as the
-// push.md 11.1 rows: fake clock, real store, fake senders.
+// direct_push records, the catch-up hold, the frozen pause, removed machines and the pull
+// hello (push.md 3.1, 3.3, 3.6; machines.md 5.5, 6.2, 8.1). Same harness as the push.md 11.1
+// rows: fake clock, real store, fake senders.
 
 const s2 = "c41e0000-0000-4000-8000-000000000002"
 

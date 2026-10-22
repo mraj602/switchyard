@@ -513,9 +513,13 @@ func (u *undoer) path(ctx context.Context, e model.Entry, pe model.PathEntry) bo
 	}
 	if u.o.Force {
 		dst := filepath.Join(u.s.Dir, "undo-saved", fmt.Sprintf("%06d-%s", e.Seq, filepath.Base(pe.Path)))
-		if err := os.MkdirAll(filepath.Dir(dst), 0o700); err == nil && cur.Type != model.TypeAbsent {
-			err = MoveTree(pe.Path, dst)
-			if err != nil {
+		if cur.Type != model.TypeAbsent {
+			// the changed version must be safe in undo-saved before anything replaces it
+			if err := os.MkdirAll(filepath.Dir(dst), 0o700); err != nil {
+				u.skip(e.Seq, pe.Path, "moving to undo-saved: "+err.Error())
+				return false
+			}
+			if err := MoveTree(pe.Path, dst); err != nil {
 				u.skip(e.Seq, pe.Path, "moving to undo-saved: "+err.Error())
 				return false
 			}
@@ -609,6 +613,14 @@ func (u *undoer) restore(ctx context.Context, e model.Entry, pe model.PathEntry,
 		}
 		if kept {
 			return errors.New("a folder holding files sy did not write is in the way")
+		}
+	case model.TypeFile:
+		// a file over a file is replaced atomically by restoreSaved: removing it first
+		// would leave nothing at the path if undo stopped in between
+		if b.Type != model.TypeFile {
+			if err := os.Remove(pe.Path); err != nil {
+				return err
+			}
 		}
 	default:
 		if err := os.Remove(pe.Path); err != nil {

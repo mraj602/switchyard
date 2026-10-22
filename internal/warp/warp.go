@@ -10,9 +10,9 @@
 //   - Nothing here writes: rendering returns bytes, and the files are written by
 //     internal/setup/apply from a plan (plan.Terminal), journaled and undoable.
 //   - sy never writes Warp's settings, launch configurations, themes or keybindings
-//     (docs/phases/7.md hard rule 2); only `switchyard-*.toml` files in `tab_configs/`.
+//     (docs/spec/terminal.md T8); only `switchyard-*.toml` files in `tab_configs/`.
 //
-// Phase 7, WP-E. Depends on: termenv.
+// Depends on: termenv.
 package warp
 
 import (

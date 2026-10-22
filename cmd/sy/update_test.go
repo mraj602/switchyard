@@ -251,19 +251,19 @@ func TestUpdateMachinesFleet(t *testing.T) {
 	env.postUpdate = func(context.Context, string, string, io.Writer, io.Writer) error { return nil }
 	fr := &fleetRemote{}
 	env.fleet = func() (update.Registry, update.Remote, error) {
-		return fleetReg{[]update.FleetMachine{{Name: "gpu"}, {Name: "oci", Hub: true}}}, fr, nil
+		return fleetReg{[]update.FleetMachine{{Name: "gpu"}, {Name: "hub-host", Hub: true}}}, fr, nil
 	}
 	var out, errb bytes.Buffer
 	if err := updateMain(context.Background(), env, []string{"--machines", "all", "--yes"}, &out, &errb); err != nil {
 		t.Fatal(err, errb.String())
 	}
-	if len(fr.argv) != 2 || fr.argv[0][0] != "oci" {
+	if len(fr.argv) != 2 || fr.argv[0][0] != "hub-host" {
 		t.Errorf("hub host must go first: %v", fr.argv)
 	}
 	if got := strings.Join(fr.argv[0][1:], " "); got != ".local/bin/sy update --yes --json --version 0.5.0" {
 		t.Errorf("remote argv %q", got)
 	}
-	if !strings.Contains(out.String(), "oci") || !strings.Contains(out.String(), "0.4.2 -> 0.5.0") {
+	if !strings.Contains(out.String(), "hub-host") || !strings.Contains(out.String(), "0.4.2 -> 0.5.0") {
 		t.Errorf("table: %s", out.String())
 	}
 	// unwired

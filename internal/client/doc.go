@@ -4,5 +4,5 @@
 //
 // Contract: docs/spec/api.yaml, docs/spec/outbox.md section 5, docs/spec/tokens.md.
 //
-// Phase 2. Depends on: outbox, record, config, paths.
+// Depends on: outbox, record, config, paths.
 package client

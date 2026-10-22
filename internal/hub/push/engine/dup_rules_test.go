@@ -8,7 +8,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/push/model"
 )
 
-// UI audit AL3: an override with the scope of another rule of its trigger (the base rule
+// An override with the scope of another rule of its trigger (the base rule
 // included) is refused with 409 duplicate_rule and the id to change (push.md 3.7).
 func TestAPIDuplicateRules(t *testing.T) {
 	r := newAPIRig(t)

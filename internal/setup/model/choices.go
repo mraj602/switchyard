@@ -33,9 +33,9 @@ type Choices struct {
 	TokenStdin bool   `json:"token_stdin,omitempty"`
 	Code       string `json:"code,omitempty"`
 	// CodeStdin reads the code (or a 22-character pairing secret) from the first stdin line
-	// after the plan is accepted (phase 5, sy machine add); a dry run never reads it.
+	// after the plan is accepted (sy machine add); a dry run never reads it.
 	CodeStdin bool `json:"code_stdin,omitempty"`
-	// Dial and Reach go to hub.dial and hub.reach with --hub join (phase 5, machines.md 3).
+	// Dial and Reach go to hub.dial and hub.reach with --hub join (machines.md 3).
 	Dial        string `json:"dial,omitempty"`
 	Reach       string `json:"reach,omitempty"`
 	InsecureLAN bool   `json:"insecure_lan,omitempty"`
@@ -64,7 +64,7 @@ const (
 	HubHere  = "here"
 	HubLater = "later"
 	HubJoin  = "join"
-	HubPull  = "pull" // phase 5: pulled over SSH by the hub (machines.md 3.4)
+	HubPull  = "pull" // pulled over SSH by the hub (machines.md 3.4)
 )
 
 // HubChoice is the --hub flag: keep, here, later, or join:<url>.

@@ -1,6 +1,6 @@
 package main
 
-// Phase 7 review fixes of `sy term` (terminal.md T10): the Warp plugin commit is never reset
+// Regression tests of `sy term` (terminal.md T10): the Warp plugin commit is never reset
 // silently, the pane's own sy-local is undone, titles off keeps the person's value, and
 // `sy term off` without claude still removes titles and tab configs.
 

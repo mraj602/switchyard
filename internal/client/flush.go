@@ -103,7 +103,7 @@ type Status struct {
 	// nothing accepted, so nothing was dropped (`sy doctor`: "hub refuses records").
 	RefusesRecords bool `json:"refuses_records,omitempty"`
 
-	// Phase 5 (outbox.md 8). LastContact is the last successful exchange with the hub: a 200
+	// outbox.md 8. LastContact is the last successful exchange with the hub: a 200
 	// ingest reply, a 200 /health, or a drain start (a 401/403/5xx is not contact). Via is
 	// "push" (sy flush) or "pull" (sy outbox drain). PullRefused is the drain `refuse` code
 	// of the last pull. Held and HubTooOld say records are kept back for an older hub.
@@ -474,7 +474,7 @@ func (f *flusher) apply(b *outbox.Batch, reply *IngestReply) (missing int, err e
 // learnHub takes what a 200 reply says the hub reads (machines.md 7.2) and caches it.
 func (f *flusher) learnHub(h *HubInfo) {
 	if h == nil {
-		return // a hub older than phase 5; the cached value (default 1) stands
+		return // an older hub; the cached value (default 1) stands
 	}
 	if h.Version != "" {
 		f.hubVersion = h.Version

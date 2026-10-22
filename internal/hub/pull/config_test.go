@@ -13,10 +13,24 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
 
+// ssh expands %-tokens in file names, so a state folder with a % in it is written doubled.
+func TestWriteConfigEscapesPercentInPaths(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "100% state")
+	tg := store.PullTarget{ID: "pt_01JA", Name: "gpu", Host: "gpu-box", Port: 22, User: "me", HostKeys: []string{hostKeyA}}
+	if err := pull.WriteConfig(dir, []store.PullTarget{tg}); err != nil {
+		t.Fatal(err)
+	}
+	cfg, _ := os.ReadFile(filepath.Join(dir, "ssh_config"))
+	want := `UserKnownHostsFile "` + strings.ReplaceAll(filepath.Join(dir, "known_hosts"), "%", "%%") + `"`
+	if !strings.Contains(string(cfg), want) {
+		t.Fatalf("ssh_config does not escape %%:\n%s", cfg)
+	}
+}
+
 func TestWriteConfigGeneratesTheDocumentedBlock(t *testing.T) {
 	dir := t.TempDir()
 	tgs := []store.PullTarget{
-		{ID: "pt_01JA", Name: "gpu", Host: "gpu-box.tailnet.ts.net", Port: 22, User: "me", HostKeys: []string{hostKeyA}},
+		{ID: "pt_01JA", Name: "gpu", Host: "gpu-box.example.ts.net", Port: 22, User: "me", HostKeys: []string{hostKeyA}},
 		{ID: "pt_01JB", Name: "odd", Host: "10.0.0.7", Port: 2222, User: "dev", HostKeys: []string{hostKeyA, hostKeyB}},
 	}
 	if err := pull.WriteConfig(dir, tgs); err != nil {
@@ -24,7 +38,7 @@ func TestWriteConfigGeneratesTheDocumentedBlock(t *testing.T) {
 	}
 	cfg, _ := os.ReadFile(filepath.Join(dir, "ssh_config"))
 	for _, want := range []string{
-		"Host sy-pt_01JA\n  HostName gpu-box.tailnet.ts.net\n  Port 22\n  User me\n  HostKeyAlias sy-pt_01JA\n",
+		"Host sy-pt_01JA\n  HostName gpu-box.example.ts.net\n  Port 22\n  User me\n  HostKeyAlias sy-pt_01JA\n",
 		"  UserKnownHostsFile " + filepath.Join(dir, "known_hosts") + "\n",
 		"  GlobalKnownHostsFile /dev/null\n  StrictHostKeyChecking yes\n  UpdateHostKeys no\n",
 		"  IdentityFile " + filepath.Join(dir, "id_ed25519") + "\n  IdentitiesOnly yes\n  IdentityAgent none\n  BatchMode yes\n",
@@ -170,11 +184,11 @@ func TestEnsureKeyMakesAndKeepsTheKey(t *testing.T) {
 		t.Skip("no ssh-keygen")
 	}
 	dir := filepath.Join(t.TempDir(), "pull")
-	pub, err := pull.EnsureKey(context.Background(), dir, "oci", nil)
+	pub, err := pull.EnsureKey(context.Background(), dir, "hub", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(pub, "ssh-ed25519 ") || !strings.HasSuffix(pub, "switchyard-pull@oci") {
+	if !strings.HasPrefix(pub, "ssh-ed25519 ") || !strings.HasSuffix(pub, "switchyard-pull@hub") {
 		t.Fatalf("%q", pub)
 	}
 	st, err := os.Stat(filepath.Join(dir, "id_ed25519"))
@@ -194,7 +208,7 @@ func TestEnsureKeyMakesAndKeepsTheKey(t *testing.T) {
 	}
 	// Lost .pub is rebuilt from the private key.
 	_ = os.Remove(filepath.Join(dir, "id_ed25519.pub"))
-	if rebuilt, err := pull.EnsureKey(context.Background(), dir, "oci", nil); err != nil || !strings.HasPrefix(rebuilt, "ssh-ed25519 ") {
+	if rebuilt, err := pull.EnsureKey(context.Background(), dir, "hub", nil); err != nil || !strings.HasPrefix(rebuilt, "ssh-ed25519 ") {
 		t.Fatalf("%q %v", rebuilt, err)
 	}
 }
@@ -220,7 +234,7 @@ func TestEnsureKeyUsesKeygenWithoutSecretsInArgv(t *testing.T) {
 	}
 }
 
-// Review finding 11: a jump host cannot be pinned, so it is refused with a clear reason
+// A jump host cannot be pinned, so it is refused with a clear reason
 // instead of being written as an unpinned ProxyJump.
 func TestProxyJumpIsRefused(t *testing.T) {
 	tg := store.PullTarget{ID: "pt_01JA", Name: "gpu", Host: "gpu-box", Port: 22, User: "me", Jump: "bastion", HostKeys: []string{hostKeyA}}

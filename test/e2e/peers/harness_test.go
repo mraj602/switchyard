@@ -728,8 +728,8 @@ func newWorld(t *testing.T, maxTurns int) *world { return newWorldOn(newHub(t, m
 func newWorldOn(h *testHub) *world {
 	w := &world{h: h,
 		laptop: h.newMachine("laptop", laptopID, sessionSpec{slot: ".claude-2", label: "work", account: accWork, pid: 500, id: "sess-api", name: "api"}),
-		worker: h.newMachine("worker", workerID,
-			sessionSpec{slot: ".claude-5", label: "personal", account: accPersonal, pid: 600, id: "sess-worker", name: "worker"},
+		worker: h.newMachine("gpu-box", workerID,
+			sessionSpec{slot: ".claude-5", label: "personal", account: accPersonal, pid: 600, id: "sess-builder", name: "builder"},
 			sessionSpec{slot: ".claude-7", label: "other", account: accOther, pid: 700, id: "sess-side", name: "side"}),
 	}
 	w.laptop.connect(matrixV)

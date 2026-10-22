@@ -60,7 +60,7 @@ func goldenView() View {
 				Line2: "Update the migration, or keep the old column?", Line2Kind: Line2Question,
 				CanFocus: false, Resume: "claude-2 --resume " + asked, RemoteURL: "https://claude.ai/code/session_01AbCdEf"},
 			work: {ID: work, State: "working", Detail: "tool", Glyph: GlyphWorking, Status: "40s",
-				Project: "switchyard", Title: "phase-7-board", Account: "work", Colour: "#f59e0b", Seat: "s_01JA2WB3K5M7N9P1Q3R5S7T9V1",
+				Project: "switchyard", Title: "board-view", Account: "work", Colour: "#f59e0b", Seat: "s_01JA2WB3K5M7N9P1Q3R5S7T9V1",
 				Machine: laptop, MachineName: "laptop", Here: true, ThisSession: true,
 				ContextPct: ptr(81), ContextLevel: ContextWarn, Since: ts("2026-10-20T14:05:20Z"), Age: "40s",
 				Line2: "Writing internal/board/view.go and its golden.", Line2Kind: Line2Recap,

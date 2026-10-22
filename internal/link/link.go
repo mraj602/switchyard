@@ -7,7 +7,7 @@
 //
 // Standard library and internal/keys only.
 //
-// Contract: docs/spec/link.md 3-8. F1.
+// Contract: docs/spec/link.md 3-8.
 package link
 
 import (

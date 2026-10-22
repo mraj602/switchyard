@@ -8,7 +8,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
 
-// UI audit G9/AL4/AN3: the overview names the hub's time zone and where it came from, so the
+// The overview names the hub's time zone and where it came from, so the
 // board can label "hub time" (push.md 2). The hub.tz setting wins; else the machine's zone.
 func TestOverviewHubZone(t *testing.T) {
 	t.Setenv("TZ", "Asia/Kolkata") // the machine's zone, as SystemZone reads it

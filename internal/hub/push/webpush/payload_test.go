@@ -8,7 +8,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/push/model"
 )
 
-// Review phase 4 finding 4: a summary of many alerts must still fit, not fail with ErrTooLarge.
+// A summary of many alerts must still fit, not fail with ErrTooLarge.
 func TestSummaryWithManyAlertsFits(t *testing.T) {
 	for _, n := range []int{1, 20, 90, 500} {
 		p := model.Payload{V: 1, Type: model.TypeSummary, Title: "many alerts", Body: "x", Tag: "sy-summary", URL: "/#/", Alert: "al_01JA3B00000000000000000"}

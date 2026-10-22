@@ -7,7 +7,7 @@
 // after every commit that queued something for the device. Frames are sealed and signed
 // once, at enqueue; a replay sends the stored bytes.
 //
-// Contract: docs/spec/link.md 2-9, push.md 13. F1. Depends on: link, keys, hub/keys,
+// Contract: docs/spec/link.md 2-9, push.md 13. Depends on: link, keys, hub/keys,
 // hub/store, hub/push/webpush (RFC 8291 for phones).
 package hublink
 
@@ -76,7 +76,7 @@ type Settings struct {
 // status that call would answer (200, 400, 401, 404, 410, 503).
 type ActionFunc func(ctx context.Context, token string) (alert any, applied bool, status int)
 
-// PeerRelay is the seam for the peer frames a machine sends (peers.md 8, PE2): peer_msg,
+// PeerRelay is the seam for the peer frames a machine sends (peers.md 8): peer_msg,
 // peer_result, peer_log and peers_list. It returns the ephemeral reply (type and body) or
 // "" for none. Nil: the hub answers notice unknown_type.
 type PeerRelay interface {
@@ -95,10 +95,10 @@ type Config struct {
 	Settings func(ctx context.Context) Settings
 	// Action applies `action` frames; nil answers 503.
 	Action ActionFunc
-	// Peers relays the machines' peer frames (PE2); nil answers unknown_type.
+	// Peers relays the machines' peer frames; nil answers unknown_type.
 	Peers PeerRelay
 	// PeerExpired is called (in the sweeper's transaction) for a peer_msg row that expired
-	// unsent (link.md 5.4: the message becomes expired, the sender gets peer_status). PE2.
+	// unsent (link.md 5.4: the message becomes expired, the sender gets peer_status).
 	PeerExpired func(tx *store.Tx, msgID string) error
 	// PollWait overrides PollWait (tests); Idle overrides 2 × ping_s + 30 s (tests).
 	PollWait time.Duration

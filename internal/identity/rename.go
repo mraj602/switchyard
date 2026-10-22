@@ -42,8 +42,7 @@ func RenameMachine(stateDir, name string, opt MachineOptions) (old Machine, rena
 	if err != nil {
 		return Machine{}, Machine{}, err
 	}
-	m, err := LoadOrCreateMachine(stateDir, opt)
-	if err != nil {
+	if _, err := LoadOrCreateMachine(stateDir, opt); err != nil {
 		return Machine{}, Machine{}, err
 	}
 	unlock, err := lock(filepath.Join(stateDir, lockFile))
@@ -52,7 +51,8 @@ func RenameMachine(stateDir, name string, opt MachineOptions) (old Machine, rena
 	}
 	defer unlock()
 	path := filepath.Join(stateDir, machineFile)
-	if m, err = readMachine(path); err != nil {
+	m, err := readMachine(path)
+	if err != nil {
 		return Machine{}, Machine{}, err
 	}
 	old = m

@@ -4,7 +4,7 @@
 // since the last one sent, and otherwise every 6 hours; `sy connect`, `sy update` and
 // `sy machine rename` send it at once. The last one sent is <state>/machine-info.json.
 //
-// Phase 5, WP-E. Client package: depends on record, outbox, config, client (flush status),
+// Depends on: record, outbox, config, client (flush status),
 // directpush (policy cache), identity, atomicfile.
 package machineinfo
 

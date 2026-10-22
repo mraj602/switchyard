@@ -25,7 +25,7 @@
     "hook_ms": 0
   },
   "payload": {
-    "cwd": "/tmp/claude-1000/-home-user-projects-personal/92757a3d-04cd-4927-8177-c75bc52051b4/scratchpad/proj1",
+    "cwd": "/tmp/example/proj1",
     "duration_ms": 1821,
     "effort": {
       "level": "medium"
@@ -36,6 +36,6 @@
     "session_id": "3dffa0a7-736b-46c3-ab3e-ea895fdf359e",
     "tool_name": "Agent",
     "tool_use_id": "toolu_01KoztVaM4pHn9R3qN336w1b",
-    "transcript_path": "/home/user/.claude-3/projects/-tmp-claude-1000--home-user-projects-personal-92757a3d-04cd-4927-8177-c75bc52051b4-scratchpad-proj1/3dffa0a7-736b-46c3-ab3e-ea895fdf359e.jsonl"
+    "transcript_path": "/home/user/.claude-3/projects/-tmp-example-proj1/3dffa0a7-736b-46c3-ab3e-ea895fdf359e.jsonl"
   }
 }

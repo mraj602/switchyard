@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -104,5 +105,32 @@ func TestMoveTreeKeepsModesAndLinks(t *testing.T) {
 func TestUndoNothingAndAlreadyUndone(t *testing.T) {
 	if _, err := backup.Undo(t.Context(), t.TempDir(), "", backup.Deps{}, backup.Options{}); err != backup.ErrNothingToUndo {
 		t.Fatal(err)
+	}
+}
+
+func TestAbsStaysInsideSet(t *testing.T) {
+	s, err := backup.Create(t.TempDir(), backup.Header{}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range []string{"../../../etc/passwd", "files/../../x", "/abs/path"} {
+		got := s.Abs(rel)
+		r, err := filepath.Rel(s.Dir, got)
+		if err != nil || r == ".." || strings.HasPrefix(r, ".."+string(filepath.Separator)) || filepath.IsAbs(r) {
+			t.Errorf("Abs(%q) = %q leaves the set", rel, got)
+		}
+	}
+	if got, want := s.Abs("files/000001"), filepath.Join(s.Dir, "files", "000001"); got != want {
+		t.Errorf("Abs = %q, want %q", got, want)
+	}
+}
+
+func TestPointerInArrayIndexIsStrict(t *testing.T) {
+	doc := []byte(`{"a":[10,20]}`)
+	for ptr, want := range map[string]bool{"/a/1": true, "/a/1x": false, "/a/+1": false, "/a/-1": false, "/a/2": false} {
+		_, ok, err := backup.PointerIn(doc, ptr)
+		if err != nil || ok != want {
+			t.Errorf("%s: present=%v err=%v, want present=%v", ptr, ok, err, want)
+		}
 	}
 }

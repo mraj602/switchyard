@@ -1,11 +1,10 @@
-// Package termctl is the terminal control side of phase 7 (docs/spec/terminal.md T6, T7):
+// Package termctl is the terminal control side of the board and Warp (docs/spec/terminal.md T6, T7):
 // tab titles as Claude Code `terminalSequence` hook output, the focus-URL allow-list, and
 // the OS opener that brings a Warp tab forward. It never types into a terminal and never
 // runs a shell: the opener gets an argv.
 //
-// Phase 7. Wave 0 holds the Opener interface; WP-F owns the rest of this package (title
-// format, allow-list, opener_<os>.go, the fakeopen seam). Folders and environment come from
-// termenv.Env (internal/termenv/lint_test.go).
+// The title format, allow-list, opener_<os>.go and the fakeopen seam live here. Folders and
+// environment come from termenv.Env (internal/termenv/lint_test.go).
 //
 // Depends on: termenv.
 package termctl

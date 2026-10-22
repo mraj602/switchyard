@@ -1,7 +1,7 @@
 # Identity: machines, slots, seats
 
-Status: spec v1, phase 0. Implemented in `internal/identity` (client) and the hub's ingest
-(phase 1 and 2). Plan section 5 explains why; this file says exactly how.
+Status: spec v1. Implemented in `internal/identity` (client) and the hub's ingest
+. This file says exactly how identity is derived.
 
 Rule: **an account is a Claude login, never a position.** Folders, tabs and machines are
 joined by the login they carry at a point in time.
@@ -35,7 +35,7 @@ joined by the login they carry at a point in time.
   by cloned VMs and containers, and are personal data. A random id moves with the state
   folder, which is what we want (`sy hub export` / reinstall keep it; a fresh state folder is
   a new machine).
-- WSL has its own state folder, so it is its own machine (plan section 4).
+- WSL has its own state folder, so it is its own machine.
 - `sy machine rename <name>` changes `name` and sends a `slot_info` and a `machine_info`
   carrying the new `name` (record.md 4.8), so the hub follows with the next flush.
 - The hub creates the `machine` row on the first accepted record (or at
@@ -116,7 +116,7 @@ for those names) and a test records every open to prove it.
 under `daemon/`, and never runs `claude` with arguments other than `auth status --json`,
 `agents --json` and `--version`.
 
-Peers (PE1) adds one allowance: `sy agent` and `sy peers` read each slot's session registry
+Peers adds one allowance: `sy agent` and `sy peers` read each slot's session registry
 files `<config>/sessions/<digits>.json` (pid, session id, cwd, socket path, name, status;
 [peers.md](peers.md) 3.1). The file-system layer allows exactly that name pattern in
 `sessions/` and still returns `ErrForbidden` for `sessions/*.key` and anything else there.
@@ -125,7 +125,7 @@ files `<config>/sessions/<digits>.json` (pid, session id, cwd, socket path, name
 
 1. **Seat.** On a record with `seat.account` and `seat.org`: upsert `account` and `org`,
    upsert `seat` on `(account_uuid, org_uuid)`. Two different account uuids are never
-   merged, even with the same email (plan section 5 rule 6).
+   merged, even with the same email.
    **Stray free seat.** A seat whose org plan is `free` is listed as hidden (like `seat.hidden`,
    in the board, the phone, widgets and alert names; `include_hidden` still returns it with
    `hidden: true`) while all of these hold: it has no label, no `slot_login` ever named it, and
@@ -141,7 +141,7 @@ files `<config>/sessions/<digits>.json` (pid, session id, cwd, socket path, name
    - Late records (`ts` older than the open period's `since_at`) do not open or close
      periods; they are attributed by looking up the period that contains their `ts`.
 3. **Session.** A session takes the seat of the first record for it that names a seat, and
-   keeps it for life, even if the folder is re-logged later (plan rule 2). Its slot and
+   keeps it for life, even if the folder is re-logged later. Its slot and
    machine are those of its first record.
 4. **Token rows** take the seat of their session. Rows whose session has no seat are
    attributed later, when a hook event for that session arrives, or by the history

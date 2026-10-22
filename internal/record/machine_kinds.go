@@ -8,14 +8,14 @@ import (
 	"time"
 )
 
-// Phase 5 record kinds (record.md 4.8, 4.9; machines.md 5.5, 6.3).
+// Record kinds of machine_info and direct_push (record.md 4.8, 4.9; machines.md 5.5, 6.3).
 const (
 	KindMachineInfo = "machine_info"
 	KindDirectPush  = "direct_push"
 )
 
 // MaxVersion is the highest record `v` this package writes and the hub's parsers read
-// (machines.md 7.1, 7.2). All kinds are v1 in phase 5. A client never sends a record above
+// (machines.md 7.1, 7.2). All kinds are v1. A client never sends a record above
 // the hub's own record_v_max; a hub reads every older v forever.
 const MaxVersion = 1
 

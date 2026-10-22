@@ -1,7 +1,7 @@
 {
   "session_id": "4dc3c7db-b0ee-4cbb-8223-ff62cfa0b22d",
-  "transcript_path": "/home/user/.claude-3/projects/-tmp-claude-1000--home-user-projects-personal-92757a3d-04cd-4927-8177-c75bc52051b4-scratchpad-proj1/4dc3c7db-b0ee-4cbb-8223-ff62cfa0b22d.jsonl",
-  "cwd": "/tmp/claude-1000/-home-user-projects-personal/92757a3d-04cd-4927-8177-c75bc52051b4/scratchpad/proj1",
+  "transcript_path": "/home/user/.claude-3/projects/-tmp-example-proj1/4dc3c7db-b0ee-4cbb-8223-ff62cfa0b22d.jsonl",
+  "cwd": "/tmp/example/proj1",
   "prompt_id": "d9794691-e894-4b82-80d6-84537b698896",
   "effort": {
     "level": "high"

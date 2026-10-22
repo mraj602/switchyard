@@ -625,7 +625,7 @@ func CleanupOld(exe, goos string) {
 
 // PostStep is one thing the new binary does after an update (machines.md 7.3 step 7): refresh
 // the plugin marketplace, rewrite the timer and hub service units, restart the hub service,
-// send machine_info. WP-E registers the real ones from cmd/sy with RegisterPostUpdate; this
+// send machine_info. cmd/sy registers the real ones with RegisterPostUpdate; this
 // package never imports them.
 type PostStep struct {
 	Name string

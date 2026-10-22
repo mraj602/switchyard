@@ -1,6 +1,6 @@
 # Tokens and devices
 
-Status: spec v1, phase 0. Implemented in `internal/hub/auth` (phase 2). Pairing is phase 4.
+Status: spec v1. Implemented in `internal/hub/auth`. Pairing is in pairing.md.
 
 Every device that talks to the hub has its own token. The hub stores only a hash. A token is
 revoked on its own, without touching any other device.
@@ -14,7 +14,7 @@ sy_<k>_<43 base62 characters>
 | Part | Meaning |
 | --- | --- |
 | `sy_` | Fixed prefix, so secret scanners and `grep` can find leaked tokens. |
-| `<k>` | One letter for the device kind: `m` machine, `d` desktop, `p` phone, `b` browser, `o` owner session (phase 4). |
+| `<k>` | One letter for the device kind: `m` machine, `d` desktop, `p` phone, `b` browser, `o` owner session. |
 | `_` | Separator. |
 | 43 base62 characters | 32 random bytes from the OS cryptographic source, encoded big-endian in base62 (`0-9A-Za-z`), left-padded with `0` to 43 characters. |
 
@@ -36,7 +36,7 @@ come from the `device` row.
   plain hash (refused for the owner scope) or needs the pepper. Owner sessions made before this
   rule are revoked by migration 7.
 - No salt or slow hash: the token has 256 bits of entropy, so a stolen hash cannot be
-  brute-forced. (A slow hash is used only for the owner password, phase 4.)
+  brute-forced. (A slow hash is used only for the owner password.)
 - Comparison is done by looking up the hash, so no timing-sensitive string compare is
   needed.
 - `device.token_hint` = kind prefix + `…` + last 4 characters (`sy_m_…k3Qz`), for lists.
@@ -54,7 +54,7 @@ commands, environment variables of Claude Code, or records.
 | desktop | `sy_d_` | `write`, `read` | Ingest for its own machine id (web usage); every read endpoint and `/v1/stream`. |
 | phone | `sy_p_` | `read`, `push` | Every read endpoint and `/v1/stream`; register push targets; snooze/seen alerts. |
 | browser | `sy_b_` | `read`, `push` | As phone; for the installed web app on a computer. |
-| owner session | `sy_o_` | `owner`, `read`, `push` | Everything, including devices, rules and pairing codes. Phase 4: a `browser` device from `sy hub owner-link`, 30 days, cookie only (pairing.md 4). |
+| owner session | `sy_o_` | `owner`, `read`, `push` | Everything, including devices, rules and pairing codes. A `browser` device from `sy hub owner-link`, 30 days, cookie only (pairing.md 4). |
 
 Scope checks per endpoint are in [api.yaml](api.yaml) (`x-scopes`). A request whose token is
 unknown or revoked gets `401`; a valid token without the scope gets `403`. Both bodies are
@@ -64,8 +64,8 @@ exists.
 `machine` and `desktop` devices are bound to one machine id (`device.machine_id`). Ingest
 rejects records whose envelope `machine` differs (`machine_mismatch`).
 
-Pulling over SSH (plan section 8 option 3) needs **no `relay` scope** (phase 5 decision,
-[machines.md](machines.md) 3.4): the hub itself runs the pull and ingests in-process, as a
+Pulling over SSH (pull mode) needs **no `relay` scope**
+(see [machines.md](machines.md) 3.4): the hub itself runs the pull and ingests in-process, as a
 **pull device** (`kind = machine`, bound to the pulled machine, `created_by = pull:<target>`)
 whose token is generated, hashed and discarded. No token can relay records for another
 machine, and the remote holds no token at all.
@@ -73,7 +73,7 @@ machine, and the remote holds no token at all.
 `device.last_used_at` is updated at most once a minute per device, to avoid a write per
 request.
 
-## 4. CLI (phase 2)
+## 4. CLI
 
 All run on the hub machine, against its database directly (no HTTP), so they work before
 any token exists.
@@ -97,19 +97,19 @@ sy hub token revoke <device id | token hint | name> [--yes]
 On a client:
 
 ```
-sy connect <hub url> --token <token>     # phase 2: paste a token made by `sy hub token create`
-sy connect <hub url> --code 482-913      # phase 4: claim a pairing code instead
-sy connect <hub url> --code-stdin        # phase 5: code or pairing secret on stdin (machines.md 4.2)
-sy connect <new hub url> --keep-token    # phase 5: after a hub move, keep the token (machines.md 8.3)
+sy connect <hub url> --token <token>     # paste a token made by `sy hub token create`
+sy connect <hub url> --code 482-913      # claim a pairing code instead
+sy connect <hub url> --code-stdin        # code or pairing secret on stdin (machines.md 4.2)
+sy connect <new hub url> --keep-token    # after a hub move, keep the token (machines.md 8.3)
 ```
 
 `sy connect` checks the URL (HTTPS required unless the host is loopback, or
 `--insecure-lan`), calls `GET /health`, then sends one `slot_info` per slot to prove the
 token works, and writes `<state>/token` and `hub.url` in `config.toml`.
 
-In merged mode `sy setup` (phase 3) creates the local machine's device itself.
+In merged mode `sy setup` creates the local machine's device itself.
 
-## 5. Pairing codes and owner sessions (phase 4)
+## 5. Pairing codes and owner sessions
 
 Superseded by [pairing.md](pairing.md): codes are 6 digits plus a 128-bit QR secret, hashed
 with a pepper kept outside the database, valid 10 minutes, single use, at most 5 live;

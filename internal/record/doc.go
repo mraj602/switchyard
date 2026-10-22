@@ -5,5 +5,5 @@
 // Contract: docs/spec/record.md. Types must keep unknown fields (raw JSON overflow) so
 // that every record round-trips without losing a field.
 //
-// Phase 1. Depends on: nothing inside the module.
+// Depends on: nothing inside the module.
 package record

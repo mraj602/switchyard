@@ -45,7 +45,7 @@ type Entry struct {
 	Phase  string      `json:"phase"`
 	Paths  []PathEntry `json:"paths"`
 	// Name is the service name of a `service` entry, or "timer" on a `connect` entry that
-	// installed the flush timer: what undo stops (7.3). Added by WP-B; absent for other ops.
+	// installed the flush timer: what undo stops (7.3). Absent for other ops.
 	Name string `json:"name,omitempty"`
 	// Created lists paths that did not exist before, deepest first (for `run` actions, found
 	// by diffing the watched folders). Always present (may be empty).
@@ -96,7 +96,7 @@ type Ledger struct {
 	HubService       *LedgerService             `json:"hub_service,omitempty"`
 	Timer            bool                       `json:"timer,omitempty"`
 	PrototypeRemoved []LedgerPrototypeHook      `json:"prototype_removed,omitempty"`
-	Terminal         *LedgerTerminal            `json:"terminal,omitempty"` // phase 7 (terminal.md T10)
+	Terminal         *LedgerTerminal            `json:"terminal,omitempty"` // terminal.md T10
 	Extra            map[string]json.RawMessage `json:"extra,omitempty"`    // forward-compatible slot
 }
 

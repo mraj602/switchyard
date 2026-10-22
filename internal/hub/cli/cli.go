@@ -1,9 +1,6 @@
 // Package cli implements `sy hub …`: serve, pair, owner-link, token create|list|revoke,
 // backup, prune and import-prototype, and `sy phone pair`. cmd/sy only routes here.
 //
-// Phase 2; phase 4 adds pair, owner-link and the alert engine and push senders in serve;
-// phase 5 adds pull, export, import, unfreeze and machine, and the pull scheduler in serve;
-// N1 adds the link sender and the widget refresher in serve.
 // Depends on: paths, hub/store, hub/auth, hub/api, hub/ingest, hub/pair, hub/pull,
 // hub/push/{clock,engine,model,webpush,ntfy,link,refresh}, hub/store/importproto, webui.
 package cli
@@ -75,14 +72,14 @@ Commands:
   backup             Write a consistent copy of the database (--to file)
   refold             Rebuild every session's state and times from the stored records [--dry-run]
   prune              Delete raw records and fine-grained rows older than --older-than 90d / --before DATE
-  import-prototype   Import the prototype's usage.db (a copy) into the hub database
+  import-prototype   Import usage.db (a copy) from the earlier Electron prototype into the hub database
   pull               Pull servers over SSH: add|list|run|trust|enable|disable|remove|key
   export / import    Move the hub: freeze and pack it / unpack it into an empty hub
   unfreeze           Call off a move: the hub accepts records again
   machine show ID    One machine's hub-side state, for sy machine add
-  keys show          The hub key, the owner key and pending proposals (F1)
-  keys confirm-owner FP  Activate a pending owner key proposal (F1)
-  keys register / certify  A machine's link keys over SSH, for sy machine add (F1)
+  keys show          The hub key, the owner key and pending proposals
+  keys confirm-owner FP  Activate a pending owner key proposal
+  keys register / certify  A machine's link keys over SSH, for sy machine add
 
 Every command takes --db <file> (default <data>/hub.db, see sy paths).
 sy hub pair --help and sy hub owner-link --help show their flags.
@@ -860,7 +857,7 @@ func importPrototype(args []string, stdout, stderr io.Writer) error {
 	asJSON := fs.Bool("json", false, "print the report as JSON")
 	pos, err := parse(fs, args)
 	if err != nil || len(pos) != 1 {
-		fmt.Fprintln(stderr, "usage: sy hub import-prototype <copy of usage.db> [--db hub.db] [--machine m_…]")
+		fmt.Fprintln(stderr, "usage: sy hub import-prototype <copy of the prototype's usage.db> [--db hub.db] [--machine m_…]")
 		return ErrUsage
 	}
 	ctx := context.Background()

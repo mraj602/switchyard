@@ -5,8 +5,6 @@ package plan
 // the same plan_id rule. The command layer reads the few facts detect does not know into
 // TermFacts (the value of the title env key, config terminal.titles, whether sy's
 // marketplace is current, Warp's folders and the tab configs in them, jq).
-//
-// Phase 7, WP-E.
 
 import (
 	"crypto/sha256"

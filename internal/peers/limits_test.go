@@ -8,7 +8,7 @@ import (
 )
 
 func TestCleanText(t *testing.T) {
-	in := "a\r\nb\x00c\x1bd\u0085e‮f​g⁦h\ti\nj\r"
+	in := "a\r\nb\x00c\x1bd\u0085e\u202ef\u200bg\u2066h\ti\nj\r"
 	if got, want := CleanText(in), "a\nbcdefgh\ti\nj"; got != want {
 		t.Errorf("got %q want %q", got, want)
 	}
@@ -22,7 +22,7 @@ func TestCheckText(t *testing.T) {
 	}{
 		{"ok", "hello there", ""},
 		{"empty", "  \n\t ", CodeNotText},
-		{"only controls", "\x00\x01​", CodeNotText},
+		{"only controls", "\x00\x01\u200b", CodeNotText},
 		{"not utf8", "a\xff\xfeb", CodeNotText},
 		{"exactly 64k", strings.Repeat("a", MaxTextBytes), ""},
 		{"over 64k", strings.Repeat("a", MaxTextBytes+1), CodeTooBig},

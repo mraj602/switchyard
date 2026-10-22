@@ -1,8 +1,6 @@
 // Package plugin embeds the Claude Code plugins in plugin/ so `sy` can write them into its
 // own local marketplace (setup.md 5.2): switchyard (hooks.json, plugin.json and the skills)
-// and, from phase 7, switchyard-pane (the opt-in pane mod, docs/spec/terminal.md T5).
-//
-// Phase 3 (pane: phase 7). Depends on: nothing.
+// and, optionally, switchyard-pane (the opt-in pane mod, docs/spec/terminal.md T5).
 package plugin
 
 import (

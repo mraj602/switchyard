@@ -4,12 +4,12 @@
 // pipeline (4.2), the evaluation of the signed matrix (5.3) and the envelopes of messages to
 // other machines (8.2, 8.4). The link itself is reached through Remote.
 //
-// Everything about Claude Code's inbox that the spec marks uncertain (the wrapper bytes and
+// Everything about Claude Code's inbox that Claude Code does not document (the wrapper bytes and
 // escaping, the gate, the registry's procStart, process names) lives in a few clearly named
-// constants and functions (wrapper.go, inbox.go, proc.go, registry.go) so the PE0 lab
+// constants and functions (wrapper.go, inbox.go, proc.go, registry.go) so the lab checks
 // (peers.md 13) can adjust them in one place.
 //
 // Linux first; macOS where the spec says; Windows returns ErrUnsupported (peers.md 2.1).
 //
-// Phase PE1-PE2. Depends on: identity, atomicfile, keys, link.
+// Depends on: identity, atomicfile, keys, link.
 package peers

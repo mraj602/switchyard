@@ -2,7 +2,7 @@
 // `sy statusline`) needs before it writes a record: the folders, the config, the machine,
 // the current slot and its cached login. It never runs `claude`.
 //
-// Phase 1. Depends on: paths, config, identity, record, version.
+// Depends on: paths, config, identity, record, version.
 package clientenv
 
 import (

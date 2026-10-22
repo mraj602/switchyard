@@ -1,5 +1,5 @@
 #!/bin/sh
-# Setup E2E runner (docs/phases/3.md WP-E / WP-G).
+# Setup E2E runner (docs/spec/setup.md).
 #
 #   run.sh <fedora|ubuntu> [podman|docker] [-s PATTERN]   scenarios in a container
 #   run.sh --native [-s PATTERN]                          same scenarios on this machine

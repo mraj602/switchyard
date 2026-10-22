@@ -2,6 +2,7 @@ package peers
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -101,8 +102,12 @@ func LastDelivery(state, session string) time.Time {
 }
 
 // MarkDelivered records that a message was just written into a session's inbox (peers.md
-// 2.4's fallback). It only touches the file's time.
+// 2.4's fallback). It only touches the file's time. The session id comes from a registry
+// file, so one that is not a safe file name is refused.
 func MarkDelivered(state, session string, now time.Time) error {
+	if !safeID.MatchString(session) {
+		return fmt.Errorf("session id %q is not a safe file name", session)
+	}
 	p := DeliveredPath(state, session)
 	if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
 		return err

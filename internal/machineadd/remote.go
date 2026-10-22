@@ -106,6 +106,9 @@ type pushed struct {
 // must be what the new file prints for `version --short`; the caller warns that the hash
 // was not checked remotely.
 func (r remote) push(ctx context.Context, local, kind, name, wantVersion string) (pushed, error) {
+	if err := sshx.CheckWord(name); err != nil || strings.Contains(name, "/") || strings.HasPrefix(name, ".") {
+		return pushed{}, fmt.Errorf("bad remote file name %q", name)
+	}
 	sum, err := fileSHA256(local)
 	if err != nil {
 		return pushed{}, err

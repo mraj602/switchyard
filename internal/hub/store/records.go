@@ -26,7 +26,7 @@ func (tx *Tx) InsertRecord(r RawRecord) (inserted bool, firstDevice string, err 
 }
 
 // InsertRecordOwned is InsertRecord that also returns the machine the stored row belongs to
-// when the id was already there, for the phase 5 same-machine duplicate rule (record.md 3.1).
+// when the id was already there, for the same-machine duplicate rule (record.md 3.1).
 func (tx *Tx) InsertRecordOwned(r RawRecord) (inserted bool, firstDevice, firstMachine string, err error) {
 	res, err := tx.exec(`INSERT INTO record (id, device_id, machine_id, kind, v, ts, received_at, slot, body)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING`,

@@ -1,7 +1,7 @@
 # Analytics
 
 Status: spec v1. The prototype's analytics (`core/analytics.js`, the desktop Analytics tab)
-moved to the hub (plan S5). Implemented in `internal/hub/api/analytics.go` and
+moved to the hub. Implemented in `internal/hub/api/analytics.go` and
 `internal/hub/store/analytics.go`; shown by the web board (`webui/static/views/analytics.js`,
 `#/more/analytics`) and the phone app (More, Analytics). The shapes are in
 [api.yaml](api.yaml) (`GET /v1/analytics/{report}`, scope `read`).

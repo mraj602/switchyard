@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"math/big"
 	"os"
 	"path/filepath"
 	"sort"
@@ -250,12 +249,13 @@ func vecPath(name string) string { return filepath.Join("testdata", name+".json"
 
 // signP256 makes the phone's ECDSA hello signature with the RFC 8291 ua_private scalar.
 func signP256(t *testing.T, in []byte) []byte {
-	d := new(big.Int).SetBytes(ub(t, rfcUAPrivate))
-	pub, err := ecdsa.ParseUncompressedPublicKey(elliptic.P256(), ub(t, rfcUAPublic))
+	k, err := ecdsa.ParseRawPrivateKey(elliptic.P256(), ub(t, rfcUAPrivate))
 	if err != nil {
 		t.Fatal(err)
 	}
-	k := &ecdsa.PrivateKey{PublicKey: *pub, D: d}
+	if pub, err := k.PublicKey.Bytes(); err != nil || !bytes.Equal(pub, ub(t, rfcUAPublic)) {
+		t.Fatal("ua_private does not match ua_public")
+	}
 	h := sha256.Sum256(in)
 	sig, err := ecdsa.SignASN1(rand.Reader, k, h[:])
 	if err != nil {

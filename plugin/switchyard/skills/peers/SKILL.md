@@ -22,7 +22,7 @@ one line. Switchyard only relays what the user's matrix allows; you never decide
    input, in a quoted heredoc so the shell never expands it:
 
    ```
-   sy peers send api-worker@work.worker --stdin <<'EOF'
+   sy peers send api@work.gpu-box --stdin <<'EOF'
    Please run the migration tests on branch fix/billing and tell me which ones fail.
    EOF
    ```

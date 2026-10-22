@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// drainproto is a leaf both sides import (docs/phases/5.md, ARCHITECTURE.md): no import of
+// drainproto is a leaf both sides import (ARCHITECTURE.md): no import of
 // anything under internal/ or the module, test files included.
 func TestPackageIsALeaf(t *testing.T) {
 	files, err := filepath.Glob("*.go")

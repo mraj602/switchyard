@@ -18,7 +18,7 @@ const (
 	lastMessageEllipse = "…"
 )
 
-// HookOptions are the privacy switches of plan section 13.
+// HookOptions are the privacy switches (docs/spec/record.md 4.1).
 type HookOptions struct {
 	// LastMessages allows derived.last_message and derived.question (the tail of the last
 	// assistant message and AskUserQuestion's first question).

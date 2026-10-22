@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// UI audit G9: a hub run as a systemd user service has no $TZ; its zone must still be the
+// A hub run as a systemd user service has no $TZ; its zone must still be the
 // machine's (from /etc/localtime), not UTC.
 func TestSystemZone(t *testing.T) {
 	links := map[string]string{

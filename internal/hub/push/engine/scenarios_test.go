@@ -292,7 +292,7 @@ func TestRow17FailureBypassesQuiet(t *testing.T) {
 func TestRow18DeviceQuietWithoutCritical(t *testing.T) {
 	h := newHarness(t, withSweep(time.Hour))
 	quietHub(h)
-	silent := h.addTarget(h.addDevice("Pixel", `{"quiet_hours": {"enabled": true, "start": "22:00", "end": "07:00", "tz": "UTC", "critical": false}}`),
+	silent := h.addTarget(h.addDevice("Phone", `{"quiet_hours": {"enabled": true, "start": "22:00", "end": "07:00", "tz": "UTC", "critical": false}}`),
 		model.KindWebPush, "")
 	h.advanceTo(at0100)
 	h.failure(s1, "billing_error", at0100)
@@ -395,7 +395,7 @@ func TestRow22ActionTokenReplay(t *testing.T) {
 		t.Fatal(seenBy)
 	}
 	// Tampered and expired tokens.
-	if _, _, err := h.eng.Act(h.ctx, tok.Seen[:len(tok.Seen)-2]+"AA"); err != model.ErrBadMAC {
+	if _, _, err := h.eng.Act(h.ctx, tamperToken(tok.Seen)); err != model.ErrBadMAC {
 		t.Fatal(err)
 	}
 	if _, _, err := h.eng.Act(h.ctx, "a1.!!"); err != model.ErrBadToken {
@@ -449,7 +449,7 @@ func TestRow24FloodCap(t *testing.T) {
 
 func TestRow25MutedTrigger(t *testing.T) {
 	h := newHarness(t)
-	other := h.addTarget(h.addDevice("Pixel", `{"mute": ["limit_80"]}`), model.KindWebPush, "")
+	other := h.addTarget(h.addDevice("Phone", `{"mute": ["limit_80"]}`), model.KindWebPush, "")
 	h.sample("", 0, 85, at(4*time.Hour), -1, time.Time{})
 	if len(h.wp.to(h.target)) != 1 || len(h.wp.to(other)) != 0 {
 		t.Fatalf("%+v", h.wp.sends())
@@ -740,22 +740,22 @@ func TestAlertStreamEvents(t *testing.T) {
 }
 
 // push.md 5.5: titles use the board's account name. Two accounts whose emails share a local
-// part each get their domain ("alex · gmail"), as on the board; a label wins.
+// part each get their domain ("alex · example"), as on the board; a label wins.
 func TestTitleUsesTheBoardsAccountName(t *testing.T) {
 	h := newHarness(t)
-	h.hookOn(sid(2), "alex@acme.dev", "UserPromptSubmit", 0, map[string]any{"prompt": "go"})
-	h.hookOn(s1, "alex@gmail.com", "PermissionRequest", 0, map[string]any{"tool_name": "Bash"})
+	h.hookOn(sid(2), "alex@acme.example", "UserPromptSubmit", 0, map[string]any{"prompt": "go"})
+	h.hookOn(s1, "alex@example.com", "PermissionRequest", 0, map[string]any{"tool_name": "Bash"})
 	h.advanceTo(30 * time.Second)
-	if got := h.expectSends(1); got[0].Msg.Payload.Title != "alex · gmail · api · needs permission" {
+	if got := h.expectSends(1); got[0].Msg.Payload.Title != "alex · example · api · needs permission" {
 		t.Fatalf("title %q", got[0].Msg.Payload.Title)
 	}
-	h.exec(`UPDATE seat SET label = 'home' WHERE account_uuid = 'acc-alex@gmail.com'`)
-	h.hookOn(sid(2), "alex@acme.dev", "Stop", 31*time.Second, map[string]any{"last_assistant_message": "Hi.\n\nShip it?"})
+	h.exec(`UPDATE seat SET label = 'home' WHERE account_uuid = 'acc-alex@example.com'`)
+	h.hookOn(sid(2), "alex@acme.example", "Stop", 31*time.Second, map[string]any{"last_assistant_message": "Hi.\n\nShip it?"})
 	h.advanceTo(91 * time.Second)
 	if got := h.expectSends(2); got[1].Msg.Payload.Title != "alex · api · asked a question" {
 		t.Fatalf("title %q", got[1].Msg.Payload.Title)
 	}
-	h.hookOn(sid(3), "alex@gmail.com", "PermissionRequest", 100*time.Second, map[string]any{"tool_name": "Bash"})
+	h.hookOn(sid(3), "alex@example.com", "PermissionRequest", 100*time.Second, map[string]any{"tool_name": "Bash"})
 	h.advanceTo(130 * time.Second)
 	if got := h.expectSends(3); got[2].Msg.Payload.Title != "home · api · needs permission" {
 		t.Fatalf("title %q", got[2].Msg.Payload.Title)

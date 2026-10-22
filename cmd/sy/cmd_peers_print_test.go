@@ -47,15 +47,15 @@ func TestPeersListPrintBlocked(t *testing.T) {
 	var out bytes.Buffer
 	err := printPeerList(&out, []peerspkg.ListEntry{
 		{Handle: "api@work.laptop", AccountLabel: "work", Project: "~/src/api", State: "idle", Can: "start", MayAsk: true},
-		{Handle: "w@personal.worker", AccountLabel: "personal", Project: "w", State: "done", Can: "start", Blocked: peerspkg.BlockedNoOwnerPin},
-		{Handle: "x@personal.worker", AccountLabel: "personal", Project: "x", State: "done", Can: "start", Blocked: "worker's link keys are not owner-certified"},
+		{Handle: "w@personal.gpu-box", AccountLabel: "personal", Project: "w", State: "done", Can: "start", Blocked: peerspkg.BlockedNoOwnerPin},
+		{Handle: "x@personal.gpu-box", AccountLabel: "personal", Project: "x", State: "done", Can: "start", Blocked: "gpu-box's link keys are not owner-certified"},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	s := out.String()
 	for _, want := range []string{"start (may ask for approval)", "start (blocked: " + peerspkg.BlockedNoOwnerPin + ")",
-		"start (blocked: worker's link keys are not owner-certified)", "sy keys certify --all"} {
+		"start (blocked: gpu-box's link keys are not owner-certified)", "sy keys certify --all"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("table lacks %q:\n%s", want, s)
 		}
@@ -64,7 +64,7 @@ func TestPeersListPrintBlocked(t *testing.T) {
 		t.Errorf("the fix is printed more than once:\n%s", s)
 	}
 	out.Reset()
-	_ = printPeerList(&out, []peerspkg.ListEntry{{Handle: "y@p.worker", Can: "start", Blocked: "worker is revoked"}})
+	_ = printPeerList(&out, []peerspkg.ListEntry{{Handle: "y@p.gpu-box", Can: "start", Blocked: "gpu-box is revoked"}})
 	if strings.Contains(out.String(), "sy keys certify") {
 		t.Errorf("a revoked machine is not fixed by certifying:\n%s", out.String())
 	}

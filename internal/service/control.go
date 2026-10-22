@@ -9,7 +9,7 @@ import (
 	"github.com/mraj602/switchyard/internal/setup/model"
 )
 
-// Start and Stop (phase 6, `sy desktop hub start|stop`, desktop.md C4) start or stop the hub
+// Start and Stop (`sy desktop hub start|stop`, desktop.md C4) start or stop the hub
 // service that Install made, without touching its unit file. They use the same Runner as
 // Install, so tests record the commands and nothing real runs.
 

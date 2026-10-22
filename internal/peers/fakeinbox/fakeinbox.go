@@ -6,7 +6,7 @@
 // tag, and scripts/ci/check-release-seams.sh proves a release binary has none of it.
 //
 // The gate is what the spec says (and what Claude Code 2.1.300 shows in its program), with
-// every **uncertain** rule in one function (Gate) for the PE0 lab to adjust.
+// every undocumented rule in one function (Gate) for the lab checks (peers.md 13) to adjust.
 package fakeinbox
 
 import (
@@ -79,7 +79,7 @@ const (
 // the limits and the duplicate check come next; then own child and the setting; then, with
 // the default setting, the from-mode of a canonical wrapper must equal the receiver's class
 // (a mismatch is held, and so is a missing mode in a bypass receiver; a plain frame to a
-// prompting receiver is admitted, lab E1, E2). **Uncertain** (E3, E4, E5, E6).
+// prompting receiver is admitted, lab E1, E2). Inferred from the program, not documented (E3, E4, E5, E6).
 func Gate(c Config, f peers.Frame, w peers.Wrapper, canon, child bool) (Outcome, string) {
 	if f.Type != "user" {
 		return Drop, "not_user"

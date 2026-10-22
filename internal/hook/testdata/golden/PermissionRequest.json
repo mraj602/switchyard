@@ -26,7 +26,7 @@
     "permission_suggestions": 1
   },
   "payload": {
-    "cwd": "/tmp/claude-1000/-home-user-projects-personal/92757a3d-04cd-4927-8177-c75bc52051b4/scratchpad/proj1",
+    "cwd": "/tmp/example/proj1",
     "effort": {
       "level": "medium"
     },
@@ -35,6 +35,6 @@
     "prompt_id": "e271b5c4-86f5-4d79-8783-9faff581bc4b",
     "session_id": "bb81f75b-539e-4b70-9844-930596952647",
     "tool_name": "Bash",
-    "transcript_path": "/home/user/.claude-3/projects/-tmp-claude-1000--home-user-projects-personal-92757a3d-04cd-4927-8177-c75bc52051b4-scratchpad-proj1/bb81f75b-539e-4b70-9844-930596952647.jsonl"
+    "transcript_path": "/home/user/.claude-3/projects/-tmp-example-proj1/bb81f75b-539e-4b70-9844-930596952647.jsonl"
   }
 }

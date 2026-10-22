@@ -2,7 +2,7 @@
 // them with a timestamp file. `sy hook` uses it to start `sy flush` and the login refresh
 // without ever waiting for them.
 //
-// Phase 1. Depends on: nothing inside the module.
+// Depends on: nothing inside the module.
 package detach
 
 import (

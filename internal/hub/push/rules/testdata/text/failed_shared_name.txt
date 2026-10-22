@@ -1,4 +1,4 @@
-title: alex · gmail · etl · rate limited
+title: alex · example · etl · rate limited
 body: gpu-box
 url: /#/sessions/sess-1?alert=al_1
 tag: sy-s-sess-1

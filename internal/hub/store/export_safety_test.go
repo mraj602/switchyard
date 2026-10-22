@@ -12,7 +12,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/hublock"
 )
 
-// Review finding 1: the plaintext snapshot never lands next to --out.
+// The plaintext snapshot never lands next to --out.
 func TestExportSnapshotIsPrivateInDataDir(t *testing.T) {
 	ctx := context.Background()
 	dataDir := t.TempDir()
@@ -47,7 +47,7 @@ func TestExportSnapshotIsPrivateInDataDir(t *testing.T) {
 	}
 }
 
-// Review finding 4: a missing pair_pepper fails the export (and unfreezes again).
+// A missing pair_pepper fails the export (and unfreezes again).
 func TestExportFailsWithoutPepperAndUnfreezes(t *testing.T) {
 	ctx := context.Background()
 	s := openTest(t, t.TempDir())
@@ -61,7 +61,7 @@ func TestExportFailsWithoutPepperAndUnfreezes(t *testing.T) {
 	}
 }
 
-// Review finding 2: a cancelled export (Ctrl-C) unfreezes the hub it froze and leaves no snapshot.
+// A cancelled export (Ctrl-C) unfreezes the hub it froze and leaves no snapshot.
 func TestExportCancelledUnfreezesAndCleansUp(t *testing.T) {
 	data := t.TempDir()
 	s := openTest(t, data)
@@ -81,7 +81,7 @@ func TestExportCancelledUnfreezesAndCleansUp(t *testing.T) {
 	}
 }
 
-// Review finding 4: the pull key comes from PullDir, not <state>/pull.
+// The pull key comes from PullDir, not <state>/pull.
 func TestExportImportHonourPullDir(t *testing.T) {
 	ctx := context.Background()
 	src := openTest(t, t.TempDir())
@@ -106,7 +106,7 @@ func TestExportImportHonourPullDir(t *testing.T) {
 	}
 }
 
-// Review finding 3: a running `sy hub serve` (hub.lock) stops an import.
+// A running `sy hub serve` (hub.lock) stops an import.
 func TestImportRefusesWhileHubLockHeld(t *testing.T) {
 	ctx := context.Background()
 	src := openTest(t, t.TempDir())
@@ -129,7 +129,7 @@ func TestImportRefusesWhileHubLockHeld(t *testing.T) {
 	}
 }
 
-// Review finding 5: an import that fails while swapping state files leaves the hub as it was.
+// An import that fails while swapping state files leaves the hub as it was.
 func TestImportRollsBackOnFailure(t *testing.T) {
 	ctx := context.Background()
 	src := openTest(t, t.TempDir())
@@ -171,7 +171,7 @@ func TestImportRollsBackOnFailure(t *testing.T) {
 	}
 }
 
-// Review finding 10: while frozen, non-ingest writes are refused with ErrFrozen.
+// While frozen, non-ingest writes are refused with ErrFrozen.
 func TestFrozenRefusesOtherWrites(t *testing.T) {
 	ctx := context.Background()
 	s := openTest(t, t.TempDir())
@@ -206,7 +206,7 @@ func TestFrozenRefusesOtherWrites(t *testing.T) {
 	}
 }
 
-// Review finding 11: a "Pull now" that lands during a run survives the run's own next time.
+// A "Pull now" that lands during a run survives the run's own next time.
 func TestRecordPullRunKeepsPullNowDuringRun(t *testing.T) {
 	ctx := context.Background()
 	s := openTest(t, t.TempDir())

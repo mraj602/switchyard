@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// The C4 examples of desktop.md decode into the wave 0 types and encode back to the same
+// The C4 examples of desktop.md decode into the API types and encode back to the same
 // JSON: every key, no extra ones, nulls kept.
 func TestC4ShapesRoundTrip(t *testing.T) {
 	for name, c := range map[string]struct {

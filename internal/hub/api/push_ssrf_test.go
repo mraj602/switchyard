@@ -10,7 +10,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/push/ntfytest"
 )
 
-// Review phase 4 finding 1: a phone token must not make the hub call internal services.
+// A phone token must not make the hub call internal services.
 func TestPhoneCannotRegisterInternalNtfyServer(t *testing.T) {
 	r := newPushRig(t, true)
 	for _, srv := range []string{r.nt.URL(), "http://127.0.0.1:9", "https://127.0.0.1:9", "https://10.0.0.5", "https://169.254.169.254",

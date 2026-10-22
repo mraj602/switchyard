@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -157,8 +158,8 @@ func PointerIn(doc []byte, pointer string) (json.RawMessage, bool, error) {
 			}
 			var arr []json.RawMessage
 			if json.Unmarshal(cur, &arr) == nil && arr != nil {
-				var i int
-				if _, err := fmt.Sscanf(tok, "%d", &i); err != nil || i < 0 || i >= len(arr) {
+				i, err := strconv.Atoi(tok)
+				if err != nil || tok[0] == '+' || tok[0] == '-' || i >= len(arr) {
 					return nil, false, nil
 				}
 				cur = arr[i]

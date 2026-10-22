@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pane-check.sh: the gate for the Switchyard pane mod (docs/spec/terminal.md T5, phase 7 WP-D).
+# pane-check.sh: the gate for the Switchyard pane mod (docs/spec/terminal.md T5).
 #
 #   scripts/pane-check.sh [mod-dir]     default: plugin/switchyard-pane
 #   scripts/pane-check.sh --self-test   run the checks on scripts/pane-check.d/forbidden and

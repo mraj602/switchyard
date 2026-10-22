@@ -4,7 +4,7 @@
 // quotes; a quote inside C becomes '\”). A command that is already ours is never wrapped
 // again: only the path to sy is updated.
 //
-// Phase 3, WP-A. Depends on: nothing.
+// Depends on: nothing.
 package statuswrap
 
 import (

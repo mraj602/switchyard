@@ -60,9 +60,8 @@ func (f *fixture) ingest(d store.Device, recs ...*record.Record) {
 	}
 }
 
-// G1-G3 of the UI audit: sessions made from transcript history (token_rows) are ended
-// history with their real times and project, not live "done" sessions stamped with the scan
-// time (states.md 5.1).
+// Sessions made from transcript history (token_rows) are ended history sessions with their
+// real times and project, not live "done" sessions stamped with the scan time (states.md 5.1).
 func TestTranscriptSessionsAreHistory(t *testing.T) {
 	f := newFixture(t)
 	m := "m_" + record.NewID(t0)

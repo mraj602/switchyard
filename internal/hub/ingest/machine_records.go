@@ -13,7 +13,7 @@ import (
 	"github.com/mraj602/switchyard/internal/record"
 )
 
-// Phase 5 kinds (record.md 4.8, 4.9; machines.md 5.5, 6.3).
+// machine_info and direct_push records (record.md 4.8, 4.9; machines.md 5.5, 6.3).
 
 // machineInfo copies a machine_info record into the machine row when it is newer than the
 // stored one (only a newer info_at wins).

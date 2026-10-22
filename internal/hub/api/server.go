@@ -35,7 +35,7 @@ type Config struct {
 	// PingEvery is the SSE keep-alive interval; 0 = 25 s (api.yaml).
 	PingEvery time.Duration
 
-	// Engine is the alert engine (phase 4): Notify is called after every ingest batch has
+	// Engine is the alert engine (push.md 10): Notify is called after every ingest batch has
 	// been published. Nil (tests, --no-push) is fine: nothing is called, and the alert
 	// endpoints that need it answer 503.
 	Engine Engine
@@ -45,18 +45,18 @@ type Config struct {
 	// PublicURL is the hub's public origin from `sy hub serve --public-url`; empty falls
 	// back to the hub.public_url setting (pairing.md 2.3).
 	PublicURL string
-	// Puller runs a pull-mode machine's pull now (phase 5). Nil (tests, --no-pull) is fine:
+	// Puller runs a pull-mode machine's pull now (machines.md 6.2). Nil (tests, --no-pull) is fine:
 	// POST /v1/machines/{id}/pull then answers 503.
 	Puller Puller
-	// Keys is the hub's signing key and the key documents (F1, keys.md). Nil: the key
+	// Keys is the hub's signing key and the key documents (keys.md). Nil: the key
 	// endpoints answer 503 and pairing registers no keys.
 	Keys *hubkeys.Service
-	// Link is the device link (F1, link.md). Nil: /v1/link and /v1/link/poll answer 503.
+	// Link is the device link (link.md). Nil: /v1/link and /v1/link/poll answer 503.
 	Link Link
-	// PeerThreads is the peer relay (PE3, peers.md 6.3). Nil: POST
+	// PeerThreads is the peer relay (peers.md 6.3). Nil: POST
 	// /v1/peers/threads/{id}/resume answers 503.
 	PeerThreads PeerThreads
-	// AppMirror is the mirrored Android app release (N2, phone.md P16.2). Nil: /v1/app/android
+	// AppMirror is the mirrored Android app release (phone.md P16.2). Nil: /v1/app/android
 	// answers 404.
 	AppMirror AppMirror
 }
@@ -167,13 +167,8 @@ func (s *Server) Routes() []Route {
 		{"GET", "/v1/stream", read, false},
 		{"GET", "/v1/analytics/{report}", read, false},
 	}
-	// Phase 4, 5 and 6 operations live in routes_phase4.go, routes_phase5.go and
-	// routes_phase6.go, the addendum's (keys, link, peers, app updates) in
-	// routes_addendum.go; reserved until a handler registers.
-	base = append(base, phase4RoutesNow()...)
-	base = append(base, phase5RoutesNow()...)
-	base = append(base, phase6RoutesNow()...)
-	return append(base, addendumRoutesNow()...)
+	// The other operations are listed in routes.go, reserved until a handler registers.
+	return append(base, handlerRoutesNow()...)
 }
 
 // Handler is the whole hub: API, stream, board, with request logging.
@@ -198,16 +193,16 @@ func (s *Server) Handler() http.Handler {
 	for _, rt := range s.Routes() {
 		h := handlers[rt.Path]
 		if f, ok := registered(rt.Method, rt.Path); ok {
-			// phase 4: registered from a handler file's init(); wrapped with the table's
-			// scopes like every other route. No scopes = the handler authenticates itself.
+			// Registered from a handler file's init(); wrapped with the table's scopes like
+			// every other route. No scopes = the handler authenticates itself.
 			h = f(s)
 			if rt.Scopes != nil {
 				h = s.Auth.Require(auth.Options{}, rt.Scopes...)(h)
 			}
 		} else if rt.Reserved {
-			// Reserved for a later phase: 501 for everyone, before auth (api.yaml x-reserved).
+			// Reserved: 501 for everyone, before auth (api.yaml x-reserved).
 			h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				auth.WriteError(w, http.StatusNotImplemented, "not_implemented", "reserved; not implemented in this phase")
+				auth.WriteError(w, http.StatusNotImplemented, "not_implemented", "reserved; not implemented by this hub")
 			})
 		} else if rt.Scopes != nil {
 			h = s.Auth.Require(auth.Options{QueryToken: rt.Path == "/v1/stream"}, rt.Scopes...)(h)
@@ -235,7 +230,7 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	body := map[string]any{"ok": true, "version": version.Version, "schema": store.LatestVersion(),
 		"time": store.Time(s.now().UnixMilli()),
-		// Phase 5 (machines.md 7.1, 7.2): what this hub reads, so clients never send more.
+		// machines.md 7.1, 7.2: what this hub reads, so clients never send more.
 		"record_v_max": record.MaxVersion, "batch_v": []int{1}, "drain_proto": drainproto.Proto}
 	if fr, ok := s.frozenState(ctx); ok {
 		body["frozen"] = fr
@@ -291,7 +286,7 @@ func (w *statusWriter) Flush() {
 func (w *statusWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 // logRequests logs method, path (never the query: ?token= must not reach a log), status,
-// duration and device.
+// duration and remote address.
 func (s *Server) logRequests(next http.Handler) http.Handler {
 	if s.cfg.Log == nil {
 		return next
@@ -300,7 +295,16 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 		start := time.Now()
 		sw := &statusWriter{ResponseWriter: w}
 		next.ServeHTTP(sw, r)
-		s.cfg.Log.Printf("%s %s %d %dB %s %s", r.Method, r.URL.Path, sw.status, sw.bytes,
+		s.cfg.Log.Printf("%s %s %d %dB %s %s", r.Method, logPath(r.URL.Path), sw.status, sw.bytes,
 			time.Since(start).Round(time.Millisecond), r.RemoteAddr)
 	})
+}
+
+// logPath is the path as the request log shows it. An action URL's last segment is its
+// token, the only credential of POST /v1/actions/{token} (push.md 8), so it is cut.
+func logPath(p string) string {
+	if strings.HasPrefix(p, "/v1/actions/") {
+		return "/v1/actions/…"
+	}
+	return p
 }

@@ -29,7 +29,7 @@ import (
 // SY_E2E_REAL_CLAUDE_BIN names the real binary (default: claude on PATH, which must be the
 // executable, not a shell function). The real claude only ever sees the throwaway HOME and a
 // CLAUDE_CONFIG_DIR inside it; no real ~/.claude* folder is touched. The result is recorded
-// in docs/phases/3.md WP-D with the Claude Code version.
+// in docs/spec/setup.md with the Claude Code version.
 
 // cleanEnv is the whole environment given to either binary.
 func cleanEnv(home, configDir string, extra ...string) []string {

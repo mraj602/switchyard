@@ -4,7 +4,7 @@ info:
   version: "1.0.0"
   summary: Upload records from machines; read sessions, usage and machines.
   description: |
-    Spec v1, phase 0. Implemented in `internal/hub/api` (phase 2).
+    Spec v1. Implemented in `internal/hub/api`.
 
     Unofficial; not affiliated with Anthropic.
 
@@ -18,7 +18,7 @@ info:
     - Unknown query parameters are ignored. Unknown fields in replies must be ignored by
       clients (new fields are added without a version bump).
     - Paths marked `x-reserved` are named here so nothing else takes them; they return `501`
-      until their phase. Phase 4 operations carry their final shapes while still reserved.
+      until implemented. Reserved operations carry their final shapes.
   license:
     name: MIT
     identifier: MIT
@@ -287,8 +287,8 @@ paths:
       operationId: listAccounts
       summary: Usage cards, one per seat
       description: |
-        The plan's `/v1/seats`. Named "accounts" because that is the word on every screen;
-        each item is one seat (account + org). `/v1/seats` is an alias.
+        Also served as `/v1/seats`. Named "accounts" because that is the word on every screen;
+        each item is one seat (account + org).
       x-scopes: [read]
       parameters:
         - name: include_hidden
@@ -315,7 +315,7 @@ paths:
       operationId: patchSeat
       summary: Set a seat's label, colour, order or hidden flag
       description: |
-        desktop.md C10 (phase 6). `null` clears `label` or `colour`; a missing key leaves it.
+        desktop.md C10. `null` clears `label` or `colour`; a missing key leaves it.
         Sets `seat.look_src = 'ui'`, so a later `slot_info` label or colour no longer applies
         (record.md 4.7). Publishes a `usage` stream event.
       x-scopes: [owner]
@@ -429,10 +429,10 @@ paths:
       tags: [read]
       operationId: listMachines
       summary: Machines with last seen, backlog and version
-      description: Phase 5 adds the fields of machines.md 6.1 and `all`.
+      description: Includes the fields of machines.md 6.1 and `all`.
       x-scopes: [read]
       parameters:
-        - {name: all, in: query, required: false, schema: {type: boolean, default: false}, description: "Include removed machines (with `removed_at`); phase 5."}
+        - {name: all, in: query, required: false, schema: {type: boolean, default: false}, description: "Include removed machines (with `removed_at`)."}
       responses:
         "200":
           description: Machines and their slots.
@@ -453,7 +453,7 @@ paths:
       tags: [read]
       operationId: patchMachine
       summary: Rename a machine
-      description: machines.md 6.2 (phase 5).
+      description: machines.md 6.2.
       x-scopes: [owner]
       parameters:
         - {name: id, in: path, required: true, schema: {type: string}}
@@ -477,7 +477,7 @@ paths:
       operationId: removeMachine
       summary: Remove a machine from the board (history stays)
       description: |
-        machines.md 6.2 (phase 5). Sets `removed_at`, revokes every device bound to the machine
+        machines.md 6.2. Sets `removed_at`, revokes every device bound to the machine
         (the pull device included), disables its pull target and closes its open alerts.
         `409` when it is the machine the caller's own device is bound to.
       x-scopes: [owner]
@@ -496,7 +496,7 @@ paths:
       operationId: pullMachineNow
       summary: Pull a machine now (pull targets only)
       description: |
-        machines.md 6.2 (phase 5). Sets the target's `next_at` to now. `404` without a pull
+        machines.md 6.2. Sets the target's `next_at` to now. `404` without a pull
         target; `409` while the target is in `host_key` or `refused` state.
       x-scopes: [owner]
       parameters:
@@ -517,7 +517,7 @@ paths:
       tags: [read]
       operationId: directPushPolicy
       summary: The hub's push rules resolved for the calling machine (direct push)
-      description: machines.md 5.3 (phase 5). `403` for a device without a machine.
+      description: machines.md 5.3. `403` for a device without a machine.
       x-scopes: [write]
       responses:
         "200":
@@ -658,9 +658,9 @@ paths:
             application/json:
               schema: {$ref: "#/components/schemas/Error"}
 
-  # ------------------------------------------------------------------ phase 4: pairing, devices, pushes
-  # Each operation below keeps `x-reserved: phase 4` (501) until its work package implements
-  # it (docs/phases/4.md); the shapes are final. Specs: pairing.md, push.md, pwa.md.
+  # ------ pairing, devices, pushes
+  # Operations below may carry `x-reserved` (501) until implemented;
+  # the shapes are final. Specs: pairing.md, push.md, pwa.md.
 
   /v1/me:
     get:
@@ -1238,7 +1238,7 @@ paths:
       operationId: listAlerts
       summary: Recent pushes (the alert log), newest first
       description: |
-        The "recent pushes" log of plan section 16 phase 4. Every alert with its outcome and
+        The "recent pushes" log. Every alert with its outcome and
         deliveries, including cancelled ones ("you answered first"). `baseline` rows are left
         out unless `status=skipped&reason=baseline`.
       x-scopes: [read, push, owner]
@@ -1360,9 +1360,9 @@ paths:
         "410": {$ref: "#/components/responses/Gone"}
         "429": {$ref: "#/components/responses/TooMany"}
 
-  # ------------------------------------------------------------------ F1 / N1 / PE1: keys, link, peers, app updates
+  # ------ keys, link, peers, app updates
   # keys.md, link.md, peers.md, push.md 13-14, phone.md P16. Each operation keeps its
-  # `x-reserved` (501) until its phase builds it; the shapes are final.
+  # `x-reserved` (501) until implemented; the shapes are final.
 
   /v1/link:
     get:
@@ -1544,7 +1544,7 @@ paths:
     put:
       tags: [keys]
       operationId: putDeviceKeys
-      summary: Register a device's link keys (devices paired before F1, or new keys)
+      summary: Register a device's link keys (devices paired without link keys, or new keys)
       description: |
         keys.md 4.2, push.md 13.7. `self` for machines (`write`) and phones (`push`); the hub
         signs the certificate (`reg: tofu`) and, for a phone, makes its `link` target. New keys
@@ -1902,7 +1902,7 @@ components:
         application/json:
           schema: {$ref: "#/components/schemas/Error"}
     NotImplemented:
-      description: Reserved; not implemented in this phase.
+      description: Reserved; not implemented by this hub.
       content:
         application/json:
           schema: {$ref: "#/components/schemas/Error"}
@@ -1926,13 +1926,13 @@ components:
         version: {type: string, description: Hub (sy) version.}
         schema: {type: integer, description: Database schema version.}
         time: {type: string, format: date-time}
-        ui: {type: string, description: "Build hash of the embedded web app (pwa.md 4); phase 4."}
-        record_v_max: {type: integer, description: "Highest record `v` this hub types (machines.md 7.2); phase 5. Absent means 1."}
+        ui: {type: string, description: "Build hash of the embedded web app (pwa.md 4)."}
+        record_v_max: {type: integer, description: "Highest record `v` this hub types (machines.md 7.2). Absent means 1."}
         batch_v:
           type: array
-          description: Upload batch versions this hub accepts; phase 5.
+          description: Upload batch versions this hub accepts.
           items: {type: integer}
-        drain_proto: {type: integer, description: "Drain protocol version this hub speaks (machines.md 3.5); phase 5."}
+        drain_proto: {type: integer, description: "Drain protocol version this hub speaks (machines.md 3.5)."}
         frozen:
           type: object
           description: "Present while the hub is frozen for a move (machines.md 8.1); informational, clients never follow it."
@@ -2030,7 +2030,7 @@ components:
               detail: {type: string}
         hub:
           type: object
-          description: "What the hub reads (machines.md 7.2); phase 5. Absent from older hubs, which read record v 1."
+          description: "What the hub reads (machines.md 7.2). Absent from older hubs, which read record v 1."
           properties:
             version: {type: string}
             record_v_max: {type: integer}
@@ -2078,7 +2078,7 @@ components:
         dormant: {type: boolean, description: "Open, not needing you, and done with no activity for 12 h or working and stale (states.md 5): not counted in counts.live."}
         activity_at: {type: [string, "null"], format: date-time, description: "Newest of last event, state_since, start and end (not the last listing): what `dormant`, `days` and the order use. Null when nothing is known."}
         alert:
-          description: "The open alert of this session's current episode, if any (phase 4, push.md 4)."
+          description: "The open alert of this session's current episode, if any (push.md 4)."
           oneOf:
             - {$ref: "#/components/schemas/AlertBrief"}
             - {type: "null"}
@@ -2158,7 +2158,7 @@ components:
               tab_id: {type: [string, "null"]}
               stopped_reason:
                 type: [string, "null"]
-                description: "Why the desktop app stopped reading this web seat (web_seat.stopped_reason: 401, 403 or 429); null while reading or for a slot place. Phase 6."
+                description: "Why the desktop app stopped reading this web seat (web_seat.stopped_reason: 401, 403 or 429); null while reading or for a slot place."
         signed_out:
           type: array
           description: >-
@@ -2240,19 +2240,19 @@ components:
         reach:
           type: [string, "null"]
           enum: [direct, forward, pull, null]
-          description: "How its records reach the hub (machines.md 3); phase 5."
-        backlog_oldest: {type: [string, "null"], format: date-time, description: "Ts of its oldest unanswered record; phase 5."}
-        backlog_at: {type: [string, "null"], format: date-time, description: "When backlog was reported; phase 5."}
+          description: "How its records reach the hub (machines.md 3)."
+        backlog_oldest: {type: [string, "null"], format: date-time, description: "Ts of its oldest unanswered record."}
+        backlog_at: {type: [string, "null"], format: date-time, description: "When backlog was reported."}
         version_status:
           type: string
           enum: [same, older, newer, unknown]
-          description: "sy_version compared with the hub's version; phase 5."
-        record_v: {type: [integer, "null"], description: "Highest record v the machine writes; phase 5."}
-        held: {type: integer, description: "Records held back because the hub is too old (machines.md 7.2); phase 5."}
-        direct_push: {type: boolean, description: "Direct ntfy is on (machines.md 5); phase 5."}
-        timer_ok: {type: [boolean, "null"], description: "Its OS timer runs (sy doctor); phase 5."}
-        linger: {type: [boolean, "null"], description: "Linux: loginctl linger on; phase 5."}
-        removed_at: {type: [string, "null"], format: date-time, description: "Only with ?all=true; phase 5."}
+          description: "sy_version compared with the hub's version."
+        record_v: {type: [integer, "null"], description: "Highest record v the machine writes."}
+        held: {type: integer, description: "Records held back because the hub is too old (machines.md 7.2)."}
+        direct_push: {type: boolean, description: "Direct ntfy is on (machines.md 5)."}
+        timer_ok: {type: [boolean, "null"], description: "Its OS timer runs (sy doctor)."}
+        linger: {type: [boolean, "null"], description: "Linux: loginctl linger on."}
+        removed_at: {type: [string, "null"], format: date-time, description: "Only with ?all=true."}
         pull:
           oneOf:
             - {$ref: "#/components/schemas/PullStatus"}
@@ -2261,7 +2261,7 @@ components:
           oneOf:
             - {$ref: "#/components/schemas/AlertBrief"}
             - {type: "null"}
-          description: "The open machine_silent alert, if any; phase 5."
+          description: "The open machine_silent alert, if any."
         slots:
           type: array
           items:
@@ -2275,7 +2275,7 @@ components:
 
     SeatPatch:
       type: object
-      description: "PATCH /v1/accounts/{seat} (desktop.md C10); phase 6. null clears label or colour; a missing key leaves it."
+      description: "PATCH /v1/accounts/{seat} (desktop.md C10). null clears label or colour; a missing key leaves it."
       properties:
         label: {type: [string, "null"], pattern: "^[a-z0-9][a-z0-9-]{0,23}$"}
         colour: {type: [string, "null"], pattern: "^#[0-9a-f]{6}$"}
@@ -2285,14 +2285,14 @@ components:
 
     MachinePatch:
       type: object
-      description: "PATCH /v1/machines/{id} (machines.md 6.2); phase 5."
+      description: "PATCH /v1/machines/{id} (machines.md 6.2)."
       properties:
         name: {type: string, minLength: 1, maxLength: 60}
       additionalProperties: false
 
     PullStatus:
       type: object
-      description: "A pull target's health (machines.md 3.4, 6.1); phase 5."
+      description: "A pull target's health (machines.md 3.4, 6.1)."
       required: [name, target, interval_s, state]
       properties:
         name: {type: string}
@@ -2306,7 +2306,7 @@ components:
 
     DirectPolicyRule:
       type: object
-      description: "One resolved rule for direct push; the client takes the first match (machines.md 5.3); phase 5."
+      description: "One resolved rule for direct push; the client takes the first match (machines.md 5.3)."
       required: [trigger, enabled, delay_s, bypass_quiet, seats, projects]
       properties:
         trigger: {type: string, enum: [needs_permission, asked, failed]}
@@ -2327,7 +2327,7 @@ components:
 
     DirectPolicy:
       type: object
-      description: "GET /v1/push/direct-policy (machines.md 5.3); phase 5."
+      description: "GET /v1/push/direct-policy (machines.md 5.3)."
       required: [v, machine, settings, rules]
       properties:
         v: {type: integer, const: 1}
@@ -2626,7 +2626,7 @@ components:
 
     StreamAlert:
       type: object
-      description: An alert changed status (phase 4, push.md 4).
+      description: An alert changed status (push.md 4).
       required: [alert, change]
       properties:
         change: {type: string, enum: [created, fired, snoozed, seen, cancelled, closed, skipped]}
@@ -2635,7 +2635,7 @@ components:
         seat: {type: [string, "null"]}
         machine: {type: [string, "null"]}
 
-    # ---------------------------------------------------------------- phase 4: pairing, devices, pushes
+    # ------ pairing, devices, pushes
 
     Me:
       type: object

@@ -1,4 +1,4 @@
--- Version 7 (F1): the owner key, device keys and certificates, revocations and the link queue.
+-- Version 7: the owner key, device keys and certificates, revocations and the link queue.
 -- keys.md 9, link.md 5. The hub signing key is not here: it lives in <state>/hub_sign.key.
 
 -- The owner key's public half (keys.md 3). At most one is active; a key proposed by a device

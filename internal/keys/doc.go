@@ -8,5 +8,5 @@
 // standard library only (crypto/ed25519, crypto/ecdh, crypto/ecdsa, crypto/pbkdf2,
 // crypto/hkdf, crypto/aes, crypto/cipher).
 //
-// Contract: docs/spec/keys.md. F1. Depends on: atomicfile.
+// Contract: docs/spec/keys.md. Depends on: atomicfile.
 package keys

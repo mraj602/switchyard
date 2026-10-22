@@ -5,7 +5,7 @@
 // the marker `# sy-launcher v1 slot=<folder> label=<label>` (`rem` instead of `#` in a .cmd).
 // The plugin root is not set here: it comes from settings (5.2).
 //
-// Phase 3, WP-A. Depends on: nothing.
+// Depends on: nothing.
 package launcher
 
 import (

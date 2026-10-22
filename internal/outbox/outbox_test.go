@@ -386,3 +386,28 @@ func TestPrune(t *testing.T) {
 		t.Fatal("compact tmp left behind")
 	}
 }
+
+func TestPruneRemovesOnlyStaleAtomicTemps(t *testing.T) {
+	o, now := newBox(t)
+	mustAppend(t, o, rec("a", *now, `{}`))
+	stale := filepath.Join(o.Dir, ".cursor.json.aaaaaaaaaaaa.tmp")
+	young := filepath.Join(o.Dir, ".corrupt.marks.json.bbbbbbbbbbbb.tmp")
+	for _, p := range []string{stale, young} {
+		if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	old := o.now().Add(-2 * time.Hour)
+	if err := os.Chtimes(stale, old, old); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := o.Prune(7); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(stale); err == nil {
+		t.Fatal("stale temp file left behind")
+	}
+	if _, err := os.Stat(young); err != nil {
+		t.Fatalf("a young temp file may be in use and must stay: %v", err)
+	}
+}

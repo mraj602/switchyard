@@ -9,7 +9,7 @@ import (
 )
 
 // The inbox contract with Claude Code 2.1.300 (peers.md 8.1, 8.5). Read from the installed
-// program; every item here is **uncertain** until the PE0 lab confirms it (E3, E4, E10), and
+// program, not documented by Claude Code; the lab checks E3, E4 and E10 cover it (peers.md 13), and
 // the golden files under testdata/ are the one place that should change with it.
 const (
 	// WrapperTag is the element name Claude Code wraps a peer message in.
@@ -109,8 +109,8 @@ func CleanName(s string) string {
 
 // closeTagRe finds a closing-tag lookalike: an opener ("<", fullwidth or small less-than),
 // optional invisible filler, a slash, filler, then the tag name in any case with format
-// characters allowed between letters. **Uncertain**: Claude Code's real pattern is larger
-// (lab E10 settles it); this covers case, zero-width characters and the lookalike openers.
+// characters allowed between letters. Claude Code's own pattern is larger
+// (lab E10); this covers case, zero-width characters and the lookalike openers.
 var closeTagRe = func() *regexp.Regexp {
 	const fill = `[\p{Cf}\s]*`
 	var name strings.Builder

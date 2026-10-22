@@ -13,7 +13,7 @@ import (
 
 const evilLabel = "x/../../evil\ntouch /tmp/pwned"
 
-// Regression (review finding): a label that reached State unvalidated (hand-edited
+// Regression: a label that reached State unvalidated (hand-edited
 // config.toml) must not become a launcher path outside the launcher dir or launcher text.
 // The planner ignores it and uses the folder's default label.
 func TestInvalidStateLabelIgnored(t *testing.T) {

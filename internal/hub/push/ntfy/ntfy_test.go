@@ -174,8 +174,8 @@ func TestTopics(t *testing.T) {
 func TestCheckServer(t *testing.T) {
 	ok := map[string]string{
 		"": "https://ntfy.sh", "https://ntfy.sh/": "https://ntfy.sh", "https://ntfy.example.com/sub/": "https://ntfy.example.com/sub",
-		"http://127.0.0.1:8080": "http://127.0.0.1:8080", "http://localhost": "http://localhost", "http://ntfy.tail1234.ts.net": "http://ntfy.tail1234.ts.net",
-		"http://100.101.102.103": "http://100.101.102.103", "http://192.168.1.5": "http://192.168.1.5", "https://10.0.0.7": "https://10.0.0.7", "http://oci-hub:8080": "http://oci-hub:8080",
+		"http://127.0.0.1:8080": "http://127.0.0.1:8080", "http://localhost": "http://localhost", "http://ntfy.hub.example.ts.net": "http://ntfy.hub.example.ts.net",
+		"http://100.101.102.103": "http://100.101.102.103", "http://192.168.1.5": "http://192.168.1.5", "https://10.0.0.7": "https://10.0.0.7", "http://hub-box:8080": "http://hub-box:8080",
 	}
 	for in, want := range ok {
 		if got, err := ntfy.CheckServer(in, true); err != nil || got != want {
@@ -275,7 +275,7 @@ func TestSendStatusMapping(t *testing.T) {
 	}
 }
 
-// A push-scoped caller gets https to public hosts only (review phase 4 finding 1).
+// A push-scoped caller gets https to public hosts only.
 func TestCheckServerDeviceCallerPublicHTTPSOnly(t *testing.T) {
 	for _, in := range []string{"", "https://ntfy.example.com/sub/", "https://8.8.8.8"} {
 		if _, err := ntfy.CheckServer(in, false); err != nil {
@@ -283,7 +283,7 @@ func TestCheckServerDeviceCallerPublicHTTPSOnly(t *testing.T) {
 		}
 	}
 	for _, bad := range []string{"http://ntfy.example.com", "https://localhost", "https://127.0.0.1", "https://10.0.0.5:8443",
-		"https://192.168.1.5", "https://100.101.102.103", "https://oci-hub", "https://ntfy.tail1234.ts.net", "https://foo.internal",
+		"https://192.168.1.5", "https://100.101.102.103", "https://hub-box", "https://ntfy.hub.example.ts.net", "https://foo.internal",
 		"https://169.254.169.254", "https://[::1]", "https://0.0.0.0", "https://[64:ff9b::7f00:1]", "http://127.0.0.1:8080"} {
 		if _, err := ntfy.CheckServer(bad, false); err == nil {
 			t.Errorf("%q accepted for a device", bad)

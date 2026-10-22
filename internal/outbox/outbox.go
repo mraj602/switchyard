@@ -136,7 +136,7 @@ func (o *Outbox) AppendLine(line []byte) (Result, error) {
 
 // open opens the day file for appending, creating the folder on first use.
 func (o *Outbox) open(path string) (*os.File, error) {
-	// O_RDWR, not O_WRONLY as the first draft of the spec said: step 6 reads the last byte.
+	// O_RDWR, not O_WRONLY: step 6 reads the last byte.
 	const flags = os.O_RDWR | os.O_APPEND | os.O_CREATE
 	f, err := os.OpenFile(path, flags, 0o600)
 	if errors.Is(err, fs.ErrNotExist) {

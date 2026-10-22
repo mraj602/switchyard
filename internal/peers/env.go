@@ -30,7 +30,7 @@ type Env struct {
 	Alive func(sock string) bool
 	// NewID makes a message id (uuid v4); tests fix it.
 	NewID func() string
-	// Remote reaches other machines through the agent's link (PE2); nil: this machine only.
+	// Remote reaches other machines through the agent's link; nil: this machine only.
 	Remote Remote
 }
 

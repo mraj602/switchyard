@@ -109,10 +109,8 @@ func (s *Store) Login(slot Slot) (Login, error) {
 		e.AuthStatusAt, e.LoggedIn, e.Auth = cached.AuthStatusAt, cached.LoggedIn, cached.Auth
 	}
 	e.StateFile, e.Size, e.MtimeNS, e.OAuth = slot.StateFile, fi.Size(), fi.ModTime().UnixNano(), oa
-	if err := s.writeEntry(slot, e); err != nil {
-		// The cache is an optimisation (a read-only state folder must not break hooks).
-		return loginFrom(e), nil
-	}
+	// The cache is an optimisation: a read-only state folder must not break hooks.
+	_ = s.writeEntry(slot, e)
 	return loginFrom(e), nil
 }
 

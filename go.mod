@@ -3,6 +3,7 @@ module github.com/mraj602/switchyard
 go 1.27
 
 require (
+	github.com/coder/websocket v1.8.15
 	github.com/pelletier/go-toml/v2 v2.4.3
 	golang.org/x/sys v0.49.0
 	golang.org/x/term v0.47.0
@@ -11,7 +12,6 @@ require (
 )
 
 require (
-	github.com/coder/websocket v1.8.15 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect

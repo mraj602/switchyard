@@ -6,6 +6,7 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -105,6 +106,36 @@ func status(err error) int {
 		return e.Status
 	}
 	return 0
+}
+
+// Concurrent first runs (the CLI and the server) end with one key, and an existing key file is
+// never replaced by the fallback for file systems without hard links.
+func TestHubKeyFileConcurrentCreatorsAgree(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "state", KeyFile)
+	fps := make([]string, 8)
+	var wg sync.WaitGroup
+	for i := range fps {
+		wg.Go(func() {
+			k, err := LoadOrCreate(p)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			fps[i] = k.FP
+		})
+	}
+	wg.Wait()
+	for _, fp := range fps {
+		if fp != fps[0] {
+			t.Fatalf("creators disagree: %v", fps)
+		}
+	}
+	if err := writeExclusive(p, make([]byte, 32)); !errors.Is(err, fs.ErrExist) {
+		t.Fatalf("writeExclusive over an existing key: %v", err)
+	}
+	if k, err := Load(p); err != nil || k.FP != fps[0] {
+		t.Fatalf("the key changed: %v", err)
+	}
 }
 
 func TestHubKeyFile(t *testing.T) {

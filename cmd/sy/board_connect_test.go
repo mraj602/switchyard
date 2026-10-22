@@ -137,7 +137,7 @@ func TestBoardConnectTokenNeverInArgvEnvOrOutput(t *testing.T) {
 	}
 	d := deskSandbox(t)
 	noRealService(t, &fakeService{})
-	connectSandbox(t, d, "https://hub.example.ts.net", "machines.hub_admin", "ssh oci sy")
+	connectSandbox(t, d, "https://hub.example.ts.net", "machines.hub_admin", "ssh hub-host sy")
 	bin := t.TempDir()
 	rec := filepath.Join(bin, "record.txt")
 	script := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> " + rec + "\nenv >> " + rec + "\ncase \"$*\" in\n" +

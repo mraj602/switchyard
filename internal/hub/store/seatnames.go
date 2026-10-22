@@ -38,7 +38,7 @@ func seatDomain(email string) string {
 	return d
 }
 
-// squashName is how a reader compares names: "you" and "you" look alike.
+// squashName is how a reader compares names: "Jordan.Lee" and "jordanlee" look alike.
 func squashName(s string) string {
 	var b strings.Builder
 	for _, r := range strings.ToLower(s) {

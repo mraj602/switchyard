@@ -12,7 +12,7 @@ import (
 	"github.com/mraj602/switchyard/internal/identity"
 )
 
-// Window is how much of the outbox `sy status` reads (phases/1.md: the last 7 days).
+// Window is how much of the outbox `sy status` reads (the last 7 days).
 const Window = 7 * 24 * time.Hour
 
 // Options configures Collect.

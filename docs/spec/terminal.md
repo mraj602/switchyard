@@ -1,18 +1,15 @@
 # Terminal board, pane and Warp hookups
 
-Status: spec v1, phase 7. Implemented in `internal/board` (+ `hubsrc`, `tui`),
+Status: spec v1. Implemented in `internal/board` (+ `hubsrc`, `tui`),
 `internal/termctl`, `internal/warp`, `internal/termenv`, `plugin/switchyard-pane/` and the
-`sy board`, `sy term`, `sy open`, `sy ssh` and `sy hook --title` commands. The work split, tests
-and acceptance are in [phases/7.md](../phases/7.md); the screens are
-`docs/design/screens/TermPane.dc.html` and the "New Claude tab as" menu of
-`TermWarp.dc.html`. Unofficial; not affiliated with Anthropic.
+`sy board`, `sy term`, `sy open`, `sy ssh` and `sy hook --title` commands. Unofficial; not affiliated with Anthropic.
 
 Two parts: the session board in any terminal (`sy board`, and the same board as a Claude Code
 pane mod), and Warp hookups with no fork (tab titles, a tab config per account, click to
 focus, Warp's own Claude Code plugin in every account folder). Nothing here changes the hub,
 the API, the schema or a record kind; record.md 3.3 only says who sets `term.host`.
 
-Rules that override everything below (phases/7.md "Hard rules"): no live settings or Warp
+Rules that override everything below (hard rules): no live settings or Warp
 config is touched without an explicit `sy` command, and every such change goes through the
 setup.md 7 journal and `sy setup --undo`; in Warp's folders `sy` writes only its own
 `switchyard-*.toml` tab configs; the board and the pane read and never type; the board token
@@ -27,6 +24,8 @@ setup.md 5.2 (the `sy-local` marketplace), 5.5 (settings pointers), 7 (journal a
 
 ## T1. Commands
 
+The board is read-only: it only reads the hub (or the local outbox) and never ingests, uploads or writes records. Its commands change nothing on the hub except `sy board connect`, which claims a read token.
+
 | Command | Does | Exit codes |
 | --- | --- | --- |
 | `sy board [--once] [--json] [--follow --ndjson] [--compact] [--ascii] [--source auto\|hub\|local] [--filter all\|needs\|here\|machine:<name>] [--session <id>] [--cols N]` | Without `--once`/`--follow`: the interactive TUI (T4). `--once`: one text frame to stdout (no raw mode). `--once --json`: one `View`. `--follow --ndjson`: one `View` per line on change (T5). | 0; 2 usage; 4 `--source hub` without a usable hub; 5 hub unreachable with `--source hub` |
@@ -34,14 +33,14 @@ setup.md 5.2 (the `sy-local` marketplace), 5.5 (settings pointers), 7 (journal a
 | `sy board disconnect` | Deletes `<state>/board/token.json`. Revoke is left to `sy hub token revoke` (printed) | 0 |
 | `sy analytics [report] [--days N] [--seat S] [--json]` | The hub's analytics reports as text tables, with the board token ([analytics.md](analytics.md) 6) | 0; 2 usage; 3 refused; 4 no hub or no board token; 5 unreachable |
 | `sy term focus --session <id> \| --url <u>` | Focuses the tab (T7) | 0; 4 no usable focus URL here; 6 opener failed |
-| `sy term setup [--pane] [--warp-plugin] [--titles] [--warp-tabs] [--accept-update] [--dry-run] [--yes] [--json]` | Plans and applies the chosen terminal pieces (T10). `--accept-update` (implies `--warp-plugin`) records the commit Warp's plugin checkout moved to, after the person read what changed (T10, risk 7) | as `sy setup`: 0, 1 rolled back, 2 usage/locked, 4 precondition changed |
+| `sy term setup [--pane] [--warp-plugin] [--titles] [--warp-tabs] [--accept-update] [--dry-run] [--yes] [--json]` | Plans and applies the chosen terminal pieces (T10). `--accept-update` (implies `--warp-plugin`) records the commit Warp's plugin checkout moved to, after the person read what changed (T10) | as `sy setup`: 0, 1 rolled back, 2 usage/locked, 4 precondition changed |
 | `sy term titles on\|off`, `sy term warp on\|off`, `sy term off` | Shorthands for one piece of `term setup`; `off` removes everything in `ledger.terminal` | as above |
 | `sy term status [--json]` | What is on, per folder and settings target; Warp detected (channel, folder); Claude Code version vs. the mod minimum | 0 |
 | `sy open [<label>] [--here]` | No label: lists accounts (label, folder, launcher, login, 5h %, reset, "most room" mark), choosing nothing. With a label in Warp: opens its tab config. `--here`, or outside Warp: `exec`s the launcher in this terminal | 0; 2 unknown label; 4 tab config missing (prints `sy term warp on`) |
 | `sy ssh <ssh args…>` | T9 | ssh's own exit code; 127 no `ssh` |
 | `sy hook --title <Event>` | Prints the `terminalSequence` JSON or nothing (T6) | always 0 |
 
-`sy open` never picks an account for the person (plan section 13: "it may suggest which
+`sy open` never picks an account for the person ("it may suggest which
 account has room; you choose").
 
 ## T2. The view model (`internal/board`, JSON `"v": 1`)
@@ -181,10 +180,10 @@ Rules, all in Go and table-tested:
   `"__SY_PATH__"` in `register.tsx` with the absolute path of `sy`, as it already does for
   hook commands. Writing the pane into the marketplace installs nothing: only
   `sy term setup --pane` runs `claude plugin install switchyard-pane@sy-local`.
-- **Wave 0 skeleton.** `register.tsx` and `types/index.d.ts` are placeholders that register
+- **Skeleton.** `register.tsx` and `types/index.d.ts` are placeholders that register
   no hook and declare no state, so the written tree passes `claude plugin validate --strict`
   on 2.1.296 (a `modules` entry naming a missing file fails validation of the plugin, though
-  not of the marketplace). WP-D replaces both.
+  not of the marketplace). Both are replaced when the pane is implemented.
 - **Lifecycle.**
   - On `session.start`, it registers the `/board` command and spawns
     `[SY, "board", "--follow", "--ndjson", "--session", <session id>]` with
@@ -219,7 +218,7 @@ Rules, all in Go and table-tested:
     `$.command.register`, `$.clock.*` and `$.state`.
   - Anything under `$.prompt`, `$.tool`, `$.model`, `$.agent`, `$.http`, `$.session.append`
     or `$.fs.write`, and any `tool.call` / `prompt.*` hook, fails the test.
-- **Minimum Claude Code.** 2.1.296, the version wave 0 checked the skeleton on (`plugin
+- **Minimum Claude Code.** 2.1.296, the version the skeleton was checked on (`plugin
   validate`, `marketplace add` of the two-plugin `sy-local`, `install
   switchyard-pane@sy-local`; the mod API names in this section are present in that build).
   `sy term setup --pane` refuses an older `claude` with that message.
@@ -241,14 +240,14 @@ Rules, all in Go and table-tested:
   `timeout: 1`. The p95 budget is under 15 ms per call.
 - **Stdout.** For SessionStart and UserPromptSubmit, stdout is context for Claude unless it
   is hook JSON. The command prints only valid hook JSON or nothing, never plain text
-  (risk 2).
-- **Claude Code's title** is off while titles are on (decision 6). On 2.1.296
+  (unverified).
+- **Claude Code's title** is off while titles are on. On 2.1.296
   `CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1` also skips the background request that names the
   session (`/resume` shows no generated title) and turns off Claude Code's OSC 7501
   program-status reports to the terminal (code.claude.com/docs/en/terminal-config, "See
   session status in your terminal"). `sy term titles on` prints both in its plan, and
   `sy term status` shows them. A tab the person renamed in Warp may or may not keep its name
-  (risk 4).
+  (unverified).
 
 ## T7. Focus and the opener (`internal/termctl`)
 
@@ -270,7 +269,7 @@ Rules, all in Go and table-tested:
 - **Test seam.** The `Opener` interface (`internal/termctl/termctl.go`:
   `Open(ctx context.Context, url string) error`). Under the build tag `fakeopen`, `SY_TEST_OPENER=<file>`
   records argv to a file instead. Release builds do not contain that code (checked as in
-  phase 4's `fakeclock`).
+  the hub tests' `fakeclock`).
 
 ## T8. Warp files (`internal/warp`)
 
@@ -321,8 +320,7 @@ commands = ["/home/u/.local/bin/claude-2"]
   `WARP_FOCUS_URL`, kept only if it passes T7. `LC_SY_HOST` = this machine's id. With
   neither, it is plain `ssh`.
 - **Hook side.** `term.host` = `LC_SY_HOST` when it matches `^m_[0-9A-HJKMNP-TV-Z]{26}$` and
-  differs from this machine's id. Otherwise it is absent. (record.md 3.3, phase 1 note: "the
-  hook cannot know the laptop's machine id"; now it can.)
+  differs from this machine's id. Otherwise it is absent. (record.md 3.3.)
 - **`sy ssh --print-config`** prints, but never writes, the `SendEnv` lines for people who
   prefer their own `ssh` alias. Writing `~/.ssh/config` for this is a non-goal.
 
@@ -338,7 +336,7 @@ The hooks-plugin refresh is a `write_tree` in `StepPlugin` and `terminal.titles`
 | Piece | Actions |
 | --- | --- |
 | `--pane` | Marketplace tree refresh (the existing `write_tree`), then `run claude plugin install switchyard-pane@sy-local` per settings target (as setup.md 5.2) |
-| `--warp-plugin` | `run claude plugin marketplace add warpdotdev/claude-code-warp#main` once per plugin root, then `run claude plugin install warp@claude-code-warp` per settings target. A commit cannot be pinned (fact 4 below): the ledger records the commit `main` resolved to (`git -C <installLocation> rev-parse HEAD`, read-only, after the add) and `sy doctor` warns when the checkout moves (risk 7). It warns if `jq` is missing, because the plugin needs it |
+| `--warp-plugin` | `run claude plugin marketplace add warpdotdev/claude-code-warp#main` once per plugin root, then `run claude plugin install warp@claude-code-warp` per settings target. A commit cannot be pinned (item 4 under "Claude Code facts" below): the ledger records the commit `main` resolved to (`git -C <installLocation> rev-parse HEAD`, read-only, after the add) and `sy doctor` warns when the checkout moves (risk 7). It warns if `jq` is missing, because the plugin needs it |
 | `--titles` | `json_set /env/CLAUDE_CODE_DISABLE_TERMINAL_TITLE "1"` per settings target, the hooks plugin refresh (title hooks, T6) and `config_set terminal.titles true` |
 | `--warp-tabs` | `mkdir` the `tab_configs` folder if absent, then `write_file switchyard-<label>.toml` per account with a launcher |
 
@@ -385,12 +383,12 @@ stay.
   and the launcher path it runs still exists.
 - **Warp detection.** The channel, the folder, and (when inside Warp) whether
   `WARP_FOCUS_URL` passes the allow-list. A failure there is the drift signal for Warp
-  changing its focus URL format (plan section 14, "Drift").
+  changing its focus URL format.
 
 ## T12. Config and paths
 
 ```toml
-[terminal]                  # phase 7 (docs/spec/terminal.md)
+[terminal]                  # (terminal.md)
 titles = false              # written only by sy term titles on|off (sy config set refuses it)
 band = true                 # pane: band above the prompt when another session needs you
 pane_auto_open = true       # pane: open as a sidebar in wide fullscreen sessions
@@ -407,7 +405,7 @@ New paths in `<state>`:
 Outside `<state>`, `sy` writes only the `switchyard-*.toml` tab configs (T8) and, through
 `claude plugin` and `json_set`, the settings targets (T10). All of them are journaled.
 
-## Claude Code facts (checked in wave 0)
+## Claude Code facts
 
 Checked on 13 October 2026 against Claude Code 2.1.296 (the installed `claude`), read
 only: `--help` output, the documentation at code.claude.com (hooks, env-vars,
@@ -459,7 +457,7 @@ code of the installed build; "uncertain" means documented but not seen working.
      but not of the marketplace; hence the placeholder `register.tsx` (T5).
    - `types` in `plugin.json` is checked too: a contract file may export types only.
 4. **`claude plugin marketplace add` accepts a pinned ref for `warpdotdev/claude-code-warp`**
-   — **no** (run). Decision 10, T10 and risk 7 changed.
+   — **no** (run). This is why the piece stays opt-in (T10).
    - The marketplace source takes `owner/repo#ref`, `owner/repo@ref` or `<git url>#ref`, and
      clones with `git clone --depth 1 --branch <ref>`, so a ref is a branch or a tag. A commit
      SHA fails (`Remote branch <sha> not found in upstream origin`) in all three forms.
@@ -471,6 +469,6 @@ code of the installed build; "uncertain" means documented but not seen working.
      commit.
    - So `sy term setup --warp-plugin` adds `warpdotdev/claude-code-warp#main`, the ledger
      records `ref: "main"` and the resolved `commit`, `sy doctor` warns when the checkout's
-     `HEAD` differs, and the piece stays opt-in (risk 7's fallback). A true pin would need a
+     `HEAD` differs, and the piece stays opt-in (a fallback). A true pin would need a
      `git-subdir` plugin source with `sha` in sy's own marketplace (id `warp@sy-local`); that
-     is not done in phase 7.
+     is not done.

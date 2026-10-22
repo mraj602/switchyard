@@ -17,7 +17,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
 
-// UI audit G5: /v1/stream must stay open through the http.Server that `sy hub serve`
+// /v1/stream must stay open through the http.Server that `sy hub serve`
 // runs, for as long as the client wants, with a ping every PingEvery. A ReadTimeout or
 // WriteTimeout on that server would cut it at that age. SY_SSE_HOLD=70s holds it for the
 // real duration with the real ping interval (25 s); by default it holds 40 pings of 50 ms.

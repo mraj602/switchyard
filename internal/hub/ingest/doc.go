@@ -4,5 +4,5 @@
 //
 // Contract: docs/spec/record.md section 5, docs/spec/api.yaml.
 //
-// Phase 2. Depends on: record, hub/store, hub/auth, hub/state, hub/usage.
+// Depends on: record, hub/store, hub/auth, hub/state, hub/usage.
 package ingest

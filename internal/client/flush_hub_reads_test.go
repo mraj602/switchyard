@@ -163,7 +163,7 @@ func TestFlushUsesCachedRecordVMaxWithoutAsking(t *testing.T) {
 }
 
 func TestFlushHeldWhenHubDoesNotSayItsVersion(t *testing.T) {
-	// A hub older than phase 5 says nothing in /health or in replies: it reads v1.
+	// An older hub says nothing in /health or in replies: it reads v1.
 	root := t.TempDir()
 	ob := outbox.New(filepath.Join(root, "outbox"))
 	writeDay(t, ob, vline(0, 1), vline(1, 2))

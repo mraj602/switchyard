@@ -16,7 +16,7 @@ import (
 	"github.com/mraj602/switchyard/internal/peers"
 )
 
-// PE1 peers endpoints (peers.md 5.4, 6.3, 10, 11; api.yaml tag peers): the matrix, the kill
+// Peers endpoints (peers.md 5.4, 6.3, 10, 11; api.yaml tag peers): the matrix, the kill
 // switch, thread resume and the audit log. The audit holds metadata only; no message text ever reaches it.
 // Like the key endpoints they answer 503 when the hub has no signing key.
 

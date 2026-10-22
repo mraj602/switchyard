@@ -131,7 +131,7 @@ func socketPath(goos, runtime, state, tmp string, uid int) string {
 }
 
 // ErrNoAgent means nothing is listening on the control socket: the caller falls back to the
-// direct path (peers.md 8.5 "PE1 without the agent").
+// direct path (peers.md 8.5, without the agent).
 var ErrNoAgent = errors.New("the sy agent is not running")
 
 // ownUID is the uid an agent must run as for Call to talk to it; tests replace it.

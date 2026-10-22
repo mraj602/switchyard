@@ -1,5 +1,5 @@
 #!/bin/sh
-# Transcript test for /switchyard:setup (docs/phases/3.md WP-E accept): runs `claude -p` with
+# Transcript test for /switchyard:setup: runs `claude -p` with
 # the plugin folder and a fake `sy` that records its argv, then checks that the dry run came
 # before the apply and that --expect-plan <id> was passed. Spends a little real Claude usage
 # and needs a logged-in `claude`, so it is run by hand, not by run.sh.

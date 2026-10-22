@@ -11,8 +11,8 @@
 //   - Every string from a record is made terminal-safe before it enters a View (T2 text
 //     safety).
 //
-// Phase 7. Wave 0 holds the types (view.go); WP-A owns build, words, text, local and order;
-// WP-B the hub source and the board token; WP-C the TUI.
+// The types are in view.go; build, words, text, local and order compute them, hubsrc is the
+// hub source and the board token, tui the screen.
 //
-// Depends on: termenv (and, from wave 1, status, hub/state for the pure fold).
+// Depends on: termenv, status, hub/state (for the pure fold).
 package board

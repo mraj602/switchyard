@@ -55,13 +55,13 @@ type Reply struct {
 	Hub *HubInfo `json:"hub,omitempty"`
 }
 
-// HubInfo is IngestReply.hub (phase 5).
+// HubInfo is IngestReply.hub.
 type HubInfo struct {
 	Version    string `json:"version"`
 	RecordVMax int    `json:"record_v_max"`
 }
 
-// Options are what one ingest call knows besides the body (phase 5).
+// Options are what one ingest call knows besides the body.
 type Options struct {
 	// Backlog is X-Sy-Backlog (nil = not sent), or the drain's more-adjusted count.
 	Backlog *int64
@@ -161,11 +161,10 @@ type batch struct {
 }
 
 type pending struct {
-	raw  json.RawMessage
-	rec  record.Record
-	ts   int64
-	tsT  time.Time
-	dupe bool // second copy of an id inside the same batch
+	raw json.RawMessage
+	rec record.Record
+	ts  int64
+	tsT time.Time
 }
 
 // Ingest handles one batch from device dev. backlog is the X-Sy-Backlog header (nil if
@@ -174,7 +173,7 @@ func (g *Ingester) Ingest(ctx context.Context, dev store.Device, body []byte, ba
 	return g.IngestWith(ctx, dev, body, Options{Backlog: backlog})
 }
 
-// IngestWith is Ingest with the phase 5 options: backlog age, `more`, reach (the hub's pull
+// IngestWith is Ingest with the options: backlog age, `more`, reach (the hub's pull
 // passes "pull"). It answers ErrFrozen, storing nothing, while hub.frozen is set; the flag is
 // read inside the write transaction, so no batch is acknowledged after the freeze committed.
 func (g *Ingester) IngestWith(ctx context.Context, dev store.Device, body []byte, opt Options) (Reply, error) {
@@ -250,7 +249,7 @@ func (g *Ingester) IngestWith(ctx context.Context, dev store.Device, body []byte
 				return err
 			}
 			if !ins {
-				// record.md 3.1: a duplicate is the same device, or (phase 5) another device
+				// record.md 3.1: a duplicate is the same device, or another device
 				// bound to the record's machine when the stored row is of that machine too
 				// (reach change, re-pairing, a hub move); anything else is id_conflict.
 				sameMachine := dev.MachineID != "" && dev.MachineID == p.rec.Machine && firstMachine == p.rec.Machine

@@ -63,7 +63,7 @@ func checkPush(ctx context.Context, rep *Report, o Options, cfg config.Config) {
 		return
 	}
 	if ver.Int64 < 3 {
-		rep.add(Check{Name: "push", Level: Warn, Detail: fmt.Sprintf("push: hub database is older than phase 4 (schema v%d)", ver.Int64),
+		rep.add(Check{Name: "push", Level: Warn, Detail: fmt.Sprintf("push: hub database is too old for push (schema v%d)", ver.Int64),
 			Fix: "restart the hub to migrate: sy hub serve"})
 		return
 	}

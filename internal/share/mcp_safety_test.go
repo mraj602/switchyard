@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// Regression (review finding 6): a state file recreated by Claude Code without the
+// A state file recreated by Claude Code without the
 // mcpServers key is not a vote to delete every server everywhere. It receives the list.
 func TestMCPRecreatedStateFileWithoutKeyDeletesNothing(t *testing.T) {
 	e := newMCPEnv(t, `{"gh":`+srv("gh")+`}`, `{}`)
@@ -23,7 +23,7 @@ func TestMCPRecreatedStateFileWithoutKeyDeletesNothing(t *testing.T) {
 	}
 }
 
-// Regression (finding 6): a pass that would strip every server of the base from the folders
+// A pass that would strip every server of the base from the folders
 // still holding them is refused and recorded for sy doctor; a later normal pass clears it.
 func TestMCPGuardRefusesRemovingEveryServer(t *testing.T) {
 	e := newMCPEnv(t, `{"gh":`+srv("gh")+`,"fs":`+srv("fs")+`}`, `{}`)

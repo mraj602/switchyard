@@ -1,6 +1,6 @@
 package model
 
-// Terminal pieces of phase 7 (docs/spec/terminal.md T10): what `sy term setup`,
+// Terminal pieces (docs/spec/terminal.md T10): what `sy term setup`,
 // `sy term titles|warp on|off`, `sy term off` and `sy setup --terminal` ask for, and what the
 // ledger records once they are applied.
 

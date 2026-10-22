@@ -33,7 +33,7 @@ func TestOwnerLinksAPI(t *testing.T) {
 	h := newPairHub(t)
 	same := opts{origin: h.http.URL}
 	owner := h.ownerCookie()
-	phone, _ := h.phoneCookie("Pixel")
+	phone, _ := h.phoneCookie("Phone")
 
 	// Not an owner: 401 without a token, 403 for a read or push device.
 	if r := h.call("POST", "/v1/owner-links", map[string]any{}, same); r.code != 401 {

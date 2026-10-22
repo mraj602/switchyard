@@ -96,8 +96,10 @@ func WriteConfig(dir string, targets []store.PullTarget) error {
 	return errors.Join(bad...)
 }
 
-// quotePath quotes a path for ssh_config when it holds spaces.
+// quotePath makes a path safe as an ssh_config value: ssh expands %-tokens in file names, so
+// a literal % is doubled, and a path with spaces is quoted.
 func quotePath(p string) string {
+	p = strings.ReplaceAll(p, "%", "%%")
 	if strings.ContainsAny(p, " \t") {
 		return `"` + strings.ReplaceAll(p, `"`, `\"`) + `"`
 	}

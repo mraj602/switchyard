@@ -1,5 +1,5 @@
-// Package machines is the phase 5 end-to-end test over real SSH (docs/phases/5.md, "End to
-// end over real SSH", scenario M3): the real `sy` binary adds an Ubuntu sshd container as a
+// Package machines is the end-to-end test over real SSH (scenario M3, docs/spec/machines.md): the
+// real `sy` binary adds an Ubuntu sshd container as a
 // pull machine, the hub pulls records from it, and `sy machine remove` takes it back out.
 //
 //	go test ./test/e2e/machines          (what `make e2e-machines` runs)
@@ -178,7 +178,7 @@ func newRig(t *testing.T) *rig {
 	}
 
 	// Binaries: sy for the container and for this host (one build when they match), and the
-	// phase 3 fake claude for the container. Built into temp dirs; nothing is committed.
+	// fake claude for the container. Built into temp dirs; nothing is committed.
 	bin := filepath.Join(r.tmp, "bin")
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		t.Fatal(err)

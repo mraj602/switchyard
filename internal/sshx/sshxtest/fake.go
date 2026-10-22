@@ -1,5 +1,4 @@
-// Package sshxtest is the fake `ssh` program of the phase 5 tests (docs/phases/5.md WP-A
-// accept): the test binary itself, started through SY_SSH_COMMAND, records every argv and
+// Package sshxtest is the fake `ssh` program of the sshx and machineadd tests: the test binary itself, started through SY_SSH_COMMAND, records every argv and
 // stdin and either replays a scripted answer or runs the remote command line with `sh -c`
 // in a fake remote home folder, as a real sshd would hand it to a login shell.
 //

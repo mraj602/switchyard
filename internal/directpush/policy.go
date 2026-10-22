@@ -187,11 +187,7 @@ func FetchPolicy(ctx context.Context, cl *client.Client) (Policy, error) {
 		return Policy{}, err
 	}
 	req.Header.Set("Authorization", "Bearer "+cl.Token)
-	hc := cl.HTTP
-	if hc == nil {
-		hc = &http.Client{Timeout: 20 * time.Second}
-	}
-	resp, err := hc.Do(req)
+	resp, err := cl.HTTPClient().Do(req)
 	if err != nil {
 		return Policy{}, err
 	}

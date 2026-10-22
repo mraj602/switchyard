@@ -24,7 +24,7 @@ import (
 	"github.com/mraj602/switchyard/internal/termenv"
 )
 
-// The phase 7 WP-B end-to-end test: the real `sy` binary runs a hub on a free loopback port
+// The end-to-end test: the real `sy` binary runs a hub on a free loopback port
 // in a temp SY_HOME; records reach it through `sy outbox append` + `sy flush` (this machine)
 // and POST /v1/ingest as a second machine; `sy board connect` makes the board token; the hub
 // source reads it. Everything runs with a temp HOME, SY_HOME and CLAUDE_CONFIG_DIR, and no

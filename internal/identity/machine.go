@@ -124,8 +124,7 @@ func ClampMachineName(n string) string {
 }
 
 // newULID makes a 26-character Crockford base32 ULID: 48-bit millisecond time, 80 random
-// bits. (internal/record will own ULIDs for record ids; this is the same format, kept
-// local so identity does not wait for it.)
+// bits.
 func newULID(r io.Reader, t time.Time) (string, error) {
 	const alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 	var b [16]byte

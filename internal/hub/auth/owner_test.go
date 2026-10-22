@@ -89,7 +89,7 @@ func TestOwnerSessionShapeScopesAndExpiry(t *testing.T) {
 	if _, err := Create(context.Background(), st, CreateRequest{Kind: "phone", Name: "x", Owner: true}); err == nil {
 		t.Error("owner session of kind phone")
 	}
-	p, _ := Create(ctx, st, CreateRequest{Kind: "phone", Name: "pixel"})
+	p, _ := Create(ctx, st, CreateRequest{Kind: "phone", Name: "phone"})
 	clk.Add(3000 * 24 * time.Hour)
 	if _, err := a.Lookup(ctx, p.Token); err != nil {
 		t.Errorf("phone devices must not expire: %v", err)
@@ -115,7 +115,7 @@ func TestLogoutRevokesTheCookiesDeviceOnly(t *testing.T) {
 	a, st, _ := newAuth(t)
 	ctx := context.Background()
 	o := ownerSession(t, st)
-	phone, _ := Create(ctx, st, CreateRequest{Kind: "phone", Name: "pixel", CreatedBy: "pair:pc_y"})
+	phone, _ := Create(ctx, st, CreateRequest{Kind: "phone", Name: "phone", CreatedBy: "pair:pc_y"})
 	browser, _ := Create(ctx, st, CreateRequest{Kind: "browser", Name: "laptop", CreatedBy: "pair:pc_z"})
 	cli, _ := Create(ctx, st, CreateRequest{Kind: "browser", Name: "kiosk"})
 	bystander, _ := Create(ctx, st, CreateRequest{Kind: "phone", Name: "other", CreatedBy: "pair:pc_w"})
@@ -206,7 +206,7 @@ func TestUnauthorizedReason(t *testing.T) {
 	a, st, _ := newAuth(t)
 	ctx := context.Background()
 	h := a.Require(Options{}, "read")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(204) }))
-	phone, _ := Create(ctx, st, CreateRequest{Kind: "phone", Name: "pixel", CreatedBy: "pair:pc_y"})
+	phone, _ := Create(ctx, st, CreateRequest{Kind: "phone", Name: "phone", CreatedBy: "pair:pc_y"})
 	if err := Revoke(ctx, st, phone.Device.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -287,7 +287,7 @@ func TestCookieRequestsNeedJSONAndSameOrigin(t *testing.T) {
 
 func TestClaimedCookieIsRefreshedOncePerDay(t *testing.T) {
 	a, st, clk := newAuth(t)
-	phone, _ := Create(context.Background(), st, CreateRequest{Kind: "phone", Name: "pixel", CreatedBy: "pair:pc_z"})
+	phone, _ := Create(context.Background(), st, CreateRequest{Kind: "phone", Name: "phone", CreatedBy: "pair:pc_z"})
 	login, _ := Create(context.Background(), st, CreateRequest{Kind: "browser", Name: "board", CreatedBy: "login:dev_x", Scopes: []string{"read"}})
 	h := a.Require(Options{}, "read")(okHandler())
 	get := func(tok string) []*http.Cookie {
@@ -368,7 +368,7 @@ func TestSessionCookieSecureOnlyOverHTTPS(t *testing.T) {
 func TestRevokeCascadeDeletesTargetsAndCancelsDeliveries(t *testing.T) {
 	_, st, _ := newAuth(t)
 	ctx := context.Background()
-	phone, _ := Create(ctx, st, CreateRequest{Kind: "phone", Name: "pixel"})
+	phone, _ := Create(ctx, st, CreateRequest{Kind: "phone", Name: "phone"})
 	other, _ := Create(ctx, st, CreateRequest{Kind: "phone", Name: "ipad"})
 	sess, _ := Create(ctx, st, CreateRequest{Kind: "browser", Name: "board", CreatedBy: "login:" + phone.Device.ID, Parent: phone.Device.ID, Scopes: []string{"read"}})
 	err := st.Write(ctx, func(tx *store.Tx) error {

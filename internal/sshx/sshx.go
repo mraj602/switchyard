@@ -7,7 +7,7 @@
 // stdin) and TTY-inherited (`-t`, the person's terminal passed through, for logins). A
 // failure of ssh itself (exit 255) is classified from stderr into an *Error.
 //
-// Phase 5 WP-A. Depends on nothing in internal/.
+// Depends on nothing in internal/.
 package sshx
 
 import (

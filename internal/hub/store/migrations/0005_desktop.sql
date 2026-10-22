@@ -1,4 +1,4 @@
--- Version 5 (phase 6): who set a seat's label and colour. desktop.md C10.
+-- Version 5: who set a seat's label and colour. desktop.md C10.
 
 ALTER TABLE seat ADD COLUMN look_src TEXT CHECK (look_src IS NULL OR look_src IN ('ui', 'slot', 'import'));
 

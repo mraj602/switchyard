@@ -13,7 +13,7 @@ widget refresh frames) is [push.md 13](push.md#13-the-link-channel-n1).
 Related: pairing.md 2.2, 3.1 (the QR, `cookie: false`), tokens.md 3 (`phone` scopes),
 push.md 5.4 (`prefs`), 5.5 (texts), 5.8 (deep links), 6.5 (the payload), 8 (action tokens),
 13 (the link channel), pwa.md 3 and 5 (screens and the service worker's tap rule), api.yaml
-(`DevicePrefs.widgets`, `PushSettings.refresh_min`), schema.sql v11.
+(`DevicePrefs.widgets`, `PushSettings.refresh_min`), schema.sql v12.
 
 Section numbers start at P1; P8 to P10 (the hub side) were push.md 12, which
 is removed; the hub side of widget refresh is push.md 13.5.
@@ -197,7 +197,7 @@ optional React 19.3 peers); they are expected and do not fail the install.
 
 ## P4. Screens and routes
 
-The same screens as the PWA (pwa.md 3, plan section 12), with phone tabs **Now, Sessions,
+The same screens as the PWA (pwa.md 3), with phone tabs **Now, Sessions,
 Accounts, More**:
 
 | App route (expo-router) | Hash route it mirrors | Screen |
@@ -216,7 +216,7 @@ Accounts, More**:
 | `/pair` | `#/pair` | P2 |
 | `/tabs/[seat]?url=` | — | P17: the seat's claude.ai tab (Android) |
 
-**Peers** (`PeersScreen`, PE3) reads `GET /v1/peers/matrix`, `/v1/peers/audit` and, when the hub
+**Peers** (`PeersScreen`) reads `GET /v1/peers/matrix`, `/v1/peers/audit` and, when the hub
 serves it, `/v1/peers/messages` through the hub client (`matrix`, `editMatrix`, `pausePeers`,
 `peerAudit`, `peerMessages`). Top to bottom: the **Pause all peers** switch (`POST
 /v1/peers/pause`; one tap pauses; turning it off is disabled with a note, because resuming widens
@@ -637,7 +637,7 @@ profiles, no `extra.eas.projectId`, no `googleServicesFile` and no push credenti
   is no `google-services.json`, no Google Services Gradle plugin and no token call.
 - There is no background notification task: there are no silent pushes.
 - The glue uses the `sy-link` module only on Android, when the module is present (`systemLink`).
-- **Build:** `make phone-apk-release` (you run it, not an agent): `expo prebuild --platform
+- **Build:** `make phone-apk-release` (run it by hand): `expo prebuild --platform
   android --clean` with `SY_APP_VARIANT=production`, then `./gradlew
   assembleRelease` in `phone/android`. Output `phone/dist/switchyard-<version>.apk`, its
   `SHA256SUMS` (the APK's line) and `manifest.json` (P16.1). A development build for a manual check is
@@ -779,8 +779,7 @@ The app is sideloaded (no store), so it updates itself, with your confirmation e
 - Data is kept across updates (same package, same key). After `MY_PACKAGE_REPLACED` the link
   service restarts (push.md 14.4).
 - Google's developer verification for sideloaded apps (from 2027) does not change this flow;
-  if a phone requires it, install once with Android's "advanced flow" or `adb install` (plan
-  addendum C, H7).
+  if a phone requires it, install once with Android's "advanced flow" or `adb install` ).
 
 ## P17. claude.ai account tabs (8b)
 

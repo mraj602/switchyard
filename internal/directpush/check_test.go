@@ -428,7 +428,7 @@ func TestSecret(t *testing.T) {
 
 func TestCheckServer(t *testing.T) {
 	for s, ok := range map[string]bool{"https://ntfy.sh": true, "https://ntfy.example.com/": true, "http://127.0.0.1:8080": true,
-		"http://192.168.1.5": true, "http://100.101.102.103": true, "http://ntfy.sh": false, "ftp://x": false, "https://u:p@x": false,
+		"http://10.0.0.5": true, "http://100.101.102.103": true, "http://ntfy.sh": false, "ftp://x": false, "https://u:p@x": false,
 		"https://ntfy.sh/topic": false, "": false} {
 		if (CheckServer(s) == nil) != ok {
 			t.Errorf("%q: %v", s, CheckServer(s))

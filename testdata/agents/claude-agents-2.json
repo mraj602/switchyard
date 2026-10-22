@@ -28,7 +28,7 @@
   },
   {
     "pid": 3865645,
-    "cwd": "/home/user/projects/area-a/example-backend",
+    "cwd": "/home/user/projects/area-a/repo-a",
     "kind": "interactive",
     "startedAt": 1791811803405,
     "sessionId": "00000000-0000-4000-8000-000000000008",
@@ -37,7 +37,7 @@
   },
   {
     "pid": 3868984,
-    "cwd": "/home/user/projects/area-a/example-backend",
+    "cwd": "/home/user/projects/area-a/repo-a",
     "kind": "interactive",
     "startedAt": 1791811849919,
     "sessionId": "00000000-0000-4000-8000-000000000009",

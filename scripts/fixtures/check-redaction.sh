@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Grep testdata/ for anything that must not be there. Prints file names and counts only, never the match.
-# Patterns = fixed token words + the private words in scripts/fixtures/private-words.txt (gitignored,
+# Patterns = fixed token words, the maintainer's handle and home paths + the private words in scripts/fixtures/private-words.txt (gitignored,
 # one per line: your handle, mail domain, company/area names) + the real identities found in this machine's ~/.claude*/.claude.json (oauthAccount) + hostname.
 set -u
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"; PAT="$(mktemp)"; trap 'rm -f "$PAT"' EXIT
-printf '%s\n' sk-ant gho_ ghp_ github_pat_ sessionKey 'Bearer ey' >"$PAT"
+printf '%s\n' sk-ant gho_ ghp_ github_pat_ sessionKey 'Bearer ey' mraj602 workco clientco sy-hub example-backend example-workflows @gmail.com 192.168. /home/mraj >"$PAT"
 WORDS="$ROOT/scripts/fixtures/private-words.txt"
 [ -f "$WORDS" ] && grep -v -e '^#' -e '^$' "$WORDS" >>"$PAT"
 python3 -I - >>"$PAT" <<'PY'

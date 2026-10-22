@@ -29,7 +29,7 @@ func (h *harness) restart(cfg engine.Config, senders ...model.Sender) {
 	h.eng.Sync()
 }
 
-// Review phase 4 finding 3: slow targets must not make the write-back fail or hold up the
+// Slow targets must not make the write-back fail or hold up the
 // pass, and a push that did go out must never go out again.
 func TestSlowTargetsDoNotCauseResends(t *testing.T) {
 	h := newHarness(t, noStart())

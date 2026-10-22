@@ -1,4 +1,4 @@
-// Package push is the phase 4 end-to-end test (push.md 11.4, docs/phases/4.md wave 2): the
+// Package push is the end-to-end test for web push (docs/spec/push.md 11.4): the
 // real `sy` binary, built with `-tags fakeclock`, runs `sy hub serve` in a temporary home
 // with a fake clock (SY_FAKE_CLOCK control socket), a fake Web Push service (webpushtest)
 // and an ntfy stub (ntfytest). The test pairs a phone through the API, registers a Web Push
@@ -378,10 +378,10 @@ func (r *rig) expectPush(n int) map[string]any {
 	return p
 }
 
-func TestEndToEndPush(t *testing.T) { phase4(t, newRig(t)) }
+func TestEndToEndPush(t *testing.T) { pushScenario(t, newRig(t)) }
 
-// phase4 is the phase 4 scenario.
-func phase4(t *testing.T, r *rig) {
+// pushScenario is the whole push scenario.
+func pushScenario(t *testing.T, r *rig) {
 
 	if code, _, b := r.call("GET", "/health", "", nil); code != 200 || !bytes.Contains(b, []byte(`"ui":"`)) {
 		t.Fatalf("/health: %d %s", code, b)

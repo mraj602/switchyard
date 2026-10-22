@@ -269,7 +269,7 @@ func TestAnalyticsRangeAndZone(t *testing.T) {
 	if m["from"] != "2026-10-12" || m["to"] != "2026-10-15" {
 		t.Fatalf("default to: %v", m)
 	}
-	// UI audit AN3: ?tz= counts days and hours in the viewer's zone; a UTC hub asked for
+	// ?tz= counts days and hours in the viewer's zone; a UTC hub asked for
 	// Asia/Kolkata answers as a Kolkata hub does.
 	kol, ktok := anaHub(t, "Asia/Kolkata", true)
 	for _, rep := range []string{"daily", "heatmap"} {

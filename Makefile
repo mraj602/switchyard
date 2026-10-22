@@ -97,7 +97,7 @@ e2e-setup-fedora:
 e2e-setup-ubuntu:
 	test/e2e/setup/run.sh ubuntu $(E2E_ENGINE)
 
-# The phase 5 end-to-end test (docs/phases/5.md): real SSH into a container, never the real HOME.
+# The end-to-end test for pull machines (docs/spec/machines.md): real SSH into a container, never the real HOME.
 # -v so a skip says why; the test picks podman, else docker, unless SY_E2E_RUNTIME is set.
 e2e-machines:
 	$(GO) test -count=1 -v -timeout 15m ./test/e2e/machines
@@ -107,7 +107,7 @@ e2e-machines:
 e2e-android:
 	test/e2e/android/run.sh
 
-# The desktop app (docs/phases/6.md). npm runs in app/ only; the root prototype is never touched.
+# The desktop app . npm runs in app/ only; the root prototype is never touched.
 # Smoke and e2e use temp HOME / SY_HOME / user data folders; on Linux they run under xvfb-run
 # when it is installed (unset WAYLAND_DISPLAY so Electron uses X11).
 # A private session bus too: under xvfb, Electron and Chrome still reach the desktop's D-Bus
@@ -143,7 +143,7 @@ phone-android-debug: phone-deps
 	cd phone/android && ./gradlew :app:assembleDebug
 	@echo "unsigned debug APK: phone/android/app/build/outputs/apk/debug/ (never distribute it)"
 
-# The signed release build (phone.md P16.1). Never run by CI or an agent; see phone/README.md.
+# The signed release build (phone.md P16.1). Never run by CI; see phone/README.md.
 phone-apk-release:
 	cd phone && ./scripts/release-apk.sh --preflight
 	$(MAKE) phone-deps
@@ -171,7 +171,7 @@ app-e2e: app-deps
 clean:
 	rm -rf dist
 
-# docs/phases/7.md WP-E: the terminal scenarios, with `sy` built with -tags fakeopen.
+# The terminal scenarios (docs/spec/terminal.md), with `sy` built with -tags fakeopen.
 e2e-terminal:
 	$(GO) test -count=1 -v -timeout 15m ./test/e2e/terminal
 

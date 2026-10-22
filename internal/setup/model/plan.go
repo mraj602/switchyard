@@ -163,7 +163,7 @@ type Action struct {
 	// the service default (127.0.0.1:8787).
 	Listen string `json:"listen,omitempty"`
 	URL    string `json:"url,omitempty"` // connect (the token is never in the plan)
-	// connect, phase 5: hub.dial (forward mode) and hub.reach ("pull": no URL, no token).
+	// connect: hub.dial (forward mode) and hub.reach ("pull": no URL, no token).
 	Dial  string `json:"dial,omitempty"`
 	Reach string `json:"reach,omitempty"`
 	Key   string `json:"key,omitempty"` // config_set

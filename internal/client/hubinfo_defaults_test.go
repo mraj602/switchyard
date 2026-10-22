@@ -21,7 +21,7 @@ func TestHealthAndReplyCarryVersionFields(t *testing.T) {
 	c := New(srv.URL, "sy_m_x")
 	ctx := context.Background()
 
-	// A hub older than phase 5 says nothing: it reads record v 1.
+	// An older hub says nothing: it reads record v 1.
 	health = `{"ok":true,"version":"0.4.2","schema":3,"time":"2026-10-13T00:00:00.000Z"}`
 	reply = `{"accepted":["a"],"duplicates":[],"rejected":[]}`
 	h, err := c.Health(ctx)

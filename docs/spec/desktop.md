@@ -1,11 +1,10 @@
 # Desktop app
 
-Status: spec v1, phase 6. Implemented in `app/` (Electron) and `sy desktop` (`cmd/sy/desktop.go`,
-`internal/desktop`). The work split, tests and acceptance are in [phases/6.md](../phases/6.md);
-the screens are `docs/design/screens/Desk*.dc.html`. Unofficial; not affiliated with Anthropic.
+Status: spec v1. Implemented in `app/` (Electron) and `sy desktop` (`cmd/sy/desktop.go`,
+`internal/desktop`). Unofficial; not affiliated with Anthropic.
 
-The desktop app is a new Electron app in `app/`, next to the root prototype, which stays live
-until the person retires it. It holds one tab per claude.ai account, reads web usage into
+The desktop app is a new Electron app in `app/`, next to the legacy prototype in the repository root, which stays usable
+until it is retired. It holds one tab per claude.ai account, reads web usage into
 `web_usage` records (record.md 4.3) through `sy`, and shows the hub board. Everything else is
 done by `sy` and the hub. It never opens the prototype's user-data folder (paths.md 2).
 
@@ -93,7 +92,7 @@ both enforce it.
   privileges: {standard: true, secure: true}}])`. `app://shell/<path>` serves only files under
   `src/renderer/` and `src/shared/`. The path is normalised and refused if it leaves those
   folders (403), and only an extension allow-list (`.html .js .css .png .svg .woff2`) is served.
-  Mapping (wave 0): `app://shell/shared/<p>` → `src/shared/<p>`, every other
+  Mapping: `app://shell/shared/<p>` → `src/shared/<p>`, every other
   `app://shell/<p>` → `src/renderer/<p>`; the shell is `app://shell/index.html`, and the
   renderer imports shared code as `./shared/<file>.js`.
 - `shell.openExternal` has exactly one caller, `openExternalSafe(url)` in `main/security.js`,
@@ -101,11 +100,11 @@ both enforce it.
   `mailto:` URL is rebuilt with its addresses and only the `to`, `subject`, `cc` and `body`
   fields (no `attach=` or other client-specific fields).
 - The crash reporter is not started. No telemetry of any kind is sent.
-- Packaged fuses (WP-F): `RunAsNode` off, `EnableNodeOptionsEnvironmentVariable` off,
+- Packaged fuses: `RunAsNode` off, `EnableNodeOptionsEnvironmentVariable` off,
   `EnableNodeCliInspectArguments` off, `EnableEmbeddedAsarIntegrityValidation` on,
   `OnlyLoadAppFromAsar` on, `GrantFileProtocolExtraPrivileges` off. `EnableCookieEncryption`
-  is **left off** in phase 6, because existing and imported sign-ins are stored unencrypted
-  (open risk 6).
+  is **left off**, because existing and imported sign-ins are stored unencrypted
+  (a known limitation).
 - Remote debugging (`main/cdp.js`): a packaged app started with `--remote-debugging-port`,
   `--remote-debugging-pipe` or `--remote-debugging-address` (in argv or on Chromium's command
   line) exits with code 1 before `ready`, unless its asar's `package.json` has
@@ -133,7 +132,7 @@ not used). Before calling a handler it checks the following.
 2. The arguments match the schema. Unknown keys are rejected, strings are capped, and ids
    must match the tab id pattern.
 3. Handlers are registered by their owning module through `ipc.register(channel, fn)` from
-   wave 0. Registering a channel that is not in the table throws at start-up.
+   the start. Registering a channel that is not in the table throws at start-up.
 
 | Channel | Args | Returns | Owner |
 | --- | --- | --- | --- |
@@ -172,7 +171,7 @@ reading state, the local strip windows, last read, the stop reason), the selecte
 the app, Electron and Chromium versions. It never holds
 tokens or secrets. The field-level shapes (`ShellState`, `TabState`, `HubState`, `Settings`) are the JSDoc types at the end of `src/shared/ipc.js`.
 
-Wave 0 details fixed by `src/shared/ipc.js`:
+Details fixed by `src/shared/ipc.js`:
 
 - `window.sy` function names, in table order: `state`, `selectView`, `hubRoute`, `addTab`,
   `updateTab`, `removeTab`, `reorderTabs`, `reloadTab`, `homeTab`, `openTabExternal`, `adoptTab`, `logoutTab`,
@@ -196,7 +195,7 @@ another tab (a bar marks the insertion side); focus a tab and press Alt+Left or 
 Main stores the order in `app-state.json` (the order of `tabs`), which is also the order of the
 Ctrl+1..9 shortcuts and of the strip, so it survives restarts.
 
-## C4. `sy desktop` (Go, WP-S)
+## C4. `sy desktop`
 
 Every subcommand prints one JSON object on stdout with `--json`. Secrets travel only on stdout
 and stdin, never in argv. Exit codes: 0 ok, 2 usage, 3 refused by the hub (expired code,
@@ -244,7 +243,7 @@ sy desktop hub status|start|stop --json
 - `sy desktop` refuses `hub.dial` setups for the app (`info` reports `dial`). The app shows
   "forward mode is not supported in the desktop app".
 
-## C5. Web usage reading (WP-B)
+## C5. Web usage reading
 
 **Reader.** `webContents.executeJavaScriptInIsolatedWorld(1001, [{code}])`, the prototype's
 script, made to return the raw objects:
@@ -327,7 +326,7 @@ final unless the person changes it:
 "Not now" sets `reading: "off"`, and the tab works normally. The dialog is never shown for an
 account in a hidden or background start until the window is shown.
 
-## C6. Hub connection (WP-C)
+## C6. Hub connection
 
 - At start, run `sy desktop info --json`. With no `sy` (C11 resolution fails), or with `sy`
   not connected, the shell shows a banner with the exact command (`sy setup`), and the tabs
@@ -337,7 +336,7 @@ account in a hidden or background start until the window is shown.
   such a record, the token is dropped and pairing starts again. A file that cannot be decrypted
   (the keyring locked or not up yet) is kept and tried again later; pairing replaces it.
   Pairing (`hub:pair`): with `admin` set, it is one click. Otherwise the person types the code
-  from the board (More → Devices → Add desktop app, created by WP-H) or from
+  from the board (More → Devices → Add desktop app) or from
   `sy hub pair --kind desktop`.
 - Requests use Node's `fetch` in main with `Authorization: Bearer`, a 10 s timeout and no
   redirects. Plain `http:` is allowed only for loopback hosts, or when `sy desktop info`
@@ -350,7 +349,7 @@ account in a hidden or background start until the window is shown.
 - The needs-you count is `overview.counts.needs_you`. It is refetched (debounced 1 s) after
   `session` events and published on the bus for the tray.
 
-## C7. Hub view (WP-C)
+## C7. Hub view
 
 - A `WebContentsView` with the session `persist:sy-hub` and the hub's URL. It is created when
   first selected and kept afterwards.
@@ -410,7 +409,7 @@ account in a hidden or background start until the window is shown.
 
   The phone has the same check (phone.md P17.7).
 
-## C8. Shell layout (WP-D, design `DeskAccountTab`, `DeskHome`)
+## C8. Shell layout
 
 - Top bar: **Hub** (badge = needs-you count), one tab per account (colour dot and label from the
   seat when known, else the tab name), **+**, **Settings**. Ctrl/Cmd+0 opens Hub, 1…9 the tabs,
@@ -435,7 +434,7 @@ account in a hidden or background start until the window is shown.
   - **Hub settings** links: Machines, Alerts and rules, Devices, Phone pairing, the hub's own
     Settings. Each opens the Hub view at its route (pwa.md 3).
 
-## C9. Notifications and tray (WP-E)
+## C9. Notifications and tray
 
 - On stream `alert` with `change: "fired"`: fetch the alert and its session, then show the
   notification. The title is `<seat label or email> · <project>`. The body is the trigger text
@@ -461,14 +460,14 @@ account in a hidden or background start until the window is shown.
   AppIndicator), closing the window quits unless `keep_running` is set, and the close notice
   explains this.
 
-## C9b. App menu (WP-E)
+## C9b. App menu
 
 Switchyard menu: Hub, Account 1…9, Refresh usage, Run at login, Keep running, Quit.
 `editMenu`. `toggleDevTools` appears only when unpackaged.
 
-## C10. API and schema changes (wave 0 writes them, WP-H builds them)
+## C10. API and schema changes
 
-- `PATCH /v1/accounts/{seat}`: `x-scopes: [owner]`, `x-reserved: phase 6`. Body `SeatPatch`
+- `PATCH /v1/accounts/{seat}`: `x-scopes: [owner]`, `x-reserved`. Body `SeatPatch`
   `{label?: ^[a-z0-9][a-z0-9-]{0,23}$, colour?: ^#[0-9a-f]{6}$, order?: int, hidden?: bool}`
   (null clears label and colour). Replies: 200 `Seat`, 400, 401, 403, 404. It sets
   `seat.look_src = 'ui'`. Ingest's `slot_info` label and colour apply only while `look_src` is
@@ -483,7 +482,7 @@ Switchyard menu: Hub, Account 1…9, Refresh usage, Run at login, Keep running, 
 - No change to `/v1/ingest`, to record kinds or to `v`. `web_usage` from a machine device is
   already valid (tokens.md 3: write for its own machine id).
 
-## C11. Running `sy` (WP-C)
+## C11. Running `sy`
 
 - Resolution: `SY_BIN` (unpackaged only), else `sy` on `PATH` and then `~/.local/bin/sy`
   (`%USERPROFILE%\.local\bin\sy.exe`), if `sy --version` is ≥ the app's `minSy` (package.json
@@ -509,12 +508,12 @@ Switchyard menu: Hub, Account 1…9, Refresh usage, Run at login, Keep running, 
   | local accounts | `account list --json` | — |
   | share | `account share <folder ^~?[A-Za-z0-9._/-]{1,200}$> --share <^[a-z,=:+-]{1,200}$> --yes --json` | — |
 
-## C12. Module interfaces (wave 0)
+## C12. Module interfaces
 
 Every main-process module exports `create(deps)` and takes Electron and Node as arguments;
 only `main/index.js` imports `electron`, and only `main/sy/` imports `child_process` (a unit
 test in `main/boot.test.js` checks both). `main/boot.js` creates the modules in this order
-(`START_ORDER`, as built in wave 2):
+(`START_ORDER`, as built):
 `paths` → `security` → `protocol` → `ipc` → `store` → `autostart` → `background` →
 `sy` → `hub` → `window` → `state` → `tabs` → `usage` → `tray` → `notify`
 → `menu`. Before `ready`: `paths`, `security.applyGlobal()`, `protocol.registerSchemes()`,
@@ -526,7 +525,7 @@ loads, `ipc.start()` precedes the window,
 and the hub view is made when the Hub view is selected and the hub status is `ok`. Quit runs
 `SHUTDOWN_ORDER`: `usage.stop` → `tabs.stop` (cookies flushed) → `hub.stop` (the stream) →
 `sy.flushNow` (at most 5 s; the outbox keeps the records) → `store.flush`, each step in its
-own `try`, once. The JSDoc of each wave 0 stub fixes what its `create()` returns; the parts other
+own `try`, once. The JSDoc of each module fixes what its `create()` returns; the parts other
 modules call are:
 
 | Module (owner) | Used by others |

@@ -65,9 +65,9 @@ func itoa(n int64) string {
 	return string(b)
 }
 
-// The four phase 5 operations are registered (wave 1, WP-C): none answers 501, and each
+// The machine operations are registered: none answers 501, and each
 // needs a token with its api.yaml scope.
-func TestPhase5OperationsAreReserved(t *testing.T) {
+func TestMachineOperationsNeedTheirScopes(t *testing.T) {
 	h := startHub(t, "")
 	owner := ownerToken(t, h)
 	phone := h.token("phone")

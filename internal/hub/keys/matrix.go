@@ -50,7 +50,7 @@ func forbidden(format string, a ...any) error {
 }
 
 // MatrixCurrent is the newest verified matrix; when the hub has none yet it signs and stores
-// version 1 (nothing allowed, same_account on, not paused, 30 turns; peers.md 5.1).
+// version 1 (nothing allowed, same_account on, not paused, no turn limit; peers.md 5.1).
 func (s *Service) MatrixCurrent(ctx context.Context) (*MatrixRecord, error) {
 	var rec *MatrixRecord
 	err := s.Store.Write(ctx, func(tx *store.Tx) error {

@@ -407,6 +407,16 @@ func mustReg(t *testing.T, dir string) *Registry {
 
 // --- transfer -------------------------------------------------------------------------
 
+func TestPushRefusesPathLikeNames(t *testing.T) {
+	w := newWorld(t)
+	r := remote{ssh: w.env().SSH, host: testHost}
+	for _, name := range []string{"../evil", "a/b", ".hidden", "has space"} {
+		if _, err := r.push(context.Background(), w.bin, "update", name, ""); err == nil {
+			t.Errorf("name %q accepted", name)
+		}
+	}
+}
+
 func TestPushHashMismatchReplacesNothing(t *testing.T) {
 	w := newWorld(t)
 	os.MkdirAll(filepath.Join(w.remote, ".local/bin"), 0o755)
@@ -453,10 +463,10 @@ func TestFleetRemote(t *testing.T) {
 		t.Fatalf("run %q %d %v", out, code, err)
 	}
 	reg := mustReg(t, w.state)
-	reg.Upsert(Entry{Name: "hub", Machine: "m_h", SSH: "oci"}, w.now)
+	reg.Upsert(Entry{Name: "hub", Machine: "m_h", SSH: "hub-host"}, w.now)
 	reg.Upsert(Entry{Name: "gpu-box", Machine: testMID, SSH: testHost, OS: "linux", Arch: "amd64"}, w.now)
 	reg.Save()
-	ms, err := FleetRegistry{StateDir: w.state, HubAdmin: "ssh -p 22 oci sy"}.Machines()
+	ms, err := FleetRegistry{StateDir: w.state, HubAdmin: "ssh -p 22 hub-host sy"}.Machines()
 	if err != nil || len(ms) != 2 || !ms[1].Hub || ms[0].Hub || ms[0].Target != testHost {
 		t.Fatalf("fleet %+v %v", ms, err)
 	}
@@ -638,10 +648,10 @@ func TestAuthorizePullNewFile(t *testing.T) {
 // --- admin, registry, repoint, list, probe --------------------------------------------
 
 func TestPrefixAdmin(t *testing.T) {
-	if _, err := NewPrefixAdmin("ssh -o StrictHostKeyChecking=no oci sy"); !errors.Is(err, sshx.ErrForbidden) {
+	if _, err := NewPrefixAdmin("ssh -o StrictHostKeyChecking=no hub-host sy"); !errors.Is(err, sshx.ErrForbidden) {
 		t.Fatalf("forbidden prefix: %v", err)
 	}
-	if h := AdminSSHHost("ssh -p 2222 -o BatchMode=yes oci sy"); h != "oci" {
+	if h := AdminSSHHost("ssh -p 2222 -o BatchMode=yes hub-host sy"); h != "hub-host" {
 		t.Fatalf("host %q", h)
 	}
 	if h := AdminSSHHost("docker compose exec hub sy"); h != "" {
@@ -666,8 +676,8 @@ func TestPrefixAdmin(t *testing.T) {
 	}
 	// An ssh prefix quotes the appended words for the remote shell; secrets stay on stdin.
 	fake := sshxtest.New(t)
-	fake.RemoteHome("oci")
-	sp, err := NewPrefixAdmin(strings.Join(fake.Command(), " ") + " oci echo")
+	fake.RemoteHome("hub-host")
+	sp, err := NewPrefixAdmin(strings.Join(fake.Command(), " ") + " hub-host echo")
 	if err != nil {
 		t.Fatal(err)
 	}

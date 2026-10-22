@@ -1,13 +1,13 @@
 // Package linkclient is the machine side of the link (docs/spec/link.md): `sy agent run`
 // logs in to the hub's /v1/link with this machine's device keys, verifies every frame
 // against the pinned hub key, opens the queued bodies, stores accepted matrix and
-// revocation documents, hands peer frames to a PeerHandler (PE2), acks, rejects and
+// revocation documents, hands peer frames to a PeerHandler, acks, rejects and
 // reconnects with link.md 8's backoff. It implements agent.LinkClient.
 //
 // State: <state>/agent/link.json ({"last", "rejected"}; link.md 6.1), and the documents in
 // <state>/keys (keys.LoadAcceptedMatrix, keys.LoadAcceptedRevocations read them back).
 //
-// Contract: docs/spec/link.md 3-8, keys.md 3.5, 5.4, 6. F1.
+// Contract: docs/spec/link.md 3-8, keys.md 3.5, 5.4, 6.
 package linkclient
 
 import (
@@ -35,7 +35,7 @@ import (
 	"github.com/mraj602/switchyard/internal/link"
 )
 
-// PeerHandler is the PE2 seam: queued peer frames (peer_msg, peer_status,
+// PeerHandler is the peers seam: queued peer frames (peer_msg, peer_status,
 // peer_thread_resume; their hub signature already checked) and the hub's
 // ephemeral answers to peer requests (peers, peer_ack, notices) go to it.
 type PeerHandler interface {

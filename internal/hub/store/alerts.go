@@ -15,8 +15,7 @@ import (
 
 // Alerts, deliveries and the facts the alert engine reads (push.md 3-5, 9). Every write
 // goes through a Tx (store.Write); the engine never holds a transaction while sending.
-// Names carry Alert/Delivery prefixes: other phase 4 files of this package are written in
-// parallel.
+// Names carry Alert/Delivery prefixes so they stay apart from the rest of the package.
 
 const alertCols = `id, episode, trigger, rule_id, session_id, seat_id, machine_id, window_key, status, reason, since_at,
 	created_at, due_at, fired_at, fire_count, snoozed_until, seen_at, seen_by, ended_at, facts, updated_at`
@@ -458,8 +457,8 @@ func alertScanTarget(sc interface{ Scan(...any) error }) (model.Target, error) {
 	if raw.Valid {
 		_ = json.Unmarshal([]byte(raw.String), &p)
 	}
-	// A target's own prefs.private wins over its device's (WP-C stores the ntfy.sh private
-	// default on the target, push.md 7.1).
+	// A target's own prefs.private wins over its device's (the ntfy.sh private default is
+	// stored on the target, push.md 7.1).
 	if t.DeviceID != "" && tprefs.Valid {
 		var own struct {
 			Private *bool `json:"private"`
@@ -789,7 +788,7 @@ func (s *Store) alertAttachDeliveries(ctx context.Context, alerts []model.Alert)
 	return rows.Err()
 }
 
-// ---------------------------------------------------------------- direct push (phase 5)
+// ---------------------------------------------------------------- direct push
 
 // DirectPush is a direct_push record as the alert table sees it (record.md 4.9).
 type DirectPush struct {

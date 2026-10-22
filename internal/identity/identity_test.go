@@ -383,6 +383,10 @@ func TestOSFSGuard(t *testing.T) {
 		filepath.Join(home, ".claude", ".credentials.json"),
 		filepath.Join(home, ".claude-2", "sessions", "x.key"),
 		filepath.Join(home, ".claude", "daemon", "sock"),
+		// Case-insensitive file systems (macOS, Windows) open these as the files above.
+		filepath.Join(home, ".claude", ".Credentials.JSON"),
+		filepath.Join(home, ".Claude-2", "Sessions", "x.KEY"),
+		filepath.Join(home, ".CLAUDE", "Daemon", "sock"),
 	} {
 		if _, err := (OSFS{}).Open(p); !errors.Is(err, ErrForbidden) {
 			t.Errorf("Open(%s): %v", p, err)
@@ -417,9 +421,7 @@ func fakeRunner(t *testing.T, out []byte, err error, called *[]string) Runner {
 		if _, ok := ctx.Deadline(); !ok {
 			t.Error("no timeout on auth status")
 		}
-		for _, kv := range env {
-			*called = append(*called, kv)
-		}
+		*called = append(*called, env...)
 		return out, err
 	}
 }

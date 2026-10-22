@@ -9,7 +9,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
 
-// Review phase 4 finding 6: a snooze re-push dropped as stale must not leave the old snooze
+// A snooze re-push dropped as stale must not leave the old snooze
 // token usable.
 func TestStaleSnoozeRepushInvalidatesOldToken(t *testing.T) {
 	h := newHarness(t, withSweep(time.Hour))
@@ -33,7 +33,7 @@ func TestStaleSnoozeRepushInvalidatesOldToken(t *testing.T) {
 	}
 }
 
-// Review phase 4 finding 5: a bad or expired token is rejected without the write lock.
+// A bad or expired token is rejected without the write lock.
 func TestActRejectsBadTokenWithoutWriteTransaction(t *testing.T) {
 	h := newHarness(t, withSweep(time.Hour))
 	h.askQ(s1, 0)
@@ -44,16 +44,7 @@ func TestActRejectsBadTokenWithoutWriteTransaction(t *testing.T) {
 	h.write(func(tx *store.Tx) error { // the write lock is held while the checks run
 		ctx, cancel := context.WithTimeout(h.ctx, 2*time.Second)
 		defer cancel()
-		// Change a character in the middle of the MAC to a different one: rewriting the last
-		// characters can be a no-op (they may already match, or only carry padding bits).
-		bad := []byte(tok.Seen)
-		i := len(bad) - 10
-		if bad[i] == 'A' {
-			bad[i] = 'B'
-		} else {
-			bad[i] = 'A'
-		}
-		if _, _, err := h.eng.Act(ctx, string(bad)); err != model.ErrBadMAC {
+		if _, _, err := h.eng.Act(ctx, tamperToken(tok.Seen)); err != model.ErrBadMAC {
 			t.Errorf("tampered token: %v", err)
 		}
 		if _, _, err := h.eng.Act(ctx, tok.Seen); err != model.ErrExpired {

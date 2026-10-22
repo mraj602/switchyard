@@ -4,5 +4,5 @@
 //
 // Contract: docs/spec/schema.sql.
 //
-// Phase 2. Depends on: nothing inside the module.
+// Depends on: nothing inside the module.
 package store

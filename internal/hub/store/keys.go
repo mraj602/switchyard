@@ -7,7 +7,7 @@ import (
 	"errors"
 )
 
-// Rows of the F1 key tables (schema v7, keys.md 9). The store only keeps bytes: every
+// Rows of the key tables (schema v7, keys.md 9). The store only keeps bytes: every
 // signature is checked by internal/hub/keys when a row is loaded, so an edited row is
 // ignored there, never trusted here.
 

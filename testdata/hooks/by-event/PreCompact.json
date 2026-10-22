@@ -1,7 +1,7 @@
 {
   "session_id": "b1d50adc-e171-4719-9b58-8317197d7abb",
-  "transcript_path": "/home/user/.claude-3/projects/-tmp-claude-1000--home-user-projects-personal-92757a3d-04cd-4927-8177-c75bc52051b4-scratchpad-proj1/b1d50adc-e171-4719-9b58-8317197d7abb.jsonl",
-  "cwd": "/tmp/claude-1000/-home-user-projects-personal/92757a3d-04cd-4927-8177-c75bc52051b4/scratchpad/proj1",
+  "transcript_path": "/home/user/.claude-3/projects/-tmp-example-proj1/b1d50adc-e171-4719-9b58-8317197d7abb.jsonl",
+  "cwd": "/tmp/example/proj1",
   "prompt_id": "eba919a4-5696-465d-bbe9-a0ea38fae107",
   "hook_event_name": "PreCompact",
   "trigger": "manual",

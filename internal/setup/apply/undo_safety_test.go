@@ -1,6 +1,6 @@
 package apply_test
 
-// Regression tests for the phase 3 review findings on undo, rollback and crash recovery:
+// Regression tests for undo, rollback and crash recovery:
 // undo never deletes or overwrites what the person made after the run.
 
 import (
@@ -29,7 +29,7 @@ func undoAll(t *testing.T, state string, sh model.Sharer) backup.Result {
 	return ur
 }
 
-// Finding 3: the parents a link action created are removed only when empty; a login and
+// The parents a link action created are removed only when empty; a login and
 // skills added in them later stay.
 func TestUndoKeepsLaterFilesInCreatedParents(t *testing.T) {
 	b, o, d := simple(t)
@@ -51,7 +51,7 @@ func TestUndoKeepsLaterFilesInCreatedParents(t *testing.T) {
 	}
 }
 
-// Finding 2: a kept folder's .claude.json (servers, projects) is never deleted; only a
+// A kept folder's .claude.json (servers, projects) is never deleted; only a
 // first-run state file that is the folder's only entry goes with the folder.
 func TestUndoKeepsStateFileOfAFolderInUse(t *testing.T) {
 	b, o, d := simple(t)
@@ -86,7 +86,7 @@ func (c createRegExec) Run(context.Context, []string, map[string]*string) ([]byt
 	return []byte(`{"outcome":"ok"}`), os.WriteFile(c.reg, []byte(`{"plugins":{"switchyard@sy-local":[1]}}`), 0o644)
 }
 
-// Finding 8: a registry the run created is reverted entry by entry when someone registered
+// A registry the run created is reverted entry by entry when someone registered
 // other plugins in it since; it is not deleted.
 func TestUndoKeepsCreatedRegistryWithLaterEntries(t *testing.T) {
 	b, o, d := simple(t)
@@ -106,7 +106,7 @@ func TestUndoKeepsCreatedRegistryWithLaterEntries(t *testing.T) {
 	}
 }
 
-// Finding 8: a file created under a plugin root that changed since the run is left alone.
+// A file created under a plugin root that changed since the run is left alone.
 func TestUndoSkipsCreatedFileChangedSince(t *testing.T) {
 	b, o, d := simple(t)
 	root := b.Abs("plug")
@@ -125,7 +125,7 @@ func TestUndoSkipsCreatedFileChangedSince(t *testing.T) {
 	}
 }
 
-// Finding 7: recovery of an interrupted JSON edit keeps edits made after the crash.
+// Recovery of an interrupted JSON edit keeps edits made after the crash.
 func TestRecoveryKeepsEditsMadeAfterTheCrash(t *testing.T) {
 	b, o, _ := simple(t)
 	b.File("settings.json", `{"a":1}`, 0o644)
@@ -163,7 +163,7 @@ func TestRecoveryKeepsEditsMadeAfterTheCrash(t *testing.T) {
 	}
 }
 
-// Finding 7: recovery of an interrupted file write leaves a file changed since alone.
+// Recovery of an interrupted file write leaves a file changed since alone.
 func TestRecoveryKeepsAFileRewrittenAfterTheCrash(t *testing.T) {
 	b, o, _ := simple(t)
 	f := b.Abs("bin/claude-2")
@@ -180,7 +180,7 @@ func TestRecoveryKeepsAFileRewrittenAfterTheCrash(t *testing.T) {
 	}
 }
 
-// Finding 7: an interrupted plugin command removes only what it may have made for sy's
+// An interrupted plugin command removes only what it may have made for sy's
 // marketplace, not what appeared under the root since.
 func TestRecoveryOfRunRemovesOnlyExpectedPaths(t *testing.T) {
 	b, o, _ := simple(t)
@@ -203,7 +203,7 @@ func TestRecoveryOfRunRemovesOnlyExpectedPaths(t *testing.T) {
 	}
 }
 
-// Finding 5: the MCP base is journaled, so after undo the next sync does not read the
+// The MCP base is journaled, so after undo the next sync does not read the
 // reverted keys as deletions and remove servers everywhere.
 func TestMCPUndoRestoresTheBase(t *testing.T) {
 	b, o, d := simple(t)

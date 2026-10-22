@@ -1,5 +1,5 @@
 // Package peerlink is the agent's path to sessions on other machines (docs/spec/peers.md 3.1
-// hub source, 8.2, 8.4, 9.3; PE2). It implements peers.Remote over the link (the hub's
+// hub source, 8.2, 8.4, 9.3). It implements peers.Remote over the link (the hub's
 // directory with `peers_list`, envelopes with `peer_msg`, same-machine audit with
 // `peer_log`) and linkclient.PeerHandler (queued `peer_msg`, `peer_status` and
 // `peer_thread_resume`, the hub's ephemeral answers). It does not import linkclient: the client is reached through Sender.
@@ -66,6 +66,9 @@ type Remote struct {
 		reply *peers.PeersReply
 	}
 	seenMu sync.Mutex
+	// spoolMu serialises the peer_log spool: a flush rewrites the file, which would drop a
+	// line another send appended meanwhile.
+	spoolMu sync.Mutex
 }
 
 // New returns a Remote for env; set Link before use.
@@ -392,6 +395,8 @@ func (r *Remote) sendLog(up peers.PeerLogUp) {
 }
 
 func (r *Remote) spool(up peers.PeerLogUp) {
+	r.spoolMu.Lock()
+	defer r.spoolMu.Unlock()
 	b, _ := json.Marshal(up)
 	if os.MkdirAll(filepath.Dir(r.spoolPath()), 0o700) != nil {
 		return
@@ -406,6 +411,8 @@ func (r *Remote) spool(up peers.PeerLogUp) {
 
 // flushSpool sends the spooled peer_log lines; the ones that do not go out stay.
 func (r *Remote) flushSpool() {
+	r.spoolMu.Lock()
+	defer r.spoolMu.Unlock()
 	f, err := os.Open(r.spoolPath())
 	if err != nil {
 		return

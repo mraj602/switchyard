@@ -3,6 +3,10 @@
 Realistic, redacted sample data for Switchyard's Go tests (golden files, record round-trips, the
 prototype importer). Captured on 2026-10-12 with **Claude Code 2.1.296**, on Linux, from the Warp terminal.
 
+Maintainer note: `scripts/fixtures/regenerate.sh` reads the maintainer's real `~/.claude*` folders and
+usage database and spends real Claude usage; contributors should not run it. Run
+`scripts/fixtures/check-redaction.sh` before committing any change here.
+
 Everything here went through `scripts/fixtures/redact.py` (run with `python3 -I`). Do not edit files by
 hand; regenerate them (see the end). Real vs synthetic is stated per file.
 

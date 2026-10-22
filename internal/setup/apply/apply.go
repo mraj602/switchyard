@@ -7,7 +7,7 @@
 // Logins (op login) are never run here: the command layer does them one folder at a time
 // and the folders are returned in Result.Logins.
 //
-// Phase 3 WP-B. Depends on: internal/setup/backup, internal/setup/ledger, internal/setup/model.
+// Depends on: internal/setup/backup, internal/setup/ledger, internal/setup/model.
 package apply
 
 import (
@@ -691,7 +691,7 @@ func (r *runner) runCmd(ctx context.Context, a model.Action) error {
 		paths = append(paths, backup.PathSpec{Path: t, Save: backup.SaveCopy})
 	}
 	// Only what the plugin commands make for sy's marketplace, and for Warp's marketplace
-	// that `sy term setup --warp-plugin` adds (phase 7, terminal.md T10), is ever removed by
+	// that `sy term setup --warp-plugin` adds (terminal.md T10), is ever removed by
 	// undo (7.3).
 	spec := backup.Spec{Paths: paths, Watch: a.Watch, Expect: []string{marketplaceName, warpMarketplaceName}}
 	return r.journaled(a, spec, func(tx *backup.Tx) error {
@@ -724,7 +724,7 @@ func (r *runner) connect(ctx context.Context, a model.Action) error {
 	var res model.ConnectResult
 	err := r.journaled(a, spec, func(tx *backup.Tx) error {
 		if a.Reach == model.HubPull {
-			// Phase 5: pulled over SSH: no token, no URL; Connect sets hub.reach and the timer.
+			// pulled over SSH: no token, no URL; Connect sets hub.reach and the timer.
 			var err error
 			res, err = r.d.Connector.Connect(ctx, model.ConnectRequest{Pull: true, Reach: a.Reach})
 			if res.Timer {

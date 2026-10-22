@@ -202,11 +202,7 @@ func tableCount(ctx context.Context, db *sql.DB, table string) (int64, error) {
 }
 
 func openRO(path string) (*sql.DB, error) {
-	p := filepath.ToSlash(path)
-	if !strings.HasPrefix(p, "/") {
-		p = "/" + p
-	}
-	db, err := sql.Open("sqlite", "file:"+p+"?mode=ro&_pragma=query_only(1)&_pragma=busy_timeout(2000)")
+	db, err := sql.Open("sqlite", FileURI(path, "mode=ro&_pragma=query_only(1)&_pragma=busy_timeout(2000)"))
 	if err != nil {
 		return nil, err
 	}
@@ -517,7 +513,8 @@ func IsEncryptedExport(path string) (bool, error) {
 	return string(m[:]) == syxeMagic, nil
 }
 
-const maxMemberBytes = 1 << 40 // a sanity bound; the manifest's own sizes are what is enforced
+// maxStateFileBytes bounds the small state members (pairing pepper, signing and pull keys).
+const maxStateFileBytes = 1 << 20
 
 // unpack extracts the archive into dir (which must exist, mode 0700) and returns the
 // verified manifest. Only the known member names are written; each file's size and SHA-256
@@ -585,6 +582,20 @@ func unpack(path, passphrase, dir string) (Manifest, error) {
 			if _, dup := got[h.Name]; dup {
 				return m, fmt.Errorf("damaged export: %s twice", h.Name)
 			}
+			// Write no more than the manifest declares for this member, so a hostile archive
+			// cannot fill the disk through a compression bomb; the key files are small.
+			want := int64(-1)
+			for _, mf := range m.Files {
+				if mf.Path == h.Name {
+					want = mf.Size
+				}
+			}
+			if want < 0 {
+				return m, fmt.Errorf("damaged export: %s is not in the manifest", h.Name)
+			}
+			if h.Name != memberDB && want > maxStateFileBytes {
+				return m, fmt.Errorf("damaged export: %s is too large", h.Name)
+			}
 			dst := filepath.Join(dir, filepath.FromSlash(h.Name))
 			if err := os.MkdirAll(filepath.Dir(dst), 0o700); err != nil {
 				return m, err
@@ -594,7 +605,7 @@ func unpack(path, passphrase, dir string) (Manifest, error) {
 				return m, err
 			}
 			hh := sha256.New()
-			n, cerr := io.Copy(io.MultiWriter(out, hh), io.LimitReader(tr, maxMemberBytes))
+			n, cerr := io.Copy(io.MultiWriter(out, hh), io.LimitReader(tr, want+1))
 			if e := out.Close(); cerr == nil {
 				cerr = e
 			}
@@ -704,7 +715,7 @@ func existingCounts(ctx context.Context, path string) (map[string]int64, error) 
 
 // lockedCheck fails with ErrHubRunning when another process holds the database.
 func lockedCheck(ctx context.Context, path string) error {
-	db, err := sql.Open("sqlite", "file:"+hubPathURI(path)+"?_pragma=busy_timeout(500)&_txlock=exclusive")
+	db, err := sql.Open("sqlite", FileURI(path, "_pragma=busy_timeout(500)&_txlock=exclusive"))
 	if err != nil {
 		return err
 	}
@@ -718,14 +729,6 @@ func lockedCheck(ctx context.Context, path string) error {
 		return err
 	}
 	return tx.Rollback()
-}
-
-func hubPathURI(path string) string {
-	p := filepath.ToSlash(path)
-	if !strings.HasPrefix(p, "/") {
-		p = "/" + p
-	}
-	return p
 }
 
 // ImportOptions configures Import.

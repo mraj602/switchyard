@@ -3,5 +3,5 @@
 //
 // Contract: docs/spec/paths.md section 4.
 //
-// Phase 1. Depends on: paths.
+// Depends on: paths.
 package config

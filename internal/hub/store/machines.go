@@ -13,7 +13,7 @@ import (
 	"github.com/mraj602/switchyard/internal/version"
 )
 
-// The hub's machines model (machines.md 6, 9; phase 5 WP-C): the read model with reach, info,
+// The hub's machines model (machines.md 6, 9): the read model with reach, info,
 // backlog age, version and pull state; rename and remove; machine_info; the frozen flag that
 // ingest re-checks inside its write transaction (machines.md 8.1).
 
@@ -268,7 +268,7 @@ func semver(v string) ([3]int, bool) {
 // same, older, newer, or unknown when either is missing, a pre-release or a dev build.
 func VersionStatus(machine, hub string) string {
 	// The same build string is the same version, semver or not: builds from a commit
-	// without a tag are named by the commit ("104cd7f", UI audit M1). "dev" (a build
+	// without a tag are named by the commit ("104cd7f"). "dev" (a build
 	// without version stamping) and an empty string say nothing.
 	if a, b := bareVersion(machine), bareVersion(hub); a == b && a != "" && a != "dev" {
 		return VersionSame

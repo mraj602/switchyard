@@ -44,7 +44,7 @@ func (e RegistryEntry) ProcStartString() string {
 }
 
 // ProcStartMatches compares the registry's procStart with the live process's start time.
-// **Uncertain** (peers.md 3.1; lab E1 setup): the registry's format is not documented. This
+// The registry's format is not documented (peers.md 3.1; lab E1 setup). This
 // accepts a missing procStart and any value that is not a plain decimal number (nothing to
 // compare); a decimal value must equal the stat start time. A pid that was reused has a
 // different start time, which is what this exists to catch; the socket connect is the other

@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// Inbox socket facts (peers.md 8.1). Documented unless marked uncertain.
+// Inbox socket facts (peers.md 8.1). Documented unless marked as inferred.
 const (
 	// MaxFrameBytes: Claude Code drops the connection for a line over about 1 MiB.
 	MaxFrameBytes = 1 << 20
@@ -110,8 +110,8 @@ func Alive(sock string) bool {
 	return true
 }
 
-// SocksDir is the default inbox folder: <runtime>/cc-socks. **Uncertain** on macOS (peers.md
-// 14: there the registry's messagingSocketPath is used, never this guess). runtime is
+// SocksDir is the default inbox folder: <runtime>/cc-socks. Inferred, not documented, on
+// macOS (peers.md 14: there the registry's messagingSocketPath is used, never this guess). runtime is
 // $XDG_RUNTIME_DIR, or /run/user/<uid> when it is empty.
 func SocksDir(runtime string) string { return filepath.Join(runtimeDir(runtime), SocksDirName) }
 

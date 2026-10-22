@@ -16,7 +16,7 @@ import (
 	"github.com/mraj602/switchyard/internal/warp"
 )
 
-// Source selection of `sy board` (docs/spec/terminal.md T3), wired in phase 7 wave 2:
+// Source selection of `sy board` (docs/spec/terminal.md T3):
 //
 //   - auto (default): the hub source when hub.url is set and <state>/board/token.json holds a
 //     token for that URL; it merges this machine's local fold in while the hub is out of

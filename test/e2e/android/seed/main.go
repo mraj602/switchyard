@@ -35,7 +35,7 @@ type mach struct{ id, token, name string }
 var (
 	hub   string
 	seats = []*record.Seat{
-		{Account: "acc-seed-personal", Org: "org-seed-personal", Email: "you@example.com"},
+		{Account: "acc-seed-personal", Org: "org-seed-personal", Email: "alex@example.com"},
 		{Account: "acc-seed-work", Org: "org-seed-work", Email: "platform-team@acme.example"},
 		{Account: "acc-seed-client", Org: "org-seed-client", Email: "contractor@client.example"},
 	}

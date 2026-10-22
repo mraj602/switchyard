@@ -35,7 +35,7 @@ type Proc interface {
 	// variable is absent or empty). ErrNoEnv means this OS cannot read it (macOS).
 	ConfigDir(pid int) (value string, set bool, err error)
 	// StartTime is the process start in the form a registry's procStart uses (Linux: the
-	// stat starttime in clock ticks, decimal). **Uncertain** (registry.go).
+	// stat starttime in clock ticks, decimal). Inferred, not documented (registry.go).
 	StartTime(pid int) (string, error)
 }
 
@@ -161,13 +161,14 @@ func (PSProc) Info(pid int) (ProcInfo, error) {
 
 func (PSProc) ConfigDir(int) (string, bool, error) { return "", false, ErrNoEnv }
 
-// StartTime on macOS is `ps -o lstart=`. **Uncertain**: the registry's procStart there.
+// StartTime on macOS is `ps -o lstart=`. The registry's procStart format there is
+// not documented.
 func (PSProc) StartTime(pid int) (string, error) {
 	out, err := exec.Command("ps", "-o", "lstart=", "-p", strconv.Itoa(pid)).Output()
 	return strings.TrimSpace(string(out)), err
 }
 
-// Process names of Claude Code (peers.md 14: **uncertain** for every install; the registry
+// Process names of Claude Code (peers.md 14: not documented for every install; the registry
 // file is what decides, so a false hit here only costs one lookup).
 var (
 	claudeBaseNames = []string{"claude", "claude.exe"}

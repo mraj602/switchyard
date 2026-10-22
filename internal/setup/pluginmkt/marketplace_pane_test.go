@@ -12,7 +12,7 @@ import (
 	"github.com/mraj602/switchyard/plugin"
 )
 
-// Phase 7 wave 0: the marketplace also carries switchyard-pane. The switchyard plugin's
+// The marketplace also carries switchyard-pane. The switchyard plugin's
 // written tree is byte-identical to what it was before the pane existed (written alone, with
 // an empty pane source), and the pane tree is the embedded one with only its version set.
 func TestMarketplaceCarriesPaneAndLeavesSwitchyardAlone(t *testing.T) {

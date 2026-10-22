@@ -13,9 +13,9 @@ import (
 )
 
 // Fleet update (`sy update --machines`, machines.md 7.4). The operator runs it with the
-// person's own SSH. WP-A's internal/sshx and its registry reader are not imported here:
-// this package codes against the two small interfaces below and WP-E adapts A's types to
-// them. Nothing in this file starts anything on the hub: the operator pushes.
+// person's own SSH. internal/sshx and the machine registry reader are not imported here:
+// this package codes against the two small interfaces below and cmd/sy adapts them. Nothing in this file starts anything on the hub: the operator
+// pushes.
 
 // FleetMachine is one registry entry as the fleet update needs it.
 type FleetMachine struct {

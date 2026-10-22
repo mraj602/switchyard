@@ -167,7 +167,7 @@ func (s *Server) devList(w http.ResponseWriter, r *http.Request) {
 }
 
 // devResolve resolves {id}: "self" is the caller; any other id needs the owner scope.
-// found is false when the response has been written.
+// ok is false when the response has been written.
 func (s *Server) devResolve(w http.ResponseWriter, r *http.Request) (id string, caller store.Device, ok bool) {
 	caller, _ = auth.DeviceFrom(r.Context())
 	id = r.PathValue("id")
@@ -214,7 +214,6 @@ var (
 	devTZName = regexp.MustCompile(`^[A-Za-z0-9_+\-]+(/[A-Za-z0-9_+\-]+){0,2}$`)
 )
 
-// devCheckPrefs validates a prefs object (push.md 5.4) and returns it normalised.
 // devValidTZ reports whether name is a time zone name the hub can load. The pattern keeps
 // odd characters (and file paths) away from time.LoadLocation; LoadLocation says whether it
 // is a real zone, so a bad one is refused here and not when the engine renders a push.
@@ -226,6 +225,7 @@ func devValidTZ(name string) bool {
 	return err == nil
 }
 
+// devCheckPrefs validates a prefs object (push.md 5.4) and returns it normalised.
 func devCheckPrefs(raw json.RawMessage) (model.Prefs, error) {
 	var p model.Prefs
 	if err := json.Unmarshal(raw, &p); err != nil {

@@ -136,9 +136,16 @@ func (s *Store) migrate(ctx context.Context, opt Options) error {
 }
 
 func vacuumInto(ctx context.Context, db *sql.DB, to string) error {
-	if _, err := os.Stat(to); err == nil {
-		return fmt.Errorf("%s already exists", to)
+	// An empty file made private first: SQLite accepts an existing empty target, and the copy
+	// never exists with the default umask mode.
+	f, err := os.OpenFile(to, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return err
 	}
-	_, err := db.ExecContext(ctx, `VACUUM INTO ?`, to)
-	return err
+	f.Close()
+	if _, err := db.ExecContext(ctx, `VACUUM INTO ?`, to); err != nil {
+		_ = os.Remove(to)
+		return err
+	}
+	return nil
 }

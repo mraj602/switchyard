@@ -41,11 +41,31 @@ func New(baseURL, token string) *Client {
 	return &Client{BaseURL: baseURL, Token: token}
 }
 
+// HTTPClient is the client every request of c goes through, with the redirect guard.
+func (c *Client) HTTPClient() *http.Client { return c.http() }
+
 func (c *Client) http() *http.Client {
-	if c.HTTP != nil {
-		return c.HTTP
+	hc := c.HTTP
+	if hc == nil {
+		hc = &http.Client{Timeout: 20 * time.Second}
 	}
-	return &http.Client{Timeout: 20 * time.Second}
+	// The Authorization header must never follow a redirect from https to plain http (Go
+	// keeps it for a same-host redirect). A copy leaves the caller's client alone.
+	out := *hc
+	prev := out.CheckRedirect
+	out.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if len(via) > 0 && via[0].URL.Scheme == "https" && req.URL.Scheme != "https" {
+			return errors.New("refusing a redirect from https to plain http")
+		}
+		if prev != nil {
+			return prev(req, via)
+		}
+		if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		return nil
+	}
+	return &out
 }
 
 func (c *Client) endpoint(p string) string { return strings.TrimRight(c.BaseURL, "/") + p }
@@ -71,7 +91,7 @@ type IngestReply struct {
 	Accepted   []string   `json:"accepted"`
 	Duplicates []string   `json:"duplicates"`
 	Rejected   []Rejected `json:"rejected"`
-	// Hub is what the hub reads (machines.md 7.2); nil from a hub older than phase 5, which
+	// Hub is what the hub reads (machines.md 7.2); nil from a hub that predates it and
 	// reads record v 1.
 	Hub *HubInfo `json:"hub,omitempty"`
 }
@@ -83,7 +103,7 @@ type HubInfo struct {
 	RecordVMax int    `json:"record_v_max"`
 }
 
-// DefaultRecordVMax is what a hub that does not say reads (phase 4 and older): record v 1.
+// DefaultRecordVMax is what a hub that does not say reads (an older hub): record v 1.
 const DefaultRecordVMax = 1
 
 // VMax is the highest record v the hub reads, DefaultRecordVMax when unknown (nil receiver
@@ -109,7 +129,7 @@ type Health struct {
 	Schema  int    `json:"schema"`
 	Time    string `json:"time"`
 
-	// Phase 5 (machines.md 7.2); zero/nil from older hubs.
+	// machines.md 7.2; zero/nil from older hubs.
 	RecordVMax int           `json:"record_v_max,omitempty"`
 	BatchV     []int         `json:"batch_v,omitempty"`
 	DrainProto int           `json:"drain_proto,omitempty"`

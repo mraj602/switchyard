@@ -143,7 +143,7 @@ func goldenDocs(t testing.TB) []docVector {
 	cert := NewCertBody("dev_01JA4MACHINE00000000000000", "machine", "laptop", "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K", m, RegSSH, hubFP, goldenTime)
 	add("device_cert-machine-hub", TypeDeviceCert, mustJSON(t, cert), ByHub)
 	add("device_cert-machine-owner", TypeDeviceCert, mustJSON(t, cert), ByHub, ByOwner)
-	pc := NewCertBody("dev_01JA4PHONE0000000000000000", "phone", "Pixel 9 · app", "", phoneKeys(), RegQR, hubFP, goldenTime)
+	pc := NewCertBody("dev_01JA4PHONE0000000000000000", "phone", "Phone · app", "", phoneKeys(), RegQR, hubFP, goldenTime)
 	add("device_cert-phone", TypeDeviceCert, mustJSON(t, pc), ByHub)
 
 	mx := BaselineMatrix(hubFP, goldenTime)

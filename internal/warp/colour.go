@@ -8,7 +8,7 @@ import (
 
 // Colour is one of the six chromatic colour names a Warp tab config takes, with the sRGB
 // value it is matched against. `black` and `white` are never used: they read badly on dark
-// and light themes (docs/phases/7.md, "Six colours or eight").
+// and light themes (docs/spec/terminal.md T8).
 type Colour struct {
 	Name string
 	Hex  string

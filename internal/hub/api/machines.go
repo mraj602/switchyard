@@ -14,8 +14,8 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
 
-// Machine operations of phase 5 (machines.md 6.2). The server wraps them with the scopes of
-// phase5Routes (owner), so the handlers do not check scopes themselves.
+// Machine operations (machines.md 6.2). The server wraps them with the scopes of the route
+// table (owner), so the handlers do not check scopes themselves.
 func init() {
 	Register("PATCH", "/v1/machines/{id}", func(s *Server) http.Handler { return http.HandlerFunc(s.machinePatch) })
 	Register("DELETE", "/v1/machines/{id}", func(s *Server) http.Handler { return http.HandlerFunc(s.machineDelete) })

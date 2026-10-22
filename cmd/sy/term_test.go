@@ -1,6 +1,6 @@
 package main
 
-// End-to-end tests of `sy term` and `sy open` (docs/phases/7.md WP-E): the sy binary
+// End-to-end tests of `sy term` and `sy open`: the sy binary
 // against fakeclaude in a temp home. A wrapper `claude` in front of fakeclaude records
 // every argv with its CLAUDE_CONFIG_DIR and points Warp's GitHub marketplace at a local
 // copy; fake xdg-open and open (macOS) record the URI sy open hands it.
