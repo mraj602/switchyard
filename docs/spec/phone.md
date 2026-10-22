@@ -1,14 +1,13 @@
 # Phone app
 
-Status: spec v1, phase 8. Implemented in `phone/` (Expo SDK 57, React Native). The work split,
-tests, decisions ("decision N"), risks ("risk N") and manual steps are in
-[phases/8.md](../phases/8.md); the screens are `docs/design/screens/Phone*.dc.html`. Unofficial;
+Status: spec v1. Implemented in `phone/` (Expo SDK 57, React Native), Android only. Unofficial;
 not affiliated with Anthropic.
 
 The phone app is a `phone` device (tokens.md 3: scopes `read` and `push`) with the PWA's
 screens, native notifications with **Open**, **Snooze** and **Seen** (Android, over the app's
-own link to the hub), home-screen widgets on iOS and Android, and an iOS Lock Screen countdown
-to a limit reset. It talks only to its hub's existing API; the hub side (the link channel and
+own link to the hub), home-screen widgets on Android (the iOS widget and Lock Screen countdown sources stay in the
+tree, are kept compiling and are not shipped), and an optional Lock Screen countdown source
+for iOS. It talks only to its hub's existing API; the hub side (the link channel and
 widget refresh frames) is [push.md 13](push.md#13-the-link-channel-n1).
 
 Related: pairing.md 2.2, 3.1 (the QR, `cookie: false`), tokens.md 3 (`phone` scopes),
@@ -16,10 +15,10 @@ push.md 5.4 (`prefs`), 5.5 (texts), 5.8 (deep links), 6.5 (the payload), 8 (acti
 13 (the link channel), pwa.md 3 and 5 (screens and the service worker's tap rule), api.yaml
 (`DevicePrefs.widgets`, `PushSettings.refresh_min`), schema.sql v11.
 
-Section numbers follow phases/8.md's contract: P8 to P10 (the hub side) were push.md 12, which
+Section numbers start at P1; P8 to P10 (the hub side) were push.md 12, which
 is removed; the hub side of widget refresh is push.md 13.5.
 
-**Notifications (N0, built in N1/N2; plan addendum C).** Android only. Native notifications
+**Notifications.** Android only. Native notifications
 come over the app's own link to the hub (push.md 13, the `sy-link` module of push.md 14); the
 app uses no push service, Expo's, Google's or any other. P2 adds keys to the claim, P6.3
 registers nothing with the hub (the link target comes from pairing), P6.7 is the Settings →
@@ -27,7 +26,7 @@ Notifications screen, P13 has no EAS or Firebase config and `minSdkVersion` is 3
 the in-app updater. iOS sections (P6.6's iOS badge, P12, the iOS widgets of P11) stay in the
 code and are not worked on; iOS gets no native notifications (use Web Push in the browser).
 
-Code map (wave 0): `phone/src/contract/` is the TypeScript side of this spec:
+Code map: `phone/src/contract/` is the TypeScript side of this spec:
 
 | File | Holds |
 | --- | --- |
@@ -40,9 +39,6 @@ Code map (wave 0): `phone/src/contract/` is the TypeScript side of this spec:
 | `platform.ts` | The service interfaces `src/lib` takes as arguments (`FetchLike`, `Clock`, `KVStore`, `SecureStoreLike`, `AppStateSource`, `AppInfo`) |
 | `validate.ts` | Runtime validators for all of the above (empty list = valid), used by the contract test and by the app on data it did not make |
 
-Each `src/lib/<module>/index.ts` holds the exported signatures of its wave 1 owner, throwing
-`"<module>.<fn>: not implemented (phase 8)"` until implemented.
-
 ## P1. The app: layout and versions
 
 ```
@@ -51,7 +47,7 @@ phone/
   babel.config.js  jest.config.js  eslint.config.js  .gitignore  README.md
   app/                      expo-router routes (P4); thin screens only
   src/contract/             TypeScript mirrors of hub JSON (api.ts, payload.ts), WidgetSnapshot,
-                            LiveCountdownProps, route constants. Wave 0; changes go through WP-0's owner
+                            LiveCountdownProps, route constants. Keep in step with api.yaml
   src/lib/hub/              hub client: base URL, bearer, timeouts, errors, endpoints
   src/lib/pair/             QR/typed input parsing, claim
   src/lib/secure/           keychain wrapper (SecureStore behind an interface + in-memory fake)
@@ -61,7 +57,7 @@ phone/
   src/lib/format/           ages, reset times, labels, state words (port of webui format.js)
   src/lib/widget/           WidgetSnapshot builder, timeline, Android render props
   src/lib/live/             countdown choice, Live Activity props, end policy
-  src/lib/integrate/        wave 2 glue (pure): after-refresh widget/live/badge steps, registration
+  src/lib/integrate/        the glue (pure): after-refresh widget/live/badge steps, registration
                             on pairing and start, link `refresh` frames, auto countdown
   src/state/                provider (the one source of truth), notification bridge, and glue.tsx:
                             binds the real modules and derives the screens' HubApi from useHub()
@@ -78,7 +74,7 @@ phone/
 
 Rule: `src/lib/**` imports no `react-native`, no `expo-*` module and no React. It takes
 platform services as arguments (`fetch`, clock, storage, a `Notifications`-shaped object). A
-jest test walks the import graph and fails on a forbidden import (wave 0, like phase 7's
+jest test walks the import graph and fails on a forbidden import (like the Go side's
 lint test).
 
 Pinned versions (exact; all released on or before 2026-09-29; the native modules are the
@@ -86,7 +82,7 @@ versions `expo@57.0.26`'s `bundledNativeModules.json` names):
 
 | Package | Version | Released | Why |
 | --- | --- | --- | --- |
-| `expo` | 57.0.26 | 2026-09-29 | SDK 57 (decision 1) |
+| `expo` | 57.0.26 | 2026-09-29 | SDK 57 |
 | `react` / `react-native` | 19.2.3 / 0.86.3 | — | SDK 57 pins |
 | `expo-router` | 57.0.24 | 2026-09-29 | Routes, deep links |
 | `expo-notifications` | 57.0.21 | 2026-09-24 | Channels, permission prompt, categories, responses |
@@ -94,7 +90,7 @@ versions `expo@57.0.26`'s `bundledNativeModules.json` names):
 | `expo-camera` | 57.0.6 | 2026-09-29 | QR scanning (`CameraView` `onBarcodeScanned`; `expo-barcode-scanner` is abandoned) |
 | `expo-linking` | 57.0.11 | 2026-09-24 | Scheme URLs, opening `remote_url` |
 | `expo-constants` / `expo-device` / `expo-application` | 57.0.20 / 57.0.2 / 57.0.3 | ≤ 2026-09-29 | Project id, device name, app version |
-| `expo-widgets` | 57.0.22 | 2026-09-29 | iOS widgets and Live Activity (decision 7) |
+| `expo-widgets` | 57.0.22 | 2026-09-29 | iOS widgets and Live Activity |
 | `@expo/ui` | 57.0.21 | 2026-09-29 | SwiftUI components for widgets (`expo-widgets@57.0.22` depends on `~57.0.21`) |
 | `expo-clipboard` | 57.0.2 | 2026-09-11 | Copy resume command |
 | `react-native-android-widget` | 0.22.1 | 2026-08-17 | Android widgets |
@@ -106,9 +102,9 @@ versions `expo@57.0.26`'s `bundledNativeModules.json` names):
 | `jest-expo` | 57.0.5 | 2026-08-26 | Test preset |
 | `@testing-library/react-native` | 14.0.1 | 2026-06-23 | Screen tests (14.1.0 is too new) |
 | `eslint-config-expo` | 57.0.2 | 2026-08-26 | Lint |
-| `react-dom` | 19.2.3 | 2025-12-11 | Added in wave 0: expo-router and `@expo/metro-runtime` pull a newer `react-dom` (19.3, which wants React 19.3) unless it is pinned to SDK 57's `bundledNativeModules` value |
-| `babel-preset-expo` | 57.0.13 | 2026-09-24 | Added in wave 0: `babel.config.js` needs it at the top level. 57.0.15 (what `expo` nests) declares `expo-widgets ^57.0.24`, newer than our pin; 57.0.13 wants `^57.0.21` |
-| `test-renderer` | 1.2.0 | 2026-04-16 | Added in wave 0: RNTL 14's renderer peer; 1.3 uses `react-reconciler` 0.34, which wants React 19.3 |
+| `react-dom` | 19.2.3 | 2025-12-11 | expo-router and `@expo/metro-runtime` pull a newer `react-dom` (19.3, which wants React 19.3) unless it is pinned to SDK 57's `bundledNativeModules` value |
+| `babel-preset-expo` | 57.0.13 | 2026-09-24 | `babel.config.js` needs it at the top level. 57.0.15 (what `expo` nests) declares `expo-widgets ^57.0.24`, newer than our pin; 57.0.13 wants `^57.0.21` |
+| `test-renderer` | 1.2.0 | 2026-04-16 | RNTL 14's renderer peer; 1.3 uses `react-reconciler` 0.34, which wants React 19.3 |
 | `jest` / `@react-native/jest-preset` | 29.7.0 / 0.86.3 | 2023-09-12 / 2026-08-24 | jest-expo 57's runner and preset |
 | `eslint` | 9.39.5 | 2026-07-10 | eslint-config-expo 57's flat config (npm marks 9.x end of life; 10 is not supported by the config yet) |
 | `@types/react` / `@types/jest` / `@types/node` | 19.2.18 / 29.5.14 / 22.19.1 | ≤ 2026-07-30 | Types (`tsconfig` `types: ["jest", "node"]`: TypeScript 6 no longer loads every `@types` package) |
@@ -127,7 +123,7 @@ optional React 19.3 peers); they are expected and do not fail the install.
   - `https://<host>[:port]/#/pair?s=<22 base64url>&c=<6 digits>[&h=<24 base32>&k=<22 base64url>]`,
     the QR of pairing.md 2.2 with keys.md 7's hub fingerprint and registration seal;
   - `switchyard://pair?u=<https origin>&s=…&c=…[&h=…&k=…]`, the "Open in app" link the web pair
-    page gains in wave 2; `h` and `k` are the QR's pins and are carried through the link route
+    page offers; `h` and `k` are the QR's pins and are carried through the link route
     to the Pair screen (without them the claim sends no keys and the phone gets no link);
   - typed input: an address plus `482-913`, `482913` or `482 913`.
 
@@ -142,7 +138,7 @@ optional React 19.3 peers); they are expected and do not fail the install.
   `{origin, token, device, name}` (P3). The error mapping follows pairing.md 3: 401 →
   "Invalid or expired code", 409 → "That code is for a <kind>, not a phone", 429 → "Too many
   tries, wait 10 minutes", network → "Can't reach <host>. Is Tailscale on?"
-- **Keys in the claim (N1).** Before claiming, the app calls `SyLink.prepareKeys()` (push.md
+- **Keys in the claim.** Before claiming, the app calls `SyLink.prepareKeys()` (push.md
   14.3). With `k` from the QR it sends `keys_sealed` (keys.md 7.1); with a typed code, `keys`
   in the clear (never with a QR secret: the hub refuses that). The reply's `hub_key.fp` must
   equal `h` when the QR had one, else the app refuses: "This hub's key does not match the QR
@@ -153,9 +149,9 @@ optional React 19.3 peers); they are expected and do not fail the install.
   qrFp: h})`, which makes the certificate checks natively and rejects `ERR_SY_HUB_KEY` /
   `ERR_SY_TAMPERED` (push.md 14.8), then `SyLink.start()` (from the glue's `onPaired`).
   As built: the QR's `k` is sealed by `SyLink.sealKeys(k, secret)`; a QR with a secret but no
-  `k` (a hub before F1) sends no keys at all; a damaged `h` or `k` is refused like a damaged
+  `k` (a hub without the link) sends no keys at all; a damaged `h` or `k` is refused like a damaged
   secret. A sealed claim whose reply has no `hub_key` or `cert` is refused as tampered; a
-  typed-code claim to a hub before F1 (no `hub_key`) pairs without instant delivery. A
+  typed-code claim to a hub without the link (no `hub_key`) pairs without instant delivery. A
   `configure` failure other than the two refusals pairs without the link (Settings →
   Notifications shows it). The refusal deletes the device with `DELETE /v1/devices/self` and
   the new token, then shows the message; nothing is kept.
@@ -214,7 +210,7 @@ Accounts, More**:
 | `/more/alerts` | `#/more/alerts` | Rule switches as `prefs.mute` (`PATCH /v1/devices/self`), recent pushes (`GET /v1/alerts`) |
 | `/more/machines?machine=` | `#/machines` | Machines list |
 | `/more/settings` | `#/more/settings` | Hub and status, notifications state, private pushes, tap behaviour, own quiet hours, widgets refresh switch (`prefs.widgets`), app version and **Check for update** (P16), **Unpair** |
-| `/more/settings/notifications` | — | P6.7 (N1) |
+| `/more/settings/notifications` | — | P6.7 |
 | `/more/peers` | `#/more/peers` | PE3: **Pause all peers**, the matrix (view; a tapped cell and **Block all** can only narrow; the turn limit is read-only) and the audit list (peers.md 5, 10, 11); see below |
 | `/alerts/[id]` | `#/alerts/<id>` | Loads the alert and replaces itself with its deep link (push.md 5.8) |
 | `/pair` | `#/pair` | P2 |
@@ -240,7 +236,7 @@ with the loop-guard explanation and the no-limit line (peers.md 6.3, 5.4).
 
 Owner-only PWA screens (Devices, Add phone, rule editing) are not in the app. Analytics (More, Analytics; `GET /v1/analytics/{report}`, analytics.md) is: a range (7, 30, 90 days), a seat filter, totals, daily cost bars, a compact weekday by hour heatmap, models, projects, the five dearest sessions, limit windows (peak and final percent as bars) and limit hits.
 Wording, ages and state words come from `src/lib/format` and match `webui/static/format.js`
-on a shared table (WP-S).
+on a shared table.
 
 ## P5. Data refresh
 
@@ -274,7 +270,7 @@ the permission prompt only once a channel exists):
 | `sy_limits` | Limits | DEFAULT | `limit_80`, `limit_95`, `reset` |
 | `sy_machines` | Machines | LOW | `machine_silent` |
 | `sy_test` | Test | DEFAULT | test pushes |
-| `sy_connection` | Connection (always on) | MIN | N1: the link service's persistent notification (push.md 14.4) |
+| `sy_connection` | Connection (always on) | MIN | The link service's persistent notification (push.md 14.4) |
 
 The `sy-link` module creates the same channels natively (it posts link notifications itself),
 with the same ids, so either side may create them first. A channel that already exists keeps
@@ -313,9 +309,8 @@ keep the single `notification_icon`.
 | none | Tap only | Summaries, `test`, private pushes still have actions (tokens reveal nothing) |
 
 The Snooze title uses `snooze_min` from `GET /v1/rules` (`settings.snooze_min`; a phone
-device may read it), and categories are re-registered when it changes. (Phases/8.md said
-`GET /v1/push/config`, which has no settings: corrected in wave 0.) Whether a non-foreground action runs the JS response handler
-on iOS while the app is killed is **unverified** (risk 3). If it does not, one constant,
+device may read it), and categories are re-registered when it changes. (Not `GET /v1/push/config`, which has no settings.) Whether a non-foreground action runs the JS response handler
+on iOS while the app is killed is **unverified**. If it does not, one constant,
 `BACKGROUND_ACTIONS_IOS`, flips Snooze and Seen to `opensAppToForeground: true`: the app
 opens briefly, acts and shows a toast.
 
@@ -332,7 +327,7 @@ turned widget refresh off keeps it off. `widgets` means widget refresh frames ov
 | Input | Decision |
 | --- | --- |
 | `actionIdentifier` `snooze` / `seen` with a token in `data.actions` | `{kind: "act", token}` → `POST <origin>/v1/actions/<token>` with `Content-Type: application/json` and body `{}`, no bearer; then dismiss that notification. The result is not retried, as in pwa.md 5 |
-| Default tap or `open` | The `tap` rule of `sw-lib.js` `chooseTarget`: `claude` with `remote_url` → open the link; `auto` with `remote_url` → probe `GET /health` (1.5 s), the link if no answer, else the route; otherwise the route from `data.url` (P7) |
+| Default tap or `open` | The `tap` rule of `sw-lib.js` `chooseTarget`, where on Android a `remote_url` counts only when it is an `https://` link on claude.ai or a subdomain (default port, no user info; the native side drops any other, so the tap opens the app): `claude` with `remote_url` → open the link; `auto` with `remote_url` → probe `GET /health` (1.5 s), the link if no answer, else the route; otherwise the route from `data.url` (P7) |
 | `data` missing or `v` not 1 | Open Now |
 
 An act goes only to the hub that sent the notification. The payload has no hub identity
@@ -365,8 +360,7 @@ Live Activity and sets the badge from `needs_you`. Action handling is P6.4's `ac
 
 **P6.6 Badge:** set after each refresh with `setBadgeCountAsync(needs_you)`.
 
-**P6.7 Settings → Notifications** (N1, route `/more/settings/notifications`, screen
-`PhoneNotifySettings` to be drawn in `docs/design/screens/`; built as
+**P6.7 Settings → Notifications** (route `/more/settings/notifications`; built as
 `src/components/screens/NotifySettingsScreen.tsx`, reached from a "Notification settings"
 button in Settings' Notifications card):
 
@@ -392,13 +386,13 @@ Maker guides (text in `src/lib/notify/makers.ts`, matched on lower-case manufact
 | huawei, honor | Settings → Battery → App launch → Switchyard → Manage manually, all three on |
 | others | Settings → Apps → Switchyard → Battery → Unrestricted |
 
-Doctor rows (plan addendum C) come from the same state: connection age, battery exemption and
+Doctor rows come from the same state: connection age, battery exemption and
 verification.
 
-As built (N1): the words are in `src/lib/notify/link.ts` (`linkStatusWords`, `linkErrorWords`,
+The words are in `src/lib/notify/link.ts` (`linkStatusWords`, `linkErrorWords`,
 `verifiedWords`, `batteryWords`); the maker comes from `expo-device`'s `manufacturer`
-(`AppInfo.maker`). A paired device with no `link` target (paired before N1, or by a hub before
-F1) shows "This phone has no link on the hub yet" and asks to pair again: the app does not call
+(`AppInfo.maker`). A paired device with no `link` target (paired before the link existed, or by a hub
+without it) shows "This phone has no link on the hub yet" and asks to pair again: the app does not call
 `PUT /v1/devices/self/keys`, whose reply carries only `cert`, not the `hub_key` and `link.urls`
 `configure` needs. The `revoked` and `refresh` events refresh the data at once (a revoked phone
 then gets the 401 that shows Pair, P3).
@@ -413,7 +407,7 @@ then gets the 401 that shows Pair, P3).
   - `switchyard://machines[?machine=<id>]`
   - `switchyard://alerts/<al_…>`
   - `switchyard://pair?u=…&s=…&c=…[&h=…&k=…]`
-  - `switchyard://settings/notifications` (N1: the **Settings** button of the link's persistent
+  - `switchyard://settings/notifications` (the **Settings** button of the link's persistent
     notification, push.md 14.4; the notification's own tap opens `switchyard://now`;
     `switchyard://settings` alone stays off the list)
 
@@ -562,7 +556,7 @@ then gets the 401 that shows Pair, P3).
 
 - `chooseCountdown(snapshot, now)` (pure) returns the seat × window with the highest pct
   among windows resetting within `LIVE_MAX_H = 8` hours and at ≥ 80%, else null. 8 hours is
-  the commonly cited limit for an active Live Activity and is **unverified** (risk 7). So the
+  the commonly cited limit for an active Live Activity and is **unverified**. So the
   5-hour window qualifies and the 7-day window only in its last 8 hours.
 - Props: `{seat, colour, window, pct, resets_at, started_at}`. The `ResetCountdown`
   component renders `Text` with `timerInterval: {lower: started_at, upper: resets_at}` (`@expo/ui`
@@ -582,12 +576,12 @@ then gets the 401 that shows Pair, P3).
   in "rate limited" or its body is the "Resets 17:00 · …" line (push.md 5.5, 5.7); a private
   `failed` push never counts. The response sets a one-shot flag and kicks a refresh; the next
   refresh calls `syncCountdown(snapshot, now, true)`. It is updated after each refresh with the new pct. It ends with
-  `end(after(resets_at + 15 min))` (`after` from `expo-widgets`; wave 0 corrected the
+  `end(after(resets_at + 15 min))` (`after` from `expo-widgets`; not the
   `end("after", …)` form) at the reset, and immediately on unpair.
 - The activity is `createLiveActivity('ResetCountdown', component)` (`LIVE_ACTIVITY_NAME`).
   It needs no plugin option: the generated widget bundle always includes
-  `WidgetLiveActivity()` (checked in the wave 0 iOS prebuild).
-- No push-to-start and no push updates (decision 9).
+  `WidgetLiveActivity()` (checked by the iOS prebuild check).
+- No push-to-start and no push updates.
 
 ## P13. Build configuration
 
@@ -621,7 +615,7 @@ then gets the 401 that shows Pair, P3).
     together fail `:app:checkDebugDuplicateClasses`. Forcing 2.8.1 makes ktx an empty artifact.
     Revisit when Glance or the widget library moves to a common version.
 
-**Android build (N1, N2).** Nothing in it needs an Expo, Google or store account: no EAS
+**Android build.** Nothing in it needs an Expo, Google or store account: no EAS
 profiles, no `extra.eas.projectId`, no `googleServicesFile` and no push credentials.
 
 - Android `minSdkVersion` **31** (push.md 14.2: Keystore key agreement), `targetSdkVersion`
@@ -646,7 +640,7 @@ profiles, no `extra.eas.projectId`, no `googleServicesFile` and no push credenti
 - **Build:** `make phone-apk-release` (you run it, not an agent): `expo prebuild --platform
   android --clean` with `SY_APP_VARIANT=production`, then `./gradlew
   assembleRelease` in `phone/android`. Output `phone/dist/switchyard-<version>.apk`, its
-  `SHA256SUMS` (the APK's line) and `manifest.json` (P16.1). A development build for the phase 8 manual check is
+  `SHA256SUMS` (the APK's line) and `manifest.json` (P16.1). A development build for a manual check is
   `expo prebuild` + `./gradlew assembleDebug`.
 - **Signing:** your own release keystore, outside the repo. The make target refuses to start
   without it: `SY_ANDROID_KEYSTORE` (path), `SY_ANDROID_KEY_ALIAS` and
@@ -693,23 +687,21 @@ profiles, no `extra.eas.projectId`, no `googleServicesFile` and no push credenti
   them (`test/screens.test.tsx`, `test/peers-format.test.ts`).
 - `test/contract.test.ts` checks the Go payload goldens with
   `validatePayload(…, exact)` (Go key order, no unknown keys), and every fixture with its
-  validator. Wave 0 ships `placeholder-alert.json` and `placeholder-refresh.json`; WP-H replaces
-  them with its `message-*.json` goldens.
+  validator. `placeholder-alert.json` and `placeholder-refresh.json` stand in until the `message-*.json`
+  goldens replace them.
 - `test/imports.test.ts` walks the import graph from `src/lib` and `src/contract` and fails on
   any package import or a relative import that leaves them (P1). `eslint.config.js` also
   forbids `react`, `react-native*`, `expo*`, `@expo/*` and `@react-native*` in `src/lib/**`
   and `console` in `src/**`.
-- `test/stubs.test.ts` expects every wave 0 stub to throw; each wave 1 owner deletes their
-  module from its list.
 - `scripts/check-no-secrets.mjs` fails on a credential-shaped file in `phone/` (outside
   `node_modules`, `android/`, `ios/`) or anywhere in `git ls-files`, and on a private key block
   or service-account JSON in a tracked `phone/` file. `.env.example` / `.env.sample` are allowed.
 - `scripts/prebuild-check.mjs android|ios` copies `phone/` to a temp directory (with
   `node_modules` symlinked), runs `expo prebuild --platform <p> --no-install --clean` there
-  with `SY_APP_VARIANT=production`, asserts the list in phases/8.md's test plan and deletes
+  with `SY_APP_VARIANT=production`, asserts the generated native config (P13) and deletes
   the copy (`SY_KEEP_PREBUILD=1` keeps it for a look).
 
-## P15. Facts checked in wave 0
+## P15. Facts checked about the toolchain
 
 Checked on 2026-10-13 on Fedora Linux (Node 22.22.2, no Xcode, no Android build), with the
 pins of P1:
@@ -717,20 +709,20 @@ pins of P1:
 | # | Fact | Result |
 | --- | --- | --- |
 | 1 | `expo prebuild --platform android --no-install --clean` succeeds with every P13 plugin; the manifest has `POST_NOTIFICATIONS`, the `switchyard` intent filter, two `AppWidgetProvider` receivers (`.widget.SySessions`, `.widget.SyLimits`) and `allowBackup="false"` | **Checked.** Needed one change: POST_NOTIFICATIONS is only merged from expo-notifications' library manifest at Gradle time, so P13 now lists it in `android.permissions`. Two `appwidget-provider` XML files are generated; react-native-android-widget's plugin writes to the right path (no doubled `android/android`). Cleartext is off in release. |
-| 2 | `expo prebuild --platform ios --no-install --clean` succeeds on Linux, with `Info.plist`, entitlements and the widget extension target | **Checked.** `ios/ExpoWidgetsTarget/` holds `NeedsYouSmall.swift`, `AccountsMedium.swift`, `index.swift` (the bundle, which includes `WidgetLiveActivity()`), `Info.plist` and its entitlements. The App Group is on the app and the extension, `aps-environment` on the app, the app-extension target is in `project.pbxproj`, and every target is iOS 16.4. Pods are not installed (`--no-install`), so this proves config, not compilation (risk 6 stays for the native compile). The iOS prebuild check stays in `make phone-check` and CI's `check` job. |
+| 2 | `expo prebuild --platform ios --no-install --clean` succeeds on Linux, with `Info.plist`, entitlements and the widget extension target | **Checked.** `ios/ExpoWidgetsTarget/` holds `NeedsYouSmall.swift`, `AccountsMedium.swift`, `index.swift` (the bundle, which includes `WidgetLiveActivity()`), `Info.plist` and its entitlements. The App Group is on the app and the extension, `aps-environment` on the app, the app-extension target is in `project.pbxproj`, and every target is iOS 16.4. Pods are not installed (`--no-install`), so this proves config, not compilation (the native compile is not covered). The iOS prebuild check stays in `make phone-check` and CI's `check` job. |
 | 3 | `expo-widgets@57.0.22` and `react-native-android-widget@0.22.1` coexist | **Checked.** Both plugins run in the same config without duplicate keys; each platform's prebuild generates its own widget set and the other plugin leaves it alone (`expo-widgets` has `enableAndroid: false`). No fallback needed. |
 | 4 | `jest-expo` renders `@expo/ui/swift-ui` widget trees through the mock | **Checked**, with `test/render-widget.ts` rather than RNTL's `render` (P14). `test/widget-mock.test.tsx` renders a `VStack` with a timer `Text` and an Android `FlexWidget`. |
 
-Notes for wave 1 from the same checks:
+Notes from the same checks:
 
 - `babel-preset-expo` adds a widgets transform whenever `expo-widgets` is installed: widget
   components are functions marked with the `'widget'` directive, serialised for the native
   side. Components must stay pure (props in, tree out; no hooks, no closures over module
   state).
 - `expo-widgets` warns about `userInterfaceStyle` on Android without `expo-system-ui`. That is
-  harmless; WP-S may ask for `expo-system-ui` if it wants the Android dark-mode setting.
+  harmless; adding `expo-system-ui` is the way if it wants the Android dark-mode setting.
 
-## P16. Updater (N2)
+## P16. Updater
 
 The app is sideloaded (no store), so it updates itself, with your confirmation each time.
 
@@ -768,6 +760,8 @@ The app is sideloaded (no store), so it updates itself, with your confirmation e
   first the hub (`GET /v1/app/android`), then, if the hub has none or is unreachable, GitHub
   directly (the same release filter as P16.2). An update is offered when `build` is higher
   than the installed `versionCode` and `min_sdk` fits.
+  `origin` must be the paired hub's stored origin (`ERR_SY_UPDATE` otherwise), so the bearer
+  token can go nowhere else; with no stored hub the check uses GitHub only.
 - The app (`src/lib/update`) calls it on start when paired and at most every 24 hours, and the
   offer is remembered until installed. A failed check does not count as a check.
 - Settings → App version has an **Updates** row (Android): the state ("Not
@@ -928,7 +922,7 @@ never by email.
    visit, and a WebView that has used a profile keeps it "in use" for the rest of the process,
    which would turn every later sign-out into the deferred delete of P17.1. The line therefore
    carries "as of the tab's last visit, <ago>".
-4. **Phone tab line** (design Phone-11) and action:
+4. **Phone tab line** and action:
 
    | State | Line | Action |
    | --- | --- | --- |
@@ -945,7 +939,7 @@ never by email.
    a folder that logged out of this seat, api.yaml): "Claude Code: signed in on **laptop**,
    **worker** · signed out on **x**" (machine names, each once; a machine where it is also
    signed in is not listed as signed out), or "Claude Code: not signed in on any machine".
-6. **Fix this tab** (design Phone-12), a bottom sheet: "<seat>'s tab is signed in as <other>",
+6. **Fix this tab**, a bottom sheet: "<seat>'s tab is signed in as <other>",
    the account-id note, the two rows, then:
    - **Sign out here and sign in as <seat>**: `deleteProfile(seat)`, forget the memo, open the
      tab at `https://claude.ai/login`.
@@ -959,8 +953,7 @@ never by email.
 
 ### P17.8 The Accounts list
 
-Designs Phone-Accounts-Compact, Phone-Account-Detail, Phone-Accounts-Today (Phone-11 and 12 for
-the tab status). Calm and compact: seven accounts fit on one screen.
+Calm and compact: seven accounts fit on one screen.
 
 - **Header:** "Accounts" with **+ Add account** (gold outline, P17.3, tabs only) at the right;
   under it **Expand all** / **Collapse all** (text button, from two accounts up).
@@ -988,7 +981,7 @@ the tab status). Calm and compact: seven accounts fit on one screen.
   % used, meter, "resets in 2 h 10 min (15:48)", "reset at Sat 10:10" or "not started · starts
   when you next use this account", peak, pace); **Signed in** (the Claude Code
   line per machine, the phone tab line with "as of the tab's last visit", and its action: **Open
-  claude.ai**, **Sign in on this phone** or **Fix this tab**, which opens the Phone-12 sheet of
+  claude.ai**, **Sign in on this phone** or **Fix this tab**, which opens the sheet of
   P17.7); then the plan and organisation, email, live sessions and when claude.ai usage was
   read; and **Count down on Lock Screen** where the Live Activity qualifies (iOS, P12).
 - **Under the list**, one muted line: "The bar shows the tighter of the 5 h and 7 d limits. Tap
