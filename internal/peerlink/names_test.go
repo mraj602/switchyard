@@ -19,13 +19,13 @@ func TestNamesFromTheCachedAnswer(t *testing.T) {
 	}
 	dev := "dev_w"
 	r.cache.reply = &peers.PeersReply{V: 1,
-		Sessions: []peers.WireSession{{Session: "s-w", Handle: "x@3f1c2a9b.worker", Name: "x", Account: "3f1c2a9b-1111", MachineID: "m_W",
-			Machine: "worker", Aliases: []string{"x@claude-1.worker"}, Device: &dev}},
+		Sessions: []peers.WireSession{{Session: "s-w", Handle: "x@3f1c2a9b.gpu-box", Name: "x", Account: "3f1c2a9b-1111", MachineID: "m_W",
+			Machine: "gpu-box", Aliases: []string{"x@claude-1.gpu-box"}, Device: &dev}},
 		Mine: []peers.WireSession{{Session: "s-l", Handle: "p@claude-1.laptop", Name: "p", Account: "acc", AccountLabel: "claude-1",
 			MachineID: "m_A", Machine: "laptop", Aliases: []string{"p@claude.laptop"}}},
 	}
 	n := r.Names()
-	if w := n["s-w"]; w.Mine || w.Handle != "x@3f1c2a9b.worker" || w.Label != "3f1c2a9b" || !slices.Equal(w.Aliases, []string{"x@claude-1.worker"}) {
+	if w := n["s-w"]; w.Mine || w.Handle != "x@3f1c2a9b.gpu-box" || w.Label != "3f1c2a9b" || !slices.Equal(w.Aliases, []string{"x@claude-1.gpu-box"}) {
 		t.Errorf("other machine: %+v", w)
 	}
 	if l := n["s-l"]; !l.Mine || l.Handle != "p@claude-1.laptop" || l.Label != "claude-1" || l.Name != "p" {
@@ -33,8 +33,8 @@ func TestNamesFromTheCachedAnswer(t *testing.T) {
 	}
 	r.cache.at, r.Fresh = time.Now(), time.Hour // the answer is fresh: Sessions does not ask
 	ss, err := r.Sessions()
-	if err != nil || len(ss) != 1 || ss[0].Handle != "x@3f1c2a9b.worker" || ss[0].AccountLabel != "3f1c2a9b" ||
-		!slices.Equal(ss[0].Aliases, []string{"x@claude-1.worker"}) {
+	if err != nil || len(ss) != 1 || ss[0].Handle != "x@3f1c2a9b.gpu-box" || ss[0].AccountLabel != "3f1c2a9b" ||
+		!slices.Equal(ss[0].Aliases, []string{"x@claude-1.gpu-box"}) {
 		t.Errorf("sessions: %+v %v", ss, err)
 	}
 }

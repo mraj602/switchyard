@@ -134,7 +134,7 @@ func TestResolveAliases(t *testing.T) {
 		mk("s-2", "api@ops.laptop", "api@claude.laptop"),
 		mk("s-3", "docs@claude.laptop"),
 		mk("s-4", "docs@work.laptop", "docs@claude.laptop"),
-		mk("s-5", "web@team.worker", "web@claude-1.worker"),
+		mk("s-5", "web@team.desktop", "web@claude-1.desktop"),
 	}
 	_, cands, rf := peers.Resolve(dir, "api@claude.laptop")
 	if rf == nil || rf.Code != peers.CodeAmbiguous || !slices.Equal(cands, []string{"api@team.laptop", "api@ops.laptop"}) {
@@ -146,7 +146,7 @@ func TestResolveAliases(t *testing.T) {
 	if s, _, rf := peers.Resolve(dir, "docs@claude.laptop"); rf != nil || s.Entry.SessionID != "s-3" {
 		t.Errorf("canonical over alias: %v %v", s.Entry.SessionID, rf)
 	}
-	for in, id := range map[string]string{"web@claude-1": "s-5", "web@claude-1.worker": "s-5", "api@ops": "s-2"} {
+	for in, id := range map[string]string{"web@claude-1": "s-5", "web@claude-1.desktop": "s-5", "api@ops": "s-2"} {
 		if s, _, rf := peers.Resolve(dir, in); rf != nil || s.Entry.SessionID != id {
 			t.Errorf("Resolve(%q) = %v %v", in, s.Entry.SessionID, rf)
 		}

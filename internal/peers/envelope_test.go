@@ -20,8 +20,8 @@ type envFix struct {
 	hub, owner       ed25519.PrivateKey
 	trust            keys.Trust
 	now              time.Time
-	laptop, worker   keys.DeviceKeys
-	laptopC, workerC keys.Doc
+	laptop, gpubox   keys.DeviceKeys
+	laptopC, gpuboxC keys.Doc
 }
 
 func seed(b byte) []byte { return bytes.Repeat([]byte{b}, 32) }
@@ -30,7 +30,7 @@ func newEnvFix(t *testing.T) *envFix {
 	f := &envFix{t: t, hub: ed25519.NewKeyFromSeed(seed(1)), owner: ed25519.NewKeyFromSeed(seed(4)), now: time.Unix(1_800_000_000, 0)}
 	f.trust = keys.Trust{Hub: f.hub.Public().(ed25519.PublicKey), Owner: f.owner.Public().(ed25519.PublicKey)}
 	f.laptop, f.laptopC = f.device("dev_laptop", "m_laptop", 7, true)
-	f.worker, f.workerC = f.device("dev_worker", "m_worker", 8, true)
+	f.gpubox, f.gpuboxC = f.device("dev_gpubox", "m_gpubox", 8, true)
 	return f
 }
 
@@ -60,14 +60,14 @@ func (f *envFix) device(id, machine string, s byte, owner bool) (keys.DeviceKeys
 func (f *envFix) envelope() peers.Envelope {
 	return peers.Envelope{Msg: "5f0c9a2e-0000-4000-8000-000000000001", Thread: "t_3a9e000000000000", Kind: peers.KindStart,
 		From:      peers.EnvFrom{Session: "sess-a", Device: "dev_laptop", Machine: "m_laptop", Account: "acc-work", Name: "api", Handle: "api@work.laptop", Mode: peers.ModeBypass},
-		To:        peers.EnvTo{Session: "sess-b", Device: "dev_worker", Machine: "m_worker", Account: "acc-personal"},
+		To:        peers.EnvTo{Session: "sess-b", Device: "dev_gpubox", Machine: "m_gpubox", Account: "acc-personal"},
 		CreatedAt: f.now.UTC().Format(time.RFC3339Nano), Exp: f.now.Add(time.Hour).Unix()}
 }
 
 // seal is the sender's side: check the target's certificate, seal, sign.
 func (f *envFix) seal(e peers.Envelope, text string, sign keys.DeviceKeys) keys.Doc {
 	f.t.Helper()
-	target, err := peers.CheckMachineCert(f.workerC, f.trust, nil, e.To.Device)
+	target, err := peers.CheckMachineCert(f.gpuboxC, f.trust, nil, e.To.Device)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -80,23 +80,23 @@ func (f *envFix) seal(e peers.Envelope, text string, sign keys.DeviceKeys) keys.
 }
 
 func (f *envFix) open(d, cert keys.Doc, rev *keys.RevocationBody) (string, error) {
-	e, _, err := peers.CheckIncoming(d, cert, f.trust, rev, "dev_worker", f.now)
+	e, _, err := peers.CheckIncoming(d, cert, f.trust, rev, "dev_gpubox", f.now)
 	if err != nil {
 		return "", err
 	}
-	box, _ := f.worker.BoxKey()
+	box, _ := f.gpubox.BoxKey()
 	return e.Open(box)
 }
 
 func TestEnvelopeRoundTrip(t *testing.T) {
 	f := newEnvFix(t)
-	d := f.seal(f.envelope(), "hello worker", f.laptop)
+	d := f.seal(f.envelope(), "hello gpu-box", f.laptop)
 	got, err := f.open(d, f.laptopC, nil)
-	if err != nil || got != "hello worker" {
+	if err != nil || got != "hello gpu-box" {
 		t.Fatalf("open: %q %v", got, err)
 	}
 	// The body the hub relays holds no text.
-	if raw, _ := d.BodyBytes(); bytes.Contains(raw, []byte("hello worker")) {
+	if raw, _ := d.BodyBytes(); bytes.Contains(raw, []byte("hello gpu-box")) {
 		t.Fatal("the envelope carries the text in the clear")
 	}
 }
@@ -154,17 +154,17 @@ func TestEnvelopeChecks(t *testing.T) {
 	reasonIs(t, err, peers.ReasonWrongDevice)
 
 	// Expired.
-	_, _, err = peers.CheckIncoming(d, f.laptopC, f.trust, nil, "dev_worker", f.now.Add(2*time.Hour))
+	_, _, err = peers.CheckIncoming(d, f.laptopC, f.trust, nil, "dev_gpubox", f.now.Add(2*time.Hour))
 	reasonIs(t, err, peers.ReasonExpired)
 
 	// exp more than 24 h after created_at (peers.md 8.2) is rejected, 24 h exactly is not.
 	long := e
 	long.Exp = f.now.Add(peers.MaxTTL + time.Second).Unix()
-	_, _, err = peers.CheckIncoming(f.seal(long, "hello", f.laptop), f.laptopC, f.trust, nil, "dev_worker", f.now)
+	_, _, err = peers.CheckIncoming(f.seal(long, "hello", f.laptop), f.laptopC, f.trust, nil, "dev_gpubox", f.now)
 	reasonIs(t, err, peers.ReasonBadSignature)
 	edge := e
 	edge.Exp = f.now.Add(peers.MaxTTL).Unix()
-	if _, _, err = peers.CheckIncoming(f.seal(edge, "hello", f.laptop), f.laptopC, f.trust, nil, "dev_worker", f.now); err != nil {
+	if _, _, err = peers.CheckIncoming(f.seal(edge, "hello", f.laptop), f.laptopC, f.trust, nil, "dev_gpubox", f.now); err != nil {
 		t.Errorf("exp = created_at + 24h: %v", err)
 	}
 
@@ -172,7 +172,7 @@ func TestEnvelopeChecks(t *testing.T) {
 	ahead := e
 	ahead.CreatedAt = f.now.Add(48 * time.Hour).UTC().Format(time.RFC3339Nano)
 	ahead.Exp = f.now.Add(49 * time.Hour).Unix()
-	_, _, err = peers.CheckIncoming(f.seal(ahead, "hello", f.laptop), f.laptopC, f.trust, nil, "dev_worker", f.now)
+	_, _, err = peers.CheckIncoming(f.seal(ahead, "hello", f.laptop), f.laptopC, f.trust, nil, "dev_gpubox", f.now)
 	reasonIs(t, err, peers.ReasonBadSignature)
 
 	// The thread and message ids end up in file names, audit lines and the hub's rows: only
@@ -185,7 +185,7 @@ func TestEnvelopeChecks(t *testing.T) {
 	} {
 		bad := e
 		mut(&bad)
-		_, _, err = peers.CheckIncoming(f.seal(bad, "hello", f.laptop), f.laptopC, f.trust, nil, "dev_worker", f.now)
+		_, _, err = peers.CheckIncoming(f.seal(bad, "hello", f.laptop), f.laptopC, f.trust, nil, "dev_gpubox", f.now)
 		reasonIs(t, err, peers.ReasonBadSignature)
 	}
 
@@ -206,7 +206,7 @@ func TestEnvelopeChecks(t *testing.T) {
 	reasonIs(t, err, peers.ReasonBadSignature)
 
 	// Signed by another machine's key, with the laptop's certificate.
-	_, err = f.open(f.seal(e, "hello", f.worker), f.laptopC, nil)
+	_, err = f.open(f.seal(e, "hello", f.gpubox), f.laptopC, nil)
 	reasonIs(t, err, peers.ReasonBadSignature)
 }
 
@@ -215,14 +215,14 @@ func TestEnvelopeChecks(t *testing.T) {
 func TestEnvelopeSealInfo(t *testing.T) {
 	f := newEnvFix(t)
 	e := f.envelope()
-	target, _ := peers.CheckMachineCert(f.workerC, f.trust, nil, "dev_worker")
+	target, _ := peers.CheckMachineCert(f.gpuboxC, f.trust, nil, "dev_gpubox")
 	pt, _ := json.Marshal(map[string]string{"text": "hi"})
 	sealed, err := link.SealHPKE(target.Body.BoxPub(), peers.PeerSealInfo(e.Msg, "dev_mallory", e.To.Device), pt)
 	if err != nil {
 		t.Fatal(err)
 	}
 	e.Sealed = keys.B64(sealed)
-	box, _ := f.worker.BoxKey()
+	box, _ := f.gpubox.BoxKey()
 	if _, err := e.Open(box); !errors.Is(err, link.ErrOpen) {
 		t.Fatalf("open with the wrong info: %v", err)
 	}
@@ -232,15 +232,15 @@ func TestEnvelopeSealInfo(t *testing.T) {
 // its own), and to a revoked one.
 func TestSenderRefusesUncertifiedTarget(t *testing.T) {
 	f := newEnvFix(t)
-	_, bare := f.device("dev_worker", "m_worker", 9, false)
-	_, err := peers.CheckMachineCert(bare, f.trust, nil, "dev_worker")
+	_, bare := f.device("dev_gpubox", "m_gpubox", 9, false)
+	_, err := peers.CheckMachineCert(bare, f.trust, nil, "dev_gpubox")
 	reasonIs(t, err, peers.ReasonUncertified)
-	_, err = peers.CheckMachineCert(f.workerC, keys.Trust{Hub: f.trust.Hub}, nil, "dev_worker")
+	_, err = peers.CheckMachineCert(f.gpuboxC, keys.Trust{Hub: f.trust.Hub}, nil, "dev_gpubox")
 	reasonIs(t, err, peers.ReasonUncertified)
-	rev := &keys.RevocationBody{Devices: []keys.RevokedDevice{{Device: "dev_worker"}}}
-	_, err = peers.CheckMachineCert(f.workerC, f.trust, rev, "dev_worker")
+	rev := &keys.RevocationBody{Devices: []keys.RevokedDevice{{Device: "dev_gpubox"}}}
+	_, err = peers.CheckMachineCert(f.gpuboxC, f.trust, rev, "dev_gpubox")
 	reasonIs(t, err, peers.ReasonRevoked)
-	_, err = peers.CheckMachineCert(f.workerC, f.trust, nil, "dev_other")
+	_, err = peers.CheckMachineCert(f.gpuboxC, f.trust, nil, "dev_other")
 	reasonIs(t, err, peers.ReasonBadSignature)
 	// SealEnvelope itself refuses a certificate without the owner signature.
 	c, _ := keys.VerifyCert(bare, keys.Trust{Hub: f.trust.Hub}, false)
@@ -263,8 +263,8 @@ func TestReplacedKeysAreNotARevocation(t *testing.T) {
 	if got, err := f.open(d, f.laptopC, replaced); err != nil || got != "hello" {
 		t.Fatalf("after a key replacement: %q, %v", got, err)
 	}
-	workerReplaced := &keys.RevocationBody{Devices: []keys.RevokedDevice{{Device: "dev_worker", Keys: []string{"old-sign-fp"}, Reason: "replaced"}}}
-	if _, err := peers.CheckMachineCert(f.workerC, f.trust, workerReplaced, "dev_worker"); err != nil {
+	gpuboxReplaced := &keys.RevocationBody{Devices: []keys.RevokedDevice{{Device: "dev_gpubox", Keys: []string{"old-sign-fp"}, Reason: "replaced"}}}
+	if _, err := peers.CheckMachineCert(f.gpuboxC, f.trust, gpuboxReplaced, "dev_gpubox"); err != nil {
 		t.Fatalf("sealing to a machine that replaced its keys: %v", err)
 	}
 	lost := &keys.RevocationBody{Devices: []keys.RevokedDevice{replaced.Devices[0],

@@ -485,12 +485,12 @@ func TestResolve(t *testing.T) {
 		return s
 	}
 	dir := []peers.Session{
-		mk("c41e0000-aaaa", "api-worker@work.worker", "api-worker"),
-		mk("9d22bbbb-cccc", "api@personal.worker", "api"),
-		mk("5f0c1234-dddd", "docs@work.worker", "docs"),
+		mk("c41e0000-aaaa", "api-worker@work.desktop", "api-worker"),
+		mk("9d22bbbb-cccc", "api@personal.desktop", "api"),
+		mk("5f0c1234-dddd", "docs@work.desktop", "docs"),
 	}
 	ok := map[string]string{
-		"api-worker@work.worker": "c41e0000-aaaa", "API-WORKER@WORK.WORKER": "c41e0000-aaaa",
+		"api-worker@work.desktop": "c41e0000-aaaa", "API-WORKER@WORK.DESKTOP": "c41e0000-aaaa",
 		"api-worker": "c41e0000-aaaa", "api-worker@work": "c41e0000-aaaa", "docs": "5f0c1234-dddd",
 		"@api": "9d22bbbb-cccc", "c41e0000-aaaa": "c41e0000-aaaa", "9d22bbbb": "9d22bbbb-cccc",
 		"api@": "9d22bbbb-cccc",
