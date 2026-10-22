@@ -1,7 +1,7 @@
 # Session states
 
-Status: spec v1, phase 0. Implemented by the hub's state engine (`internal/hub/state`, phase 2)
-and, for the local view in phase 1, by `sy status` reading the outbox (same code, same rules).
+Status: spec v1. Implemented by the hub's state engine (`internal/hub/state`)
+and, for the local view, by `sy status` reading the outbox (same code, same rules).
 
 The engine folds a session's records, in `ts` order, into one current state. It is a pure
 function of the records: replaying the `record` table must give the same `session_state`
@@ -33,15 +33,15 @@ empty detail; a first record that changes nothing (a `compact` SessionStart) lea
 there. A session brought back from `ended`/`gone` by a `compact` SessionStart gets
 `done:compact`.
 
-**Deviation from plan section 9:** the plan enters `working` at SessionStart. A new session
+**Design decision:** a naive design would enter `working` at SessionStart. A new session
 sits at an empty prompt, so showing it as "working" would be wrong on the board. Here
 SessionStart enters `done` with `detail = started` (shown as "new" in the UI), except
 `source = compact`, which keeps the current state.
 
 ## 2. Hook events installed by the plugin
 
-Decision 6 keeps PreToolUse / PostToolUse off by default (one process per tool call). The
-plugin (`plugin/switchyard/hooks/hooks.json`, phase 1) installs these command hooks, all
+The default keeps PreToolUse / PostToolUse off by default (one process per tool call). The
+plugin (`plugin/switchyard/hooks/hooks.json`) installs these command hooks, all
 `async: true` except SessionEnd, all running `sy hook`. SessionEnd is synchronous with
 `timeout: 2` (it costs about 5 ms): an async hook can be killed when Claude Code exits, and
 the session would then show as `gone` instead of `ended`. Beside these, synchronous entries
@@ -54,7 +54,7 @@ that record nothing: `sy hook --title <Event>` (terminal.md T6) and, on SessionS
 | UserPromptSubmit | — | Back to `working`; cancels pending alerts. |
 | PermissionRequest | (all) | `needs_permission`. |
 | Notification | (all) | Permission prompts, idle prompts, elicitation dialogs. |
-| PreToolUse | `AskUserQuestion\|ExitPlanMode` only | `asked`. One process only when these tools run, so it does not break decision 6. |
+| PreToolUse | `AskUserQuestion\|ExitPlanMode` only | `asked`. One process only when these tools run, so it does not break that default. |
 | Stop | — | `done` or `asked`. Also triggers `sy scan` for the session. |
 | StopFailure | — | `failed`. |
 | SubagentStop | — | Recorded only (and triggers a scan). |
@@ -126,7 +126,7 @@ Notes on the table:
 - **`needs_permission` leaves** at the next UserPromptSubmit, Stop, StopFailure,
   SessionEnd, or (if opted in) tool event. A user who answers "yes" keeps the session in
   `needs_permission` until the turn ends, unless tool events are on. That is the trade-off
-  of decision 6. The board shows "since" so a long-stale permission is visible.
+  of that default. The board shows "since" so a long-stale permission is visible.
 - **PermissionDenied** (seen in the 2.1.296 event list, not captured) means the prompt was
   answered "no", and Claude continues the turn, so `needs_permission` → `working`.
 - **Interrupts.** **Uncertain:** pressing Esc to interrupt a turn is not known to fire Stop.
@@ -204,8 +204,7 @@ The question text stored in `session_state.question` is the last line of P that 
 before step 3, so a trailing `)` or `*` cannot hide one.
 
 The detector version (`q2`; `q1` treated any `:` lead-in in 4b as a question) is stored in
-`session_state.detector`. A later version can be introduced on the hub and replayed over history without touching any client (plan
-section 9). The phase 1 tests ship a table of example messages with the expected result.
+`session_state.detector`. A later version can be introduced on the hub and replayed over history without touching any client. The tests ship a table of example messages with the expected result.
 
 ## 5. `gone` and timeouts
 
@@ -230,7 +229,7 @@ alone, because a quiet session (a long build, a person reading) is normal.
   with `stale = true` (computed at read time, not stored, so it is not a state).
 - **Silent machine.** If a machine sends nothing for **15 minutes** while it has sessions in
   `working`, `needs_permission` or `asked`, the read API marks those sessions
-  `machine_stale = true`. The machine-silent alert (1 hour, plan section 11) is phase 4.
+  `machine_stale = true`. The machine-silent alert (1 hour) is described in push.md.
 - **Done sessions with no list:** nothing happens; `done` is a resting state.
 
 - **Dormant.** An open session (not `ended`/`gone`) that does not need you is reported with

@@ -1,25 +1,23 @@
 # The installable web app (phone and browser)
 
-Status: spec v1, phase 4. Implemented in `webui/` (static files, `webui/serve.go`),
+Status: spec v1. Implemented in `webui/` (static files, `webui/serve.go`),
 `webui/devserver` (mock hub), `webui/smoke` (browser tests), `scripts/icons/`. Pairing is in
-[pairing.md](pairing.md), alerts and the push payload in [push.md](push.md). Plan sections 11
-and 12; screens `PhoneNow`, `PhoneSessions`, `PhoneSession`, `PhoneAccounts`, `PhoneAlerts`,
-`PhonePair`, `PhoneLock`, `DeskAlerts` in `docs/design/screens/`.
+[pairing.md](pairing.md), alerts and the push payload in [push.md](push.md).
 
 ## 1. One app, not two
 
-The phone app is the phase 2 board, extended: the same single-page app, the same ES modules,
+The phone app is the web board, extended: the same single-page app, the same ES modules,
 no build step, served by the hub at `/`. CSS already switches between a sidebar (desktop) and
-bottom tabs (phone). Phase 4 adds an install manifest, a service worker, pairing, push
+bottom tabs (phone). It adds an install manifest, a service worker, pairing, push
 registration and the More / Alerts / Settings screens. Reasons: one code path for the data
 (store.js, the stream, the read API), screens that already match the designs, and nothing to
-publish. The phase 8 phone app (built with Expo) is the separate native app.
+publish. The native phone app (built with Expo, phone.md) is the separate native app.
 
 **Requirement:** install and Web Push need a secure context, so the phone must open the hub at
 an `https://` address with a publicly trusted certificate (`tailscale serve --bg 8787` gives
 `https://<host>.<tailnet>.ts.net`; Caddy on a VPS). The plain-HTTP tailnet bind in
 `deploy/docker-compose.tailscale.yml` still works as a board but cannot install or push; the
-deploy README and `sy doctor` (phase 4 check) say so.
+deploy README and `sy doctor` say so.
 
 ## 2. Manifest and icons
 
@@ -83,10 +81,9 @@ under `webui/static/icons/`; a Go test checks each exists with the right size
 
 ## 3. Routes and screens
 
-Hash routes (phase 2 had `#/`, `#/sessions`, `#/sessions/<id>`, `#/accounts`, `#/machines`,
-`#/login`):
+Hash routes:
 
-| Route | Screen (design) | Phase 4 change |
+| Route | Screen | Notes |
 | --- | --- | --- |
 | `#/` | Now (`PhoneNow`) | Rows get **Seen** and **Snooze** (swipe left/right on touch; two buttons in a row menu for keyboard and screen readers); seen rows dimmed; alert status ("push in 40 s", "pushed 14:04", "snoozed until 14:20"); offline banner (4) |
 | `#/sessions`, `?filter=needs_you|working|done|all`, `?by=machine` | Sessions (`PhoneSessions`) | Filter chips and "By machine" grouping as drawn |
@@ -96,7 +93,7 @@ Hash routes (phase 2 had `#/`, `#/sessions`, `#/sessions/<id>`, `#/accounts`, `#
 | `#/more` | More (new) | Links: Alerts, Machines, Peers, Settings; owner only: Devices, Add phone; Analytics (`#/more/analytics`) |
 | `#/more/alerts` | Alerts and rules (`PhoneAlerts`) | Rule list (5 below), quiet hours, recent pushes from `GET /v1/alerts` with outcome (open, seen, snoozed, cancelled + the "cancelled means you answered first" note) |
 | `#/more/settings` | Settings | Hub address, version, live status; notifications (6); private pushes, tap behaviour, own quiet hours (device prefs); ntfy topic (push.md 7); install status; app version + "Check for update"; **Unpair this phone** |
-| `#/more/peers` | Settings → Peers (PE3) | The account matrix, **Pause all peers**, the audit list (3.1); under More on phones and a Peers entry in the desktop sidebar; linked from Settings |
+| `#/more/peers` | Settings → Peers | The account matrix, **Pause all peers**, the audit list (3.1); under More on phones and a Peers entry in the desktop sidebar; linked from Settings |
 | `#/more/keys` | Settings → Keys (3.2) | The next step to take, the hub key, the owner key (pending ones confirmed by an owner session), each device's certificate state, the revocation version; a Keys entry in the desktop sidebar and a pill in the More tabs |
 | `#/more/analytics` | Analytics | `GET /v1/analytics/{report}` (analytics.md): range chips (7, 30, 90 days), a seat filter, totals, a daily cost bar chart, by model, by project, a weekday by hour heatmap, limit hits; read scope, so also for a read-only phone |
 | `#/more/devices` | Devices (owner; `DeskAlerts` "Paired phones") | `GET /v1/devices`, rename, revoke, test push per target, Add phone / Add machine (QR dialog, pairing.md 2.4) |
@@ -105,7 +102,7 @@ Hash routes (phase 2 had `#/`, `#/sessions`, `#/sessions/<id>`, `#/accounts`, `#
 | `#/alerts/<id>` | — | Loads `GET /v1/alerts/<id>` and replaces the route with the alert's deep link (push.md 5.8) |
 | `#/login` | Sign in | Unchanged token login; adds "Pair with a code instead" |
 
-Navigation: phone bottom tabs **Now, Sessions, Accounts, More** (plan section 12); desktop
+Navigation: phone bottom tabs **Now, Sessions, Accounts, More**; desktop
 sidebar Now, Sessions, Accounts, Machines, Alerts, Settings, Peers, Keys (+ Devices for the owner). `nav.js` gets a `phone`/`desk`
 flag per item; CSS decides as today.
 
@@ -189,7 +186,7 @@ The desktop app's Hub tab shows this same page.
   max(effective 5 h, effective 7 d); the lowest wins; ties go to the lower 7 d, then the lower 5 h,
   then list order; only when the score is under 80.
 
-### 3.1 Peers (`#/more/peers`, PE3)
+### 3.1 Peers (`#/more/peers`)
 
 `views/peers.js`, with its pure arithmetic and sentences in `components/peers-fmt.js`. It reads
 `GET /v1/peers/matrix`, `GET /v1/peers/audit` and, when the hub serves it,
@@ -354,10 +351,10 @@ gone, push.md 5.6), repeat steps 2–4 silently.
 
 | Platform | Install | Push | Notes |
 | --- | --- | --- | --- |
-| iPhone / iPad, iOS 16.4+ | Safari → Share → **Add to Home Screen** (iOS 16.4+ also from other browsers' share sheets) | Only in the installed app; permission only from a tap inside it | No notification action buttons (Snooze/Seen live in the app); badge supported; Focus modes apply. Plan section 11 said "reportedly not in the EU": Apple withdrew that change before iOS 17.4 shipped (March 2024), so EU users should work — **uncertain**, to be confirmed on a device. iOS 16.3 and older: the app works as a board, Settings says "needs iOS 16.4 for notifications", ntfy is offered instead |
+| iPhone / iPad, iOS 16.4+ | Safari → Share → **Add to Home Screen** (iOS 16.4+ also from other browsers' share sheets) | Only in the installed app; permission only from a tap inside it | No notification action buttons (Snooze/Seen live in the app); badge supported; Focus modes apply. Apple withdrew the change that would have removed web push support in the EU before iOS 17.4 shipped (March 2024), so EU users should work (**uncertain**, to be confirmed on a device). iOS 16.3 and older: the app works as a board, Settings says "needs iOS 16.4 for notifications", ntfy is offered instead |
 | Android, Chrome | The page keeps `beforeinstallprompt` and shows **Install app** in the pair and Settings screens; also Chrome menu → Install app | In the browser or installed (WebAPK); shares Chrome's cookies | Two action buttons shown; links into the hub's scope open in the installed app |
-| Android, Firefox / Samsung Internet | Browser menu | Works in principle | Not tested in phase 4 |
-| Desktop Chrome / Edge / Safari 17+ | Install icon in the address bar / File → Add to Dock | Yes (`browser` pairing code) | Optional; the desktop app (phase 6) is the main desktop path |
+| Android, Firefox / Samsung Internet | Browser menu | Works in principle | Not tested |
+| Desktop Chrome / Edge / Safari 17+ | Install icon in the address bar / File → Add to Dock | Yes (`browser` pairing code) | Optional; the desktop app is the main desktop path |
 
 The pair page and Settings show the right instructions for the platform they detect
 (`navigator.userAgentData`, else the user agent string; `matchMedia('(display-mode:
@@ -369,13 +366,12 @@ standalone)')` and `navigator.standalone` for "already installed").
   `http.FileServer` in `internal/hub/api/server.go`: content types for `.webmanifest`,
   `sw.js` templating, `Cache-Control: no-cache` everywhere (files are not fingerprinted) and
   the existing `nosniff` / `no-referrer` headers.
-- No Content-Security-Policy is added in phase 4 (the app needs none to work; adding one is a
+- No Content-Security-Policy is added (the app needs none to work; adding one is a
   pre-release item together with self-hosting the fonts).
 
 ## 9. Tests
 
-- `go test ./webui/...`: every file the app references is embedded (extend the phase 2
-  test to `manifest.webmanifest`, `sw.js`, `sw-lib.js`, icons); `ASSETS` equals the embedded
+- `go test ./webui/...`: every file the app references is embedded (the test covers `manifest.webmanifest`, `sw.js`, `sw-lib.js`, icons); `ASSETS` equals the embedded
   file list; icon sizes; `sw.js` is served with the build hash and no-cache; the devserver's
   new fixtures validate against `api.yaml`.
 - `node --test webui/static/*.test.cjs` (Node 20+, no packages): `chooseTarget`, payload
@@ -405,4 +401,4 @@ standalone)')` and `navigator.standalone` for "already installed").
     then `registration.getNotifications()` shows the title, tag and actions, and the badge
     call was made (spied).
   - Not testable headless: tapping a notification, real delivery through a push service,
-    iOS. Those are in the manual checklist (phases/4.md).
+    iOS. Those are in the manual checklist.

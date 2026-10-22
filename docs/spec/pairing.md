@@ -1,14 +1,13 @@
 # Pairing, owner sign-in and devices
 
-Status: spec v1, phase 4. Implemented in `internal/hub/pair` (codes, claim, rate limits, QR),
+Status: spec v1. Implemented in `internal/hub/pair` (codes, claim, rate limits, QR),
 `internal/hub/auth` (owner sessions, expiry, cookie rules), `internal/hub/api` (handlers),
 `internal/hub/cli` (`sy hub pair`, `sy hub owner-link`), `cmd/sy` (`sy phone pair`,
-`sy connect --code`). Replaces tokens.md section 5. Plan sections 3, 10, 12, 13 and 15;
-screens `PhonePair`, `DeskAlerts` (Add a phone, Paired phones) in `docs/design/screens/`.
+`sy connect --code`). Replaces tokens.md section 5.
 
-## 1. What changes from phases 2 and 3
+## 1. What pairing changes
 
-| Before (phase 2/3) | Phase 4 |
+| Without pairing | With pairing |
 | --- | --- |
 | Devices exist only through `sy hub token create` on the hub machine. | A device can also be made by claiming a one-time **pairing code** (any kind). |
 | The board signs in by pasting a token; its cookie is a read-only `browser` device. | Unchanged, plus: an **owner session** (`sy_o_`) from a one-time sign-in link, needed for everything that changes the hub (pairing, devices, rules, channels). |
@@ -60,17 +59,16 @@ https://hub.example.ts.net/#/pair?s=Q2xhdWRlIGlzIG5vdCBoZXJl&c=482913
 | `s` | The secret. |
 | `c` | The 6 digits, so the page can show them for the iPhone path (5.2). |
 
-The phase 8 store app scans the same QR and reads the same fields (it ignores the origin's
+The native phone app scans the same QR and reads the same fields (it ignores the origin's
 web app and calls `POST /v1/pair/claim` itself).
 
-**Deviation from plan section 10:** the plan says the QR holds "the hub address, the code and
-the hub's public key". No public key is included: the hub is reached over HTTPS with a
+**Design decision:** the QR holds the hub address and the code, not a public key: the hub is reached over HTTPS with a
 publicly trusted certificate (`tailscale serve` or Caddy), which already authenticates it,
 and the web app fetches the VAPID key from the hub after pairing. tokens.md 5's JSON QR
 (`{"hub", "code", "kind"}`) is replaced by this URL, because a phone camera opens URLs and
 not JSON.
 
-**F1 update:** from F1 the QR also carries `h` (the hub signing key's fingerprint) and `k` (a
+**Keys:** when the hub has keys the QR also carries `h` (the hub signing key's fingerprint) and `k` (a
 registration seal), and a claim may carry the device's keys (`keys` or `keys_sealed`); the
 reply then carries the hub key, the device's certificate and the link URLs. That supersedes
 the deviation above for the Android app: see [keys.md](keys.md) 7. The web app ignores both
@@ -114,12 +112,12 @@ codes follow `sy connect`'s rule (tokens.md 4: loopback, tailnet or `--insecure-
 | Hub machine, CLI | `sy hub pair --kind phone\|browser\|machine\|desktop [--name N] [--machine ID] [--url U] [--ttl 10m] [--wait] [--json]` | Shell on the hub (direct database access, like `sy hub token create`). In Docker: `docker compose exec hub sy hub pair --kind phone` |
 | Hub machine, CLI | `sy phone pair [--url U] [--name N]` = `sy hub pair --kind phone --wait` | Same |
 | Board / desktop app | Settings → Phones → **Add phone** (also **Add machine**) → `POST /v1/pair/codes` | Owner session |
-| `sy setup` step 5 (phase 3) | Calls the same code path as `sy phone pair` when the hub is local ("Just this computer"); for a remote hub it prints "open the board → Settings → Add phone, or run `sy phone pair` on the hub" | Local hub |
-| `sy machine add` (phase 5) | Mints a `machine` code through its admin channel (`sy hub pair --kind machine --machine <id> --json`, locally or over the person's SSH to the hub host) and hands the remote the **secret** on stdin (`--code-stdin`), never as an argument; machines.md 4.2, 4.4 | Local hub, or SSH to the hub host |
+| `sy setup` step 5 | Calls the same code path as `sy phone pair` when the hub is local ("Just this computer"); for a remote hub it prints "open the board → Settings → Add phone, or run `sy phone pair` on the hub" | Local hub |
+| `sy machine add` | Mints a `machine` code through its admin channel (`sy hub pair --kind machine --machine <id> --json`, locally or over the person's SSH to the hub host) and hands the remote the **secret** on stdin (`--code-stdin`), never as an argument; machines.md 4.2, 4.4 | Local hub, or SSH to the hub host |
 
 `sy phone pair` on a machine that is not the hub (no hub database in `<data>`) fails with
 that same instruction. A machine token can never make codes: that would let a stolen machine
-token mint read access (plan section 13, "machine tokens can only write").
+token mint read access ("machine tokens can only write").
 
 CLI output (interactive):
 
@@ -187,8 +185,8 @@ gets 401 (step 2).
 | Kind | Claimer | Then |
 | --- | --- | --- |
 | machine | `sy connect <url> --code 482-913` (and `sy setup --hub join:<url> --code …`) | Writes `<state>/token` and `hub.url`, installs the timer, one flush: tokens.md 4 unchanged, except the token comes from the claim. |
-| desktop | Desktop app (phase 6) | As machine, `write` + `read`. |
-| phone | The web app (`cookie: true`), or the phase 8 app (token in body, kept in the OS keychain) | Web app: register Web Push (pwa.md 6), offer a test push. |
+| desktop | Desktop app | As machine, `write` + `read`. |
+| phone | The web app (`cookie: true`), or the native phone app (token in body, kept in the OS keychain) | Web app: register Web Push (pwa.md 6), offer a test push. |
 | browser | The web app on a computer (`cookie: true`) | As phone. |
 | owner | Never through `/v1/pair/claim` (409): owner links go to `/v1/session/owner` (section 4). | |
 
@@ -224,7 +222,7 @@ worker's caches:
   most 5 / 10^6. The hub-wide cap allows at most 20 wrong guesses per 10 minutes, the
   lifetime of a code, so an attacker who can reach the hub has at most about a 1 in 10 000
   chance per 10-minute window **while codes are live**, and only during pairing, which is
-  rare and short. Hubs are normally reachable only on a tailnet (plan section 8).
+  rare and short. Hubs are normally reachable only on a tailnet.
 - **Why the QR path is not locked by the hub-wide cap.** A global lockout is a cheap
   denial of service (5 bad requests a minute keep everyone out). Secrets are not guessable,
   so a lockout of typed codes never blocks the QR flow; the owner can always pair by QR.
@@ -257,8 +255,8 @@ worker's caches:
 ## 4. Owner sessions
 
 Pairing codes, devices, global rules and channels need the `owner` scope (tokens.md 3).
-Phase 4 provides it with a one-time **sign-in link** made on the hub machine. Password and
-passkey sign-in (the schema's `owner.password_hash`) wait for phase 6 (desktop settings).
+The hub provides it with a one-time **sign-in link** made on the hub machine. Password and
+passkey sign-in (the schema's `owner.password_hash`) are not implemented yet (desktop settings).
 
 ```
 sy hub owner-link [--url U] [--ttl 10m] [--json]
@@ -291,7 +289,7 @@ sy hub owner-link [--url U] [--ttl 10m] [--json]
   secret once per page, and says which reason it was (UI audit O1, O2).
 - Why a link rather than a password now: whoever can run `sy` on the hub already owns the
   data; the link needs no password storage, cannot be guessed (128 bits), and works the same
-  on a VPS. It satisfies plan section 8's "strong owner login" for a single-user hub.
+  on a VPS. It is a strong owner login for a single-user hub.
 - `owner` implies nothing by itself in code: scope checks stay explicit, which is why the
   session also carries `read` and `push`.
 - Owner sessions appear in the Devices list as "browser · owner session" with their expiry,
@@ -366,7 +364,7 @@ Push works only inside it. Claiming in Safari would pair Safari, not the app. So
    Screen. 2. Open Switchyard from your Home Screen. 3. Enter **482-913**." with the digits
    large and a 10-minute countdown.
 2. The installed app starts at `/#/`, has no cookie, gets 401 from `/v1/me`, and opens the
-   pair screen (`PhonePair`): the digits field (address shown read-only: it is the app's own
+   pair screen (``): the digits field (address shown read-only: it is the app's own
    origin) → `POST /v1/pair/claim {"code", "cookie": true, "expect_kind": "phone"}`.
 3. Then notifications (pwa.md 6): iOS allows the permission prompt only from a tap inside
    the installed app.
@@ -379,12 +377,12 @@ If it does, the claim-in-Safari path would also work; the spec does not rely on 
 The installed web app can only pair with the hub it was installed from (cookies are per
 origin). Its pair screen therefore shows the address read-only and asks only for the code.
 If the person types a different address, the app offers "Open <address>" (a new tab of
-that hub, to be installed separately). The phase 8 app, which is not bound to an origin,
+that hub, to be installed separately). The native phone app, which is not bound to an origin,
 takes both fields.
 
 ### 5.4 Camera scanning inside the app
 
-Plan section 12's "Scan the QR" inside the web app: when `BarcodeDetector` with `qr_code`
+In the web app, when `BarcodeDetector` with `qr_code`
 exists (Chrome on Android), the pair screen offers **Scan** (`getUserMedia`, back camera,
 detect every 300 ms, stop on the first `https://<same origin>/#/pair?` URL). Elsewhere
 (Safari) it shows "Use your camera app to scan the code" instead. A QR for another origin is
@@ -414,7 +412,7 @@ handled as in 5.3.
   expires_at}, owner: bool, hub: {version, public_url}}`. The web app uses it at start to
   decide between the pair screen, the read-only board and owner settings.
 
-## 7. Tests (owned by WP-A, phases/4.md)
+## 7. Tests
 
 - Codes: uniform digits (chi-square over 10^5 draws is not needed; check the rejection
   bound), no two live codes with equal digits, 6th code cancels the oldest, TTL boundaries

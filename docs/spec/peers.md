@@ -1,7 +1,6 @@
 # Peers: sessions messaging across accounts and machines
 
-Status: spec v1, F0. PE0 is a lab (13); built in PE1 (one machine, across accounts), PE2 (across
-machines over the link) and PE3 (matrix and audit screens). Code: `internal/peers` (matrix,
+Status: spec v1. The lab experiments are in section 13; delivery works across accounts on one machine, across machines over the link, and the matrix and audit have screens. Code: `internal/peers` (matrix,
 threads, loop guard, limits, wrapper, registry reader, ancestry; shared by `sy` and the hub),
 `internal/agent` (`sy agent`), `internal/hub/peers`. Keys and documents: [keys.md](keys.md).
 Transport: [link.md](link.md). Schema v9. Unofficial; not affiliated with Anthropic.
@@ -14,7 +13,7 @@ the only control is an account-to-account **matrix** you set (5), plus a loop gu
 **Claude Code internals.** Sections 8.1–8.5 rely on how Claude Code 2.1.x's inbox socket
 behaves. That behaviour is partly documented ("Cross-session messaging" in Claude Code's
 docs) and partly read from the installed program. Everything marked **uncertain** is checked
-by the PE0 lab (13) before PE1 builds on it, and has a fallback.
+by the lab experiments (13) before the implementation relies on it, and has a fallback.
 
 ## 1. Pieces
 
@@ -23,7 +22,7 @@ session A (account 2, laptop) ── Bash: sy peers send @api-worker "…"
    └─► sy agent (laptop) ── agent.sock, SO_PEERCRED ──┐
          ├─ target on this machine: matrix, loop guard, limits ─► inbox socket of B (account 5)
          └─ target elsewhere: seal to the target machine + sign ─► link ─► hub (matrix, loop guard)
-                                                                        └─ link ─► sy agent (worker) ─► inbox of C
+                                                                        └─ link ─► sy agent (gpu-box) ─► inbox of C
 B or C reads it as a cross-session message and answers with sy peers send (or SendMessage to the reply address)
 ```
 
@@ -46,7 +45,7 @@ B or C reads it as a cross-session message and answers with sy peers send (or Se
   `switchyard-agent`. The agent's unit differs from the hub's in three lines: no `PrivateTmp`
   or `TimeoutStopSec`, `RestartSec=5`. launchd's own stdout/stderr go to
   `<state>/agent.launchd.log`; the agent's log is 2.2's.
-- **Windows:** not in F1. Claude Code requires the per-session auth token on Windows inbox
+- **Windows:** not supported. Claude Code requires the per-session auth token on Windows inbox
   sockets, which lives in `sessions/*.key`; Switchyard never reads that file (identity.md 4).
   `sy agent enable` on Windows says so and exits 3 (so do `disable`, `status` and `run`).
 - `sy agent enable [--repin-hub]` makes the device keys if needed (keys.md 10), pins the hub
@@ -75,7 +74,7 @@ B or C reads it as a cross-session message and answers with sy peers send (or Se
   `sy keys certify --all`, then `sy agent enable` on each other machine; a certified machine
   that pins no owner key warns too (it cannot check other machines' certificates, fix `sy
   agent enable`). OK with `reg` and the fingerprint when certified and pinned.
-- Plan section 1 ("nothing stays running") gets its one exception here: the agent is installed
+- The rule that nothing stays running has one exception: the agent is installed
   only by `sy agent enable` (or `sy peers enable`, which calls it). Hooks, the status line and
   `sy tick` never depend on it.
 
@@ -83,17 +82,17 @@ B or C reads it as a cross-session message and answers with sy peers send (or Se
 
 One process, several goroutines:
 
-- the link client (link.md), with the agent's `last` in `<state>/agent/link.json`. F1 builds
+- the link client (link.md), with the agent's `last` in `<state>/agent/link.json`. the agent has
   only the seam (`agent.LinkClient`: `Run(ctx)`, `Status()`); with none the agent is a
   same-machine service;
 - the control socket (2.3);
 - the local session directory (3.1), refreshed every 5 s and on demand;
-- reply sockets (8.6). **Not in F1:** they are only useful once a native `SendMessage` to a
+- reply sockets (8.6). **Not built:** they are only useful once a native `SendMessage` to a
   `from` address is confirmed (E10), and the frame format it writes is not known; the `from`
   address is still named (`peers.ReplySocketPath`) and the header's `Reply with:` line is the
   reply path;
 - the delivery queue for local and remote messages (8.4);
-- a 1-minute tick: thread expiry, local audit rotation, spool retries. F1: session files
+- a 1-minute tick: thread expiry, local audit rotation, spool retries. Session files
   older than 7 days are pruned (thread expiry runs on every send; the rest has nothing to
   rotate or retry yet).
 
@@ -113,7 +112,7 @@ sizes and statuses, never text.
 | `pause`, `resume`, `off`, `on` | from a terminal only (7) | `{"ok":true}` or an error |
 | `state` | — | for `sy agent status` |
 
-F1 builds `whoami`, `list`, `send`, `off`, `on` (terminal only: a session gets `not_a_session`)
+The agent supports `whoami`, `list`, `send`, `off`, `on` (terminal only: a session gets `not_a_session`)
 and `state`; `status`, `pause` and `resume` answer `unsupported` until the hub exists. A reply
 carries `{"error":{"code","detail"}}` for a refusal (the codes of 4.2). A `send` reply also
 carries `to` (the target's handle) and `held_likely`, which is what `sy peers send` prints
@@ -122,7 +121,7 @@ The ops run `peers.Env.SendWith` and `peers.Env.List`, so the agent and the no-a
 one implementation. The read-change-write of `threads.json` and `limits.json` is serialised
 (one lock in the agent process), never held while the hub is asked.
 
-PE2: a send to another machine waits up to 10 s for the hub (`peer_ack`) and then up to
+A send to another machine waits up to 10 s for the hub (`peer_ack`) and then up to
 `wait_s` (default 10, at most 60; `-1` for `--wait 0`: no wait) for the final status. The
 reply is then `delivered`, a refusal with the final status as its code (`rejected`, `expired`,
 `target_gone`, `failed`; exit 7), or `status: "queued"` with `expires` (RFC 3339) and
@@ -158,7 +157,7 @@ When `[peers] enabled = true`, `sy hook` also writes
 - `SessionEnd` sets `ended_at`. Files older than 7 days are pruned by `sy tick`.
 
 The hook does a single small atomic write and nothing else; it never connects to the agent
-(hooks never wait, plan section 1). The prompt text is never stored.
+(hooks never wait). The prompt text is never stored.
 
 ### 2.5 Telling a new session that peers exist (SessionStart context)
 
@@ -197,7 +196,7 @@ secret is in it. Sessions of the same account are not a reason to print it (nati
 
 - **Hub:** the session records it already has (states.md): machine, slot, seat (account),
   project folder, name, state, last activity. Over the link the agent asks with `peers_list`
-  (link.md 6.2): machine tokens stay write-only (plan addendum A).
+  (link.md 6.2): machine tokens stay write-only.
 - **Local:** every slot's `<config>/sessions/<pid>.json` registry (the files Claude Code's
   own `/peers` reads), for every slot `sy` manages. Fields used: `pid`, `sessionId`, `cwd`,
   `procStart`, `messagingSocketPath`, `name`, `status`, `kind`, `peerProtocol`. A session is
@@ -210,7 +209,7 @@ secret is in it. Sessions of the same account are not a reason to print it (nati
 ### 3.2 `list` entries
 
 ```json
-{"session":"c41e…","handle":"api-worker@work.worker","name":"api-worker","account":"3f1c…","account_label":"work","machine":"worker","project":"~/src/api","state":"working","local":false,"can":"start","device":"dev_01JA9…"}
+{"session":"c41e…","handle":"api-worker@work.gpu-box","name":"api-worker","account":"3f1c…","account_label":"work","machine":"gpu-box","project":"~/src/api","state":"working","local":false,"can":"start","device":"dev_01JA9…"}
 ```
 
 - `device`: the agent device of the session's machine (`null` when that machine runs no
@@ -241,7 +240,7 @@ secret is in it. Sessions of the same account are not a reason to print it (nati
   addressable by prefix. Spaces and `@"<>` in a name, label or machine part are replaced by `-`
   or removed, so a handle never needs quoting. `name` is the registry's session name, else the project folder's base name.
 - **One handle everywhere.** Machines label the same account differently (`slots.labels`, else
-  the folder's name: the laptop's `~/.claude` is `claude`, the worker's `~/.claude-1` is
+  the folder's name: the laptop's `~/.claude` is `claude`, the gpu-box's `~/.claude-1` is
   `claude-1`), so a handle made with the viewing machine's label would differ per machine
   and a handle copied from one machine would not resolve on another. The **canonical**
   handle uses the account's label at the hub: the seat's label (identity.md 5.6), else the
@@ -257,8 +256,8 @@ secret is in it. Sessions of the same account are not a reason to print it (nati
   shows for its slot (this machine's label for a local session; the slot folder's name for
   one elsewhere, which the hub adds, since it knows the folder), and, for a session on
   another machine, one per label this machine shows for that account. So the laptop's
-  `personal-82@claude.laptop` and the canonical `personal-82@claude-1.mraj602` both reach the
-  same session from the worker, and the worker's own label works on the worker.
+  `api@claude.laptop` and the canonical `api@claude-1.laptop` both reach the
+  same session from the gpu-box, and the gpu-box's own label works on the gpu-box.
 - Same account on the same machine is listed too (`local: true`): it works through Switchyard
   as well, although Claude's native `/peers` already reaches it.
 
@@ -319,8 +318,8 @@ one line and exits non-zero (7.2).
 It waits up to `--wait` seconds (default 10, max 60) for a final status:
 
 ```
-delivered to api-worker@work.worker (msg 5f0c…, thread t_3a9e…)
-queued for api-worker@work.worker: its machine is offline; expires 10:42 (msg 5f0c…)
+delivered to api-worker@work.gpu-box (msg 5f0c…, thread t_3a9e…)
+queued for api-worker@work.gpu-box: its machine is offline; expires 10:42 (msg 5f0c…)
 not delivered: the matrix does not allow work → personal. Ask the owner to change it; do not retry.
 ```
 
@@ -388,7 +387,7 @@ A signed document (keys.md 4.1) of type `matrix`:
 3. `[from, to]` in `allow` → yes.
 4. **Reply:** an open thread (6.1) exists between the two sessions, opened by the target
    (`a_session` = target), and `[to, from]` is still in `allow` → yes. So replies inside a
-   thread are always allowed (plan addendum H2) for as long as the opener may still reach the
+   thread are always allowed for as long as the opener may still reach the
    other side; narrowing the opener's cell also stops the replies.
 5. Otherwise no (`not_allowed`).
 
@@ -527,7 +526,7 @@ message of a thread passes through both sessions' agents, so both always see the
 ### 7.1 Commands
 
 ```
-sy peers enable                     = sy agent enable, plus the PE1 matrix version 1 if the hub has none
+sy peers enable                     = sy agent enable, plus the matrix version 1 if the hub has none
 sy peers disable                    = sy agent disable
 sy peers list [--all] [--json]      sessions you may reach (inside a session: from that session; at a terminal: --all)
 sy peers send <to> <text> [--ttl 1h] [--wait 10] [--stdin]
@@ -755,7 +754,7 @@ receiver's class is admitted, a different one is held, and a missing mode is hel
 receiver and admitted by a prompting one (E1, E2). A frame is written as one JSON line without
 HTML escaping.
 
-**PE1 without the agent:** `sy peers send` writes the frame itself. The `from` address names
+**Without the agent:** `sy peers send` writes the frame itself. The `from` address names
 the sender's reply socket (8.6) by its path, but nothing listens there yet, so a native
 `SendMessage` to it finds nobody and the header's `Reply with: sy peers send …` line is the
 only reply path.
@@ -767,7 +766,7 @@ only reply path.
 | --- | --- | --- |
 | `honest` (default) | The lab confirms E3/E4 | As above: the agent connects itself; the receiver admits it when the sender's real class matches its own. A bypass sender reaching a bypass receiver needs no dialog. |
 | `accept` (fallback A) | `from-mode` stops being honoured | You set `crossSessionInbound: "accept"` in the shared settings (setup.md 5); `sy` never sets it for you. Same framing. Every message the agent relays still passed the matrix. |
-| `courier` (fallback B) | Neither A nor `honest` is acceptable | A small `sy courier` stdio process started as a child of each session (an MCP server with no tools, added to the area's own MCP config, not to the global plugin: plan addendum A). It connects to `agent.sock`; the agent hands it frames to write, so Claude Code sees its own child. Specified in full only if PE0 picks it. |
+| `courier` (fallback B) | Neither A nor `honest` is acceptable | A small `sy courier` stdio process started as a child of each session (an MCP server with no tools, added to the account folder's own MCP config, not to the global plugin). It connects to `agent.sock`; the agent hands it frames to write, so Claude Code sees its own child. Specified in full only if the lab (13) picks it. |
 
 With `honest`, a prompting sender reaching a bypass receiver (or the reverse) is held by Claude
 Code for approval: the agent knows both classes and reports `delivered` with `detail:
@@ -788,7 +787,7 @@ about the mode to avoid it.
   (E11) whether Claude Code's receipts (`peer_message_status`) ever reach a socket outside its
   own folder. Until confirmed, the header's "Reply with: sy peers send …" line is the reply
   path the skill teaches (12), and no receipts are expected. If E11 shows receipts work for a
-  16-hex name inside `cc-socks`, PE1 may move reply sockets there.
+  16-hex name inside `cc-socks`, reply sockets may move there.
 
 ## 9. Limits and content
 
@@ -829,7 +828,7 @@ refuses first with a clear reason. `rate_limited` names when to retry.
 
 ## 10. Audit and schema v9
 
-The hub stores **metadata only** (plan addendum H5):
+The hub stores **metadata only**:
 
 | Table | Holds |
 | --- | --- |
@@ -844,7 +843,7 @@ The hub stores **metadata only** (plan addendum H5):
   closing. Matrix versions are kept for ever.
 - Each agent also keeps `<state>/peers/audit.jsonl` (same fields, 30 days) so `sy peers audit`
   works offline.
-- **Views:** board and desktop Settings → Peers → Audit, the phone's Peers screen (PE3):
+- **Views:** board and desktop Settings → Peers → Audit, the phone's Peers screen:
   who messaged whom, when, size, status. `GET /v1/peers/messages`, `GET /v1/peers/audit`.
 
 ## 11. Kill switch
@@ -856,9 +855,9 @@ The hub stores **metadata only** (plan addendum H5):
 | `sy peers disable` | This machine | Terminal | Removes the agent service. |
 | Revoke a machine | That machine | Board → Devices | keys.md 6: its link closes, its envelopes are rejected everywhere. |
 
-## 12. The Switchyard skill (`plugin/switchyard/skills/peers/SKILL.md`, PE1)
+## 12. The Switchyard skill (`plugin/switchyard/skills/peers/SKILL.md`)
 
-Specified here; written in PE1 together with the commands it calls.
+Specified here; it is written together with the commands it calls.
 
 - **Front matter:** `name: peers`; `description`: "Message Claude Code sessions in other
   accounts or on other machines through Switchyard (`sy peers list`, `sy peers send`). Use
@@ -889,11 +888,11 @@ Specified here; written in PE1 together with the commands it calls.
   - Reply with the command in the message header.
   - Never send secrets, tokens, credentials or file contents the user did not ask to share.
   - No delegating work to another account to get around usage limits.
-- **Not in the skill:** an MCP server (plan addendum A), `pause`/`deny` (the user does those),
+- **Not in the skill:** an MCP server, `pause`/`deny` (the user does those),
   any `--yes`.
 - The plugin's tests (`plugin/embed_test.go`) gain the skill in the embedded file list.
 
-## 13. PE0 lab
+## 13. The lab
 
 ### 13.1 Rules (hard)
 
@@ -906,7 +905,7 @@ Specified here; written in PE1 together with the commands it calls.
   and its `cwd` is `/tmp/sy-lab/work`.
 - Never open `sessions/*.key` or `.credentials.json`. Read registry JSON files of lab
   sessions only.
-- The lab is run by you, not by an agent session, and never in a session that matters.
+- The lab is run by you, not by an automated session, and never in a session that matters.
 - Cleanup: exit the lab sessions, `rm -rf /tmp/sy-lab`.
 
 ### 13.2 Setup and experiments
@@ -950,7 +949,7 @@ captured on reply sockets.
   x.y.z" or are replaced), with the golden frames under `internal/peers/testdata/` (lab session
   ids and paths only).
 - The **delivery mode** is chosen: `honest` if E3 and E4 hold; else `accept` if E14 holds and
-  you accept its scope; else `courier` if E8 holds; else PE1 stops and the plan is revisited.
+  you accept its scope; else `courier` if E8 holds; else peer messaging is not enabled.
 - `sy doctor --peers-probe` is written: it starts nothing; it checks the installed Claude Code
   version against the range the lab confirmed, the delivery mode's prerequisites (for
   `accept`, the setting is present), and the wrapper golden against the builder. After each
@@ -992,7 +991,7 @@ captured on reply sockets.
   HPKE `info` with another `from.device` → open fails; uncertified or revoked sender → reject;
   a certificate whose `machine` differs from `from.machine` → reject; replay → single
   delivery; the sender refuses to seal to an uncertified target key.
-- **Agent (F1):** `internal/agent` tests the socket (modes 0600 / 0700, a live socket is not
+- **Agent:** `internal/agent` tests the socket (modes 0600 / 0700, a live socket is not
   stolen, a stale one is replaced, other uid and bad lines refused, state, link started and
   reported, off/on terminal-only, prune on the tick, log rotation) and that nothing under the
   hook, status line or tick imports the agent. `internal/service` has golden files for the
@@ -1001,7 +1000,7 @@ captured on reply sockets.
   run` in a temp runtime dir with the fake inbox and sends through it, then stops it and sends
   again on the fallback path; `sy agent enable|disable|status` with the recording runner;
   and `sy uninstall` with fake `systemctl` and `loginctl` first on `PATH`.
-- **Test seams (PE1):** tests that import the fake inbox are external (`package peers_test`,
+- **Test seams:** tests that import the fake inbox are external (`package peers_test`,
   an in-package test would be an import cycle); `make test` runs `-tags fakeinbox,peerstest`
   for `internal/peers` and `cmd/sy`. `peerstest` adds `matrix_peerstest.go`, an unsigned allow
   file (`SY_PEERS_TEST_ALLOW`) standing in for the matrix; `check-release-seams.sh` proves a
@@ -1019,9 +1018,9 @@ captured on reply sockets.
   `max_turns` 0, 50 unattended round trips all delivered and counted by all three parties,
   and a fast exchange stopped by the rate with a `retry in` that works; an idle target
   delivered and an ended one `target_gone`; unknown handles and the address forms across
-  machines; one account labelled `claude` on the laptop and `claude-1` on the worker (seat
+  machines; one account labelled `claude` on the laptop and `claude-1` on the gpu-box (seat
   label `claude-1`): both machines list the same canonical handle with the other labels as
-  aliases, sends by the canonical handle, by the laptop's form from the worker and by each
+  aliases, sends by the canonical handle, by the laptop's form from the gpu-box and by each
   machine's own label all deliver, and the reply line of a delivered message, in either
   direction and on the same machine, resolves at its receiver; the hub out of reach (`hub_unreachable` for other machines, same-machine sends
   spooled for the audit) and back; 64 KiB across machines including text that JSON escaping

@@ -1,11 +1,10 @@
 # Alerts and pushes
 
-Status: spec v1, phase 4; section 12 is a tombstone (the Expo channel, removed in schema v11); sections 13 (the link
-channel) and 14 (the Android `sy-link` module) N0, built in N1. Implemented in `internal/hub/push/...` (rules, engine, channels),
+Status: spec v1; section 12 is a tombstone (the Expo channel, removed in schema v11); sections 13 (the link
+channel) and 14 (the Android `sy-link` module) describe the Android path. Implemented in `internal/hub/push/...` (rules, engine, channels),
 `internal/hub/store` (alerts, rules, targets), `internal/hub/api` (handlers). The web app
 side (service worker, permission, subscription) is in [pwa.md](pwa.md); pairing and devices
-in [pairing.md](pairing.md). Plan sections 7 (S6, S7), 9, 11, 12, 13 and 15; screens
-`PhoneAlerts`, `PhoneLock`, `PhoneNow`, `DeskAlerts` in `docs/design/screens/`.
+in [pairing.md](pairing.md).
 
 The hub decides and sends every push; phones only receive. Nothing here can make a client
 do anything: snooze and seen change only the hub's own alert rows.
@@ -19,7 +18,7 @@ do anything: snooze and seen change only the hub's own alert rows.
 | **Episode** | One continuous occurrence of a condition: one session sitting in one needs-you state, one window instance crossing 80%, one silence of one machine. Identified by its **episode key** (3.2). |
 | **Alert** | The hub's row for one episode (`alert` table): due time, status, snooze, seen. At most one per episode (unique key): this is the dedupe. |
 | **Target** | One place a push goes: one browser's Web Push subscription, one ntfy topic, or one phone's link (`push_target`). |
-| **Channel** | A kind of target, `webpush`, `ntfy` or `link` (the Android app's own connection, section 13; N1), with a hub-wide on/off switch (`channel`). |
+| **Channel** | A kind of target, `webpush`, `ntfy` or `link` (the Android app's own connection, section 13), with a hub-wide on/off switch (`channel`). |
 | **Delivery** | One attempt to bring one alert to one target (`delivery`): pending, held, sent, failed, skipped, gone. |
 | **Device prefs** | Per-device choices: muted triggers, own quiet hours, private, tap behaviour (5.4). They decide whether *this device* receives an alert, never whether the alert exists. |
 
@@ -67,10 +66,10 @@ it.
 | `limit_80` | seat × window | current `usage_window` (`resets_at > now`) of a watched key (default `five_hour`, `seven_day`) with `peak_pct >= 80`, from a sample at most 30 minutes old | on, delay 0 | the window's `resets_at` passes |
 | `limit_95` | seat × window | as above with `>= 95` | on, delay 0 | as above |
 | `reset` | seat × window | a watched window whose `peak_pct >= 80` reaches its `resets_at` | **off**, fires at `resets_at` | — |
-| `machine_silent` | machine | no record received from the machine for `delay_s` (default **3600**), measured from `max(machine.last_seen, awake_at)` (3.3), while it has at least one session in `working`, `needs_permission` or `asked` that is not `stale` (states.md 5). Since phase 5 a pull `hello` counts as hearing from it (machines.md 3.5), and removed machines (`removed_at`) never alert | on | a record or a pull `hello` arrives from it (`recovered`) |
+| `machine_silent` | machine | no record received from the machine for `delay_s` (default **3600**), measured from `max(machine.last_seen, awake_at)` (3.3), while it has at least one session in `working`, `needs_permission` or `asked` that is not `stale` (states.md 5). A pull `hello` counts as hearing from it (machines.md 3.5), and removed machines (`removed_at`) never alert | on | a record or a pull `hello` arrives from it (`recovered`) |
 
-Not triggers (by design, plan section 11): "turn finished" (board only) and "context 90%"
-(reserved for phase 7).
+Not triggers (by design): "turn finished" (board only) and "context 90%"
+(reserved).
 
 `limit_80` and `limit_95` use `peak_pct`, so a window that dips back under 80% after crossing
 it does not cross again. A first sample already at or above 95% creates both episodes: the
@@ -90,12 +89,12 @@ sends exactly one push" also holds for a window that jumps straight past 95%.
   `permission_prompt`, a `PermissionRequest` for the same prompt, or a second StopFailure
   while `failed`, all fall in the same episode: one push.
 - `usage_window.resets_at` is the window's primary key and stays fixed for the window's life
-  (samples join a window within 5 minutes, phase 2), so a window instance alerts once per
+  (samples join a window within 5 minutes), so a window instance alerts once per
   threshold, however many samples arrive.
 - `alert.episode` is `UNIQUE`: creating an alert is `INSERT … ON CONFLICT(episode) DO
   NOTHING`. Restarts, refolds, replays and two code paths racing can never make two alerts
   for one episode.
-- Phase 5's direct ntfy push from `sy` (plan section 8) computes the same session key on the
+- The direct ntfy push from `sy` (machines.md 5) computes the same session key on the
   machine (it knows the session, the state and the record `ts` that entered it). It reports
   each push in a **`direct_push` record** (record.md 4.9; an earlier draft put
   `derived.direct_push` on a hook record, which cannot work because outbox records are
@@ -120,7 +119,7 @@ record that entered the state (states.md: the fold uses record times, not the hu
   not news; the board still shows the session as needing you). The same holds when the
   scheduler finds an alert, a snooze or a retry more than `max_age_s` overdue (after a hub
   restart or a suspended laptop): it is not pushed.
-- **Catch-up hold** (phase 5, machines.md 5.5). A session alert created already overdue
+- **Catch-up hold** (machines.md 5.5). A session alert created already overdue
   (`due <= now`) from a batch whose machine reported more records queued (`X-Sy-Backlog`
   above the batch size, or a drain batch with `more`) gets `due = now + 10 s`; at fire time it
   (like any pending session alert of that machine) is postponed by 10 s more while that
@@ -199,7 +198,7 @@ reason `reset_passed` (a `limit_*` alert never stays open past its window).
 For a machine: a record from it closes its open `machine_silent` alert (`recovered`). No push
 is sent for recovery.
 
-"Answering in the terminal at 40 seconds means no push" (phase 4 done-when): the
+"Answering in the terminal at 40 seconds means no push" (an acceptance case): the
 UserPromptSubmit record reaches the hub about 2 s after the answer (`sy flush` debounce), the
 fold moves the session to `working`, reconcile cancels the pending alert (due at 60 s) with
 reason `answered`, and the Alerts log shows it as **cancelled**.
@@ -338,7 +337,7 @@ expired. For each target, with its effective prefs (5.4):
   Inclusive start, exclusive end, evaluated in `tz` with Go's `time.LoadLocation`, so
   daylight-saving days are handled by the zone (a non-existent local time moves forward).
 - Effective quiet hours: the device's `prefs.quiet_hours` when not null, else the hub's.
-- "Quiet hours hold everything except failures" (plan section 11): a rule with
+- "Quiet hours hold everything except failures": a rule with
   `bypass_quiet = 1` (default only `failed`) goes through, unless the effective quiet hours
   say `"critical": false` (a device that wants true silence).
 - At the end of a quiet period the scheduler takes every `held` (`quiet`) delivery of that
@@ -389,7 +388,7 @@ with the global switches and delays editable (`DeskAlerts`).
 
 Labels: `seat` = the board's name for the account (webui `components/seat.js` `seatName`; hub `store.SeatDisplayNames`): the seat's label,
 else the account email's local part; when two shown seats would read alike (compared
-lowercase with only letters and digits kept, so "you" and "you" collide), each
+lowercase with only letters and digits kept, so "Alex.Kim" and "alexkim" collide), each
 gets the first part of its email domain too ("alex · gmail"); no seat = "Unattributed"; `project` = `session.project`; `machine` = machine name; times in the
 target's `tz`, else `hub.tz`, as `HH:MM` today, `Thu 17:00` within a week. Every field is cut
 to fit (title 80, body 180 characters, with `…`).
@@ -408,7 +407,7 @@ to fit (title 80, body 180 characters, with `…`).
 | summary | `3 sessions need you` | up to four `work · api — asked` lines, then `+2 more` |
 
 Question and message text appear only when the hub has them, which needs last messages
-allowed (plan section 13); otherwise the generic body is used.
+allowed; otherwise the generic body is used.
 
 **Private pushes** (`prefs.private` or hub default) replace title and body with:
 "Switchyard" / "1 session needs you" (session triggers), "N sessions need you" (summary),
@@ -425,8 +424,7 @@ Who can read push text:
 | ntfy.sh | ntfy.sh, and anyone who learns the topic name (topics are open; the random name is the only secret) | Content in transit and at rest on ntfy.sh. **Private is forced on** for ntfy.sh targets unless the owner explicitly unchecks it on that target |
 | Link (Android app, section 13) | Only the app: sealed per RFC 8291 to a Keystore key; the hub and your tailnet carry ciphertext | The lock screen and notification history only |
 
-This corrects plan section 11's "Apple, Google … can read that text" for Web Push; it remains
-true for ntfy.
+Apple and Google can therefore not read the text of a Web Push; they still can for ntfy.
 
 ### 5.6 Retries and dead targets
 
@@ -461,8 +459,7 @@ by the rule the board and the phone use for "Most room right now" (pwa.md, Accou
 
 So an idle account (0%, its window already reset or never read for this key) is named before a
 busier one. Wording: "work has 59% left" (100 minus the effective use; an idle account "has
-100% left"). Nothing is said when no seat qualifies. Switchyard never switches accounts (plan
-section 13).
+100% left"). Nothing is said when no seat qualifies. Switchyard never switches accounts.
 
 The Accounts page's "Most room right now" line uses a different, idle-friendly rule (pwa.md 3.0a):
 a window counts as 0 when its `resets_at` has passed or when the account has no reading for it but
@@ -521,7 +518,7 @@ So: package `internal/hub/push/webpush`, no new dependency (ARCHITECTURE.md rule
   `GET /v1/push/config` (the web app passes it as `applicationServerKey`).
 - The keys are part of the database, so `sy hub backup`, export and import keep every
   subscription valid. Rotating the keys invalidates every subscription (browsers bind a
-  subscription to the key), so there is no rotation command in phase 4.
+  subscription to the key), so there is no rotation command.
 - JWT: header `{"typ":"JWT","alg":"ES256"}`, claims `{"aud": "<scheme>://<host>[:port]
   of the endpoint>", "exp": now + 12 h, "sub": <vapid_subject>}`. The signature is the raw
   64-byte `R‖S` (each left-padded to 32 bytes), **not** ASN.1 DER as `ecdsa.SignASN1` returns.
@@ -747,7 +744,7 @@ mac     = first 16 bytes of HMAC-SHA256(action_key, "a1" ‖ payload)
 ## 9. Schema v3
 
 The implementer adds `internal/hub/store/migrations/0003_push.sql` with exactly this, updates
-`docs/spec/schema.sql` to v3 (the full schema, with a `v3 phase 4` line in its header), and the
+`docs/spec/schema.sql` to v3 (the full schema, with a `v3` line in its header), and the
 schema test keeps comparing the two. `pair_code`, `channel`, `push_target`, `rule`, `alert`
 and `delivery` have existed since v1 but nothing has ever written them, so they are dropped
 and recreated in their final shape rather than altered (SQLite cannot change a CHECK or a NOT
@@ -755,7 +752,7 @@ NULL in place). `usage_window.alerted_80` / `alerted_95` stay but are unused: th
 episode keys are the record of what fired.
 
 ```sql
--- Version 3 (phase 4): pairing, owner sessions, push targets, rules, alerts, deliveries.
+-- Version 3: pairing, owner sessions, push targets, rules, alerts, deliveries.
 -- push.md section 9. The v1 placeholders for these tables were never written, so they are
 -- recreated with their final shape.
 
@@ -947,7 +944,7 @@ Logging: one line per fire (`alert fire al_… trigger=asked session=c41e… tar
 non-2xx delivery (`push fail pt_… 410 gone`), and per skip reason other than `baseline`;
 never the payload text.
 
-### 10.1 Decisions made while building (phase 4 WP-B)
+### 10.1 Design decisions
 
 Where the sections above left a case open, the engine does this:
 
@@ -1067,13 +1064,13 @@ arrives; then cross 80% with three `limit_sample` records and check exactly one 
 
 ## 12. (Removed) The Expo channel
 
-It carried the phase 8 store app's pushes through Expo's push service. It was removed in schema
+It carried the native phone app's pushes through Expo's push service. It was removed in schema
 v11, before any release; nothing of it remains in the hub. Widget refresh moved to the link
 (13.5).
 
-## 13. The link channel (N1)
+## 13. The link channel
 
-Status: spec v1, N0. The Android app's native notifications without Google or any
+Status: spec v1. The Android app's native notifications without Google or any
 account: the hub queues each push on the device's **link** ([link.md](link.md)) and the app's
 own service (14) posts it. Web Push and ntfy do not change. Code: `internal/hub/push/link` (the
 sender), `internal/hub/link` (queue and transport). Schema v8.
@@ -1086,9 +1083,9 @@ sender), `internal/hub/link` (queue and transport). Schema v8.
 | Account needed | No | No |
 | Offline phone | Durable queue, replayed in order from the last ack (link.md 5) | Push service TTL |
 | Encryption | RFC 8291 to a Keystore key, hub-signed | RFC 8291 |
-| Cost on the phone | A foreground service and one idle socket (battery measured in N1) | None beyond FCM |
+| Cost on the phone | A foreground service and one idle socket (battery use is measured) | None beyond FCM |
 
-Web Push in the installed web app stays the backup (plan addendum H1); a phone can have both.
+Web Push in the installed web app stays the backup; a phone can have both.
 
 ### 13.2 Sender
 
@@ -1121,8 +1118,8 @@ Web Push in the installed web app stays the backup (plan addendum H1); a phone c
 ### 13.4 Delivered
 
 `delivery.delivered_at` (schema v8) is set when the phone acks the frame (link.md 5.6). The
-board's delivery log shows "on phone 09:00:03" for link deliveries. N1's "zero missed alerts
-in 7 days" is measured from it: a link delivery with `status = 'sent'`, older than its TTL,
+board's delivery log shows "on phone 09:00:03" for link deliveries. The "zero missed alerts
+in 7 days" goal is measured from it: a link delivery with `status = 'sent'`, older than its TTL,
 with `delivered_at IS NULL` and `last_error` not `collapsed`, is a miss.
 
 ### 13.5 Widget refresh
@@ -1157,7 +1154,7 @@ A phone's `link` target is made by the hub, never posted by the app:
   endpoint: "link:" + device id, keys: {"p256dh": b64u(box_pub), "auth": b64u(auth)}, name:
   "<model> · app"}`, in the claim's
   transaction.
-- A phone paired before N1 sends `PUT /v1/devices/self/keys` with the claim's `keys` object
+- A phone paired before the link existed sends `PUT /v1/devices/self/keys` with the claim's `keys` object
   (`reg = tofu`), which makes the certificate and the target.
 - New keys replace the old target (same `endpoint`) and certificate. The cap of 10 targets per
   device counts it.
@@ -1185,10 +1182,10 @@ enabled; `delivery.delivered_at INTEGER` is added.
   vectors through the link path; `gone` without keys; `retry` on a full queue.
 - A dismiss collapses an unacked alert with the same tag (the test phone client sees only the
   dismiss); Seen on one device enqueues dismisses for the other link devices.
-- `delivered_at` is set on ack, not on enqueue; the N1 miss query.
+- `delivered_at` is set on ack, not on enqueue; the missed-alert query uses it.
 - The widget refresher sends to link targets only, at most one frame per `refresh_min`.
 
-## 14. The Android `sy-link` module (N1)
+## 14. The Android `sy-link` module
 
 A local Expo module in `phone/modules/sy-link` (Kotlin, `expo-modules-core`), autolinked by the
 app. It owns everything that must run without the React Native runtime: the foreground service,
@@ -1216,7 +1213,7 @@ phone/modules/sy-link/
                                (the exact-alarm restarts and retries, 14.4), ActionReceiver (Snooze, Seen)
     Watchdog.kt                WorkManager periodic worker
     Store.kt                   the module's private SharedPreferences
-    Updates.kt                 the updater's pure half (N2): manifest parsing, version and build compare,
+    Updates.kt                 the updater's pure half: manifest parsing, version and build compare,
                                the GitHub release filter, the signing-certificate decision (SigningSource)
     UpdateClient.kt            checkUpdate: the hub first, then GitHub (Fetcher: OkHttp, faked in tests)
     UpdateInstaller.kt         installUpdate: download, SHA-256, certificate check through PackageManager,
@@ -1224,7 +1221,7 @@ phone/modules/sy-link/
   android/src/test/…           JVM tests (14.10)
 ```
 
-As built (N1), the Kotlin is split a little further: `Codec.kt` (b64u, base32, fingerprints),
+As built, the Kotlin is split a little further: `Codec.kt` (b64u, base32, fingerprints),
 `Keystore.kt` (the two aliases of 14.3; `Crypto.kt` keeps RFC 8291, HKDF, the claim seal and
 the Tink verifier), `Backoff.kt`, `Channels.kt`, `Actions.kt` (the 14.6 order), `Pairing.kt`
 (keys.md 7.3's checks) and `Foreground.kt` (`goForeground()`'s API branches), so each piece has
@@ -1271,12 +1268,12 @@ receiver start the service (allowed from an exact alarm) or tell a running one t
 
 - **`specialUse`, not `dataSync`:** `dataSync` is capped at 6 hours a day from Android 15 and
   may not start from `BOOT_COMPLETED`; ntfy's Android app uses `specialUse` for the same need.
-  The app is never in the Play Store (plan addendum C), so Play's review of the subtype text
+  The app is never in the Play Store, so Play's review of the subtype text
   does not apply.
 - **`minSdkVersion` 31** (phone.md P13), and only for one reason: a **non-exportable** key
   agreement key (`KeyProperties.PURPOSE_AGREE_KEY`, `KeyAgreement("ECDH", "AndroidKeyStore")`)
   exists from API 31; below it the RFC 8291 private key would have to live in app memory, which
-  the plan rules out. The foreground service type is **not** a reason: `specialUse` is an API
+  is ruled out. The foreground service type is **not** a reason: `specialUse` is an API
   34 type, and on 31–33 the service simply runs without one (next point), as ntfy does with a
   far lower minSdk.
 - **Starting in the foreground, per API level.** API 34+: `startForeground(id, n,
@@ -1452,7 +1449,7 @@ qr` and `hubKey.fp = qrFp` when `qrFp` is given. It rejects with code `ERR_SY_HU
 is not the QR's) or `ERR_SY_TAMPERED` (anything else), and other codes (`ERR_SY_CONFIG`) for a
 bad argument.
 
-`checkUpdate(origin, token)` (N2, phone.md P16.3) asks the hub (`GET <origin>/v1/app/android`
+`checkUpdate(origin, token)` (phone.md P16.3) asks the hub (`GET <origin>/v1/app/android`
 with the device token), then GitHub when the hub has no release or cannot be reached; it
 resolves `null` when nothing newer fits this phone and rejects with `ERR_SY_UPDATE` (message
 without any token) when neither is reachable. It does not throttle: the once-a-day rule lives
@@ -1493,6 +1490,6 @@ notification.
   `Foreground.go(sdk, …)`, tested on both levels without Robolectric).
 - **Emulator** (API 31, 34–36): Doze (`adb shell dumpsys deviceidle force-idle`), standby buckets,
   network switch, reboot, app update, task removed, revocation (4403).
-- **On the phone** (N1, plan addendum C): overnight Doze, reboot, Wi-Fi ↔ mobile, Tailscale off
+- **On the phone** : overnight Doze, reboot, Wi-Fi ↔ mobile, Tailscale off
   and on, hub restart, Snooze and Seen from the lock screen with the app killed, dismiss on two
   phones, revoke, and a battery week passing at 2 % a day or less attributed to the app.

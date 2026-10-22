@@ -1,21 +1,20 @@
 # More machines
 
-Status: spec v1, phase 5. Implemented in `internal/sshx` (running `ssh` safely),
+Status: spec v1. Implemented in `internal/sshx` (running `ssh` safely),
 `internal/machineadd` (`sy machine add|remove|repoint`), `internal/outbox` (`sy outbox drain`),
 `internal/client` (forward dialing, version negotiation), `internal/directpush` (direct ntfy
 from `sy`), `internal/update` (`sy update`), `internal/hub/pull` (the hub pulling over SSH),
 `internal/hub/ingest` (`machine_info`, `direct_push`, same-machine dedupe, frozen hub),
 `internal/hub/store` (schema v4, export/import), `internal/hub/api` (machine endpoints,
 direct-push policy), `internal/hub/cli` (`sy hub pull`, `export`, `import`, `unfreeze`) and
-`webui` (Machines screen). Plan sections 3, 7, 8, 11, 13, 15 and 16 (phase 5); screen
-"Settings · Hub and machines" in `docs/design/screens/`.
+`webui` (Machines screen). The Machines screen is "Settings · Hub and machines".
 
-Every rule of plan section 8 still holds: every connection is outgoing from the machine that
+Every rule of the connection model holds: every connection is outgoing from the machine that
 has something to say, except the hub's pull over SSH (3.4), which is limited by a forced
 command to reading the outbox. The hub never makes a client do anything else: replies are
 lists of answered ids, and nothing a hub sends ever changes a client's configuration.
 
-## 1. What phase 5 adds
+## 1. Overview
 
 | Piece | One line | Section |
 | --- | --- | --- |
@@ -34,7 +33,7 @@ lists of answered ids, and nothing a hub sends ever changes a client's configura
 | Word | Meaning |
 | --- | --- |
 | **Operator** | The machine the person types on, usually the laptop. It runs `sy machine add`, `sy update --machines` and `sy machine repoint`, with the person's own SSH keys and config. |
-| **Remote** | A machine being added or managed over SSH (gpu-box, the OCI server, a VPS). Linux or macOS. |
+| **Remote** | A machine being added or managed over SSH (gpu-box, a home server, a VPS). Linux or macOS. |
 | **Hub host** | The machine running `sy hub serve` (or the Docker image). It may be the operator (merged mode). |
 | **Reach** | How a machine's records get to the hub: `direct`, `forward` or `pull` (section 3). Stored in the remote's `config.toml` (`hub.reach`) and reported to the hub in `machine_info` (6.3). |
 | **Admin channel** | How the operator asks the hub host for things only the hub host may do: mint a machine pairing code, register a pull target. `local`, a command prefix run over SSH, or a person pasting (4.4). |
@@ -52,7 +51,7 @@ lists of answered ids, and nothing a hub sends ever changes a client's configura
 | Records flow while the laptop is closed | Yes (unless the hub is merged on the laptop) | **No**: queued until the next SSH connection | Yes when the hub is not the laptop; no when merged |
 | Delay | Seconds (flush after each hook) | Seconds, while connected | Up to one pull interval (default 60 s) |
 | Token on the remote | Machine token (`<state>/token`) | Machine token | **None** |
-| Phase 5 "Done when" mode | gpu-box and OCI (decision 3: hub on OCI over Tailscale) | — | Locked-down servers |
+| Typical use | A remote on a tailnet with the hub | — | Locked-down servers |
 
 `auto` (the default of `sy machine add`) picks `direct` when the remote can reach the hub
 (4.2 step 2); otherwise it asks, at a terminal, between `pull` (default when the hub is on the
@@ -61,7 +60,7 @@ pass --reach forward or --reach pull").
 
 ### 3.2 `direct`
 
-Unchanged from phase 2: `hub.url` is the hub's address as the remote sees it, normally
+`hub.url` is the hub's address as the remote sees it, normally
 `https://<hub>.<tailnet>.ts.net` (`tailscale serve`). `sy machine add` uses, in order:
 `--hub-url`; the hub's `hub.public_url` (read through the admin channel); the operator's own
 `hub.url` when it is not loopback. A loopback URL is never offered to a remote. A server
@@ -218,7 +217,7 @@ directly, so it runs on the hub host or through the admin channel, 4.4):
 sy hub pull add <name> --ssh [user@]host [--port 22] [--machine <m_…>]
                 [--interval 60s] (--host-keys-stdin | --fingerprint SHA256:…) [--yes] [--json]
     Creates the target (and, with --machine, its pull device), makes the hub key pair if
-    missing. --json: {"target": "pt_…", "name", "public_key": "ssh-ed25519 AAAA… switchyard-pull@oci"}.
+    missing. --json: {"target": "pt_…", "name", "public_key": "ssh-ed25519 AAAA… switchyard-pull@hub"}.
 sy hub pull list [--json]                  Targets with state, last ok, last error, next run.
 sy hub pull run [<name>] [--wait] [--json] One session now (all due targets without a name).
 sy hub pull trust <name> (--host-keys-stdin | --fingerprint SHA256:…)   Re-pin after a key change.
@@ -232,7 +231,7 @@ sy hub pull key [--json]                   Prints the hub's pull public key.
 adds the hub's key with `sy machine authorize-pull --key-stdin`:
 
 ```
-restrict,command="/home/me/.local/bin/sy outbox drain --stdio" ssh-ed25519 AAAA… switchyard-pull@oci sy-pull:pt_01JA…
+restrict,command="/home/me/.local/bin/sy outbox drain --stdio" ssh-ed25519 AAAA… switchyard-pull@hub sy-pull:pt_01JA…
 ```
 
 - `restrict` turns off port, agent and X11 forwarding, PTY allocation and `~/.ssh/rc`
@@ -349,7 +348,7 @@ the `authorized_keys` line when leaving `pull`), or by hand on the remote with
 `sy setup --hub …`. The hub learns the new reach from the next `machine_info` (6.3) or from
 the first pull. A machine that switches from `pull` to `direct` gets a new device (its own
 token); records already stored through the pull device are answered as duplicates, not
-`id_conflict`, because the dedupe rule compares machines (record.md 3.1, changed in phase 5).
+`id_conflict`, because the dedupe rule compares machines (record.md 3.1, ).
 
 ## 4. `sy machine add`
 
@@ -505,7 +504,7 @@ machine token can never make codes). `--hub-admin`:
 | Value | How | When |
 | --- | --- | --- |
 | `local` | In-process against `<data>/hub.db` and `<state>`, as `sy hub pair` does | Merged hub on the operator |
-| a command prefix | The prefix's words followed by `hub …`, e.g. `ssh oci sy` → `ssh oci sy hub pair --kind machine … --json`; `ssh oci docker compose -f /srv/sy/compose.yml exec -T hub sy` for the Docker hub | Hub on another machine the person can SSH to |
+| a command prefix | The prefix's words followed by `hub …`, e.g. `ssh hub sy` → `ssh hub sy hub pair --kind machine … --json`; `ssh hub docker compose -f /srv/sy/compose.yml exec -T hub sy` for the Docker hub | Hub on another machine the person can SSH to |
 | (none) | Interactive: "Open <hub>/#/more/devices → Add machine, and paste the code here" (echo off); then the code goes to the remote as with `--code-stdin`. `pull` cannot work without a channel and says so. | No SSH to the hub |
 
 The prefix is split into words like `SY_SSH_COMMAND` (no shell); `sy` itself never interprets
@@ -630,7 +629,7 @@ reaches the hub (the record that entered the state is necessarily earlier in the
 - `ok: false` changes nothing (the hub may still push).
 - A `direct_push` for a session that is not on the sending machine is stored and ignored.
 
-**Catch-up hold** (push.md 3.3, phase 5): when the hub creates a session alert whose due time
+**Catch-up hold** (push.md 3.3): when the hub creates a session alert whose due time
 has already passed and the batch came from a machine that reported more records queued
 (`X-Sy-Backlog` above the batch size, or a drain batch with `more`), `due` becomes `now + 10 s`,
 and at fire time the scheduler postpones it by another 10 s while that machine's last
@@ -644,7 +643,7 @@ skipped as stale. That is the only known duplicate path, and it needs a badly wr
 
 ## 6. The Machines screen and its API
 
-### 6.1 `Machine` read model (api.yaml `Machine`, fields added in phase 5)
+### 6.1 `Machine` read model (api.yaml `Machine`, fields added for machine management)
 
 | Field | Type | Meaning, and where it comes from |
 | --- | --- | --- |
@@ -665,7 +664,7 @@ skipped as stale. That is the only known duplicate path, and it needs a badly wr
 | `alert` | AlertBrief \| null | The open `machine_silent` alert, if any (push.md 4) |
 | `silent`, `live_sessions`, `slots` | | Unchanged |
 
-The screen ("Settings · Hub and machines", screen in `docs/design/screens/`): one card per
+The screen ("Settings · Hub and machines"): one card per
 machine, sorted silent first, then by name. Each card: name, `os/arch`, reach chip
 ("Tailscale", "via laptop SSH", "pulled by hub every 1 min"), status line (`Live`,
 `Quiet 1 h 12 min` with the alert, `Seen 3 min ago`), backlog ("1 240 queued, oldest 14:02")
@@ -678,8 +677,7 @@ and the one-line install for the server itself. Deep link `/#/machines?machine=<
 
 ### 6.2 New operations
 
-All four are in api.yaml (`internal/hub/api/routes_phase5.go` lists them with their scopes, as
-`routes_phase4.go` does for phase 4; the handlers are `machines.go` and `direct.go`).
+All four are in api.yaml (`internal/hub/api/routes.go` lists them with their scopes).
 The schemas they use are `MachinePatch`, `PullStatus`, `DirectPolicy` and `DirectPolicyRule`.
 
 | Method and path | Scopes | Body → reply | Errors |
@@ -716,7 +714,7 @@ stays until the machine itself is renamed again.
 
 ### 7.1 The version numbers that matter
 
-| Number | Where | Changes when | Phase 5 value |
+| Number | Where | Changes when | Current value |
 | --- | --- | --- | --- |
 | `sy` semver | `version.Version`, batch `client`, record `client`, `/health.version` | Every release | 0.5.x |
 | Record `v` | Every record (record.md 3) | A kind's envelope or payload changes incompatibly | 1 (all kinds, including the two new ones) |
@@ -724,7 +722,7 @@ stays until the machine itself is renamed again.
 | Drain `proto` | 3.5 | The drain frames change incompatibly | 1 |
 | Schema | `schema_version`, `/health.schema` | A migration | 4 |
 
-Only record `v` needs negotiation: the others are fixed in phase 5, and a hub that sees an
+Only record `v` needs negotiation: the others are fixed today, and a hub that sees an
 unknown batch `v` answers 400, which the client keeps retrying without loss.
 
 ### 7.2 Mixed versions
@@ -734,8 +732,7 @@ unknown batch `v` answers 400, which the client keeps retrying without loss.
   second line of defence, and retypes such records at start when it has learned that `v`
   (an upgraded hub types what an older one stored).
 - **The hub says what it reads.** `/health.record_v_max` and every ingest reply's
-  `hub.record_v_max` (and the drain `start` frame). A hub without the field (phase 4 and
-  older) reads exactly `1`.
+  `hub.record_v_max` (and the drain `start` frame). A hub without the field (older hubs) reads exactly `1`.
 - **The client never sends a record whose `v` is above the hub's `record_v_max`.** It caches
   the last value in `<state>/hub.json` (`{url, version, record_v_max, at}`, written by
   `sy connect`, by every ingest reply that carries `hub`, and by a `/health` check in
@@ -747,8 +744,8 @@ unknown batch `v` answers 400, which the client keeps retrying without loss.
   reply shows a higher `record_v_max`, the next flush continues.
 - **Writers prefer what the hub reads.** A future change that bumps a kind's `v` must keep
   writing the previous version for one minor release whenever `<state>/hub.json` says the hub
-  is older and the fact can be expressed in it; only facts that cannot be are held. In phase 5
-  every `v` is 1, so this is the rule for later phases.
+  is older and the fact can be expressed in it; only facts that cannot be are held. Today
+  every `v` is 1, so this is the rule for later versions.
 - **Order of updates** therefore does not matter for correctness; `sy update --machines`
   still updates the hub host first (7.4), so nothing is held.
 - Unknown reply fields are ignored by every client (api.yaml rule), so newer hubs never break
@@ -824,7 +821,7 @@ fleet matches:
 4. A table: machine, old → new, outcome. One failure does not stop the others; exit 1 if any
    failed.
 
-Nothing here is started by the hub: plan section 13's "the hub can't command clients" holds.
+Nothing here is started by the hub: the rule that the hub cannot command clients holds.
 The operator uses the person's SSH access, as they would by hand.
 
 ## 8. Moving the hub: `sy hub export` and `sy hub import`
@@ -866,7 +863,7 @@ sy hub export [--out <file>] [--moved-to <url>] [--no-freeze] [--encrypt] [--pas
    `<pull dir>/id_ed25519` and `.pub`, where the pull dir is `--pull-dir` (the one `sy hub
    serve --pull-dir` runs with), default `<state>/pull`. The state folder does not depend on
    `--db`: serve and `sy hub pair` read the pepper from `<state>` whatever database they open. (VAPID keys and the action key are in `hub_secret`, inside the database; the pinned
-   pull host keys are in `pull_target`.) From F1, `<state>/hub_sign.key` is required in the
+   pull host keys are in `pull_target`.) `<state>/hub_sign.key` is required in the
    same way (keys.md 3.4: without it every device must pair again); it goes into the archive
    as `state/hub_sign.key` and step 5 of the import writes it back like the pepper.
 4. **Archive** (`.syx`, mode 0600, folder 0700; default `<data>/exports/hub-<UTC time>.syx`):
@@ -926,22 +923,22 @@ What moves, and what each device has to do:
 | --- | --- | --- |
 | Machine and desktop tokens | Hashes in `device`, machine bindings | **Keep working.** Each machine runs `sy connect <new url> --keep-token` (or the operator runs `sy machine repoint <new url>`), which checks `/health` and proves the token with `slot_info` records (tokens.md 4), then changes only `hub.url`. Until then its records wait (the old hub is frozen). |
 | Pull targets | Rows, pinned host keys, the pull key file | Keep working if the new hub host can reach the remotes over SSH; nothing changes on the remotes. |
-| Phones and browsers | Their device rows and Web Push subscriptions (VAPID keys move) | Their web app and cookie belong to the old origin: **re-pair** (plan section 15), unless the new hub keeps the same public URL (the tailnet name moved with it), in which case nothing changes at all. |
+| Phones and browsers | Their device rows and Web Push subscriptions (VAPID keys move) | Their web app and cookie belong to the old origin: **re-pair**, unless the new hub keeps the same public URL (the tailnet name moved with it), in which case nothing changes at all. |
 | Owner sessions | Rows | Cookies are per origin: sign in again unless the URL is the same: an owner device already on the new origin makes a link (More, Devices, Make another device owner), else `sy hub owner-link` on the new hub. |
 | Pairing codes | Rows and the pepper | Live codes keep working at the new address. |
 | Alerts, rules, history | Everything | The engine starts with `awake_at = now` (no silent-machine burst) and the stale guard drops anything overdue by more than 15 minutes. |
 
-The client never follows `moved_to` by itself: a hub cannot change a client's configuration
-(plan section 13). `sy doctor` on a machine whose hub is frozen prints the exact
+The client never follows `moved_to` by itself: a hub cannot change a client's configuration.
+`sy doctor` on a machine whose hub is frozen prints the exact
 `sy connect <moved_to> --keep-token` line.
 
 ## 9. Schema v4
 
 The implementer adds `internal/hub/store/migrations/0004_machines.sql` with exactly this,
-updates `docs/spec/schema.sql` to v4 (header line `v4 phase 5`) and the schema test.
+updates `docs/spec/schema.sql` to v4 (header line `v4`) and the schema test.
 
 ```sql
--- Version 4 (phase 5): reach, machine info, backlog age; pull targets. machines.md section 9.
+-- Version 4: reach, machine info, backlog age; pull targets. machines.md section 9.
 
 ALTER TABLE machine ADD COLUMN reach TEXT CHECK (reach IS NULL OR reach IN ('direct', 'forward', 'pull'));
 ALTER TABLE machine ADD COLUMN record_v INTEGER;
@@ -1022,7 +1019,7 @@ nothing that would let another user act as the person or the machine.
 
 ## 11. Tests
 
-Owned by the work packages in docs/phases/5.md, which lists the full test plan. The spec-level
+The spec-level
 properties every implementation must prove:
 
 - Drain: for every crash point (before ack, after the hub commit, after the ack, during the
@@ -1042,7 +1039,7 @@ properties every implementation must prove:
 - SSH: no `sy`-built argv contains a secret; forbidden options are refused; a changed host key
   fails both `sy machine add` and the pull.
 
-## 12. Uncertain
+## 12. Unverified assumptions
 
 1. **Remote unix-socket forwards** (`--forward-socket`): stale socket handling depends on the
    server's sshd `StreamLocalBindUnlink`; to be confirmed on Fedora and Ubuntu sshd defaults.

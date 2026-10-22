@@ -1,6 +1,6 @@
 # Keys, certificates and signed documents
 
-Status: spec v1, F0 (the foundation track of the plan addendum). Built in F1:
+Status: spec v1. Implemented in:
 `internal/keys` (formats, fingerprints, sealing, signing guard), `internal/hub/keys` (the hub
 key, certificates, owner-key confirmation, revocations), `cmd/sy` (`sy keys`). The link that
 carries these documents is [link.md](link.md); the account matrix is [peers.md](peers.md) 5.
@@ -110,7 +110,7 @@ check = first 4 characters of base32(SHA-256("sy-recovery-v1" ‖ R))
   machine has to re-pin anything.
 - Losing **both** the passphrase-sealed file and the code means a new owner key: every
   machine must be certified again (`sy keys certify --all`) and every machine's pin replaced
-  (3.5). Plan addendum section B names this risk.
+  (3.5). This is the main risk of the owner-key design.
 
 ### 3.3 Registering the owner key with the hub
 
@@ -160,7 +160,7 @@ key on a hub that has none yet.
   `pair_pepper` (machines.md 8.1 step 3; the export fails when it is missing), and `sy hub
   import` writes it back the same way (8.2 step 5). Without it every device would have to be
   paired again.
-- **No rotation in F1.** A new hub key means every device re-pairs (phones) or re-runs `sy
+- **No hub key rotation.** A new hub key means every device re-pairs (phones) or re-runs `sy
   agent enable --repin-hub` after you confirm the new fingerprint on that machine. A lost key
   is the same case.
 
@@ -340,8 +340,8 @@ key. The hub then queues it to every machine (link.md 6, frame `matrix`).
 
 The hub signs a matrix or revocation document itself (`by: hub`) when the change comes from:
 
-- an owner session on the board or the desktop app (any change; plan addendum H4: "either
-  one");
+- an owner session on the board or the desktop app (any change;
+  either is enough);
 - any authenticated device, phones included, when the change narrows (`POST
   /v1/peers/pause`, `PUT /v1/peers/matrix` with an `edit` that narrows; a revocation of
   itself).
@@ -349,7 +349,7 @@ The hub signs a matrix or revocation document itself (`by: hub`) when the change
 `matrix_doc.made_by` records the device that asked; `widens` records the 5.2 result.
 
 Each agent decides whether it trusts a hub-signed **widening**: `config.toml` `[peers]
-hub_may_widen = true` (default, matching H4). With `false`, a machine accepts a hub-signed
+hub_may_widen = true` (default). With `false`, a machine accepts a hub-signed
 document only when `Widens(current, new)` is false for **its own** current document (an agent
 with none starts from peers.md 5.1's version-1 baseline), so nothing that holds the hub key can
 widen what that machine delivers; widening then needs the owner key. Narrowing documents are
@@ -357,8 +357,8 @@ always accepted from either signer. The same setting governs `peer_thread_resume
 6.3), which the hub alone signs: with `false` the agent refuses it, tells the hub (the audit
 shows the refusal), and the thread stays stopped until a human prompt.
 
-This is the one place the H4 default ("board sign-in is enough") trades against the
-addendum's "the hub can only narrow". Who can widen, per setting:
+This is the one place the default ("board sign-in is enough") trades against the
+principle that the hub can only narrow. Who can widen, per setting:
 
 | Attacker | `hub_may_widen = true` (default) | `false` |
 | --- | --- | --- |
@@ -369,7 +369,7 @@ addendum's "the hub can only narrow". Who can widen, per setting:
 | A session on another machine | No (no owner session, no hub key) | No |
 
 So with the default, "sessions cannot widen" holds only for sessions that do not run on the
-hub machine as the hub's user. When sessions run there (the worker as hub, or the laptop in
+hub machine as the hub's user. When sessions run there (the gpu-box as hub, or the laptop in
 merged mode), set `hub_may_widen = false` on every machine, or run the hub as its own OS user;
 `sy doctor` warns when a slot's sessions run as the hub's user while it is `true`.
 
@@ -455,7 +455,7 @@ Hub steps, inside the claim transaction after pairing.md 3 step 3:
    certificate, and for phones the `link` push target (push.md 13.7), in the same transaction.
 
 A claim without either field works as before (no keys yet; `PUT /v1/devices/{id}/keys`
-later, as for devices paired before F1).
+later, as for devices paired before keys existed).
 
 ### 7.2 What the QR seal buys
 
@@ -467,7 +467,7 @@ cannot decrypt frames (no private key, no auth secret) and cannot forge them (no
 
 ### 7.3 Claim reply
 
-`PairClaimReply` gains, when the hub has keys (always from F1 on):
+`PairClaimReply` gains, when the hub has keys (always, once the hub has a key):
 
 ```json
 "hub_key": {"alg": "ed25519", "pub": "<b64u>", "fp": "<24 chars>"},
@@ -516,7 +516,7 @@ The check, in order; the first hit refuses:
      processes; an unreadable one is skipped, not a refusal).
    - **macOS:** `ps -o ppid=,comm=,args= -p <pid>` per step (no environment of other
      processes).
-   - **Windows:** owner-key commands are not available in F1 ("use the board's owner sign-in");
+   - **Windows:** owner-key commands are not available ("use the board's owner sign-in");
      they exit 4 before any check.
    - It is Claude Code when any of these hold: the base name of the executable, of `argv[0]`
      or of `comm` is `claude` (or `claude.exe`); the executable path contains
@@ -627,7 +627,7 @@ All of them run the signing guard (8) where 8 says so; every command that change
 prints what it will sign and asks unless `--yes` (setup.md rule 1). `--yes` never skips the
 passphrase.
 
-## 12. Tests (F1)
+## 12. Tests
 
 - Fingerprint, base32 and recovery-code goldens (`internal/keys/testdata/`, fixed `R`);
   recovery round trip (code → seed → same public key); typo handling and the check group;

@@ -162,7 +162,7 @@ CREATE TABLE web_seat (
   label         TEXT,
   first_seen    INTEGER NOT NULL,
   last_seen     INTEGER NOT NULL,
-  stopped_reason TEXT,                               -- 401/403/429 stop (decision 1)
+  stopped_reason TEXT,                               -- 401/403/429 stop
   PRIMARY KEY (machine_id, tab_id)
 ) STRICT;
 

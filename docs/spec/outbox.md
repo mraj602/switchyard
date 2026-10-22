@@ -1,7 +1,7 @@
 # Outbox
 
-Status: spec v1, phase 0. Implemented in `internal/outbox` (phase 1); flushed by
-`internal/client` (phase 2).
+Status: spec v1. Implemented in `internal/outbox`; flushed by
+`internal/client`.
 
 The outbox is where every record waits until the hub has accepted it. It must survive a
 crash at any point, never block Claude Code, and cope with many `sy hook` processes writing
@@ -77,7 +77,7 @@ record then survives a process crash but maybe not a power cut.
 
 Budget: steps 1–9 must take under 5 ms p95 on an SSD, so `sy hook` fits in 20 ms.
 
-Other writers: the desktop app (phase 6) does not write the files itself. It runs
+Other writers: the desktop app does not write the files itself. It runs
 `sy outbox append` with records on stdin (one JSON value per line, or any run of JSON
 values; `v`, `id` and `ts` are filled in when missing; one id is printed per record), so there is one implementation of
 these rules.
@@ -91,7 +91,7 @@ these rules.
 - Order: day files in name order, then spill files in name order. Within a file, line order.
   The hub does not rely on this order (it orders by `ts` per session), but flushing in this
   order keeps hook events roughly in sequence.
-- `sy status` in phase 1 reads the last 7 days of day files (flushed or not) to build the
+- `sy status` reads the last 7 days of day files (flushed or not) to build the
   local view.
 
 ## 5. Flushing and the cursor
@@ -146,8 +146,8 @@ the ids as accepted duplicates.
 
 Triggers: after each `sy hook` write, `sy hook` starts `sy flush --quiet` as a detached
 process (new session, stdio closed) unless `flush.stamp` is younger than 2 seconds; and the
-OS timer runs `sy tick` (flush + `sy agents` + `sy scan`) every minute. In phase 1 there is no
-hub, so `sy flush` is a no-op and the cursor stays at the start.
+OS timer runs `sy tick` (flush + `sy agents` + `sy scan`) every minute. Without a
+hub, `sy flush` is a no-op and the cursor stays at the start.
 
 ## 6. Retention, size cap and compaction
 
@@ -156,7 +156,7 @@ hub, so `sy flush` is a no-op and the cursor stays at the start.
 - **No hub configured:** `sy flush` sends nothing, but still runs the size cap (not the
   pruning: there is no cursor), at most once per 10 minutes (`cap.stamp`) and only if it can
   take `flush.lock`, so the outbox of a machine that never connects stays bounded.
-- **Size cap** (plan section 8): when the unflushed part of the outbox exceeds
+- **Size cap:** when the unflushed part of the outbox exceeds
   `outbox.max_mb` (default 50 MB), the flusher compacts the oldest unflushed day files,
   dropping records in this order until under the cap:
   1. `session_list` older than 1 hour (only the newest list per slot matters).
@@ -192,7 +192,7 @@ hub, so `sy flush` is a no-op and the cursor stays at the start.
 | During compaction | The tmp file is ignored and deleted next time; the original is untouched until the rename. |
 | Clock jump backwards | Writers keep using the newest day file (section 3, step 2), so nothing lands behind the cursor. Record `ts` values may go backwards; the hub orders by `ts` and copes. |
 
-## 8. Pull mode (phase 5)
+## 8. Pull mode
 
 `sy outbox drain --stdio` is the remote end of the hub pulling over SSH; the protocol is
 [machines.md](machines.md) 3.5. It replaces the reserved `--since-cursor` / `--ack <file:offset>`
@@ -213,7 +213,7 @@ over the same SSH channel, so the cursor rules are exactly section 5's:
 `sy outbox drain --peek [--max N]` prints the next records as JSONL for people and changes
 nothing.
 
-Phase 5 also adds to `flush.status.json`: `last_contact` (the last successful exchange with the hub: a `200`
+Pull mode also adds to `flush.status.json`: `last_contact` (the last successful exchange with the hub: a `200`
 ingest reply, a `200` `/health`, or a drain `start`; a `401`/`403`/`5xx` is not contact, since
 the hub is not taking this machine's records), `held` and
 `hub_too_old` (machines.md 7.2), `via` (`push` or `pull`), and `pull_refused` (3.5 `refuse`

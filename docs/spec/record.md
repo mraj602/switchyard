@@ -1,7 +1,7 @@
 # Records
 
-Status: spec v1, phase 0. Applies to `sy` (every client command), the desktop app and the hub.
-Change this file before changing any code that writes or reads records (plan section 16, "spec first").
+Status: spec v1. Applies to `sy` (every client command), the desktop app and the hub.
+Change this file before changing any code that writes or reads records ("spec first").
 
 A **record** is one fact a client saw: a hook event, a status-line limit reading, a claude.ai
 usage response, and so on. Clients write records to their local outbox
@@ -69,7 +69,7 @@ One `POST /v1/ingest` request body. Sent as `application/json`, optionally with
 | `records` | array of record | yes | 1 to 1000 records. The batch is at most 8 MiB before gzip. |
 
 The device is known from the bearer token, not from the body. A `device` field in the body
-(as in the plan's first draft) is ignored if present.
+is ignored if present.
 
 The reply is described in [api.yaml](api.yaml): every id in the batch appears exactly once,
 either in `accepted` (stored now or already stored) or in `rejected` with a reason. The
@@ -101,9 +101,9 @@ request failed (network error, 5xx, 429).
 
 | Field | Type | Required | Meaning |
 | --- | --- | --- | --- |
-| `v` | integer | yes | Record format version. `1`. A hub that sees a higher `v` stores the record raw and does not type it. Since phase 5 the hub says which `v` it reads (`record_v_max`) and clients never send a higher one (machines.md 7.2). |
+| `v` | integer | yes | Record format version. `1`. A hub that sees a higher `v` stores the record raw and does not type it. The hub says which `v` it reads (`record_v_max`) and clients never send a higher one (machines.md 7.2). |
 | `id` | string | yes | Idempotency key. See 3.1. |
-| `kind` | string | yes | One of the kinds in section 4 (seven since phase 0, `machine_info` and `direct_push` since phase 5), or any future kind (`^[a-z][a-z0-9_]{0,39}$`). |
+| `kind` | string | yes | One of the kinds in section 4 (seven original kinds, plus `machine_info` and `direct_push`), or any future kind (`^[a-z][a-z0-9_]{0,39}$`). |
 | `ts` | string | yes | When the client observed the fact (RFC 3339 UTC, ms). |
 | `machine` | string | yes | The machine id from [identity.md](identity.md) (`m_` + ULID). |
 | `slot` | string | depends | The config folder the fact came from, written with `~` for the home folder and `/` as separator (`~/.claude`, `~/.claude-2`, `~/work/.claude-x`). Required for `hook_event`, `limit_sample`, `session_list`, `slot_info`; optional for `token_rows` and `history_import` (omitted when the transcripts folder is shared by several slots); absent for `web_usage`. |
@@ -126,7 +126,7 @@ request failed (network error, 5xx, 429).
 - The hub's duplicate key is the id alone. If a second upload carries an id that is already
   stored **from the same device**, it is accepted (duplicate). If it is stored from a
   **different** device, it is rejected with reason `id_conflict` and not stored again.
-- **Phase 5:** an id already stored from a different device **bound to the same machine**
+- **Machines:** an id already stored from a different device **bound to the same machine**
   (the stored row's `machine_id` equals this record's `machine`, and the uploading device is
   bound to that machine) is also a duplicate, not a conflict. A machine that changes reach
   (pull device → its own token, machines.md 3.6), is re-paired, or resends after a hub move
@@ -145,14 +145,14 @@ The hub turns `(account, org)` into a `seat` row and, for slots, opens or contin
 `slot_login` period (see [identity.md](identity.md)). A record without `seat` is still
 stored; its session is attributed later or shows as Unattributed.
 
-### 3.3 `term` (optional, plan section 14)
+### 3.3 `term` (optional)
 
 | Field | Type | Required | Meaning |
 | --- | --- | --- | --- |
 | `app` | string | yes | Terminal program, lower case: `warp`, `ghostty`, `iterm`, `wezterm`, `kitty`, `vscode`, `windows-terminal`, `tmux`, `unknown`. From `TERM_PROGRAM`, `WARP_*`, `TMUX` and similar. |
 | `id` | string | no | The terminal's own pane or session id. Warp: `WARP_TERMINAL_SESSION_UUID`. |
 | `focus_url` | string | no | URL that brings this pane forward. Warp: `WARP_FOCUS_URL`. Over SSH: `LC_SY_FOCUS` passed from the laptop. |
-| `host` | string | no | Machine id of the machine whose terminal shows this pane, when it differs from `machine` (an SSH session shown in a laptop tab). Set by `sy hook` from `LC_SY_HOST`, which `sy ssh` sends (phase 7, terminal.md T9). |
+| `host` | string | no | Machine id of the machine whose terminal shows this pane, when it differs from `machine` (an SSH session shown in a laptop tab). Set by `sy hook` from `LC_SY_HOST`, which `sy ssh` sends (terminal.md T9). |
 
 The hub serves `focus_url` only to readers on the machine named by `host` (or `machine` when
 `host` is absent). Phones never receive it.
@@ -181,14 +181,14 @@ says where Claude Code is known to send it. The one exception is `error` on Stop
 | `permission_suggestions` | PermissionRequest | Removed (the suggested rules quote the command). `derived.permission_suggestions` = their count. |
 | `error` | PostToolUseFailure | Removed: it is tool output (`"Exit code 1\ncat: …"`). `derived.error_chars` = its length. `is_interrupt` and `duration_ms` are kept. |
 | `error` | StopFailure | **Kept**: it is a short error code (`model_not_found`, `rate_limit`, …), not content. |
-| `last_assistant_message` | Stop, SubagentStop, StopFailure | Removed. If last messages are allowed (plan section 13), `derived.last_message` = the tail of the message (see below). Always `derived.last_message_chars` = full length. |
+| `last_assistant_message` | Stop, SubagentStop, StopFailure | Removed. If last messages are allowed, `derived.last_message` = the tail of the message (see below). Always `derived.last_message_chars` = full length. |
 | `session_crons`, `background_tasks` | Stop, SubagentStop | Removed (items quote prompts and commands). `derived.session_crons` and `derived.background_tasks` = their counts. |
 | `message` | Notification | Kept, cut to 300 characters. It is Claude Code's own UI text ("Claude needs your permission to use Bash"). |
 | `custom_instructions` | PreCompact | Removed. `derived.custom_instructions_chars` = length. |
 
 `derived.last_message`: take the message, drop trailing whitespace, keep the last 400
 characters, and if that cut a line, drop the partial first line and prefix `…`. 400 is more
-than the plan's "about 200" on purpose: question detection needs the final paragraph and any
+than a typical short excerpt on purpose: question detection needs the final paragraph and any
 numbered options under it ([states.md](states.md) section 4). Push text uses only the
 question line, cut to 120 characters.
 
@@ -258,7 +258,7 @@ the hub's limit alerts (push.md) do not wait for the session's next status line.
 | `session_name` | string | Session name, if set. |
 | `cost.total_cost_usd` | number | Claude Code's own cost estimate. Stored, not used for analytics. |
 
-`derived` for `limit_sample` (computed by `sy` so the outbox can be read locally in phase 1):
+`derived` for `limit_sample` (computed by `sy` so the outbox can be read locally):
 
 | Field | Type |
 | --- | --- |
@@ -283,7 +283,7 @@ Example:
 
 ### 4.3 `web_usage`
 
-Written by the desktop app (phase 6) every 5 minutes per signed-in tab, and when a tab opens.
+Written by the desktop app every 5 minutes per signed-in tab, and when a tab opens.
 One record per organisation the app reports for the account, so each record names one seat.
 The app leaves out a free organisation when the account has a paid one (desktop.md C5, "Which
 orgs"), because every account has a personal free organisation and it is not a seat of its own.
@@ -332,7 +332,7 @@ orgs"), because every account has a personal free organisation and it is not a s
 
 | Field | Type | Required | Meaning |
 | --- | --- | --- | --- |
-| `tab_id` | string | yes | The desktop app's tab id (web seat, plan section 5). Pattern `^(t_[0-9a-f]{16}\|[0-9a-f]{8})$`: `t_` + 16 lowercase hex for a tab made by the phase 6 app, or the prototype's 8-hex account id, kept unchanged for an imported tab so its web seat continues (desktop.md C1). |
+| `tab_id` | string | yes | The desktop app's tab id (web seat). Pattern `^(t_[0-9a-f]{16}\|[0-9a-f]{8})$`: `t_` + 16 lowercase hex for a tab made by the desktop app, or the prototype's 8-hex account id, kept unchanged for an imported tab so its web seat continues (desktop.md C1). |
 | `org` | object | yes | From `/api/organizations`: `uuid`, `name`, `capabilities`, `rate_limit_tier`, `billing_type`, `raven_type`, kept as returned for those keys. |
 | `account` | object | no | From `/api/account`: `uuid`, `email_address`, `full_name`, `display_name`. Only these keys. |
 | `active` | boolean | no | True if this org is the tab's last active org. |
@@ -488,10 +488,10 @@ last one it sent for that slot, and once a day per slot.
 | `auth_status` | object | no | Output of `claude auth status --json`, kept whole after the rule 4 filter (keys today: `loggedIn`, `authMethod`, `apiProvider`, `analyticsDisabled`, `projectsDirectory`, `configDirectory`, `email`, `orgId`, `orgName`, `subscriptionType`). |
 | `claude_version` | string | no | `claude --version`. |
 | `sharing` | object | no | Which parts are symlinked to which target, for the Accounts screen: `{"settings.json": "~/.claude/settings.json", ...}`. |
-| `label` | string | no | Local label for this folder's login (`slots.labels`, set by `sy setup` / `sy account label`). The hub applies it to the seat only while the seat has no label set in the UI (setup.md 8.4). Phase 3. |
-| `colour` | string | no | `#rrggbb`, same rule as `label`. Phase 3. |
+| `label` | string | no | Local label for this folder's login (`slots.labels`, set by `sy setup` / `sy account label`). The hub applies it to the seat only while the seat has no label set in the UI (setup.md 8.4). |
+| `colour` | string | no | `#rrggbb`, same rule as `label`. |
 
-### 4.8 `machine_info` (phase 5)
+### 4.8 `machine_info`
 
 Written by `sy tick` when the content changed (counters and times excluded) and otherwise
 every 6 hours, and by `sy connect`, `sy setup`, `sy update` and `sy machine rename`
@@ -502,7 +502,7 @@ name (1–60 characters, no control characters) and differs from the `name` of t
 `info` it replaces; a first report, a repeat, or a report after one without `name` leaves
 the name alone, so a rename on the board is kept until the machine is renamed again.
 
-`name` was added after phase 5 without a new `v`: it is optional, so `v` stays `1` (a new
+`name` was added later without a new `v`: it is optional, so `v` stays `1` (a new
 `v` is only for a change an older hub would read wrongly, 3). A hub that does not know the
 field keeps it in `info` only (payloads keep unknown fields, 6), and an older `sy` that
 leaves it out never renames the machine.
@@ -521,7 +521,7 @@ leaves it out never renames the machine.
 | `update` | object | no | `{last_check, latest}` from `sy update --check`, when it ran. |
 | `name` | string | no | The machine's own name (`<state>/machine.json`, identity.md 2; `sy machine rename`). |
 
-### 4.9 `direct_push` (phase 5)
+### 4.9 `direct_push`
 
 Written by `sy` right after it sent a session push itself (machines.md 5.4, 5.5). No `seat`;
 `slot` is the session's slot when known.
@@ -550,7 +550,7 @@ The hub rejects a record (and only that record) when:
 | `bad_id` | `id` missing or not matching `^[0-9A-Za-z_-]{16,64}$`. |
 | `bad_envelope` | `kind`, `ts` or `payload` missing or of the wrong type, or `ts` not RFC 3339; a `hook_event` whose `payload.session_id` is not `^[0-9A-Za-z][0-9A-Za-z_-]{0,63}$` (the hub builds a shell resume command from it). |
 | `machine_mismatch` | `machine` differs from the machine bound to the device token. When every record of a batch is rejected for this reason the whole request is answered `403` (`code: machine_mismatch`) and the client keeps its outbox. |
-| `id_conflict` | Same `id` already stored from another device, unless both devices are bound to the record's machine (3.1, phase 5). |
+| `id_conflict` | Same `id` already stored from another device, unless both devices are bound to the record's machine (3.1). |
 | `too_large` | Encoded record over 1 MiB. |
 
 Everything else is accepted and stored raw, including records with an unknown `kind`, a
@@ -560,6 +560,6 @@ higher `v`, or typed fields the hub cannot parse (those get `typed = 0` and an
 ## 6. Round trip
 
 For every fixture in `testdata/`, the record built from it, encoded and decoded again, must
-equal the input field for field (phase 0 "Done when"). In Go this means the record and
+equal the input field for field. In Go this means the record and
 payload types keep unknown fields (`json.RawMessage` or a `map[string]any` overflow), never
 plain structs that drop them.

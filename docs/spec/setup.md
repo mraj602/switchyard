@@ -1,11 +1,9 @@
 # Setup, sharing and accounts
 
-Status: spec v1, phase 3. Implemented in `internal/setup` (planner, apply, backup, undo),
+Status: spec v1. Implemented in `internal/setup` (planner, apply, backup, undo),
 `internal/share` and `internal/jsonedit` (sharing), `internal/account` and
 `internal/claudecli` (folders, logins, the `claude` CLI), `cmd/sy` (prompts), `install/`
-(install scripts) and `plugin/switchyard/skills/setup` (the skill). Plan sections 3, 4, 13 and
-15; screens `Main`, `SetupSharing`, `SetupHub`, `SetupDone`, `InstallByClaude` in
-`docs/design/screens/`.
+(install scripts) and `plugin/switchyard/skills/setup` (the skill).
 
 Facts about Claude Code below were checked against **2.1.296** on the development laptop on
 12 October 2026 (section 13 lists what was run). Anything not checked is marked
@@ -40,7 +38,7 @@ no PATH, no Claude folder and nothing else.
 
 ### 1.1 Release assets
 
-Every tag `v<semver>` publishes on GitHub Releases (section 12 of `docs/phases/3.md`):
+Every tag `v<semver>` publishes on GitHub Releases:
 
 | Asset | Content |
 | --- | --- |
@@ -224,10 +222,10 @@ and selected.
 | Choice | Flag | What happens at apply |
 | --- | --- | --- |
 | Just this computer | `--hub here` | Install the hub user service (`sy hub serve --listen 127.0.0.1:8787`; systemd user unit from `deploy/systemd`, launchd agent on macOS, Task Scheduler XML on Windows as in `internal/timer`), wait up to 10 s for `/health`, mint a machine token locally (`sy hub token create --kind machine --machine <id>` against the local data folder), then `sy connect http://127.0.0.1:8787 --token-stdin` (installs the timer). On Linux, if `loginctl show-user $USER -p Linger` is `no`, say "the hub stops when you log out; run `loginctl enable-linger`" (sy does not run it: it needs polkit/root on some systems). Prints a one-time browser sign-in token for the dashboard (interactive only; `--json` prints the command to make one instead). If Tailscale is up, says the hub is also reachable at `<self>.ts.net` only if the person later runs `tailscale serve` (sy does not). |
-| Connect to my hub | `--hub join:<url>` + `--token-stdin` (phase 3) or `--code <code>` | `sy connect <url>` exactly as tokens.md 4 (HTTPS rule, `/health`, token proof, `<state>/token`, `hub.url`, timer). Interactive: the token is read with echo off. |
+| Connect to my hub | `--hub join:<url>` + `--token-stdin` or `--code <code>` | `sy connect <url>` exactly as tokens.md 4 (HTTPS rule, `/health`, token proof, `<state>/token`, `hub.url`, timer). Interactive: the token is read with echo off. |
 | On another server | `--hub later` + printed instructions | Prints `docker run ... ghcr.io/<owner>/switchyard-hub` and `sy hub token create --kind machine` for that server, then waits for the URL and token (Enter skips: becomes `later`). |
 | Later | `--hub later` | Nothing. The summary says `sy connect <url> --token-stdin` or `sy setup --hub ...`. |
-| Pulled by the hub (phase 5) | `--hub pull` | Not offered interactively (it needs the hub's key, which `sy machine add` brings). Sets `hub.reach = "pull"`, installs the timer. machines.md 3.4. |
+| Pulled by the hub | `--hub pull` | Not offered interactively (it needs the hub's key, which `sy machine add` brings). Sets `hub.reach = "pull"`, installs the timer. machines.md 3.4. |
 
 The hub step runs after all local steps and its failure never rolls them back (6.2).
 
@@ -243,7 +241,7 @@ machine" and never blocks. A remote hub prints "open <url> → Settings → Add 
 pair`)". `--json` is unchanged. Then the summary: one line per applied change with `+`, `~`
 or `−` (the screen's wording), the backup id, then `sy doctor` (the checks in 9.4) and "N
 Claude sessions are open: restart them to start reporting" (count from `claude agents
---json` per folder). Last lines: next machine (`sy machine add user@host`, phase 5) and the
+--json` per folder). Last lines: next machine (`sy machine add user@host`) and the
 dashboard address when a hub is connected.
 
 ## 4. `sy setup`, flags (for scripts and Claude)
@@ -274,16 +272,16 @@ sy setup --undo-list [--json]
 | `--primary` | `share.primary`, else `~/.claude` | Folder shared items live in. Changing it on a machine where links point elsewhere is refused (exit 2) unless every link is adopted as "shared elsewhere". |
 | `--labels` | keep existing | Keys are folder paths (`~` allowed) or login emails. |
 | `--add` | none | Create one new folder per label (5.6). Never logs in under `--yes`. |
-| `--accounts` | none | Plan section 3's shorthand: labels for existing folders in natural order; extra labels become `--add`. |
+| `--accounts` | none | Shorthand: labels for existing folders in natural order; extra labels become `--add`. |
 | `--share` | `defaults` = all seven switches, except `mcp` when hand-made MCP sync is detected | `none` changes no sharing. A list replaces the defaults; `-name` removes one from the defaults (`--share defaults,-history`). Off never un-shares something already linked unless the switch is named with `-` explicitly *and* `--yes` is given. |
 | `--conflicts` | `keep` | How to resolve every item that differs from the primary (5.3). `--resolve` overrides per item. |
 | `--hub` | `keep` if a healthy hub is connected, else `later` under `--yes` (interactive default is `here`) | See step 4. `local` is accepted for `here`, and a bare `https://...` for `join:`. |
 | `--token-stdin` | | Read the device token from the first stdin line. |
 | `--code` | | Machine pairing code (`sy hub pair --kind machine`) claimed at the hub step instead of reading a token; needs `--hub join:<url>` and excludes `--token-stdin` (exit 2 otherwise). A dry run never claims it and it never appears in the plan. |
-| `--code-stdin` | | Phase 5: as `--code`, read from the first stdin line, which may also be a 22-character pairing **secret** (claimed with `secret`, machines.md 4.2 step 6). Used by `sy machine add` so no code is ever an argument. Excludes `--code` and `--token-stdin`. |
-| `--hub pull` | | Phase 5: this machine is pulled over SSH by the hub (machines.md 3.4): `hub.reach = "pull"`, no URL, no token; the timer is installed. The plan shows "hub: pulled over SSH (run `sy machine add --reach pull` from your laptop, or `sy hub pull add` on the hub)". |
-| `--hub-dial` | | Phase 5: with `join:`, dial this loopback `host:port` or `unix:<path>` instead of the URL's host (forward mode, machines.md 3.3). Stored as `hub.dial`. |
-| `--reach` | `direct` | Phase 5: recorded as `hub.reach` (`forward` when `--hub-dial` is given). |
+| `--code-stdin` | | As `--code`, read from the first stdin line, which may also be a 22-character pairing **secret** (claimed with `secret`, machines.md 4.2 step 6). Used by `sy machine add` so no code is ever an argument. Excludes `--code` and `--token-stdin`. |
+| `--hub pull` | | This machine is pulled over SSH by the hub (machines.md 3.4): `hub.reach = "pull"`, no URL, no token; the timer is installed. The plan shows "hub: pulled over SSH (run `sy machine add --reach pull` from your laptop, or `sy hub pull add` on the hub)". |
+| `--hub-dial` | | With `join:`, dial this loopback `host:port` or `unix:<path>` instead of the URL's host (forward mode, machines.md 3.3). Stored as `hub.dial`. |
+| `--reach` | `direct` | Recorded as `hub.reach` (`forward` when `--hub-dial` is given). |
 | `--no-plugin` | | Skip plugin installation. |
 | `--no-statusline` | | Skip the status line wrap. |
 | `--no-launchers` | | Write no launchers. |
@@ -442,7 +440,7 @@ by managed policy and the plugin is not listed in `/plugin`); a `skills-dir` plu
 shared `skills/` (it works in 2.1.296 and loads all 11 hooks, but it puts `sy`'s files inside
 the person's own skills folder and has no enable switch).
 
-Updates (`sy update`, phase 5, [machines.md](machines.md) 7.3 step 7): rewrite the marketplace
+Updates (`sy update`, [machines.md](machines.md) 7.3 step 7): rewrite the marketplace
 folder for the new version, then per root `claude plugin marketplace update sy-local` and
 `claude plugin update switchyard@sy-local`.
 
@@ -541,7 +539,7 @@ editor (5.4 step 3–5, without the lock or session checks):
 | --- | --- |
 | `/statusLine/command` (and `/statusLine/type` if `statusLine` was absent) | Status line wrap (section 9.1) |
 | `/env/CLAUDE_CODE_PLUGIN_CACHE_DIR` | Shared plugin root (5.2) |
-| `/env/CLAUDE_CODE_DISABLE_TERMINAL_TITLE` | Switchyard tab titles on (`sy term titles on`, terminal.md T6, T10; phase 7) |
+| `/env/CLAUDE_CODE_DISABLE_TERMINAL_TITLE` | Switchyard tab titles on (`sy term titles on`, terminal.md T6, T10) |
 | `/hooks/<Event>/<i>` entries whose command contains `switchyard-hook` | Prototype removal (10) |
 
 Everything else in `settings.json` (`enabledPlugins`, `extraKnownMarketplaces`) is written by
@@ -941,7 +939,7 @@ What is installed now: `plugin` (marketplace path, plugin id, roots and settings
 was enabled in, adopted or ours), `statusline` (per target: original command, or "created"),
 `env_keys` (targets where `CLAUDE_CODE_PLUGIN_CACHE_DIR` was set by `sy`), `launchers`
 (path, sha256), `mcp_sync` (set of files), `copies` (Windows), `hub_service`, `timer`,
-`prototype_removed` (the hook entries, kept for restore), `terminal` (phase 7: pane, Warp
+`prototype_removed` (the hook entries, kept for restore), `terminal` (pane, Warp
 plugin, titles, tab configs; terminal.md T10). Updated at the end of every
 apply, undo and uninstall. A command that cannot read it changes nothing; uninstall keeps
 the record of everything it did not remove (left as is, skipped, or failed).
@@ -1000,7 +998,7 @@ The prototype adds hook entries with `switchyard-hook` in the command (`bash
 They post to the Electron app's local receiver and do not conflict with `sy hook`.
 
 - Detect lists them (`Hooks 3 → ~/.claude/switchyard-hook.sh (prototype)`).
-- Default: **keep**. The prototype is the user's only board until the phase 2 hub is live.
+- Default: **keep**. The prototype is the user's only board until a hub is live.
 - Removal is offered (interactive default **yes**) only when the hub step ends with a healthy
   hub that accepted this machine's token; `--prototype remove` does the same in scripts and
   is refused otherwise. Removal = `json_delete` of exactly those entries (the same filter as
@@ -1083,12 +1081,12 @@ Needs you
 5 changes · 3 files backed up · 0 links changed · 0 logins touched
 ```
 
-With `--hub join:https://<oci-host>.<tailnet>.ts.net --token-stdin` (decision 3) the Hub
+With `--hub join:https://<hub>.<tailnet>.ts.net --token-stdin` the Hub
 section becomes `+ connect https://… (token from stdin), timer every minute, linger: yes`,
 and the Prototype section offers `− 3 hooks → ~/.claude/switchyard-hook.sh (backup kept)`
 once the connect succeeds.
 
-**Acceptance test on this laptop** (phase 3 "Done when"):
+**Acceptance test on a laptop:**
 
 1. Before: record `find ~/.claude* -maxdepth 1 -printf '%p %y %l %m\n'` and SHA-256 of
    `~/.claude/settings.json`, `~/.claude/plugins/installed_plugins.json`,
@@ -1103,7 +1101,7 @@ once the connect succeeds.
    `extraKnownMarketplaces.sy-local`, `enabledPlugins["switchyard@sy-local"]` and the
    wrapped command.
 4. `sy doctor`: plugin and status line present in the 3 logged-in folders, `~/.claude-4` …
-   `~/.claude-7` reported as "not logged in" (their hooks are not judged, as in phase 1);
+   `~/.claude-7` reported as "not logged in" (their hooks are not judged);
    every link still a link.
 5. A new session with `claude-2` writes `sy` records with `~/.claude-2`'s login, and the
    status line still shows the old line first.
@@ -1120,7 +1118,7 @@ once the connect succeeds.
    write back an old `mcpServers`. Mitigation: sync only on change, verify on the next tick,
    log flapping as a doctor warning; never touch other keys.
 2. **`env.CLAUDE_CODE_PLUGIN_CACHE_DIR` in settings** was verified with `claude plugin list`,
-   not yet with a full session loading hooks from it. The phase 3 E2E test with the real
+   not yet with a full session loading hooks from it. The E2E test with the real
    `claude -p` must confirm it; fallback: plugin-root links (what this laptop already does).
 3. **Last-installer-wins `installPath`.** Any `claude plugin install` from a linked folder
    writes a path through that folder's link. Harmless while links exist; breaks if a person
@@ -1143,7 +1141,7 @@ once the connect succeeds.
    interactive shells (non-interactive uses would then skip the person's area setup).
 8. **Windows**: junction detection across Go versions, status line quoting, synced copies of
    `settings.json` racing Claude Code's own writes, and `sy.exe` replacement while hooks run
-   are all untested here; Windows is "best effort" in phase 3 and gets a CI job, not a
+   are all untested; Windows support is best effort and gets a CI job, not a
    support promise.
 9. **macOS Keychain naming** is not verified; anything relying on it is avoided rather than
    implemented.
