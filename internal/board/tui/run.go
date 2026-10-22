@@ -13,7 +13,7 @@
 //
 // Folders and the environment come from termenv.Env (internal/termenv/lint_test.go).
 //
-// Phase 7, WP-C. Depends on: board (View, Source), termenv.
+// Depends on: board (View, Source), termenv.
 package tui
 
 import (

@@ -8,7 +8,7 @@
 // It never imports internal/hub: everything the hub host must do goes through the admin
 // channel (Admin: `sy hub …` in process, over a command prefix, or a pasted code).
 //
-// Phase 5 WP-A. Depends on: sshx, update, client, config, identity, setup/{apply,backup,model},
+// Depends on: sshx, update, client, config, identity, setup/{apply,backup,model},
 // atomicfile, version.
 package machineadd
 
@@ -241,7 +241,7 @@ func (a *adder) run(ctx context.Context) error {
 		return exitf(ExitUsage, "--code-stdin is for direct and forward; pull registers the machine through the admin channel")
 	}
 	if o.Reach == ReachPull && a.e.Admin == nil {
-		return exitf(ExitUsage, "pull mode needs the hub host: pass --hub-admin local or a command prefix such as \"ssh oci sy\"")
+		return exitf(ExitUsage, "pull mode needs the hub host: pass --hub-admin local or a command prefix such as \"ssh hub-host sy\"")
 	}
 	if o.Version != "" && o.Binary != "" {
 		return exitf(ExitUsage, "use --version or --binary, not both")
@@ -624,7 +624,7 @@ func (a *adder) decideReach() error {
 		}
 	}
 	if reach == ReachPull && a.e.Admin == nil {
-		return exitf(ExitUsage, "pull mode needs the hub host: pass --hub-admin local or a command prefix such as \"ssh oci sy\"")
+		return exitf(ExitUsage, "pull mode needs the hub host: pass --hub-admin local or a command prefix such as \"ssh hub-host sy\"")
 	}
 	a.sum.Reach = reach
 	return nil

@@ -436,7 +436,7 @@ func checkTabs(rep *Report, o Options, tabs []model.LedgerTab) {
 }
 
 // checkWarpDetect: the channel and tab_configs folder when Warp is found, and inside Warp
-// whether WARP_FOCUS_URL still matches the allow-list (the drift signal of plan section 14).
+// whether WARP_FOCUS_URL still matches the allow-list (the drift signal: Warp changed its URL scheme).
 func checkWarpDetect(rep *Report, o Options, term *model.LedgerTerminal) {
 	env := termenv.Env{Home: o.Home, XDGDataHome: o.Getenv("XDG_DATA_HOME"),
 		AppData: o.Getenv("APPDATA"), LocalAppData: o.Getenv("LOCALAPPDATA"), Getenv: o.Getenv, GOOS: runtime.GOOS}

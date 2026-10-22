@@ -1,10 +1,10 @@
-// Package desktop implements `sy desktop`: every hub-side action the desktop app (app/,
-// phase 6) needs, as one JSON object on stdout (docs/spec/desktop.md C4). The app runs no
+// Package desktop implements `sy desktop`: every hub-side action the desktop app (app/)
+// needs, as one JSON object on stdout (docs/spec/desktop.md C4). The app runs no
 // other hub command and holds no SSH logic.
 //
-// Phase 6. This file is the wave 0 contract: the JSON shapes of C4 with their exact tags,
-// the exit codes and the service states. The app (WP-C) parses exactly these shapes, so
-// they change only through desktop.md. Everything else in this package belongs to WP-S.
+// This file is the contract with the app: the JSON shapes of C4 with their exact tags, the
+// exit codes and the service states. The app parses exactly these shapes, so they change
+// only through desktop.md.
 package desktop
 
 // Exit codes of every `sy desktop` subcommand (desktop.md C4).
@@ -48,7 +48,7 @@ type Info struct {
 	Machine InfoMachine `json:"machine"`
 	Hub     InfoHub     `json:"hub"`
 	// Admin is the admin channel of machines.md 4.4: AdminLocal, the machines.hub_admin
-	// command prefix (e.g. "ssh oci sy"), or null when there is none.
+	// command prefix (e.g. "ssh hub-host sy"), or null when there is none.
 	Admin *string `json:"admin"`
 	// AdminError is why machines.hub_admin cannot be used (a bad command prefix), else null.
 	// `token` and `owner-link` then exit 4 with it; everything else in info still works.

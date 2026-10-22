@@ -30,7 +30,7 @@ const UnattributedLabel = "Unattributed"
 
 var (
 	hexColour = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
-	// focusURL is T7's allow-list. The enforcing copy is internal/termctl (WP-F); this one
+	// focusURL is T7's allow-list. The enforcing copy is internal/termctl; this one
 	// only decides Row.CanFocus, and `sy term focus` checks again before opening anything.
 	focusURL = regexp.MustCompile(`^(warp|warppreview)://session/[0-9a-f]{32}$`)
 )
@@ -191,7 +191,7 @@ func colourOrNeutral(c string) string {
 }
 
 // ---------------------------------------------------------------------------------------
-// The hub's read API as the board needs it. WP-B decodes /v1/overview, /v1/accounts and
+// The hub's read API as the board needs it. The hub source decodes /v1/overview, /v1/accounts and
 // /v1/sessions into these (the JSON names are api.yaml's) and calls BuildHub.
 
 // HubSession is api.yaml Session, the fields the board reads. Times decode from RFC 3339.

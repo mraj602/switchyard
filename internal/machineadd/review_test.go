@@ -16,7 +16,7 @@ import (
 	"github.com/mraj602/switchyard/internal/sshx/sshxtest"
 )
 
-// Phase 5 review: machine add / ssh side.
+// Regression tests for the machine add / ssh side.
 
 func TestSameNameMachinesDoNotCollide(t *testing.T) {
 	r := &Registry{V: 1}

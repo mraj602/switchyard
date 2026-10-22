@@ -198,8 +198,8 @@ func TestInfoRemoteHubAdminPrefixAndDial(t *testing.T) {
 	e := sandboxEnv(t)
 	connect(t, &e, "https://hub.example.ts.net")
 	e.Config.Hub.Dial = "127.0.0.1:47830"
-	e.Config.Machines.HubAdmin = "ssh oci sy"
-	e.AdminName = "ssh oci sy"
+	e.Config.Machines.HubAdmin = "ssh hub-host sy"
+	e.AdminName = "ssh hub-host sy"
 	e.HTTP = func(time.Duration) (*http.Client, error) {
 		return &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) { return nil, errors.New("down") })}, nil
 	}
@@ -209,7 +209,7 @@ func TestInfoRemoteHubAdminPrefixAndDial(t *testing.T) {
 		t.Fatal(err)
 	}
 	if info.Hub.Reachable || info.Hub.Local || info.Hub.Service != nil || info.Hub.Dial == nil || *info.Hub.Dial != "127.0.0.1:47830" ||
-		info.Admin == nil || *info.Admin != "ssh oci sy" {
+		info.Admin == nil || *info.Admin != "ssh hub-host sy" {
 		t.Fatalf("%+v", info)
 	}
 	// forward mode: the app is refused token and owner-link.
@@ -239,7 +239,7 @@ func codeOf(err error) int {
 func TestTokenThroughAdminChannel(t *testing.T) {
 	e := sandboxEnv(t)
 	connect(t, &e, "https://hub.example.ts.net")
-	a := &fakeAdmin{out: `{"device":"dev_01JA","token":"sy_d_` + strings.Repeat("A", 43) + `","scopes":["write","read"]}` + "\n", name: "ssh oci sy"}
+	a := &fakeAdmin{out: `{"device":"dev_01JA","token":"sy_d_` + strings.Repeat("A", 43) + `","scopes":["write","read"]}` + "\n", name: "ssh hub-host sy"}
 	e.Admin = a
 	tok, err := RunToken(context.Background(), e, TokenOptions{Name: "my-laptop"})
 	if err != nil {
@@ -275,7 +275,7 @@ func TestTokenNeedsAdminAndConnection(t *testing.T) {
 			t.Fatalf("bad name %q: %v", bad, err)
 		}
 	}
-	e.Admin = &fakeAdmin{err: &machineadd.AdminError{Args: []string{"token"}, Exit: 255, Stderr: "ssh: connect to host oci: Connection refused"}}
+	e.Admin = &fakeAdmin{err: &machineadd.AdminError{Args: []string{"token"}, Exit: 255, Stderr: "ssh: connect to host hub-host: Connection refused"}}
 	if _, err := RunToken(context.Background(), e, TokenOptions{}); codeOf(err) != ExitUnreachable {
 		t.Fatalf("ssh failure: %v", err)
 	}
@@ -416,10 +416,10 @@ func TestHubStatusStartStop(t *testing.T) {
 
 func TestBatchMode(t *testing.T) {
 	for in, want := range map[string]string{
-		"ssh oci sy":                  "ssh -o BatchMode=yes oci sy",
-		"/usr/bin/ssh -p 2222 oci sy": "/usr/bin/ssh -o BatchMode=yes -p 2222 oci sy",
-		"ssh -o BatchMode=yes oci sy": "ssh -o BatchMode=yes oci sy",
-		"docker exec -T hub sy":       "docker exec -T hub sy",
+		"ssh hub-host sy":                  "ssh -o BatchMode=yes hub-host sy",
+		"/usr/bin/ssh -p 2222 hub-host sy": "/usr/bin/ssh -o BatchMode=yes -p 2222 hub-host sy",
+		"ssh -o BatchMode=yes hub-host sy": "ssh -o BatchMode=yes hub-host sy",
+		"docker exec -T hub sy":            "docker exec -T hub sy",
 	} {
 		p, err := machineadd.NewPrefixAdmin(in)
 		if err != nil {
@@ -469,11 +469,11 @@ func TestTokenThroughSSHPrefixAdmin(t *testing.T) {
 	rec := fakeSSH(t)
 	e := sandboxEnv(t)
 	connect(t, &e, "https://hub.example.ts.net")
-	p, err := machineadd.NewPrefixAdmin("ssh oci sy")
+	p, err := machineadd.NewPrefixAdmin("ssh hub-host sy")
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.Admin, e.AdminName = BatchMode(p), "ssh oci sy"
+	e.Admin, e.AdminName = BatchMode(p), "ssh hub-host sy"
 	tok, err := RunToken(context.Background(), e, TokenOptions{Name: "Switchyard-desktop-laptop"})
 	if err != nil {
 		t.Fatalf("pairing through ssh: %v", err)
@@ -485,7 +485,7 @@ func TestTokenThroughSSHPrefixAdmin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(string(argv), "-o BatchMode=yes oci sy 'hub' 'token' 'create'") || !strings.Contains(string(argv), "'--name' 'Switchyard-desktop-laptop'") {
+	if !strings.HasPrefix(string(argv), "-o BatchMode=yes hub-host sy 'hub' 'token' 'create'") || !strings.Contains(string(argv), "'--name' 'Switchyard-desktop-laptop'") {
 		t.Fatalf("ssh argv %q", argv)
 	}
 }
@@ -500,7 +500,7 @@ func TestAdminFailureNotAdminErrorIsExit1(t *testing.T) {
 	// The real PrefixAdmin with a program that does not exist: exit 1, the exec error.
 	e := sandboxEnv(t)
 	connect(t, &e, "https://hub.example.ts.net")
-	p, perr := machineadd.NewPrefixAdmin(filepath.Join(t.TempDir(), "no-such-ssh") + " oci sy")
+	p, perr := machineadd.NewPrefixAdmin(filepath.Join(t.TempDir(), "no-such-ssh") + " hub-host sy")
 	if perr != nil {
 		t.Fatal(perr)
 	}
@@ -515,7 +515,7 @@ func TestAdminFailureNotAdminErrorIsExit1(t *testing.T) {
 func TestBadHubAdminOnlyBreaksTheActionsThatNeedIt(t *testing.T) {
 	e := sandboxEnv(t)
 	connect(t, &e, "https://hub.example.ts.net")
-	e.Config.Machines.HubAdmin = "ssh -o StrictHostKeyChecking=no oci sy"
+	e.Config.Machines.HubAdmin = "ssh -o StrictHostKeyChecking=no hub-host sy"
 	e.AdminName = e.Config.Machines.HubAdmin
 	_, e.AdminErr = machineadd.NewPrefixAdmin(e.Config.Machines.HubAdmin)
 	if e.AdminErr == nil {

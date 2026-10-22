@@ -164,7 +164,7 @@ func TestPushOldSchema(t *testing.T) {
 	_, raw := hubDB(t, e)
 	mustExec(t, raw, `DELETE FROM schema_version WHERE version >= 3`)
 	c := pcheck(t, runPush(t, e), "push")
-	if c.Level != Warn || !strings.Contains(c.Detail, "older than phase 4") {
+	if c.Level != Warn || !strings.Contains(c.Detail, "too old for push") {
 		t.Fatalf("%+v", c)
 	}
 }

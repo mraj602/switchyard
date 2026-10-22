@@ -13,8 +13,8 @@ import (
 	"testing"
 )
 
-// The phase 7 terminal packages take their folders and environment from an injected Env
-// (docs/phases/7.md hard rule 5). This test refuses, in every .go file under these trees
+// The terminal packages take their folders and environment from an injected Env
+// (docs/spec/terminal.md T12). This test refuses, in every .go file under these trees
 // (tests included, testdata skipped), any direct read of the person's home or of the
 // process environment, outside termenv/env.go:
 //

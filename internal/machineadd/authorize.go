@@ -14,7 +14,7 @@ import (
 
 // authorized_keys for pull mode (machines.md 3.4, remote side):
 //
-//	restrict,command="/home/me/.local/bin/sy outbox drain --stdio" ssh-ed25519 AAAA… switchyard-pull@oci sy-pull:pt_01JA…
+//	restrict,command="/home/me/.local/bin/sy outbox drain --stdio" ssh-ed25519 AAAA… switchyard-pull@hub-host sy-pull:pt_01JA…
 //
 // The trailing `sy-pull:<target id>` finds the line again. A line with the same key (or the
 // same marker) is replaced; any other line is never touched, byte for byte.

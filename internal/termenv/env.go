@@ -1,14 +1,14 @@
-// Package termenv is the injected environment of the phase 7 terminal packages
+// Package termenv is the injected environment of the terminal packages
 // (internal/board, internal/termctl, internal/warp): the home folder, the per-OS data
 // folders, environment lookups and the OS name. Those packages never read the process
 // environment or call os.UserHomeDir themselves; they take an Env, so every test can run
-// against a temp home laid out like Linux, macOS or Windows (docs/spec/terminal.md T12,
-// docs/phases/7.md hard rule 5). lint_test.go enforces it.
+// against a temp home laid out like Linux, macOS or Windows (docs/spec/terminal.md T12).
+// lint_test.go enforces it.
 //
 // This file is the only place in those packages that may read the real process
 // environment.
 //
-// Phase 7 wave 0. Depends on: nothing.
+// Depends on: nothing.
 package termenv
 
 import (

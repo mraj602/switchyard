@@ -1,8 +1,8 @@
 package doctor
 
 // The setup checks of docs/spec/setup.md 9.4 (the full doctor). They run only on a machine
-// where `sy setup` has run (a ledger or a backup folder exists), so a phase 1 machine sees
-// the same report as before.
+// where `sy setup` has run (a ledger or a backup folder exists), so a machine that never ran it sees
+// no setup lines.
 
 import (
 	"errors"

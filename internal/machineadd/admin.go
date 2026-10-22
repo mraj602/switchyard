@@ -20,7 +20,7 @@ import (
 // an *AdminError.
 type Admin interface {
 	Hub(ctx context.Context, args []string, stdin []byte) ([]byte, error)
-	// Describe is the channel as the person gave it ("local", "ssh oci sy").
+	// Describe is the channel as the person gave it ("local", "ssh hub-host sy").
 	Describe() string
 }
 
@@ -39,7 +39,7 @@ func (e *AdminError) Error() string {
 	return fmt.Sprintf("sy hub %s (admin channel): %s", strings.Join(e.Args[:min(len(e.Args), 2)], " "), msg)
 }
 
-// NotImplemented reports whether the hub's sy is too old for the command (a phase 5 stub
+// NotImplemented reports whether the hub's sy is too old for the command (an old stub
 // answers exit 3 "not implemented").
 func (e *AdminError) NotImplemented() bool {
 	return e.Exit == 3 && strings.Contains(e.Stderr, "not implemented")
@@ -63,7 +63,7 @@ func (l LocalAdmin) Hub(ctx context.Context, args []string, stdin []byte) ([]byt
 // Describe implements Admin.
 func (LocalAdmin) Describe() string { return "local" }
 
-// PrefixAdmin runs a command prefix followed by `hub …` (`ssh oci sy`, `ssh oci docker
+// PrefixAdmin runs a command prefix followed by `hub …` (`ssh hub-host sy`, `ssh hub-host docker
 // compose -f /srv/sy/compose.yml exec -T hub sy`). The prefix is split into words, no
 // shell; sy never interprets it beyond appending arguments. When the prefix starts with ssh
 // the appended words are single-quoted for the remote shell and the prefix is checked for

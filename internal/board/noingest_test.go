@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-// The board only reads (docs/phases/7.md hard rule 3, WP-B accept): no code under
+// The board only reads (docs/spec/terminal.md T1): no code under
 // internal/board/** calls /v1/ingest. Two checks: no non-test source mentions the ingest
 // endpoint or calls an Ingest method, and the packages do not depend on the code that can
 // post records (internal/client has Client.Ingest; internal/hub/ingest is the hub's side).

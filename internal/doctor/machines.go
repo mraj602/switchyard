@@ -18,7 +18,7 @@ import (
 	"github.com/mraj602/switchyard/internal/directpush"
 )
 
-// Phase 5 checks (phase 5 WP-E): how records reach the hub, held records, a frozen hub,
+// Machine checks: how records reach the hub, held records, a frozen hub,
 // direct push, the forward port, and on the hub its pull targets and pull key.
 
 // policyStale is how old the cached direct-push policy may get before doctor warns (sy tick
@@ -37,7 +37,7 @@ const (
 	pullKeyFile       = "id_ed25519" // internal/hub/pull KeyFile, in <state>/pull
 )
 
-// checkMachine adds the client-side phase 5 checks for this machine's configuration.
+// checkMachine adds the client-side machine checks for this machine's configuration.
 func checkMachine(ctx context.Context, rep *Report, o Options, cfg config.Config) {
 	dir := filepath.Join(o.Dirs.State.Path, "outbox")
 	reach := cfg.Hub.Reach

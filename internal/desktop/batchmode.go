@@ -8,7 +8,7 @@ import (
 )
 
 // BatchMode returns p with `-o BatchMode=yes` after the ssh program, so a command-prefix
-// admin channel (`ssh oci sy`) fails at once instead of waiting on a password or host key
+// admin channel (`ssh hub-host sy`) fails at once instead of waiting on a password or host key
 // prompt that the desktop app's user cannot see (desktop.md C4). A prefix that is not ssh,
 // or already sets BatchMode, is returned unchanged.
 func BatchMode(p machineadd.PrefixAdmin) machineadd.PrefixAdmin {

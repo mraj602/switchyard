@@ -5,7 +5,7 @@
 // internal/timer: nothing real runs unless the caller hands in a real Runner and the real
 // home folder; tests use a temp home and a recording Runner.
 //
-// Phase 3, WP-D. Depends on: internal/timer (Runner, ExecRunner, UTF16LE), model.
+// Depends on: internal/timer (Runner, ExecRunner, UTF16LE), model.
 package service
 
 import (
