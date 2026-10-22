@@ -8,7 +8,7 @@
 // Every timer is a column (alert.due_at, delivery.next_at), so a restart resumes where the
 // last run stopped (subject to the stale guard). Time comes only from a clock.Clock.
 //
-// Construction in `sy hub serve` (WP-E):
+// Construction in `sy hub serve`:
 //
 //	eng := engine.New(engine.Config{Store: st, Clock: clock.Real{}, Senders: []model.Sender{wp, nf},
 //		TZ: rules.SystemZone(), PublicURL: publicURL, Log: logger})
@@ -45,7 +45,7 @@ const (
 	// JumpThreshold: a wall-clock step this much larger than monotonic time is a suspend.
 	JumpThreshold = 60 * time.Second
 
-	// Catch-up hold (push.md 3.3, phase 5): a session alert created already overdue from a
+	// Catch-up hold (push.md 3.3): a session alert created already overdue from a
 	// machine that reported more records queued is due CatchUpStep later, and is postponed by
 	// CatchUpStep at fire time while that machine's latest batch (at most CatchUpFresh old)
 	// still reported more, for at most CatchUpMax after its creation.

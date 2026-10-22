@@ -25,11 +25,11 @@ func moduleDeps(t *testing.T, pkg string) []string {
 	return mine
 }
 
-// TestPhase5DependencyRules enforces ARCHITECTURE.md: drainproto is a leaf both sides import;
+// TestPullDependencyRules enforces ARCHITECTURE.md: drainproto is a leaf both sides import;
 // directpush reaches the hub side only through the pure hub/state fold; hub/pull feeds records
 // through the ingester, never the HTTP side (it imports hub/api for the Puller and
 // PullStatus types only, never hub/cli); the client imports nothing of the hub.
-func TestPhase5DependencyRules(t *testing.T) {
+func TestPullDependencyRules(t *testing.T) {
 	if _, err := exec.LookPath("go"); err != nil {
 		t.Skip("go tool not on PATH")
 	}

@@ -2,7 +2,7 @@
 // target becomes an `alert` frame on its durable queue (internal/hub/link), and a widget
 // refresh a `refresh` frame (13.5). The transport, sealing and acks are the link's.
 //
-// Contract: docs/spec/push.md 13. N1. Depends on: hub/link, hub/push/model,
+// Contract: docs/spec/push.md 13. Depends on: hub/link, hub/push/model,
 // hub/push/webpush (the payload bytes), hub/store (the delivery ref).
 package pushlink
 

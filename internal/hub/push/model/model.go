@@ -282,7 +282,7 @@ type Keys struct {
 }
 
 // Target is one place a push goes (push_target row), the engine's and senders' view. It is
-// not the API shape (api.yaml PushTarget has host, status and token_set; WP-C maps it).
+// not the API shape (api.yaml PushTarget has host, status and token_set).
 // Secret is the ntfy token and never serialises. For ntfy, Endpoint is "<server>/<topic>";
 // for link it is "link:" + the device id.
 type Target struct {

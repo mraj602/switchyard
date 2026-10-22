@@ -1,6 +1,6 @@
 package pull_test
 
-// Phase 5 wave 2: the hub drain path goes through the ingester like an upload (Contact on
+// The hub drain path goes through the ingester like an upload (Contact on
 // hello, IngestWith with more/reach), and a freeze in the middle of a session refuses.
 
 import (

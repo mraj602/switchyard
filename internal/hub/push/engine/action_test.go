@@ -9,7 +9,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
 
-// Review phase 4 finding 6: a snooze re-push dropped as stale must not leave the old snooze
+// A snooze re-push dropped as stale must not leave the old snooze
 // token usable.
 func TestStaleSnoozeRepushInvalidatesOldToken(t *testing.T) {
 	h := newHarness(t, withSweep(time.Hour))
@@ -33,7 +33,7 @@ func TestStaleSnoozeRepushInvalidatesOldToken(t *testing.T) {
 	}
 }
 
-// Review phase 4 finding 5: a bad or expired token is rejected without the write lock.
+// A bad or expired token is rejected without the write lock.
 func TestActRejectsBadTokenWithoutWriteTransaction(t *testing.T) {
 	h := newHarness(t, withSweep(time.Hour))
 	h.askQ(s1, 0)

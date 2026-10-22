@@ -24,10 +24,8 @@ import (
 	"github.com/mraj602/switchyard/internal/version"
 )
 
-// ErrNotImplemented is what the phase 5 wave 0 stubs return; cmd/sy maps it to exit 3.
-var ErrNotImplemented = errors.New("not implemented in this build yet (phase 5)")
-
-func notImplemented(what string) error { return fmt.Errorf("%s: %w", what, ErrNotImplemented) }
+// ErrNotImplemented is mapped by cmd/sy to exit status 3 (a subcommand this build lacks).
+var ErrNotImplemented = errors.New("not implemented in this build")
 
 // Test seams: the helper-program runner (ssh-keygen, ssh-keyscan) and the ssh starter.
 var (

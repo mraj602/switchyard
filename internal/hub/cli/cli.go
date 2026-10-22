@@ -1,9 +1,6 @@
 // Package cli implements `sy hub …`: serve, pair, owner-link, token create|list|revoke,
 // backup, prune and import-prototype, and `sy phone pair`. cmd/sy only routes here.
 //
-// Phase 2; phase 4 adds pair, owner-link and the alert engine and push senders in serve;
-// phase 5 adds pull, export, import, unfreeze and machine, and the pull scheduler in serve;
-// N1 adds the link sender and the widget refresher in serve.
 // Depends on: paths, hub/store, hub/auth, hub/api, hub/ingest, hub/pair, hub/pull,
 // hub/push/{clock,engine,model,webpush,ntfy,link,refresh}, hub/store/importproto, webui.
 package cli
@@ -80,9 +77,9 @@ Commands:
   export / import    Move the hub: freeze and pack it / unpack it into an empty hub
   unfreeze           Call off a move: the hub accepts records again
   machine show ID    One machine's hub-side state, for sy machine add
-  keys show          The hub key, the owner key and pending proposals (F1)
-  keys confirm-owner FP  Activate a pending owner key proposal (F1)
-  keys register / certify  A machine's link keys over SSH, for sy machine add (F1)
+  keys show          The hub key, the owner key and pending proposals
+  keys confirm-owner FP  Activate a pending owner key proposal
+  keys register / certify  A machine's link keys over SSH, for sy machine add
 
 Every command takes --db <file> (default <data>/hub.db, see sy paths).
 sy hub pair --help and sy hub owner-link --help show their flags.

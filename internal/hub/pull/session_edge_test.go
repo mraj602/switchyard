@@ -17,7 +17,7 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/store"
 )
 
-// Review finding 6: a store error while checking the target is not "refuse disabled".
+// A store error while checking the target is not "refuse disabled".
 func TestSessionTransientStoreErrorIsAFailureNotARefusal(t *testing.T) {
 	e := newEnv(t)
 	e.st.Close() // every read now fails: a transient error, not a missing target
