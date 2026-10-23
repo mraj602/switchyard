@@ -197,7 +197,8 @@ test('direct.json keeps the pins of https origins only, and drops bad entries', 
   assert.equal(a.pinFor('https://hub.lan:8443'), fp);
   const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
   assert.equal(saved.pins['https://hub.lan:8443'].sha256, fp);
-  assert.equal((fs.statSync(file).mode & 0o777).toString(8), '600');
+  // Windows has no POSIX modes; elsewhere the file is private to the user.
+  if (process.platform !== 'win32') assert.equal((fs.statSync(file).mode & 0o777).toString(8), '600');
   saved.pins['http://plain.lan'] = { sha256: fp };
   saved.pins['https://bad.lan'] = { sha256: 'x' };
   fs.writeFileSync(file, JSON.stringify(saved));
