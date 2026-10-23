@@ -122,6 +122,10 @@ Restart your open Claude Code sessions afterwards so they load the plugin. Every
 `sy setup` changes is backed up; `sy setup --undo` reverses it. Next steps: a hub on a server,
 more machines, the phone: [docs/guide/install.md](docs/guide/install.md).
 
+**Setting up with an AI agent?** Point it at
+[docs/guide/agents.md](docs/guide/agents.md): it links the setup steps and lists what the
+agent must leave to you.
+
 ## Components
 
 | Component | What it is | Platforms | Docs |

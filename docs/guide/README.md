@@ -5,6 +5,7 @@ Start with [install.md](install.md), then read whatever you need.
 | Guide | What it covers |
 | --- | --- |
 | [install.md](install.md) | Build `sy`, run the hub on a laptop or a server (Docker, systemd, Caddy, Tailscale), add machines |
+| [agents.md](agents.md) | Setting Switchyard up with an AI agent: where each step is, and what stays with you |
 | [accounts.md](accounts.md) | Account folders, labels, launchers, what the folders share, plans, backups and undo |
 | [board.md](board.md) | The board in a browser, on a phone, in a terminal and inside Claude Code; the plugin from GitHub |
 | [desktop.md](desktop.md) | The desktop app: claude.ai tabs per account, the usage strip, the Hub view |
