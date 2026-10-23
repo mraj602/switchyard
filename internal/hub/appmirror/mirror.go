@@ -90,8 +90,15 @@ type Config struct {
 	Client *http.Client
 	// APIBase is https://api.github.com; tests point it at a fake.
 	APIBase string
-	Log     func(format string, args ...any)
+	// PinnedCert is the SHA-256 (64 lower-case hex digits) of the release signing certificate.
+	// Empty means none is pinned, and Sync refuses to mirror (ErrNoPin). The hub passes
+	// ReleaseCertSHA256.
+	PinnedCert string
+	Log        func(format string, args ...any)
 }
+
+// ErrNoPin is what Sync returns while no release signing certificate is pinned.
+var ErrNoPin = errors.New("appmirror: no release signing certificate is pinned in this build, so the Android app is not mirrored (docs/RELEASING.md, \"One-time setup: the Android signing key\")")
 
 // Mirror is the on-disk mirror.
 type Mirror struct{ c Config }
@@ -199,6 +206,13 @@ func (m *Mirror) Sync(ctx context.Context) error {
 	if m.c.Dir == "" || strings.Count(m.c.Repo, "/") != 1 {
 		return fmt.Errorf("appmirror: bad repository %q", m.c.Repo)
 	}
+	pin := strings.ToLower(strings.TrimSpace(m.c.PinnedCert))
+	if pin == "" {
+		return ErrNoPin
+	}
+	if !hexRE.MatchString(pin) {
+		return errors.New("appmirror: the pinned signing certificate is not 64 hex digits")
+	}
 	body, err := m.get(ctx, m.c.APIBase+"/repos/"+m.c.Repo+"/releases?per_page=20", 4<<20)
 	if err != nil {
 		return err
@@ -234,6 +248,9 @@ func (m *Mirror) Sync(ctx context.Context) error {
 	if "phone-v"+mf.Version != rel.Tag {
 		return fmt.Errorf("appmirror: %s: manifest says version %s", rel.Tag, mf.Version)
 	}
+	if mf.CertSHA256 != pin {
+		return fmt.Errorf("appmirror: %s: signed by certificate %s, not the pinned release certificate; not mirrored", rel.Tag, mf.CertSHA256)
+	}
 	if cur, ok := m.Current(); ok && cur.Manifest.Build >= mf.Build && cur.Manifest.SHA256 == mf.SHA256 {
 		return nil // already mirrored
 	}
@@ -265,6 +282,15 @@ func (m *Mirror) Sync(ctx context.Context) error {
 	}
 	if got != mf.SHA256 {
 		return fmt.Errorf("appmirror: %s: %s hashes to %s, expected %s; not published", rel.Tag, mf.APK, got, mf.SHA256)
+	}
+	certs, err := APKSignerCerts(filepath.Join(tmp, mf.APK))
+	if err != nil {
+		return fmt.Errorf("appmirror: %s: %w; not published", rel.Tag, err)
+	}
+	for _, c := range certs {
+		if c != pin {
+			return fmt.Errorf("appmirror: %s: the APK is signed by certificate %s, not the pinned release certificate; not published", rel.Tag, c)
+		}
 	}
 	for name, b := range map[string][]byte{ManifestName: raw, SumsName: sums} {
 		if err := os.WriteFile(filepath.Join(tmp, name), b, 0o600); err != nil {
@@ -313,9 +339,15 @@ func (m *Mirror) prune() {
 func (m *Mirror) Run(ctx context.Context, every time.Duration) {
 	t := time.NewTicker(every)
 	defer t.Stop()
+	warnedNoPin := false
 	for {
 		if err := m.Sync(ctx); err != nil && ctx.Err() == nil {
-			m.c.Log("app mirror: %v", err)
+			if errors.Is(err, ErrNoPin) && warnedNoPin {
+				// said once per run: it will not change until the hub is rebuilt
+			} else {
+				m.c.Log("app mirror: %v", err)
+			}
+			warnedNoPin = warnedNoPin || errors.Is(err, ErrNoPin)
 		}
 		select {
 		case <-ctx.Done():

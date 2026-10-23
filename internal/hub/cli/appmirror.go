@@ -51,8 +51,9 @@ func newAppMirror(st *store.Store, dataDir, repoFlag, defRepo string, off bool, 
 			}
 			return true
 		},
-		Client: appMirrorClient(),
-		Log:    logf,
+		Client:     appMirrorClient(),
+		PinnedCert: appmirror.ReleaseCertSHA256,
+		Log:        logf,
 	})
 }
 

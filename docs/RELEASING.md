@@ -46,6 +46,15 @@ and reinstall. Treat the key like the master key of the project.
    Put it in `docs/guide/android.md` under "Verify the APK", and in each `phone-v*` release
    note.
 
+   **Also pin it in the hub.** The hub's APK mirror only publishes a release signed by this
+   certificate. Put the same fingerprint, as 64 lower-case hex digits without colons, in
+   `ReleaseCertSHA256` in `internal/hub/appmirror/pin.go` and commit it through the normal
+   flow. It ships in the next `vX.Y.Z` hub build. Until then (the value is empty) a hub
+   mirrors nothing and logs why. A fork with its own key can set it at build time with
+   `-ldflags "-X github.com/mraj602/switchyard/internal/hub/appmirror.ReleaseCertSHA256=<hex>"`.
+   Release the hub with the pin before the first `phone-v*` release. If you ever rotate the
+   key, update the pin in the same hub release as the first APK signed with the new key.
+
 4. **Optional:** a signing properties file outside the repo, so you don't type four
    variables each time (see `phone/README.md`):
 

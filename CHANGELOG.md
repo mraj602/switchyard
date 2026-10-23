@@ -10,6 +10,8 @@ All notable changes to Switchyard are recorded here. The format follows
 
 - Desktop: the tabs' sign-in cookies are encrypted on disk (Electron's cookie encryption fuse is
   on). A tab signed in by an earlier unpacked build may ask you to sign in again once.
+- The hub's Android app mirror pins the release signing certificate and checks the APK itself,
+  not only the manifest. It mirrors nothing until the maintainer sets the pin.
 - Desktop: sites that ask for a client certificate get none.
 - The web board's "Open in app" link is now an Android intent pinned to the Switchyard package,
   so no other app can receive the pairing secret.

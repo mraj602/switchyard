@@ -269,8 +269,10 @@ tab)** removes a tab's sign-in.
 The app updates itself, with your confirmation each time:
 
 1. Once a day the hub checks the project's GitHub releases for a `phone-vX.Y.Z` release of
-   `mraj602/switchyard`, verifies the APK's checksum and keeps a copy (`sy hub serve
-   --no-app-mirror` turns this off; `--app-repo owner/name` points it elsewhere).
+   `mraj602/switchyard`, verifies the APK's checksum and that it is signed by the release key built
+   into the hub, and keeps a copy (`sy hub serve --no-app-mirror` turns this off;
+   `--app-repo owner/name` points it elsewhere). A hub build without the release key mirrors
+   nothing.
 2. The app asks the hub (or GitHub directly) at most once a day; Settings, App version,
    **Check for update** asks now.
 3. **Install** downloads the APK, checks its SHA-256 and requires its signing certificate to

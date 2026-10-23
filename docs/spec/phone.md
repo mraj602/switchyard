@@ -779,7 +779,13 @@ The app is sideloaded (no store), so it updates itself, with your confirmation e
   `netguard` client), takes the newest non-draft, non-prerelease release whose tag matches
   `^phone-v\d+\.\d+\.\d+$`, downloads `manifest.json`, `SHA256SUMS` and the APK, checks the
   APK's SHA-256 against both, and keeps it in `<data>/app/android/` (the current and the
-  previous version only). The repository comes from the build (`version.Repo`); setting
+  previous version only). The build pins the release signing certificate
+  (`appmirror.ReleaseCertSHA256`, empty until the maintainer creates the key). With no pin the
+  mirror makes no request and logs that it is off, once per run. With a pin, a release is
+  published only when `manifest.json`'s `cert_sha256` and the first certificate of every
+  signer in the APK's v3 (or v2) signing block all equal the pin. The mirror reads the
+  certificate from the file; it does not verify the signature, which Android and the phone
+  do. The repository comes from the build (`version.Repo`); setting
   `app.android_mirror = false` turns the mirror off.
 - The off switch and the repository also exist as `sy hub serve` flags (`--no-app-mirror`,
   `--app-repo owner/name`) and as the settings `app.android_mirror` (JSON bool) and
