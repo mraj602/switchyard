@@ -193,6 +193,7 @@ The threat model, including what the owner key and the signing guard cannot do, 
 | `docs/guide/` | User guides |
 | `docs/design/screens/` | Design mock-ups of the screens (HTML) |
 | `docs/TESTING.md` | An ordered manual test walk-through on real machines |
+| `docs/RELEASING.md` | How the maintainer signs and publishes releases |
 | `test/` | End-to-end suites (setup, machines, terminal, push, peers, Android) |
 | `testdata/`, `scripts/fixtures/` | Redacted real payloads and the maintainer-only scripts that make them |
 | `scripts/` | CI checks, release build, icon generation, the pane check |

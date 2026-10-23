@@ -1,0 +1,146 @@
+# Releasing
+
+For the maintainer. It covers the one-time setup, then the steps for every release of `sy`, the
+desktop app and the Android app. Contributors don't need it.
+
+## Versions and tags
+
+- One version number is shared by `sy`, the desktop app (`app/package.json`) and the Android
+  app (`phone/package.json`), so a bug report's version means the same thing everywhere.
+- `vX.Y.Z` releases `sy`, the hub and the install scripts (`.github/workflows/release.yml`).
+  The tagged commit must be on `main`, and CI must be green on it.
+- `phone-vX.Y.Z` releases the Android APK. You build and sign it on your own machine. CI never
+  sees the signing key.
+- Android's `versionCode` is `MAJOR*10000 + MINOR*100 + PATCH`, so it can only rise. Never
+  reuse or lower a version.
+
+## One-time setup: the Android signing key
+
+Every APK you ever publish must be signed with the same key. Android refuses to install an
+update signed with a different key: users would have to uninstall (and lose their pairing)
+and reinstall. Treat the key like the master key of the project.
+
+1. **Create it**, in a normal terminal (not inside an AI agent). Use a strong passphrase from
+   your password manager.
+
+   ```sh
+   mkdir -p ~/secrets && chmod 700 ~/secrets
+   keytool -genkeypair -v -keystore ~/secrets/switchyard-release.jks -alias switchyard \
+     -keyalg RSA -keysize 4096 -validity 10000 \
+     -dname "CN=Switchyard, O=Switchyard contributors"
+   chmod 600 ~/secrets/switchyard-release.jks
+   ```
+
+2. **Back it up** before the first release, in at least two places that are offline and
+   encrypted (for example two USB drives in different places). Store the passphrase in your
+   password manager, not next to the file. Test that a backup can be read:
+   `keytool -list -keystore <backup copy>`.
+
+3. **Record the certificate fingerprint.** Users and app stores check it, and it never changes:
+
+   ```sh
+   keytool -list -v -keystore ~/secrets/switchyard-release.jks -alias switchyard | grep SHA256
+   ```
+
+   Put it in `docs/guide/android.md` under "Verify the APK", and in each `phone-v*` release
+   note.
+
+4. **Optional:** a signing properties file outside the repo, so you don't type four
+   variables each time (see `phone/README.md`):
+
+   ```properties
+   # ~/secrets/sy-signing.properties  (chmod 600)
+   storeFile=/home/you/secrets/switchyard-release.jks
+   keyAlias=switchyard
+   ```
+
+   Leave the passwords out of the file and export them in the shell when you build.
+
+**If the key leaks**, the passphrase still protects it. Rotate it while you still have the old
+key, with APK Signature Scheme v3 rotation (`apksigner rotate --out lineage
+--old-signer ... --new-signer ...`). Then sign new releases with the lineage, and installed apps
+accept the new key. **If the key is lost**, there is no recovery: publish under a new
+application id and tell users to reinstall.
+
+## Every release
+
+### 1. Before tagging
+
+- `main` is green in all workflows (`ci`, `app`, `phone`).
+- `CHANGELOG.md` has a section for the version.
+- Set the version in `app/package.json` and `phone/package.json`, and commit it to `main`
+  through the normal flow.
+- Test by hand on real machines: follow `docs/TESTING.md`.
+
+### 2. `sy` and the hub
+
+```sh
+git checkout main && git pull
+git tag -s vX.Y.Z -m "vX.Y.Z"      # -a if you don't sign tags
+git push origin vX.Y.Z
+```
+
+`release.yml` checks the tag, runs `make check`, builds the six archives and attests their
+build provenance. It then publishes the GitHub release with the install scripts. After it
+finishes, check:
+
+- `curl -fsSL https://github.com/mraj602/switchyard/releases/latest/download/install.sh | sh` works
+  on a clean machine;
+- `gh attestation verify <archive> --repo mraj602/switchyard` passes for one archive.
+
+### 3. The desktop app
+
+See "Releases" in `docs/guide/desktop.md` for how the packaged builds are made and published.
+The builds are unsigned (no paid certificates), so the release note links to the guide's
+"Opening an unsigned build" section.
+
+### 4. The Android app
+
+On your machine, from a clean checkout of the `vX.Y.Z` tag:
+
+```sh
+export SY_ANDROID_KEYSTORE=~/secrets/switchyard-release.jks
+export SY_ANDROID_KEY_ALIAS=switchyard
+read -rs SY_ANDROID_KEYSTORE_PASSWORD && export SY_ANDROID_KEYSTORE_PASSWORD
+SY_RELEASE_NOTES="Short notes for the in-app updater" make phone-apk-release
+```
+
+This writes `switchyard-X.Y.Z.apk`, `SHA256SUMS` and `manifest.json` to `phone/dist/`, and
+prints the signing certificate's fingerprint. It must match the one you recorded.
+
+Check before publishing:
+
+```sh
+apksigner verify --print-certs phone/dist/switchyard-X.Y.Z.apk   # fingerprint matches
+(cd phone/dist && sha256sum -c SHA256SUMS)
+```
+
+Publish:
+
+```sh
+gh release create phone-vX.Y.Z phone/dist/switchyard-X.Y.Z.apk phone/dist/SHA256SUMS \
+  phone/dist/manifest.json --title "Android X.Y.Z" --notes-file <notes with the fingerprint>
+```
+
+Paired phones see the update under **Settings → Check for update**. Within a day the hub
+mirrors the newest `phone-v*` release from GitHub (`docs/spec/phone.md` P16.2), and the app
+checks the hash and the signing certificate before it offers the install.
+
+### 5. Announce
+
+Update the release line on the website (`site/index.html`) and the README if a step
+changed. Write the release note so it stands on its own: what changed, how to update
+(`sy update`, the app's **Check for update**), and the APK fingerprint.
+
+## Android stores
+
+- **GitHub Releases** is the primary source. Everything else reads from it.
+- **Obtainium:** users add `https://github.com/mraj602/switchyard` and filter releases with
+  the regex `^Android ` (the release title), so `sy` releases are skipped. Nothing for you to
+  do.
+- **IzzyOnDroid:** open an inclusion request on their repository once a signed `phone-v*`
+  release exists. It needs a FOSS licence (Apache-2.0), an APK in GitHub Releases, no
+  proprietary libraries (`phone.yml` checks this), and the same signing key on every release.
+- **F-Droid:** possible later. F-Droid builds from source itself. With reproducible builds it
+  can ship your signature, so users can move between F-Droid and GitHub builds. That needs
+  the build to be byte-for-byte reproducible first.
