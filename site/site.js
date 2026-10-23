@@ -24,3 +24,14 @@
     });
   });
 })();
+
+// The demo video plays on its own unless the visitor asked for reduced motion; then it waits
+// on its poster with controls.
+(function () {
+  "use strict";
+  var v = document.getElementById("demo-media");
+  if (!v || !window.matchMedia || !window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  v.removeAttribute("autoplay");
+  v.pause();
+  v.controls = true;
+})();

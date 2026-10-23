@@ -32,8 +32,9 @@ which account still has room. Switchyard gives you one view of all of it, on you
 
 ## Screenshots
 
-<!-- TODO(maintainer): record a short GIF of the board and an Android notification and put it
-     here, for example docs/media/board.gif, 1280 px wide, under 5 MB. -->
+![The board with sample data: sessions that need you, every session, account limits and peers, then an alert and a limits widget on Android](docs/media/demo.gif)
+
+Recorded from the mock hub with sample data (`scripts/demo/record.cjs`).
 
 Android home-screen widgets (rendered previews from the app):
 

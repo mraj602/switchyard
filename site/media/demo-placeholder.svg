@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-label="Demo coming soon">
-  <rect width="1280" height="720" fill="#1f2225"/>
-  <rect x="40" y="40" width="1200" height="640" rx="16" fill="#17191B" stroke="#33383c" stroke-width="2" stroke-dasharray="10 8"/>
-  <g transform="translate(588 250) scale(5)" fill="none" stroke="#E8B04B" stroke-width="2" stroke-linejoin="miter">
-    <path d="M3 18 L11 4 L19 18"/><path d="M7 18 L11 11 L15 18"/>
-  </g>
-  <text x="640" y="470" text-anchor="middle" font-family="system-ui, sans-serif" font-size="36" font-weight="600" fill="#F2EFE8">Demo coming soon</text>
-  <text x="640" y="516" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" fill="#9A9A94">A short recording of the board and an Android notification</text>
-</svg>

@@ -1,0 +1,31 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face{font-family:Plex;src:url(../../webui/static/fonts/ibm-plex-sans-latin-400-normal.woff2)}
+@font-face{font-family:Plex;font-weight:600;src:url(../../webui/static/fonts/ibm-plex-sans-latin-600-normal.woff2)}
+html,body{margin:0;width:1280px;height:800px;background:#121416;font-family:Plex,system-ui,sans-serif;color:#e8e6e1;overflow:hidden}
+.wrap{display:flex;align-items:center;justify-content:center;gap:80px;height:100%}
+.cap h2{font-size:34px;margin:0 0 14px;font-weight:600;max-width:440px;line-height:1.2}
+.cap p{font-size:18px;color:#a8a49c;max-width:420px;line-height:1.5;margin:0}
+.phone{width:360px;height:720px;border-radius:44px;background:#000;border:10px solid #2a2d31;position:relative;overflow:hidden;box-shadow:0 30px 80px #0008}
+.wall{position:absolute;inset:0;background:linear-gradient(160deg,#1d2a35,#14181c 55%,#2b2216)}
+.sb{position:relative;display:flex;justify-content:space-between;padding:14px 22px;font-size:13px;color:#ddd}
+.clock{position:relative;text-align:center;font-size:58px;font-weight:300;margin-top:30px;color:#f2f0ea}
+.date{position:relative;text-align:center;font-size:14px;color:#cfcac0;margin-top:2px}
+.n{position:absolute;left:12px;right:12px;top:200px;background:#23272b;border-radius:22px;padding:14px 16px;transition:none}
+.hd{display:flex;align-items:center;gap:8px;font-size:12px;color:#b9b4aa}
+.hd img{width:18px;height:18px;border-radius:5px;background:#17191B}
+.t{font-weight:600;font-size:15px;margin-top:8px;color:#f4f2ec}
+.b{font-size:14px;color:#d6d2c9;margin-top:4px;line-height:1.4}
+.acts{display:flex;gap:22px;margin-top:12px;font-size:13px;font-weight:600;color:#E8B04B}
+.w{position:absolute;left:12px;right:12px;top:420px;border-radius:20px;overflow:hidden}
+.w img{width:100%;display:block}
+</style></head><body><div class="wrap">
+<div class="cap"><h2>Alerts on your phone</h2><p>Over the app's own connection to your hub. No Google push, no cloud service. Home-screen widgets show every account's limits.</p></div>
+<div class="phone"><div class="wall"></div>
+<div class="sb"><span>15:31</span><span>●●● 82%</span></div>
+<div class="clock">15:31</div><div class="date">Thursday, 23 October</div>
+<div class="n" id="n"><div class="hd"><img src="../../phone/assets/mark.png" alt=""><span>Switchyard · now</span></div>
+<div class="t">work · api · asked a question</div>
+<div class="b">Should I also update the migration, or keep the old column until the backfill finishes?</div>
+<div class="acts"><span>OPEN</span><span>SNOOZE 15 MIN</span><span>SEEN</span></div></div>
+<div class="w" id="w"><img src="../../phone/assets/widget-previews/sy-limits.png" alt=""></div>
+</div></div></body></html>

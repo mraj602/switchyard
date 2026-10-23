@@ -64,7 +64,7 @@ h3{font-size:1.1rem;font-weight:600}
 .small{font-size:.92rem}
 
 .demo{margin:0}
-.demo img{width:100%;border-radius:14px;border:1px solid var(--border);background:var(--code-bg)}
+.demo img,.demo video{display:block;height:auto;width:100%;border-radius:14px;border:1px solid var(--border);background:var(--code-bg)}
 .demo figcaption{color:var(--muted);font-size:.92rem;margin-top:10px}
 
 .shots{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
