@@ -38,7 +38,12 @@ echo "SY_VERSION=$(git describe --tags --always)" >> .env
 docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d --build
 docker compose ps          # STATUS should become "healthy" within about 30 s
 docker compose logs hub
+docker compose exec hub sy hub owner-link   # sign in to the board as the owner
 ```
+
+The logs do not carry the first owner link. The hub writes it to `/data/first-owner-link.txt`
+(mode 0600, readable by the hub only) while it has no owner; `sy hub owner-link` makes a
+fresh one whenever you need it.
 
 Only machines on your tailnet can reach the port. If you would rather not use the override,
 leave `SY_BIND` out: the hub then listens on `127.0.0.1` of the server only, and you can put

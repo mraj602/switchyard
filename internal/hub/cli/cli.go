@@ -390,11 +390,17 @@ func serve(args []string, stdout, stderr io.Writer) error {
 	}
 	// The first-start owner link (pairing.md 4.1): once per start, only while the hub has
 	// never had an owner session, as one block on the log.
+	// On a terminal it is printed there. Anywhere else (journal, docker logs, a log file) a log
+	// outlives the ten minutes and is readable by more people than the owner, so the block goes
+	// to a 0600 file next to the database and the log names only the file.
+	linkFile := filepath.Join(filepath.Dir(path), FirstOwnerLinkFile)
 	if block, err := FirstOwnerLink(ctx, st, pair.NewService(st, api.PairPepperPath), serveURL(ctx, st, pub, ln.Addr()), "serve",
 		writerIsTerminal(stderr)); err != nil {
 		logger.Printf("could not make a first owner link (%v): run sy hub owner-link", err)
 	} else if block != "" {
-		fmt.Fprint(stderr, block)
+		deliverFirstOwnerLink(logger.Printf, stderr, writerIsTerminal(stderr), linkFile, block)
+	} else {
+		_ = os.Remove(linkFile) // an owner exists: a link left by an earlier start is stale
 	}
 	if fr, err := st.Frozen(ctx); err == nil && fr != nil {
 		movedTo := "nowhere set"

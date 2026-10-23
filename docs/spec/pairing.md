@@ -318,13 +318,18 @@ sy hub owner-link [--url U] [--ttl 10m] [--json]
    **Cancel this link** is `DELETE /v1/pair/codes/{id}`.
 3. **First start:** while the hub has never had an owner session
    (`store.HadOwnerSession`: no device with `created_by` `owner-link:*`, revoked ones
-   included), `sy hub serve` makes one owner link at each start and prints it in one block
-   on its log (stderr; the journal when it runs as a service) with a terminal QR, the board
-   URL and "Open this on your computer to become owner. Pair everything else from the
-   board." The `sy setup --hub here` summary prints the same block. The address is
-   `--public-url` (or `hub.public_url`), else the listen address (a wildcard address shows as
-   `127.0.0.1`). This link is in the log on purpose: it works once, for 10 minutes, and only
-   until someone is owner; after the first owner session the hub never prints one again.
+   included), `sy hub serve` makes one owner link at each start. When its stderr is a
+   terminal it prints one block there with a terminal QR, the board URL and "Open this on your
+   computer to become owner. Pair everything else from the board." When it is not (the
+   journal of a service, `docker logs`, a log file) the block goes to
+   `first-owner-link.txt` in the database's folder (mode 0600, replacing any older file) and
+   the log names only that file, because a log outlives the link's 10 minutes and is readable
+   by more people than the owner (`sy hub owner-link` always works too; in Docker,
+   `docker compose exec hub cat /data/first-owner-link.txt`). A start that finds an owner
+   deletes a leftover file. The `sy setup --hub here` summary prints the same block on its
+   terminal. The address is `--public-url` (or `hub.public_url`), else the listen address (a
+   wildcard address shows as `127.0.0.1`). The link works once, for 10 minutes, and only
+   until someone is owner; after the first owner session the hub never makes one again.
 
 The signed-out board (`#/login`, "Sign in to this hub") offers the same three: paste an
 owner link (accepted only for this hub's own origin and an `#/owner?s=` link), **Pair with a

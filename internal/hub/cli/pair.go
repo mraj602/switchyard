@@ -303,6 +303,36 @@ func OwnerLink(args []string, stdout, stderr io.Writer) error {
 // FirstOwnerNext is the next step under a first-start owner link (pairing.md 4.1).
 const FirstOwnerNext = "Open this on your computer to become owner. Pair everything else from the board."
 
+// FirstOwnerLinkFile is where `sy hub serve` writes the first-start owner link when its log is
+// not a terminal (in the database's folder, mode 0600).
+const FirstOwnerLinkFile = "first-owner-link.txt"
+
+// deliverFirstOwnerLink shows the first-start owner link block: on w when it is a terminal,
+// else in a new 0600 file at file, with only the file's path logged.
+func deliverFirstOwnerLink(logf func(string, ...any), w io.Writer, terminal bool, file, block string) {
+	if terminal {
+		fmt.Fprint(w, block)
+		return
+	}
+	_ = os.Remove(file) // a stale file keeps its old mode otherwise
+	err := func() error {
+		f, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		if err != nil {
+			return err
+		}
+		if _, err := f.WriteString(block); err != nil {
+			f.Close()
+			return err
+		}
+		return f.Close()
+	}()
+	if err != nil {
+		logf("this hub has no owner yet, and the owner link could not be written (%v): run `sy hub owner-link` on the hub machine", err)
+		return
+	}
+	logf("this hub has no owner yet: the one-time owner link (works once, 10 minutes) is in %s, readable by the hub's user only; or run `sy hub owner-link` on the hub machine", file)
+}
+
 // FirstOwnerLink makes the first-start owner link of pairing.md 4.1 and returns it as one
 // printable block (link, QR, board URL, next step), or "" when the hub already had an owner
 // session. hubURL is the address to put in the link (--public-url, hub.public_url, else the

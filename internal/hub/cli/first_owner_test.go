@@ -3,7 +3,10 @@ package cli
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -62,5 +65,44 @@ func TestServeURL(t *testing.T) {
 		if got := serveURL(context.Background(), st, c.pub, addr); got != c.want {
 			t.Errorf("%q %s: %q, want %q", c.pub, c.addr, got, c.want)
 		}
+	}
+}
+
+// Off a terminal the first owner link goes to a 0600 file and never into the log.
+func TestDeliverFirstOwnerLink(t *testing.T) {
+	const block = "Owner link:\n\n  http://127.0.0.1:8790/#/owner?s=SECRET\n"
+	file := filepath.Join(t.TempDir(), FirstOwnerLinkFile)
+	var logged strings.Builder
+	logf := func(f string, a ...any) { fmt.Fprintf(&logged, f+"\n", a...) }
+	var out strings.Builder
+	deliverFirstOwnerLink(logf, &out, false, file, block)
+	if strings.Contains(out.String()+logged.String(), "SECRET") {
+		t.Fatalf("the link reached the log: %q %q", out.String(), logged.String())
+	}
+	if !strings.Contains(logged.String(), file) {
+		t.Errorf("the log does not name the file: %q", logged.String())
+	}
+	st, err := os.Stat(file)
+	if err != nil || st.Mode().Perm() != 0o600 {
+		t.Fatalf("file: %v %v", st, err)
+	}
+	if b, _ := os.ReadFile(file); string(b) != block {
+		t.Errorf("file holds %q", b)
+	}
+	// a stale wider file is replaced, and the mode is 0600 again
+	os.WriteFile(file, []byte("old"), 0o644)
+	deliverFirstOwnerLink(logf, &out, false, file, block)
+	if st, _ := os.Stat(file); st.Mode().Perm() != 0o600 {
+		t.Errorf("stale file kept mode %v", st.Mode())
+	}
+	// a terminal gets the block itself and no file
+	os.Remove(file)
+	out.Reset()
+	deliverFirstOwnerLink(logf, &out, true, file, block)
+	if out.String() != block {
+		t.Errorf("terminal: %q", out.String())
+	}
+	if _, err := os.Stat(file); err == nil {
+		t.Error("a terminal start wrote a file")
 	}
 }
