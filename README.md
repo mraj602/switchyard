@@ -5,9 +5,10 @@
 [![phone](https://github.com/mraj602/switchyard/actions/workflows/phone.yml/badge.svg?branch=main)](https://github.com/mraj602/switchyard/actions/workflows/phone.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
-An open-source, self-hosted board for your AI coding agents, across accounts and machines:
-every session's state, every account's limits, and a notification when a session needs you.
-Claude Code is supported today; more coding agents are next (see the [roadmap](#roadmap)).
+An open-source, self-hosted board for many Claude Code accounts on many machines: every
+session's state, every account's limits, and a notification when a session needs you. It is
+built to be agent-neutral, and more coding agents (Codex CLI, Gemini CLI) are next on the
+[roadmap](#roadmap).
 
 **Website: <https://mraj602.github.io/switchyard/>**
 
@@ -16,8 +17,8 @@ Claude Code is supported today; more coding agents are next (see the [roadmap](#
 > trademarks of Anthropic, PBC, used here only to describe compatibility. Use it only with
 > your own accounts and within the terms of your plan. See [Terms and risk](#terms-and-risk).
 
-If you run a coding agent such as Claude Code in two or more accounts (say work and
-personal), on a laptop and a server or two, you end up checking terminals to see which session is waiting for you and
+If you run Claude Code in two or more accounts (say work and personal), on a laptop and a
+server or two, you end up checking terminals to see which session is waiting for you and
 which account still has room. Switchyard gives you one view of all of it, on your own hub:
 
 - **One board** of every session on every machine, grouped by account: working, needs
