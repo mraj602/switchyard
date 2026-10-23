@@ -346,29 +346,19 @@ export function HubProvider({ deps: initialDeps, navigate, openUrl, children }: 
   }, [deps, clearAll, flushRevokes]);
 
   /**
-   * The hub moved (machines.md 8): its device rows came along, so the same token may work at the
-   * new address. Ask GET /v1/me there first (no side effects, no clearing on a 401); only when
-   * that works is the stored hub re-pointed (a new pairing, so notifications register there).
+   * The hub moved (machines.md 8): /health said so, but /health has no signature, so anyone who
+   * can answer for the old address (a captive portal, a hostile network, a repointed name) can
+   * write any `moved_to`. The bearer token is therefore never sent there. The phone unpairs and
+   * asks for a new pairing with the new address's own QR code, which is the one safe way to learn
+   * that address.
    */
   const switchToMoved = useCallback(async (): Promise<'switched' | 'rescan' | 'failed'> => {
     const s = storedRef.current;
     const to = moved?.to;
     if (!s || !to) return 'failed';
-    const probe = createHubClient({ origin: to, token: s.token, fetch: deps.fetch, clock: deps.clock });
-    try {
-      await probe.me();
-    } catch (e) {
-      const status = e instanceof HubError ? e.status : null;
-      if (status === 401 || status === 403 || status === 404) {
-        await clearAll(`Your hub moved to ${hostOf(to)}. Scan its QR code there to pair this phone again.`, s);
-        return 'rescan';
-      }
-      return 'failed';
-    }
-    if (storedRef.current !== s) return 'failed';
-    await pairWith({ ...s, origin: normalizeOrigin(to) });
-    return 'switched';
-  }, [deps, moved, clearAll, pairWith]);
+    await clearAll(`Your hub moved to ${hostOf(to)}. Scan its QR code there to pair this phone again.`, s);
+    return 'rescan';
+  }, [moved, clearAll]);
 
   const hub = stored ? { origin: stored.origin, device: stored.device, name: stored.name, paired_at: stored.paired_at } : null;
 

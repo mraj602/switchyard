@@ -23,7 +23,7 @@ export function OfflineBanner() {
   );
 }
 
-/** The hub said it moved (/health frozen.moved_to): offer to follow it. Rendered by Page. */
+/** The hub said it moved (/health frozen.moved_to): offer to pair again there. The phone never sends its token to that address. Rendered by Page. */
 export function MovedCard() {
   const api = useHubApi();
   const t = useTheme();
@@ -44,9 +44,9 @@ export function MovedCard() {
   return (
     <View accessibilityRole="alert" testID="moved-card" style={[s.card, { backgroundColor: t.card, borderColor: t.accent, marginHorizontal: 16, marginTop: 8 }]}>
       <Text style={{ color: t.text, fontSize: 16, fontWeight: '700' }}>{`Your hub moved to ${api.moved.to.replace(/^https?:\/\//, '')}`}</Text>
-      <Text style={[s.small, { color: t.muted }]}>This phone keeps its key. If the new address does not know this phone, you will be asked to scan again.</Text>
-      {failed ? <Text style={[s.small, { color: t.bad }]}>Could not reach the new address yet. Try again in a moment.</Text> : null}
-      <Btn kind="primary" label={busy ? 'Switching…' : 'Switch to the new address'} testID="moved-switch" disabled={busy} onPress={() => void go()} />
+      <Text style={[s.small, { color: t.muted }]}>The address comes from the old hub's unsigned reply, so this phone does not send its key there. Pair again by scanning the QR code on the new hub.</Text>
+      {failed ? <Text style={[s.small, { color: t.bad }]}>Could not start the new pairing. Try again.</Text> : null}
+      <Btn kind="primary" label={busy ? 'Working…' : 'Pair again at the new address'} testID="moved-switch" disabled={busy} onPress={() => void go()} />
     </View>
   );
 }

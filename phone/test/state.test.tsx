@@ -519,25 +519,9 @@ describe('a hub that moved (machines.md 8.1)', () => {
     return hubReplies(url, init);
   };
 
-  it('offers the new address and re-points with the same token when it knows this phone', async () => {
+  it('offers the new address, but never sends the token there: it unpairs and asks for a new pairing', async () => {
     const h = await mount({ paired: true, handler: movedHandler() });
     expect(h.api().moved).toEqual({ to: NEW });
-    let r: string | undefined;
-    await act(async () => {
-      r = await h.api().switchToMoved();
-      await flush(60);
-    });
-    expect(r).toBe('switched');
-    expect(h.api().status).toBe('paired');
-    expect(h.api().hub?.origin).toBe(NEW);
-    expect(h.api().moved).toBeNull();
-    const probe = h.fetch.calls.find((c) => c.url === `${NEW}/v1/me`)!;
-    expect(probe.init.headers?.Authorization).toBe(`Bearer ${TOKEN}`);
-    expect(JSON.parse(h.secureMem.dump()[SECURE_HUB_KEY] ?? '{}')).toMatchObject({ origin: NEW, token: TOKEN });
-  });
-
-  it('falls back to Scan again when the new address rejects the token', async () => {
-    const h = await mount({ paired: true, handler: movedHandler(401) });
     let r: string | undefined;
     await act(async () => {
       r = await h.api().switchToMoved();
@@ -546,19 +530,17 @@ describe('a hub that moved (machines.md 8.1)', () => {
     expect(r).toBe('rescan');
     expect(h.api().status).toBe('unpaired');
     expect(h.api().notice).toContain('Your hub moved to new.example.ts.net');
+    expect(h.fetch.calls.filter((c) => c.url.startsWith(NEW))).toHaveLength(0);
+    expect(JSON.stringify(h.secureMem.dump())).not.toContain(TOKEN);
   });
 
-  it('changes nothing when the new address cannot be reached yet', async () => {
-    const h = await mount({
-      paired: true,
-      handler: (url, init) => (url.startsWith(NEW) ? Promise.reject(new Error('down')) : movedHandler()(url, init)),
-    });
+  it('does nothing when no new address was reported', async () => {
+    const h = await mount({ paired: true });
     let r: string | undefined;
     await act(async () => {
       r = await h.api().switchToMoved();
     });
     expect(r).toBe('failed');
     expect(h.api().status).toBe('paired');
-    expect(h.api().hub?.origin).toBe(ORIGIN);
   });
 });

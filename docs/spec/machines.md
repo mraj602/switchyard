@@ -932,6 +932,9 @@ What moves, and what each device has to do:
 The client never follows `moved_to` by itself: a hub cannot change a client's configuration.
 `sy doctor` on a machine whose hub is frozen prints the exact
 `sy connect <moved_to> --keep-token` line.
+The phone app does not follow it either. `/health` is not signed, so the app shows the new
+address on a card ("Pair again at the new address"), unpairs, and asks for a new pairing from
+the new hub's own QR code. It never sends its token to a `moved_to`.
 
 ## 9. Schema v4
 

@@ -332,12 +332,12 @@ describe('screens', () => {
     });
   });
 
-  it('Page: a moved hub shows its card with Switch to the new address', async () => {
-    const switchToMoved = jest.fn(async () => 'switched' as const);
+  it('Page: a moved hub shows its card with Pair again at the new address', async () => {
+    const switchToMoved = jest.fn(async () => 'rescan' as const);
     const h = makeHarness({ data: twoSeatData(), api: { moved: { to: 'https://new.example.ts.net' }, switchToMoved } });
     await render(<AccountsScreen />, { wrapper: h.Wrapper });
     expect(await screen.findByText('Your hub moved to new.example.ts.net')).toBeTruthy();
-    await fireEvent.press(screen.getByText('Switch to the new address'));
+    await fireEvent.press(screen.getByText('Pair again at the new address'));
     expect(switchToMoved).toHaveBeenCalledTimes(1);
   });
 
@@ -345,8 +345,8 @@ describe('screens', () => {
     const switchToMoved = jest.fn(async () => 'failed' as const);
     const h = makeHarness({ data: twoSeatData(), api: { moved: { to: 'https://new.example.ts.net' }, switchToMoved } });
     await render(<AccountsScreen />, { wrapper: h.Wrapper });
-    await fireEvent.press(await screen.findByText('Switch to the new address'));
-    expect(await screen.findByText(/Could not reach the new address yet/)).toBeTruthy();
+    await fireEvent.press(await screen.findByText('Pair again at the new address'));
+    expect(await screen.findByText(/Could not start the new pairing/)).toBeTruthy();
   });
 });
 
