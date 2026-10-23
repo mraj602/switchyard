@@ -736,10 +736,10 @@ func TestStream(t *testing.T) {
 		t.Errorf("reset %+v", r)
 	}
 
-	// ?token= works for the stream only (EventSource cannot set headers).
-	ch4, cancel4 := openStream(t, h, "?token="+phone, "", "")
-	defer cancel4()
-	next(t, ch4, "hello", 2*time.Second)
+	// A token in the URL is not accepted, on the stream or anywhere else.
+	if code, _ := h.do("GET", "/v1/stream?token="+phone, "", nil); code != 401 {
+		t.Errorf("?token= on the stream: %d", code)
+	}
 	if code, _ := h.do("GET", "/v1/overview?token="+phone, "", nil); code != 401 {
 		t.Errorf("?token= on overview: %d", code)
 	}

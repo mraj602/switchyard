@@ -143,17 +143,14 @@ func WriteError(w http.ResponseWriter, status int, code, msg string) {
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg, "code": code})
 }
 
-// Options for Require.
-type Options struct {
-	// QueryToken allows ?token= (only /v1/stream: EventSource cannot set headers).
-	QueryToken bool
-}
+// Options for Require. There is none today: a token travels in the Authorization header or
+// the session cookie, never in the URL (a URL ends up in logs, history and Referer headers).
+type Options struct{}
 
 type tokenSource int
 
 const (
 	srcBearer tokenSource = iota
-	srcQuery
 	srcCookie
 )
 
@@ -204,10 +201,6 @@ func (a *Authenticator) Require(opt Options, scopes ...string) func(http.Handler
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			tok := bearer(r)
 			src := srcBearer
-			if tok == "" && opt.QueryToken {
-				tok = r.URL.Query().Get("token")
-				src = srcQuery
-			}
 			if tok == "" {
 				if c, err := r.Cookie(CookieName); err == nil {
 					tok = c.Value

@@ -205,7 +205,7 @@ func (s *Server) Handler() http.Handler {
 				auth.WriteError(w, http.StatusNotImplemented, "not_implemented", "reserved; not implemented by this hub")
 			})
 		} else if rt.Scopes != nil {
-			h = s.Auth.Require(auth.Options{QueryToken: rt.Path == "/v1/stream"}, rt.Scopes...)(h)
+			h = s.Auth.Require(auth.Options{}, rt.Scopes...)(h)
 		}
 		mux.Handle(rt.Method+" "+rt.Path, h)
 	}

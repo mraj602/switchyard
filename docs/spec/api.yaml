@@ -547,8 +547,8 @@ paths:
           read or write timeout, each write has its own 30-second deadline.
         - The live status of a client is the stream's alone: a failed read (a 404 for a
           deleted session) says nothing about it.
-        - Browsers cannot set headers on `EventSource`, so the token may also be given as
-          `?token=` on this endpoint only (the web board uses its `sy_session` cookie instead, see `/v1/session/login`).
+        - The token goes in the `Authorization` header or the `sy_session` cookie (see
+          `/v1/session/login`), never in the URL: `?token=` is not accepted.
         - `focus_url` in `session` events is sent only to desktop devices on the same
           machine as the terminal (record.md 3.3).
       x-scopes: [read]
