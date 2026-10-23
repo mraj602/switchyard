@@ -1,5 +1,7 @@
 # The Android app (phone/): typecheck, lint, jest, the secrets check and both prebuild checks
-# on every change; an unsigned Android debug compile on main and on demand, and an iOS
+# on every change, and the release runtime classpath checked for proprietary Google code
+# (Firebase, Play services, ML Kit: scripts/check-no-google.mjs); an Android debug compile plus a
+# release APK whose dex is checked the same way on main and on demand, and an iOS
 # simulator compile on demand only (the iOS code is kept compiling but is not released).
 # Nothing is signed, uploaded or submitted, and no EAS command runs here. `make phone-check`
 # runs the same checks locally. Spec: docs/spec/phone.md. Action SHAs re-checked with
@@ -46,7 +48,37 @@ jobs:
       - run: node scripts/prebuild-check.mjs android
       - run: node scripts/prebuild-check.mjs ios # the iOS sources stay buildable; the prebuild runs on Linux. No iOS app is released
 
-  # native compile, unsigned debug, never uploaded
+  # No proprietary Google code on the release runtime classpath (phone.md P13; F-Droid and
+  # IzzyOnDroid refuse it). Resolves dependencies only: no compile.
+  no-google:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: phone
+    env:
+      SY_APP_VARIANT: production
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "22.x"
+          cache: npm
+          cache-dependency-path: phone/package-lock.json
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-dependency-path: phone/package-lock.json
+      - run: npm ci
+      - run: node scripts/check-no-google.mjs static
+      - run: npx expo prebuild --platform android --no-install --clean
+      - run: node scripts/check-no-google.mjs gradle
+
+  # native compile (debug), plus a release APK (debug-key signed, one ABI) whose dex must hold no
+  # Firebase, Play services or ML Kit class; never uploaded
   android-debug:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     needs: check
@@ -75,6 +107,9 @@ jobs:
       - run: npx expo prebuild --platform android --no-install --clean
       - run: ./gradlew :app:assembleDebug :sy-link:testDebugUnitTest :sy-tabs:testDebugUnitTest --no-daemon
         working-directory: phone/android
+      - run: ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon
+        working-directory: phone/android
+      - run: node scripts/check-no-google.mjs apk android/app/build/outputs/apk/release/app-release.apk
 
   # compile check of the iOS sources for the simulator, no signing (no iOS app is released)
   ios-sim:

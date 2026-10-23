@@ -81,6 +81,8 @@ bt="$(ls -d "$ANDROID_HOME"/build-tools/*/ 2>/dev/null | sort -V | tail -n 1 || 
 signed="$("${bt}apksigner" verify --print-certs "$built")" || die "apksigner refused the APK"
 apk_cert="$(printf '%s\n' "$signed" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1)"
 [ "$apk_cert" = "$cert_sha256" ] || die "the APK is not signed with the keystore's key (apksigner says ${apk_cert:-nothing})"
+# No proprietary Google code in what ships (phone.md P13).
+node scripts/check-no-google.mjs apk "$built" || die "the APK holds proprietary Google classes"
 
 cfg="$(npx expo config --type public --json)"
 version="$(printf '%s' "$cfg" | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).version')"
