@@ -105,7 +105,7 @@ func (x *detector) detectLaunchers(ctx context.Context) {
 	// Shell functions and aliases: the probe, then the static scan.
 	names := []string{"claude"}
 	for _, f := range x.st.Folders {
-		if n := x.folderLauncherName(f); n != "claude" {
+		if n := x.folderLauncherName(f); n != "claude" && safeLauncherName(n) {
 			names = append(names, n)
 		}
 	}
@@ -260,10 +260,24 @@ func readSmall(p string) ([]byte, error) {
 	return io.ReadAll(io.LimitReader(f, 1<<20))
 }
 
+var launcherNameRE = regexp.MustCompile(`^[A-Za-z0-9._][A-Za-z0-9._-]*$`)
+
+// safeLauncherName reports whether a name derived from a config folder can go into the probe's
+// shell script as it is. A folder name is whatever the person (or a repository) called it, so
+// anything outside [A-Za-z0-9._-] (or a leading "-") is skipped, never quoted into a command.
+func safeLauncherName(n string) bool { return launcherNameRE.MatchString(n) }
+
 func realProbe(ctx context.Context, shell string, names []string) (string, error) {
 	if shell == "" {
 		return "", os.ErrNotExist
 	}
+	var safe []string
+	for _, n := range names {
+		if safeLauncherName(n) {
+			safe = append(safe, n)
+		}
+	}
+	names = safe
 	cctx, cancel := context.WithTimeout(ctx, ProbeTimeout)
 	defer cancel()
 	script := "for n in " + strings.Join(names, " ") + `; do type "$n"; done`
