@@ -60,7 +60,9 @@ func TestDialRefusesNonLoopback(t *testing.T) {
 			t.Errorf("dial %q accepted", d)
 		}
 	}
-	if _, err := ForConfig(config.Config{Hub: config.Defaults().Hub}, ""); err != nil {
+	hub := config.Defaults().Hub
+	hub.URL = "http://127.0.0.1:8787"
+	if _, err := ForConfig(config.Config{Hub: hub}, ""); err != nil {
 		t.Fatal(err)
 	}
 }
