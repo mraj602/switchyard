@@ -118,7 +118,7 @@ const note = () => h('p', { class: 'pair-note' }, `This ${mobile() ? 'phone' : '
 
 // "Have the Switchyard app? Open in app": the link carries the one-time secret, so it is only put in the page.
 function appLink() {
-  const href = appPairLink(location.origin, st.secret, st.code, st.hubFp, st.sealKey);
+  const href = appPairLink(location.origin, st.secret, st.code, st.hubFp, st.sealKey, navigator.userAgent);
   if (!href) return null;
   return h('p', { class: 'small', 'data-key': 'open-in-app' }, 'Using the Switchyard Android app? ',
     h('a', { href, class: 'strong', 'data-key': 'open-in-app-link' }, 'Open in app'));

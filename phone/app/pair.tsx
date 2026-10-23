@@ -210,7 +210,11 @@ export default function PairScreen() {
         ) : linkInput ? (
           <View style={styles.card} testID="link-confirm">
             <Text style={styles.cardTitle}>Pair with {hostOf(linkInput.origin)}?</Text>
-            <Text style={styles.muted}>A pairing link opened the app. Pair only if you just made it on your computer.</Text>
+            <Text style={styles.muted}>
+              {hub.status === 'paired' && hub.hub && hostOf(hub.hub.origin) !== hostOf(linkInput.origin)
+                ? `This app is paired with ${hostOf(hub.hub.origin)}. A pairing link opened the app and would replace it with ${hostOf(linkInput.origin)}. Go on only if you just made this link on your computer. You will be asked once more.`
+                : 'A pairing link opened the app. Pair only if you just made it on your computer.'}
+            </Text>
             <Pressable
               accessibilityRole="button"
               disabled={busy}

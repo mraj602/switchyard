@@ -141,7 +141,12 @@ optional React 19.3 peers); they are expected and do not fail the install.
   - `https://<host>[:port]/#/pair?s=<22 base64url>&c=<6 digits>[&h=<24 base32>&k=<22 base64url>]`,
     the QR of pairing.md 2.2 with keys.md 7's hub fingerprint and registration seal;
   - `switchyard://pair?u=<https origin>&s=…&c=…[&h=…&k=…]`, the "Open in app" link the web pair
-    page offers; `h` and `k` are the QR's pins and are carried through the link route
+    page offers. On Android the page emits it as a Chrome intent URL pinned to the release
+    package (`intent://pair?…#Intent;scheme=switchyard;package=io.github.mraj602.switchyard;end`),
+    because any app can register the plain scheme and this link carries the secret and seal key.
+    The page emits nothing off Android, and a development build (`.dev` package) is paired with
+    the QR or typed code. When the app is already paired with another hub, the link card names
+    both hubs and the person must confirm twice (the link card, then "Unpair and pair"). `h` and `k` are the QR's pins and are carried through the link route
     to the Pair screen (without them the claim sends no keys and the phone gets no link);
   - typed input: an address plus `482-913`, `482913` or `482 913`.
 

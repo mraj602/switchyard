@@ -108,13 +108,19 @@ export function installHint(ua = '', { ios = false, standalone = false } = {}) {
   return 'Optional: if your browser can install web apps, look for Install in its menu.';
 }
 
-// The link that opens the installed app on its pairing screen: switchyard://pair?u=&s=&c=&h=&k=
-// (phone.md P2). `c`, `h` and `k` are left out when absent. `h` (the hub key's fingerprint) and `k`
-// (the registration seal key) are the QR's keys.md 7 pins: without them the app claims a secret
-// with no keys and gets no instant delivery. Never log the result: it carries the secret.
-export function appPairLink(origin, secret, code, hubFp, sealKey) {
-  if (!origin || !secret) return '';
+// The link that opens the installed Android app on its pairing screen. It is a Chrome intent URL
+// pinned to the release package, so only Switchyard can receive it: any app can register the plain
+// switchyard:// scheme, and this link carries the pairing secret and the seal key (phone.md P2).
+//   intent://pair?u=&s=&c=&h=&k=#Intent;scheme=switchyard;package=<app id>;end
+// `c`, `h` and `k` are left out when absent. `h` (the hub key's fingerprint) and `k` (the
+// registration seal key) are the QR's keys.md 7 pins. There is no browser fallback URL, since it
+// would put the secret in another address. Empty off Android (no other app exists). Never log the
+// result: it carries the secret.
+export const APP_ID = 'io.github.mraj602.switchyard';
+export function appPairLink(origin, secret, code, hubFp, sealKey, ua = '', appId = APP_ID) {
+  if (!origin || !secret || !isAndroid(ua) || !/^[A-Za-z][\w]*(\.[A-Za-z][\w]*)+$/.test(appId)) return '';
   const digits = codeDigits(code);
-  return `switchyard://pair?u=${encodeURIComponent(origin)}&s=${encodeURIComponent(secret)}${digits ? `&c=${encodeURIComponent(digits)}` : ''}` +
-    `${hubFp ? `&h=${encodeURIComponent(hubFp)}` : ''}${sealKey ? `&k=${encodeURIComponent(sealKey)}` : ''}`;
+  return `intent://pair?u=${encodeURIComponent(origin)}&s=${encodeURIComponent(secret)}${digits ? `&c=${encodeURIComponent(digits)}` : ''}` +
+    `${hubFp ? `&h=${encodeURIComponent(hubFp)}` : ''}${sealKey ? `&k=${encodeURIComponent(sealKey)}` : ''}` +
+    `#Intent;scheme=switchyard;package=${appId};end`;
 }

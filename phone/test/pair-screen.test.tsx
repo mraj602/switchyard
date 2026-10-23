@@ -255,6 +255,7 @@ describe('Pair screen', () => {
     const f = fakeFetch(() => response(200, claimOk));
     const { ui, unpair } = renderPair(f, { status: 'paired', hub: { origin: 'https://old.ts.net', device: 'd', name: 'n', paired_at: 't' } });
     await render(ui);
+    expect(screen.getByText(/paired with old\.ts\.net\. A pairing link .* replace it with new\.ts\.net/)).toBeTruthy();
     await fireEvent.press(screen.getByText('Pair with new.ts.net'));
     expect(screen.getByText('Unpair from old.ts.net?')).toBeTruthy();
     expect(claims(f)).toHaveLength(0);
