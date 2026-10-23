@@ -2,6 +2,7 @@ package webui
 
 import (
 	"encoding/json"
+	"fmt"
 	"image"
 	_ "image/png"
 	"io/fs"
@@ -316,5 +317,103 @@ func TestCSPAllowsNoOtherOrigin(t *testing.T) {
 	}
 	if strings.Contains(string(b), "https://") {
 		t.Error("index.html links another origin (fonts are served from the hub)")
+	}
+}
+
+// The policy has no 'unsafe-inline' for styles, so the board must not produce an inline
+// style anywhere: no style="" attribute or <style> block in a file or a string, no cssText,
+// no setAttribute('style'), and no string value for the style option of h() (an object goes
+// through el.style.setProperty, which the policy allows).
+func TestNoInlineStyleAndStrictStyleSrc(t *testing.T) {
+	for _, d := range strings.Split(CSP(), ";") {
+		if strings.Contains(d, "unsafe-") {
+			t.Errorf("CSP directive %q is not strict", d)
+		}
+	}
+	if !strings.Contains(CSP(), "style-src 'self';") {
+		t.Errorf("style-src is not 'self': %s", CSP())
+	}
+	bad := regexp.MustCompile("(?i)\\bstyle\\s*=|<style\\b|\\.cssText|setAttribute\\(\\s*['\"`]style|\\bstyle\\s*:\\s*['\"`]")
+	err := fs.WalkDir(FS(), ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		switch path.Ext(p) {
+		case ".js", ".html", ".css":
+		default:
+			return nil
+		}
+		b, err := fs.ReadFile(FS(), p)
+		if err != nil {
+			return err
+		}
+		for i, line := range strings.Split(string(b), "\n") {
+			if bad.MatchString(line) {
+				t.Errorf("%s:%d writes an inline style (the CSP forbids it): %s", p, i+1, strings.TrimSpace(line))
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Every character above U+00FF that the board's code writes (arrows, shapes, dashes, quotes)
+// must be inside a unicode-range of styles/fonts.css, or it falls back to whatever system
+// font the platform has (the Plex subsets are latin only; fonts.css adds 'Switchyard Symbols').
+// Comment-only lines are skipped.
+func TestNonLatinGlyphsAreInAFontRange(t *testing.T) {
+	css, err := fs.ReadFile(FS(), "styles/fonts.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	type span struct{ lo, hi rune }
+	var spans []span
+	for _, m := range regexp.MustCompile(`unicode-range:([^;]+);`).FindAllStringSubmatch(string(css), -1) {
+		for _, part := range strings.Split(m[1], ",") {
+			part = strings.TrimPrefix(strings.TrimSpace(part), "U+")
+			lo, hi, _ := strings.Cut(part, "-")
+			var a, b int64
+			if _, err := fmt.Sscanf(lo, "%x", &a); err != nil {
+				t.Fatalf("unicode-range %q: %v", part, err)
+			}
+			b = a
+			if hi != "" {
+				if _, err := fmt.Sscanf(hi, "%x", &b); err != nil {
+					t.Fatalf("unicode-range %q: %v", part, err)
+				}
+			}
+			spans = append(spans, span{rune(a), rune(b)})
+		}
+	}
+	covered := func(r rune) bool {
+		for _, s := range spans {
+			if r >= s.lo && r <= s.hi {
+				return true
+			}
+		}
+		return false
+	}
+	missing := map[rune][]string{}
+	_ = fs.WalkDir(FS(), ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || (path.Ext(p) != ".js" && path.Ext(p) != ".html") || strings.HasSuffix(p, "sw.js") {
+			return nil
+		}
+		b, _ := fs.ReadFile(FS(), p)
+		for _, line := range strings.Split(string(b), "\n") {
+			if l := strings.TrimSpace(line); strings.HasPrefix(l, "//") || strings.HasPrefix(l, "*") || strings.HasPrefix(l, "/*") {
+				continue
+			}
+			for _, r := range line {
+				if r > 0xFF && !covered(r) {
+					missing[r] = append(missing[r], p)
+				}
+			}
+		}
+		return nil
+	})
+	for r, files := range missing {
+		t.Errorf("U+%04X %c (%s) is in no unicode-range of fonts.css: it would come from a system font", r, r, files[0])
 	}
 }

@@ -286,14 +286,21 @@ therefore changes `sw.js`, which is how browsers notice an update. `/health` gai
    the last check is over 15 minutes old (an installed iOS app is often resumed, not reloaded).
 2. A new worker installs (precaches the new shell) and waits; it does **not** call
    `skipWaiting` on its own, so a running page never mixes old and new files.
-3. The page sees `registration.waiting` and shows "New version ready · Reload". Tapping it
+3. The page sees `registration.waiting` and shows "Update ready · Reload". Tapping it
    posts `{type: "skip-waiting"}`; on `controllerchange` the page reloads once (every change
    of worker after the page had one, including the first update of a page that was opened
    before any worker existed).
 4. The page also applies a waiting worker without a tap when that costs nothing
    (`components/update-policy.js`): within 15 s of its own start, or while it is in the
-   background (`visibilitychange` → hidden); never while a field has focus, and not twice
-   within a minute (`sessionStorage`), so a build that cannot take over causes no reload
+   background (`visibilitychange` → hidden); never while a field has focus, while a dialog or
+   modal is open (`dialog[open]`, `[aria-modal="true"]`), or while a form has unsaved edits
+   (`components/pending.js`: an `input`/`change` inside a form marks it, `submit`, `reset` or
+   the form leaving the page clears it; a field with `data-nodirty` or outside a form does
+   not count). The same guard holds back the reload on a `controllerchange` the page did not
+   ask for (another tab applied the update): it reloads once nothing is pending, checked
+   every second. Pressing Reload in the banner or in Settings reloads at once. While an
+   update waits and something is pending the banner stays and the page re-checks every 2 s.
+   The page never reloads twice within a minute (`sessionStorage`), so a build that cannot take over causes no reload
    loop. An installed app that is never closed therefore moves to the new build the next
    time it is backgrounded.
 5. If `/health`'s `ui` differs from the running build and no worker is waiting (a browser that
@@ -377,8 +384,22 @@ standalone)')` and `navigator.standalone` for "already installed").
   `http.FileServer` in `internal/hub/api/server.go`: content types for `.webmanifest`,
   `sw.js` templating, `Cache-Control: no-cache` everywhere (files are not fingerprinted) and
   the existing `nosniff` / `no-referrer` headers.
-- No Content-Security-Policy is added (the app needs none to work; adding one is a
-  pre-release item together with self-hosting the fonts).
+- Every response carries `webui.CSP()`: `default-src 'self'; script-src 'self'; connect-src
+  'self'; worker-src 'self'; manifest-src 'self'; img-src 'self' data:; style-src 'self';
+  font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`. There is no
+  `'unsafe-inline'`: no inline script, no `<style>` block and no `style=""` attribute (in
+  markup or through `setAttribute`). Dynamic values (a seat colour as `--seat`, a meter
+  width, a swipe offset) are set with `el.style.setProperty` / `el.style.transform`, which
+  the CSSOM allows; `h()` takes `style` only as an object. `TestNoInlineStyleAndStrictStyleSrc`
+  fails on any new inline style. The desktop app needs no change: its Hub view loads this
+  page under this policy (the app injects no CSS or markup into it), and the app's own shell
+  already runs with `style-src 'self'` (desktop.md).
+- Fonts are served from `webui/static/fonts` (OFL, `NOTICE`): IBM Plex Sans and Mono, latin
+  subsets, plus `Switchyard Symbols`, three subsets (3 KB in all) of Noto Sans Math, Symbols and
+  Symbols 2 for the glyphs Plex lacks: ← → ⇄ ⋯ ⓘ ■ ▸ ▾ ○ ◌ ● ⠿ ✓. `--sans` and `--mono` list it
+  after Plex; each `@font-face` has the exact `unicode-range`.
+  `TestNonLatinGlyphsAreInAFontRange` fails when the code writes a character above U+00FF that
+  no range covers.
 
 ## 9. Tests
 
@@ -397,7 +418,7 @@ standalone)')` and `navigator.standalone` for "already installed").
     shell cache;
   - offline: `page.setOfflineMode(true)` then reload → Now renders from `sy-data` with the
     offline banner; back online → banner gone;
-  - update: the devserver switches to another build hash → "New version ready" → click →
+  - update: the devserver switches to another build hash → "Update ready" → click →
     reloaded page runs the new build;
   - pairing: open `/#/pair?s=<devserver secret>` with a phone viewport and an Android UA →
     claim → cookie set → Now renders; with an iPhone UA → no claim, instructions with the

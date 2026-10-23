@@ -122,14 +122,16 @@ func contentType(name string) string {
 	return "application/octet-stream"
 }
 
-// csp is the Content-Security-Policy of the app. There is no inline script; inline styles
-// are set through the CSSOM and the style attribute. The fonts are served from the hub
+// csp is the Content-Security-Policy of the app. There is no inline script and no inline
+// style: no <style> block, no style="" attribute in markup or in setAttribute (a policy
+// without 'unsafe-inline' blocks both), so dynamic values (a seat colour, a meter width) are
+// set through the CSSOM (el.style.setProperty, which the policy allows). The fonts are served from the hub
 // itself, so the page makes no request to any other origin. default-src 'self' already
 // covers connect (API, stream), worker (sw.js) and manifest requests; they are listed so
 // the intent is explicit.
 const csp = "default-src 'self'; script-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; " +
 	"img-src 'self' data:; " +
-	"style-src 'self' 'unsafe-inline'; font-src 'self'; " +
+	"style-src 'self'; font-src 'self'; " +
 	"frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
 
 // CSP returns the policy the handler sends (for tests that serve the app through another

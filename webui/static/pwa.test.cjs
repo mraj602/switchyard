@@ -272,3 +272,68 @@ test('autoApplyOk: a waiting build applies by itself only when that costs nothin
   assert.equal(autoApplyOk({ ...base, sinceLastAutoMs: 5000 }), false, 'no reload loop');
   assert.equal(autoApplyOk({ ...base, sinceLastAutoMs: 120e3 }), true);
 });
+
+test('autoApplyOk: an open dialog or an unsaved form holds the reload back, even in the background', async () => {
+  const { autoApplyOk } = await mod('components/update-policy.js');
+  const base = { waiting: true, editing: false, hidden: true, pageAgeMs: 10 * 60e3, sinceLastAutoMs: null };
+  assert.equal(autoApplyOk({ ...base, pending: false }), true, 'nothing pending');
+  assert.equal(autoApplyOk({ ...base, pending: true }), false, 'pending, hidden');
+  assert.equal(autoApplyOk({ ...base, pending: true, hidden: false, pageAgeMs: 1000 }), false, 'pending, fresh page');
+});
+
+// A fake document: listeners by type, and whether a modal is open.
+function fakeDoc() {
+  const listeners = {};
+  const doc = {
+    modals: 0,
+    addEventListener: (t, fn) => { (listeners[t] = listeners[t] || []).push(fn); },
+    querySelector: (sel) => (doc.modals && /dialog\[open\]/.test(sel) ? {} : null),
+    fire: (t, target) => (listeners[t] || []).forEach((fn) => fn({ target })),
+  };
+  return doc;
+}
+const field = (form, attrs = {}) => ({ form, hasAttribute: (a) => a in attrs });
+
+test('createPending: a dialog or modal is pending work', async () => {
+  const { createPending } = await mod('components/pending.js');
+  const doc = fakeDoc();
+  const p = createPending(doc);
+  assert.equal(p.reason(), null);
+  assert.equal(p.pending(), false);
+  doc.modals = 1;
+  assert.equal(p.reason(), 'modal');
+  doc.modals = 0;
+  assert.equal(p.reason(), null, 'closed again');
+});
+
+test('createPending: an edited form is pending until submit or reset, a lone field is not', async () => {
+  const { createPending } = await mod('components/pending.js');
+  const doc = fakeDoc();
+  const p = createPending(doc);
+  const form = { isConnected: true };
+  doc.fire('input', field(null));
+  assert.equal(p.pending(), false, 'a search box outside a form');
+  doc.fire('input', field(form, { 'data-nodirty': '' }));
+  assert.equal(p.pending(), false, 'opted out');
+  doc.fire('input', field(form));
+  assert.equal(p.reason(), 'unsaved');
+  doc.fire('submit', form);
+  assert.equal(p.pending(), false, 'submitted');
+  doc.fire('change', field(form));
+  assert.equal(p.pending(), true);
+  doc.fire('reset', form);
+  assert.equal(p.pending(), false, 'reset');
+  doc.fire('input', field(form));
+  form.isConnected = false;
+  assert.equal(p.pending(), false, 'the view replaced the form');
+});
+
+test('pwa.js reloads by itself only through the pending guard', () => {
+  const src = fs.readFileSync(path.join(__dirname, 'pwa.js'), 'utf8');
+  const others = src.split('\n').filter((l) => !l.startsWith('function reloadNow')).join('\n');
+  assert.doesNotMatch(others, /location\.reload\(\)/, 'every reload goes through reloadNow');
+  assert.match(src, /pending: guard\.pending\(\)/, 'applyIfIdle asks the guard');
+  assert.match(src, /if \(was && !reloading\) reloadWhenIdle\(\)/, 'controllerchange waits for the guard');
+  const app = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
+  assert.match(app, /'Update ready'/);
+});

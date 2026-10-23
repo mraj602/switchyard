@@ -44,7 +44,7 @@ hash (update banner), `POST /_dev/reset`, `POST /_dev/promote`.
 
 - `go test ./webui/...`: embed completeness, ASSETS list, Handler, fixtures, mock hub.
 - `node --test webui/static/*.test.cjs`: sw-lib, sw.js in a vm, routes, platform helpers.
-- Browser smoke at 390 and 1440 px (needs Chrome and puppeteer-core in a temp dir):
+- Browser smoke at 390 and 1440 px (needs Chrome and puppeteer-core in a temp dir; the `web board (browser smoke)` job of `.github/workflows/ci.yml` runs it):
 
       mkdir -p $TMP/pp && (cd $TMP/pp && npm init -y && npm i puppeteer-core)
       SY_WEBUI_BROWSER=1 SY_PUPPETEER_MODULES=$TMP/pp/node_modules SY_WEBUI_SHOTS=$TMP/shots go test ./webui/smoke

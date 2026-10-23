@@ -109,6 +109,55 @@ jobs:
       - name: pane-check self-test (the forbidden fixture must fail)
         run: scripts/pane-check.sh --self-test
 
+  # The web board (webui/): the node unit tests, the Go tests of the embedded app and mock hub,
+  # and the headless browser smoke test (webui/smoke, SY_WEBUI_BROWSER=1) in the runner's
+  # Google Chrome with a pinned puppeteer-core, on a private D-Bus session so Chrome shows no
+  # real notifications. The smoke serves the board with the hub's CSP, so a CSP violation fails it.
+  webui-browser:
+    name: web board (browser smoke)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.27.x"
+          cache: true
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "22.x"
+
+      - name: node tests
+        run: node --test webui/static/*.test.cjs
+
+      - name: go test ./webui/...
+        run: go test -race ./webui/...
+
+      - name: install puppeteer-core (pinned, no browser download)
+        run: npm install --prefix "$RUNNER_TEMP/pp" --no-save --no-audit --no-fund --ignore-scripts puppeteer-core@25.16.0
+
+      - name: browser smoke (390 and 1440 px, Chrome)
+        env:
+          SY_WEBUI_BROWSER: "1"
+          CHROME: /usr/bin/google-chrome
+        run: |
+          google-chrome --version
+          export SY_PUPPETEER_MODULES="$RUNNER_TEMP/pp/node_modules" SY_WEBUI_SHOTS="$RUNNER_TEMP/shots"
+          dbus-run-session -- go test -count=1 -v ./webui/smoke
+
+      - name: screenshots
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: webui-smoke-shots
+          path: ${{ runner.temp }}/shots
+          if-no-files-found: ignore
+          retention-days: 7
+
   # Terminal end to end (test/e2e/terminal): sy board / term / open / ssh against a fake
   # opener (-tags fakeopen), a temp HOME and no real terminal.
   terminal-e2e:

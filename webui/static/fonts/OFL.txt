@@ -2,6 +2,12 @@ The IBM Plex Sans and IBM Plex Mono fonts in this folder (latin subset, woff2, f
 @fontsource packages) are
 Copyright 2017 and 2019 IBM Corp. All rights reserved.
 
+The noto-sans-*.woff2 files in this folder are subsets (a few glyphs each, woff2, cut with
+fonttools from the @fontsource/noto-sans-math, noto-sans-symbols and noto-sans-symbols-2
+packages) of Noto Sans Math, Copyright 2022 Google LLC, and of Noto Sans Symbols and
+Noto Sans Symbols 2, Copyright 2022 The Noto Project Authors
+(https://github.com/notofonts/symbols).
+
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
 http://scripts.sil.org/OFL
