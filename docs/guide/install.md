@@ -4,14 +4,14 @@ This guide takes you from a fresh clone to a working setup: `sy` on your compute
 and more machines when you want them. The desktop app and the Android app have their own
 guides ([desktop.md](desktop.md), [android.md](android.md)).
 
-There are no published releases yet, so everything here builds from source. See
-[Releases](#releases) for what changes once they exist.
+The quickest way is the install script from the latest release. Building from source is the
+alternative. See [Releases](#releases) for what each release contains.
 
 ## Requirements
 
 | Piece | Needs |
 | --- | --- |
-| `sy` and the hub | Go 1.27 or newer, `make`, `git`. Linux or macOS. Windows builds and runs, with gaps (below). |
+| `sy` and the hub | Linux or macOS. Windows runs it, with gaps (below). To build from source you also need Go 1.27 or newer, `make` and `git`. |
 | Claude Code | Installed and on `PATH` as `claude` on every machine whose sessions you want to see. Switchyard is tested against Claude Code 2.1.296 and later. |
 | Desktop app (optional) | Node.js 22 or newer, plus Go to build the bundled `sy` |
 | Android app (optional) | Node.js 22.13 or newer, JDK 17, the Android SDK; a phone with Android 12 or newer |
@@ -30,7 +30,60 @@ counts as its own Linux machine.
   on your laptop or on an always-on server.
 - **Board:** the hub's web page. It also installs on a phone as a web app.
 
-## 1. Build and install `sy`
+## 1. Install `sy`
+
+### From a release (Linux, macOS)
+
+```sh
+curl -fsSL https://github.com/mraj602/switchyard/releases/latest/download/install.sh | sh
+sy version
+```
+
+What `install.sh` does:
+
+- It picks the archive for your OS and CPU (Linux or macOS, amd64 or arm64), and downloads it
+  and `SHA256SUMS` from the release into a temporary folder.
+- It checks the archive's SHA-256 against `SHA256SUMS`. If the check fails, or no
+  `sha256sum`, `shasum` or `openssl` exists, it installs nothing and exits with code 3.
+- It installs only `sy`, into `~/.local/bin` (replacing an older `sy` in one step). It edits
+  no shell profile and no `PATH`. If that folder is not on your `PATH`, it prints the line to
+  add for your shell.
+- When a terminal is available it then runs `sy setup`. Otherwise it prints `run: sy setup`.
+
+Options go after `sh -s --`:
+
+```sh
+curl -fsSL https://github.com/mraj602/switchyard/releases/latest/download/install.sh \
+  | sh -s -- --version 0.9.0 --bin-dir ~/bin --no-setup
+```
+
+- `--version VER`: install this version, with or without the leading `v`. The default is the
+  latest release.
+- `--bin-dir DIR`: install into `DIR` instead of `~/.local/bin`.
+- `--no-setup`: only install `sy`.
+- `-- <args>`: everything after a second `--` goes to `sy setup`.
+
+To also check the build-provenance attestation, install the `gh` CLI and set
+`SY_VERIFY_ATTESTATION=1` before `sh`. The script then runs `gh attestation verify` and
+installs nothing if it fails.
+
+### From a release (Windows)
+
+In PowerShell 5.1 or later:
+
+```powershell
+irm https://github.com/mraj602/switchyard/releases/latest/download/install.ps1 | iex
+```
+
+It does the same checks and puts `sy.exe` in `%USERPROFILE%\.local\bin`. It does not change
+`PATH`; it prints the command to add the folder. To pass options (`-Version`, `-BinDir`,
+`-NoSetup`, `-SetupArgs`), run it as a script block:
+
+```powershell
+& ([scriptblock]::Create((irm https://github.com/mraj602/switchyard/releases/latest/download/install.ps1))) -Version 0.9.0 -NoSetup
+```
+
+### From source
 
 ```sh
 git clone https://github.com/mraj602/switchyard.git
@@ -44,7 +97,9 @@ sy version
 `go install github.com/mraj602/switchyard/cmd/sy@latest` also works, but it puts `sy` in
 `~/go/bin` and leaves the version as `dev`.
 
-Before changing anything, you can look:
+### Before changing anything
+
+You can look first:
 
 ```sh
 sy doctor                 # read-only checks; warnings about "not set up yet" are normal
@@ -219,7 +274,8 @@ code), and installs the timer. It picks how the machine reaches the hub (`--reac
 Remove a machine with `sy machine remove worker --revoke`. Details:
 [docs/spec/machines.md](../spec/machines.md).
 
-You can also install by hand on the machine: build `sy` there, run `sy setup`, and choose
+You can also install by hand on the machine: install `sy` there (the install script, or a
+build), run `sy setup`, and choose
 **Connect to my hub** with a pairing code from `sy hub pair --kind machine`.
 
 ## 5. Optional pieces
@@ -232,17 +288,31 @@ You can also install by hand on the machine: build `sy` there, run `sy setup`, a
 
 ## Releases
 
-Switchyard has no published release yet. Until the first one:
+Releases are on [GitHub Releases](https://github.com/mraj602/switchyard/releases).
 
-- install `sy` from source as above, and upgrade with `git pull && make build` and the same
-  `install` line ([maintenance.md](maintenance.md));
-- build the desktop app with `make app-dist` and the Android APK yourself.
+A tag `vX.Y.Z` publishes:
 
-The first release will publish, on GitHub Releases: `sy` archives for Linux, macOS and
-Windows (amd64 and arm64) with a `SHA256SUMS` file and GitHub build attestations, a signed
-Android APK with its signing-certificate fingerprint, and desktop app packages. From then on
-`install/install.sh` (Linux, macOS) and `install/install.ps1` (Windows) install a
-checksum-verified `sy` in one line, and `sy update` upgrades it.
+| Files | What |
+| --- | --- |
+| `sy_<ver>_<os>_<arch>.tar.gz` (Linux, macOS), `sy_<ver>_windows_<arch>.zip`; amd64 and arm64 | `sy` (`sy.exe`), `LICENSE`, `README.md` |
+| `SHA256SUMS` | One SHA-256 line per archive |
+| `install.sh`, `install.ps1` | The install scripts above |
+| `Switchyard-<version>-<os>-<arch>.<ext>` (AppImage, deb, rpm, dmg, exe) | The desktop app ([desktop.md](desktop.md#download)) |
+| `SHA256SUMS-desktop` | One SHA-256 line per desktop package |
+
+Every archive and package also has a GitHub build-provenance attestation. To check one:
+
+```sh
+gh attestation verify sy_<ver>_linux_amd64.tar.gz --repo mraj602/switchyard
+```
+
+The Android APK is a separate release, `phone-vX.Y.Z`, signed with the maintainer's own key.
+Its note lists the certificate fingerprint ([android.md](android.md#install-the-apk)).
+
+To upgrade, run `sy update`, or the install script again
+([maintenance.md](maintenance.md#upgrades)). To build everything yourself, use the source
+steps above, `make app-dist` for the desktop app and [android.md](android.md#build-the-apk)
+for the APK.
 
 ## Next
 

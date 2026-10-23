@@ -70,9 +70,10 @@ them.
 
 ## Upgrades
 
-There are no published releases yet, so upgrades are from source.
-
 ### `sy` on a machine
+
+If you installed from a release, run `sy update` ([below](#sy-update)), or run the install
+script again: it replaces `sy` with the latest release. If you built from source:
 
 ```sh
 cd switchyard
@@ -108,9 +109,9 @@ docker compose ps                             # healthy within about 30 s
 
 See [deploy/README.md](../../deploy/README.md).
 
-### `sy update` (after the first release)
+### `sy update`
 
-Once releases are published on GitHub, `sy` updates itself from them, verifying the checksum:
+`sy` updates itself from the GitHub releases, verifying the checksum:
 
 ```sh
 sy update --check            # what is installed and what is latest
@@ -125,8 +126,8 @@ Offline machines can install an archive you copied there:
 
 ### The desktop app
 
-Rebuild the package with `make app-dist` and install the new package over the old one
-([desktop.md](desktop.md)). Account tabs, sign-ins and settings live in the app's user data
+Download the new package from the release (or rebuild it with `make app-dist`) and install it
+over the old one ([desktop.md](desktop.md)). Account tabs, sign-ins and settings live in the app's user data
 folder and are kept.
 
 ### The Android app

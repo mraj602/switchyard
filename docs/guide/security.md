@@ -166,7 +166,13 @@ project, account or session. Turn it on per device or as the hub default ([alert
 
 ## Supply chain
 
-Release archives will come with `SHA256SUMS` and GitHub build provenance attestations, and the
-install script checks the checksum. Until the first release, build from source
-([install.md](install.md)). The Android app's updater installs an update only if its signing
+Release archives come with `SHA256SUMS` and GitHub build provenance attestations, and the
+install scripts check the checksum before they install anything. Desktop packages have
+`SHA256SUMS-desktop` and attestations too. To check one yourself, run
+`gh attestation verify <file> --repo mraj602/switchyard`; it shows the file was built by this
+repository's release workflow. Setting `SY_VERIFY_ATTESTATION=1` makes the install scripts do
+that check (it needs the `gh` CLI). The desktop packages are not code-signed
+([desktop.md](desktop.md#unsigned-builds-on-macos-and-windows)). The Android APK is signed
+with the maintainer's own key; check it as [android.md](android.md#verify-the-apk) says. You
+can also build from source ([install.md](install.md)). The Android app's updater installs an update only if its signing
 certificate equals the installed app's.

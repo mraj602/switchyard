@@ -188,7 +188,7 @@ The threat model, including what the owner key and the signing guard cannot do, 
 | `plugin/switchyard-pane/` | The Claude Code pane mod (TypeScript), installed by `sy term setup --pane` |
 | `.claude-plugin/marketplace.json` | Lets Claude Code add this repository as a plugin marketplace |
 | `deploy/` | Dockerfile, compose files, Caddyfile, systemd unit for the hub |
-| `install/` | `install.sh` and `install.ps1`, used once releases exist |
+| `install/` | `install.sh` and `install.ps1`, published with each release; see `docs/RELEASING.md` |
 | `docs/spec/` | The behaviour specs: the source of truth |
 | `docs/guide/` | User guides |
 | `docs/design/screens/` | Design mock-ups of the screens (HTML) |

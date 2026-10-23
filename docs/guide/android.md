@@ -18,10 +18,63 @@ The hub needs no outbound access to any push service for the app. The trade-off:
 keeps a small, permanent "Connected to hub" notification, and phone makers' battery savers
 can stop it (see [Battery](#battery-and-phone-makers)).
 
+## Install the APK
+
+The APK is published on GitHub as its own release, `phone-vX.Y.Z` (the `vX.Y.Z` releases are
+for `sy` and the desktop app). It is signed with the maintainer's own key, not by CI. Android
+refuses an update signed by a different key, so the maintainer uses the same key for every
+release.
+
+### Verify the APK
+
+1. Download `switchyard-<version>.apk` and `SHA256SUMS` from the
+   [`phone-v*` release](https://github.com/mraj602/switchyard/releases). Check the hash:
+
+   ```sh
+   sha256sum -c --ignore-missing SHA256SUMS
+   ```
+
+2. Check the signing certificate. `apksigner` is in the Android SDK build-tools:
+
+   ```sh
+   apksigner verify --print-certs switchyard-<version>.apk
+   ```
+
+   Compare the `SHA-256 digest` of the certificate with the fingerprint in the release note.
+   If they differ, do not install the APK. The fingerprint never changes between releases.
+
+The same release has `manifest.json`, which the app's updater reads. You do not need it to
+install by hand.
+
+### Install (sideload)
+
+- Over USB: `adb install switchyard-<version>.apk`.
+- Or copy the APK to the phone and open it in a file manager; Android asks you to allow
+  installs from that app once.
+
+### Obtainium
+
+[Obtainium](https://obtainium.imranr.dev/) installs and updates apps from GitHub releases.
+
+1. In Obtainium, tap **Add App** and enter `https://github.com/mraj602/switchyard`.
+2. The `sy` releases (`vX.Y.Z`) are in the same repository. Open **Additional options** and
+   set **Filter Release Titles by Regular Expression** to `^Android `, which matches only the
+   APK releases.
+3. Add the app. Before you open it, check the certificate of the downloaded APK against the
+   release note's fingerprint, as above. Obtainium can then update it.
+
+The app can also update itself ([Updates](#updates)). Use one of the two, not both.
+
+### IzzyOnDroid and F-Droid
+
+IzzyOnDroid is planned, once a signed release exists. Nothing has been submitted yet. F-Droid
+may come later. See [below](#f-droid-and-izzyondroid) for why the APK is suitable for both.
+
 ## Build the APK
 
-There are no published APKs yet. Build one from source on a computer with Node 22.13 or
-later, JDK 17 or later and the Android SDK (`ANDROID_HOME` set).
+You can build the APK yourself instead, on a computer with Node 22.13 or later, JDK 17 or
+later and the Android SDK (`ANDROID_HOME` set). An APK you build is signed with your own key,
+so it cannot be updated from the project's releases.
 
 ### Debug build, for your own phone
 
@@ -100,11 +153,8 @@ submitted yet):
   beyond the npm and Maven registries. A store builds its own signed APK the same way (the
   signing keys differ, so a store build and your own build cannot update each other).
 
-### Install (sideload)
-
-- Over USB: `adb install phone/dist/switchyard-<version>.apk`.
-- Or copy the APK to the phone and open it in a file manager; Android asks you to allow
-  installs from that app once.
+Install your own build the same way as a downloaded one: `adb install
+phone/dist/switchyard-<version>.apk`, or copy it to the phone.
 
 ## Pair with your hub
 
@@ -223,7 +273,8 @@ The app updates itself, with your confirmation each time:
 
 An update signed by a different key is refused ("This update is not signed by your key"). So
 an app you built with your own keystore only accepts updates you build with the same keystore;
-it will not install the project's official releases. No release has been published yet.
+it will not install the project's official releases. To move between the two, uninstall one
+first (you will pair again).
 
 ## Unpair or revoke
 

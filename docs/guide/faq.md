@@ -94,11 +94,13 @@ your own self-hosted hub, so you keep the data either way.
 `sy` never reads, moves or copies a login. Setup changes only what its plan lists, backs up
 everything first, and `sy setup --undo` reverses a run byte for byte.
 
-## Why are there no binaries?
+## Where do I get binaries?
 
-There has been no release yet. Build from source for now ([install.md](install.md)). The
-first release will publish `sy` archives with checksums and build attestations, desktop
-packages and a signed Android APK.
+From [GitHub Releases](https://github.com/mraj602/switchyard/releases). Each `vX.Y.Z` release
+has `sy` archives with `SHA256SUMS`, the install scripts, the desktop packages with
+`SHA256SUMS-desktop`, and build attestations. The Android APK is in a separate `phone-v*`
+release, signed with the maintainer's key. The one-line install is in
+[install.md](install.md#1-install-sy). You can still build everything from source.
 
 ## Where do I ask questions or report bugs?
 

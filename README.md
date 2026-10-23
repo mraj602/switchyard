@@ -76,15 +76,27 @@ More: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Quickstart
 
-Needs Go 1.27+, `make`, and Claude Code on Linux or macOS. This runs the hub on the same
-computer:
+Needs Claude Code, on Linux or macOS. This runs the hub on the same computer:
+
+```sh
+curl -fsSL https://github.com/mraj602/switchyard/releases/latest/download/install.sh | sh
+sy setup            # shows a plan first; choose "Just this computer" for the hub
+sy hub owner-link   # open the printed link: the board, signed in as the owner
+```
+
+The script puts one file, `sy`, in `~/.local/bin`, after checking its SHA-256 against the
+release's `SHA256SUMS`. It edits no shell profile and no PATH: if `~/.local/bin` is not on
+your `PATH`, it prints the line to add. It then starts `sy setup` when a terminal is
+available (`--no-setup` skips that). On Windows, see [Releases](#releases).
+
+**Build from source instead.** This needs Go 1.27+, `make` and `git`:
 
 ```sh
 git clone https://github.com/mraj602/switchyard.git && cd switchyard
 make build && install -D -m 0755 dist/sy ~/.local/bin/sy
-sy setup            # shows a plan first; choose "Just this computer" for the hub
-sy hub owner-link   # open the printed link: the board, signed in as the owner
 ```
+
+Then run `sy setup` as above.
 
 Restart your open Claude Code sessions afterwards so they load the plugin. Everything
 `sy setup` changes is backed up; `sy setup --undo` reverses it. Next steps: a hub on a server,
@@ -115,11 +127,34 @@ more machines, the phone: [docs/guide/install.md](docs/guide/install.md).
 
 ## Releases
 
-There is no release yet: build from source as above. The first release will publish `sy`
-archives for Linux, macOS and Windows with `SHA256SUMS` and GitHub build attestations,
-desktop app packages, and an Android APK signed with a stable key whose certificate
-fingerprint will be listed here. After that, `install/install.sh` installs `sy` in one line
-and `sy update` keeps it current.
+Releases are on [GitHub Releases](https://github.com/mraj602/switchyard/releases). A tag
+`vX.Y.Z` publishes:
+
+- `sy` archives for Linux, macOS and Windows (amd64 and arm64), with `SHA256SUMS`, and the
+  install scripts `install.sh` and `install.ps1`;
+- the desktop app packages (AppImage, deb, rpm, dmg and the Windows installer), with
+  `SHA256SUMS-desktop`;
+- GitHub build-provenance attestations for every archive and package.
+
+The Android APK is a separate release, `phone-vX.Y.Z`. The maintainer signs it with their own
+key, and the certificate fingerprint is in that release's note
+([Android guide](docs/guide/android.md#verify-the-apk)).
+
+Install `sy` on Linux or macOS with the one-liner in the [Quickstart](#quickstart). Add
+`sh -s -- --version 0.9.0` to pick a version. On Windows, in PowerShell 5.1 or later:
+
+```powershell
+irm https://github.com/mraj602/switchyard/releases/latest/download/install.ps1 | iex
+```
+
+That puts `sy.exe` in `%USERPROFILE%\.local\bin`, after the same checksum check. To pass
+options such as `-Version` or `-NoSetup`, run it as a script block, as the header of
+[install/install.ps1](install/install.ps1) shows.
+
+To check where a file came from, run `gh attestation verify <file> --repo mraj602/switchyard`.
+Or set `SY_VERIFY_ATTESTATION=1` and the install script does it for you (it needs the `gh`
+CLI). `sy update` keeps `sy` current ([maintenance](docs/guide/maintenance.md#sy-update)). The
+desktop app and the Android app update as their guides describe.
 
 ## FAQ
 

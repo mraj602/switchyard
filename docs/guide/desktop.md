@@ -14,15 +14,30 @@ not code-signed, so macOS and Windows warn on first start (see
 Every `sy` release on [GitHub Releases](https://github.com/mraj602/switchyard/releases)
 (tags `vX.Y.Z`) also carries the desktop packages, built from the same commit as the `sy`
 archives, plus `SHA256SUMS-desktop`. The app inside has the same version as the tag, and
-bundles the `sy` of that release. Check a download against the sums:
+bundles the `sy` of that release.
+
+The files are named `Switchyard-<version>-<os>-<arch>.<ext>`:
+
+| OS | Package |
+| --- | --- |
+| Linux | `.AppImage` (runs anywhere: `chmod +x` it, then run it), `.deb`, `.rpm` |
+| macOS | `.dmg` |
+| Windows | `.exe` (the installer) |
+
+Check a download against the sums, in the folder that holds it:
 
 ```sh
 sha256sum -c --ignore-missing SHA256SUMS-desktop      # Linux; on macOS: shasum -a 256 -c
 ```
 
-## Build and run
+On Windows, compare `(Get-FileHash <file>).Hash` with the line for that file in
+`SHA256SUMS-desktop`. To check where a package was built, use its attestation (see
+[Unsigned builds](#unsigned-builds-on-macos-and-windows)). Then install it the usual way for
+your OS. The packages are unsigned, so macOS and Windows warn the first time.
 
-To build it yourself you need Node 22 or later and Go (the package bundles its own `sy`).
+## Build from source
+
+You can build it yourself instead. You need Node 22 or later and Go (the package bundles its own `sy`).
 
 ```sh
 make app-dist                 # packages in app/dist/
