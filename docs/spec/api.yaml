@@ -603,7 +603,7 @@ paths:
       operationId: analytics
       summary: Tokens, API-equivalent cost, models, projects, heatmap, sessions, limit windows and hits
       description: |
-        The prototype's analytics on the hub (analytics.md). Token reports sum `token_row` and
+        The hub's analytics reports (analytics.md). Token reports sum `token_row` and
         price it at API list prices (`api_usd`: a yardstick, not a bill). A day is a day of the
         hub's time zone. The reply is the schema named after the report.
       x-scopes: [read]

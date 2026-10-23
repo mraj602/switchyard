@@ -1,7 +1,7 @@
 #!/bin/sh
 # S2: the development laptop of docs/spec/setup.md section 11, with fake logins: seven
 # folders (~/.claude, -2, -3 logged in; -4 .. -7 not), 48 hand-made links to ~/.claude,
-# prototype hooks, a status line to wrap, three plugins, shell-function launchers calling
+# hook entries of another tool, a status line to wrap, three plugins, shell-function launchers calling
 # ~/bin/claude-launch, a hand-made MCP sync script, leftover .claude.json.tmp.* files.
 . "$(dirname "$0")/_lib.sh"
 init_home "$1"
@@ -13,9 +13,9 @@ put "$P/statusline-command.sh" 0755 <<'SH'
 cat >/dev/null
 echo "old status line"
 SH
-put "$P/switchyard-hook.sh" 0755 <<'SH'
+put "$P/notify-hook.sh" 0755 <<'SH'
 #!/bin/sh
-# prototype hook
+# a hook of another tool
 exit 0
 SH
 put "$P/sync-mcp-to-2.sh" 0755 <<'SH'
@@ -32,13 +32,13 @@ put "$P/settings.json" <<JSON
   },
   "hooks": {
     "SessionStart": [
-      {"hooks": [{"type": "command", "command": "$H/.claude/switchyard-hook.sh SessionStart"}]}
+      {"hooks": [{"type": "command", "command": "$H/.claude/notify-hook.sh SessionStart"}]}
     ],
     "Stop": [
-      {"hooks": [{"type": "command", "command": "$H/.claude/switchyard-hook.sh Stop"}]}
+      {"hooks": [{"type": "command", "command": "$H/.claude/notify-hook.sh Stop"}]}
     ],
     "Notification": [
-      {"hooks": [{"type": "command", "command": "$H/.claude/switchyard-hook.sh Notification"}]}
+      {"hooks": [{"type": "command", "command": "$H/.claude/notify-hook.sh Notification"}]}
     ]
   },
   "enabledPlugins": {

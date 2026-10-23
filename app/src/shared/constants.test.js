@@ -28,8 +28,7 @@ test('tab ids, partitions and folder names follow C1', () => {
   assert.equal(C.TAB_PARTITION_PREFIX + 't_9c1e5f0a7b2d4e68', 'persist:tab-t_9c1e5f0a7b2d4e68');
   assert.equal(C.HUB_PARTITION, 'persist:sy-hub');
   assert.equal(C.USER_DATA_DIRNAME, 'switchyard-desktop');
-  assert.notEqual(C.USER_DATA_DIRNAME.toLowerCase(), C.PROTOTYPE_DIRNAME);
-  assert.notEqual(C.DESKTOP_ENTRY, C.PROTOTYPE_DESKTOP_ENTRY);
+  assert.equal(C.DESKTOP_ENTRY, 'switchyard-desktop.desktop');
 });
 
 test('web preferences and permissions are the C2 baseline', () => {

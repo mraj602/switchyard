@@ -9,7 +9,7 @@ import { fakeIpc, fakeSecurity, fakeWindow, memStore, newBus, silentLog, tabReco
 
 const A = 't_000000000000000a';
 const B = 't_000000000000000b';
-const C = '9c1e5f0a'; // an imported prototype id
+const C = '9c1e5f0a'; // a tab id from earlier versions (8 hex)
 
 function rig({ tabs = [], userData = '/ud', platform = 'linux', fsOverride, seats = [] } = {}) {
   const f = fakeElectron({ platform, paths: { userData } });

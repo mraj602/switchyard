@@ -1,7 +1,7 @@
 // Run at login (C1): Linux ~/.config/autostart/switchyard-desktop.desktop and
 // ~/.local/share/applications/switchyard-desktop.desktop; macOS and Windows
 // app.setLoginItemSettings with --background. Never reads or writes switchyard.desktop.
-import { DESKTOP_ENTRY, FLAG_BACKGROUND, PROTOTYPE_DESKTOP_ENTRY, TEST_ENV } from '../shared/constants.js';
+import { DESKTOP_ENTRY, FLAG_BACKGROUND, TEST_ENV } from '../shared/constants.js';
 
 /**
  * @param {{electron: object, fs: typeof import('node:fs/promises'), path: object, platform: string, home: string,
@@ -23,9 +23,7 @@ export function create(deps) {
     autostart: path.join(home, '.config', 'autostart', DESKTOP_ENTRY),
     launcher: path.join(home, '.local', 'share', 'applications', DESKTOP_ENTRY),
   });
-  if (DESKTOP_ENTRY === PROTOTYPE_DESKTOP_ENTRY) throw new Error('autostart: refusing the prototype entry name');
-
-  // Quoting as the legacy prototype's desktopEntry, plus `%` (a field code in Exec).
+  // Quote for the Exec line: backslash-escape " \ ` $, and double `%` (a field code in Exec).
   const q = (x) => `"${String(x).replace(/(["\\`$])/g, '\\$1').replace(/%/g, '%%')}"`;
 
   function desktopEntry(background) {

@@ -282,7 +282,7 @@ rule. Rows that already break this (from before the check) still load and match 
 
 ### 3.8 First start (baseline)
 
-The prototype's rule "never flood on first start" carries over. The first time the engine
+The engine never floods on first start. The first time the engine
 starts on a hub (`push.baseline_done` unset), every condition that already holds (sessions
 waiting, windows over 80%, silent machines) is recorded as `skipped` with reason
 `baseline`, then `push.baseline_done = true`. Later starts reconcile normally. The Alerts log
@@ -686,7 +686,7 @@ An ntfy target is `{server, topic, token?, name?, private?}`:
 
 ### 7.2 Message
 
-JSON publishing to the server root (as the prototype does, `server/server.js`), which keeps
+JSON publishing to the server root, which keeps
 UTF-8 titles intact:
 
 ```json

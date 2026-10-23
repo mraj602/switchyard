@@ -465,7 +465,7 @@ func setupMain(ctx context.Context, e *setupEnv, args []string) error {
 		e.termAfterApply(p, false)
 	}
 
-	// Logins (6.2 step 7): interactive only, one folder at a time.
+	// Logins (6.2 step 6): interactive only, one folder at a time.
 	if aerr == nil && interactive && len(res.Logins) > 0 {
 		e.runLogins(ctx, st, res.Logins)
 	}

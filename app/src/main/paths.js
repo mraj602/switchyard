@@ -1,14 +1,12 @@
 // User data folder (C1). Runs before 'ready': sets app.setPath('userData') to
 // <appData>/switchyard-desktop (or SY_APP_USER_DATA, absolute, only when !app.isPackaged, read
-// through test-hooks.js), and refuses any folder whose basename is 'switchyard' in any case, or
-// that lies inside the legacy prototype's <appData>/switchyard folder.
+// through test-hooks.js). The folder name stays as it is so existing installs keep their data.
 //
-// Electron would otherwise derive the folder from productName ('Switchyard'), which on a
-// case-insensitive macOS volume is the legacy prototype's folder.
+// Electron would otherwise derive the folder from productName ('Switchyard').
 //
 // Contract: docs/spec/desktop.md C1.
 
-import { USER_DATA_DIRNAME, PROTOTYPE_DIRNAME, APP_STATE_FILE, HUB_TOKEN_FILE } from '../shared/constants.js';
+import { USER_DATA_DIRNAME, APP_STATE_FILE, HUB_TOKEN_FILE } from '../shared/constants.js';
 
 /**
  * @param {{app: Electron.App, path: typeof import('node:path'), env: Record<string, string|undefined>,
@@ -27,7 +25,7 @@ export function create(deps) {
       dir = path.resolve(override);
     }
   }
-  checkUserData(dir, { path, appData });
+  checkUserData(dir, { path });
   app.setPath('userData', dir);
   const got = app.getPath('userData');
   if (got !== dir) throw new Error(`paths: userData is ${got}, expected ${dir}`);
@@ -39,27 +37,13 @@ export function create(deps) {
 }
 
 /**
- * Throws when dir is not an acceptable user-data folder: relative, basename 'switchyard' in
- * any case, or (when appData is given) inside <appData>/switchyard in any case.
+ * Throws when dir is not an acceptable user-data folder: missing or relative.
  * @param {string} dir
- * @param {{path?: typeof import('node:path'), appData?: string}} [opts]
+ * @param {{path?: typeof import('node:path')}} [opts]
  */
 export function checkUserData(dir, opts = {}) {
   const path = opts.path;
   if (typeof dir !== 'string' || dir.length === 0) throw new Error('paths: user-data folder missing');
   const abs = path ? path.isAbsolute(dir) : dir.startsWith('/') || /^[A-Za-z]:[\\/]/.test(dir);
   if (!abs) throw new Error(`paths: user-data folder must be absolute: ${dir}`);
-  const parts = dir.split(/[\\/]+/).filter(Boolean);
-  const base = parts.at(-1) ?? '';
-  if (base.toLowerCase() === PROTOTYPE_DIRNAME) {
-    throw new Error(`paths: refusing user-data folder ${dir}: it is the prototype's folder name (${PROTOTYPE_DIRNAME})`);
-  }
-  if (opts.appData) {
-    const norm = (p) => (path ? path.resolve(p) : p).split(/[\\/]+/).filter(Boolean).map((s) => s.toLowerCase());
-    const proto = [...norm(opts.appData), PROTOTYPE_DIRNAME];
-    const d = norm(dir);
-    if (d.length >= proto.length && proto.every((s, i) => d[i] === s)) {
-      throw new Error(`paths: refusing user-data folder ${dir}: it is inside the prototype's folder`);
-    }
-  }
 }

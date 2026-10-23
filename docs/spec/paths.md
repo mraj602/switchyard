@@ -32,77 +32,61 @@ default applies. On Windows, `%LOCALAPPDATA%` is used if set and absolute, else
    tests and by running a second, throwaway `sy` next to the real one.
 3. The table above.
 
-`sy` never reads `SWITCHYARD_DATA`: that variable belongs to the prototype Electron app and
-points at its user-data folder.
+`sy` never reads `SWITCHYARD_DATA`.
 
 `sy paths` prints the three folders and where each came from; `sy doctor` shows the
 same.
 
 ## 2. Decisions and why
 
-### Linux: `~/.config/switchyard` is shared with the prototype
+### Linux: `~/.config/switchyard` is shared
 
-The prototype desktop app is an Electron app named `switchyard`, so its user-data folder is
-`~/.config/switchyard` (`~/Library/Application Support/switchyard` on macOS,
-`%APPDATA%\switchyard` on Windows). It holds the claude.ai sign-ins (`Partitions/`),
-`config.json` (with the prototype's hook token), `accounts.json`, `usage.db` and Chromium
-caches.
+An Electron app named `switchyard` would keep its user data in `~/.config/switchyard`
+(`~/Library/Application Support/switchyard` on macOS, `%APPDATA%\switchyard` on Windows), and
+older versions of Switchyard did. `sy` still uses `~/.config/switchyard` as its config folder,
+so the folder can hold other files that `sy` does not own.
 
-**The desktop app does not use that folder** (desktop.md C1). The prototype keeps running next to the new app until it is retired, and Chromium holds a singleton lock per user-data folder, so two apps cannot share
-one. The new app (`app/`, package `switchyard-desktop`) sets its user data explicitly, before
-`ready`, to `<appData>/switchyard-desktop`:
+The desktop app (`app/`, package `switchyard-desktop`) sets its user data explicitly, before
+`ready`, to `<appData>/switchyard-desktop` (desktop.md C1):
 
 | | Linux | macOS | Windows |
 | --- | --- | --- | --- |
 | desktop app user data | `~/.config/switchyard-desktop` | `~/Library/Application Support/switchyard-desktop` | `%APPDATA%\switchyard-desktop` |
 
-It refuses to start with any user-data folder whose basename is `switchyard` in any case
-(Electron would otherwise derive `Switchyard` from `productName`, which is the prototype's
-folder on a case-insensitive macOS volume). `SY_APP_USER_DATA` (absolute) overrides the
-folder for development and tests, and only in an unpackaged build. It writes no autostart
-entry under the prototype's name (`switchyard.desktop`).
+Electron would otherwise derive `Switchyard` from `productName`. `SY_APP_USER_DATA`
+(absolute) overrides the folder for development and tests, and only in an unpackaged build.
 
-The prototype's folder is left alone: the new app never opens, writes or locks it. The one
-exception is the importer (desktop.md C1), which runs only when the person asks, refuses
-while the prototype runs, reads `accounts.json` and **copies** (never moves)
-`Partitions/acct-<id>/` to the new app's `Partitions/tab-<id>/`. The prototype's folder stays
-as the fallback until the person deletes it by hand.
-
-`sy` still uses `~/.config/switchyard` as its config folder, under strict
-coexistence rules:
+`sy` keeps to strict rules in `~/.config/switchyard`:
 
 - `sy` owns exactly one name in that folder: `config.toml` (plus its transient
   `.config.toml.<random>.tmp` during an atomic write, and `config.toml.bak` written by
   `sy setup`).
 - `sy` never creates any other file there, never lists, cleans, moves or deletes the folder,
-  and never reads the prototype's files (in particular not `config.json`).
+  and never reads other files in it.
 - `sy uninstall --purge` removes only `config.toml` and `config.toml.bak`, never the folder.
 - Neither desktop app writes `config.toml`. The desktop app reads what it needs by running
   `sy` (`sy desktop info --json` and the other commands of desktop.md C11); it does not open
   `config.toml` or any `sy` folder itself.
-- If `sy` creates the folder (no prototype installed), it uses mode `0700`, as Electron does.
+- If `sy` creates the folder, it uses mode `0700`, as Electron does.
 
 Why not a separate name such as `~/.config/switchyard-sy` or `~/.config/sy`: the
 docs all say `~/.config/switchyard/config.toml`; `sy` is a short, generic
-name likely to clash with other tools. The rules above make the sharing with the prototype
-harmless: there is no file-name overlap (`config.toml` vs the prototype's `config.json`), and
-neither side deletes the folder. When the prototype is retired, the folder holds only
-`config.toml`.
+name likely to clash with other tools. The rules above make sharing the folder harmless:
+there is no file-name overlap and `sy` never deletes the folder.
 
 Everything that `sy` writes often, and everything that matters (outbox, token, machine id),
 lives in the state folder, which nothing else uses.
 
 ### macOS: XDG layout, not `~/Library/Application Support`
 
-An earlier design put macOS state in `~/Library/Application Support/Switchyard`. But Electron's
-user-data folder on macOS is `~/Library/Application Support/switchyard`, and the default
-APFS volume is case-insensitive, so that is the **same folder** as the Electron app's. Putting
-the outbox and the device token inside the desktop app's folder is exactly the clash we want
-to avoid. So on macOS `sy` uses the same `~/.config` / `~/.local/state` / `~/.local/share`
+An earlier design put macOS state in `~/Library/Application Support/Switchyard`. But an Electron
+app's default user-data folder on macOS is `~/Library/Application Support/<name>`, and the
+default APFS volume is case-insensitive, so that would be the **same folder** as an Electron
+app's. Putting the outbox and the device token inside an app's folder is exactly the clash we
+want to avoid. So on macOS `sy` uses the same `~/.config` / `~/.local/state` / `~/.local/share`
 layout as on Linux. Command-line tools commonly do this on macOS (git, gh, fish), it is the
 same on every Unix machine (simpler docs, the same paths on SSH servers), and there is no
-clash: the prototype does not use `~/.config` on macOS, and the desktop app uses its own
-`~/Library/Application Support/switchyard-desktop`.
+clash: the desktop app uses its own `~/Library/Application Support/switchyard-desktop`.
 
 launchd agents still go in `~/Library/LaunchAgents`, and their logs go to the
 state folder.

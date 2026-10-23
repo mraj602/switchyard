@@ -204,7 +204,7 @@ question line, cut to 120 characters.
 | `error_chars` | integer | Length of a PostToolUseFailure error. |
 | `permission_suggestions` | integer | Number of permission suggestions. |
 | `session_crons`, `background_tasks` | integer | Number of items in the Stop/SubagentStop list of that name. |
-| `remote_url` | string | Remote Control session URL, if `sy` found one in the transcript tail (the prototype's `remoteUrlFor`). The hub keeps it only when it starts with `https://claude.ai/` (the board renders it as a link) and drops anything else. |
+| `remote_url` | string | Remote Control session URL, if `sy` found one in the transcript tail. The hub keeps it only when it starts with `https://claude.ai/` (the board renders it as a link) and drops anything else. |
 | `peer_prompt` | boolean | UserPromptSubmit only, present only when `true`: a peer message started this turn. The prompt starts with `<cross-session-message`, or it came within 10 s of a delivery into the session ([peers.md](peers.md) 2.4). Only the prefix is compared; nothing of the prompt is kept. Set whether or not peers are enabled (Claude Code's own `/peers` uses the same wrapper). |
 | `peer_wait` | boolean | Stop only, present only when `true` and `[peers] enabled`: the session waits on another session's reply ([peers.md](peers.md) 6.4). |
 | `hook_ms` | integer | How long `sy hook` took until the outbox write returned. For the 20 ms budget. |
@@ -334,7 +334,7 @@ orgs"), because every account has a personal free organisation and it is not a s
 
 | Field | Type | Required | Meaning |
 | --- | --- | --- | --- |
-| `tab_id` | string | yes | The desktop app's tab id (web seat). Pattern `^(t_[0-9a-f]{16}\|[0-9a-f]{8})$`: `t_` + 16 lowercase hex for a tab made by the desktop app, or the prototype's 8-hex account id, kept unchanged for an imported tab so its web seat continues (desktop.md C1). |
+| `tab_id` | string | yes | The desktop app's tab id (web seat). Pattern `^(t_[0-9a-f]{16}\|[0-9a-f]{8})$`: `t_` + 16 lowercase hex for a tab made by the desktop app, or an 8-hex tab id from earlier versions, kept unchanged so its web seat continues (desktop.md C1). |
 | `org` | object | yes | From `/api/organizations`: `uuid`, `name`, `capabilities`, `rate_limit_tier`, `billing_type`, `raven_type`, kept as returned for those keys. |
 | `account` | object | no | From `/api/account`: `uuid`, `email_address`, `full_name`, `display_name`. Only these keys. |
 | `active` | boolean | no | True if this org is the tab's last active org. |
@@ -372,9 +372,9 @@ every key.)
 ### 4.4 `token_rows`
 
 Written by `sy scan` after each Stop for that session (debounced) and on the timer. One API
-response per row, keyed by the API message id, exactly as the prototype's `tokens` table.
+response per row, keyed by the API message id, one row per message id.
 A response can appear in several records with growing counts (streaming snapshots); the hub
-merges rows by keeping the largest value of each counter (the prototype's `tokenUpsert`).
+merges rows by keeping the largest value of each counter (a token upsert).
 
 - `slot` is set when the scanned transcripts folder belongs to one slot; omitted when
   `projects/` is shared. `seat` is never set: rows are attributed through their session.

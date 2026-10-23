@@ -41,19 +41,11 @@ test('a relative SY_APP_USER_DATA is refused', () => {
   assert.throws(() => create({ app, path: P, env: { SY_APP_USER_DATA: 'rel/dir' }, testHooks }), /absolute/);
 });
 
-test('a switchyard user-data folder is refused, in any case', () => {
-  for (const dir of ['/home/u/.config/switchyard', '/x/Switchyard', '/x/SWITCHYARD/', 'C:\\Users\\u\\AppData\\Roaming\\SwitchYard']) {
-    assert.throws(() => checkUserData(dir), /prototype/, dir);
-  }
-  for (const env of [{ SY_APP_USER_DATA: '/tmp/Switchyard' }, { SY_APP_USER_DATA: '/home/u/.config/switchyard/inner' }]) {
-    const fake = fakeElectron({ appData: '/home/u/.config' });
-    assert.throws(() => create({ app: fake.electron.app, path: P, env, testHooks }), /prototype/);
-    assert.equal(fake.callsOf('app.setPath').length, 0, 'nothing is set when refused');
-  }
-  assert.throws(() => checkUserData('/home/u/.CONFIG/Switchyard/x', { path: P, appData: '/home/u/.config' }), /inside/);
-  assert.doesNotThrow(() => checkUserData('/home/u/.config/switchyard-desktop', { path: P, appData: '/home/u/.config' }));
-  assert.doesNotThrow(() => checkUserData('/home/u/projects/switchyard/tmp/ud', { path: P, appData: '/home/u/.config' }));
+test('a missing or relative user-data folder is refused, an absolute one accepted', () => {
+  assert.throws(() => checkUserData(''), /missing/);
   assert.throws(() => checkUserData('relative', { path: P }), /absolute/);
+  assert.doesNotThrow(() => checkUserData('/home/u/.config/switchyard-desktop', { path: P }));
+  assert.doesNotThrow(() => checkUserData('C:\\Users\\u\\AppData\\Roaming\\switchyard-desktop'));
 });
 
 test('Electron default (productName Switchyard) is never kept', () => {

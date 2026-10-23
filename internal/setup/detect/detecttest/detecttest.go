@@ -96,14 +96,14 @@ func Fresh(t testing.TB) *Home {
 var SharedItems = []string{"settings.json", "CLAUDE.md", "commands", "skills", "plugins", "projects", "history.jsonl", "plans"}
 
 // Laptop reproduces setup.md 11: seven folders, six of them with eight links to ~/.claude,
-// a status line, three prototype hooks, three plugins off, shell-function launchers calling
+// a status line, three hook entries of another tool, three plugins off, shell-function launchers calling
 // ~/bin/claude-launch, a hand-made MCP sync script, `.claude-api-env` (a file) and leftover
 // `.claude.json.tmp.*` files.
 func Laptop(t testing.TB) *Home {
 	h := New(t)
 	b := h.B
-	hook := h.Abs(".claude/switchyard-hook.sh")
-	b.File(".claude/switchyard-hook.sh", "#!/bin/sh\n", 0o755)
+	hook := h.Abs(".claude/notify-hook.sh")
+	b.File(".claude/notify-hook.sh", "#!/bin/sh\n", 0o755)
 	b.File(".claude/statusline-command.sh", "#!/bin/sh\necho line\n", 0o755)
 	settings := fmt.Sprintf(`{
   "statusLine": {
@@ -119,9 +119,9 @@ func Laptop(t testing.TB) *Home {
     "market": {"source": {"source": "github", "repo": "someone/market"}}
   },
   "hooks": {
-    "SessionStart": [{"hooks": [{"type": "command", "command": "bash %[2]s # switchyard-hook"}]}],
-    "Stop": [{"hooks": [{"type": "command", "command": "bash %[2]s # switchyard-hook"}]}],
-    "PostToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "bash %[2]s # switchyard-hook"}]}]
+    "SessionStart": [{"hooks": [{"type": "command", "command": "bash %[2]s # notify-hook"}]}],
+    "Stop": [{"hooks": [{"type": "command", "command": "bash %[2]s # notify-hook"}]}],
+    "PostToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "bash %[2]s # notify-hook"}]}]
   }
 }
 `, jsonEsc(h.Abs(".claude/statusline-command.sh")), jsonEsc(hook))

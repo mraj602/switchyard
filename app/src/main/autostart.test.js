@@ -87,20 +87,6 @@ test('linux: set(true) writes both entries, get() reads, set(false) removes only
   await a.set(false); // idempotent
 });
 
-test('no path written contains switchyard.desktop (the prototype entry is never touched)', async () => {
-  const { home, a } = await setup();
-  await fsp.mkdir(path.join(home, '.config/autostart'), { recursive: true });
-  const proto = path.join(home, '.config/autostart/switchyard.desktop');
-  await fsp.writeFile(proto, 'prototype');
-  await a.set(true);
-  await a.set(false);
-  assert.equal(await fsp.readFile(proto, 'utf8'), 'prototype');
-  const all = [];
-  for (const d of ['.config/autostart', '.local/share/applications']) all.push(...(await fsp.readdir(path.join(home, d))));
-  assert.ok(all.every((n) => n === 'switchyard.desktop' || n === 'switchyard-desktop.desktop'));
-  for (const p of Object.values(a.files())) assert.ok(!p.endsWith('/switchyard.desktop'));
-});
-
 test('darwin and win32: a login item with --background, nothing written to disk', async () => {
   for (const platform of ['darwin', 'win32']) {
     const { home, fake, a } = await setup({ platform });

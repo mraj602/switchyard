@@ -312,8 +312,8 @@ export function create(deps) {
       }
       await removePartitionFolder(id, storagePath);
     } else {
-      // No view (a tab imported before this restart, not made yet): its folder may still
-      // exist (the importer copied the prototype's partition there). Remove it all the same;
+      // No view (a tab not made yet in this run): its folder may still
+      // exist from an earlier run. Remove it all the same;
       // the folder is derived from the id only, so the same path guard holds.
       await removePartitionFolder(id, null);
     }

@@ -1,7 +1,6 @@
 # Analytics
 
-Status: spec v1. The prototype's analytics (`core/analytics.js`, the desktop Analytics tab)
-moved to the hub. Implemented in `internal/hub/api/analytics.go` and
+Status: spec v1. The analytics reports live on the hub. Implemented in `internal/hub/api/analytics.go` and
 `internal/hub/store/analytics.go`; shown by the web board (`webui/static/views/analytics.js`,
 `#/more/analytics`) and the phone app (More, Analytics). The shapes are in
 [api.yaml](api.yaml) (`GET /v1/analytics/{report}`, scope `read`).
@@ -69,8 +68,8 @@ split by counter and no usage in dollars. Every other day has `source: "transcri
 
 ## 5. Not here
 
-The prototype also had pace and "which account next" (that is the overview's `pace` and the
-Accounts screen), per-day limit consumption, credits, surface splits and hook activity. They
+Pace and "which account next" are the overview's `pace` and the
+Accounts screen, not a report here. Per-day limit consumption, credits, surface splits and hook activity. They
 are not in these reports.
 
 ## 6. The `sy analytics` command

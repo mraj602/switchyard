@@ -1,8 +1,8 @@
 // Helpers for the Electron smoke tests (docs/spec/desktop.md) and the packaged e2e.
 //
 // Every run lives in a temp folder: HOME, SY_HOME, the XDG folders, SY_APP_USER_DATA and the
-// D-Bus address all point into it, so nothing touches the real home, the real ~/.claude*, the
-// prototype's folder or the user's services. The hub is a real `sy hub serve` built from this
+// D-Bus address all point into it, so nothing touches the real home, the real ~/.claude* or the
+// user's services. The hub is a real `sy hub serve` built from this
 // repo (SY_BIN, or a `go build` into the temp folder), claude.ai is the fake of
 // test/fakes/claude/, and the app is launched with playwright-core's _electron.
 
@@ -14,7 +14,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { PROTOTYPE_HOOK_PORT } from '../../src/shared/constants.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const APP_DIR = path.resolve(here, '../..');
@@ -39,19 +38,16 @@ export async function waitFor(cond, ms = 15_000, what = 'condition', every = 100
   }
 }
 
-/** A free loopback TCP port, never the prototype's hook port. */
+/** A free loopback TCP port. */
 export async function freePort() {
-  for (;;) {
-    const port = await new Promise((resolve, reject) => {
-      const s = net.createServer();
-      s.once('error', reject);
-      s.listen(0, '127.0.0.1', () => {
-        const p = s.address().port;
-        s.close(() => resolve(p));
-      });
+  return new Promise((resolve, reject) => {
+    const s = net.createServer();
+    s.once('error', reject);
+    s.listen(0, '127.0.0.1', () => {
+      const p = s.address().port;
+      s.close(() => resolve(p));
     });
-    if (port !== PROTOTYPE_HOOK_PORT) return port;
-  }
+  });
 }
 
 /** Where artifacts (screenshots, logs) go: SY_SMOKE_OUT or a folder in the temp root. */

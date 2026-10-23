@@ -170,7 +170,7 @@ func TestEveryOpAndStepRoundTrips(t *testing.T) {
 	if !StepFolders.Local() || StepHub.Local() || StepLogin.Local() {
 		t.Fatal("Local() classifies steps wrongly")
 	}
-	if len(StepOrder) != 11 || !StepTerminal.Local() {
+	if len(StepOrder) != 10 || !StepTerminal.Local() {
 		t.Fatalf("StepOrder = %v", StepOrder)
 	}
 }

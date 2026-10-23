@@ -1,10 +1,9 @@
 # testdata
 
-Realistic, redacted sample data for Switchyard's Go tests (golden files, record round-trips, the
-prototype importer). Captured on 2026-10-12 with **Claude Code 2.1.296**, on Linux, from the Warp terminal.
+Realistic, redacted sample data for Switchyard's Go tests (golden files, record round-trips). Captured on 2026-10-12 with **Claude Code 2.1.296**, on Linux, from the Warp terminal.
 
 Maintainer note: `scripts/fixtures/regenerate.sh` reads the maintainer's real `~/.claude*` folders and
-usage database and spends real Claude usage; contributors should not run it. Run
+spends real Claude usage; contributors should not run it. Run
 `scripts/fixtures/check-redaction.sh` before committing any change here.
 
 Everything here went through `scripts/fixtures/redact.py` (run with `python3 -I`). Do not edit files by
@@ -19,13 +18,13 @@ hand; regenerate them (see the end). Real vs synthetic is stated per file.
 | org uuid | `bbbbbbbb-0000-4000-8000-00000000000N` | yes |
 | display / full name | `Test User N` (all three logins are one person, so they share one fake) | yes |
 | org name | `Org N` | yes |
-| prototype `account_id` (8 hex) / `accounts.label` | `acct000N` / `Account N` | yes |
+| account id (8 hex) / account label | `acct000N` / `Account N` | yes |
 | `/home/<user>`, `-home-<user>-` | `/home/user`, `-home-user-` | yes |
 | hostname | `host-1` (a no-op here: the hostname equals the user name, so the home-path rule wins) | yes |
 | company / area words | `area-a`, `area-b` | yes |
 | `sk-ant-`, `gho_`, `ghp_`, Bearer, JWT, `sessionKey=`, claude.ai `session_...` ids | `[REDACTED]` / `session_REDACTED` | |
 | values under secret-like keys (token, cookie, authorization, signature ...) | `[REDACTED]` | |
-| assistant text, prompts, tool output, thinking (hooks, transcripts, prototype) | first 5 words + `...[truncated]` | |
+| assistant text, prompts, tool output, thinking (hooks, transcripts) | first 5 words + `...[truncated]` | |
 
 Kept as they are: session ids, prompt ids, request ids, tool-use ids, message ids, timestamps, model ids,
 token counts, every usage-response field (unknown fields such as `iguana_necktie` included).
@@ -81,7 +80,7 @@ uses (see `03-question`).
 `cost{...}`, `exceeds_200k_tokens`, `context_window{...}`, `rate_limits{five_hour,seven_day}{used_percentage,resets_at}`,
 `vim`), cross-checked against the fields the user's own `~/.claude/statusline-command.sh` reads.
 `claude -p` never runs the status line, and an interactive capture was refused by the folder-trust prompt, so
-these are not captured. Values are invented. The prototype does not use the status line at all.
+these are not captured. Values are invented.
 Replace with a real capture once a pseudo-terminal capture is possible.
 
 ## auth/ (REAL)
@@ -95,21 +94,15 @@ Replace with a real capture once a pseudo-terminal capture is possible.
 
 ## usage/ (REAL)
 
-claude.ai usage responses, copied from the prototype's `snapshots.raw` column, every field kept (27 top-level keys,
-`iguana_necktie` is an object with `utilization`, `limit_dollars`, `used_dollars`, `remaining_dollars` on the two Max
-accounts; null on Team). `response-NN.json`: the earliest and latest stored poll per account (6 files);
-`index.json` says which prototype account, timestamp and why. No raw `/api/account` or organizations response is stored
-by the prototype (only `org_uuid`, `org_name`, `plan` columns on snapshots), so there is none.
+claude.ai usage responses, every field kept (27 top-level keys, `iguana_necktie` is an object with
+`utilization`, `limit_dollars`, `used_dollars`, `remaining_dollars` on the two Max accounts; null on Team).
+`response-NN.json`: the earliest and latest stored poll per account (6 files); `index.json` says which
+account, timestamp and why. No raw `/api/account` or organizations response was stored, so there is none.
+These files are no longer regenerated: they stay as captured.
 
-## prototype/ (REAL, sampled)
-
-From a COPY of `~/.config/switchyard/usage.db` (+ `-wal`, `-shm`), opened read-only. The original was not touched.
-- `schema.sql`: the prototype's full schema. `counts.txt`: row counts per table at capture time.
-- `<table>.jsonl`, one JSON row per line with the prototype's column names: `snapshots` (the 6 chosen polls, `raw` kept
-  as the original string), `windows` and `breakdown` (rows with the same timestamps as those snapshots),
-  `sessions`, `events`, `tokens`, `session_dirs`, `session_owner`, `limit_hits` (a handful of sessions, one per account,
-  plus one with a limit hit, so joins work), `accounts` and `config_dirs` (all rows), `files`, `kv` (a few rows).
-  `events.raw` is the embedded hook payload as a string; its text is truncated.
+The hub's usage tests have their own golden pair in `internal/hub/usage/testdata/`:
+`snapshots.jsonl` (raw usage responses, one per line, `raw` kept as the original string) and
+`windows.jsonl` (the windows expected from those responses). Also kept as captured.
 
 ## transcripts/ (REAL, truncated)
 
@@ -133,6 +126,6 @@ scripts/fixtures/regenerate.sh            # runs capture-runs.sh (spends a littl
 scripts/fixtures/regenerate.sh <capdir>   # reuse cap1..cap8.jsonl from an earlier capture-runs.sh
 scripts/fixtures/check-redaction.sh       # zero-hit grep for real identities, tokens and company words
 ```
-Scripts: `collect-agents.sh` (agents/ only), `capture-hook.sh` (the hook), `capture-runs.sh` (the 8 runs), `collect-hooks.py`, `extract-prototype.py`,
+Scripts: `collect-agents.sh` (agents/ only), `capture-hook.sh` (the hook), `capture-runs.sh` (the 8 runs), `collect-hooks.py`,
 `make-statusline.py`, `redact.py`, `check-redaction.sh`. Raw (unredacted) data only ever lives in a temp dir that is
 deleted on exit. `regenerate.sh` replaces everything here except this README; update the README if the outputs change.

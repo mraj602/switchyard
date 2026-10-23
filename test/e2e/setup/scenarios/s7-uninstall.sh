@@ -26,7 +26,7 @@ assert_eq "status line is the original string" "$(jget "$SY_E2E_TMP/settings.bef
 assert_eq "no switchyard plugin key" 0 "$(grep -c 'switchyard@sy-local' "$S")"
 assert_eq "no sy-local marketplace" 0 "$(grep -c '"sy-local"' "$S")"
 assert_eq "the other plugin keys and marketplaces are intact" "$(jget "$SY_E2E_TMP/settings.before.json" '[d["enabledPlugins"], d["extraKnownMarketplaces"]]')" "$(jget "$S" '[d["enabledPlugins"], d["extraKnownMarketplaces"]]')"
-assert_eq "prototype hooks intact" "$(jget "$SY_E2E_TMP/settings.before.json" 'd["hooks"]')" "$(jget "$S" 'd["hooks"]')"
+assert_eq "other hooks intact" "$(jget "$SY_E2E_TMP/settings.before.json" 'd["hooks"]')" "$(jget "$S" 'd["hooks"]')"
 assert_eq "settings.json equals the original (as JSON)" "$(jget "$SY_E2E_TMP/settings.before.json" 'd')" "$(jget "$S" 'd')"
 links_of "$H" > "$SY_E2E_TMP/links.after"
 cmp -s "$SY_E2E_TMP/links.before" "$SY_E2E_TMP/links.after" && pass "all 48 links intact" || fail "links changed by uninstall"
