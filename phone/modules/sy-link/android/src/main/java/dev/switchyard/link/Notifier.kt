@@ -54,6 +54,18 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
   /** The brand accent: the icon gold. */
   private fun alertColor(): Int = BRAND_ACCENT
 
+  /**
+   * What the lock screen shows instead of the alert: no session, project or machine names. The
+   * alert itself is VISIBILITY_PRIVATE, so Android swaps in this one while the phone is locked
+   * (and the person's setting for sensitive notifications asks to hide them).
+   */
+  private fun publicVersion(channel: String, iconKind: IconKind): Notification =
+    NotificationCompat.Builder(ctx, channel)
+      .setSmallIcon(icon(iconKind)).setColor(color(iconKind))
+      .setContentTitle("Switchyard")
+      .setContentText(PUBLIC_TEXT)
+      .build()
+
   private fun flags() = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
 
   /** Tap and Open: the app at the payload's route, or the Claude link when the tap rule says so. */
@@ -72,11 +84,7 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
    * package) means the tap always starts the app, never a chooser or a fall back to the app's
    * notification settings.
    */
-  private fun appIntent(link: String): Intent {
-    val i = Intent(Intent.ACTION_VIEW, Uri.parse(link)).setPackage(ctx.packageName)
-    ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.component?.let { i.setComponent(it) }
-    return i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-  }
+  private fun appIntent(link: String): Intent = WidgetOpen.appIntent(ctx, link)
 
   private fun appPending(code: Int, link: String): PendingIntent =
     PendingIntent.getActivity(ctx, code, appIntent(link), flags())
@@ -104,6 +112,8 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
       .setAutoCancel(true)
       .setContentIntent(openIntent(n))
       .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+      .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+      .setPublicVersion(publicVersion(n.channel, n.iconKind))
     NotifyIcons.large(n.iconKind)?.let { b.setLargeIcon(it) }
     n.whenMs?.let { b.setWhen(it).setShowWhen(true) }
     if (sameHub && (n.snooze != null || n.seen != null)) {
@@ -162,6 +172,8 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
       .setPriority(NotificationCompat.PRIORITY_MIN)
       .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
       .setContentIntent(open)
+      .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+      .setPublicVersion(publicVersion(Channels.CONNECTION, IconKind.CONNECTION))
       .addAction(0, "Settings", settings)
       .build()
   }
@@ -172,6 +184,8 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
     notify(
       NotifyIds.forTag("sy-link-stopped"),
       NotificationCompat.Builder(ctx, Channels.NEEDS_YOU).setSmallIcon(icon(IconKind.CONNECTION)).setColor(alertColor()).setContentTitle("Switchyard").setContentText(why)
+        .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+        .setPublicVersion(publicVersion(Channels.NEEDS_YOU, IconKind.CONNECTION))
         .setContentIntent(appPending(NotifyIds.forTag("sy-link-stopped"), Payloads.CONNECTION_TAP))
         .setAutoCancel(true).build(),
     )
@@ -197,6 +211,9 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
   }
 
   companion object {
+    /** The lock-screen text of every notification: no names, nothing to learn from it. */
+    const val PUBLIC_TEXT = "Open Switchyard to see this"
+
     /** #E8B04B, the gold of phone/assets/src/icon.svg (app.config.ts BRAND_ACCENT). */
     const val BRAND_ACCENT: Int = 0xFFE8B04B.toInt()
 
