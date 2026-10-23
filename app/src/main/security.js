@@ -214,6 +214,13 @@ export function create(deps) {
     applied = true;
     electron.app.enableSandbox();
     electron.app.on('web-contents-created', (_event, wc) => attach(wc));
+    // A site that asks for a client certificate gets none: without a handler Chromium picks the
+    // only matching certificate in the OS store silently. (No certificate-error handler is
+    // installed either, so a bad server certificate always fails.)
+    electron.app.on('select-client-certificate', (event, _wc, _url, _list, callback) => {
+      event.preventDefault();
+      callback();
+    });
   }
 
   function webPreferences(kind, extra = {}) {

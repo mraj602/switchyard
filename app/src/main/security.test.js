@@ -282,10 +282,16 @@ test('downloads: tabs keep the default dialog, the hub and the shell cancel', ()
   assert.doesNotThrow(() => sec.guardSession(e.session.defaultSession, 'shell'));
 });
 
-test('no certificate-error handler is installed', () => {
-  const { e } = setup();
+test('no certificate-error handler is installed, and no client certificate is ever offered', () => {
+  const { sec, e } = setup();
+  sec.applyGlobal();
   assert.equal(e.app.listenerCount('certificate-error'), 0);
-  assert.equal(e.app.listenerCount('select-client-certificate'), 0);
+  assert.equal(e.app.listenerCount('select-client-certificate'), 1);
+  let prevented = false;
+  const args = [];
+  e.app.emit('select-client-certificate', { preventDefault: () => (prevented = true) }, {}, 'https://x', [{ subjectName: 'me' }], (...a) => args.push(a));
+  assert.equal(prevented, true);
+  assert.deepEqual(args, [[]]);
 });
 
 test('openExternalSafe allows https and mailto only', async () => {
