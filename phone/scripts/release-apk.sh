@@ -81,6 +81,12 @@ bt="$(ls -d "$ANDROID_HOME"/build-tools/*/ 2>/dev/null | sort -V | tail -n 1 || 
 signed="$("${bt}apksigner" verify --print-certs "$built")" || die "apksigner refused the APK"
 apk_cert="$(printf '%s\n' "$signed" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1)"
 [ "$apk_cert" = "$cert_sha256" ] || die "the APK is not signed with the keystore's key (apksigner says ${apk_cert:-nothing})"
+# It must be the release application: the release package id (not the .dev one), no cleartext
+# traffic, not debuggable, no backup. Needs aapt2; the release is refused without it.
+[ -x "${bt}aapt2" ] || die "aapt2 not found in \$ANDROID_HOME/build-tools (needed to check the manifest)"
+want_id="${SY_APP_ID:-io.github.mraj602.switchyard}"
+"${bt}aapt2" dump xmltree --file AndroidManifest.xml "$built" | node scripts/check-apk-manifest.mjs "$want_id" \
+  || die "the APK is not a release build of $want_id (see above)"
 # No proprietary Google code in what ships (phone.md P13).
 node scripts/check-no-google.mjs apk "$built" || die "the APK holds proprietary Google classes"
 

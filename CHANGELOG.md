@@ -12,6 +12,10 @@ All notable changes to Switchyard are recorded here. The format follows
   on). A tab signed in by an earlier unpacked build may ask you to sign in again once.
 - The hub's Android app mirror pins the release signing certificate and checks the APK itself,
   not only the manifest. It mirrors nothing until the maintainer sets the pin.
+- Android: no app data in cloud backup or device transfer, lock-screen notifications show only a
+  generic text, widget taps open the app with an explicit intent, and the phone no longer sends
+  its token to the `moved_to` address in an unsigned `/health` reply (it asks you to pair again).
+  `make phone-apk-release` refuses a wrong package id, cleartext traffic or a debuggable build.
 - Desktop: sites that ask for a client certificate get none.
 - The web board's "Open in app" link is now an Android intent pinned to the Switchyard package,
   so no other app can receive the pairing secret.

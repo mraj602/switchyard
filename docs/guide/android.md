@@ -233,7 +233,8 @@ Alerts arrive on these channels, which you can tune in Android's own settings: N
 (high), Limits, Machines (low), Test, and Connection (the permanent note, minimal). Each alert
 has **Open**, **Snooze** (15 minutes) and **Seen**; Snooze and Seen work without opening the
 app and clear the alert on other devices too. Turn on **Private pushes** in Settings to keep
-project and account names off the lock screen. Rules, quiet hours and triggers are in
+project and account names off the lock screen. Whatever that setting says, a locked phone
+shows only "Open Switchyard to see this" for every alert; the details show after you unlock. Rules, quiet hours and triggers are in
 [alerts.md](alerts.md).
 
 ## Widgets

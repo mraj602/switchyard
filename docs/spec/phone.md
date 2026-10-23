@@ -361,6 +361,10 @@ dropped too. Each notification's Snooze or Seen runs once: the `sy-link` module'
 the response listener share the AsyncStorage key `sy.acted.v1` (`"<id>|<action>"`, the last
 50, never a token).
 
+**Lock screen.** Every notification the module posts is `VISIBILITY_PRIVATE` with a public
+version that reads "Switchyard" and "Open Switchyard to see this", so a locked phone shows no
+project, account or machine name (the persistent connection note and the "stopped" note too).
+
 **Native taps.** The notifications the `sy-link` module posts itself carry their own content
 intent: an `ACTION_VIEW` of `Payloads.appLink(url)` (the payload's route as `switchyard://…`, Now
 when it has none or it is refused) aimed at the app's launcher activity by component name, or
@@ -551,7 +555,7 @@ then gets the 401 that shows Pair, P3).
     "not started"). The choice is per widget id, key `sy.widget.window.v1`
     ({widgetId: "5 h"|"7 d"}, dropped on `WIDGET_DELETED`). A segment's `clickAction` is
     `SY_TOGGLE_WINDOW` with `{window}`: the task handler gets `WIDGET_CLICK`, stores it and calls
-    `renderWidget` with no app start; any other tap is still an `OPEN_URI`.
+    `renderWidget` with no app start; any other tap is an `OPEN_URI`, opened by an explicit intent (P13).
   - **Previews.** `app.config.ts` gives each widget `previewImage` (`assets/widget-previews/
     sy-*.png`, 2× PNG, under 40 KB each). They are rendered from an HTML replica of each
     widget's layout with sample data at the widget's dp size
@@ -631,7 +635,14 @@ then gets the 401 that shows Pair, P3).
   `./plugins/with-sy-native.js`.
 - `with-sy-native.js` (ours) sets:
   - iOS `NSSupportsLiveActivities: true`;
-  - Android `allowBackup="false"`;
+  - Android `allowBackup="false"`, plus `dataExtractionRules` and `fullBackupContent`
+    (`res/xml/sy_data_extraction_rules.xml`, `sy_backup_rules.xml`) that exclude every backup
+    domain from cloud backup and from device-to-device transfer;
+  - the widget providers that `react-native-android-widget` writes get an `onReceive` that hands
+    an `OPEN_URI` tap to `dev.switchyard.link.WidgetOpen` first, which starts the app's own
+    launcher activity by component name, for `switchyard://` links only (the library's own
+    tap is an implicit `ACTION_VIEW` any app with that scheme could answer). This plugin is
+    listed before the widget plugin in `app.config.ts` so it runs last on those files;
   - removes `RECORD_AUDIO` and `SYSTEM_ALERT_WINDOW` if a library adds them;
   - `usesCleartextTraffic` only in development builds;
   - Android Gradle: every `androidx.work` artifact is forced to 2.8.1 in `app/build.gradle`
@@ -692,6 +703,10 @@ profiles, no `extra.eas.projectId`, no `googleServicesFile` and no push credenti
   checked against the built APK with `apksigner verify --print-certs`) is printed by the make
   target and goes into `manifest.json` as `cert_sha256`. No `make` target creates a keystore;
   `phone/README.md` documents the `keytool` command.
+- **Release gate:** after the build, `phone-apk-release` runs `aapt2 dump xmltree` on the APK and
+  `scripts/check-apk-manifest.mjs`, and stops when the package id is not
+  `io.github.mraj602.switchyard` (or `SY_APP_ID`), cleartext traffic is allowed, the APK is
+  debuggable, or `allowBackup` is not `false`. It also stops when `aapt2` is missing.
 - **Version:** `app.config.ts` sets Android's `versionCode` (the manifest's `build`) to
   `MAJOR*10000 + MINOR*100 + PATCH` of `version`, so it only rises with the version.
 - **Release:** a GitHub release tagged `phone-vX.Y.Z` with the APK, `SHA256SUMS` and
