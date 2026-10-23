@@ -559,6 +559,25 @@ Everything else is accepted and stored raw, including records with an unknown `k
 higher `v`, or typed fields the hub cannot parse (those get `typed = 0` and an
 `type_error` note in the `record` row, and are retried on replay).
 
+Only a device bound to a machine may write records: a `write` token with no machine id gets
+`403` (`code: machine_mismatch`) for the whole batch and nothing is stored.
+
+### 5.1 Sessions belong to one machine
+
+A session belongs to the machine whose record first named it (`session.machine_id`). A
+record never changes another machine's session, so a stolen machine or desktop token cannot
+end, rename, re-account or alert on sessions of other machines:
+
+- A `hook_event` for another machine's session is stored but not applied: `typed = 0` with
+  `type_error` "session belongs to another machine". No hook event row, no fold, no alert.
+- A `session_list` item, `token_rows` session fact, row or limit hit, or a `limit_sample`
+  session patch for another machine's session is skipped; the rest of the record applies.
+- A `direct_push` for another machine's session is stored and ignored (4.9).
+
+Each skip is logged by the hub (`ingest: <kind> record=<id> from machine <m> names session
+<s> of machine <owner>: not applied`). A session the hub has with no machine yet is taken by
+the first machine that names it.
+
 ## 6. Round trip
 
 For every fixture in `testdata/`, the record built from it, encoded and decoded again, must

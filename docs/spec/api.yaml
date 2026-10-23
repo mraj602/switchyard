@@ -135,6 +135,8 @@ paths:
         another machine), the whole request is answered `403` with `code: machine_mismatch`
         and nothing is stored. The client keeps its outbox and cursor: the token is wrong,
         not the records. A batch that mixes mismatched and other records gets the normal `200`.
+        A token bound to no machine gets the same `403` for any batch (record.md 5). Records
+        about another machine's session are stored but not applied (record.md 5.1).
       x-scopes: [write]
       parameters:
         - name: Content-Encoding

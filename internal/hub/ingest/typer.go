@@ -252,7 +252,29 @@ func project(cwd string) string {
 	return path.Base(strings.TrimRight(cwd, "/"))
 }
 
-// ensureSession creates the session from its first record, or fills what it lacks.
+// errForeignSession is the type_error of a record that names a session of another machine
+// (record.md 5.1): a machine's token speaks only for that machine's sessions.
+var errForeignSession = errors.New("session belongs to another machine")
+
+// foreign reports whether session id exists on the hub with a machine other than the
+// record's (record.md 5.1), and logs it when it does. A session without a machine yet is not
+// foreign: the first machine to name it takes it (ensureSession).
+func (t *typer) foreign(c *ctx, id string) (bool, error) {
+	s, ok, err := t.tx.GetSession(id)
+	if err != nil || !ok || s.MachineID == "" || s.MachineID == c.r.Machine {
+		return false, err
+	}
+	t.noteForeign(c, id, s.MachineID)
+	return true, nil
+}
+
+func (t *typer) noteForeign(c *ctx, id, owner string) {
+	t.logs = append(t.logs, fmt.Sprintf("ingest: %s record=%s from machine %s names session %s of machine %s: not applied",
+		c.r.Kind, c.r.ID, c.r.Machine, id, owner))
+}
+
+// ensureSession creates the session from its first record, or fills what it lacks. A
+// session of another machine is refused with errForeignSession.
 func (t *typer) ensureSession(c *ctx, id string, info store.SessionInfo) error {
 	if !sessionIDPattern.MatchString(id) {
 		return fmt.Errorf("session id %q is not a Claude Code session id", id)
@@ -261,6 +283,10 @@ func (t *typer) ensureSession(c *ctx, id string, info store.SessionInfo) error {
 	s, ok, err := t.tx.GetSession(id)
 	if err != nil {
 		return err
+	}
+	if ok && s.MachineID != "" && s.MachineID != c.r.Machine {
+		t.noteForeign(c, id, s.MachineID)
+		return fmt.Errorf("%w (session %s)", errForeignSession, id)
 	}
 	if !ok {
 		if err := t.touch(id, true); err != nil {
@@ -388,6 +414,11 @@ func (t *typer) sessionList(c *ctx) error {
 		if json.Unmarshal(raw, &it) != nil || it.SessionID == "" {
 			continue
 		}
+		if f, err := t.foreign(c, it.SessionID); err != nil {
+			return err
+		} else if f {
+			continue // another machine's session: not this list's to report
+		}
 		listed[it.SessionID] = true
 		started := usage.ParseTime(it.StartedAt).UnixMilli()
 		if started <= 0 || started > c.at {
@@ -449,6 +480,12 @@ func (t *typer) limitSample(c *ctx) error {
 		s, ok, err := t.tx.GetSession(p.SessionID)
 		if err != nil {
 			return err
+		}
+		if ok && s.MachineID != "" && s.MachineID != c.r.Machine {
+			// Another machine's session: its name, model and context stay as they are, and
+			// the samples below are not tied to it (record.md 5.1).
+			t.noteForeign(c, p.SessionID, s.MachineID)
+			ok, p.SessionID = false, ""
 		}
 		if ok {
 			info := store.SessionInfo{Name: p.SessionName, ContextPct: p.ContextWindow.UsedPercentage}
@@ -600,6 +637,11 @@ func (t *typer) tokenRows(c *ctx) error {
 		if json.Unmarshal(raw, &s) != nil || s.SessionID == "" {
 			continue
 		}
+		if f, err := t.foreign(c, s.SessionID); err != nil {
+			return err
+		} else if f {
+			continue
+		}
 		sc := *c
 		if s.OwnerAccount != "" && s.OwnerOrg != "" {
 			id, err := t.tx.UpsertSeat(store.SeatKey{Account: s.OwnerAccount, Org: s.OwnerOrg}, c.at)
@@ -614,6 +656,16 @@ func (t *typer) tokenRows(c *ctx) error {
 			return err
 		}
 		facts = append(facts, s.SessionID)
+	}
+	// Rows and limit hits of another machine's session are skipped (record.md 5.1).
+	other := map[string]bool{}
+	isOther := func(sid string) (bool, error) {
+		if f, ok := other[sid]; ok {
+			return f, nil
+		}
+		f, err := t.foreign(c, sid)
+		other[sid] = f
+		return f, err
 	}
 	seats := map[string]string{}
 	seatOf := func(sid string) (string, error) {
@@ -631,6 +683,12 @@ func (t *typer) tokenRows(c *ctx) error {
 		ts, err := time.Parse(time.RFC3339Nano, row.TS)
 		if err != nil {
 			return fmt.Errorf("rows[%d]: bad ts %q", i, row.TS)
+		}
+		if f, err := isOther(row.SessionID); err != nil {
+			return err
+		} else if f {
+			delete(ext, row.SessionID)
+			continue
 		}
 		seat, err := seatOf(row.SessionID)
 		if err != nil {
@@ -666,6 +724,11 @@ func (t *typer) tokenRows(c *ctx) error {
 		}
 		ts := msOf(h.TS)
 		if ts == 0 {
+			continue
+		}
+		if f, err := isOther(h.SessionID); err != nil {
+			return err
+		} else if f {
 			continue
 		}
 		seat, err := seatOf(h.SessionID)

@@ -138,6 +138,9 @@ var (
 	// ErrFrozen means the hub is frozen for a move (machines.md 8.1): nothing was stored, the
 	// client keeps its records (503, Retry-After 300).
 	ErrFrozen = errors.New("hub is frozen for a move")
+	// ErrNoMachine means the device is bound to no machine (record.md 5): only a machine-bound
+	// token may write records (403 machine_mismatch, nothing stored).
+	ErrNoMachine = errors.New("this token is bound to no machine")
 )
 
 // FrozenRetryAfter is the Retry-After (seconds) of a frozen hub's 503.
@@ -177,6 +180,9 @@ func (g *Ingester) Ingest(ctx context.Context, dev store.Device, body []byte, ba
 // passes "pull"). It answers ErrFrozen, storing nothing, while hub.frozen is set; the flag is
 // read inside the write transaction, so no batch is acknowledged after the freeze committed.
 func (g *Ingester) IngestWith(ctx context.Context, dev store.Device, body []byte, opt Options) (Reply, error) {
+	if dev.MachineID == "" {
+		return Reply{}, ErrNoMachine
+	}
 	backlog := opt.Backlog
 	var b batch
 	if err := json.Unmarshal(body, &b); err != nil {
@@ -457,6 +463,9 @@ func (g *Ingester) Handler() http.Handler {
 		case errors.Is(err, ErrFrozen):
 			w.Header().Set("Retry-After", strconv.Itoa(FrozenRetryAfter))
 			auth.WriteError(w, http.StatusServiceUnavailable, "unavailable", "hub is frozen for a move")
+			return
+		case errors.Is(err, ErrNoMachine):
+			auth.WriteError(w, http.StatusForbidden, MachineMismatch, err.Error())
 			return
 		case errors.Is(err, ErrTooLarge):
 			auth.WriteError(w, http.StatusRequestEntityTooLarge, "too_large", err.Error())

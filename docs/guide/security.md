@@ -84,13 +84,16 @@ Every device has its own token; the hub stores only its hash and shows the token
 
 | Device | Prefix | Scopes | Can |
 | --- | --- | --- | --- |
-| Machine | `sy_m_` | write | Send records for its own machine id only. Cannot read anything |
+| Machine | `sy_m_` | write | Send records for its own machine id and its own sessions only. Cannot read anything |
 | Desktop app | `sy_d_` | write, read | Send web usage for its machine; read the board |
 | Phone (Android app, web app) | `sy_p_` | read, push | Read; register its own push targets; snooze and mark alerts seen |
 | Browser | `sy_b_` | read, push | As phone, for the web app on a computer |
 | Owner session | `sy_o_` | owner, read, push | Everything: devices, rules, pairing codes, matrix widening. Cookie only, 30 days, renewed when used |
 
-A stolen machine token can add fake records but read nothing. Revoke any device on the board
+A stolen machine token can add fake records for that machine but read nothing. The hub
+ties each session to the machine that first reported it and ignores records from any other
+machine about it, so the token cannot end, rename or raise alerts on other machines' sessions
+([record.md section 5.1](../spec/record.md#51-sessions-belong-to-one-machine)). Revoke any device on the board
 (Devices) or with `sy hub token revoke <id|name>`.
 
 **Pairing codes.** A code from `sy hub pair`, `sy phone pair` or the board's Add phone / Add
@@ -134,7 +137,7 @@ See [peers.md](peers.md) for the owner key steps.
 
 | Attacker has | Can | Cannot |
 | --- | --- | --- |
-| A machine token | Send fake records for that machine | Read anything, pair devices, widen peers |
+| A machine token | Send fake records for that machine and its sessions | Read anything, change other machines' sessions, pair devices, widen peers |
 | A phone or browser token | Read the board, snooze alerts, narrow peers | Change rules or devices, widen peers |
 | A read-only copy of `hub.db` or a backup | Read everything stored there | Forge link frames, notifications, certificates or peer messages (the hub signing key is not in it) |
 | Write access to `hub.db` only | Add or change rows | Mint an owner session, install an owner key (needs both signatures) |
