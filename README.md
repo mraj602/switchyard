@@ -21,7 +21,8 @@ which account still has room. Switchyard gives you one view of all of it, on you
   permission, asked a question, done, failed.
 - **Every account's limits** (5-hour, 7-day, per model) with reset times and history.
 - **Alerts** when a session needs you, on an Android app with its own connection to your hub
-  (no Google push service), as Web Push, through ntfy or as desktop notifications.
+  (no Google push service and no proprietary Google code), as Web Push, through ntfy or as
+  desktop notifications.
 - **Account setup and sharing:** one command labels your Claude Code config folders and makes
   them share settings, skills, plugins and MCP servers. Logins are never touched.
 - **Peers:** Claude Code sessions in your different accounts and machines can message each
