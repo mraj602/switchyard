@@ -7,12 +7,13 @@
 const path = require('node:path');
 
 /**
- * The fuses of C2 by name (FuseV1Options keys). EnableCookieEncryption stays off: existing and
- * imported sign-ins are stored unencrypted (open risk 6).
+ * The fuses of C2 by name (FuseV1Options keys). EnableCookieEncryption is on: the tabs' sign-in
+ * cookies are encrypted on disk with the OS key store. It is one way: a build that has it on
+ * cannot be turned back by a setting, and Chromium migrates older plain cookies on write.
  */
 const FUSES = Object.freeze({
   RunAsNode: false,
-  EnableCookieEncryption: false,
+  EnableCookieEncryption: true,
   EnableNodeOptionsEnvironmentVariable: false,
   EnableNodeCliInspectArguments: false,
   EnableEmbeddedAsarIntegrityValidation: true,

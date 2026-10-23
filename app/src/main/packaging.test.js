@@ -71,7 +71,7 @@ test('after-pack flips exactly the C2 fuses', () => {
   const cfg = afterPack.buildConfig(FuseV1Options, { V1: '1' });
   assert.equal(cfg.version, '1');
   assert.equal(cfg[0], false); // RunAsNode
-  assert.equal(cfg[1], false); // EnableCookieEncryption stays off (open risk 6)
+  assert.equal(cfg[1], true); // EnableCookieEncryption: sign-in cookies are encrypted on disk
   assert.equal(cfg[2], false);
   assert.equal(cfg[3], false);
   assert.equal(cfg[4], true); // asar integrity
