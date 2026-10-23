@@ -116,7 +116,7 @@ sy peers matrix      # the cell now shows the two-way arrow; the version went up
 named by the number `sy peers matrix` prints, by label or by account id.
 
 Then, in a session of account 1, ask Claude: "Use the peers skill to ask the session in
-<account 2> what folder it is in." Claude runs `sy peers list` and `sy peers send`; the other
+\<account 2> what folder it is in." Claude runs `sy peers list` and `sy peers send`; the other
 session sees a cross-session message and answers the same way.
 
 ```mermaid
@@ -148,7 +148,7 @@ sequenceDiagram
     participant H as Hub
     participant WA as sy agent (worker)
     participant C as Session C (worker)
-    A->>AL: sy peers send <handle> "text"
+    A->>AL: sy peers send #lt;handle#gt; "text"
     AL->>AL: matrix, loop guard, limits, secret check
     AL->>H: envelope sealed to the worker, signed by the laptop
     H->>H: matrix check, queue (ciphertext only)

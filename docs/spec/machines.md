@@ -394,7 +394,7 @@ idempotent: rerunning after a failure redoes only what is missing.
 1. **Connect.** `ssh <host> -- uname -sm` through `internal/sshx` with the person's config,
    agent and `known_hosts`. Host keys follow 10.1: at a terminal an unknown key gets
    OpenSSH's own prompt (stdin inherited for this one call); without a terminal
-   `BatchMode=yes`, and a failure prints "ssh <host> once by hand to check and accept its
+   `BatchMode=yes`, and a failure prints "ssh \<host> once by hand to check and accept its
    host key". `Windows_NT` / `MINGW*` / `CYGWIN*` → exit 2 "use install.ps1 on that machine".
 2. **Probe.** If `~/.local/bin/sy` exists and its version is ≥ 0.5, run
    `sy machine probe --json [--hub-url U] [--ports 47830-47849]`; otherwise a POSIX `sh`
@@ -438,7 +438,7 @@ idempotent: rerunning after a failure redoes only what is missing.
    pasted are passed instead. `sy setup --code-stdin` accepts either shape (6 digits with
    optional separators, or 22 base64url characters) and claims with `code` or `secret`
    accordingly. Exit 7 ("Claude Code not found") stops here with "install Claude Code on
-   <host>, then run this again"; the binary stays.
+   \<host>, then run this again"; the binary stays.
 7. **Verify.** `direct`/`forward`: the remote's setup ran `sy connect`, which sent one
    `slot_info` per folder; `sy machine add` then asks the hub (admin channel:
    `sy hub machine show <id> --json`) for `last_seen` within the last minute. `pull`: it runs
@@ -466,7 +466,7 @@ idempotent: rerunning after a failure redoes only what is missing.
     signing guard) and stores the signature with `sy hub keys certify`; elsewhere the summary
     says "run `sy keys certify <device>` on the owner machine". Keys on the revocation list
     are renewed once (`sy keys device --renew`). With no admin channel the step is skipped
-    with "run `sy agent enable` on <host>" (`reg = tofu`, then `sy keys certify`). `pull`
+    with "run `sy agent enable` on \<host>" (`reg = tofu`, then `sy keys certify`). `pull`
     machines have no route to the hub and hold no link, so they get no link keys: peers there
     reach only that machine's own sessions. Failures here do not undo the join; running the
     add again is idempotent (same keys, same pins).
@@ -505,7 +505,7 @@ machine token can never make codes). `--hub-admin`:
 | --- | --- | --- |
 | `local` | In-process against `<data>/hub.db` and `<state>`, as `sy hub pair` does | Merged hub on the operator |
 | a command prefix | The prefix's words followed by `hub …`, e.g. `ssh hub sy` → `ssh hub sy hub pair --kind machine … --json`; `ssh hub docker compose -f /srv/sy/compose.yml exec -T hub sy` for the Docker hub | Hub on another machine the person can SSH to |
-| (none) | Interactive: "Open <hub>/#/more/devices → Add machine, and paste the code here" (echo off); then the code goes to the remote as with `--code-stdin`. `pull` cannot work without a channel and says so. | No SSH to the hub |
+| (none) | Interactive: "Open \<hub>/#/more/devices → Add machine, and paste the code here" (echo off); then the code goes to the remote as with `--code-stdin`. `pull` cannot work without a channel and says so. | No SSH to the hub |
 
 The prefix is split into words like `SY_SSH_COMMAND` (no shell); `sy` itself never interprets
 it beyond appending arguments. Commands used: `sy hub pair --kind machine … --json`,
@@ -845,7 +845,7 @@ sy hub export [--out <file>] [--moved-to <url>] [--no-freeze] [--encrypt] [--pas
      `frozen` at its next batch;
    - the alert engine stops sending (deliveries stay `pending`), so the old and the new hub
      never both push;
-   - `/health` reports `frozen`; the board shows "This hub is frozen: it moved to <url>".
+   - `/health` reports `frozen`; the board shows "This hub is frozen: it moved to \<url>".
      An unparseable `hub.frozen` counts as frozen everywhere (ingest, pulls, `/health`).
    - writes that would change what the snapshot must hold are refused too, with the same
      `503` (`unavailable`, `Retry-After: 300`): pairing claims and owner sign-in, token
@@ -902,7 +902,7 @@ sy hub import <file> [--public-url <url>] [--passphrase-file <f>] [--pull-dir <d
    this binary's newest schema (else "update sy here first").
 3. **Refuse a non-empty hub.** If `<data>/hub.db` exists and has any row in `device`,
    `record`, `machine`, `push_target` or `pull_target`, exit 5 with the counts: "this hub
-   already has data; move <path> away first". There is no `--force`. An existing empty
+   already has data; move \<path> away first". There is no `--force`. An existing empty
    database (a hub started once and never used) is replaced.
 4. In the private work folder, open the unpacked `hub.db` through the store (migrations and
    their pre-migration copy run as usual), clear `hub.frozen`, set `hub.public_url` from

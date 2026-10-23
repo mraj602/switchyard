@@ -282,7 +282,7 @@ sy peers matrix          # numbered grid; note the numbers of the two accounts
    sy peers matrix                    # the cell is now the two-way arrow; version went up
    ```
 
-3. **Send.** In session A: "Ask the session in <account B> what folder it is in." **Pass:** A prints
+3. **Send.** In session A: "Ask the session in \<account B> what folder it is in." **Pass:** A prints
    `delivered to <name>@<label>.<machine>`; B sees a `<cross-session-message>` and answers with
    `sy peers send`; the answer reaches A. Check from a terminal: `sy peers status`,
    `sy peers audit --since 1h` (metadata only, never text).
@@ -349,7 +349,7 @@ Needs T2.3 (app installed and paired) and K1. In the app: Settings → Notificat
    notification arrives with Open, Snooze and Seen; Seen clears it on the phone and on other devices,
    without opening the app.
 5. **Offline replay:** airplane mode, trigger two alerts, turn it off. **Pass:** they arrive in order
-   and the board's delivery log shows "on phone <time>".
+   and the board's delivery log shows "on phone \<time>".
 6. Reboot the phone: the persistent "Connected to hub" notification returns by itself.
 7. **Revoke:** on the board Devices, revoke the phone. **Pass:** the app says it was removed and asks
    to pair again.

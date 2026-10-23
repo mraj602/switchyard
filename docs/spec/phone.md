@@ -154,8 +154,8 @@ optional React 19.3 peers); they are expected and do not fail the install.
 - **Claim:** `POST <origin>/v1/pair/claim` with `{secret | code, name: "<model> · app",
   expect_kind: "phone", cookie: false, client: "app/<version>+<build>"}`. On 200 it keeps
   `{origin, token, device, name}` (P3). The error mapping follows pairing.md 3: 401 →
-  "Invalid or expired code", 409 → "That code is for a <kind>, not a phone", 429 → "Too many
-  tries, wait 10 minutes", network → "Can't reach <host>. Is Tailscale on?"
+  "Invalid or expired code", 409 → "That code is for a \<kind>, not a phone", 429 → "Too many
+  tries, wait 10 minutes", network → "Can't reach \<host>. Is Tailscale on?"
 - **Keys in the claim.** Before claiming, the app calls `SyLink.prepareKeys()` (push.md
   14.3). With `k` from the QR it sends `keys_sealed` (keys.md 7.1); with a typed code, `keys`
   in the clear (never with a QR secret: the hub refuses that). The reply's `hub_key.fp` must
@@ -174,7 +174,7 @@ optional React 19.3 peers); they are expected and do not fail the install.
   Notifications shows it). The refusal deletes the device with `DELETE /v1/devices/self` and
   the new token, then shows the message; nothing is kept.
 - After pairing: `GET /v1/me` (to check it), then the notifications screen (P6), then Now.
-- A second pairing replaces the first, after confirming "Unpair from <host>?". There is one
+- A second pairing replaces the first, after confirming "Unpair from \<host>?". There is one
   hub per app install.
 
 ## P3. Token storage and the hub client
@@ -440,10 +440,10 @@ then gets the 401 that shows Pair, P3).
   backslash.
 - `app/+native-intent.ts` (`redirectSystemPath`) runs every incoming URL through the
   allow-list. A pair link never claims by itself: it opens the Pair screen pre-filled, and
-  the person taps **Pair with <host>**. The link's `u`, `s`, `c` become the route params
+  the person taps **Pair with \<host>**. The link's `u`, `s`, `c` become the route params
   `origin`, `secret`, `code` (`/pair?origin=…&secret=…&code=…`), which the Pair screen reads;
   it shows a confirm card for them and claims only on that tap (and, when already paired,
-  asks "Unpair from <host>?" after it).
+  asks "Unpair from \<host>?" after it).
 - Widgets link to `switchyard://now`, `switchyard://sessions[?filter=working|done]` and
   `switchyard://accounts?seat=<id>`. The Live
   Activity links to `switchyard://accounts?seat=<id>`.
@@ -952,7 +952,7 @@ never by email.
    hidden WebView check when Accounts opens: that would load claude.ai in every profile on each
    visit, and a WebView that has used a profile keeps it "in use" for the rest of the process,
    which would turn every later sign-out into the deferred delete of P17.1. The line therefore
-   carries "as of the tab's last visit, <ago>".
+   carries "as of the tab's last visit, \<ago>".
 4. **Phone tab line** and action:
 
    | State | Line | Action |
@@ -962,7 +962,7 @@ never by email.
    | Signed out | Phone tab: not signed in | **Sign in on this phone** |
    | Signed in, account not read | Phone tab: signed in | **Open claude.ai** |
    | Account = the seat's | Phone tab: signed in, matches this account | **Open claude.ai** |
-   | Account = another seat's | Phone tab: signed in as **<seat>**, not this account | **Fix this tab** |
+   | Account = another seat's | Phone tab: signed in as **\<seat>**, not this account | **Fix this tab** |
    | Account no seat has | Phone tab: signed in as an account no seat has | **Fix this tab** |
 
    No line and no action where tabs are not supported.
@@ -970,11 +970,11 @@ never by email.
    a folder that logged out of this seat, api.yaml): "Claude Code: signed in on **laptop**,
    **worker** · signed out on **x**" (machine names, each once; a machine where it is also
    signed in is not listed as signed out), or "Claude Code: not signed in on any machine".
-6. **Fix this tab**, a bottom sheet: "<seat>'s tab is signed in as <other>",
+6. **Fix this tab**, a bottom sheet: "\<seat>'s tab is signed in as \<other>",
    the account-id note, the two rows, then:
-   - **Sign out here and sign in as <seat>**: `deleteProfile(seat)`, forget the memo, open the
+   - **Sign out here and sign in as \<seat>**: `deleteProfile(seat)`, forget the memo, open the
      tab at `https://claude.ai/login`.
-   - **Use this tab for <other> instead**, only when the other seat has no tab on this phone:
+   - **Use this tab for \<other> instead**, only when the other seat has no tab on this phone:
      `moveProfile(seat, other)` and the memo moves with it. Not offered for an account no seat
      has.
    - The note: 'Switchyard asks claude.ai only "which account is this?" inside the tab. It never

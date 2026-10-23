@@ -91,9 +91,9 @@ Rules, all in Go and table-tested:
 
 - **States and words.**
   - `asked` with `detail = question` reads "asked", and `line2` is the question line (states.md 4).
-  - Other `asked` details read "asked · <tool or dialog>".
+  - Other `asked` details read "asked · \<tool or dialog>".
   - `needs_permission` reads "perm", or "perm · Bash" when the last PermissionRequest names a tool.
-  - `failed` with `rate_limit` reads "limit · <reset time of that seat's 5h window>". Other errors show the error word.
+  - `failed` with `rate_limit` reads "limit · \<reset time of that seat's 5h window>". Other errors show the error word.
   - `working` shows its age ("40s", "2m").
   - `done` reads "done", or "new" for `detail = started`.
   - `ended` and `gone` rows appear only with the `e` toggle (`include_ended`, 2 days).

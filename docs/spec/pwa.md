@@ -86,7 +86,7 @@ Hash routes:
 | Route | Screen | Notes |
 | --- | --- | --- |
 | `#/` | Now (`PhoneNow`) | Rows get **Seen** and **Snooze** (swipe left/right on touch; two buttons in a row menu for keyboard and screen readers); seen rows dimmed; alert status ("push in 40 s", "pushed 14:04", "snoozed until 14:20"); offline banner (4) |
-| `#/sessions`, `?filter=needs_you|working|done|all`, `?by=machine` | Sessions (`PhoneSessions`) | Filter chips and "By machine" grouping as drawn |
+| `#/sessions`, `?filter=needs_you\|working\|done\|all`, `?by=machine` | Sessions (`PhoneSessions`) | Filter chips and "By machine" grouping as drawn |
 | `#/sessions/<id>?alert=<al>` | Session (`PhoneSession`) | **Open in Claude** (`remote_url`, with the wrong-account note), **Copy resume command**, **Snooze 15 min** (alert), state history. The heading (and the Now and Sessions rows) is the folder, then ` · <title or name>` unless that only repeats the folder ("infra", not "infra · infra") |
 | `#/accounts?seat=<id>` | Accounts (`PhoneAccounts`) | "Most room right now" line, then one compact row per account (3.0a); `seat` opens, scrolls to and highlights its row |
 | `#/machines?machine=<id>` | Machines | Under More on phones; stays in the desktop sidebar |
@@ -168,7 +168,7 @@ The desktop app's Hub tab shows this same page.
   resets 15:48" (expanded: "resets in 2 h 10 min (15:48)").
 - **Needs a look**: a line only when something does. Priority: near the limit (runaway pace on 5 h:
   "Near the 5-hour limit: full by 15:48"; or 7 d at 90% or more: "7-day limit nearly used, resets
-  Sun 09:00") > **Signed out on <machine>** (`Seat.signed_out`, api.yaml; a machine where the
+  Sun 09:00") > **Signed out on \<machine>** (`Seat.signed_out`, api.yaml; a machine where the
   account is also signed in is not listed) > other (claude.ai usage reading stopped). More than one
   shows "+N".
 - **Expand in place**: a click on the row, or its chevron button (`aria-expanded`), opens the row
@@ -347,7 +347,7 @@ same VAPID key and `POST /v1/push/targets`.
 
 Settings → Notifications shows one of: "Not supported here", "Install first" (iOS, not
 standalone), "Off" with **Turn on**, "Blocked in system settings" (permission `denied`), or
-"On · <n> targets" with **Send test push**.
+"On · \<n> targets" with **Send test push**.
 
 **Turn on** (always inside a tap handler, required by iOS):
 

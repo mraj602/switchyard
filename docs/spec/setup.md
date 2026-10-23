@@ -239,7 +239,7 @@ and a person is at the terminal, the step asks "Pair a phone now? [y/N]" and on 
 phone pair` (a phone needs an https address; without a `hub.public_url` it prints "run
 `tailscale serve --bg <port>`, then `sy phone pair --url https://<name>.ts.net`" (`<port>` from `--listen`, default 8787) instead of
 failing). With `--yes`, `--json` or no terminal it only prints "run `sy phone pair` on this
-machine" and never blocks. A remote hub prints "open <url> → Settings → Add phone, or run
+machine" and never blocks. A remote hub prints "open \<url> → Settings → Add phone, or run
 `sy phone pair` on the hub"; with no hub, "later (connect a hub first, then `sy phone
 pair`)". `--json` is unchanged. Then the summary: one line per applied change with `+`, `~`
 or `−` (the screen's wording), the backup id, then `sy doctor` (the checks in 9.4) and "N

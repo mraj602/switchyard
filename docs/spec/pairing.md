@@ -95,7 +95,7 @@ The phone must be given the address it will use, which the hub cannot always see
 3. For a code made through the API: the origin the board itself was loaded from
    (`X-Forwarded-Proto` + `Host` when the request came through a loopback proxy, else the
    request's own scheme and `Host`).
-4. Otherwise the CLI stops: "Pass --url https://<your hub address> (the address your phone
+4. Otherwise the CLI stops: "Pass --url https://\<your hub address> (the address your phone
    opens)".
 
 For `phone` and `browser` codes the URL must be `https://` (service workers, install and Web
@@ -244,7 +244,7 @@ worker's caches:
 
 | Threat | Defence |
 | --- | --- |
-| Someone photographs the QR or code | Valid 10 minutes and single use; the board and CLI show "Paired: <name>" the moment it is claimed, and the device can be revoked. An unexpected claim is visible. |
+| Someone photographs the QR or code | Valid 10 minutes and single use; the board and CLI show "Paired: \<name>" the moment it is claimed, and the device can be revoked. An unexpected claim is visible. |
 | A claim request is replayed | The code is consumed in the same transaction as the device is made; a second claim gets 401. |
 | Code in server logs | The secret and digits travel in the URL fragment (never sent) and in POST bodies (the hub logs only the path). |
 | Database copy or backup | Only HMAC hashes; the pepper is outside the database (2.1). Someone with both the database and the state folder already has everything a paired device could read. |
@@ -275,7 +275,7 @@ sy hub owner-link [--url U] [--ttl 10m] [--json]
   the cookie again with `Max-Age` 30 days. So an owner who opens the board at least once in
   any 30 days never signs in again; one left unused for 30 days ends. Because every use
   renews, the board shows no expiry warning banner: Settings, Sign-in shows "Owner access
-  until <date>" (`/v1/me` `device.expires_at`) with "Renews when you use the board". A
+  until \<date>" (`/v1/me` `device.expires_at`) with "Renews when you use the board". A
   session that did end gives a 401 with `reason: owner_expired` (below), and the board says
   "Your owner access ended." There is no upper bound on a session that keeps being used;
   Devices lists it, and revoking it ends it at once.
@@ -313,7 +313,7 @@ sy hub owner-link [--url U] [--ttl 10m] [--json]
    oldest. Rate limited per client IP as claims are (3.3); cookie requests follow the CSRF
    rules of 3.2. The hub log gets `pair owner-link made code=pc_… by=dev_… ip=… expires=…`
    and, when used, `pair owner ok device=dev_… code=pc_…`; never the secret or the link.
-   The dialog polls `GET /v1/pair/codes/{id}` and says "Used: <device>" once claimed;
+   The dialog polls `GET /v1/pair/codes/{id}` and says "Used: \<device>" once claimed;
    **Cancel this link** is `DELETE /v1/pair/codes/{id}`.
 3. **First start:** while the hub has never had an owner session
    (`store.HadOwnerSession`: no device with `created_by` `owner-link:*`, revoked ones
@@ -364,7 +364,7 @@ Push works only inside it. Claiming in Safari would pair Safari, not the app. So
    Screen. 2. Open Switchyard from your Home Screen. 3. Enter **482-913**." with the digits
    large and a 10-minute countdown.
 2. The installed app starts at `/#/`, has no cookie, gets 401 from `/v1/me`, and opens the
-   pair screen (``): the digits field (address shown read-only: it is the app's own
+   pair screen (`/#/pair`): the digits field (address shown read-only: it is the app's own
    origin) → `POST /v1/pair/claim {"code", "cookie": true, "expect_kind": "phone"}`.
 3. Then notifications (pwa.md 6): iOS allows the permission prompt only from a tap inside
    the installed app.
@@ -376,7 +376,7 @@ If it does, the claim-in-Safari path would also work; the spec does not rely on 
 
 The installed web app can only pair with the hub it was installed from (cookies are per
 origin). Its pair screen therefore shows the address read-only and asks only for the code.
-If the person types a different address, the app offers "Open <address>" (a new tab of
+If the person types a different address, the app offers "Open \<address>" (a new tab of
 that hub, to be installed separately). The native phone app, which is not bound to an origin,
 takes both fields.
 

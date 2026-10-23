@@ -524,7 +524,7 @@ the message is delivered or queued; absent in a file from before it was kept), w
      `machine`, the machine's name) and sets its thread's `paused_at` again if it was clear,
      leaving `turns` at 0: the hub itself does not refuse, but the thread no longer reads as
      resumed, and a later resume reports `was_paused`. The board and the phone show the row as
-     "<machine> kept the stop: hub_may_widen is off", and offer no new "Resume thread" for it
+     "\<machine> kept the stop: hub_may_widen is off", and offer no new "Resume thread" for it
      (the machine would refuse again; a human prompt lifts its stop). Otherwise (`hub_may_widen`
      on) the agent resets the open thread exactly as a human prompt would (`turns` 0,
      `paused_at` cleared, `human_at` kept) and writes a `resumed` line; it reports nothing to
