@@ -8,7 +8,7 @@ screens, native notifications with **Open**, **Snooze** and **Seen** (Android, o
 own link to the hub), home-screen widgets on Android (the iOS widget and Lock Screen countdown sources stay in the
 tree, are kept compiling and are not shipped), and an optional Lock Screen countdown source
 for iOS. It talks only to its hub's existing API; the hub side (the link channel and
-widget refresh frames) is [push.md 13](push.md#13-the-link-channel-n1).
+widget refresh frames) is [push.md 13](push.md#13-the-link-channel).
 
 Related: pairing.md 2.2, 3.1 (the QR, `cookie: false`), tokens.md 3 (`phone` scopes),
 push.md 5.4 (`prefs`), 5.5 (texts), 5.8 (deep links), 6.5 (the payload), 8 (action tokens),

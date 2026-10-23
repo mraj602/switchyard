@@ -4,7 +4,7 @@ The Android app shows the hub's screens (Now, Sessions, Accounts, More), posts n
 notifications with **Open**, **Snooze** and **Seen**, and adds home-screen widgets. It is a
 `phone` device on your hub: it can read and snooze or mark alerts seen, nothing else. The
 spec is [phone.md](../spec/phone.md); notifications over the app's link are
-[push.md, sections 13 and 14](../spec/push.md#13-the-link-channel-n1).
+[push.md, sections 13 and 14](../spec/push.md#13-the-link-channel).
 
 Requirements: Android 12 or later (minimum SDK 31), and a hub with an `https://` address.
 There is no iOS app; on an iPhone use the web app (see [alerts.md](alerts.md#web-push-the-web-app)).
