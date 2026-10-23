@@ -107,6 +107,7 @@ type Verdict struct {
 const (
 	BlockNoRule     = "no_rule"     // 1: no rule, or the rule is off
 	BlockRemote     = "remote"      // 1: skip_remote and a Remote Control link
+	BlockPeers      = "peers"       // 1: skip_peers and a question that only concerns peers
 	BlockNotDue     = "not_due"     // 2
 	BlockAnswered   = "answered"    // 3: the hub has the record
 	BlockReachable  = "reachable"   // 4
@@ -133,6 +134,8 @@ func Evaluate(eps []Episode, pol Policy, now, lastContact time.Time, after time.
 			v.Blocked = BlockNoRule
 		case pol.Settings.SkipRemote && e.RemoteURL != "" && e.Trigger != TriggerFailed:
 			v.Blocked = BlockRemote
+		case pol.Settings.SkipsPeers() && e.Trigger == TriggerAsked && e.Detail == "question" && e.Peers != "":
+			v.Blocked = BlockPeers
 		case e.Answered:
 			v.Blocked = BlockAnswered
 		case now.After(v.Expires):

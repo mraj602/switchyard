@@ -46,6 +46,9 @@ type Thread struct {
 	// Remote is the session of the two that runs on another machine ("" for a same-machine
 	// thread): this machine cannot see it end, so only idleness closes such a thread.
 	Remote string `json:"remote,omitempty"`
+	// LastFrom is the session that sent the newest message ("" in a file from before it was
+	// kept): the other session owes the next one (AwaitingReply).
+	LastFrom string `json:"last_from,omitempty"`
 }
 
 var threadIDRE = regexp.MustCompile(`^t_[0-9a-f]{16}$`)
@@ -173,6 +176,26 @@ func (s *ThreadSet) Find(id string) *Thread {
 func (t *Thread) RecordMessage(now time.Time) {
 	t.Turns++
 	t.LastAt = now
+}
+
+// RecordMessageFrom counts one delivered message sent by session from.
+func (t *Thread) RecordMessageFrom(from string, now time.Time) {
+	t.RecordMessage(now)
+	t.LastFrom = from
+}
+
+// AwaitingReply reports whether session is waiting on another session's reply (peers.md
+// 6.4): it sent the newest message of an open thread that the loop guard has not stopped,
+// after its own newest human prompt (humanAt; zero when unknown) and within ThreadIdle of
+// now. A thread stopped by the loop guard needs a person, so it is not waiting.
+func (s *ThreadSet) AwaitingReply(session string, humanAt, now time.Time) bool {
+	for _, t := range s.Threads {
+		if t.Open() && t.PausedAt == nil && t.LastFrom == session && t.LastAt.After(humanAt) &&
+			now.Sub(t.LastAt) <= ThreadIdle {
+			return true
+		}
+	}
+	return false
 }
 
 // LoadThreads reads <state>/peers/threads.json; a missing or broken file is empty.

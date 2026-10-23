@@ -15,6 +15,8 @@ type SessionNow struct {
 	Project  string
 	Machine  string
 	Remote   string      // session.remote_url
+	Detail   string      // session_state.detail
+	Peers    string      // session_state.peers: "", "message" or "wait" (states.md 3.1)
 	Facts    model.Facts // text inputs captured into alert.facts
 }
 
@@ -179,6 +181,8 @@ func decideSession(cur SessionNow, alerts []model.Alert, env Env) []Op {
 		reason = model.ReasonRuleOff
 	case env.Settings.SkipRemote && cur.Remote != "" && (trig == model.TriggerNeedsPermission || trig == model.TriggerAsked):
 		reason = model.ReasonRemoteControl
+	case env.Settings.SkipPeers && PeersOnly(trig, cur.Detail, cur.Peers):
+		reason = model.ReasonPeers
 	case Stale(cur.SinceMS, delay, int64(env.Settings.MaxAgeS)*1000, env.NowMS):
 		reason = model.ReasonStale
 	}
@@ -188,6 +192,15 @@ func decideSession(cur SessionNow, alerts []model.Alert, env Env) []Op {
 		a.Status, a.DueAt = model.StatusPending, model.Time(Due(cur.SinceMS, delay, env.NowMS))
 	}
 	return append(ops, Op{Kind: OpCreate, Alert: a})
+}
+
+// PeersOnly reports whether a session alert is only about sessions coordinating with each
+// other (push.md 3.5, peers.md 6.4): an asked:question (a plain-text question at the end of a
+// turn) in a turn that a peer message started or that ended waiting on another session's
+// reply. A permission prompt, AskUserQuestion, ExitPlanMode, an elicitation dialog and a
+// failure are always for a person and are never peers-only.
+func PeersOnly(trig model.Trigger, detail, peers string) bool {
+	return trig == model.TriggerAsked && detail == "question" && peers != ""
 }
 
 // SeatEpisodes lists every episode reconcile may want for the seat's current windows, so

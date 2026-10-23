@@ -119,7 +119,7 @@ func (e Env) Receive(in Incoming) ReceiveResult {
 		}
 		return res
 	}
-	th.RecordMessage(now)
+	th.RecordMessageFrom(env.From.Session, now)
 	_ = threads.Save(e.ThreadsPath())
 	_ = MarkDelivered(e.State, target.Entry.SessionID, now)
 	e.audit(auditLine{Msg: env.Msg, Thread: th.ID, From: env.From.Session, To: target.Entry.SessionID, FromA: env.From.Account,

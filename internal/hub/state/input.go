@@ -39,6 +39,17 @@ type Hook struct {
 	HasLastMessage bool
 	// Question is derived.question of an AskUserQuestion PreToolUse, if known.
 	Question string
+	// PeerPrompt: derived.peer_prompt of a UserPromptSubmit, a turn a peer message started
+	// (record.md 4.1). PeerWait: derived.peer_wait of a Stop, the session waits on another
+	// session's reply (peers.md 6.4).
+	PeerPrompt, PeerWait bool
+}
+
+// PeerFacts sets PeerPrompt and PeerWait from a hook_event record's derived fields; anything
+// but a JSON true leaves them false.
+func (h *Hook) PeerFacts(derived map[string]json.RawMessage) {
+	h.PeerPrompt = string(derived["peer_prompt"]) == "true"
+	h.PeerWait = string(derived["peer_wait"]) == "true"
 }
 
 // ListObs is what one session_list says about one session (the caller picks the session and

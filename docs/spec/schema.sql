@@ -1,4 +1,4 @@
--- Switchyard hub schema, version 12.
+-- Switchyard hub schema, version 13.
 --
 -- One SQLite file (WAL mode). Applied by the hub at start inside one transaction
 -- after `PRAGMA foreign_keys = ON`. Later versions add numbered migrations
@@ -20,6 +20,7 @@
 --   v11 the expo channel removed: its channel row, targets, deliveries and access token;
 --       push_target.meta, delivery.ticket/receipt_at (channel, push_target, delivery recreated).
 --   v12 indexes: alert_seat, alert_machine, delivery_target.
+--   v13 session_state.peers (states.md 3.1, push.md 3.5).
 --
 -- Conventions
 --   * Times are INTEGER milliseconds since the Unix epoch, UTC (`*_at`, `ts`).
@@ -44,7 +45,7 @@ CREATE TABLE schema_version (
 ) STRICT;
 
 INSERT INTO schema_version (version, applied_at, sy_version)
-VALUES (12, CAST(unixepoch('subsec') * 1000 AS INTEGER), 'spec');
+VALUES (13, CAST(unixepoch('subsec') * 1000 AS INTEGER), 'spec');
 
 -- Hub-wide settings that are not secrets (retention days, last-message policy, …).
 CREATE TABLE setting (
@@ -309,7 +310,9 @@ CREATE TABLE session_state (
   last_record   TEXT,                              -- record id that set it
   detector      TEXT,                              -- question detector version, e.g. 'q1'
   updated_at    INTEGER NOT NULL
-) STRICT;
+, peers TEXT CHECK (peers IS NULL OR peers IN ('message', 'wait'))) STRICT;
+-- peers: v13 (states.md 3.1). The current turn is coordination between sessions: 'message' (a peer
+-- message started it) or 'wait' (it ended waiting on another session's reply); NULL otherwise.
 CREATE INDEX session_state_needs ON session_state(needs_you, since_at) WHERE needs_you = 1;
 
 CREATE TABLE hook_event (

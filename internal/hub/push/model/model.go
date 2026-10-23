@@ -109,6 +109,7 @@ const (
 	ReasonStale         = "stale"
 	ReasonRuleOff       = "rule_off"
 	ReasonRemoteControl = "remote_control"
+	ReasonPeers         = "peers"
 	ReasonBaseline      = "baseline"
 	ReasonRecovered     = "recovered"
 	ReasonResetPassed   = "reset_passed"

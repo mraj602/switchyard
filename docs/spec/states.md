@@ -162,6 +162,26 @@ Notes on the table:
   `bypass_permissions_disabled`, `other`. Stored as `detail`.
 - **`asked:tool`** for `ExitPlanMode` means "plan ready for approval". Shown as "plan ready".
 
+### 3.1 Coordination between sessions (`peers`)
+
+Beside the state, the fold keeps `session_state.peers` (schema v13): whether the current turn
+is sessions coordinating through peers ([peers.md](peers.md) 6.4). It never changes the state,
+`detail`, `since` or `needs_you`, so the board shows such a session exactly as before; only
+the alert rules read it ([push.md](push.md) 3.5).
+
+| Event | `peers` after it |
+| --- | --- |
+| UserPromptSubmit with `derived.peer_prompt` (a peer message started the turn) | `message` |
+| UserPromptSubmit without it (a person) | none |
+| Stop (not `stop_hook_active`) with `derived.peer_wait`, when `peers` is none | `wait` |
+| SessionStart `startup`, `clear`, `resume` | none |
+| Anything else (SessionStart `compact` included) | unchanged |
+
+So a turn a peer message started stays `message` to its end, a turn a person started becomes
+`wait` only when it ends waiting on a reply, and the next prompt a person types clears it. The
+`derived` flags come from `sy hook` ([record.md](record.md) 4.1); the same fold runs in
+`sy status` and the machine's direct push.
+
 ## 4. "Reads as a question" (detector `q2`)
 
 Input: `derived.last_message` of a Stop record (the last ≤ 400 characters, record.md 4.1). If

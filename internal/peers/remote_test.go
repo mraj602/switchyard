@@ -70,7 +70,7 @@ func TestRemoteThreadLoopGuardAfterHumanPrompt(t *testing.T) {
 		t.Fatalf("third send after the prompt: %v", rf)
 	}
 	th := peers.LoadThreads(e.ThreadsPath()).FindOpen("sess-a", "sess-r")
-	if th == nil || !th.HumanAt.Equal(h1) || th.Turns != 2 {
+	if th == nil || !th.HumanAt.Equal(h1) || th.Turns != 2 || th.LastFrom != "sess-a" {
 		t.Errorf("thread: %+v", th)
 	}
 }

@@ -567,7 +567,7 @@ reply is the hub's rules **resolved for this machine**:
 ```json
 {"v": 1, "hub": "0.5.0", "public_url": "https://hub.example.ts.net", "machine": "m_01JA…",
  "settings": {"quiet_hours": {"enabled": true, "start": "23:00", "end": "08:00", "tz": "Europe/Berlin"},
-              "skip_remote": false, "max_age_s": 900},
+              "skip_remote": false, "skip_peers": true, "max_age_s": 900},
  "rules": [
    {"trigger": "asked", "enabled": true, "delay_s": 300, "bypass_quiet": false,
     "seats": [{"account": "3f1c…", "org": "9b20…"}], "projects": ["infra"]},
@@ -585,7 +585,8 @@ reply is the hub's rules **resolved for this machine**:
   session's seat and project.** `project` is the session's `cwd` base name, as the hub
   derives it. So the machine reaches the same rule the hub would.
 - No policy yet: the base defaults of push.md 3.1 (30 s, 60 s, 0 with bypass), no quiet
-  hours, `max_age_s` 900.
+  hours, `max_age_s` 900, `skip_peers` on. A policy without `skip_peers` (from a hub that
+  predates it) also means on, the hub's default.
 - No device prefs apply (the ntfy topic is not a hub device), only the hub-wide quiet hours
   and the direct-push `private` switch.
 
@@ -598,7 +599,7 @@ every session of this machine with records in the last 24 hours, folded from the
 
 | # | Condition |
 | --- | --- |
-| 1 | State is `needs_permission`, `asked`, or `failed` with `needs_you`; the rule (5.3) is enabled; not (`skip_remote` and the session has a Remote Control link and trigger ≠ `failed`). |
+| 1 | State is `needs_permission`, `asked`, or `failed` with `needs_you`; the rule (5.3) is enabled; not (`skip_remote` and the session has a Remote Control link and trigger ≠ `failed`); not (`skip_peers` and the state is `asked:question` in a turn of coordination between sessions, push.md 3.5). |
 | 2 | `now ≥ since_at + delay_s + 15 s` (the 15 s grace lets a hub that is just slow win). |
 | 3 | **The hub has not answered the record that entered the state**: it is at or after the cursor (or still in a spill file). This is the dedupe boundary: once the hub has the record, the alert is the hub's. |
 | 4 | **The hub is unreachable**: `flush.status.json` has no `last_contact` since that record was written, or the last one is older than `after_s` (default 120 s; in pull mode 180 s). |

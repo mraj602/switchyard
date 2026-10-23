@@ -54,6 +54,30 @@ Each episode alerts at most once, so restarts and replays never send duplicates.
 window reached, so a window that dips back under 80 % does not alert again. See
 [usage.md](usage.md) for where limit numbers come from.
 
+### Sessions talking to each other
+
+When sessions coordinate through [peers](peers.md), a turn often ends with a question that
+is meant for the other session, not for you. One example is "Want me to pick up the
+migration too?" sent back to the session that asked. Another is a session saying "Sent the
+schema to api; waiting for its answer." These don't push. The board still shows the session
+as asked, and **Recent pushes** lists the alert as skipped with the reason `peers`. A turn
+counts as coordination when either of these holds:
+
+- another session's message started the turn (it arrived as a `<cross-session-message>`, or
+  within 10 seconds of a delivery into that session);
+- the turn ended while the session waits on a reply: it sent the newest message of an open
+  peer thread after the last prompt you typed in it, and the loop guard has not stopped that
+  thread.
+
+Anything aimed at you still alerts during such a turn: a permission prompt, an
+AskUserQuestion dialog, a plan to approve, a dialog from an MCP server, and a failure. Once
+you type in the session, its next turn is yours again and alerts as usual. A thread stopped
+by the loop guard needs you, so it is not treated as coordination.
+
+To get these pushes anyway, set `skip_peers` to `false` in the hub's push settings
+(`PUT /v1/push/settings`; it is on by default). Direct ntfy pushes from a machine
+([machines.md](../spec/machines.md) 5) follow the same setting.
+
 ## Changing the rules
 
 Rules are global and belong to the owner. Open the board signed in as owner

@@ -35,6 +35,7 @@ One JSON object in `setting` key `push.settings` (owner: `PUT /v1/push/settings`
 | `quiet_hours` | `{"enabled": false, "start": "23:00", "end": "08:00", "tz": <hub tz>}` | Hub-wide quiet hours (5.2). Devices may override. |
 | `private` | `false` | Default for devices whose `prefs.private` is null (5.5). ntfy targets on `ntfy.sh` default to private regardless (7.1). |
 | `skip_remote` | `false` | Don't push `needs_permission` / `asked` for sessions with a Remote Control link (Claude's own app already notifies). |
+| `skip_peers` | `true` | Don't push an `asked:question` that ends a turn of coordination between sessions (3.5, "Sessions coordinating"). |
 | `snooze_min` | `15` | Snooze length (5–240). |
 | `max_age_s` | `900` | An alert that would first push more than this long after it was due is not pushed (`stale`, 3.3). |
 | `batch_s` | `2` | Alerts due within this many seconds of each other are sent as one push per target (5.3). |
@@ -184,11 +185,31 @@ for each alert of this session in status pending | fired | snoozed | seen:
         seen             → closed (reason)
 if want != none and no alert has episode want:
     rule := match(trigger, subject)
-    create alert (pending, due 3.3) or skipped (stale | rule_off | remote_control | baseline)
+    create alert (pending, due 3.3) or skipped (stale | rule_off | remote_control | peers | baseline)
 ```
 
 `remote_control`: `skip_remote` is on, the trigger is `needs_permission` or `asked`, and the
 session has a `remote_url`.
+
+`peers`: `skip_peers` is on (the default) and the alert is only about sessions coordinating
+with each other (below).
+
+**Sessions coordinating** ([peers.md](peers.md) 6.4). When sessions talk through peers, a turn
+often ends on a plain-text question meant for the other session, or with the session waiting
+on the other session's reply. The question detector (states.md 4) cannot tell those from a
+question to the person, so without this rule every coordination round pushed `asked`. The fold
+keeps `session_state.peers` (states.md 3.1): `message` when a peer message started the current
+turn, `wait` when the turn ended waiting on a reply to a thread message the session sent. An
+alert is **peers-only** when its trigger is `asked`, the detail is `question` and `peers` is set.
+A peers-only alert is created `skipped` with reason `peers`: nothing is pushed, the board
+still shows the session as `asked` (it needs no one, but the state is the state), and the Now
+inbox and the Alerts log list the skipped row. If a `wait` arrives during the delay of a pending
+`asked:question` (same episode), the fire-time re-check (3.6 step 3) cancels it with reason
+`peers`. Never peers-only, so always pushed as usual: `needs_permission` (a real permission
+prompt), `asked:tool` (AskUserQuestion, ExitPlanMode), `asked:elicitation` and `failed`, in any
+turn; and any turn a person started, unless it ends waiting on a peer. With `skip_peers` off,
+peers-only alerts push like any other. Direct ntfy pushes from a machine apply the same rule
+([machines.md](machines.md) 5.4 condition 1).
 
 For a seat: for each current watched window, create the `limit_80` / `limit_95` alerts that
 the window's `peak_pct` calls for, and the `reset` alert (status pending, `due = resets_at`)
@@ -275,9 +296,9 @@ hides `baseline` rows.
 | `fired` | Pushed (deliveries made); the episode is still open. | — |
 | `snoozed` | Pushed, then snoozed; will push again if still open. | re-push time |
 | `seen` | Acknowledged ("Seen" from a push, the Now inbox or the session page). No more pushes for this episode. | — |
-| `cancelled` | The episode ended before any push (`answered`, `ended`, `superseded`, `rule_off`). | — |
+| `cancelled` | The episode ended before any push (`answered`, `ended`, `superseded`, `rule_off`), or it turned out peers-only before it was due (`peers`, 3.5). | — |
 | `closed` | The episode ended after a push or a seen (same reasons, plus `recovered`, `reset_passed`). | — |
-| `skipped` | Never pushes by design (`stale`, `rule_off`, `remote_control`, `superseded`, `baseline`). | — |
+| `skipped` | Never pushes by design (`stale`, `rule_off`, `remote_control`, `peers`, `superseded`, `baseline`). | — |
 
 ```
             create
@@ -863,7 +884,7 @@ CREATE TABLE alert (
   machine_id    TEXT    REFERENCES machine(id),
   window_key    TEXT,
   status        TEXT    NOT NULL CHECK (status IN ('pending', 'fired', 'snoozed', 'seen', 'cancelled', 'closed', 'skipped')),
-  reason        TEXT,                               -- answered, ended, superseded, stale, rule_off, remote_control, baseline, recovered, reset_passed, direct
+  reason        TEXT,                               -- answered, ended, superseded, stale, rule_off, remote_control, peers, baseline, recovered, reset_passed, direct
   since_at      INTEGER,                            -- when the condition began (client ts for sessions)
   created_at    INTEGER NOT NULL,
   due_at        INTEGER,                            -- next scheduler action (pending, snoozed); NULL otherwise
@@ -1026,6 +1047,13 @@ moves; "expect" lists sends and final alert status.
 | 36 | Gone target | fake service returns 410 | Delivery `gone`, target disabled, next alert not sent to it |
 | 37 | Retry | 503, 503, 201 | Sent on the third try at +15 s, +1 min; skipped if the session was answered in between |
 | 38 | Private | device private | Payload title "Switchyard", url `/#/alerts/<id>`, no question text |
+| 39 | Peer message answered | a peer message starts a turn (`peer_prompt`); it ends on a question | `skipped` / `peers`, nothing sent; the session is still `asked`, `needs_you` 1 |
+| 40 | Waiting on a peer | a person's turn ends on a question with `peer_wait`; then the reply starts a turn that ends on a question | Both `skipped` / `peers`; nothing sent |
+| 41 | Permission in a peer turn | peer turn, then PermissionRequest | Pushed at 30 s |
+| 42 | AskUserQuestion in a peer turn | peer turn, then PreToolUse AskUserQuestion | Pushed at 60 s |
+| 43 | A person's turn after a peer turn | peer turn ends on a question; a person types; that turn ends on a question | Pushed 60 s after the second question |
+| 44 | `skip_peers` off | as 39 with `skip_peers: false` | Pushed at 60 s |
+| 45 | Wait during the delay | a person's turn ends on a question (pending); a Stop with `peer_wait` in the same episode | `cancelled` / `peers` at fire time; nothing sent |
 
 `rules` (pure) gets its own table tests for episode keys, due/stale arithmetic, rule
 matching, quiet-hour windows across midnight and DST (Europe/London 2026-03-29 and

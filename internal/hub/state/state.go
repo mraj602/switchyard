@@ -18,6 +18,12 @@ const (
 	Gone            State = "gone"
 )
 
+// Values of Session.Peers (states.md 3.1).
+const (
+	PeersMessage = "message"
+	PeersWait    = "wait"
+)
+
 // MinMissAge is how long after the session's last event a complete list must be before
 // a miss counts toward gone; GoneMisses is how many misses make it gone.
 const (
@@ -42,7 +48,11 @@ type Session struct {
 	LastMessage string    // tail of the last Stop / StopFailure message, "" if none
 	Question    string    // set while asked via the detector or AskUserQuestion
 	Detector    string    // DetectorVersion
-	History     []Transition
+	// Peers says the current turn is coordination between sessions (states.md 3.1):
+	// PeersMessage when a peer message started it, PeersWait when it ended waiting on another
+	// session's reply, "" otherwise. It never changes State; the alert rules read it.
+	Peers   string
+	History []Transition
 
 	LastEventAt  time.Time // newest hook event
 	LastListedAt time.Time // newest session_list that listed it
@@ -154,6 +164,7 @@ func (s *Session) applyHook(ts time.Time, h *Hook) {
 		return
 	}
 	r := hookRule(cur, h)
+	s.applyPeers(h)
 	if h.Name == "StopFailure" || (h.Name == "Stop" && !h.StopHookActive) {
 		s.LastMessage = ""
 		if h.HasLastMessage {
@@ -171,6 +182,27 @@ func (s *Session) applyHook(ts time.Time, h *Hook) {
 	}
 	if s.State == "" {
 		s.set(ts, Done, "", h.Name) // first record changed nothing: a fresh session is done
+	}
+}
+
+// applyPeers keeps Session.Peers (states.md 3.1): a prompt sets it for its turn (a peer
+// message: PeersMessage; a person: cleared), a Stop that ends waiting on a peer's reply sets
+// PeersWait unless a peer message started the turn, and a new or resumed session clears it.
+func (s *Session) applyPeers(h *Hook) {
+	switch h.Name {
+	case "UserPromptSubmit":
+		s.Peers = ""
+		if h.PeerPrompt {
+			s.Peers = PeersMessage
+		}
+	case "Stop":
+		if h.PeerWait && !h.StopHookActive && s.Peers == "" {
+			s.Peers = PeersWait
+		}
+	case "SessionStart":
+		if h.Source != "compact" {
+			s.Peers = ""
+		}
 	}
 }
 

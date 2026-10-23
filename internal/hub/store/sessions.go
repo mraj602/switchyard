@@ -131,6 +131,7 @@ func (tx *Tx) OpenSessionsOnSlot(slotID int64) ([]string, error) {
 // "Ordering": an input at or before it makes the engine refold the session).
 type FoldRow struct {
 	State, Detail, Question, Detector string
+	Peers                             string // session_state.peers (states.md 3.1)
 	LastEvent, LastRecord             string
 	Since, UpdatedAt                  int64
 	NeedsYou                          bool
@@ -145,10 +146,10 @@ func (tx *Tx) GetFold(id string) (FoldRow, bool, error) {
 	var f FoldRow
 	var needs int
 	err := tx.queryRow(`SELECT st.state, coalesce(st.detail, ''), coalesce(st.question, ''), coalesce(st.detector, ''),
-		coalesce(st.last_event, ''), coalesce(st.last_record, ''), st.since_at, st.updated_at, st.needs_you,
+		coalesce(st.last_event, ''), coalesce(st.last_record, ''), st.since_at, st.updated_at, st.needs_you, coalesce(st.peers, ''),
 		coalesce(s.last_event_at, 0), coalesce(s.last_listed_at, 0), coalesce(s.ended_at, 0), coalesce(s.end_reason, ''), s.missed_lists
 		FROM session_state st JOIN session s ON s.id = st.session_id WHERE st.session_id = ?`, id).Scan(
-		&f.State, &f.Detail, &f.Question, &f.Detector, &f.LastEvent, &f.LastRecord, &f.Since, &f.UpdatedAt, &needs,
+		&f.State, &f.Detail, &f.Question, &f.Detector, &f.LastEvent, &f.LastRecord, &f.Since, &f.UpdatedAt, &needs, &f.Peers,
 		&f.LastEventAt, &f.LastListedAt, &f.EndedAt, &f.EndReason, &f.MissedLists)
 	if errors.Is(err, sql.ErrNoRows) {
 		return f, false, nil
@@ -163,13 +164,13 @@ func (tx *Tx) PutFold(id string, f FoldRow) error {
 	if f.NeedsYou {
 		needs = 1
 	}
-	if _, err := tx.exec(`INSERT INTO session_state (session_id, state, since_at, detail, question, needs_you, last_event, last_record, detector, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	if _, err := tx.exec(`INSERT INTO session_state (session_id, state, since_at, detail, question, needs_you, last_event, last_record, detector, updated_at, peers)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(session_id) DO UPDATE SET state = excluded.state, since_at = excluded.since_at, detail = excluded.detail,
 		question = excluded.question, needs_you = excluded.needs_you, last_event = excluded.last_event,
-		last_record = excluded.last_record, detector = excluded.detector, updated_at = excluded.updated_at`,
+		last_record = excluded.last_record, detector = excluded.detector, updated_at = excluded.updated_at, peers = excluded.peers`,
 		id, f.State, f.Since, nullStr(f.Detail), nullStr(f.Question), needs, nullStr(f.LastEvent), nullStr(f.LastRecord),
-		nullStr(f.Detector), f.UpdatedAt); err != nil {
+		nullStr(f.Detector), f.UpdatedAt, nullStr(f.Peers)); err != nil {
 		return err
 	}
 	_, err := tx.exec(`UPDATE session SET last_event_at = ?, last_listed_at = ?, missed_lists = ?, ended_at = ?, end_reason = ? WHERE id = ?`,

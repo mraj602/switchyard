@@ -30,6 +30,7 @@ type DirectPolicy struct {
 type DirectSettings struct {
 	QuietHours model.QuietHours `json:"quiet_hours"`
 	SkipRemote bool             `json:"skip_remote"`
+	SkipPeers  bool             `json:"skip_peers"`
 	MaxAgeS    int              `json:"max_age_s"`
 }
 
@@ -63,7 +64,7 @@ func (s *Server) directPolicy(w http.ResponseWriter, r *http.Request) {
 		qh.TZ = s.alertHubTZ(r)
 	}
 	out := DirectPolicy{V: 1, Hub: version.Version, Machine: caller.MachineID,
-		Settings: DirectSettings{QuietHours: qh, SkipRemote: st.SkipRemote, MaxAgeS: st.MaxAgeS},
+		Settings: DirectSettings{QuietHours: qh, SkipRemote: st.SkipRemote, SkipPeers: st.SkipPeers, MaxAgeS: st.MaxAgeS},
 		Rules:    rules.ResolveDirect(rs, caller.MachineID, seats)}
 	if u := strings.TrimRight(hubPublicURL(r.Context(), s), "/"); u != "" {
 		out.PublicURL = &u

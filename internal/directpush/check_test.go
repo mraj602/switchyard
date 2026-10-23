@@ -60,7 +60,8 @@ type rig struct {
 	ntfy   *fakeNtfy
 	slot   string
 	email  string
-	remote bool // hook records carry derived.remote_url
+	remote bool   // hook records carry derived.remote_url
+	peer   string // hook records carry derived.<peer> = true (peer_prompt, peer_wait)
 }
 
 func newRig(t *testing.T) *rig {
@@ -97,6 +98,9 @@ func (r *rig) hook(sid, event string, at time.Duration, fields map[string]any) *
 	}
 	if r.remote {
 		rec.Derived.Set("remote_url", "https://claude.ai/code/session_abc")
+	}
+	if r.peer != "" {
+		rec.Derived.Set(r.peer, true)
 	}
 	if _, err := r.ob.Append(rec); err != nil {
 		r.t.Fatal(err)
@@ -217,6 +221,25 @@ func TestCheckConditionsBlock(t *testing.T) {
 			r.policy(func(p *Policy) { p.Settings.SkipRemote = true })
 			r.remote = true
 		}, 90 * time.Second, 0},
+		{"skip_peers (default): a question waiting on a peer's reply", func(r *rig) { r.peer = "peer_wait" }, 90 * time.Second, 0},
+		{"skip_peers (default): a question in a turn a peer message started", func(r *rig) {
+			r.peer = "peer_prompt"
+			r.hook(sid1, "UserPromptSubmit", -time.Second, map[string]any{"prompt": "<cross-session-message>"})
+			r.peer = ""
+			r.ask(sid1, 0)
+		}, 90 * time.Second, 0},
+		{"a person's turn after it pushes", func(r *rig) {
+			r.peer = "peer_prompt"
+			r.hook(sid1, "UserPromptSubmit", -2*time.Second, map[string]any{"prompt": "<cross-session-message>"})
+			r.peer = ""
+			r.hook(sid1, "UserPromptSubmit", -time.Second, map[string]any{"prompt": "go on"})
+			r.ask(sid1, 0)
+		}, 90 * time.Second, 1},
+		{"skip_peers off", func(r *rig) {
+			off := false
+			r.policy(func(p *Policy) { p.Settings.SkipPeers = &off })
+			r.peer = "peer_wait"
+		}, 90 * time.Second, 1},
 		{"direct push off", func(r *rig) { r.o.Config.Push.Direct.Enabled = false }, 90 * time.Second, 0},
 		{"no topic", func(r *rig) { os.Remove(SecretPath(r.o.StateDir)) }, 90 * time.Second, 0},
 	}

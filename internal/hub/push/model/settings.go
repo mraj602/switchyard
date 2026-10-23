@@ -8,15 +8,18 @@ import (
 // Settings is the JSON object in setting key push.settings (push.md 2; api.yaml
 // PushSettings). Load it with ParseSettings so absent keys keep their defaults.
 type Settings struct {
-	QuietHours   QuietHours `json:"quiet_hours"`
-	Private      bool       `json:"private"`
-	SkipRemote   bool       `json:"skip_remote"`
-	SnoozeMin    int        `json:"snooze_min"`
-	MaxAgeS      int        `json:"max_age_s"`
-	BatchS       int        `json:"batch_s"`
-	Flood        Flood      `json:"flood"`
-	VapidSubject string     `json:"vapid_subject"` // empty: the hub's public URL (6.2)
-	WebPushHosts []string   `json:"webpush_hosts"`
+	QuietHours QuietHours `json:"quiet_hours"`
+	Private    bool       `json:"private"`
+	SkipRemote bool       `json:"skip_remote"`
+	// SkipPeers: no push for a plain-text question that ends a turn of coordination between
+	// sessions (push.md 3.5, peers.md 6.4). Default true.
+	SkipPeers    bool     `json:"skip_peers"`
+	SnoozeMin    int      `json:"snooze_min"`
+	MaxAgeS      int      `json:"max_age_s"`
+	BatchS       int      `json:"batch_s"`
+	Flood        Flood    `json:"flood"`
+	VapidSubject string   `json:"vapid_subject"` // empty: the hub's public URL (6.2)
+	WebPushHosts []string `json:"webpush_hosts"`
 	// RefreshMin is the least time between two widget refresh frames to one link target, in
 	// minutes (push.md 13.5; 10-240, default 15).
 	RefreshMin int `json:"refresh_min"`
@@ -39,6 +42,7 @@ var DefaultWebPushHosts = []string{
 func (s *Settings) Defaults() {
 	*s = Settings{
 		QuietHours:   QuietHours{Enabled: false, Start: "23:00", End: "08:00"},
+		SkipPeers:    true,
 		SnoozeMin:    15,
 		MaxAgeS:      900,
 		BatchS:       2,
