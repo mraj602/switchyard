@@ -27,7 +27,8 @@ test('electron-builder.yml: no publishing, no signing, no updater', () => {
   assert.match(yml, /Not affiliated with, endorsed by or sponsored by Anthropic/);
   assert.equal(pkg.license, 'AGPL-3.0-only');
   assert.ok(pkg.author);
-  assert.ok(!/@(gmail|workco|clientco)/.test(yml + JSON.stringify(pkg)));
+  const emails = (yml + JSON.stringify(pkg)).match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi) || [];
+  assert.deepEqual(emails.filter((e) => !e.endsWith('.invalid')), [], 'no real email address in the package metadata');
   assert.match(yml, /^appId: io\.github\.mraj602\.switchyard\.desktop$/m);
   assert.match(yml, /^productName: Switchyard$/m);
   assert.match(yml, /^asar: true$/m);
