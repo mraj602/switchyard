@@ -194,6 +194,24 @@ you choose.
 
 More: [docs/guide/faq.md](docs/guide/faq.md).
 
+## Roadmap
+
+Ideas for after 0.9, roughly in order. They are plans, not promises; open an issue if one
+matters to you.
+
+- **More coding agents.** Show OpenAI Codex CLI, Google Antigravity and Gemini CLI sessions on
+  the same board, with the same states, alerts and limits per account as Claude Code.
+- **claude.ai artifacts from every account.** One list of the artifacts each signed-in account
+  has made, in the desktop app and the board, opening each in its own account's tab.
+- **An iPhone app.** Today an iPhone uses the board as a web app or ntfy.
+- **Desktop updates.** Update the desktop app from inside the app, and code-signed macOS and
+  Windows builds so first start has no warning.
+- **Android in app stores.** IzzyOnDroid, then F-Droid with reproducible builds. Today the APK is
+  on GitHub Releases only.
+- **A shared hub for a small team.** Each person sees their own accounts and sessions on one
+  hub.
+- **A hosted hub,** for people who would rather not run their own. Self-hosting stays free.
+
 ## Similar tools
 
 I could not find one tool that covers many accounts across many machines with session states,
