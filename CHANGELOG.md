@@ -33,8 +33,16 @@ The first public version. Everything below is new.
 - Keys and peers: an owner key, machine certificates, a signed link between devices and the
   hub, and end-to-end encrypted messages between your own Claude Code sessions, gated by a
   peers matrix.
-- Documentation: user guides, architecture, behaviour specs, contributing guide and security
-  policy.
+- The Android app has no proprietary Google code (no Firebase, Play services or ML Kit); CI
+  checks the built APK. Package name `io.github.mraj602.switchyard`.
+- The desktop app pins a self-signed hub certificate on first use, warns when a hub on another
+  machine is plain http, limits the frames inside account tabs to an allow-list, and shows when
+  `sy` or the hub is newer. Release packages are unsigned but carry build-provenance
+  attestations.
+- Sessions that coordinate with each other through peers don't send "asked" alerts; permission
+  prompts and real questions still do (`skip_peers`, on by default).
+- Documentation: user guides, architecture, behaviour specs, contributing guide, security
+  policy, release guide, a website and a demo recorded from sample data.
 - Licensed under Apache-2.0.
 
 [Unreleased]: https://github.com/mraj602/switchyard/commits/main
