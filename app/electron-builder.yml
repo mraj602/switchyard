@@ -5,7 +5,7 @@
 #
 # Targets: Linux AppImage, deb and rpm; macOS dmg; Windows NSIS installer. Unsigned macOS and
 # Windows builds trigger Gatekeeper and SmartScreen warnings on first start.
-appId: dev.switchyard.desktop
+appId: io.github.mraj602.switchyard.desktop
 productName: Switchyard
 copyright: Copyright (c) Switchyard contributors
 # deb and rpm need a homepage and a maintainer.

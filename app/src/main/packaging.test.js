@@ -28,7 +28,7 @@ test('electron-builder.yml: no publishing, no signing, no updater', () => {
   assert.equal(pkg.license, 'Apache-2.0');
   assert.ok(pkg.author);
   assert.ok(!/@(gmail|workco|clientco)/.test(yml + JSON.stringify(pkg)));
-  assert.match(yml, /^appId: dev\.switchyard\.desktop$/m);
+  assert.match(yml, /^appId: io\.github\.mraj602\.switchyard\.desktop$/m);
   assert.match(yml, /^productName: Switchyard$/m);
   assert.match(yml, /^asar: true$/m);
   assert.match(yml, /^afterPack: build\/after-pack\.cjs$/m);
