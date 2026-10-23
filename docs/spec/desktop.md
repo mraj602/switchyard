@@ -118,6 +118,12 @@ both enforce it.
   which allows `https:` and `mailto:` only (the URL rules live in `shared/urls.js`). A
   `mailto:` URL is rebuilt with its addresses and only the `to`, `subject`, `cc` and `body`
   fields (no `attach=` or other client-specific fields).
+- A page (the hub board or a claude.ai tab) can trigger external opens and session-link
+  handoffs by itself, so each webContents has a budget of 3 per 10 seconds; more are dropped
+  and logged. Opens a page triggered pass `activate: false` (the browser does not come to the
+  front on macOS), and a handed-over session link selects its tab but never raises or focuses
+  the window (`openLink(..., {quiet: true})`). A person's own click (Open in browser, the update
+  notice) is not limited.
 - The crash reporter is not started. No telemetry of any kind is sent.
 - Packaged fuses: `RunAsNode` off, `EnableNodeOptionsEnvironmentVariable` off,
   `EnableNodeCliInspectArguments` off, `EnableEmbeddedAsarIntegrityValidation` on,
@@ -277,9 +283,13 @@ full_name, display_name} | {__status}, active_org, fetch_ms}`.
 - If the isolated world throws (not an HTTP error), there is one retry in the main world, and
   `reader: "main"` is logged at debug level. The script never throws once it runs (a network
   error or a non-JSON reply is `{__status: 0}`), so that retry never repeats requests; a
-  timeout is not retried. A main-world result is used only when its account uuid is the tab's
-  known seat account; a tab with no seat yet skips that check (its first read sets the seat). Each result is checked in main before use: shapes
-  as above, total ≤ 512 KiB, uuids matching `^[0-9a-f-]{36}$`.
+  timeout is not retried. The main world is the page's own, so a page can forge its result: it
+  is used only when the tab's seat account is known and the result's account uuid is that
+  account. A tab with no seat yet does not run the main world at all (the read fails and is
+  tried again). Each result is checked in main before use: shapes as above, total ≤ 512 KiB,
+  uuids matching `^[0-9a-f-]{36}$`. Each org's `usage` must be plain JSON data: at most six
+  levels deep, 64 entries per object or array, strings up to 256 characters, 32 KiB in all, no
+  `__proto__`; otherwise the read is retried and nothing is forwarded.
 - `active_org` is read in main from the `lastActiveOrg` cookie of the tab's own session.
 - A tab is **readable** when the following all hold: `reading === "on"`, `warning_accepted >=
   WARNING_VERSION`, `stopped === null`, its URL is a claude.ai URL, and its path is not

@@ -557,7 +557,7 @@ export function create(deps) {
     } catch (err) {
       log.warn?.(`hub: handoff failed: ${err?.message ?? err}`);
     }
-    if (!opened) await deps.security.openExternalSafe(url);
+    if (!opened) await deps.security.openExternalSafe(url, { activate: false });
   }
 
   // ---- handlers

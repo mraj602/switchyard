@@ -212,6 +212,34 @@ test('hub view without a handoff sends session links to the system browser', asy
   assert.deepEqual(fake.callsOf('shell.openExternal').map((c) => c[0]), ['https://claude.ai/code/session_01ABC']);
 });
 
+test('a page cannot loop external opens or handoffs: a small burst, refilled over time, without activating', async () => {
+  let t = 1_000;
+  const { sec, e, fake } = setup({ deps: { now: () => t } });
+  const links = [];
+  const hub = view(e, 'hub', sec, {}, { hubOrigin: 'http://127.0.0.1:8787', onSessionLink: (u) => links.push(u) });
+  const tab = view(e, 'tab', sec, TAB);
+  for (let i = 0; i < 10; i++) {
+    hub._windowOpen(`https://docs.example/${i}`);
+    tab._windowOpen(`https://docs.example/t${i}`);
+  }
+  await tick();
+  const calls = fake.callsOf('shell.openExternal');
+  assert.equal(calls.length, 6, '3 for each page');
+  assert.ok(calls.every((c) => c[1]?.activate === false), 'a page never activates the browser');
+  for (let i = 0; i < 10; i++) hub._windowOpen('https://claude.ai/code/session_01ABC');
+  assert.equal(links.length, 0, 'the hub page already used its budget');
+  t += 10_001;
+  hub._windowOpen('https://claude.ai/code/session_01ABC');
+  hub._windowOpen('https://docs.example/again');
+  await tick();
+  assert.equal(links.length, 1, 'the budget refills');
+  assert.equal(fake.callsOf('shell.openExternal').length, 7);
+  // a person's own click is not limited
+  for (let i = 0; i < 5; i++) await sec.openExternalSafe('https://example.com/');
+  assert.equal(fake.callsOf('shell.openExternal').length, 12);
+  assert.equal(fake.callsOf('shell.openExternal').at(-1)[1], undefined);
+});
+
 test('a webContents cannot be re-guarded as another kind', () => {
   const { sec, e } = setup();
   const wc = view(e, 'tab', sec, TAB);

@@ -205,7 +205,7 @@ export async function boot(electron, opts = {}) {
       return made.window;
     },
     // C7 handoff: true when an account tab took the link; else the hub opens it externally.
-    openSessionLink: async (url, seat) => (await made.tabs?.openLink(url, seat)) === true,
+    openSessionLink: async (url, seat) => (await made.tabs?.openLink(url, seat, { quiet: true })) === true,
   });
 
   made.ipc.register('settings:set', (patch) => made.background.setSettings(patch));

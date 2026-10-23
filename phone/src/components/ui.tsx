@@ -44,7 +44,7 @@ export function MovedCard() {
   return (
     <View accessibilityRole="alert" testID="moved-card" style={[s.card, { backgroundColor: t.card, borderColor: t.accent, marginHorizontal: 16, marginTop: 8 }]}>
       <Text style={{ color: t.text, fontSize: 16, fontWeight: '700' }}>{`Your hub moved to ${api.moved.to.replace(/^https?:\/\//, '')}`}</Text>
-      <Text style={[s.small, { color: t.muted }]}>The address comes from the old hub's unsigned reply, so this phone does not send its key there. Pair again by scanning the QR code on the new hub.</Text>
+      <Text style={[s.small, { color: t.muted }]}>The address comes from an unsigned reply of the old hub, so this phone does not send its key there. Pair again by scanning the QR code on the new hub.</Text>
       {failed ? <Text style={[s.small, { color: t.bad }]}>Could not start the new pairing. Try again.</Text> : null}
       <Btn kind="primary" label={busy ? 'Working…' : 'Pair again at the new address'} testID="moved-switch" disabled={busy} onPress={() => void go()} />
     </View>

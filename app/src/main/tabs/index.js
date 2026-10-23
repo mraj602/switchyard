@@ -34,7 +34,7 @@ const SESSION_LINK_RE = new RegExp(CLAUDE_SESSION_LINK_PATTERN);
  *   start(): Promise<void>,                    // create views for the stored tabs, staggered
  *   list(): object[],                          // TabInfo[] (bus.js)
  *   view(id: string): object|undefined,        // the tab's WebContentsView
- *   openLink(url: string, seat?: {id?: string, account: string, org: string}|null): Promise<boolean>,
+ *   openLink(url: string, seat?: {id?: string, account: string, org: string}|null, opts?: {quiet?: boolean}): Promise<boolean>,
  *                                              // C7 handoff: a tab of that account (or one made for it, or a new one for it);
  *                                              // with no seat: the first signed-in tab; false = none
  *   flushCookies(): Promise<void>,             // every tab's cookies.flushStore()
@@ -397,7 +397,7 @@ export function create(deps) {
     },
     list,
     view: (id) => views.get(id)?.view,
-    async openLink(url, seat = null) {
+    async openLink(url, seat = null, { quiet = false } = {}) {
       if (typeof url !== 'string' || !SESSION_LINK_RE.test(url)) return false;
       let id;
       if (seat && typeof seat.account === 'string' && seat.account) {
@@ -415,7 +415,8 @@ export function create(deps) {
         void views.get(id).view.webContents.loadURL(url);
       }
       window.select(id);
-      window.showWindow();
+      // A link a page handed over (quiet) selects the tab but never raises or focuses the window.
+      if (!quiet) window.showWindow();
       return true;
     },
     flushCookies: () => cookies.flush(),

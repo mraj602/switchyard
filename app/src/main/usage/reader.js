@@ -69,10 +69,10 @@ const withTimeout = (p, ms, what) =>
  * not retried: the first script may still be running its requests. Fills `active_org` from
  * the `lastActiveOrg` cookie of the tab's own session. Throws when both worlds throw.
  *
- * The main world is the page's own: its result is used only if its account uuid is the tab's
- * known seat account (`expectAccount`). When the seat is not known yet (a tab's first read),
- * the check is skipped and the result is taken as the isolated world's would be: the first
- * read is what sets the seat, so there is nothing to compare with.
+ * The main world is the page's own, so a page can forge what it returns. It is used only when the
+ * tab's seat account is known (`expectAccount`) and the result's account uuid is that account.
+ * With no seat known yet (a tab's first read) the main world is not run at all: the read fails
+ * and is tried again, in the isolated world, which the page cannot touch.
  * @param {object} wc the tab's webContents
  * @param {{claudeOrigin: string, log?: object, timeoutMs?: number, expectAccount?: string|null}} opts
  */
@@ -83,11 +83,12 @@ export async function readTab(wc, opts) {
     raw = await withTimeout(wc.executeJavaScriptInIsolatedWorld(READER_WORLD_ID, [{ code: READER_SCRIPT }]), timeoutMs, 'reader');
   } catch (err) {
     if (err?.readerTimeout) throw err;
+    const expect = typeof opts.expectAccount === 'string' && opts.expectAccount !== '' ? opts.expectAccount : null;
+    if (!expect) throw new Error(`the isolated world failed (${err?.message ?? err}) and the tab's account is not known yet, so the main world is not trusted`);
     opts.log?.debug?.('usage: isolated world failed, retrying in the main world:', err?.message ?? err);
     raw = await withTimeout(wc.executeJavaScript(READER_SCRIPT), timeoutMs, 'reader');
     opts.log?.debug?.('usage: reader: "main"');
-    const expect = typeof opts.expectAccount === 'string' && opts.expectAccount !== '' ? opts.expectAccount : null;
-    if (expect && raw?.account?.uuid !== expect) {
+    if (raw?.account?.uuid !== expect) {
       throw new Error('the main-world read is for another account than the tab\'s seat; ignored');
     }
   }
@@ -102,6 +103,52 @@ export async function readTab(wc, opts) {
   return { ...raw, active_org: typeof v === 'string' && UUID_RE.test(v) ? v : null };
 }
 
+/** Limits of one org's usage object: it is forwarded to the hub, so its size and shape are bounded. */
+const USAGE_MAX_DEPTH = 6;
+const USAGE_MAX_KEYS = 64;
+const USAGE_MAX_STRING = 256;
+const USAGE_MAX_BYTES = 32 * 1024;
+
+/**
+ * A clean copy of a usage object, or null when it is not plain JSON data within the limits: only
+ * objects, arrays, finite numbers, booleans, null and short strings, at most six levels deep,
+ * 64 entries per object or array, 32 KiB in all. No prototype tricks (`__proto__` is refused).
+ */
+export function cleanUsage(u) {
+  const walk = (v, depth) => {
+    if (v === null || typeof v === 'boolean') return { v };
+    if (typeof v === 'number') return Number.isFinite(v) ? { v } : null;
+    if (typeof v === 'string') return v.length <= USAGE_MAX_STRING ? { v } : null;
+    if (depth >= USAGE_MAX_DEPTH || typeof v !== 'object') return null;
+    if (Array.isArray(v)) {
+      if (v.length > USAGE_MAX_KEYS) return null;
+      const out = [];
+      for (const x of v) {
+        const w = walk(x, depth + 1);
+        if (!w) return null;
+        out.push(w.v);
+      }
+      return { v: out };
+    }
+    const proto = Object.getPrototypeOf(v);
+    if (proto !== Object.prototype && proto !== null) return null;
+    const keys = Object.keys(v);
+    if (keys.length > USAGE_MAX_KEYS) return null;
+    const out = {};
+    for (const k of keys) {
+      if (k === '__proto__' || k.length > 64) return null;
+      const w = walk(v[k], depth + 1);
+      if (!w) return null;
+      out[k] = w.v;
+    }
+    return { v: out };
+  };
+  if (!isObj(u)) return null;
+  const w = walk(u, 0);
+  if (!w) return null;
+  return Buffer.byteLength(JSON.stringify(w.v)) <= USAGE_MAX_BYTES ? w.v : null;
+}
+
 const isStatusObj = (v) => v && typeof v === 'object' && !Array.isArray(v) && Number.isInteger(v.__status);
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 
@@ -110,7 +157,8 @@ const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
  * Returns {kind: 'ok', orgs, account, activeOrg, fetchMs}, or {kind: 'stop', status, message}
  * for a 401 or 429 on any call, or a 403 that leaves no organization to read (a 403 on only some
  * orgs' usage drops those orgs), or {kind: 'retry', message} for anything else wrong.
- * The `orgs[].org` and `account` carry only their listed keys; `usage` is kept whole.
+ * The `orgs[].org` and `account` carry only their listed keys; `usage` is kept whole when it passes
+ * cleanUsage (plain JSON data within size limits), else the read retries.
  */
 export function checkResult(raw) {
   if (!isObj(raw)) return { kind: 'retry', message: 'no data' };
@@ -143,7 +191,9 @@ export function checkResult(raw) {
   for (const entry of raw.orgs) {
     if (!isObj(entry) || !isObj(entry.org) || !isObj(entry.usage)) return { kind: 'retry', message: 'bad shape' };
     if (typeof entry.org.uuid !== 'string' || !UUID_RE.test(entry.org.uuid)) return { kind: 'retry', message: 'bad org uuid' };
-    orgs.push({ org: pickKeys(entry.org, ORG_KEYS), usage: entry.usage });
+    const usage = cleanUsage(entry.usage);
+    if (!usage) return { kind: 'retry', message: 'bad usage' };
+    orgs.push({ org: pickKeys(entry.org, ORG_KEYS), usage });
   }
   if (!isObj(raw.account) || typeof raw.account.uuid !== 'string' || !UUID_RE.test(raw.account.uuid)) {
     return { kind: 'retry', message: 'bad account' };

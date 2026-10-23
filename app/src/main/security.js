@@ -22,6 +22,10 @@
 import * as defaultUrls from '../shared/urls.js';
 import { SAFE_WEB_PREFERENCES, PERMISSIONS, VIEW_SHELL, VIEW_TAB, VIEW_HUB, TAB_PARTITION_PREFIX, HUB_PARTITION, TAB_ID_RE } from '../shared/constants.js';
 
+/** What one page may trigger on its own: PAGE_OPEN_BURST external opens or handoffs per PAGE_OPEN_WINDOW_MS. */
+const PAGE_OPEN_BURST = 3;
+const PAGE_OPEN_WINDOW_MS = 10_000;
+
 const KINDS = new Set([VIEW_SHELL, VIEW_TAB, VIEW_HUB]);
 
 /** Extra webPreferences a caller may add; anything else (and any SAFE key) throws. */
@@ -67,14 +71,39 @@ export function create(deps) {
 
   const short = (u) => String(u).slice(0, 200);
 
-  async function openExternalSafe(url) {
+  // A page (the hub's board or a claude.ai tab) can ask for an external open, a tab handoff or a
+  // window.open on its own. Each webContents gets a small budget so a script cannot loop them: a
+  // burst of PAGE_OPEN_BURST, refilled over PAGE_OPEN_WINDOW_MS. Opens a page triggers never
+  // activate the browser on macOS (`activate: false`); a person's own click (tab:external, the
+  // update notice) is not limited.
+  const now = deps.now ?? Date.now;
+  const budgets = new WeakMap();
+  function pageBudget(wc) {
+    let b = budgets.get(wc);
+    if (!b) budgets.set(wc, (b = { stamps: [] }));
+    const t = now();
+    b.stamps = b.stamps.filter((s) => t - s < PAGE_OPEN_WINDOW_MS);
+    if (b.stamps.length >= PAGE_OPEN_BURST) return false;
+    b.stamps.push(t);
+    return true;
+  }
+  /** An external open a page asked for: refused when the page is over its budget. */
+  function externalFromPage(wc, url) {
+    if (!pageBudget(wc)) {
+      log.warn?.(`security: a page asked to open too many links; ignored ${short(url)}`);
+      return;
+    }
+    void openExternalSafe(url, { activate: false });
+  }
+
+  async function openExternalSafe(url, opts = {}) {
     if (!urls.isExternalAllowed(url)) {
       log.warn?.(`security: openExternal refused for ${short(url)}`);
       return false;
     }
     try {
       // mailto: keeps only to, subject, cc and body (urls.externalUrl)
-      await electron.shell.openExternal(urls.externalUrl(url));
+      await electron.shell.openExternal(urls.externalUrl(url), opts.activate === false ? { activate: false } : undefined);
       return true;
     } catch (err) {
       log.warn?.(`security: openExternal failed: ${err?.message ?? err}`);
@@ -94,14 +123,14 @@ export function create(deps) {
       case VIEW_TAB: {
         const action = urls.tabLinkAction(url, urlOpts);
         if (action === 'tab') return true;
-        if (action === 'external') void openExternalSafe(url);
+        if (action === 'external') externalFromPage(wc, url);
         return false;
       }
       case VIEW_HUB: {
         const action = urls.hubLinkAction(url, { hubOrigin: hubOriginOf(p.opts) });
         if (action === 'hub') return true;
-        if (action === 'session') handoff(p.opts, url);
-        else if (action === 'external') void openExternalSafe(url);
+        if (action === 'session') handoff(wc, p.opts, url);
+        else if (action === 'external') externalFromPage(wc, url);
         return false;
       }
       default:
@@ -109,7 +138,11 @@ export function create(deps) {
     }
   }
 
-  function handoff(opts, url) {
+  function handoff(wc, opts, url) {
+    if (!pageBudget(wc)) {
+      log.warn?.('security: a page asked to open too many session links; ignored');
+      return;
+    }
     if (typeof opts?.onSessionLink === 'function') {
       try {
         opts.onSessionLink(url);
@@ -117,7 +150,7 @@ export function create(deps) {
         log.warn?.(`security: session link handoff failed: ${err?.message ?? err}`);
       }
     } else {
-      void openExternalSafe(url);
+      void openExternalSafe(url, { activate: false });
     }
   }
 
@@ -130,14 +163,14 @@ export function create(deps) {
       case VIEW_TAB: {
         const action = urls.tabLinkAction(url, urlOpts);
         if (action === 'tab') loadIn(wc, url);
-        else if (action === 'external') void openExternalSafe(url);
+        else if (action === 'external') externalFromPage(wc, url);
         return { action: 'deny' };
       }
       case VIEW_HUB: {
         const action = urls.hubLinkAction(url, { hubOrigin: hubOriginOf(p.opts) });
         if (action === 'hub') loadIn(wc, url);
-        else if (action === 'session') handoff(p.opts, url);
-        else if (action === 'external') void openExternalSafe(url);
+        else if (action === 'session') handoff(wc, p.opts, url);
+        else if (action === 'external') externalFromPage(wc, url);
         return { action: 'deny' };
       }
       default:

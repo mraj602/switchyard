@@ -293,6 +293,15 @@ test('openLink: the tab of the seat\'s account, else a tab made for it, else a n
   assert.equal(await r.api.openLink(LINK, null), false);
 });
 
+
+test('openLink quiet: a link a page handed over selects the tab but never raises the window', async () => {
+  const r = rig({ tabs: [tabRecord(A, { seat: { account: 'a1', org: 'o1' } }), tabRecord(B, { seat: { account: 'a2', org: 'o2' } })], seats: [SEAT6, SEAT7] });
+  await r.api.start();
+  assert.equal(await r.api.openLink(LINK, { account: 'a2', org: 'o2' }, { quiet: true }), true);
+  assert.equal(r.window.selected(), B);
+  assert.equal(r.window.shown, 0, 'the window was not shown or focused');
+});
+
 test('adoptTab: a tab made for claude-6, signed in as claude-7, becomes claude-7\'s; claude-6 is offered a new tab', async () => {
   const expect6 = { seat: SEAT6.id, account: 'a6', org: 'o6', label: 'claude-6' };
   const r = rig({ tabs: [tabRecord(A, { name: 'claude-6', expect: expect6, seat: { account: 'a7', org: 'o7' } })], seats: [SEAT6, SEAT7] });

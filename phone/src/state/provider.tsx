@@ -9,7 +9,7 @@ import type { Device, Me } from '../contract/api';
 import type { AppRoute } from '../contract/routes';
 import { createPoller, initialData, loadCache, reduce } from '../lib/data';
 import type { Poller } from '../lib/data';
-import { addPendingRevoke, createHubClient, flushPendingRevokes, HubError, normalizeOrigin, revokeDevice } from '../lib/hub';
+import { addPendingRevoke, createHubClient, flushPendingRevokes, normalizeOrigin, revokeDevice } from '../lib/hub';
 import { hostOf } from '../lib/pair';
 import type { HubClient } from '../lib/hub';
 import { performDecision } from '../lib/notify';

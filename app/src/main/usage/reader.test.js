@@ -1,7 +1,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { checkResult, READER_SCRIPT, readTab, stopMessage } from './reader.js';
+import { checkResult, cleanUsage, READER_SCRIPT, readTab, stopMessage } from './reader.js';
 import { fakeElectron } from '../../../test/fakes/electron.js';
 import { fakeBrowser, signInFake } from '../../../test/fakes/claude/browser.js';
 import { startFakeClaude, uuidOf } from '../../../test/fakes/claude/server.js';
@@ -69,7 +69,10 @@ test('an isolated world that throws is retried once in the main world', async ()
   };
   const { wc } = await tab(cookies, { exec });
   const debug = [];
-  const raw = await readTab(wc, { claudeOrigin: fake.origin, log: { debug: (...a) => debug.push(a.join(' ')) } });
+  const { wc: wc0 } = await tab(cookies);
+  const known = (await readTab(wc0, { claudeOrigin: fake.origin })).account.uuid;
+  browser.calls.length = 0;
+  const raw = await readTab(wc, { claudeOrigin: fake.origin, expectAccount: known, log: { debug: (...a) => debug.push(a.join(' ')) } });
   assert.equal(isolatedCalls, 1);
   assert.deepEqual(browser.calls.map((c) => c.world), ['main']);
   assert.equal(checkResult(raw).kind, 'ok');
@@ -118,7 +121,7 @@ test('a network error inside the script is a result (no throw), so the reads are
   assert.equal(fake.stats.paths.usage, before);
 });
 
-test('a main-world result must be for the tab\'s known seat account; with no seat yet it is taken', async () => {
+test('a main-world result is used only for the tab\'s known seat account; with no seat yet it is not trusted', async () => {
   const cookies = await signInFake(fake.origin);
   const browser = fakeBrowser({ origin: fake.origin, cookies });
   const exec = async (wc, code, world) => {
@@ -126,10 +129,11 @@ test('a main-world result must be for the tab\'s known seat account; with no sea
     return browser.exec(wc, code, world);
   };
   const { wc } = await tab(cookies, { exec });
-  const first = await readTab(wc, { claudeOrigin: fake.origin, expectAccount: null });
-  assert.equal(checkResult(first).kind, 'ok', 'seat unknown: the check is skipped');
-  const same = await readTab(wc, { claudeOrigin: fake.origin, expectAccount: first.account.uuid });
-  assert.equal(same.account.uuid, first.account.uuid);
+  await assert.rejects(readTab(wc, { claudeOrigin: fake.origin, expectAccount: null }), /not known yet/);
+  assert.equal(browser.calls.length, 0, 'the main world did not even run');
+  const { wc: wc0 } = await tab(cookies);
+  const known = (await readTab(wc0, { claudeOrigin: fake.origin })).account.uuid;
+  assert.equal((await readTab(wc, { claudeOrigin: fake.origin, expectAccount: known })).account.uuid, known);
   await assert.rejects(readTab(wc, { claudeOrigin: fake.origin, expectAccount: uuidOf('acct', 9) }), /another account/);
   // the isolated world's result is not checked against the seat (the page cannot touch it)
   const { wc: wc2 } = await tab(cookies);
@@ -149,7 +153,7 @@ test('checkResult: ok keeps usage whole and picks the listed keys', () => {
   assert.equal(r.kind, 'ok');
   assert.deepEqual(r.orgs[0].org, { uuid: A, name: 'x' });
   assert.deepEqual(r.account, acct);
-  assert.equal(r.orgs[0].usage, raw.orgs[0].usage);
+  assert.deepEqual(r.orgs[0].usage, raw.orgs[0].usage);
 });
 
 test('checkResult: 401, 403 (when nothing is left to read) and 429 stop; other statuses retry', () => {
@@ -187,7 +191,7 @@ test('checkResult: more than 512 KiB retries', () => {
   const raw = ok();
   raw.orgs[0].usage = { blob: 'x'.repeat(READER_MAX_BYTES) };
   assert.equal(checkResult(raw).kind, 'retry');
-  raw.orgs[0].usage = { blob: 'x'.repeat(READER_MAX_BYTES - 2000) };
+  raw.orgs[0].usage = { five_hour: { utilization: 5 } };
   assert.equal(checkResult(raw).kind, 'ok');
 });
 
@@ -234,4 +238,31 @@ test('checkResult: a real sign-out (401 anywhere) stops as signed out, even besi
 test('the script maps a redirect to /login onto a 401', () => {
   assert.match(READER_SCRIPT, /r\.redirected/);
   assert.match(READER_SCRIPT, /__status: 401/);
+});
+
+test('cleanUsage keeps plain JSON within limits and refuses the rest', () => {
+  const good = { five_hour: { utilization: 61.5, resets_at: '2026-10-23T10:00:00Z' }, seven_day: null, flags: [true, 1, 'x'] };
+  assert.deepEqual(cleanUsage(good), good);
+  const deep = (n) => (n === 0 ? 1 : { a: deep(n - 1) });
+  assert.ok(cleanUsage(deep(5)));
+  assert.equal(cleanUsage(deep(8)), null, 'too deep');
+  assert.equal(cleanUsage({ s: 'x'.repeat(300) }), null, 'long string');
+  assert.equal(cleanUsage(Object.fromEntries(Array.from({ length: 70 }, (_, i) => [`k${i}`, 1]))), null, 'too many keys');
+  assert.equal(cleanUsage({ list: Array.from({ length: 70 }, () => 1) }), null, 'long array');
+  assert.equal(cleanUsage({ n: Infinity }), null);
+  assert.equal(cleanUsage({ f: () => 1 }), null);
+  assert.equal(cleanUsage(JSON.parse('{"__proto__": {"x": 1}}')), null);
+  assert.equal(cleanUsage(Object.create({ inherited: 1 })), null, 'not a plain object');
+  assert.equal(cleanUsage([1]), null);
+  assert.equal(cleanUsage(null), null);
+  const big = Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`k${i}`, Object.fromEntries(Array.from({ length: 60 }, (_, j) => [`j${j}`, 'y'.repeat(20)]))]));
+  assert.equal(cleanUsage(big), null, 'over 32 KiB');
+});
+
+test('checkResult: a usage object outside the limits retries instead of being forwarded', () => {
+  const raw = ok();
+  raw.orgs[0].usage = { s: 'x'.repeat(300) };
+  assert.deepEqual(checkResult(raw), { kind: 'retry', message: 'bad usage' });
+  const clean = ok();
+  assert.deepEqual(checkResult(clean).orgs[0].usage, { five_hour: null });
 });

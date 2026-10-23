@@ -16,6 +16,9 @@ All notable changes to Switchyard are recorded here. The format follows
   generic text, widget taps open the app with an explicit intent, and the phone no longer sends
   its token to the `moved_to` address in an unsigned `/health` reply (it asks you to pair again).
   `make phone-apk-release` refuses a wrong package id, cleartext traffic or a debuggable build.
+- Desktop: a page can trigger only a few external opens or session links in a short time, and
+  never brings the window or the browser to the front. Usage read from the page's own
+  context is used only for a known account, and usage data is size- and shape-checked first.
 - Desktop: sites that ask for a client certificate get none.
 - The web board's "Open in app" link is now an Android intent pinned to the Switchyard package,
   so no other app can receive the pairing secret.
