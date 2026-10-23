@@ -460,9 +460,13 @@ func TestClaimRateLimitsAPI(t *testing.T) {
 	// ...but the QR secret from that IP works.
 	// (Checked last: it consumes the code.)
 
-	// Hub-wide: many addresses, each with a few wrong guesses, lock typed claims for all.
-	for i := range 20 {
-		wrong(fmt.Sprintf("198.51.100.%d", i+1))
+	// One address's lockout does not block another.
+	if r := h.call("POST", "/v1/pair/claim", map[string]any{"code": "000000"}, opts{xff: "192.0.2.1"}); r.code != 401 {
+		t.Fatalf("another address while one is locked: %d", r.code)
+	}
+	// Hub-wide ceiling: very many addresses, each with a wrong guess, lock typed claims for all.
+	for i := range pair.TypedFailsHub {
+		wrong(fmt.Sprintf("198.51.%d.%d", 100+i/200, i%200+1))
 	}
 	if r := h.call("POST", "/v1/pair/claim", map[string]any{"code": live.Digits}, opts{xff: "192.0.2.77"}); r.code != 429 {
 		t.Fatalf("hub-wide lockout: %d", r.code)
