@@ -283,6 +283,18 @@ another session's alias. Several matches in a step (an alias two sessions share,
    a registry file in a managed slot (step 4) is `claude_pid`; the registry decides, so a false
    process-name hit costs one lookup. None → exit 4 "sy peers send works only inside a Claude
    Code session".
+   The walk never passes a candidate that is a session it cannot identify: one that is the
+   Claude Code program itself (its executable is a Claude Code binary, or its command line
+   runs the npm package's entry point), or whose pid a live session's file names (2.4). Such a
+   candidate with no usable registry file (none, an unmanaged folder, a stale start time, an
+   unreadable environment) refuses with exit 4. A `claude -p` started from inside another
+   session (its Bash tool, a script) is the case this exists for: it inherits the parent's
+   whole environment (`CLAUDECODE`, `CLAUDE_CONFIG_DIR` and every other variable) and may have
+   no registry file, and walking on would send as the parent. Only a candidate that merely
+   carries the name (a wrapper script called `claude`, whose executable is the shell) is
+   passed over. Hooks and the status line never have this problem: their session is always
+   the payload's `session_id` (and `transcript_path`), and no inherited variable is read to
+   find it.
 2. `config_dir` = `CLAUDE_CONFIG_DIR` from the environment, else `~/.claude`.
 3. Send `{"op":"send","claude_pid","config_dir",…}` to the agent.
 4. The agent verifies the caller's pid (peer credentials) has `claude_pid` as an ancestor,
