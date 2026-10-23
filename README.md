@@ -159,7 +159,7 @@ key, and the certificate fingerprint is in that release's note
 ([Android guide](docs/guide/android.md#verify-the-apk)).
 
 Install `sy` on Linux or macOS with the one-liner in the [Quickstart](#quickstart). Add
-`sh -s -- --version 0.9.0` to pick a version. On Windows, in PowerShell 5.1 or later:
+`sh -s -- --version 1.0.0` to pick a version. On Windows, in PowerShell 5.1 or later:
 
 ```powershell
 irm https://github.com/mraj602/switchyard/releases/latest/download/install.ps1 | iex
@@ -196,7 +196,7 @@ More: [docs/guide/faq.md](docs/guide/faq.md).
 
 ## Roadmap
 
-Ideas for after 0.9, roughly in order. They are plans, not promises; open an issue if one
+Ideas for after 1.0, roughly in order. They are plans, not promises; open an issue if one
 matters to you.
 
 - **More coding agents.** Show OpenAI Codex CLI, Google Antigravity and Gemini CLI sessions on

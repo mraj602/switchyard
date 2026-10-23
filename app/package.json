@@ -2,7 +2,7 @@
   "name": "switchyard-desktop",
   "productName": "Switchyard",
   "desktopName": "switchyard-desktop.desktop",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "description": "Switchyard desktop app: claude.ai account tabs, web usage and the hub board. Unofficial; not affiliated with Anthropic.",
   "license": "AGPL-3.0-only",
   "author": "Switchyard contributors",

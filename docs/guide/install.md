@@ -54,7 +54,7 @@ Options go after `sh -s --`:
 
 ```sh
 curl -fsSL https://github.com/mraj602/switchyard/releases/latest/download/install.sh \
-  | sh -s -- --version 0.9.0 --bin-dir ~/bin --no-setup
+  | sh -s -- --version 1.0.0 --bin-dir ~/bin --no-setup
 ```
 
 - `--version VER`: install this version, with or without the leading `v`. The default is the
@@ -80,7 +80,7 @@ It does the same checks and puts `sy.exe` in `%USERPROFILE%\.local\bin`. It does
 `-NoSetup`, `-SetupArgs`), run it as a script block:
 
 ```powershell
-& ([scriptblock]::Create((irm https://github.com/mraj602/switchyard/releases/latest/download/install.ps1))) -Version 0.9.0 -NoSetup
+& ([scriptblock]::Create((irm https://github.com/mraj602/switchyard/releases/latest/download/install.ps1))) -Version 1.0.0 -NoSetup
 ```
 
 ### From source
