@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- phone.md P2: the scanner screen. CAMERA comes from zxing-android-embedded's manifest and the
+     app config's permissions list; the app asks for it before the scanner opens. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.CAMERA"/>
+  <uses-feature android:name="android.hardware.camera" android:required="false"/>
+
+  <application>
+    <!-- zxing's CaptureActivity locked to portrait (its own declaration is landscape). -->
+    <activity
+      android:name="dev.switchyard.scan.SyScanActivity"
+      android:exported="false"
+      android:screenOrientation="portrait"
+      android:stateNotNeeded="true"
+      android:theme="@style/zxing_CaptureTheme"
+      android:windowSoftInputMode="stateAlwaysHidden"/>
+  </application>
+</manifest>

@@ -52,7 +52,7 @@ export const ACTION_OPEN = 'open';
 export const ACTION_SNOOZE = 'snooze';
 export const ACTION_SEEN = 'seen';
 
-/** Android channels (P6.1), in creation order. Importance names are expo-notifications'. */
+/** Android channels (P6.1), in creation order. Importance names are the keys of NotificationManager's IMPORTANCE_* (modules/sy-notify AndroidImportance). */
 export const ANDROID_CHANNELS: readonly {
   id: AndroidChannelId;
   name: string;

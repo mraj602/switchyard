@@ -1,4 +1,4 @@
-// Pair screen (phone.md P2): scan, typed input, errors, confirm replace. Offline: the claim
+// Pair screen (phone.md P2): scan (modules/sy-scan's fake), typed input, errors, confirm replace. Offline: the claim
 // fetch is a fake and expo-router is mocked.
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { HubTestProvider } from '../src/state';
@@ -7,7 +7,7 @@ import PairScreen from '../app/pair';
 import { redirectSystemPath } from '../app/+native-intent';
 import { claims, fakeFetch, manualClock, response } from './hubfake';
 import type { FakeFetch } from './hubfake';
-import { cameraState } from './fakes';
+import { callsOf, scanState } from './fakes';
 
 const mockReplace = jest.fn();
 let mockParams: Record<string, string | undefined> = {};
@@ -31,25 +31,24 @@ function renderPair(f: FakeFetch, value: Partial<HubState> = {}) {
   return { ui, pairWith, unpair };
 }
 
+/** The person taps Scan QR code and the scanner reads `data` (modules/sy-scan's fake). */
 async function scan(data: string) {
-  const cam = screen.getByTestId('camera');
-  await act(async () => {
-    (cam.props as { onBarcodeScanned: (r: { data: string }) => void }).onBarcodeScanned({ data });
-  });
+  scanState.results.push({ status: 'scanned', text: data });
+  await fireEvent.press(screen.getByText('Scan QR code'));
 }
 
 beforeEach(() => {
   mockReplace.mockClear();
   mockParams = {};
-  cameraState.granted = true;
 });
 
 describe('Pair screen', () => {
-  it('shows the camera and the typed switch', async () => {
+  it('shows the scanner and the typed switch', async () => {
     const { ui } = renderPair(fakeFetch(() => response(500)));
     await render(ui);
     expect(screen.getByText('Pair with your hub')).toBeTruthy();
-    expect(screen.getByTestId('camera')).toBeTruthy();
+    expect(screen.getByTestId('scanner')).toBeTruthy();
+    expect(screen.getByText('Scan QR code')).toBeTruthy();
     expect(screen.getByText('Type a code and address instead')).toBeTruthy();
   });
 
@@ -76,6 +75,26 @@ describe('Pair screen', () => {
     expect(screen.getByText("That doesn't look like a hub address")).toBeTruthy();
     await scan(`https://hub.example.ts.net/#/pair?s=${SECRET}`);
     expect(claims(f)).toHaveLength(1);
+  });
+
+  it('opens the scanner for QR codes with a prompt, and a cancelled scan claims nothing', async () => {
+    const f = fakeFetch(() => response(200, claimOk));
+    const { ui } = renderPair(f);
+    await render(ui);
+    await fireEvent.press(screen.getByText('Scan QR code'));
+    expect(callsOf('scan.scanQr')).toEqual([{ fn: 'scan.scanQr', args: ['Scan the QR code from Add phone'] }]);
+    expect(claims(f)).toHaveLength(0);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('scans the same QR again after a failed claim', async () => {
+    const f = fakeFetch(() => response(429, {}));
+    const { ui } = renderPair(f);
+    await render(ui);
+    const qr = `https://hub.example.ts.net/#/pair?s=${SECRET}`;
+    await scan(qr);
+    await scan(qr);
+    expect(claims(f)).toHaveLength(2);
   });
 
   it('does not claim twice for the same QR while a claim is running', async () => {
@@ -110,7 +129,7 @@ describe('Pair screen', () => {
     const { ui, pairWith } = renderPair(f);
     await render(ui);
     await fireEvent.press(screen.getByText('Type a code and address instead'));
-    expect(screen.queryByTestId('camera')).toBeNull();
+    expect(screen.queryByTestId('scanner')).toBeNull();
     await fireEvent.changeText(screen.getByLabelText('Hub address'), 'hub.example.ts.net');
     await fireEvent.changeText(screen.getByLabelText('Code'), '482 913');
     await fireEvent.press(screen.getByText('Pair'));
@@ -136,11 +155,22 @@ describe('Pair screen', () => {
   });
 
   it('asks for the camera when it is not allowed', async () => {
-    cameraState.granted = false;
+    scanState.granted = false;
     const { ui } = renderPair(fakeFetch(() => response(500)));
     await render(ui);
-    expect(screen.queryByTestId('camera')).toBeNull();
-    expect(screen.getByText('Allow camera')).toBeTruthy();
+    expect(await screen.findByText('Allow camera')).toBeTruthy();
+    expect(screen.queryByText('Scan QR code')).toBeNull();
+  });
+
+  it('says so when the camera is off for good, with typed input still offered', async () => {
+    scanState.granted = false;
+    const { ui } = renderPair(fakeFetch(() => response(500)));
+    await render(ui);
+    scanState.canAskAgain = false;
+    await fireEvent.press(await screen.findByText('Allow camera'));
+    expect(screen.getByText('Camera access is off in system settings.')).toBeTruthy();
+    expect(screen.queryByText('Allow camera')).toBeNull();
+    expect(screen.getByText('Type a code and address instead')).toBeTruthy();
   });
 
   it('shows why the app was unpaired, with Scan again', async () => {
@@ -149,7 +179,8 @@ describe('Pair screen', () => {
     expect(screen.getByText('This phone was removed from the hub')).toBeTruthy();
     await fireEvent.press(screen.getByText('Scan again'));
     expect(screen.queryByTestId('notice-card')).toBeNull();
-    expect(screen.getByTestId('camera')).toBeTruthy();
+    expect(callsOf('scan.scanQr')).toHaveLength(1);
+    expect(screen.getByTestId('scanner')).toBeTruthy();
   });
 
   it('has no CLI or missing-screen wording', async () => {
@@ -191,7 +222,7 @@ describe('Pair screen', () => {
     await render(ui);
     await fireEvent.press(screen.getByText('Cancel'));
     expect(screen.queryByTestId('link-confirm')).toBeNull();
-    expect(screen.getByTestId('camera')).toBeTruthy();
+    expect(screen.getByTestId('scanner')).toBeTruthy();
     expect(claims(f)).toHaveLength(0);
   });
 

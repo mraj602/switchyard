@@ -1,4 +1,4 @@
-import * as ExpoNotifications from 'expo-notifications';
+import * as ExpoNotifications from '../modules/sy-notify';
 import type { AppInfo, Clock, FetchLike, RequestInitLike } from '../src/contract/platform';
 import {
   actOnToken,

@@ -72,7 +72,8 @@ Safari (iOS 16.4 or newer for notifications) or subscribe to an ntfy topic
 ## Does it use Google or Firebase for Android notifications?
 
 No. The Android app keeps its own encrypted connection to your hub and posts notifications
-itself. No Firebase project, no Google push service and no third-party account are involved.
+itself. No Firebase project, no Google push service and no third-party account are involved,
+and the APK contains no Google Play services or Firebase code at all (CI checks every build).
 The installable web app, if you use it, does use the browser's own push service, with the
 payload encrypted end to end.
 

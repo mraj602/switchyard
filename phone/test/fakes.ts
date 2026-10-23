@@ -51,7 +51,9 @@ function hostModule(ns: string, extra: Record<string, unknown> = {}): Record<str
   });
 }
 
-// ---------------------------------------------------------------- expo-notifications
+// ---------------------------------------------------------------- sy-notify (modules/sy-notify)
+// The module's calls plus the response listeners src/lib/notify can take (the real module has
+// none on Android: sy-link's notifications carry their own tap intents).
 
 type Listener = (x: unknown) => void;
 
@@ -84,8 +86,8 @@ const perm = () => ({
 
 export const notifications = {
   __esModule: true,
-  DEFAULT_ACTION_IDENTIFIER: 'expo.modules.notifications.actions.DEFAULT',
-  AndroidImportance: { UNKNOWN: 0, UNSPECIFIED: 1, NONE: 2, MIN: 3, LOW: 4, DEFAULT: 5, HIGH: 6, MAX: 7 },
+  available: true,
+  AndroidImportance: { NONE: 0, MIN: 1, LOW: 2, DEFAULT: 3, HIGH: 4, MAX: 5 },
   setNotificationHandler(h: unknown) {
     rec('notifications.setNotificationHandler', [h]);
     notificationsState.handler = h;
@@ -179,25 +181,29 @@ export const secureStore = {
   },
 };
 
-// ---------------------------------------------------------------- expo-camera
+// ---------------------------------------------------------------- sy-scan (modules/sy-scan)
 
-export const cameraState = { granted: true };
+/**
+ * `granted`/`canAskAgain`: the camera permission. `results`: what the next scans return, in
+ * order (a scan with none queued is "cancelled", as when the person presses Back).
+ */
+export const scanState = {
+  granted: true,
+  canAskAgain: true,
+  results: [] as ({ status: 'scanned'; text: string } | { status: 'cancelled' } | { status: 'unavailable' })[],
+};
 
-export const camera = {
+export const syScan = {
   __esModule: true,
-  CameraView: (props: Record<string, unknown>) => React.createElement('Camera.CameraView', props),
-  useCameraPermissions: () => [
-    { granted: cameraState.granted, status: cameraState.granted ? 'granted' : 'denied', canAskAgain: true },
-    async () => {
-      rec('camera.requestPermission', []);
-      return { granted: cameraState.granted };
-    },
-  ],
-  Camera: {
-    async requestCameraPermissionsAsync() {
-      rec('camera.requestCameraPermissionsAsync', []);
-      return { granted: cameraState.granted, status: cameraState.granted ? 'granted' : 'denied' };
-    },
+  available: true,
+  async cameraPermission() {
+    rec('scan.cameraPermission', []);
+    return { granted: scanState.granted, canAskAgain: scanState.canAskAgain };
+  },
+  async scanQr(prompt: string) {
+    rec('scan.scanQr', [prompt]);
+    if (!scanState.granted) return { status: 'denied', canAskAgain: scanState.canAskAgain };
+    return scanState.results.shift() ?? { status: 'cancelled' };
   },
 };
 
@@ -521,7 +527,9 @@ export function resetFakes(): void {
   notificationsState.presented = [];
   secureState.items.clear();
   secureState.locked = false;
-  cameraState.granted = true;
+  scanState.granted = true;
+  scanState.canAskAgain = true;
+  scanState.results = [];
   widgetsState.widgets.clear();
   widgetsState.liveComponents.clear();
   widgetsState.activities = [];

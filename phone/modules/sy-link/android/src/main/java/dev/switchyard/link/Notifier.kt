@@ -51,11 +51,8 @@ class Notifier(private val ctx: Context, private val store: Store) : Sink {
   /** The accent behind the small icon: gold for alerts, grey for the always-on connection note. */
   private fun color(kind: IconKind): Int = if (kind == IconKind.CONNECTION) CONNECTION_GREY else alertColor()
 
-  /** The brand accent: expo-notifications' notification_icon_color, else the icon gold. */
-  private fun alertColor(): Int {
-    val r = ctx.resources.getIdentifier("notification_icon_color", "color", ctx.packageName)
-    return if (r != 0) ctx.getColor(r) else BRAND_ACCENT
-  }
+  /** The brand accent: the icon gold. */
+  private fun alertColor(): Int = BRAND_ACCENT
 
   private fun flags() = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
 

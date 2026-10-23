@@ -1,9 +1,9 @@
 // Jest setup (phone.md P1): every native module the app uses is a small
 // recording fake from test/fakes.ts, and the network is off.
 
-jest.mock('expo-notifications', () => jest.requireActual('./fakes').notifications);
+jest.mock('../modules/sy-notify', () => jest.requireActual('./fakes').notifications);
 jest.mock('expo-secure-store', () => jest.requireActual('./fakes').secureStore);
-jest.mock('expo-camera', () => jest.requireActual('./fakes').camera);
+jest.mock('../modules/sy-scan', () => jest.requireActual('./fakes').syScan);
 jest.mock('expo-widgets', () => jest.requireActual('./fakes').widgets);
 jest.mock('@expo/ui/swift-ui', () => jest.requireActual('./fakes').swiftUI);
 jest.mock('@expo/ui/swift-ui/modifiers', () => jest.requireActual('./fakes').swiftUIModifiers);

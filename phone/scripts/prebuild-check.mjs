@@ -83,7 +83,23 @@ try {
     check(both.includes('android.permission.RECEIVE_BOOT_COMPLETED'), 'RECEIVE_BOOT_COMPLETED permission');
     check(both.includes('android.permission.REQUEST_INSTALL_PACKAGES'), 'REQUEST_INSTALL_PACKAGES permission');
     check(!manifest.includes('com.google.firebase'), 'no com.google.firebase entry in the app manifest');
-    check(new RegExp('ExpoFirebaseMessagingService"[^>]*tools:node="remove"').test(manifest), 'FCM service removed from the merged manifest');
+    check(!/Firebase|com\.google\.android\.gms|mlkit/i.test(manifest), 'no Firebase, Play services or ML Kit entry in the app manifest');
+    // No proprietary Google code (P13): the packages that pulled it in are gone, their
+    // replacements are the local modules, and no installed package declares it for release.
+    const pkg = JSON.parse(fs.readFileSync(path.join(phone, 'package.json'), 'utf8'));
+    for (const dep of ['expo-notifications', 'expo-camera', 'expo-application']) {
+      check(!(dep in { ...pkg.dependencies, ...pkg.devDependencies }), `no ${dep} dependency`);
+    }
+    for (const mod of ['sy-notify', 'sy-scan']) {
+      check(fs.existsSync(path.join(app, 'modules', mod, 'android', 'build.gradle')), `local module ${mod} present`);
+    }
+    let staticOk = true;
+    try {
+      execFileSync(process.execPath, [path.join(phone, 'scripts', 'check-no-google.mjs'), 'static'], { stdio: 'inherit' });
+    } catch {
+      staticOk = false;
+    }
+    check(staticOk, 'no Firebase, Play services or ML Kit in any Android build file (check-no-google.mjs static)');
     const gradle = ['build.gradle', path.join('app', 'build.gradle')].map((f) => read('android', f)).join('\n');
     check(!/google-services|com\.google\.gms/.test(gradle), 'no google-services Gradle plugin');
     check(!fs.existsSync(path.join(app, 'android', 'app', 'google-services.json')), 'no google-services.json');
@@ -100,7 +116,8 @@ try {
     const plist = mainPlist ? fs.readFileSync(mainPlist, 'utf8') : '';
     check(Boolean(mainPlist), 'app Info.plist');
     check(/<key>NSSupportsLiveActivities<\/key>\s*<true\/>/.test(plist), 'NSSupportsLiveActivities');
-    check(plist.includes('<key>NSCameraUsageDescription</key>'), 'NSCameraUsageDescription');
+    // The QR scanner (modules/sy-scan) is Android only: the iOS app asks for no camera.
+    check(!plist.includes('<key>NSCameraUsageDescription</key>'), 'no NSCameraUsageDescription (no scanner on iOS)');
     check(/<key>CFBundleURLSchemes<\/key>\s*<array>[\s\S]*?<string>switchyard<\/string>/.test(plist), 'switchyard URL scheme');
     const ents = findFiles(path.join(app, 'ios'), /\.entitlements$/);
     const withGroup = ents.filter((f) => /com\.apple\.security\.application-groups[\s\S]*?group\./.test(fs.readFileSync(f, 'utf8')));

@@ -1,5 +1,6 @@
 // Notifications (phone.md P6).
-// Pure: takes a Notifications-shaped object (expo-notifications' API surface it uses), fetch
+// Pure: takes a Notifications-shaped object (modules/sy-notify on Android; the names are the ones
+// expo-notifications used, so this stays platform-neutral), fetch
 // and a clock. No token, title, body or response body ever reaches an error or a log (hard
 // rule 3): failures are reported as states and status codes only.
 import type { ActionReply, DevicePrefs } from '../../contract/api';
@@ -24,13 +25,13 @@ import { hashToRoute } from '../links';
  */
 export const BACKGROUND_ACTIONS_IOS = true;
 
-/** What expo-notifications' DEFAULT_ACTION_IDENTIFIER is (a plain tap). */
+/** A plain tap's action identifier (expo-notifications' DEFAULT_ACTION_IDENTIFIER, kept for iOS). */
 export const DEFAULT_ACTION = 'expo.modules.notifications.actions.DEFAULT';
 
-/** expo-notifications' AndroidImportance values, used when the adapter passes none. */
+/** Android's NotificationManager.IMPORTANCE_* values, used when the adapter passes none. */
 const IMPORTANCE_FALLBACK: Record<string, number> = { LOW: 2, DEFAULT: 3, HIGH: 4 };
 
-/** The expo-notifications surface the app uses (a recording fake in test/setup.ts). */
+/** The notifications surface the app uses: modules/sy-notify (a recording fake in test/setup.ts). */
 export interface NotificationsLike {
   /** The module's AndroidImportance enum; pass the module itself and it is there. */
   AndroidImportance?: Record<string, number>;
@@ -55,7 +56,7 @@ export interface NotificationsLike {
 /** The parts of a NotificationResponse decideResponse reads. */
 export interface NotificationResponseLike {
   actionIdentifier: string; // DEFAULT_ACTION for a plain tap
-  /** `date`: when the OS delivered it (ms, the phone's clock), as expo-notifications reports it. */
+  /** `date`: when the OS delivered it (ms, the phone's clock), as the response reports it. */
   notification: { date?: number; request: { identifier: string; content: { data?: unknown } } };
 }
 

@@ -12,7 +12,8 @@ There is no iOS app; on an iPhone use the web app (see [alerts.md](alerts.md#web
 ## No push service
 
 The app keeps its own encrypted connection to your hub (the link) and posts notifications
-itself. There is no Google push, no Firebase project, no Expo account and no store listing.
+itself. There is no Google push, no Firebase project, no Google Play services, no Expo account
+and no store listing.
 The hub needs no outbound access to any push service for the app. The trade-off: the app
 keeps a small, permanent "Connected to hub" notification, and phone makers' battery savers
 can stop it (see [Battery](#battery-and-phone-makers)).
@@ -64,6 +65,39 @@ phone must uninstall and reinstall).
 `SY_APP_ID` sets the Android package name (default `dev.switchyard.app.local`); use your own
 reverse-DNS id if you plan to share your build.
 
+### F-Droid and IzzyOnDroid
+
+The APK contains no proprietary code, so it can go to F-Droid or IzzyOnDroid (nothing has been
+submitted yet):
+
+- **No Google libraries.** No Firebase (notifications come over the app's own link and are
+  posted by its own `sy-link` and `sy-notify` modules), no Google Play services and no ML Kit
+  (the QR scanner is ZXing, through `zxing-android-embedded`, Apache-2.0), and no Play Install
+  Referrer. `phone/scripts/check-no-google.mjs` enforces it: CI fails when
+  `com.google.firebase`, `com.google.android.gms`, `com.google.mlkit` or another closed
+  Google/Play group is in any Android build file or on the release runtime classpath
+  (`./gradlew :app:dependencies --configuration releaseRuntimeClasspath`), or when a class of
+  theirs is in the release APK's dex. Check a build yourself with
+  `node phone/scripts/check-no-google.mjs apk <file.apk>`.
+- **No anti-features to declare** beyond the usual for a self-hosted client: no ads, no
+  tracking, no analytics, and it talks only to your own hub (plus GitHub for update checks, and
+  claude.ai in the optional tabs).
+- **Reproducible steps.** Everything is built from the repository with public tools: Node
+  22.13+, `npm ci` against the committed `phone/package-lock.json` (exact pins), JDK 17,
+  the Android SDK, then
+
+  ```sh
+  cd phone
+  npm ci
+  SY_APP_VARIANT=production npx expo prebuild --platform android --no-install --clean
+  cd android && ./gradlew :app:assembleRelease
+  ```
+
+  `expo prebuild` generates `phone/android/` from `app.config.ts` and the config plugins in
+  `phone/plugins/`; nothing in it is edited by hand and it needs no account or network service
+  beyond the npm and Maven registries. A store builds its own signed APK the same way (the
+  signing keys differ, so a store build and your own build cannot update each other).
+
 ### Install (sideload)
 
 - Over USB: `adb install phone/dist/switchyard-<version>.apk`.
@@ -84,7 +118,9 @@ The hub must be reachable over `https://` from the phone, for example with
 
    It prints a QR and a 6-digit code, valid once for 10 minutes. If the hub already knows its
    public URL, `--url` can be left out.
-2. In the app, tap **Pair** and scan the QR (or type the address and the code).
+2. In the app, tap **Scan QR code**: the camera opens full screen (Android asks for the camera
+   the first time). Point it at the QR; the scanner closes by itself when it reads it. Or tap
+   **Type a code and address instead**.
 3. The app checks the hub's key against the fingerprint in the QR, then shows the
    notification settings and then Now.
 

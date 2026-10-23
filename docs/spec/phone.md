@@ -22,8 +22,8 @@ is removed; the hub side of widget refresh is push.md 13.5.
 come over the app's own link to the hub (push.md 13, the `sy-link` module of push.md 14); the
 app uses no push service, Expo's, Google's or any other. P2 adds keys to the claim, P6.3
 registers nothing with the hub (the link target comes from pairing), P6.7 is the Settings →
-Notifications screen, P13 has no EAS or Firebase config and `minSdkVersion` is 31, and P16 is
-the in-app updater. iOS sections (P6.6's iOS badge, P12, the iOS widgets of P11) stay in the
+Notifications screen, P13 has no EAS or Firebase config, no proprietary Google code and
+`minSdkVersion` is 31, and P16 is the in-app updater. iOS sections (P6.6's iOS badge, P12, the iOS widgets of P11) stay in the
 code and are not worked on; iOS gets no native notifications (use Web Push in the browser).
 
 Code map: `phone/src/contract/` is the TypeScript side of this spec:
@@ -66,7 +66,11 @@ phone/
                             AccountsMedium, ResetCountdown (Live Activity)
   widgets/android/          react-native-android-widget components + task handler
   plugins/                  local config plugins (with-sy-native.js)
-  scripts/                  check-no-secrets.mjs, prebuild-check.mjs, dump-fixtures.sh
+  modules/                  local Expo modules, Android only: sy-link (the link, push.md 14),
+                            sy-tabs (P17), sy-notify (channels, permission, badge, dismissals;
+                            P6) and sy-scan (the pairing QR scanner, P2)
+  scripts/                  check-no-secrets.mjs, check-no-google.mjs, prebuild-check.mjs,
+                            dump-fixtures.sh
   test/                     setup.ts (installs the mocks), fakes.ts (recording fakes of the
                             native modules), render-widget.ts, fixtures/hub/*.json,
                             fixtures/widget-snapshot.v1.json
@@ -85,11 +89,9 @@ versions `expo@57.0.26`'s `bundledNativeModules.json` names):
 | `expo` | 57.0.26 | 2026-09-29 | SDK 57 |
 | `react` / `react-native` | 19.2.3 / 0.86.3 | — | SDK 57 pins |
 | `expo-router` | 57.0.24 | 2026-09-29 | Routes, deep links |
-| `expo-notifications` | 57.0.21 | 2026-09-24 | Channels, permission prompt, categories, responses |
 | `expo-secure-store` | 57.0.4 | 2026-09-11 | Token in Keychain / Android Keystore |
-| `expo-camera` | 57.0.6 | 2026-09-29 | QR scanning (`CameraView` `onBarcodeScanned`; `expo-barcode-scanner` is abandoned) |
 | `expo-linking` | 57.0.11 | 2026-09-24 | Scheme URLs, opening `remote_url` |
-| `expo-constants` / `expo-device` / `expo-application` | 57.0.20 / 57.0.2 / 57.0.3 | ≤ 2026-09-29 | Project id, device name, app version |
+| `expo-constants` / `expo-device` | 57.0.20 / 57.0.2 | ≤ 2026-09-29 | App version and versionCode (the embedded app config), device name |
 | `expo-widgets` | 57.0.22 | 2026-09-29 | iOS widgets and Live Activity |
 | `@expo/ui` | 57.0.21 | 2026-09-29 | SwiftUI components for widgets (`expo-widgets@57.0.22` depends on `~57.0.21`) |
 | `expo-clipboard` | 57.0.2 | 2026-09-11 | Copy resume command |
@@ -111,14 +113,30 @@ versions `expo@57.0.26`'s `bundledNativeModules.json` names):
 
 No `expo-updates` (no over-the-air updates: decision in "Defaults").
 
+No proprietary Google code ships (P13): `expo-notifications` (it links `firebase-messaging`),
+`expo-camera`'s barcode scanner (Play services code scanner and ML Kit) and `expo-application`
+(Play Install Referrer) are not dependencies. Their parts the app used are the local modules
+`sy-notify` and `sy-scan`, whose native dependencies are pinned in their `build.gradle`:
+
+| Module | Native dependency | Version | License |
+| --- | --- | --- | --- |
+| `sy-notify` | `me.leolin:ShortcutBadger` (the launcher badge, as expo-notifications used it) | 1.1.22 | Apache-2.0 |
+| `sy-scan` | `com.journeyapps:zxing-android-embedded` (with `com.google.zxing:core` 3.4.1) | 4.3.0 | Apache-2.0 |
+
 Check it with `make phone-check` (`npm ci`, `tsc`, `eslint`, `jest --ci`, the secrets check and
 both prebuild checks). `npm ci` prints peer-override warnings (`react-native-worklets`, the
 optional React 19.3 peers); they are expected and do not fail the install.
 
 ## P2. Pairing
 
-- **Scan.** The Pair screen opens `CameraView` with `barcodeScannerSettings: {barcodeTypes:
-  ["qr"]}` and stops at the first string `parsePairInput` accepts.
+- **Scan.** The Pair screen's **Scan QR code** calls `sy-scan`'s `scanQr(prompt)`: it asks
+  for the camera when needed (the button reads **Allow camera** until it is granted, and the
+  box says "Camera access is off in system settings." once Android will not ask again), then
+  opens ZXing's full-screen scanner (`zxing-android-embedded`, portrait, QR codes only, no
+  beep) and resolves with the first code's text, which goes to `parsePairInput`. Back
+  resolves `cancelled`; a refused code is reported and **Scan QR code** opens it again. Where
+  the module is missing (iOS, Expo Go) the screen switches to typed input. Typed input is
+  unchanged.
 - **`parsePairInput(text)`** (pure) accepts:
   - `https://<host>[:port]/#/pair?s=<22 base64url>&c=<6 digits>[&h=<24 base32>&k=<22 base64url>]`,
     the QR of pairing.md 2.2 with keys.md 7's hub fingerprint and registration seal;
@@ -298,8 +316,7 @@ alert colour behind it is the brand gold `#E8B04B`; the always-on connection not
 
 The large icon is the app tile (ink disc, gold mark) with the kind badge bottom-right behind a
 cut-out ring; the module draws it as a bitmap at runtime from the same path data (cached per
-kind). The connection note has no large icon. Notes posted by the expo-notifications JS path
-keep the single `notification_icon`.
+kind). The connection note has no large icon. The app's JS posts no notification.
 
 **P6.2 Categories:**
 
@@ -315,9 +332,10 @@ on iOS while the app is killed is **unverified**. If it does not, one constant,
 opens briefly, acts and shows a toast.
 
 **P6.3 Registration.** The app registers no push target: the `link` target comes from pairing
-(push.md 13.7). On start `expo-notifications` creates the channels (P6.1) and asks for the
-permission (`requestPermissionsAsync`; anything but granted → Settings shows "Blocked in system
-settings"), then `PATCH /v1/devices/self {prefs: {tz, widgets: true}}`. `widgets: true` goes only
+(push.md 13.7). On start `sy-notify` creates the channels (P6.1) and asks for the
+permission (`requestPermissionsAsync`: Android 13's POST_NOTIFICATIONS prompt through Expo's
+permissions manager, on Android 12 whether notifications are on; anything but granted →
+Settings shows "Blocked in system settings"), then `PATCH /v1/devices/self {prefs: {tz, widgets: true}}`. `widgets: true` goes only
 on the first registration, when the device's `prefs.widgets` has never been set (read from
 `GET /v1/me` or `GET /v1/devices/self`); later registrations send `{tz}` only, so a person who
 turned widget refresh off keeps it off. `widgets` means widget refresh frames over the link.
@@ -348,17 +366,21 @@ note open `switchyard://now`; only the connection notification's **Settings** bu
 no tap leads to a settings page except that button. `test/links.test.ts` checks that each of
 these links resolves to the item or Now; the JUnit `FramesTest` checks the native side's link.
 
-The listener is registered at module scope in `app/_layout.tsx`. On cold start,
-`getLastNotificationResponseAsync()` is read once and then cleared, so a response is never
-handled twice. Foreground notifications are shown (`setNotificationHandler`: banner, list, badge)
-and trigger a refresh.
+`initNotifications` (src/lib/notify) is called at module scope in `app/_layout.tsx` with
+`sy-notify`. On Android no notification response reaches JS: every notification is sy-link's,
+its tap and **Open** are the intents above and Snooze and Seen run in sy-link's
+`ActionReceiver`. So `sy-notify` has no response listeners and `getLastNotificationResponseAsync()`
+is always null; `decideResponse` and `performDecision` stay platform-neutral (and tested) for a
+notifications object that has them.
 
 **P6.5 Link frames:** there is no JS background task and no silent push. The `sy-link` module
 handles link frames, `refresh` frames (push.md 13.5) and actions natively (push.md 14.5, 14.6) and
 emits `refresh` to JS when the app is running; JS then rebuilds the widget timeline, updates the
 Live Activity and sets the badge from `needs_you`. Action handling is P6.4's `act`.
 
-**P6.6 Badge:** set after each refresh with `setBadgeCountAsync(needs_you)`.
+**P6.6 Badge:** set after each refresh with `setBadgeCountAsync(needs_you)` (`sy-notify`:
+ShortcutBadger on launchers that support it; 0 clears the badge and, as expo-notifications did,
+cancels the app's notifications).
 
 **P6.7 Settings → Notifications** (route `/more/settings/notifications`; built as
 `src/components/screens/NotifySettingsScreen.tsx`, reached from a "Notification settings"
@@ -595,11 +617,9 @@ then gets the 401 that shows Pair, P3).
   `expo-build-properties`; 31 in the Android build below).
 - Android `permissions: [POST_NOTIFICATIONS, CAMERA]` and `blockedPermissions:
   [RECORD_AUDIO, SYSTEM_ALERT_WINDOW, READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE]`.
-  POST_NOTIFICATIONS is listed so the prebuilt manifest shows it (expo-notifications would
-  otherwise add it only at Gradle merge time).
-- Plugins: `expo-router`; `expo-notifications` (icon, colour); `expo-secure-store`;
-  `expo-camera` (camera permission text "Scan the pairing QR code from your hub"; microphone
-  off); `expo-widgets` (`groupIdentifier: group.<SY_APP_ID>`, `bundleIdentifier:
+  Both are listed so the prebuilt manifest shows them (`sy-notify` and `sy-scan` also declare
+  them, merged only at Gradle time).
+- Plugins: `expo-router`; `expo-secure-store`; `expo-widgets` (`groupIdentifier: group.<SY_APP_ID>`, `bundleIdentifier:
   <SY_APP_ID>.widgets` for the extension, the two widgets, `enablePushNotifications: false`,
   `enableAndroid: false`); `react-native-android-widget` (the two widgets);
   `./plugins/with-sy-native.js`.
@@ -623,18 +643,29 @@ profiles, no `extra.eas.projectId`, no `googleServicesFile` and no push credenti
 - The `sy-link` module adds its permissions and components through its own
   `AndroidManifest.xml` (push.md 14.2); P13's `permissions` list stays as it is.
   `prebuild-check.mjs android` also asserts the `specialUse` service, its subtype property,
-  `RECEIVE_BOOT_COMPLETED`, `REQUEST_INSTALL_PACKAGES`, and that no
-  `com.google.firebase` / `google-services` entry is present. The module's manifest is merged
+  `RECEIVE_BOOT_COMPLETED`, `REQUEST_INSTALL_PACKAGES`, that no
+  `com.google.firebase` / `google-services` entry is present, that `expo-notifications`,
+  `expo-camera` and `expo-application` are not dependencies, and runs
+  `check-no-google.mjs static`. The module's manifest is merged
   by Gradle, not by prebuild, so the check reads it from `modules/sy-link` (and copies the
   local modules' `android/` sources into its temporary tree).
-- **No FCM entry point.** `expo-notifications` stays (channels and the permission prompt), but
-  its config plugin writes `com.google.firebase.messaging.*` meta-data and its library manifest
-  declares `ExpoFirebaseMessagingService`. `plugins/with-sy-no-firebase.js` drops the meta-data
-  and removes the service from the merged
-  manifest (`tools:node="remove"`); it is listed **before** `expo-notifications`, because
-  manifest mods run in reverse order of the plugins list. The `firebase-messaging` library
-  stays on the classpath (expo-notifications' Kotlin links it) but is never initialised: there
-  is no `google-services.json`, no Google Services Gradle plugin and no token call.
+- **No proprietary Google code.** No Firebase, Google Play services, ML Kit, Play Install
+  Referrer or other closed Google/Play library is in the APK, so it can go to F-Droid and
+  IzzyOnDroid (android.md). `expo-notifications` (its Kotlin links `firebase-messaging`, and
+  with it the Firebase, datatransport and installations classes) is replaced by `sy-notify`;
+  `expo-camera`'s scanner (`play-services-code-scanner`, ML Kit) by `sy-scan`; and
+  `expo-application` (Play Install Referrer) by the app config `expo-constants` embeds.
+  `scripts/check-no-google.mjs` enforces it in three ways: `static` (every installed package's
+  and local module's `build.gradle`, test, androidTest and debug-only lines aside; run by
+  `prebuild-check.mjs android`), `gradle` (`./gradlew :app:dependencies --configuration
+  releaseRuntimeClasspath` in a prebuilt `android/`; CI's `no-google` job on every change) and
+  `apk` (the classes defined in the APK's `classes*.dex`; CI's `android-debug` job on a release
+  build, and `release-apk.sh` before it publishes). The groups: `com.google.firebase`,
+  `com.google.android.gms`, `com.google.mlkit`, `com.google.android.play`,
+  `com.google.android.datatransport`, `com.android.installreferrer`,
+  `com.android.billingclient`. (`com.google.zxing` and `com.google.crypto.tink` are open
+  source and allowed.) `expo-dev-launcher` declares the Play services code scanner as
+  `debugOnly`: it is in debug builds, never in a release.
 - There is no background notification task: there are no silent pushes.
 - The glue uses the `sy-link` module only on Android, when the module is present (`systemLink`).
 - **Build:** `make phone-apk-release` (run it by hand): `expo prebuild --platform
@@ -664,8 +695,8 @@ profiles, no `extra.eas.projectId`, no `googleServicesFile` and no push credenti
 
 - `test/with-sy-native.test.ts` unit-tests the plugin's Gradle edit (`alignWorkVersions`:
   forces the `androidx.work` group, idempotent). `make phone-android-debug` is the real proof.
-- `test/setup.ts` (jest `setupFilesAfterEnv`) replaces `expo-notifications`,
-  `expo-secure-store`, `expo-camera`, `expo-widgets`, `@expo/ui/swift-ui` (and `/modifiers`),
+- `test/setup.ts` (jest `setupFilesAfterEnv`) replaces `modules/sy-notify`,
+  `expo-secure-store`, `modules/sy-scan`, `modules/sy-link`, `modules/sy-tabs`, `expo-widgets`, `@expo/ui/swift-ui` (and `/modifiers`),
   `react-native-android-widget`, `expo-task-manager` and AsyncStorage with the recording fakes
   of `test/fakes.ts`, makes global `fetch` reject, and resets every fake before each test.
   Tests script the fakes through their exported state (`notificationsState.permission`,

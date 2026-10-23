@@ -11,14 +11,6 @@
 //          merged the ktx classes into work-runtime, so both on the classpath fail
 //          :app:checkDebugDuplicateClasses (OneTimeWorkRequestKt, PeriodicWorkRequestKt).
 //          Forcing the group to 2.8.1 turns ktx into an empty artifact.
-// Android, no FCM (`withSyNoFirebase`, its own plugins entry, P13): no FCM entry point. The
-//          com.google.firebase.* meta-data expo-notifications' plugin writes are dropped, and its
-//          ExpoFirebaseMessagingService is removed from the merged manifest (tools:node="remove").
-//          firebase-messaging stays on the classpath (expo-notifications' Kotlin links it) but is
-//          never initialised: there is no google-services.json. It is listed BEFORE
-//          expo-notifications in app.config.ts: manifest mods run in reverse order of the
-//          plugins list, so it then sees (and drops) the meta-data expo-notifications adds.
-//
 // Android splash (`brandSplash`): expo-splash-screen is not a dependency, so the template's
 //          Theme.App.SplashScreen would show a white window. It gets the Android 12+ splash
 //          attributes instead: the ink background (BRAND_INK) and the adaptive icon's foreground
@@ -92,20 +84,6 @@ function withSySplash(config) {
 
 const REMOVED_PERMISSIONS = ['android.permission.RECORD_AUDIO', 'android.permission.SYSTEM_ALERT_WINDOW'];
 
-const FCM_SERVICE = 'expo.modules.notifications.service.ExpoFirebaseMessagingService';
-
-/** The manifest edit: no com.google.firebase meta-data, the FCM service removed. Idempotent. */
-function stripFirebase(manifest) {
-  manifest.manifest.$['xmlns:tools'] = manifest.manifest.$['xmlns:tools'] || 'http://schemas.android.com/tools';
-  const app = (manifest.manifest.application || [])[0];
-  if (!app) return manifest;
-  app['meta-data'] = (app['meta-data'] || []).filter((m) => !String(m.$['android:name'] || '').startsWith('com.google.firebase'));
-  const services = (app.service || []).filter((x) => x.$['android:name'] !== FCM_SERVICE);
-  services.push({ $: { 'android:name': FCM_SERVICE, 'tools:node': 'remove' } });
-  app.service = services;
-  return manifest;
-}
-
 const WORK_VERSION = '2.8.1';
 const WORK_MARKER = '// sy: align androidx.work';
 const WORK_GRADLE = `
@@ -173,16 +151,7 @@ module.exports = function withSyNative(config, props = {}) {
 module.exports.REMOVED_PERMISSIONS = REMOVED_PERMISSIONS;
 module.exports.WORK_VERSION = WORK_VERSION;
 module.exports.alignWorkVersions = alignWorkVersions;
-module.exports.stripFirebase = stripFirebase;
 module.exports.brandSplash = brandSplash;
 module.exports.setColor = setColor;
 module.exports.BRAND_INK = BRAND_INK;
 module.exports.SPLASH_ITEMS = SPLASH_ITEMS;
-/** The FCM-stripping manifest edit as a plugin of its own (see the header for its place). */
-module.exports.withSyNoFirebase = function withSyNoFirebase(config) {
-  return withAndroidManifest(config, (c) => {
-    stripFirebase(c.modResults);
-    return c;
-  });
-};
-module.exports.FCM_SERVICE = FCM_SERVICE;
