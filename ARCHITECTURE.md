@@ -196,7 +196,6 @@ The threat model, including what the owner key and the signing guard cannot do, 
 | `test/` | End-to-end suites (setup, machines, terminal, push, peers, Android) |
 | `testdata/`, `scripts/fixtures/` | Redacted real payloads and the maintainer-only scripts that make them |
 | `scripts/` | CI checks, release build, icon generation, the pane check |
-| `main.js`, `preload.js`, `core/`, `server/`, `shell/`, `web/`, `bin/`, `assets/`, `test/*.js`, root `package.json`, `Dockerfile`, `docker-compose.yml`, `.env.example` | **Legacy prototype**, pending removal. The first version of Switchyard (an Electron app with a Node server). It is not part of the current product, is not maintained, and is not tested in CI; a CI guard (`app/scripts/check-prototype-untouched.sh`) keeps changes out of it until it is deleted. |
 
 ## Go packages
 

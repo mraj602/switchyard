@@ -5,11 +5,6 @@ the web usage of each account sent to your hub, and the hub board in a Hub view,
 notifications and a tray badge when a session needs you. Unofficial; not affiliated with
 Anthropic.
 
-It is a separate package from the legacy prototype at the repository root (`main.js`,
-`shell/`, ...), which is kept until it is retired. Both can run at the same time: they use different user data folders
-(`switchyard-desktop` here, `switchyard` for the prototype) and this app never opens the
-prototype's folder.
-
 Spec: `docs/spec/desktop.md` (contracts C1-C12).
 
 ## Develop
@@ -76,8 +71,6 @@ board. The Chromium sandbox stays on: on Ubuntu 24.04 that needs
 test variables, so the usage read itself is covered by the smoke, not here.
 
 CI: `.github/workflows/app.yml` (unit tests on Linux, macOS and Windows; smoke; packaging; e2e).
-Its `guard` job fails when a commit changes the legacy prototype at the repository root
-(`scripts/check-prototype-untouched.sh`).
 
 ## Package
 

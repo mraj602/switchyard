@@ -99,11 +99,6 @@ There has been no release yet. Build from source for now ([install.md](install.m
 first release will publish `sy` archives with checksums and build attestations, desktop
 packages and a signed Android APK.
 
-## What is the code at the repository root (`main.js`, `server/`, `web/`)?
-
-The original prototype, kept until it is removed. It is not part of the current product and
-is not maintained. See [ARCHITECTURE.md](../../ARCHITECTURE.md#repository-layout).
-
 ## Where do I ask questions or report bugs?
 
 Questions: GitHub Discussions. Bugs: GitHub issues, using the bug template. Security

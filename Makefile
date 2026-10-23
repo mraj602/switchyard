@@ -1,4 +1,4 @@
-# Switchyard: Go side (sy and the hub). The prototype (Electron/Node) keeps using npm.
+# Switchyard: sy and the hub (Go), plus targets for the desktop app (app/) and the Android app (phone/).
 #
 #   make build       build ./dist/sy
 #   make test        go test ./...
@@ -107,7 +107,7 @@ e2e-machines:
 e2e-android:
 	test/e2e/android/run.sh
 
-# The desktop app . npm runs in app/ only; the root prototype is never touched.
+# The desktop app. npm runs in app/ only.
 # Smoke and e2e use temp HOME / SY_HOME / user data folders; on Linux they run under xvfb-run
 # when it is installed (unset WAYLAND_DISPLAY so Electron uses X11).
 # A private session bus too: under xvfb, Electron and Chrome still reach the desktop's D-Bus

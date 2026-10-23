@@ -1,5 +1,4 @@
-# Go side (sy and the hub), the Claude Code pane mod and the end-to-end suites. The legacy
-# Electron prototype at the repo root is not tested in CI.
+# Go side (sy and the hub), the Claude Code pane mod and the end-to-end suites.
 name: ci
 
 on:

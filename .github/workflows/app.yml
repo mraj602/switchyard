@@ -18,18 +18,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The legacy prototype at the repo root is frozen until it is removed: no change to it may land here.
-  guard:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-          # the PR's own head (not the merge commit), so a [prototype-retire] message is seen
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - run: app/scripts/check-prototype-untouched.sh "${{ github.event.pull_request.base.sha || 'origin/main' }}"
-
   unit:
     name: unit (${{ matrix.os }})
     strategy:

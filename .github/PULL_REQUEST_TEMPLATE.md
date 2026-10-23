@@ -14,4 +14,3 @@
 - [ ] Tests cover the change, and the checks for each component I touched pass.
 - [ ] No credentials, tokens, cookies, personal data, hostnames or IP addresses in code, tests,
       fixtures or docs.
-- [ ] No change to the legacy prototype files at the repository root.

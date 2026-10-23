@@ -1,8 +1,0 @@
-node_modules
-data
-test
-shell
-bin
-*.db
-*.db-*
-.env

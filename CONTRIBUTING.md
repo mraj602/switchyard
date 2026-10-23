@@ -32,10 +32,6 @@ and the repository layout. The short version:
 | `docs/spec/` | Behaviour specs | Markdown, OpenAPI, SQL |
 | `test/` | End-to-end suites | Go, shell |
 
-The files at the repository root that belong to the legacy prototype (`main.js`, `core/`,
-`server/`, `shell/`, `web/` and others listed in ARCHITECTURE.md) are pending removal. Do not
-change them; CI rejects changes to them.
-
 ## Development setup
 
 ### `sy`, the hub and the board

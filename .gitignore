@@ -5,7 +5,7 @@ data/
 .env
 docker-compose.override.yml
 
-# Go build output (bin/ holds the prototype's scripts, so builds go to dist/)
+# Go build output
 dist/
 *.test
 *.out

@@ -8,7 +8,7 @@ updates:
       go:
         patterns: ["*"]
 
-  # The desktop app. The repository-root package.json is the legacy prototype and is not listed.
+  # The desktop app.
   - package-ecosystem: npm
     directory: /app
     schedule:

@@ -19,6 +19,7 @@ discussion.
 
 1. Open the repository's **Security** tab and choose **Report a vulnerability** (GitHub
    private vulnerability reporting). Only the maintainers see the report.
+   If you cannot use GitHub, email [mraj602@gmail.com](mailto:mraj602@gmail.com) instead.
 2. Describe the problem, the component and version or commit, how to reproduce it, and the
    impact you expect.
 3. Do not include real credentials, tokens, cookies or personal data. Redact them, or use
@@ -58,9 +59,8 @@ Especially interesting:
 
 Out of scope:
 
-- The legacy prototype files at the repository root (`main.js`, `core/`, `server/`, `shell/`,
-  `web/` and the others listed in [ARCHITECTURE.md](ARCHITECTURE.md#repository-layout)). They
-  are not part of the product and are pending removal.
+- The legacy prototype, which is no longer in the repository (it is kept on the
+  `archive/prototype` branch for history only and is not maintained).
 - claude.ai, Claude Code and Anthropic's services. Report problems there to Anthropic.
 - Attacks that need full control of the user's own account or machine already, beyond what
   the threat model says Switchyard defends against.
