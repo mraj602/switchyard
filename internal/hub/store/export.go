@@ -15,6 +15,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -806,6 +807,12 @@ func Import(ctx context.Context, o ImportOptions) (res ImportResult, err error) 
 	if v, err := ReadSchemaVersion(ctx, newDB); err != nil || v != m.Schema {
 		return res, fmt.Errorf("the exported database is schema v%d, its manifest says v%d", v, m.Schema)
 	}
+	// The archive's database is untrusted input: before anything opens it for writing (a
+	// migration would fire a trigger an attacker put there), refuse anything a Switchyard
+	// database never contains.
+	if err := refuseCodeInSchema(ctx, newDB); err != nil {
+		return res, err
+	}
 	// 3. refuse a non-empty hub.
 	if existing {
 		counts, err := existingCounts(ctx, o.DBPath)
@@ -915,8 +922,15 @@ func prepareImported(ctx context.Context, path string, o ImportOptions, m Manife
 		_ = os.Remove(path + "-shm")
 	}()
 	res.PublicURL = m.PublicURL
+	// Migrated: the archive's tables and indexes must now be exactly this version's.
+	if err := checkSchemaObjects(ctx, path, filepath.Dir(path)); err != nil {
+		return err
+	}
 	return st.Write(ctx, func(tx *Tx) error {
 		if _, err := tx.exec(`DELETE FROM setting WHERE key = ?`, SettingFrozen); err != nil {
+			return err
+		}
+		if err := dropUnknownSettings(tx, logf); err != nil {
 			return err
 		}
 		if o.PublicURL != "" {
@@ -938,4 +952,134 @@ func randBytes(n int) []byte {
 		panic(err)
 	}
 	return b
+}
+
+// refuseCodeInSchema rejects an archive database that holds a trigger, a view or a virtual
+// table. No Switchyard schema version has any, so one can only have been added to run SQL (or
+// load a module) when the database is opened or written. It reads sqlite_schema only.
+func refuseCodeInSchema(ctx context.Context, path string) error {
+	db, err := openRO(path)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	rows, err := db.QueryContext(ctx, `SELECT type, name, coalesce(sql, '') FROM sqlite_schema
+		WHERE type IN ('trigger', 'view') OR upper(sql) LIKE 'CREATE VIRTUAL TABLE%'`)
+	if err != nil {
+		return fmt.Errorf("reading the exported database's schema: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var typ, name, sqlText string
+		if err := rows.Scan(&typ, &name, &sqlText); err != nil {
+			return err
+		}
+		if typ == "table" {
+			typ = "virtual table"
+		}
+		return fmt.Errorf("the exported database holds a %s %q, which a Switchyard database never has; refusing to import it", typ, name)
+	}
+	return rows.Err()
+}
+
+// schemaObjects lists the (type, name) of every schema object except SQLite's own.
+func schemaObjects(ctx context.Context, path string) (map[string]bool, error) {
+	db, err := openRO(path)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	rows, err := db.QueryContext(ctx, `SELECT type, name FROM sqlite_schema WHERE name NOT LIKE 'sqlite\_%' ESCAPE '\'`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]bool{}
+	for rows.Next() {
+		var typ, name string
+		if err := rows.Scan(&typ, &name); err != nil {
+			return nil, err
+		}
+		out[typ+" "+name] = true
+	}
+	return out, rows.Err()
+}
+
+// checkSchemaObjects compares a migrated import with a freshly made database of this sy: an
+// object the fresh one does not have (a table, an index, anything) is refused. The reference
+// is made in dir and removed again.
+func checkSchemaObjects(ctx context.Context, path, dir string) error {
+	ref := filepath.Join(dir, ".schema-ref.db")
+	for _, sfx := range []string{"", "-wal", "-shm"} {
+		_ = os.Remove(ref + sfx)
+	}
+	defer func() {
+		for _, sfx := range []string{"", "-wal", "-shm"} {
+			_ = os.Remove(ref + sfx)
+		}
+	}()
+	rs, err := Open(ctx, ref, Options{NoBackupBeforeMigrate: true})
+	if err != nil {
+		return err
+	}
+	if err := rs.Close(); err != nil {
+		return err
+	}
+	want, err := schemaObjects(ctx, ref)
+	if err != nil {
+		return err
+	}
+	got, err := schemaObjects(ctx, path)
+	if err != nil {
+		return err
+	}
+	var extra []string
+	for k := range got {
+		if !want[k] {
+			extra = append(extra, k)
+		}
+	}
+	if len(extra) > 0 {
+		sort.Strings(extra)
+		return fmt.Errorf("the exported database has objects a Switchyard database does not (%s); refusing to import it", strings.Join(extra, ", "))
+	}
+	return nil
+}
+
+// importableSettings are the setting keys this hub writes; an archive's other keys are dropped.
+var importableSettings = map[string]bool{
+	SettingImported: true, AlertKeyPublicURL: true, AlertKeyHubTZ: true, AlertKeyPushSettings: true,
+	AlertKeyBaselineDone: true, "push.vapid_public": true, "pair.ttl_s": true,
+	"app.android_mirror": true, "app.android_repo": true,
+}
+
+// dropUnknownSettings deletes setting rows whose key this hub never writes (and logs them),
+// so an archive cannot plant a setting some later code reads.
+func dropUnknownSettings(tx *Tx, logf func(string, ...any)) error {
+	rows, err := tx.QueryContext(tx.ctx, `SELECT key FROM setting`)
+	if err != nil {
+		return err
+	}
+	var drop []string
+	for rows.Next() {
+		var k string
+		if err := rows.Scan(&k); err != nil {
+			rows.Close()
+			return err
+		}
+		if !importableSettings[k] {
+			drop = append(drop, k)
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, k := range drop {
+		logf("import: ignoring setting %q, which this hub does not use", k)
+		if _, err := tx.exec(`DELETE FROM setting WHERE key = ?`, k); err != nil {
+			return err
+		}
+	}
+	return nil
 }

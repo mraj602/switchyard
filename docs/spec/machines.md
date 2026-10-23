@@ -903,7 +903,10 @@ sy hub import <file> [--public-url <url>] [--passphrase-file <f>] [--pull-dir <d
    folder refuses to start. Import also refuses when the database itself is locked or `/health`
    answers on the configured listen address: "stop the hub first".
 2. Read (decrypt), check `format`, every file's size and SHA-256, and that `schema` is at most
-   this binary's newest schema (else "update sy here first").
+   this binary's newest schema (else "update sy here first"). The archive's database is
+   untrusted: before anything opens it for writing, an archive whose schema holds a trigger,
+   a view or a virtual table is refused (no Switchyard schema has one, and a trigger would run
+   during the migration in step 4).
 3. **Refuse a non-empty hub.** If `<data>/hub.db` exists and has any row in `device`,
    `record`, `machine`, `push_target` or `pull_target`, exit 5 with the counts: "this hub
    already has data; move \<path> away first". There is no `--force`. An existing empty
@@ -911,7 +914,12 @@ sy hub import <file> [--public-url <url>] [--passphrase-file <f>] [--pull-dir <d
 4. In the private work folder, open the unpacked `hub.db` through the store (migrations and
    their pre-migration copy run as usual), clear `hub.frozen`, set `hub.public_url` from
    `--public-url` (else keep the exported one, and warn if it is not this host's address),
-   and record `hub.imported = {exported_at, imported_at, sy}`. Everything that can fail on
+   and record `hub.imported = {exported_at, imported_at, sy}`. After the migration the
+   database must hold no table, index or other object that a freshly made database of this
+   sy lacks (else the import is refused), and `setting` rows whose key this hub never writes
+   are dropped and logged (kept: `hub.imported`, `hub.public_url`, `hub.tz`, `push.settings`,
+   `push.baseline_done`, `push.vapid_public`, `pair.ttl_s`, `app.android_mirror`,
+   `app.android_repo`). Everything that can fail on
    the data fails here, before any file of the hub is touched.
 5. Swap, state files last: move an existing empty `hub.db` (and `-wal`/`-shm`) aside, rename
    the prepared database into place (0600), then back up any existing `<state>/pair_pepper`
