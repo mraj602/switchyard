@@ -108,7 +108,11 @@ func httpClient(c *http.Client) *http.Client {
 		out = *c
 	} else {
 		out = http.Client{Timeout: 15 * time.Minute, Transport: &http.Transport{
-			Proxy:                 http.ProxyFromEnvironment,
+			Proxy: http.ProxyFromEnvironment,
+			// A connect timeout, so an unreachable address of a CDN host fails over to the
+			// next one in seconds instead of after the OS's two-minute SYN timeout. The
+			// dialer spreads it over the host's addresses.
+			DialContext:           (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
 			TLSHandshakeTimeout:   20 * time.Second,
 			ResponseHeaderTimeout: 60 * time.Second,
 		}}

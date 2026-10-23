@@ -6,6 +6,13 @@ All notable changes to Switchyard are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- `install.sh` prints a working PATH line (`$HOME/.local/bin`, not `~/.local/bin` inside
+  quotes). The v0.9.0 release already serves the fixed script.
+- `sy update` gives up on an unreachable download address after 30 s and tries the next one,
+  instead of waiting about two minutes.
+
 ## [0.9.0] - 2026-10-23
 
 The first public version. Everything below is new.
