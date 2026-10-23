@@ -715,7 +715,7 @@ UTF-8 titles intact:
   (asked), `rotating_light` (failed), `warning` (limits), `zzz` (silent), `bell` (summary).
 - Private: title and body as 5.5, `click` = `/#/alerts/<id>` deep link, no Remote Control
   action (ntfy sees the text, unlike Web Push), Snooze and Seen kept. Their URLs reveal the hub's host name and a
-  24-hour action token to the ntfy server (7.5 says what a token can do); that is the price of
+  24-hour action token to the ntfy server (a leaked token can only snooze or mark that one alert seen, 24 hours); that is the price of
   the buttons, and security.md tells the owner.
 - **Without `hub.public_url`** (`sy hub serve --public-url https://…`, pairing.md 2.3) the hub
   has no absolute address to put in a message: ntfy alerts carry **no `click` link and no
