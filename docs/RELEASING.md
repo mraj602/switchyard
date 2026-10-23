@@ -155,7 +155,7 @@ changed. Write the release note so it stands on its own: what changed, how to up
   the regex `^Android ` (the release title), so `sy` releases are skipped. Nothing for you to
   do.
 - **IzzyOnDroid:** open an inclusion request on their repository once a signed `phone-v*`
-  release exists. It needs a FOSS licence (Apache-2.0), an APK in GitHub Releases, no
+  release exists. It needs a FOSS licence (AGPL-3.0), an APK in GitHub Releases, no
   proprietary libraries (`phone.yml` checks this), and the same signing key on every release.
 - **F-Droid:** possible later. F-Droid builds from source itself. With reproducible builds it
   can ship your signature, so users can move between F-Droid and GitHub builds. That needs

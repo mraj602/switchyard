@@ -233,6 +233,8 @@ function hubBlock(s) {
       row('Address', h('span', { class: 'mono', 'data-key': 'hub-address' }, location.origin)),
       row('Version', h('span', { 'data-key': 'version-line' }, `${v ? `Hub ${v}` : 'Hub version unknown'} · ${boardState()}`)),
       row('Status', liveBadge(s)),
+      // AGPL-3.0 section 13: the people who use the board over the network can get its source.
+      row('Source code', h('a', { href: 'https://github.com/mraj602/switchyard', target: '_blank', rel: 'noopener noreferrer', 'data-key': 'source-link' }, 'AGPL-3.0, on GitHub')),
       s.offline ? row('Last update', clock(new Date(s.offline.since).toISOString())) : null,
       inApp() ? null : h('div', { class: 'actions' },
         h('button', {

@@ -1,12 +1,12 @@
 Switchyard
 Copyright 2026 mraj602 and Switchyard contributors
 
-This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+This product is licensed under the GNU Affero General Public License, version 3 (see LICENSE).
 
 Switchyard is an independent, unofficial project. It is not affiliated with, endorsed by,
 sponsored by or connected to Anthropic, PBC. "Claude" and "Claude Code" are trademarks of
-Anthropic, PBC, used here only to describe compatibility. The Apache License grants no
-rights to use the "Switchyard" name or logo (section 6 of the License).
+Anthropic, PBC, used here only to describe compatibility. The license grants no rights to use the
+"Switchyard" name or logo.
 
 -------------------------------------------------------------------------------------------
 Third-party components

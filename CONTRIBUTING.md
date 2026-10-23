@@ -149,10 +149,18 @@ the API, the database schema, session states, setup, alerts, keys, peers and the
 
 ### Developer Certificate of Origin
 
-Switchyard does not ask for a contributor licence agreement. Instead, every commit carries a
-`Signed-off-by` line, which certifies that you wrote the change or have the right to submit it
-under the project's licence (Apache-2.0), as set out in the DCO 1.1 text at
-<https://developercertificate.org/>.
+Switchyard does not ask you to sign a contributor licence agreement. Instead, every commit
+carries a `Signed-off-by` line, which certifies that you wrote the change or have the right to
+submit it, as set out in the DCO 1.1 text at <https://developercertificate.org/>.
+
+### Licence of contributions
+
+Switchyard is licensed under the GNU AGPL-3.0. By submitting a contribution, you license it
+to the maintainer (mraj602) and to everyone else under the Apache License 2.0, and to the
+public under the project's licence (AGPL-3.0). The Apache-2.0 grant lets the maintainer
+also offer Switchyard under other terms, for example a hosted service or a commercial
+edition, without asking each contributor again. You keep the copyright in your contribution.
+If you cannot agree to this, say so in the pull request before it is merged.
 
 Add it with `-s`:
 

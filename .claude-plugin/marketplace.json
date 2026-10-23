@@ -17,7 +17,7 @@
       },
       "homepage": "https://github.com/mraj602/switchyard",
       "repository": "https://github.com/mraj602/switchyard",
-      "license": "Apache-2.0",
+      "license": "AGPL-3.0-only",
       "keywords": ["switchyard", "sessions", "usage", "accounts", "notifications"],
       "category": "productivity"
     }

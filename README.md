@@ -3,7 +3,7 @@
 [![ci](https://github.com/mraj602/switchyard/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mraj602/switchyard/actions/workflows/ci.yml)
 [![app](https://github.com/mraj602/switchyard/actions/workflows/app.yml/badge.svg?branch=main)](https://github.com/mraj602/switchyard/actions/workflows/app.yml)
 [![phone](https://github.com/mraj602/switchyard/actions/workflows/phone.yml/badge.svg?branch=main)](https://github.com/mraj602/switchyard/actions/workflows/phone.yml)
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
 A self-hosted board for several Claude Code accounts on several machines: every session's
 state, every account's limits, and a notification when a session needs you.
@@ -231,8 +231,11 @@ Contributions are welcome: read [CONTRIBUTING.md](CONTRIBUTING.md). Behaviour ch
 
 ## License
 
-Apache License 2.0: see [LICENSE](LICENSE) and [NOTICE](NOTICE). The license grants no rights
-to the Switchyard name or to any Anthropic trademark.
+GNU Affero General Public License v3.0: see [LICENSE](LICENSE) and [NOTICE](NOTICE). You may
+use, change and self-host Switchyard freely, including at work. If you distribute a changed
+version, or run one as a service for others, you must publish your source under the same
+licence. Contributions come in under the terms in [CONTRIBUTING.md](CONTRIBUTING.md#licence-of-contributions).
+The license grants no rights to the Switchyard name or to any Anthropic trademark.
 
 ---
 

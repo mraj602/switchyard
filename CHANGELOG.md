@@ -45,7 +45,7 @@ The first public version. Everything below is new.
   prompts and real questions still do (`skip_peers`, on by default).
 - Documentation: user guides, architecture, behaviour specs, contributing guide, security
   policy, release guide, a website and a demo recorded from sample data.
-- Licensed under Apache-2.0.
+- Licensed under the GNU AGPL-3.0.
 
 [Unreleased]: https://github.com/mraj602/switchyard/compare/v0.9.0...HEAD
 [0.9.0]: https://github.com/mraj602/switchyard/releases/tag/v0.9.0

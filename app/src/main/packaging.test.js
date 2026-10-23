@@ -25,7 +25,7 @@ test('electron-builder.yml: no publishing, no signing, no updater', () => {
   // Public builds say what they are: unofficial, and no one else's publisher info.
   assert.match(yml, /synopsis: "Unofficial /);
   assert.match(yml, /Not affiliated with, endorsed by or sponsored by Anthropic/);
-  assert.equal(pkg.license, 'Apache-2.0');
+  assert.equal(pkg.license, 'AGPL-3.0-only');
   assert.ok(pkg.author);
   assert.ok(!/@(gmail|workco|clientco)/.test(yml + JSON.stringify(pkg)));
   assert.match(yml, /^appId: io\.github\.mraj602\.switchyard\.desktop$/m);
