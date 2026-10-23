@@ -96,7 +96,17 @@ More: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Quickstart
 
-Needs Claude Code, on Linux or macOS. This runs the hub on the same computer:
+**Set it up with your coding agent.** Paste this into Claude Code, Codex or any agent that can
+run commands:
+
+```text
+Help me install and set up Switchyard. Read
+https://raw.githubusercontent.com/mraj602/switchyard/main/docs/guide/agents.md
+and follow it: ask me what you need first, show me every plan before applying it,
+and leave logins, tokens and passphrases to me.
+```
+
+**Or do it yourself.** Needs Claude Code, on Linux or macOS. This runs the hub on the same computer:
 
 ```sh
 curl -fsSL https://github.com/mraj602/switchyard/releases/latest/download/install.sh | sh
@@ -121,10 +131,6 @@ Then run `sy setup` as above.
 Restart your open Claude Code sessions afterwards so they load the plugin. Everything
 `sy setup` changes is backed up; `sy setup --undo` reverses it. Next steps: a hub on a server,
 more machines, the phone: [docs/guide/install.md](docs/guide/install.md).
-
-**Setting up with an AI agent?** Point it at
-[docs/guide/agents.md](docs/guide/agents.md): it links the setup steps and lists what the
-agent must leave to you.
 
 ## Components
 
@@ -160,7 +166,8 @@ Releases are on [GitHub Releases](https://github.com/mraj602/switchyard/releases
   `SHA256SUMS-desktop`;
 - GitHub build-provenance attestations for every archive and package.
 
-The Android APK is a separate release, `phone-vX.Y.Z`. The maintainer signs it with their own
+The Android APK is a separate release, `phone-vX.Y.Z`; the newest is
+[Android 1.0.0](https://github.com/mraj602/switchyard/releases/tag/phone-v1.0.0). The maintainer signs it with their own
 key, whose certificate's SHA-256 fingerprint is `0b715b03eb515301851200431ff21a5114f51d97d615812f6554e46dd644eddd`
 ([Android guide](docs/guide/android.md#verify-the-apk)).
 
