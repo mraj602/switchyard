@@ -108,6 +108,11 @@ sy's and the hub's. When sy or the hub runs a newer release than the app, Settin
    sends. Google sign-in does not work in embedded browsers.
 3. Every tab stays signed in at the same time; switching tabs never signs anything out.
 
+Passkeys and security keys do not work inside a tab: Electron, which the app is built on, has no
+passkey prompt, so pressing "Add passkey" or "Sign in with passkey" does nothing. Add or use
+them in your normal browser (**Open in browser** on the tab's strip opens the same page there);
+signing in with email inside the tab is not affected.
+
 How sign-in is handled:
 
 - You sign in on Anthropic's own claude.ai page. Switchyard shows no login form of its own.
