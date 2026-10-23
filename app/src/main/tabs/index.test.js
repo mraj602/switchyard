@@ -39,7 +39,7 @@ test('start: one view per stored tab in partition persist:tab-<id>, the platform
   assert.deepEqual([...r.f.electron.session._all.keys()].sort(), [`persist:tab-${A}`, `persist:tab-${B}`, `persist:tab-${C}`].sort());
   for (const id of [A, B, C]) {
     const ses = r.f.electron.session._all.get(`persist:tab-${id}`);
-    assert.match(ses.userAgent, /^Mozilla\/5\.0 \(X11; Linux x86_64\) AppleWebKit\/537\.36 \(KHTML, like Gecko\) Chrome\/130\.0\.6723\.0 Safari\/537\.36$/);
+    assert.match(ses.userAgent, /^Mozilla\/5\.0 \(X11; Linux x86_64\) AppleWebKit\/537\.36 \(KHTML, like Gecko\) Chrome\/130\.0\.0\.0 Safari\/537\.36$/);
     assert.doesNotMatch(ses.userAgent, /Electron/);
     assert.equal(r.api.view(id).webContents.userAgent, ses.userAgent);
     assert.equal(r.window.views.get(id).kind, 'tab');

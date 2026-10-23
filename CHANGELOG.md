@@ -29,6 +29,9 @@ All notable changes to Switchyard are recorded here. The format follows
   updates in the background (for example while the offline app installs).
 - Desktop: signing in to claude.ai in an account tab works again. The tabs blocked the frames of
   the sign-in page's hCaptcha check, so it failed with "Couldn't verify your browser".
+- Desktop: account tabs send Chrome's reduced user agent (`Chrome/<major>.0.0.0`), as Chrome
+  itself does, instead of the full build number. claude.ai's Claude Code section kept asking to
+  verify the device again, because the string was unusual and changed with every Electron update.
 
 ## [1.0.0] - not released yet
 

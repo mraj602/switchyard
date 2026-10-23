@@ -41,7 +41,8 @@ line command. Nothing extra is sent to Anthropic. Logging in is always Claude Co
 ## The browser identity of the tabs
 
 The desktop app's account tabs send a plain Chrome user agent string for your real operating
-system, for example `Mozilla/5.0 (X11; Linux x86_64) ... Chrome/<version> Safari/537.36`,
+system, for example `Mozilla/5.0 (X11; Linux x86_64) ... Chrome/152.0.0.0 Safari/537.36`
+(only the major version, as Chrome itself sends),
 instead of Electron's default, which adds `Electron/<version>` and the app name. claude.ai's
 bot protection rejects Electron's default user agent, so without this the tabs do not load.
 

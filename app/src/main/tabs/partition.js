@@ -24,9 +24,14 @@ const PLATFORM_TOKEN = {
  * (Cloudflare) rejects Electron's default user agent, which carries an `Electron/x` token, so
  * account tabs send the ordinary Chrome one instead. Policy note: the tab therefore identifies
  * itself as Chrome, not as Switchyard.
+ *
+ * The version is reduced to the major (`Chrome/152.0.0.0`), as Chrome itself has sent since
+ * Chrome 110: a full build number is a string no real Chrome sends, and it changed with every
+ * Electron patch update, so claude.ai's "trusted device" check kept asking to verify again.
  * @param {{platform: string, chrome: string}} p  chrome = process.versions.chrome
  */
 export function userAgentFor({ platform, chrome }) {
   const token = PLATFORM_TOKEN[platform] ?? PLATFORM_TOKEN.linux;
-  return `Mozilla/5.0 (${token}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chrome} Safari/537.36`;
+  const major = /^\d+/.exec(String(chrome))?.[0] ?? '130';
+  return `Mozilla/5.0 (${token}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Safari/537.36`;
 }

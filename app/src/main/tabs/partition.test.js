@@ -15,7 +15,9 @@ test('partitionOf: persist:tab-<id>, for both id shapes, nothing else', () => {
 
 test('userAgentFor: Chrome with the real platform, never the Electron token', () => {
   const ua = (platform) => userAgentFor({ platform, chrome: '130.0.6723.0' });
-  assert.equal(ua('linux'), 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.6723.0 Safari/537.36');
+  assert.equal(ua('linux'), 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36');
+  // Reduced like real Chrome: only the major version, so an Electron patch update changes nothing.
+  assert.equal(userAgentFor({ platform: 'linux', chrome: '130.0.9999.42' }), ua('linux'));
   assert.match(ua('darwin'), /Macintosh; Intel Mac OS X 10_15_7/);
   assert.match(ua('win32'), /Windows NT 10\.0; Win64; x64/);
   assert.match(ua('freebsd'), /X11; Linux/);
