@@ -82,8 +82,7 @@ paths:
         revokes its board sessions. A desktop token keeps one board session: its login
         revokes the board sessions made from it before (the app's Hub view has one cookie
         jar). The board never keeps the token in JavaScript.
-        Unknown or revoked token: `401`; a token without `read`: `403`; more than 10
-        failed logins a minute: `429`. Same-origin only; no CORS headers are sent.
+        Unknown or revoked token: `401`; a token without `read`: `403`; more than 5 failed logins a minute from one address: `429`. Same-origin only; no CORS headers are sent.
       security: []
       x-scopes: []
       requestBody:

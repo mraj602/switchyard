@@ -38,7 +38,6 @@ type Authenticator struct {
 	mu        sync.Mutex
 	touched   map[string]time.Time
 	refreshed map[string]time.Time // device id -> last cookie refresh
-	fails     []time.Time
 	ipFails   map[string][]time.Time
 }
 
@@ -432,21 +431,17 @@ func (a *Authenticator) fail(ip string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	now := a.Now()
-	a.fails = append(a.fails, now)
 	if a.ipFails == nil {
 		a.ipFails = map[string][]time.Time{}
 	}
 	a.ipFails[ip] = append(a.ipFails[ip], now)
 }
 
-// Failed logins allowed per minute: from one address, and hub-wide.
-const (
-	maxFailsPerIP = 5
-	maxFailsTotal = 10
-)
+// maxFailsPerIP is the failed logins allowed per minute from one address. There is no
+// hub-wide cap: one would let anyone lock the owner out by failing on purpose.
+const maxFailsPerIP = 5
 
-// tooManyFails reports whether ip (or the hub as a whole) has failed too many logins in
-// the last minute.
+// tooManyFails reports whether ip has failed too many logins in the last minute.
 func (a *Authenticator) tooManyFails(ip string) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -464,15 +459,5 @@ func (a *Authenticator) tooManyFails(ip string) bool {
 			a.ipFails[k] = keep
 		}
 	}
-	if len(a.ipFails[ip]) >= maxFailsPerIP {
-		return true
-	}
-	keep := a.fails[:0]
-	for _, t := range a.fails {
-		if t.After(cut) {
-			keep = append(keep, t)
-		}
-	}
-	a.fails = keep
-	return len(a.fails) >= maxFailsTotal
+	return len(a.ipFails[ip]) >= maxFailsPerIP
 }

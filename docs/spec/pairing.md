@@ -215,25 +215,26 @@ worker's caches:
 | --- | --- | --- |
 | Requests to `/v1/pair/claim` and `/v1/session/owner` per client IP | 20 a minute | All claims |
 | Failed **typed-code** claims per client IP | 5 in 10 minutes, then that IP gets 429 for 10 minutes | `code` claims |
-| Failed typed-code claims hub-wide | 20 in 10 minutes, then typed-code claims get 429 for 10 minutes for everyone | `code` claims |
+| Failed typed-code claims hub-wide (last-resort ceiling) | 100 in 10 minutes, then typed-code claims get 429 for 10 minutes for everyone | `code` claims |
 | Failed secret claims per IP | 20 in 10 minutes, then 429 for 10 minutes | `secret` claims (only to keep logs quiet: guessing 128 bits is hopeless) |
 
 - **Why this is enough.** At most 5 codes are live, so one guess hits with probability at
-  most 5 / 10^6. The hub-wide cap allows at most 20 wrong guesses per 10 minutes, the
-  lifetime of a code, so an attacker who can reach the hub has at most about a 1 in 10 000
+  most 5 / 10^6. The hub-wide ceiling allows at most 100 wrong guesses per 10 minutes, the
+  lifetime of a code, so an attacker who can reach the hub has at most about a 1 in 2 000
   chance per 10-minute window **while codes are live**, and only during pairing, which is
   rare and short. Hubs are normally reachable only on a tailnet.
-- **Why the QR path is not locked by the hub-wide cap.** A global lockout is a cheap
-  denial of service (5 bad requests a minute keep everyone out). Secrets are not guessable,
-  so a lockout of typed codes never blocks the QR flow; the owner can always pair by QR.
+- **One address cannot lock the hub.** The lockout is per IP; 5 bad guesses lock only that
+  address. The hub-wide ceiling is set high enough that it takes 20 addresses failing at the
+  same time to reach it. Secrets are not guessable, so a lockout of typed codes never blocks
+  the QR flow; the owner can always pair by QR.
 - **Concurrent guesses.** A typed-code attempt reserves a failure slot (per IP and hub-wide)
   when the limiter admits it and releases it when the claim ends (recording a failure if the
   code was wrong). In-flight attempts count as failures, so 400 simultaneous guesses from 20
-  addresses get at most 5 per IP and 20 hub-wide to the database; the rest get 429.
+  addresses get at most 5 per IP (and 100 hub-wide) to the database; the rest get 429.
 - The limiter is in memory (`internal/hub/pair`): a restart clears it, which an attacker
   cannot cause from outside.
 - **Client IP behind a proxy.** The hub listens on loopback behind `tailscale serve` or
-  Caddy, so `RemoteAddr` is always the proxy. When `RemoteAddr` is a loopback address and
+  Caddy, so `RemoteAddr` is always the proxy. When `RemoteAddr` is a loopback address or in `--trusted-proxy` and
   `X-Forwarded-For` is present, the client IP is the **right-most** entry (the one the proxy
   added). Otherwise `RemoteAddr`. If every request appears to come from one address, the
   per-IP limits behave like the hub-wide one, which is still safe.

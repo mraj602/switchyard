@@ -12,8 +12,11 @@ const (
 	MaxRequestsPerMinute = 20
 	// TypedFailsPerIP failed typed-code claims in FailWindow lock that IP out of typed claims.
 	TypedFailsPerIP = 5
-	// TypedFailsHub failed typed-code claims in FailWindow lock typed claims for everyone.
-	TypedFailsHub = 20
+	// TypedFailsHub failed typed-code claims in FailWindow lock typed claims for everyone. It
+	// is a last-resort ceiling, far above what one address can cause (TypedFailsPerIP, then
+	// that address alone is locked): reaching it takes TypedFailsHub/TypedFailsPerIP
+	// addresses at once. QR secret claims are never blocked by it.
+	TypedFailsHub = 100
 	// SecretFailsPerIP failed secret claims in FailWindow lock that IP out of secret claims
 	// (only to keep logs quiet: a 128-bit secret cannot be guessed).
 	SecretFailsPerIP = 20

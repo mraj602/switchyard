@@ -1,11 +1,12 @@
 package auth
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
 
-func TestFailedLoginsAreLimitedPerAddressAndHubWide(t *testing.T) {
+func TestFailedLoginsAreLimitedPerAddress(t *testing.T) {
 	now := time.Date(2026, 10, 12, 12, 0, 0, 0, time.UTC)
 	a := &Authenticator{Now: func() time.Time { return now }, touched: map[string]time.Time{}}
 	for range maxFailsPerIP {
@@ -21,11 +22,13 @@ func TestFailedLoginsAreLimitedPerAddressAndHubWide(t *testing.T) {
 	if a.tooManyFails("1.1.1.1") {
 		t.Error("the per-address bucket did not empty after a minute")
 	}
-	// Many addresses together still hit the hub-wide limit.
-	for i := range maxFailsTotal {
-		a.fail("10.0.0." + string(rune('a'+i)))
+	// Many addresses failing together must not lock out an address that has not failed.
+	for i := range 200 {
+		for range maxFailsPerIP {
+			a.fail(fmt.Sprintf("10.0.%d.%d", i/250, i%250))
+		}
 	}
-	if !a.tooManyFails("9.9.9.9") {
-		t.Error("hub-wide limit not applied")
+	if a.tooManyFails("9.9.9.9") {
+		t.Error("failures from other addresses blocked a clean address")
 	}
 }

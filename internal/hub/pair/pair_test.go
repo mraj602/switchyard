@@ -553,7 +553,28 @@ func TestLimiterWithFakeClock(t *testing.T) {
 		t.Error("old failures counted")
 	}
 
-	// Hub-wide: 20 failures from many IPs lock typed claims for everyone, QR claims still work.
+	// One address locking itself out never blocks another.
+	l = NewLimiter(clk.Now)
+	for range TypedFailsPerIP {
+		l.Fail("5.5.5.5", true)
+	}
+	if ok, _ := l.Allow("5.5.5.5", true); ok {
+		t.Error("per-IP lock missing")
+	}
+	if ok, _ := l.Allow("5.5.5.6", true); !ok {
+		t.Error("one address's lockout blocked another")
+	}
+	// Failures from fewer addresses than the ceiling need never lock the hub.
+	for i := range TypedFailsHub/TypedFailsPerIP - 2 {
+		for range TypedFailsPerIP {
+			l.Fail(fmt.Sprintf("10.1.%d.1", i), true)
+		}
+	}
+	if ok, _ := l.Allow("10.9.9.9", true); !ok {
+		t.Error("hub locked below the ceiling")
+	}
+
+	// Hub-wide ceiling: TypedFailsHub failures from many IPs lock typed claims for everyone, QR claims still work.
 	l = NewLimiter(clk.Now)
 	for i := range TypedFailsHub {
 		ip := fmt.Sprintf("10.0.%d.1", i) // one failure per IP: no per-IP lock
