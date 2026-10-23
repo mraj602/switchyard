@@ -2,7 +2,10 @@ package hublink
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,50 +37,78 @@ type session struct {
 	acked, next  int64
 }
 
-// newChallenge makes a challenge with a fresh single-use nonce (link.md 3.1).
-// errBusy: MaxNonces challenges are outstanding.
-var errBusy = errors.New("too many outstanding challenges")
+// errBusy: MaxNonces signed-in challenges are still remembered as spent.
+var errBusy = errors.New("too many spent challenges")
 
+// Challenge nonces are stateless: random bytes plus an HMAC (with a per-process secret) over
+// them and the expiry, so op challenge, which needs no credential, pins nothing in memory.
+// A nonce is remembered as spent only once a hello with a valid device signature used it;
+// that set is bounded by the device login rate limits, and unauthenticated callers cannot
+// add to it.
+func (h *Hub) nonceMAC(rnd []byte, exp int64) []byte {
+	m := hmac.New(sha256.New, h.nonceKey)
+	m.Write([]byte("sy-link-nonce\x00"))
+	m.Write(rnd)
+	fmt.Fprintf(m, "\x00%d", exp)
+	return m.Sum(nil)[:16]
+}
+
+// newChallenge makes a challenge with a fresh single-use nonce (link.md 3.1).
 func (h *Hub) newChallenge() (link.Challenge, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
+	rnd := make([]byte, 16)
+	if _, err := rand.Read(rnd); err != nil {
 		return link.Challenge{}, err
 	}
-	nonce := keys.B64(b)
 	exp := h.now().Add(ChallengeTTL).Unix()
+	nonce := keys.B64(append(rnd, h.nonceMAC(rnd, exp)...))
+	return link.NewChallenge(h.key, h.key.FP, nonce, exp)
+}
+
+// nonceValid reports whether nonce is one this hub issued for exp (not yet checked for
+// expiry or use).
+func (h *Hub) nonceValid(nonce string, exp int64) bool {
+	b, err := base64.RawURLEncoding.DecodeString(nonce)
+	if err != nil || len(b) != 32 {
+		return false
+	}
+	return hmac.Equal(b[16:], h.nonceMAC(b[:16], exp))
+}
+
+// spendNonce records nonce as used; false when it already was. errBusy when the spent set
+// is full of unexpired entries.
+func (h *Hub) spendNonce(nonce string, exp int64) (bool, error) {
 	h.mu.Lock()
-	if len(h.nonces) >= MaxNonces { // a flood of challenges: forget the expired ones now
+	defer h.mu.Unlock()
+	if _, used := h.nonces[nonce]; used {
+		return false, nil
+	}
+	if len(h.nonces) >= MaxNonces {
 		now := h.now().Unix()
 		for n, e := range h.nonces {
 			if e < now {
 				delete(h.nonces, n)
 			}
 		}
-	}
-	if len(h.nonces) >= MaxNonces { // op challenge needs no credential: bound what it can pin
-		h.mu.Unlock()
-		return link.Challenge{}, errBusy
+		if len(h.nonces) >= MaxNonces {
+			return false, errBusy
+		}
 	}
 	h.nonces[nonce] = exp
-	h.mu.Unlock()
-	return link.NewChallenge(h.key, h.key.FP, nonce, exp)
+	return true, nil
 }
 
 // login runs link.md 3.2's steps 1-5 and 7-8 for a hello (step 6, closing the device's other
 // connection, is the caller's). transport is "ws" or "poll".
 func (h *Hub) login(ctx context.Context, hl link.Hello, transport, ip string) (*session, error) {
 	// 1. the nonce: known, unused, not past exp, and the hello's exp is the challenge's
-	h.mu.Lock()
-	exp, ok := h.nonces[hl.Nonce]
-	delete(h.nonces, hl.Nonce)
-	h.mu.Unlock()
 	if hl.T != link.TypeHello {
 		return nil, refuse(link.CloseUnauthorized, "bad_hello")
 	}
 	if hl.V != link.Version {
 		return nil, refuse(link.CloseUpgrade, "upgrade")
 	}
-	if !ok || h.now().Unix() > exp || hl.Exp != exp {
+	exp := hl.Exp
+	if !h.nonceValid(hl.Nonce, exp) || h.now().Unix() > exp {
 		return nil, refuse(link.CloseUnauthorized, "nonce")
 	}
 	// 2. the device, not revoked, with keys; 3. its certificate verifies (keys from it only)
@@ -128,6 +159,13 @@ func (h *Hub) login(ctx context.Context, hl link.Hello, transport, ip string) (*
 	h.mu.Unlock()
 	if !allowed {
 		return nil, refuse(link.CloseRateLimited, "rate_limited")
+	}
+	// the signature held: now the nonce is spent (a replayed hello finds it so)
+	switch fresh, err := h.spendNonce(hl.Nonce, exp); {
+	case errors.Is(err, errBusy):
+		return nil, refuse(link.CloseRateLimited, "busy")
+	case !fresh:
+		return nil, refuse(link.CloseUnauthorized, "nonce")
 	}
 	if fr, err := h.cfg.Store.Frozen(ctx); err == nil && fr != nil {
 		return nil, refuse(link.CloseFrozen, "frozen")

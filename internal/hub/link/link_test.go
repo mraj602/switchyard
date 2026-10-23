@@ -600,41 +600,107 @@ func TestRevokedDuringLogin(t *testing.T) {
 	}
 }
 
-// op challenge needs no credential (and is on Funnel): outstanding nonces are capped, and
-// expired ones make room again.
-func TestChallengeFloodCapped(t *testing.T) {
+// op challenge needs no credential (and is on Funnel): challenges are stateless, so a flood
+// of them pins nothing and the next real login still works.
+func TestChallengeFloodDoesNotBlockLogin(t *testing.T) {
 	f := newFix(t)
-	post := func() int {
+	for i := 0; i < 50; i++ {
 		resp, err := http.Post(f.pollURL(), "application/json", strings.NewReader(`{"op":"challenge"}`))
 		if err != nil {
 			t.Fatal(err)
 		}
 		resp.Body.Close()
-		return resp.StatusCode
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("challenge %d: %d", i, resp.StatusCode)
+		}
 	}
+	f.h.mu.Lock()
+	n := len(f.h.nonces)
+	f.h.mu.Unlock()
+	if n != 0 {
+		t.Fatalf("%d nonces held after unauthenticated challenges", n)
+	}
+	ctx, cancel := context.WithTimeout(f.ctx, 5*time.Second)
+	defer cancel()
+	c, err := linktest.Dial(ctx, f.wsURL(), f.phone(22))
+	if err != nil {
+		t.Fatalf("login after the flood: %v", err)
+	}
+	_ = c
+}
+
+// A nonce is single use (replayed after a good login) and forged or expired ones are refused.
+func TestStatelessNonce(t *testing.T) {
+	f := newFix(t)
+	h := f.h
+	ch, err := h.newChallenge()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !h.nonceValid(ch.Nonce, ch.Exp) {
+		t.Fatal("own nonce rejected")
+	}
+	if h.nonceValid(ch.Nonce, ch.Exp+1) {
+		t.Fatal("nonce valid for another expiry")
+	}
+	if h.nonceValid("AAAA", ch.Exp) || h.nonceValid(strings.Repeat("A", 43), ch.Exp) {
+		t.Fatal("forged nonce accepted")
+	}
+	if ok, err := h.spendNonce(ch.Nonce, ch.Exp); !ok || err != nil {
+		t.Fatalf("first spend: %v %v", ok, err)
+	}
+	if ok, _ := h.spendNonce(ch.Nonce, ch.Exp); ok {
+		t.Fatal("nonce spent twice")
+	}
+}
+
+// The spent set is bounded; expired entries make room.
+func TestSpentNonceCap(t *testing.T) {
+	f := newFix(t)
 	exp := f.clk.Now().Add(ChallengeTTL).Unix()
 	f.h.mu.Lock()
 	for i := 0; i < MaxNonces; i++ {
 		f.h.nonces[fmt.Sprint("n", i)] = exp
 	}
 	f.h.mu.Unlock()
-	if code := post(); code != http.StatusServiceUnavailable {
-		t.Fatalf("over the cap: %d", code)
+	if _, err := f.h.spendNonce("x", exp); !errors.Is(err, errBusy) {
+		t.Fatalf("over the cap: %v", err)
 	}
-	f.h.mu.Lock()
-	n := len(f.h.nonces)
-	f.h.mu.Unlock()
-	if n != MaxNonces {
-		t.Fatalf("%d nonces", n)
+	f.clk.Add(ChallengeTTL + time.Second)
+	if ok, err := f.h.spendNonce("x", exp+100); !ok || err != nil {
+		t.Fatalf("after expiry: %v %v", ok, err)
+	}
+}
+
+// Connections that never say hello are dropped after the hello deadline, and one address
+// cannot hold more than MaxLoginsPerIP logins open, so it cannot block everyone else.
+func TestSilentWebSocketsCapped(t *testing.T) {
+	f := newFix(t, func(c *Config) { c.LoginTimeout = 300 * time.Millisecond })
+	var open []*websocket.Conn
+	for i := 0; i < MaxLoginsPerIP; i++ {
+		ws, _, err := websocket.Dial(f.ctx, f.wsURL(), &websocket.DialOptions{Subprotocols: []string{link.Subprotocol}})
+		if err != nil {
+			t.Fatalf("silent %d: %v", i, err)
+		}
+		open = append(open, ws)
+	}
+	_, resp, err := websocket.Dial(f.ctx, f.wsURL(), &websocket.DialOptions{Subprotocols: []string{link.Subprotocol}})
+	if err == nil || resp == nil || resp.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("over the per-address cap: %v %v", err, resp)
+	}
+	// after the deadline the slots free up and a real device logs in
+	waitFor(t, "slots to free", func() bool {
+		f.h.mu.Lock()
+		defer f.h.mu.Unlock()
+		return len(f.h.loginIP) == 0
+	})
+	for _, ws := range open {
+		ws.CloseNow()
 	}
 	ctx, cancel := context.WithTimeout(f.ctx, 5*time.Second)
 	defer cancel()
-	if _, err := linktest.Dial(ctx, f.wsURL(), f.phone(22)); linktest.CloseCode(err) != link.CloseRateLimited {
-		t.Fatalf("ws over the cap: %v", err)
-	}
-	f.clk.Add(ChallengeTTL + time.Second)
-	if code := post(); code != http.StatusOK {
-		t.Fatalf("after expiry: %d", code)
+	if _, err := linktest.Dial(ctx, f.wsURL(), f.phone(24)); err != nil {
+		t.Fatalf("login after: %v", err)
 	}
 }
 

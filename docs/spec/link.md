@@ -65,12 +65,13 @@ cannot, and tags are limited to `[A-Za-z0-9_:.-]{0,64}` (5.3).
   the device owns the radio.
 - **One connection per device.** A new authenticated connection closes the old one with 4409
   `superseded`.
-- **Load.** At most 64 connections in the challenge phase hub-wide (behind `tailscale serve`
-  every client has the proxy's address, so a per-IP cap means nothing); more are refused with
-  HTTP 503. A connection that has not sent a valid `hello` within 10 s is closed with 4401.
-  At most 10 000 unexpired challenges are outstanding (WebSocket and poll together, since
-  `op: challenge` needs no credential); past that a WebSocket is closed with 4429 `busy` and
-  `op: challenge` answers HTTP 503 `busy`.
+- **Load.** At most 256 connections in the challenge phase hub-wide, and at most 8 from one
+  client address (`auth.ClientIP`, so it follows `--trusted-proxy` behind a proxy). From one
+  address, more are refused with HTTP 429; past the hub-wide cap, HTTP 503. A connection that
+  has not sent a valid `hello` within 5 s of the challenge is closed with 4401, so silent
+  connections free their slot quickly. Challenges are stateless (3.1), so `op: challenge`
+  pins nothing. At most 10 000 unexpired spent nonces are remembered (only hellos with a valid
+  device signature add to them); past that a login is closed with 4429 `busy`.
 
 ### 2.1 Long-poll fallback
 
@@ -112,7 +113,10 @@ decimal(exp)`. `exp` is the hub's clock + 60 s. The device checks the signature 
 pinned hub key (keys.md 3.5) and `hub` against the pinned fingerprint, and closes the
 connection (no `hello`) if either fails: it never signs a nonce for a hub it does not trust.
 It does not compare `exp` with its own clock (phones' clocks drift); the hub enforces it.
-Nonces live in hub memory until `exp` and are single-use.
+A nonce is 16 random bytes followed by 16 bytes of HMAC-SHA-256 (a per-process hub secret) over
+those bytes and `exp`, so the hub checks it without storing it; a hub restart voids open
+challenges. A nonce is single-use: the hub remembers it as spent until `exp` once a hello with a
+valid signature has used it.
 
 ### 3.2 Hello (device → hub)
 
@@ -141,8 +145,9 @@ Nonces live in hub memory until `exp` and are single-use.
 
 The hub, in order:
 
-1. Nonce known, unused and not past `exp`; `exp` equals the challenge's → else 4401. The nonce
-   is marked used here, before any other check.
+1. Nonce issued by this hub for this `exp` (HMAC checks), not past `exp` → else 4401. The nonce
+   is marked used after the signature (step 4) and the rate limit (step 5) pass, so a caller
+   without a device key cannot use up nonces; a replay of a used nonce → 4401.
 2. Device exists, not revoked → else 4403. Has a `device_key` row → else 4401 with reason
    `no_keys` (the device must `PUT /v1/devices/{id}/keys` first).
 3. The certificate's hub signature (`device_key.hub_sig` over `cert`) verifies with the hub key,
@@ -430,7 +435,7 @@ signature but the frame's (the hub alone makes it).
 | 1000 | normal | The device closed (app stopped, agent stopping). | — |
 | 1001 | going_away | Hub shutting down. | Reconnect with backoff. |
 | 4400 | bad_frame | Malformed JSON, binary message, `bad_seq` (an `ack` above the last sent). | Reconnect with backoff; repeated → stop and report. |
-| 4401 | unauthorized | Bad or missing `hello`, unknown nonce, signature, `no_keys`, `bad_cert`, 10 s login timeout. | Reconnect with backoff; three in a row → stop, show "Hub does not recognise this device's key". |
+| 4401 | unauthorized | Bad or missing `hello`, unknown nonce, signature, `no_keys`, `bad_cert`, 5 s login timeout. | Reconnect with backoff; three in a row → stop, show "Hub does not recognise this device's key". |
 | 4403 | revoked | The device is revoked. | Stop; do not reconnect. |
 | 4408 | idle | Nothing from the device for `2 × ping_s + 30` s. | Reconnect. |
 | 4409 | superseded | Another connection of the same device logged in. | Do not reconnect from this connection. |

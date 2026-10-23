@@ -65,17 +65,32 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		auth.WriteError(w, http.StatusServiceUnavailable, "draining", "the hub is shutting down")
 		return
 	}
+	ip := auth.ClientIP(r)
+	h.mu.Lock()
+	over := h.loginIP[ip] >= MaxLoginsPerIP
+	if !over {
+		h.loginIP[ip]++
+	}
+	h.mu.Unlock()
+	if over {
+		auth.WriteError(w, http.StatusTooManyRequests, "busy", "too many link logins in progress from this address")
+		return
+	}
 	if h.challenging.Add(1) > MaxChallenging {
 		h.challenging.Add(-1)
+		h.endLogin(ip)
 		auth.WriteError(w, http.StatusServiceUnavailable, "busy", "too many link logins in progress")
 		return
 	}
 	inLogin := true
-	defer func() {
+	endLogin := func() {
 		if inLogin {
+			inLogin = false
 			h.challenging.Add(-1)
+			h.endLogin(ip)
 		}
-	}()
+	}
+	defer endLogin()
 	var c *conn
 	var seen func()
 	ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{
@@ -95,9 +110,8 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	// login: challenge, then a valid hello within 10 s
-	s, err := h.wsLogin(ctx, ws, auth.ClientIP(r))
-	h.challenging.Add(-1)
-	inLogin = false
+	s, err := h.wsLogin(ctx, ws, ip)
+	endLogin()
 	if err != nil {
 		code, reason := link.CloseInternal, "internal"
 		var le *loginError
@@ -176,6 +190,24 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	c.readLoop(seen)
 }
 
+func (h *Hub) loginTimeout() time.Duration {
+	if h.cfg.LoginTimeout > 0 {
+		return h.cfg.LoginTimeout
+	}
+	return LoginTimeout
+}
+
+// endLogin frees one of ip's login slots.
+func (h *Hub) endLogin(ip string) {
+	h.mu.Lock()
+	if h.loginIP[ip] <= 1 {
+		delete(h.loginIP, ip)
+	} else {
+		h.loginIP[ip]--
+	}
+	h.mu.Unlock()
+}
+
 // wsLogin sends a challenge and reads the hello (link.md 3.1, 3.2).
 func (h *Hub) wsLogin(ctx context.Context, ws *websocket.Conn, ip string) (*session, error) {
 	ch, err := h.newChallenge()
@@ -185,7 +217,7 @@ func (h *Hub) wsLogin(ctx context.Context, ws *websocket.Conn, ip string) (*sess
 	if err != nil {
 		return nil, err
 	}
-	lctx, cancel := context.WithTimeout(ctx, LoginTimeout)
+	lctx, cancel := context.WithTimeout(ctx, h.loginTimeout())
 	defer cancel()
 	b, _ := json.Marshal(ch)
 	if err := ws.Write(lctx, websocket.MessageText, b); err != nil {

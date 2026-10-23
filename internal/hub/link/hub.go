@@ -37,9 +37,10 @@ const (
 	MaxBytes        = 4 << 20
 	MaxTotal        = 50_000
 	InFlight        = 64
-	MaxChallenging  = 64
-	MaxNonces       = 10_000 // outstanding challenges (each lives ChallengeTTL)
-	LoginTimeout    = 10 * time.Second
+	MaxChallenging  = 256             // WebSocket logins in progress, all callers
+	MaxLoginsPerIP  = 8               // of those, from one address
+	MaxNonces       = 10_000          // outstanding challenges (each lives ChallengeTTL)
+	LoginTimeout    = 5 * time.Second // a connection must say hello this soon after the challenge
 	ChallengeTTL    = 60 * time.Second
 	LoginsPerMinute = 10
 	PollsPerMinute  = 120
@@ -103,6 +104,8 @@ type Config struct {
 	// PollWait overrides PollWait (tests); Idle overrides 2 × ping_s + 30 s (tests).
 	PollWait time.Duration
 	Idle     time.Duration
+	// LoginTimeout overrides LoginTimeout (tests).
+	LoginTimeout time.Duration
 }
 
 // Hub is the hub's link.
@@ -112,9 +115,11 @@ type Hub struct {
 	log *log.Logger
 
 	challenging atomic.Int32
+	loginIP     map[string]int // address -> WebSocket logins in progress
+	nonceKey    []byte         // HMAC secret of the stateless challenge nonces, per process
 
 	mu       sync.Mutex
-	nonces   map[string]int64 // nonce -> exp (unix s), single-use
+	nonces   map[string]int64 // spent nonces -> exp (unix s); see login.go
 	conns    map[string]*conn // device -> its WebSocket
 	polls    map[string]chan struct{}
 	pollSent map[string]int64 // device -> highest seq a poll reply carried
@@ -145,7 +150,11 @@ func New(cfg Config) *Hub {
 	if lg == nil {
 		lg = log.New(io.Discard, "", 0)
 	}
-	return &Hub{cfg: cfg, key: cfg.Keys.Key, log: lg, nonces: map[string]int64{}, conns: map[string]*conn{},
+	nk := make([]byte, 32)
+	if _, err := rand.Read(nk); err != nil {
+		panic(err)
+	}
+	return &Hub{nonceKey: nk, loginIP: map[string]int{}, cfg: cfg, key: cfg.Keys.Key, log: lg, nonces: map[string]int64{}, conns: map[string]*conn{},
 		polls: map[string]chan struct{}{}, pollSent: map[string]int64{}, signal: map[string]chan struct{}{}, rejected: map[string]int{},
 		stop: make(chan struct{}), done: make(chan struct{})}
 }
