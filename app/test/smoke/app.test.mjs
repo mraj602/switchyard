@@ -302,6 +302,15 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
       }
     }, ids.work);
     if (refused !== 'no-access') assert.match(refused, /refused/);
+
+    // Subframes (C2): one on the allow-list loads; one elsewhere (the hub's origin) is blocked.
+    const frames = () => main(run.app, (m, _e, id) => m.tabs.view(id).webContents.mainFrame.frames.map((f) => f.url), ids.work);
+    await inTab(run.app, ids.work, `(() => { for (const [k, u] of [['ok', ${JSON.stringify(`${claude.origin}/_fake/stats`)}], ['bad', ${JSON.stringify(`${hub.url}/health`)}]]) { const f = document.createElement('iframe'); f.id = 'sf-' + k; f.src = u; document.body.append(f); } return true; })()`);
+    await waitFor(async () => (await frames()).includes(`${claude.origin}/_fake/stats`), 10_000, 'the allowed subframe loaded');
+    await sleep(1000);
+    assert.ok(!(await frames()).some((u) => u.startsWith(hub.url)), 'the subframe to another host was blocked');
+    await waitFor(() => /subframe to 127\.0\.0\.1:\d+ blocked in a tab view/.test(run.mainLog.join('')), 5000, 'the blocked host logged');
+    await inTab(run.app, ids.work, "document.querySelectorAll('iframe[id^=sf-]').forEach((f) => f.remove()), true");
   });
 
   await step('S9 a hub alert gives one OS notification; a click routes the hub view', async () => {

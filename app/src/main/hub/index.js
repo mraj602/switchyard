@@ -1,7 +1,8 @@
 // Hub connection and view (C6, C7): the desktop token (safeStorage, bound to the hub URL),
 // the client, the stream, overview and needs-you count, the hub WebContentsView in
 // persist:sy-hub with the cookie login, owner sign-in, hub:route, the claude.ai handoff,
-// seat:update, and the hub:* and accounts:* handlers.
+// seat:update, the certificate pin of an https hub (pin.js), the update notice's release link,
+// and the hub:* and accounts:* handlers.
 //
 // Contract: docs/spec/desktop.md C6, C7. The bus carries the results:
 //   hub        HubState + {storage_backend, error}  after info, pairing, stream or overview changes
@@ -18,8 +19,11 @@ import { createTokenStore, normalizeHubUrl } from './token.js';
 import { createClient, hubUrlAllowed } from './client.js';
 import { createStream } from './stream.js';
 import { createHubView } from './view.js';
-import { createDirect } from './direct.js';
-import { CLIENT_NAME } from '../../shared/constants.js';
+import { createDirect, checkAddress } from './direct.js';
+import { createPinnedFetch, installVerifyProc, probe as probeCertificate, pinOrigin, normalizeFingerprint } from './pin.js';
+import { CLIENT_NAME, HUB_PARTITION } from '../../shared/constants.js';
+import { updateNotice, releaseUrl } from '../../shared/version.js';
+import { isLoopbackHost } from './client.js';
 
 const ROUTE_RE = new RegExp(HUB_ROUTE_PATTERN);
 const SESSION_LINK_RE = new RegExp(CLAUDE_SESSION_LINK_PATTERN);
@@ -28,6 +32,29 @@ const INFO_POLL_MS = 300_000;
 const INFO_POLL_BAD_MS = 30_000;
 /** The hub error shown for a 403 on a desktop-token request (only a 401 means the token is dead). */
 export const FORBIDDEN_ERROR = 'The hub refused a request of this app (403 forbidden).';
+
+/** How often a certificate failure may trigger another probe of the hub. */
+const CERT_RECHECK_MS = 10_000;
+const UNTRUSTED_TEXT = "This hub's certificate is not signed by an authority this computer trusts (for example a self-signed certificate). Compare its fingerprint with the one on the hub's computer before you trust it.";
+const CHANGED_TEXT = "This hub's certificate changed since you trusted it. If you did not replace it, someone may be intercepting the connection. Compare the new fingerprint with the one on the hub's computer before you trust it.";
+
+/** Plain http to a host that is not this computer: the token crosses the network unencrypted. */
+export function insecureHubUrl(url) {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'http:' && !isLoopbackHost(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
+/** What the shell shows about a certificate (no secrets: a public certificate's facts). */
+function certInfo(url, p, pinned) {
+  return {
+    url, origin: pinOrigin(url), fingerprint: p.fingerprint, pinned: pinned ?? null, changed: !!pinned, trusted: p.trusted === true,
+    reason: p.reason ?? null, subject: p.subject ?? null, issuer: p.issuer ?? null, valid_to: p.valid_to ?? null,
+  };
+}
 
 /** The messages the shell shows for a failed `sy desktop token`, by exit code (C4). */
 export function pairError(r, hadCode) {
@@ -81,6 +108,7 @@ export function create(deps) {
     url: null, connected: false, reachable: false, paired: false, owner: false, version: null, local: false,
     service: null, admin: null, needs_you: 0, status: 'no_sy', storage_backend: tokens.backend(), error: null,
     removed: false, board_blocked: false, direct: false, owner_until: null, last_seen: null, machine: '',
+    cert: null, insecure: false, pinned: false, sy_version: null,
   };
   let auth = null; // {url, device, token}: in memory, never in the state
   // Bumped at every change of auth (pairing, drop, 401): a token load that started before a
@@ -105,6 +133,10 @@ export function create(deps) {
   const set = (patch) => {
     // When the hub is reached, or lost, it was last seen now.
     if (patch.reachable !== undefined && patch.reachable !== state.reachable) patch = { ...patch, last_seen: new Date().toISOString() };
+    // Derived from the URL: plain http off this computer, or a pinned https certificate.
+    const url = patch.url !== undefined ? patch.url : state.url;
+    patch = { ...patch, insecure: insecureHubUrl(url), pinned: !!(pinOrigin(url) && direct.pinFor(pinOrigin(url))) };
+    if (patch.cert !== undefined && JSON.stringify(patch.cert) === JSON.stringify(state.cert)) delete patch.cert;
     let changed = false;
     for (const [k, v] of Object.entries(patch)) {
       if (state[k] !== v) {
@@ -118,10 +150,16 @@ export function create(deps) {
   // The app dials the hub itself (direct) when there is no sy or sy has no hub: the address was
   // checked by direct.check (https, or a local network), so plain http is allowed like for sy.
   const allowHttp = () => reportedBySy || state.direct;
-  const client = createClient({ fetch: deps.fetch, getAuth: () => auth, reportedBySy: allowHttp });
+  // Every request of the app's own to the hub: a pinned https origin accepts exactly its pinned
+  // certificate (pin.js), any other URL is the normal fetch with normal validation.
+  const probe = deps.probeCertificate ?? probeCertificate;
+  const hubFetch = createPinnedFetch({
+    fetch: deps.fetch, getPin: (origin) => direct.pinFor(origin), onCertError: (origin) => certTrouble(origin), https: deps.https, tls: deps.tls,
+  });
+  const client = createClient({ fetch: hubFetch, getAuth: () => auth, reportedBySy: allowHttp });
   const direct = createDirect({
     fs: deps.fs, path: deps.path, file: deps.directFile ?? deps.path.join(deps.path.dirname(deps.tokenFile), 'direct.json'),
-    fetch: deps.fetch, log, clientName: CLIENT_NAME, version: deps.clientVersion ?? '0.0.0', timers,
+    fetch: hubFetch, log, clientName: CLIENT_NAME, version: deps.clientVersion ?? '0.0.0', timers,
     getAuth: () => auth, active: () => state.direct, onUnauthorized: (status) => handleUnauthorized(status),
   });
 
@@ -139,6 +177,57 @@ export function create(deps) {
     onBlocked: () => set({ board_blocked: true }),
     userAgentSuffix: deps.clientVersion ? `SwitchyardDesktop/${deps.clientVersion}` : 'SwitchyardDesktop',
   });
+  // The hub view's partition takes exactly the pinned certificate of a pinned hub host (C6).
+  // Only this partition: claude.ai tabs and the shell keep Chromium's own validation.
+  try {
+    installVerifyProc(deps.electron.session.fromPartition(HUB_PARTITION), {
+      pins: () => direct.pins(), onMismatch: (origin) => certTrouble(origin), log,
+    });
+  } catch (err) {
+    log.warn?.(`hub: cannot install the certificate check of the hub view: ${err?.message ?? err}`);
+  }
+
+  // ---- the hub's certificate (C6): untrusted or changed
+
+  let certChecking = null;
+  let lastCertCheck = 0;
+
+  /** A certificate failure on a request: probe the hub (throttled) to tell the person what it presents. */
+  function certTrouble(origin) {
+    if (!state.url || pinOrigin(state.url) !== origin) return;
+    if (certChecking || Date.now() - lastCertCheck < CERT_RECHECK_MS) return;
+    checkCert().catch((err) => log.warn?.(`hub: certificate check failed: ${err?.message ?? err}`));
+  }
+
+  function checkCert() {
+    if (certChecking) return certChecking;
+    certChecking = (async () => {
+      const url = state.url;
+      const origin = pinOrigin(url);
+      if (!origin) return setCert(null);
+      const p = await probe(url);
+      lastCertCheck = Date.now();
+      if (url !== state.url || !p.ok) return undefined; // another hub now, or no handshake: nothing to say about a certificate
+      const pinned = direct.pinFor(origin);
+      if (pinned ? p.fingerprint === pinned : p.trusted) return setCert(null);
+      log.warn?.(`hub: the certificate of ${origin} is ${pinned ? 'not the pinned one' : 'not trusted'} (${p.fingerprint})`);
+      return setCert(certInfo(url, p, pinned));
+    })().finally(() => {
+      certChecking = null;
+    });
+    return certChecking;
+  }
+
+  /** Set or clear the certificate problem; while there is one, the stream stops and the board is hidden. */
+  function setCert(cert) {
+    const had = !!state.cert;
+    set({ cert });
+    if (cert) {
+      stopStream();
+      hubView.suppress(true);
+    } else if (had && auth) hubView.suppress(false);
+    set({ status: statusFor() });
+  }
 
   // ---- status
 
@@ -163,6 +252,7 @@ export function create(deps) {
   function statusFor() {
     if (mode) return mode;
     if (!state.connected || !state.url) return 'not_connected';
+    if (state.cert) return 'unreachable'; // the hub cannot be talked to until its certificate is trusted
     if (!auth) return 'needs_pairing';
     if (!state.reachable) return 'unreachable';
     return 'ok';
@@ -192,11 +282,13 @@ export function create(deps) {
     }
     const hub = info.hub ?? {};
     reportedBySy = true;
+    state.sy_version = typeof info.sy === 'string' ? info.sy.slice(0, 64) : null;
     machineName = String(info.machine?.name ?? '');
     state.machine = machineName;
     const rawUrl = typeof hub.url === 'string' ? hub.url : null;
     const url = rawUrl && hubUrlAllowed(rawUrl, true) ? normalizeHubUrl(rawUrl) : null;
     if (url !== state.url) dropHub(); // another hub: the token, the view and the stream are no longer valid
+    if (state.cert && state.cert.url !== url) state.cert = null;
     const admin = typeof info.admin === 'string' ? info.admin : null;
     if (hub.dial) {
       mode = 'dial';
@@ -240,7 +332,9 @@ export function create(deps) {
     state.direct = true;
     if (info?.ok) machineName = String(info.machine?.name ?? machineName);
     state.machine = machineName;
+    state.sy_version = info?.ok && typeof info.sy === 'string' ? info.sy.slice(0, 64) : null;
     if (url !== state.url) dropHub();
+    if (state.cert && state.cert.url !== url) state.cert = null;
     if (!auth) {
       const gen = authGen;
       const loaded = await tokens.load(url);
@@ -248,6 +342,9 @@ export function create(deps) {
       if (gen === authGen) setAuth(loaded);
     }
     const h = await direct.health(url);
+    if (stopped) return;
+    if (!h.ok && pinOrigin(url)) await checkCert(); // an https hub that does not answer: its certificate may be why
+    else if (h.ok && state.cert) setCert(null);
     if (stopped) return;
     set({
       url, connected: true, ...settleReachable(h.ok, h.version), paired: !!auth, local: false, service: null, admin: null,
@@ -309,7 +406,7 @@ export function create(deps) {
   // ---- stream and overview
 
   const stream = createStream({
-    fetch: deps.fetch,
+    fetch: hubFetch,
     getAuth: () => auth,
     reportedBySy: allowHttp,
     timers,
@@ -557,12 +654,57 @@ export function create(deps) {
   async function connect({ url, code } = {}) {
     await refreshInfo();
     if (state.connected && !state.direct) return { ok: false, error: `sy on this computer is already connected to ${state.url}. Use Pair this computer.` };
+    // An https address whose certificate fails normal validation (or is not its pinned one)
+    // stops here: the shell shows the fingerprint and asks the person to trust it (hub:trust-cert).
+    const a = checkAddress(url);
+    const origin = a.ok ? pinOrigin(a.url) : null;
+    if (origin) {
+      const p = await probe(a.url);
+      const pinned = direct.pinFor(origin);
+      if (p.ok && !(pinned ? p.fingerprint === pinned : p.trusted)) {
+        return { ok: false, error: pinned ? CHANGED_TEXT : UNTRUSTED_TEXT, cert: certInfo(a.url, p, pinned) };
+      }
+    }
     const c = await direct.check(url);
     if (!c.ok) return { ok: false, error: c.error };
     await direct.setUrl(c.url);
     await refreshInfo();
     if (typeof code === 'string' && code !== '') return pair({ code });
     return { ok: true };
+  }
+
+  /**
+   * Trust the certificate an https hub presents now, after the person compared its fingerprint
+   * (C6). The hub is probed again and must still present exactly that certificate. A
+   * certificate that passes normal validation needs no pin, so its pin is removed instead.
+   */
+  async function trustCert({ url, fingerprint } = {}) {
+    const a = checkAddress(url);
+    if (!a.ok) return { ok: false, error: a.error };
+    const origin = pinOrigin(a.url);
+    if (!origin) return { ok: false, error: 'Only an https address has a certificate to trust.' };
+    const want = normalizeFingerprint(fingerprint);
+    if (!want) return { ok: false, error: 'That is not a SHA-256 fingerprint.' };
+    const p = await probe(a.url);
+    if (!p.ok) return { ok: false, error: `No hub answered at ${a.url}.` };
+    if (p.fingerprint !== want) {
+      return { ok: false, error: 'The hub now presents a different certificate than the one you compared. Compare the new fingerprint.', cert: certInfo(a.url, p, direct.pinFor(origin)) };
+    }
+    await direct.setPin(origin, p.trusted ? null : want);
+    log.info?.(p.trusted ? `hub: the certificate of ${origin} passes normal validation, no pin kept` : `hub: pinned the certificate of ${origin} (${want})`);
+    lastCertCheck = 0;
+    if (state.cert?.origin === origin) setCert(null);
+    else set({});
+    await refreshInfo().catch(() => {});
+    if (auth && hubView.view()) hubView.load(hubView.currentRoute()).catch(() => {});
+    return { ok: true, pinned: !p.trusted };
+  }
+
+  /** Open the release page of the update notice (or the release list) in the system browser. */
+  async function openRelease() {
+    const n = updateNotice({ app: deps.clientVersion, hub: state.version, sy: state.sy_version });
+    const ok = await deps.security.openExternalSafe(n?.kind === 'update' ? n.url : releaseUrl(null));
+    return { ok };
   }
 
   /** Revoke this app's own device on the hub (DELETE /v1/devices/self), forget the token and the board session. */
@@ -580,6 +722,8 @@ export function create(deps) {
     await tokens.clear();
     await hubView.signOut();
     if (forget) {
+      const origin = pinOrigin(state.url);
+      if (origin && direct.pinFor(origin)) await direct.setPin(origin, null); // forgetting a hub forgets its certificate
       await direct.setUrl(null);
       mode = null;
     }
@@ -639,6 +783,8 @@ export function create(deps) {
   ipc.register('hub:owner-sign-out', () => ownerSignOut());
   ipc.register('hub:connect', (args) => connect(args ?? {}));
   ipc.register('hub:unpair', (args) => unpair(args ?? {}));
+  ipc.register('hub:trust-cert', (args) => trustCert(args ?? {}));
+  ipc.register('app:open-release', () => openRelease());
   ipc.register('hub:retry', async () => {
     await refreshInfo();
     return { ok: true };

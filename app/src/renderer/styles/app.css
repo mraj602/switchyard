@@ -230,6 +230,10 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
 .hub-strip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; gap: 12px; }
 .hub-strip-missing { color: var(--muted); }
+.hub-strip.insecure { background: var(--warn-bg); color: var(--warn-ink); }
+.hub-strip-insecure { font-weight: 600; }
+.cert-fp { display: flex; flex-wrap: wrap; gap: 4px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.cert-fp code { letter-spacing: 0.02em; }
 .offers { display: flex; flex-direction: column; gap: 8px; }
 .offers .offer { justify-content: flex-start; }
 .strip-notice { white-space: normal; flex: 1 0 150px; min-width: 0; max-height: 40px; overflow: hidden; font-size: 12px; line-height: 1.25; font-weight: 600; color: var(--failed); }

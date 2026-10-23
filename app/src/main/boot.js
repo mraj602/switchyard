@@ -258,7 +258,7 @@ export async function boot(electron, opts = {}) {
   const insetNow = () => {
     const h = bus.last('hub');
     const missing = missingAccounts(made.hub.seats(), bus.last('tabs')?.tabs).length > 0;
-    return h?.status === 'ok' && !h.board_blocked && (!h.owner || missing) ? HUB_STRIP_PX : 0;
+    return h?.status === 'ok' && !h.board_blocked && (!h.owner || missing || h.insecure) ? HUB_STRIP_PX : 0;
   };
   bus.on('hub', () => made.window.setHubInset?.(insetNow()));
   bus.on('tabs', () => made.window.setHubInset?.(insetNow()));

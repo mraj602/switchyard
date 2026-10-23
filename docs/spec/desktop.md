@@ -17,8 +17,9 @@ pairing.md (desktop codes, owner links), machines.md 4.4 (admin channel).
 - User data: `<app.getPath('appData')>/switchyard-desktop`, i.e. `~/.config/switchyard-desktop`,
   `~/Library/Application Support/switchyard-desktop` or `%APPDATA%\switchyard-desktop`.
   It is overridden by `SY_APP_USER_DATA` (an absolute path) only when `!app.isPackaged`.
-- Files the app owns there: `app-state.json`, `hub-token.bin` and Chromium's own folders
-  (`Partitions/…`). `app-state.json` is written to a temp file, fsynced and renamed, mode 0600:
+- Files the app owns there: `app-state.json`, `hub-token.bin`, `direct.json` (the hub address
+  remembered without sy, this app's machine id and the certificate pins of C6),
+  `direct-outbox.ndjson` and Chromium's own folders (`Partitions/…`). `app-state.json` is written to a temp file, fsynced and renamed, mode 0600:
 
   ```json
   {"v": 1,
@@ -58,13 +59,29 @@ both enforce it.
   Only the shell has a preload.
 - `app.on('web-contents-created')`: `will-attach-webview` → `preventDefault`. A default
   `setWindowOpenHandler` denies everything; each view type then installs its own policy, which
-  is narrower. `will-navigate` and `will-redirect` are guarded per view type:
+  is narrower. `will-navigate`, `will-redirect` and `will-frame-navigate` (subframes) are
+  guarded per view type:
 
   | View | May navigate to | `window.open` / other links |
   | --- | --- | --- |
   | Shell (`app://shell/`) | nothing (any navigation is prevented) | denied |
   | Account tab | `https://claude.ai`, `https://*.claude.ai`, sign-in hops (`anthropic.com`, `claude.com`, `challenges.cloudflare.com` and their subdomains), `https:` only | Allowed hosts load in the same tab. `https:` and `mailto:` go to `shell.openExternal`. Anything else is dropped. |
   | Hub view | The hub origin only (scheme + host + port from `sy desktop info`) | `https://claude.ai/code/session_…` opens in the account tab of the session's account (see C7), else in a new tab for that account; with no known seat, the first signed-in tab, else the system browser. Other `https:` links go to the system browser. |
+
+- Subframes (`will-frame-navigate` with `isMainFrame` false, and `will-redirect` of a subframe):
+  an iframe may load, navigate or be redirected only to its view's frame allow-list
+  (`shared/urls.js` `tabFrameAllowed`, `hubFrameAllowed`); anything else is prevented and its
+  host (never the full URL) is logged at debug level. `about:blank`, `about:srcdoc` and `blob:`
+  URLs of an allowed origin are always allowed.
+
+  | View | Frames may load |
+  | --- | --- |
+  | Account tab | `https:` only, no credentials in the URL, on `TAB_FRAME_HOSTS` or a subdomain: `claude.ai`, `anthropic.com`, `claude.com` (and `claudeusercontent.com`, where claude.ai renders artifacts), `challenges.cloudflare.com` (Turnstile), `js.stripe.com`, `hooks.stripe.com`, `m.stripe.network` (Stripe checkout and its 3-D Secure wrapper), `accounts.google.com` (Google sign-in). In an unpackaged test run, also `SY_APP_TEST_CLAUDE_ORIGIN`. |
+  | Hub view | The hub origin only |
+  | Shell | nothing |
+
+  A bank's own 3-D Secure page, which Stripe frames from the bank's domain, is therefore
+  blocked: such a payment is done in a normal browser.
 
 - Permissions are handled per session (`setPermissionRequestHandler`, `setPermissionCheckHandler`,
   `setDevicePermissionHandler` → deny, `setDisplayMediaRequestHandler` → deny):
@@ -75,7 +92,11 @@ both enforce it.
   | Hub view | `clipboard-sanitized-write` |
   | Shell (default session) | none |
 
-- Certificate errors are never overridden (no `certificate-error` handler that allows).
+- Certificate errors are never overridden (no `certificate-error` handler). The one
+  certificate decision the app makes is the hub pin of C6: `main/hub/pin.js` installs a
+  `setCertificateVerifyProc` on the hub view's session `persist:sy-hub` only, and the lint
+  allows that call in that file only. Account tabs, the shell and every other origin use
+  Chromium's normal validation.
   Downloads from account tabs go through the default save dialog; downloads from the hub view
   and the shell are cancelled.
 - The shell's CSP is sent as a response header by the `app://` handler:
@@ -154,7 +175,8 @@ not used). Before calling a handler it checks the following.
 | `hub:pair` | `{code: "^\d{3}-?\d{3}$"}` or `{}` (local or admin channel) | `{ok, error?}` | C |
 | `hub:owner-sign-in` | `{}` (local hub or admin channel) or `{link}` (a pasted owner link to the paired hub's own origin) | `{ok, error?}` | C |
 | `hub:owner-sign-out` | — | `{ok}` | C |
-| `hub:connect` | `{url, code?}` (checks `/health`, remembers the address without sy, pairs with the code) | `{ok, error?}` | C |
+| `hub:connect` | `{url, code?}` (checks `/health`, remembers the address without sy, pairs with the code; an https hub whose certificate fails normal validation, or is not its pinned one, returns `cert` instead, see C6) | `{ok, error?, cert?}` | C |
+| `hub:trust-cert` | `{url, fingerprint}` (C6: the hub must still present the certificate with this SHA-256 fingerprint; it is pinned with the hub config, or unpinned when it passes normal validation) | `{ok, pinned?, error?, cert?}` | C |
 | `hub:unpair` | `{forget?: bool}` (`DELETE /v1/devices/self`, then the token and the board session are dropped) | `{ok, revoked, warning?}` | C |
 | `hub:retry` | — | `{ok}` | C |
 | `hub:service` | `{action: "status" \| "start" \| "stop"}` | `{service, health}` | C |
@@ -162,6 +184,7 @@ not used). Before calling a handler it checks the following.
 | `accounts:local` | — | `sy account list --json` result | C |
 | `accounts:share` | `{folder, share: string}` | `{ok, error?}` | C |
 | `settings:set` | `{keep_running?, notifications?, autostart?, start_hidden?}` | `Settings` | E |
+| `app:open-release` | — (opens the release page of the update notice, C8, through `openExternalSafe`) | `{ok}` | C |
 | push `state` | `ShellState` (debounced 100 ms) | | A (state is assembled from every module through `bus.js`) |
 | push `toast` | `{level, text}` | | A |
 
@@ -176,7 +199,7 @@ Details fixed by `src/shared/ipc.js`:
 - `window.sy` function names, in table order: `state`, `selectView`, `hubRoute`, `addTab`,
   `updateTab`, `removeTab`, `reorderTabs`, `reloadTab`, `homeTab`, `openTabExternal`, `adoptTab`, `logoutTab`,
   `acceptWarning`, `setReading`, `setSend`, `resumeReading`, `refreshUsage`, `pair`,
-  `ownerSignIn`, `ownerSignOut`, `hubConnect`, `hubUnpair`, `hubRetry`, `hubService`, `updateSeat`, `localAccounts`, `shareAccount`, `setSettings`;
+  `ownerSignIn`, `ownerSignOut`, `hubConnect`, `trustCert`, `hubUnpair`, `hubRetry`, `hubService`, `updateSeat`, `localAccounts`, `shareAccount`, `setSettings`, `openRelease`;
   plus `on(event, cb)`, which returns an unsubscribe function. Each
   function takes one argument object (or none, for the channels without arguments) and
   returns the handler's promise.
@@ -342,6 +365,43 @@ account in a hidden or background start until the window is shown.
 - Requests use Node's `fetch` in main with `Authorization: Bearer`, a 10 s timeout and no
   redirects. Plain `http:` is allowed only for loopback hosts, or when `sy desktop info`
   reports a URL that sy itself accepted (`--insecure-lan`). Replies are capped at 2 MiB.
+- Plain `http:` to a host that is not loopback: `HubState.insecure` is true, and the shell
+  shows, for as long as it stays so, "Not encrypted: …the hub token and everything the app
+  exchanges with it cross the network unencrypted" in the Hub tab's top strip, in Settings →
+  This computer, and under the Connect form while such an address is typed.
+- Self-signed https (trust on first use). An https hub whose certificate fails normal
+  validation is never used silently:
+  - `hub:connect` first probes the address (`pin.probe`: a TLS handshake with validation off
+    that sends nothing) and returns `{ok: false, error, cert}`, `cert` =
+    `{url, origin, fingerprint, pinned, changed, trusted, reason, subject, issuer, valid_to}`.
+    `fingerprint` is the leaf certificate's SHA-256 in uppercase colon hex (what
+    `openssl x509 -fingerprint -sha256` prints). For a hub already in use, a failed request
+    re-probes (at most every 10 s) and sets `HubState.cert`; the status reads unreachable, the
+    stream stops and the Hub view is hidden until it is decided.
+  - The shell shows the fingerprint in groups of four and the command that prints it on the
+    computer serving https for the hub:
+    `openssl s_client -connect <host>:<port> [-servername <host>] </dev/null 2>/dev/null |
+    openssl x509 -noout -fingerprint -sha256`. The person confirms that they match.
+  - `hub:trust-cert {url, fingerprint}` probes again and refuses unless the hub still presents
+    exactly that fingerprint. It then stores the pin with the hub config: `pins` in
+    `direct.json`, `{"https://host:port": {"sha256": "…", "at": "…"}}`, at most 8 origins. A
+    certificate that now passes normal validation removes the pin instead.
+  - With a pin, the app's own requests to that origin (API calls, the stream, pairing) go
+    through `https.request` with a connection that is handed over only after the TLS handshake
+    showed the pinned fingerprint: any other certificate, even one a public CA signed, fails
+    with `CertificateChangedError` before a request byte or the token is written. The Hub view
+    session gets a `setCertificateVerifyProc` that accepts the pinned certificate for the hub's
+    host, refuses any other certificate for it, and leaves every other host to Chromium's
+    verdict. Chromium gives the proc the host but not the port, so the Hub view pin is per
+    host; the app's own requests pin per origin.
+  - A different certificate later is "certificate changed": `cert.changed` true, an error
+    banner, nothing sent; the person compares the new fingerprint and re-pins with the same
+    `hub:trust-cert`. Unpairing with "forget" drops the pin.
+  - Neither `sy` nor the hub can print this fingerprint: the hub serves plain http and TLS is
+    ended by whatever serves https for it (Caddy, nginx, `tailscale serve`), whose
+    certificate the hub never sees. Printing it from sy would need a command run on the hub
+    machine that dials the public https address and prints the presented leaf's SHA-256
+    (for example `sy hub tls-fingerprint`); until then the openssl line above is the way.
 - Stream: `GET /v1/stream` with `Last-Event-ID`. It is parsed by `shared/sse.js` and reconnects
   after 1, 2, 4 … 60 s. On `reset` it refetches `/v1/overview`. If the hub sends no `ping` for
   60 s, it reconnects. A `401` stops the stream and asks to pair again. Only a `401` (here or on
@@ -434,6 +494,17 @@ account in a hidden or background start until the window is shown.
     closed, tray.
   - **Hub settings** links: Machines, Alerts and rules, Devices, Phone pairing, the hub's own
     Settings. Each opens the Hub view at its route (pwa.md 3).
+  - **About:** this app's version, sy's (`sy desktop info` → `sy`), the hub's, Electron,
+    Chromium and the platform.
+- Update notice (`shared/version.js`): the app asks no update server and calls no third party.
+  It compares its own version with sy's and the hub's (both already known from `sy desktop
+  info` and `/v1/overview`; versions such as `dev` are ignored). `ShellState.update` is
+  `{kind, app, version, from}` or null: `update` when the hub or sy runs a newer release ("Update
+  available: Your hub runs Switchyard 0.7.0, this app is 0.6.0."), `older` when this app is newer
+  ("… older than this app. Update it with sy update."). It is shown at the top of Settings and
+  in About, with **Open the release page** (`app:open-release`), which opens
+  `https://github.com/mraj602/switchyard/releases/tag/v<version>` (or the release list) through
+  `openExternalSafe`. The URL is built in main, never taken from the renderer.
 
 ## C9. Notifications and tray
 

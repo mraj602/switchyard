@@ -14,7 +14,9 @@ import {
   tabTitle, missingNotice, mismatchNotice, adoptLabel, signOutLabel, adoptConfirm, adoptToast, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds, droppedIds,
   effectiveView, windowRows, readingStatus, lastReadTitle, hubBanner, hubUsable, hubSummary, hubChip, ownerPill, fitTabs, progressText,
   SHARE_SWITCHES, foldersOf, isPrimary, switchState, shareSpec, loginCommand, COLOUR_RE, PAIR_CODE_RE,
+  INSECURE_TEXT, insecureAddress, fingerprintGroups, fingerprintCommand,
 } from './view.js';
+import { updateText } from '../shared/version.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const TICK_MS = 30_000;
@@ -454,9 +456,10 @@ export function start({ sy, root }) {
     if (!hb || (hub.status === 'ok' && !hub.board_blocked)) {
       // The board covers this panel (status ok). Read-only: a strip above it with one visible button.
       const gone = missingNotice(state.missing);
-      const strip = hub.status === 'ok' && (!hub.owner || gone)
-        ? h('div', { class: 'hub-strip', role: 'status', fk: 'hub-strip' },
+      const strip = hub.status === 'ok' && (!hub.owner || gone || hub.insecure)
+        ? h('div', { class: `hub-strip${hub.insecure ? ' insecure' : ''}`, role: 'status', fk: 'hub-strip' },
           h('span', { class: 'hub-strip-text' },
+            hub.insecure ? h('span', { class: 'hub-strip-insecure', fk: 'insecure-strip', title: INSECURE_TEXT, text: 'Not encrypted (http): the hub token crosses the network in the clear. ' }) : null,
             !hub.owner ? (busy('owner') ? progress('owner') : h('span', { text: 'Read-only. Sign in as owner to change alerts, devices and accounts.' })) : null,
             gone ? h('span', { class: 'hub-strip-missing', fk: 'missing-notice' }, `${gone} `, h('button', { class: 'linkish', fk: 'missing-add', text: 'Add tabs', onclick: () => openAddTab() })) : null),
           !hub.owner ? h('button', { class: 'btn btn-primary', fk: 'owner-sign-in', text: busy('owner') ? 'Signing in…' : 'Sign in as owner', disabled: busy('owner'), onclick: ownerSignInClick }) : null)
@@ -466,6 +469,7 @@ export function start({ sy, root }) {
         h('div', { class: 'inner' }, err, h('p', { class: 'hint', text: hub.url ? `Loading the hub board from ${hub.url}…` : 'Loading the hub board…' })));
     }
     const inner = h('div', { class: 'inner' }, h('h1', { text: 'Hub' }), bannerEl(hb, 'hub'));
+    if (hub.insecure) inner.append(h('div', { class: 'banner warn', role: 'status', fk: 'insecure-hub', text: INSECURE_TEXT }));
     for (const b of state.banners || []) inner.append(h('div', { class: `banner ${b.level === 'warn' ? 'warn' : b.level === 'error' ? 'error' : ''}`.trim(), role: 'status', text: b.text }));
     if (hub.direct && hub.status === 'needs_pairing') {
       inner.append(h('p', { class: 'hint' }, `Hub: ${hub.url}. `, h('button', { class: 'linkish', fk: 'hub-other', text: 'Use another hub', onclick: () => act('unpair', () => sy.hubUnpair({ forget: true })) })));
@@ -480,6 +484,12 @@ export function start({ sy, root }) {
     const actions = h('div', { class: 'banner-actions' });
     if (hb.command) actions.append(cmdRow(hb.command, `cmd-${where}-${hb.command}`));
     if (hb.action === 'connect') actions.append(connectForm(where));
+    if (hb.action === 'cert' && state.hub.cert) {
+      const c = state.hub.cert;
+      actions.append(h('div', { class: 'cert-fp', fk: `cert-fp-${where}`, 'aria-label': 'SHA-256 fingerprint' }, fingerprintGroups(c.fingerprint).map((g) => h('code', { text: g }))));
+      actions.append(h('button', { class: `btn ${c.changed ? 'btn-danger' : 'btn-primary'}`, fk: `cert-review-${where}`, text: c.changed ? 'Review the new certificate' : 'Compare and trust', onclick: () => openCert(c) }));
+      actions.append(h('button', { class: 'btn', fk: `cert-retry-${where}`, text: 'Check again', disabled: busy('retry'), onclick: () => act('retry', () => sy.hubRetry()) }));
+    }
     if (hb.action === 'pair' || (hb.action === 'pair-click' && ui.useCode)) actions.append(pairForm(where));
     if (hb.action === 'pair-click' && ui.useCode) actions.append(h('button', { class: 'linkish', fk: `pair-no-code-${where}`, text: 'Pair without a code', onclick: () => { ui.useCode = false; ui.pairError = ''; ui.v++; render(); } }));
     if (hb.action === 'pair-click') {
@@ -505,7 +515,7 @@ export function start({ sy, root }) {
       h('label', { for: `connect-url-${where}`, text: 'Hub address' }),
       h('input', {
         type: 'text', id: `connect-url-${where}`, fk: `connect-url-${where}`, placeholder: 'https://hub.example.com', autocomplete: 'off', spellcheck: 'false',
-        value: ui.connectUrl, oninput: (e) => { ui.connectUrl = e.target.value; }, onkeydown: (e) => { if (e.key === 'Enter') doConnect(); },
+        value: ui.connectUrl, oninput: (e) => { const was = insecureAddress(ui.connectUrl); ui.connectUrl = e.target.value; if (insecureAddress(ui.connectUrl) !== was) { ui.v++; render(); } }, onkeydown: (e) => { if (e.key === 'Enter') doConnect(); },
       }),
       h('label', { for: `connect-code-${where}`, text: 'Pairing code' }),
       h('input', {
@@ -513,6 +523,7 @@ export function start({ sy, root }) {
         value: ui.connectCode, oninput: (e) => { ui.connectCode = e.target.value; }, onkeydown: (e) => { if (e.key === 'Enter') doConnect(); },
       }),
       h('div', { class: 'hint small', text: 'Get a code on any owner device: More, Devices, Add desktop app.' }),
+      insecureAddress(ui.connectUrl) ? h('div', { class: 'banner warn small', role: 'status', fk: `connect-insecure-${where}`, text: INSECURE_TEXT }) : null,
       h('div', { class: 'row-actions' },
         h('button', { class: 'btn btn-primary', fk: `connect-btn-${where}`, text: 'Connect', disabled: busy('connect'), onclick: () => doConnect() }),
         ui.connectError ? h('span', { class: 'err', role: 'alert', text: ui.connectError }) : null));
@@ -529,6 +540,10 @@ export function start({ sy, root }) {
     if (r && r.ok) {
       ui.connectCode = '';
       toast('info', 'Paired with the hub.');
+    } else if (r && r.cert) {
+      connectFail(r.error || 'The hub\u2019s certificate needs your decision.');
+      // Trusted: connect again with the same address and code.
+      openCert(r.cert, () => doConnect());
     } else if (r) connectFail(r.error || 'Could not connect.');
     return undefined;
   }
@@ -635,6 +650,7 @@ export function start({ sy, root }) {
         },
       })));
     const banners = (state.banners || []).map((b) => h('div', { class: `banner ${b.level === 'warn' ? 'warn' : b.level === 'error' ? 'error' : ''}`.trim(), role: 'status', text: b.text }));
+    if (state.update) banners.unshift(updateBanner('settings'));
     const main = h('div', { class: 'page-main' },
       h('h1', { text: 'App settings' }),
       banners.length ? h('div', { class: 'banners' }, banners) : null,
@@ -852,11 +868,14 @@ export function start({ sy, root }) {
       hub.local ? [h('dt', { text: 'Hub service' }), h('dd', {}, h('span', { text: hub.service || 'unknown' }), hub.service !== 'missing' ? serviceButtons() : null,
         hub.service === 'missing' ? h('span', { class: 'muted' }, 'Not installed: run ', h('code', { text: 'sy setup --hub here' })) : null)] : null,
       hub.admin ? [h('dt', { text: 'Admin channel' }), h('dd', { text: hub.admin })] : null,
+      hub.url && /^https:/i.test(hub.url) ? [h('dt', { text: 'Certificate' }), h('dd', { fk: 'cert-row', text: hub.cert ? (hub.cert.changed ? 'Changed: not trusted' : 'Not trusted yet') : hub.pinned ? 'Pinned (trusted on first use)' : 'Verified' })] : null,
+      hub.url && hub.insecure ? [h('dt', { text: 'Encryption' }), h('dd', { fk: 'encryption-row', text: 'None (plain http)' })] : null,
     );
     const warn = state.settings.storage_backend === 'basic_text'
       ? h('div', { class: 'banner warn', role: 'status', text: 'This system has no secret store, so the hub token is kept in a file readable only by you (mode 0600), not encrypted.' }) : null;
+    const insecure = hub.url && hub.insecure ? h('div', { class: 'banner warn', role: 'status', fk: 'insecure-settings', text: INSECURE_TEXT }) : null;
     return section('computer', 'This computer', 'Connection, pairing and owner access for this app. The board itself is in the Hub tab; hub-wide settings are in its sidebar, under Hub settings.',
-      hb && !hubUsable(hub) ? bannerEl(hb, 'settings') : null, warn, h('div', { class: 'card card-pad' }, dl),
+      hb && !hubUsable(hub) ? bannerEl(hb, 'settings') : null, insecure, warn, h('div', { class: 'card card-pad' }, dl),
       paired || hub.direct ? h('div', { class: 'row-actions' },
         paired ? h('button', { class: 'btn btn-danger', fk: 'unpair', text: 'Unpair this computer', disabled: busy('unpair'), onclick: openUnpair }) : null) : null);
   }
@@ -916,10 +935,20 @@ export function start({ sy, root }) {
     return section('about', 'About', null,
       h('div', { class: 'card card-pad' }, h('dl', { class: 'kv', fk: 'about' },
         h('dt', { text: 'Switchyard Desktop' }), h('dd', { text: a.app || '–' }),
+        h('dt', { text: 'sy' }), h('dd', { text: state.hub?.sy_version || '–' }),
         h('dt', { text: 'Hub' }), h('dd', { text: state.hub?.version || '–' }),
         h('dt', { text: 'Electron' }), h('dd', { text: a.electron || '–' }),
         h('dt', { text: 'Chromium' }), h('dd', { text: a.chrome || '–' }),
         h('dt', { text: 'Platform' }), h('dd', { text: a.platform || '–' }))));
+  }
+
+  /** The update notice: versions differ between this app and the hub or sy (C8). */
+  function updateBanner(where) {
+    const n = state.update;
+    return h('div', { class: `banner ${n.kind === 'update' ? '' : 'warn'}`.trim(), role: 'status', fk: `update-${where}` },
+      h('div', { text: updateText(n) }),
+      h('div', { class: 'banner-actions' },
+        h('button', { class: 'btn', fk: `update-open-${where}`, text: 'Open the release page', onclick: () => act('release', () => sy.openRelease()) })));
   }
 
   // ---- dialogs
@@ -962,6 +991,51 @@ export function start({ sy, root }) {
     const f = initialFocus ? dlg.querySelector(initialFocus) : dlg.querySelector('input, button');
     if (f) f.focus();
     return api;
+  }
+
+  /**
+   * Compare a hub's certificate fingerprint and trust it (C6). then(): after it was trusted
+   * (the Connect form connects again).
+   */
+  function openCert(c, then = null) {
+    let msg;
+    const cmd = fingerprintCommand(c.origin);
+    const fp = (label, value, key) => [h('dt', { text: label }), h('dd', {}, h('div', { class: 'cert-fp', fk: key }, fingerprintGroups(value).map((g) => h('code', { text: g }))))];
+    const facts = h('dl', { class: 'kv' },
+      h('dt', { text: 'Address' }), h('dd', { text: c.origin }),
+      fp(c.changed ? 'New SHA-256' : 'SHA-256', c.fingerprint, 'cert-dlg-fp'),
+      c.changed && c.pinned ? fp('Trusted before', c.pinned, 'cert-dlg-old') : null,
+      c.subject ? [h('dt', { text: 'Subject' }), h('dd', { text: c.subject })] : null,
+      c.issuer ? [h('dt', { text: 'Issuer' }), h('dd', { text: c.issuer })] : null,
+      c.valid_to ? [h('dt', { text: 'Valid until' }), h('dd', { text: c.valid_to })] : null);
+    openDialog({
+      title: c.changed ? 'The hub\u2019s certificate changed' : 'Trust this hub\u2019s certificate?',
+      body: h('div', {},
+        h('p', { text: c.changed
+          ? 'This computer trusted another certificate for this hub. If you did not replace the hub\u2019s certificate, someone may be intercepting the connection: do not trust it.'
+          : 'This computer cannot check this hub\u2019s certificate (it is self-signed, or signed by an authority this computer does not know). Trust it only if its fingerprint matches the one on the hub\u2019s computer, pair by pair.' }),
+        facts,
+        h('p', { class: 'fine', text: 'On the hub\u2019s computer (or the one serving https for it), this prints the fingerprint to compare:' }),
+        cmd ? cmdRow(cmd, 'cert-cmd') : null,
+        h('p', { class: 'fine', text: 'Once trusted, this app accepts exactly this certificate for this hub and refuses any other, until you trust a new one here.' }),
+        (msg = h('div', { class: 'err', role: 'alert' }))),
+      actions: (d) => [
+        h('button', { class: 'btn btn-lg', text: 'Cancel', onclick: () => d.close('cancel') }),
+        h('button', {
+          class: `btn btn-lg ${c.changed ? 'btn-danger' : 'btn-primary'}`, fk: 'cert-trust', text: 'The fingerprints match: trust it',
+          onclick: async () => {
+            const r = await act('trust-cert', () => sy.trustCert({ url: c.url, fingerprint: c.fingerprint }));
+            if (r && r.ok) {
+              d.close('trusted');
+              toast('info', r.pinned ? 'Certificate trusted for this hub.' : 'The certificate now passes the normal checks; no pin is needed.');
+              ui.connectError = '';
+              if (then) then();
+            } else if (r) msg.textContent = r.error || 'The certificate was not trusted.';
+          },
+        }),
+      ],
+      initialFocus: '.btn',
+    });
   }
 
   function openUnpair() {

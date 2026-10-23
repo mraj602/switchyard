@@ -30,6 +30,8 @@ export const SHARE_FOLDER_PATTERN = '^~?[A-Za-z0-9._/-]{1,200}$';
 export const SHARE_SPEC_PATTERN = '^[a-z,=:+-]{1,200}$';
 /** Pairing code typed by the person: 123-456 or 123456. */
 export const PAIR_CODE_PATTERN = '^\\d{3}-?\\d{3}$';
+/** A SHA-256 certificate fingerprint as the shell sends it: 64 hex digits, colons allowed. */
+export const CERT_FINGERPRINT_PATTERN = '^[0-9A-Fa-f:]{64,95}$';
 /** Hub route: starts '#/', at most 200 characters, no control characters or spaces. */
 export const HUB_ROUTE_PATTERN = '^#/[^\\s\\x00-\\x1f\\x7f]*$';
 
@@ -88,6 +90,11 @@ export const CHANNELS = Object.freeze({
     kind: INVOKE, fn: 'hubConnect', handler: 'hub', returns: '{ok, error?}',
     args: obj({ url: { type: 'string', min: 1, max: 300 }, code: { type: 'string', max: 7, pattern: new RegExp(PAIR_CODE_PATTERN) } }, ['url']),
   },
+  // Trust the certificate an https hub presents (C6): it must still have this SHA-256 fingerprint; it is pinned with the hub config.
+  'hub:trust-cert': {
+    kind: INVOKE, fn: 'trustCert', handler: 'hub', returns: '{ok, pinned?, error?, cert?}',
+    args: obj({ url: { type: 'string', min: 1, max: 300 }, fingerprint: { type: 'string', max: 200, pattern: new RegExp(CERT_FINGERPRINT_PATTERN) } }, ['url', 'fingerprint']),
+  },
   // Revoke this app's device on the hub, forget the token and the board session; forget also drops the remembered address.
   'hub:unpair': { kind: INVOKE, fn: 'hubUnpair', handler: 'hub', returns: '{ok, revoked, warning?}', args: obj({ forget: BOOL }) },
   'hub:retry': { kind: INVOKE, fn: 'hubRetry', handler: 'hub', args: null, returns: '{ok}' },
@@ -116,6 +123,8 @@ export const CHANNELS = Object.freeze({
     kind: INVOKE, fn: 'setSettings', handler: 'settings', returns: 'Settings',
     args: obj({ keep_running: BOOL, notifications: BOOL, autostart: BOOL, start_hidden: BOOL }),
   },
+  // The update notice's link (C8): main opens the release page itself, through openExternalSafe.
+  'app:open-release': { kind: INVOKE, fn: 'openRelease', handler: 'hub', args: null, returns: '{ok}' },
 
   // push (main → shell)
   state: { kind: PUSH, fn: null, handler: 'state', args: { type: 'any' }, returns: null }, // ShellState, debounced 100 ms
@@ -222,6 +231,7 @@ function check(channel, path, s, v) {
  * @property {Settings} settings
  * @property {{level: 'info'|'warn'|'error', text: string}[]} [banners]  e.g. "sy not found: run sy setup"
  * @property {{app: string, electron: string, chrome: string, platform: string}} [about]  versions for Settings, About
+ * @property {UpdateNotice|null} [update]  this app's version against the hub's and sy's (shared/version.js)
  *
  * @typedef {object} TabState
  * @property {string} id
@@ -265,7 +275,29 @@ function check(channel, path, s, v) {
  * @property {string|null} last_seen    RFC 3339, when the hub was last reached or lost
  * @property {string} machine           this computer's name
  * @property {boolean} board_blocked  the board asked for its own sign-in and main could not answer it: the board is hidden
+ * @property {HubCert|null} cert      the hub's https certificate is not trusted (no pin) or not the pinned one (changed): status is 'unreachable' until it is trusted
+ * @property {boolean} insecure       the hub URL is plain http to another computer: the token crosses the network unencrypted
+ * @property {boolean} pinned         the hub's https certificate is pinned (trusted on first use)
+ * @property {string|null} sy_version sy's version from `sy desktop info`
  * @property {'ok'|'no_sy'|'not_connected'|'dial'|'needs_pairing'|'unreachable'} status
+ *
+ * @typedef {object} HubCert
+ * @property {string} url             the hub URL that was probed
+ * @property {string} origin          https://host:port
+ * @property {string} fingerprint     SHA-256 of the certificate the hub presents (AB:CD:…)
+ * @property {string|null} pinned     the pinned fingerprint when the certificate changed, else null
+ * @property {boolean} changed        true when a pin exists and the hub presents another certificate
+ * @property {boolean} trusted        the presented certificate passes normal validation
+ * @property {string|null} reason     why normal validation fails (Node's code, e.g. DEPTH_ZERO_SELF_SIGNED_CERT)
+ * @property {string|null} subject
+ * @property {string|null} issuer
+ * @property {string|null} valid_to
+ *
+ * @typedef {object} UpdateNotice
+ * @property {'update'|'older'} kind  update: the hub or sy runs a newer release; older: they run an older one
+ * @property {string} app             this app's version
+ * @property {string} version         the other version
+ * @property {'hub'|'sy'} from
  *
  * @typedef {object} Settings
  * @property {boolean} keep_running

@@ -4,12 +4,15 @@
 // and, while there is no sy, uploads usage records with POST /v1/ingest and the desktop token
 // (the batch `sy flush` sends: internal/client/client.go Ingest). Records are completed the way
 // `sy outbox append` completes them (v 1, id as a ULID, ts) and queued in direct-outbox.ndjson
-// next to direct.json ({machine, url}; no secret: the token is in the token store).
+// next to direct.json ({machine, url, pins}; no secret: the token is in the token store).
+// `pins` is the hub config's certificate pins (pin.js, C6): {"https://host:port": {"sha256":
+// "AB:CD:…", "at": "<RFC 3339>"}}, at most PINS_MAX origins.
 
 import crypto from 'node:crypto';
 import { FILE_MODE } from '../../shared/constants.js';
 import { normalizeHubUrl } from './token.js';
 import { hubUrl, isLoopbackHost } from './client.js';
+import { FINGERPRINT_RE, pinOrigin } from './pin.js';
 
 const MACHINE_RE = /^[0-9A-Za-z_-]{16,64}$/;
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
@@ -19,6 +22,7 @@ const FLUSH_DEBOUNCE_MS = 2000;
 const FLUSH_RETRY_MS = 60_000;
 const TIMEOUT_MS = 10_000;
 const REPLY_MAX = 1024 * 1024;
+const PINS_MAX = 8;
 
 /** A record id as `sy` makes it: a ULID (48 bits of ms, 80 random bits, Crockford base32). */
 export function newRecordId(nowMs = Date.now(), rnd = crypto.randomBytes(10)) {
@@ -89,7 +93,7 @@ export function createDirect(deps) {
   const timers = deps.timers ?? { setTimeout, clearTimeout };
   const queueFile = path.join(path.dirname(file), 'direct-outbox.ndjson');
   const client = `${deps.clientName}/${deps.version}`;
-  let data = { machine: null, url: null };
+  let data = { machine: null, url: null, pins: {} };
   let loaded = false;
   let queue = []; // complete records, oldest first
   let flushTimer = null;
@@ -127,6 +131,13 @@ export function createDirect(deps) {
       if (j && typeof j === 'object') {
         if (typeof j.machine === 'string' && MACHINE_RE.test(j.machine)) data.machine = j.machine;
         if (typeof j.url === 'string' && normalizeHubUrl(j.url)) data.url = normalizeHubUrl(j.url);
+        if (j.pins && typeof j.pins === 'object') {
+          for (const [origin, p] of Object.entries(j.pins).slice(0, PINS_MAX)) {
+            if (pinOrigin(origin) === origin && typeof p?.sha256 === 'string' && FINGERPRINT_RE.test(p.sha256)) {
+              data.pins[origin] = { sha256: p.sha256, at: typeof p.at === 'string' ? p.at.slice(0, 40) : null };
+            }
+          }
+        }
       }
     } catch {
       // first run, or a damaged file: a new machine id below
@@ -270,6 +281,24 @@ export function createDirect(deps) {
     async setUrl(url) {
       await load();
       data = { ...data, url: url ? normalizeHubUrl(url) : null };
+      await save();
+    },
+    /** The pinned certificate fingerprint of an https origin, or null (sync: after load()). */
+    pinFor: (origin) => (Object.hasOwn(data.pins, origin) ? data.pins[origin].sha256 : null),
+    /** Every pin: [{origin, sha256, at}]. */
+    pins: () => Object.entries(data.pins).map(([origin, p]) => ({ origin, ...p })),
+    /** Pin (or with null, unpin) the certificate of an https origin. */
+    async setPin(origin, sha256) {
+      await load();
+      if (pinOrigin(origin) !== origin) throw new Error('only an https origin can be pinned');
+      const pins = { ...data.pins };
+      delete pins[origin];
+      if (sha256 !== null) {
+        if (!FINGERPRINT_RE.test(String(sha256))) throw new Error('not a SHA-256 fingerprint');
+        pins[origin] = { sha256, at: new Date().toISOString() };
+      }
+      const keep = Object.entries(pins).slice(-PINS_MAX); // the newest PINS_MAX origins
+      data = { ...data, pins: Object.fromEntries(keep) };
       await save();
     },
     check,

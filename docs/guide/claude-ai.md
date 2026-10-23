@@ -31,6 +31,12 @@ line command. Nothing extra is sent to Anthropic. Logging in is always Claude Co
 - Switchyard never reads, exports or sends cookies or tokens. Nothing from a tab's session is
   sent to the hub or to any other machine.
 - Removing a tab, or **Sign out (clear this tab)**, deletes that local session.
+- A desktop account tab only loads claude.ai and the pages sign-in and billing need
+  (anthropic.com, claude.com, Cloudflare's challenge, Stripe checkout, Google sign-in), and
+  frames embedded in those pages are held to the same list. A frame from anywhere else is
+  blocked and only its host name is written to the app's debug log. One known effect: a
+  bank's own 3-D Secure check, which Stripe embeds from the bank's site, cannot load, so pay
+  for a plan in a normal browser if your bank asks for one.
 
 ## The browser identity of the tabs
 

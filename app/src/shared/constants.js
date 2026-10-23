@@ -99,6 +99,22 @@ export const PERMISSIONS = Object.freeze({
 export const CLAUDE_ORIGIN = 'https://claude.ai';
 export const CLAUDE_HOSTS = Object.freeze(['claude.ai']); // and subdomains
 export const SIGN_IN_HOSTS = Object.freeze(['anthropic.com', 'claude.com', 'challenges.cloudflare.com']); // and subdomains
+/**
+ * Hosts (and their subdomains) a subframe of an account tab may load, https only (C2). Every
+ * other subframe navigation is blocked and its host logged at debug level, so the list can be
+ * extended when claude.ai embeds something new.
+ */
+export const TAB_FRAME_HOSTS = Object.freeze([
+  ...CLAUDE_HOSTS,
+  ...SIGN_IN_HOSTS, // anthropic.com, claude.com, Cloudflare's challenge and Turnstile frames
+  'claudeusercontent.com', // artifacts and previews, sandboxed on their own domain
+  'js.stripe.com', // billing: Stripe Elements (card fields, payment request button)
+  'hooks.stripe.com', // billing: Stripe's 3-D Secure hand-off frame
+  'm.stripe.network', // billing: Stripe's fraud-signal frame that Stripe.js inserts
+  'accounts.google.com', // the "Sign in with Google" button and One Tap frame
+]);
+/** Subframe URLs that load nothing from the network and are always allowed (C2). */
+export const INERT_FRAME_URLS = Object.freeze(['about:blank', 'about:srcdoc']);
 /** Paths of claude.ai where a tab is not readable (C5). */
 export const NOT_READABLE_PATHS = Object.freeze(['/login', '/logout']);
 /** A board link that hands off to an account tab (C7). */
@@ -147,6 +163,9 @@ export const HUB_REPLY_MAX_BYTES = 2 * 1024 * 1024;
 export const STREAM_RETRY_MS = Object.freeze([1_000, 2_000, 4_000, 8_000, 16_000, 32_000, 60_000]);
 export const STREAM_PING_TIMEOUT_MS = 60_000;
 export const NEEDS_YOU_DEBOUNCE_MS = 1_000;
+
+/** The project's release page (C8 update notice; opened only through openExternalSafe). */
+export const RELEASES_URL = 'https://github.com/mraj602/switchyard/releases';
 
 // ---- C3 state push
 

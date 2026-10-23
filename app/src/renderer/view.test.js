@@ -4,6 +4,7 @@ import {
   tabTitle, tabColour, badgeText, nameError, labelError, viewOrder, cycleView, viewForDigit, movedIds, droppedIds,
   effectiveView, windowLabel, windowRows, readingStatus, hubBanner, hubSummary, hubChip, ownerPill, hubUsable, foldersOf,
   switchState, shareSpec, SHARE_SWITCHES, isPrimary, loginCommand, SHARE_FOLDER_RE, fitTabs, progressText, nameList, missingNotice, mismatchNotice, adoptLabel, signOutLabel, adoptConfirm, adoptToast,
+  INSECURE_TEXT, insecureAddress, fingerprintGroups, fingerprintCommand,
 } from './view.js';
 import { SHARE_SPEC_PATTERN } from '../shared/ipc.js';
 import { clock } from '../shared/format.js';
@@ -270,4 +271,53 @@ test('mismatchNotice: only when main found a different account uuid', () => {
     'This tab is signed in as claude-1, not claude-6.',
   );
   assert.match(mismatchNotice(tab({ mismatch: { expected: 'claude-6', actual: null } })), /signed in as another account, not claude-6/);
+});
+
+test('certificate: banner, chip and summary while a cert needs a decision (C6)', () => {
+  const fp = Array.from({ length: 32 }, (_, i) => (i + 16).toString(16).toUpperCase()).join(':');
+  const cert = { url: 'https://hub.lan:8443', origin: 'https://hub.lan:8443', fingerprint: fp, pinned: null, changed: false };
+  const hub = { paired: true, status: 'unreachable', cert };
+  const b = hubBanner(hub);
+  assert.equal(b.action, 'cert');
+  assert.equal(b.level, 'warn');
+  assert.match(b.text, /hub\.lan:8443/);
+  assert.equal(hubChip(hub).text, 'Hub · Certificate');
+  assert.equal(hubSummary(hub), 'Certificate not trusted');
+  const changed = { ...hub, cert: { ...cert, changed: true, pinned: fp.replace(/^10/, 'AA') } };
+  assert.equal(hubBanner(changed).level, 'error');
+  assert.match(hubBanner(changed).title, /changed/);
+  assert.equal(hubChip(changed).text, 'Hub · Certificate changed');
+  assert.equal(hubSummary(changed), 'Certificate changed');
+  // without a cert, unreachable stays unreachable
+  assert.equal(hubChip({ paired: true, status: 'unreachable' }).text, 'Hub · Unreachable');
+});
+
+test('fingerprintGroups: four pairs per group', () => {
+  const fp = Array.from({ length: 32 }, () => 'AB').join(':');
+  const g = fingerprintGroups(fp);
+  assert.equal(g.length, 8);
+  assert.equal(g[0], 'AB:AB:AB:AB');
+  assert.deepEqual(fingerprintGroups(''), []);
+  assert.deepEqual(fingerprintGroups(null), []);
+});
+
+test('fingerprintCommand: openssl with SNI for names, none for addresses', () => {
+  assert.equal(fingerprintCommand('https://hub.lan:8443'),
+    'openssl s_client -connect hub.lan:8443 -servername hub.lan </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256');
+  assert.match(fingerprintCommand('https://192.168.1.5'), /-connect 192\.168\.1\.5:443 <\/dev\/null/);
+  assert.match(fingerprintCommand('https://[fd00::1]:9000'), /-connect \[fd00::1\]:9000 <\/dev\/null/);
+  assert.equal(fingerprintCommand('not a url'), '');
+});
+
+test('insecureAddress: plain http to another computer only', () => {
+  assert.equal(insecureAddress('http://192.168.1.5:8787'), true);
+  assert.equal(insecureAddress(' http://hub.lan '), true);
+  assert.equal(insecureAddress('HTTP://hub.lan'), true);
+  assert.equal(insecureAddress('http://127.0.0.1:8787'), false);
+  assert.equal(insecureAddress('http://localhost:8787'), false);
+  assert.equal(insecureAddress('http://[::1]:8787'), false);
+  assert.equal(insecureAddress('https://hub.lan'), false);
+  assert.equal(insecureAddress(''), false);
+  assert.equal(insecureAddress('http://'), false);
+  assert.match(INSECURE_TEXT, /unencrypted/);
 });

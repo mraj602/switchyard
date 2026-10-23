@@ -11,8 +11,12 @@
 //   (a webContents nobody guarded) every renderer-started navigation is prevented.
 // - guardView(wc, kind) installs the narrower policy of its view kind (shell, tab, hub).
 // - guardSession(session, kind) installs the permission handlers and the download rule.
-// - Certificate errors: there is deliberately no 'certificate-error' handler and no
-//   setCertificateVerifyProc, so Chromium's default (refuse) always applies.
+// - Subframes: will-frame-navigate (and will-redirect with isMainFrame false) consult the
+//   subframe rule of the view kind: account tabs an allow-list of hosts (TAB_FRAME_HOSTS), the
+//   hub view its own origin, the shell nothing. A blocked host is logged at debug level.
+// - Certificate errors: there is deliberately no 'certificate-error' handler, so Chromium's
+//   default (refuse) applies. The one setCertificateVerifyProc is main/hub/pin.js, on the hub
+//   partition only, and accepts exactly the certificate pinned for the hub's host (C6).
 // - openExternalSafe is the only caller of shell.openExternal (the lint checks it).
 
 import * as defaultUrls from '../shared/urls.js';
@@ -143,6 +147,27 @@ export function create(deps) {
 
   const navUrl = (event, url) => event?.url ?? url;
 
+  /** Decides one subframe navigation; true to allow it. */
+  function decideFrame(wc, url) {
+    const p = policies.get(wc);
+    if (!p) return false;
+    switch (p.kind) {
+      case VIEW_TAB:
+        return urls.tabFrameAllowed(url, urlOpts);
+      case VIEW_HUB:
+        return urls.hubFrameAllowed(url, { hubOrigin: hubOriginOf(p.opts) });
+      default:
+        return false;
+    }
+  }
+
+  function guardFrame(wc, event, target, what) {
+    if (decideFrame(wc, target)) return;
+    event.preventDefault();
+    const kind = policies.get(wc)?.kind ?? 'unguarded';
+    log.debug?.(`security: ${what} to ${urls.hostForLog(target)} blocked in a ${kind} view`);
+  }
+
   function loadIn(wc, url) {
     Promise.resolve()
       .then(() => wc.loadURL(urls.parse(url).href))
@@ -164,10 +189,19 @@ export function create(deps) {
         log.debug?.(`security: navigation prevented to ${short(target)}`);
       }
     });
+    // Subframes (C2): every frame navigation, including an iframe's first load. The main frame
+    // is will-navigate's.
+    wc.on('will-frame-navigate', (event) => {
+      if (event?.isMainFrame !== false) return;
+      guardFrame(wc, event, event.url, 'subframe');
+    });
     wc.on('will-redirect', (event, url, isInPlace, isMainFrame) => {
       const main = event?.isMainFrame ?? isMainFrame;
-      if (main === false) return;
       const target = navUrl(event, url);
+      if (main === false) {
+        guardFrame(wc, event, target, 'subframe redirect');
+        return;
+      }
       if (!decideNavigation(wc, target)) {
         event.preventDefault();
         log.debug?.(`security: redirect prevented to ${short(target)}`);

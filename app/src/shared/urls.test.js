@@ -93,3 +93,32 @@ test('loopback hosts, same origin, shell URLs', () => {
   assert.ok(urls.isShellUrl('app://shell/index.html'));
   assert.ok(!urls.isShellUrl('app://shellx/index.html'));
 });
+
+test('subframes of an account tab: the allow-list, https only, inert and blob: frames', () => {
+  for (const u of ['https://claude.ai/', 'https://challenges.cloudflare.com/x', 'https://js.stripe.com/v3/', 'https://x.claudeusercontent.com/',
+    'https://accounts.google.com/gsi/', 'about:blank', 'about:srcdoc', 'ABOUT:BLANK', 'blob:https://claude.ai/abc']) {
+    assert.ok(urls.tabFrameAllowed(u), u);
+  }
+  for (const u of ['http://js.stripe.com/', 'https://stripe.com/', 'https://google.com/', 'about:config', 'data:text/html,x',
+    'blob:null/abc', 'blob:https://evil.example/abc', 'https://u:p@js.stripe.com/', '', null, 42]) {
+    assert.ok(!urls.tabFrameAllowed(u), String(u));
+  }
+  assert.ok(urls.tabFrameAllowed('http://127.0.0.1:5555/f', { claudeOrigin: 'http://127.0.0.1:5555' }));
+  assert.ok(!urls.tabFrameAllowed('http://127.0.0.1:5556/f', { claudeOrigin: 'http://127.0.0.1:5555' }));
+});
+
+test('subframes of the hub view: its own origin only', () => {
+  const o = { hubOrigin: 'https://hub.example:8443' };
+  assert.ok(urls.hubFrameAllowed('https://hub.example:8443/x', o));
+  assert.ok(urls.hubFrameAllowed('blob:https://hub.example:8443/abc', o));
+  assert.ok(urls.hubFrameAllowed('about:srcdoc', o));
+  assert.ok(!urls.hubFrameAllowed('https://hub.example/x', o));
+  assert.ok(!urls.hubFrameAllowed('https://claude.ai/', o));
+  assert.ok(!urls.hubFrameAllowed('https://hub.example:8443/x', {}));
+});
+
+test('hostForLog keeps the host only', () => {
+  assert.equal(urls.hostForLog('https://evil.example:8443/a?token=x'), 'evil.example:8443');
+  assert.equal(urls.hostForLog('data:text/html,secret'), 'data:');
+  assert.equal(urls.hostForLog('nope'), '(not a URL)');
+});
