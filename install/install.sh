@@ -146,7 +146,8 @@ newfile=
 
 # 7. Report. PATH is never edited: print the line to add.
 shown=$bindir
-case $bindir in "$HOME"/*) shown="~${bindir#"$HOME"}" ;; esac
+pathdir=$bindir # for the PATH line: "~" is not expanded inside double quotes, $HOME is
+case $bindir in "$HOME"/*) shown="~${bindir#"$HOME"}"; pathdir="\$HOME${bindir#"$HOME"}" ;; esac
 say "sy $version downloaded, checksum ok, installed to $shown/sy"
 case ":${PATH:-}:" in
 	*":$bindir:"*) ;;
@@ -154,9 +155,9 @@ case ":${PATH:-}:" in
 		say "$shown is not on your PATH. Add it:"
 		case $(basename "${SHELL:-sh}") in
 			fish) say "  fish_add_path $shown" ;;
-			zsh) say "  echo 'export PATH=\"$shown:\$PATH\"' >> ~/.zshrc" ;;
-			bash) say "  echo 'export PATH=\"$shown:\$PATH\"' >> ~/.bashrc" ;;
-			*) say "  export PATH=\"$shown:\$PATH\"" ;;
+			zsh) say "  echo 'export PATH=\"$pathdir:\$PATH\"' >> ~/.zshrc" ;;
+			bash) say "  echo 'export PATH=\"$pathdir:\$PATH\"' >> ~/.bashrc" ;;
+			*) say "  export PATH=\"$pathdir:\$PATH\"" ;;
 		esac
 		;;
 esac
