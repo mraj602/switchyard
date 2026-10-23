@@ -5,8 +5,9 @@
 [![phone](https://github.com/mraj602/switchyard/actions/workflows/phone.yml/badge.svg?branch=main)](https://github.com/mraj602/switchyard/actions/workflows/phone.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
-A self-hosted board for several Claude Code accounts on several machines: every session's
-state, every account's limits, and a notification when a session needs you.
+An open-source, self-hosted board for your AI coding agents, across accounts and machines:
+every session's state, every account's limits, and a notification when a session needs you.
+Claude Code is supported today; more coding agents are next (see the [roadmap](#roadmap)).
 
 **Website: <https://mraj602.github.io/switchyard/>**
 
@@ -15,8 +16,8 @@ state, every account's limits, and a notification when a session needs you.
 > trademarks of Anthropic, PBC, used here only to describe compatibility. Use it only with
 > your own accounts and within the terms of your plan. See [Terms and risk](#terms-and-risk).
 
-If you run Claude Code in two or more accounts (say work and personal), on a laptop and a
-server or two, you end up checking terminals to see which session is waiting for you and
+If you run a coding agent such as Claude Code in two or more accounts (say work and
+personal), on a laptop and a server or two, you end up checking terminals to see which session is waiting for you and
 which account still has room. Switchyard gives you one view of all of it, on your own hub:
 
 - **One board** of every session on every machine, grouped by account: working, needs
@@ -196,21 +197,24 @@ More: [docs/guide/faq.md](docs/guide/faq.md).
 
 ## Roadmap
 
-Ideas for after 1.0, roughly in order. They are plans, not promises; open an issue if one
-matters to you.
+Switchyard is meant to be neutral: one board for whichever coding agents and providers you
+use. In order of priority (plans, not promises; open an issue if one matters to you):
 
-- **More coding agents.** Show OpenAI Codex CLI, Google Antigravity and Gemini CLI sessions on
-  the same board, with the same states, alerts and limits per account as Claude Code.
-- **claude.ai artifacts from every account.** One list of the artifacts each signed-in account
-  has made, in the desktop app and the board, opening each in its own account's tab.
-- **An iPhone app.** Today an iPhone uses the board as a web app or ntfy.
-- **Desktop updates.** Update the desktop app from inside the app, and code-signed macOS and
-  Windows builds so first start has no warning.
-- **Android in app stores.** IzzyOnDroid, then F-Droid with reproducible builds. Today the APK is
-  on GitHub Releases only.
-- **A shared hub for a small team.** Each person sees their own accounts and sessions on one
-  hub.
-- **A hosted hub,** for people who would rather not run their own. Self-hosting stays free.
+1. **More coding agents.** OpenAI Codex CLI, Google Gemini CLI and Antigravity next to Claude
+   Code on the same board: the same session states, alerts and per-account limits, wherever the
+   tool exposes them.
+2. **Better analytics.** Usage, tokens and cost over time per account, provider, project and
+   model; when and how often each account hits its limits; forecasts and exports.
+3. **Artifacts across accounts.** Detect which account made each claude.ai artifact (and the
+   other tools' equivalents), and let sessions in your other accounts use and share them
+   through peers.
+4. **Desktop updates** from inside the app, and code-signed macOS and Windows builds.
+5. **A hosted hub,** for people who would rather not run their own. Self-hosting stays free.
+6. **Android in app stores** (IzzyOnDroid, then F-Droid). Today the APK is on GitHub Releases.
+7. **An iPhone app.** Today an iPhone uses the board as a web app or ntfy.
+
+Not planned: shared or team hubs. A hub belongs to one person, and only you see your sessions,
+accounts and usage.
 
 ## Similar tools
 
