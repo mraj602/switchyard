@@ -714,8 +714,9 @@ UTF-8 titles intact:
   `machine_silent`; 2 for `reset`. Tags (ntfy emoji): `lock` (permission), `question`
   (asked), `rotating_light` (failed), `warning` (limits), `zzz` (silent), `bell` (summary).
 - Private: title and body as 5.5, `click` = `/#/alerts/<id>` deep link, no Remote Control
-  action (ntfy sees the text, unlike Web Push), Snooze and Seen kept (their URLs reveal only
-  the hub's host name).
+  action (ntfy sees the text, unlike Web Push), Snooze and Seen kept. Their URLs reveal the hub's host name and a
+  24-hour action token to the ntfy server (7.5 says what a token can do); that is the price of
+  the buttons, and security.md tells the owner.
 - **Without `hub.public_url`** (`sy hub serve --public-url https://…`, pairing.md 2.3) the hub
   has no absolute address to put in a message: ntfy alerts carry **no `click` link and no
   Snooze/Seen buttons**, only the title, the body and "Open in Claude" when the session has a

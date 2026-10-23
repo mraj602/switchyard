@@ -184,7 +184,10 @@ as its own OS user. `sy doctor` warns about this.
 | ntfy.sh | ntfy.sh and anyone who learns the topic name | Content; **private is forced on** for ntfy.sh targets unless you turn it off on the target |
 
 Private pushes replace the text with "1 session needs you" and similar, and the link names no
-project, account or session. Turn it on per device or as the hub default ([alerts.md](alerts.md)).
+project, account or session. On ntfy they keep the Snooze and Seen buttons, so the ntfy server
+also sees the hub's address and two links with a one-time token that lasts 24 hours and can
+only snooze or mark that one alert seen. That is metadata, not message text; if it matters
+to you, use a self-hosted ntfy server on your tailnet or the Android app. Turn it on per device or as the hub default ([alerts.md](alerts.md)).
 
 ## Supply chain
 
