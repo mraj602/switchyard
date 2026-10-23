@@ -6,34 +6,7 @@ All notable changes to Switchyard are recorded here. The format follows
 
 ## [Unreleased]
 
-### Security
-
-- Desktop: the tabs' sign-in cookies are encrypted on disk (Electron's cookie encryption fuse is
-  on). A tab signed in by an earlier unpacked build may ask you to sign in again once.
-- The hub's Android app mirror pins the release signing certificate and checks the APK itself,
-  not only the manifest. It mirrors nothing until the maintainer sets the pin.
-- Android: no app data in cloud backup or device transfer, lock-screen notifications show only a
-  generic text, widget taps open the app with an explicit intent, and the phone no longer sends
-  its token to the `moved_to` address in an unsigned `/health` reply (it asks you to pair again).
-  `make phone-apk-release` refuses a wrong package id, cleartext traffic or a debuggable build.
-- Desktop: a page can trigger only a few external opens or session links in a short time, and
-  never brings the window or the browser to the front. Usage read from the page's own
-  context is used only for a known account, and usage data is size- and shape-checked first.
-- Desktop: sites that ask for a client certificate get none.
-- The web board's "Open in app" link is now an Android intent pinned to the Switchyard package,
-  so no other app can receive the pairing secret.
-
-### Fixed
-
-- The web board's sign-in page no longer loses a half-typed token or owner link when the page
-  updates in the background (for example while the offline app installs).
-- Desktop: signing in to claude.ai in an account tab works again. The tabs blocked the frames of
-  the sign-in page's hCaptcha check, so it failed with "Couldn't verify your browser".
-- Desktop: account tabs send Chrome's reduced user agent (`Chrome/<major>.0.0.0`), as Chrome
-  itself does, instead of the full build number. claude.ai's Claude Code section kept asking to
-  verify the device again, because the string was unusual and changed with every Electron update.
-
-## [1.0.0] - not released yet
+## [1.0.0] - 2026-10-24
 
 The first public version. Everything below is new.
 
@@ -73,6 +46,33 @@ The first public version. Everything below is new.
 - Documentation: user guides, architecture, behaviour specs, contributing guide, security
   policy, release guide, a website and a demo recorded from sample data.
 - Licensed under the GNU AGPL-3.0.
+
+### Security
+
+- Desktop: the tabs' sign-in cookies are encrypted on disk (Electron's cookie encryption fuse is
+  on). A tab signed in by an earlier unpacked build may ask you to sign in again once.
+- The hub's Android app mirror pins the release signing certificate and checks the APK itself,
+  not only the manifest. It mirrors nothing until the maintainer sets the pin.
+- Android: no app data in cloud backup or device transfer, lock-screen notifications show only a
+  generic text, widget taps open the app with an explicit intent, and the phone no longer sends
+  its token to the `moved_to` address in an unsigned `/health` reply (it asks you to pair again).
+  `make phone-apk-release` refuses a wrong package id, cleartext traffic or a debuggable build.
+- Desktop: a page can trigger only a few external opens or session links in a short time, and
+  never brings the window or the browser to the front. Usage read from the page's own
+  context is used only for a known account, and usage data is size- and shape-checked first.
+- Desktop: sites that ask for a client certificate get none.
+- The web board's "Open in app" link is now an Android intent pinned to the Switchyard package,
+  so no other app can receive the pairing secret.
+
+### Fixed during the release candidate
+
+- The web board's sign-in page no longer loses a half-typed token or owner link when the page
+  updates in the background (for example while the offline app installs).
+- Desktop: signing in to claude.ai in an account tab works again. The tabs blocked the frames of
+  the sign-in page's hCaptcha check, so it failed with "Couldn't verify your browser".
+- Desktop: account tabs send Chrome's reduced user agent (`Chrome/<major>.0.0.0`), as Chrome
+  itself does, instead of the full build number. claude.ai's Claude Code section kept asking to
+  verify the device again, because the string was unusual and changed with every Electron update.
 
 [Unreleased]: https://github.com/mraj602/switchyard/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/mraj602/switchyard/releases/tag/v1.0.0
