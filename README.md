@@ -157,7 +157,7 @@ Releases are on [GitHub Releases](https://github.com/mraj602/switchyard/releases
 - GitHub build-provenance attestations for every archive and package.
 
 The Android APK is a separate release, `phone-vX.Y.Z`. The maintainer signs it with their own
-key, and the certificate fingerprint is in that release's note
+key, whose certificate's SHA-256 fingerprint is `0b715b03eb515301851200431ff21a5114f51d97d615812f6554e46dd644eddd`
 ([Android guide](docs/guide/android.md#verify-the-apk)).
 
 Install `sy` on Linux or macOS with the one-liner in the [Quickstart](#quickstart). Add
