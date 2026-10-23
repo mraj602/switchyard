@@ -36,7 +36,7 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement by contacting the project maintainer, [@mraj602](https://github.com/mraj602), privately: use the contact method on that GitHub profile, or, if you need a private channel on this repository, the "Report a vulnerability" form under the Security tab (it reaches the maintainer only). All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement privately to the project maintainer, either on GitHub ([@mraj602](https://github.com/mraj602)) or by email at [mraj602@gmail.com](mailto:mraj602@gmail.com). All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the reporter of any incident.
 
@@ -82,4 +82,3 @@ For answers to common questions about this code of conduct, see the FAQ at [http
 [FAQ]: https://www.contributor-covenant.org/faq
 [translations]: https://www.contributor-covenant.org/translations
 
-<!-- TODO(maintainer): replace the contact above with a dedicated conduct address once one exists. -->
