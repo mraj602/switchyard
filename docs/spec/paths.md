@@ -192,7 +192,7 @@ after_s = 120
 
 [update]                                     # (machines.md 7.3)
 base_url = ""                                # default GitHub releases; SY_INSTALL_BASE_URL wins
-verify_attestation = false
+verify_attestation = true                  # check the build attestation when gh is installed
 
 [machines]                                   # operator (machines.md 4.4)
 hub_admin = ""                               # "local" or a command prefix, e.g. "ssh hub sy"

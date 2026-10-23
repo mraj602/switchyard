@@ -6,9 +6,12 @@
 #
 # Puts a checksum-verified `sy` in ~/.local/bin and nothing else: no shell profile, no PATH,
 # no Claude folder. Then runs `sy setup` when a terminal is available, unless --no-setup.
+# When the gh CLI is installed it also verifies the archive's build attestation (who built it);
+# without gh only the checksum is checked, which shows the download is intact but not its origin.
 #
 # Exit codes: 0 ok, 2 unsupported or usage, 3 verification failed, 4 download failed.
-# Environment: SY_INSTALL_BASE_URL (mirror/tests), SY_VERIFY_ATTESTATION=1 (needs gh).
+# Environment: SY_INSTALL_BASE_URL (mirror/tests; https, or http on a loopback host only),
+# SY_VERIFY_ATTESTATION=1 (fail when gh is missing) or =0 (do not check the attestation).
 set -eu
 
 OWNER=mraj602
@@ -71,23 +74,50 @@ if [ "$os" = darwin ] && [ "$arch" = amd64 ] &&
 	arch=arm64 # a shell running under Rosetta on Apple silicon
 fi
 
-# 2. Downloader.
+# 2. The base must be https; plain http only to a loopback host (the tests' local server).
+loopback_http=0
+case $BASE in
+	https://*) ;;
+	http://*)
+		auth=${BASE#http://}; auth=${auth%%/*}
+		case $auth in *@*) die 2 "SY_INSTALL_BASE_URL must not carry credentials" ;; esac
+		host=${auth%%:*}
+		case $auth in "["*) host=${auth%%]*}"]" ;; esac
+		ok=0
+		case $host in
+			localhost|"[::1]") ok=1 ;;
+			127.*[0-9]) case $host in *[!0-9.]*) ;; *) ok=1 ;; esac ;;
+		esac
+		[ "$ok" = 1 ] || die 2 "SY_INSTALL_BASE_URL must be https (http is allowed only for a loopback host)"
+		loopback_http=1 ;;
+	*) die 2 "SY_INSTALL_BASE_URL must be an https URL" ;;
+esac
+
+# 3. Downloader: https only (no downgrade by redirect), TLS 1.2 or newer.
 if command -v curl >/dev/null 2>&1; then
-	fetch() { curl -fsSL -o "$2" "$1"; }
+	if [ "$loopback_http" = 1 ]; then
+		fetch() { curl -fsSL --proto '=http' --proto-redir '=http' -o "$2" "$1"; }
+	else
+		fetch() { curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 -o "$2" "$1"; }
+	fi
 elif command -v wget >/dev/null 2>&1; then
-	fetch() { wget -qO "$2" "$1"; }
+	if [ "$loopback_http" = 1 ]; then
+		fetch() { wget -qO "$2" "$1"; }
+	else
+		fetch() { wget -qO "$2" --https-only --secure-protocol=TLSv1_2 "$1"; }
+	fi
 else
 	die 2 "need curl or wget"
 fi
 
-# 3. Where the files are. No GitHub API call, so no rate limit.
+# 4. Where the files are. No GitHub API call, so no rate limit.
 if [ "$version" = latest ]; then
 	dl=$BASE/latest/download
 else
 	dl=$BASE/download/v$version
 fi
 
-# 4. Download into a private temp folder, removed on exit.
+# 5. Download into a private temp folder, removed on exit.
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/sy-install.XXXXXX") || die 4 "cannot create a temp folder"
 newfile=
 cleanup() {
@@ -113,7 +143,7 @@ fi
 
 fetch "$dl/$archive" "$tmp/$archive" || die 4 "download failed: $dl/$archive"
 
-# 5. Verify. The archive must have a line in SHA256SUMS and the digest must match.
+# 6. Verify. The archive must have a line in SHA256SUMS and the digest must match.
 want=$(awk -v n="$archive" '{ f = $2; sub(/^\*/, "", f) } f == n { print $1; exit }' "$tmp/SHA256SUMS")
 [ -n "$want" ] || die 3 "$archive is not listed in SHA256SUMS; nothing installed"
 if command -v sha256sum >/dev/null 2>&1; then
@@ -126,29 +156,43 @@ else
 	die 3 "no sha256sum, shasum or openssl to verify with; nothing installed"
 fi
 [ "$got" = "$want" ] || die 3 "checksum mismatch for $archive; nothing installed"
-if [ "${SY_VERIFY_ATTESTATION:-}" = 1 ]; then
-	command -v gh >/dev/null 2>&1 ||
-		die 3 "SY_VERIFY_ATTESTATION=1 needs the gh CLI, which is not installed; nothing installed"
-	gh attestation verify "$tmp/$archive" --repo "$OWNER/switchyard" \
-		--signer-workflow "$OWNER/switchyard/.github/workflows/release.yml" >/dev/null ||
-		die 3 "attestation verification failed for $archive; nothing installed"
-fi
+# The build attestation shows the archive was built by this repository's release workflow,
+# which a checksum from the same release cannot. Checked whenever gh is installed.
+proof="checksum ok"
+note=
+case ${SY_VERIFY_ATTESTATION:-} in
+	0) note="build attestation not checked (SY_VERIFY_ATTESTATION=0); the checksum shows the download is intact, not who built it" ;;
+	*)
+		if command -v gh >/dev/null 2>&1; then
+			gh attestation verify "$tmp/$archive" --repo "$OWNER/switchyard" \
+				--signer-workflow "$OWNER/switchyard/.github/workflows/release.yml" >/dev/null 2>&1 ||
+				die 3 "attestation verification failed for $archive; nothing installed (gh must be signed in and reach github.com; SY_VERIFY_ATTESTATION=0 skips this check)"
+			proof="checksum ok, build attestation ok"
+		elif [ "${SY_VERIFY_ATTESTATION:-}" = 1 ]; then
+			die 3 "SY_VERIFY_ATTESTATION=1 needs the gh CLI, which is not installed; nothing installed"
+		else
+			note="build attestation not checked because the gh CLI is not installed; the checksum shows the download is intact, not who built it. Install gh (https://cli.github.com) and run the installer again to check it"
+		fi ;;
+esac
 
-# 6. Extract only sy, then replace atomically (a running `sy hook` keeps its old inode).
+# 7. Extract only sy, then replace atomically (a running `sy hook` keeps its old inode).
 tar -xzf "$tmp/$archive" -C "$tmp" sy || die 3 "$archive does not contain sy"
-mkdir -p "$bindir"
-chmod 0755 "$bindir" 2>/dev/null || true
-newfile=$bindir/.sy.$$.tmp
+if [ ! -d "$bindir" ]; then # only a folder made here gets a mode; an existing one is left alone
+	mkdir -p "$bindir"
+	chmod 0755 "$bindir" 2>/dev/null || true
+fi
+newfile=$(mktemp "$bindir/.sy.XXXXXX") || die 4 "cannot create a temp file in $bindir"
 cp "$tmp/sy" "$newfile"
 chmod 0755 "$newfile"
 mv -f "$newfile" "$bindir/sy"
 newfile=
 
-# 7. Report. PATH is never edited: print the line to add.
+# 8. Report. PATH is never edited: print the line to add.
 shown=$bindir
 pathdir=$bindir # for the PATH line: "~" is not expanded inside double quotes, $HOME is
 case $bindir in "$HOME"/*) shown="~${bindir#"$HOME"}"; pathdir="\$HOME${bindir#"$HOME"}" ;; esac
-say "sy $version downloaded, checksum ok, installed to $shown/sy"
+say "sy $version downloaded, $proof, installed to $shown/sy"
+[ -z "$note" ] || say "note: $note"
 case ":${PATH:-}:" in
 	*":$bindir:"*) ;;
 	*)
@@ -162,7 +206,7 @@ case ":${PATH:-}:" in
 		;;
 esac
 
-# 8. Hand over to `sy setup` when there is a terminal.
+# 9. Hand over to `sy setup` when there is a terminal.
 if [ "$nosetup" = 1 ]; then
 	exit 0
 fi

@@ -72,6 +72,10 @@ type FleetOptions struct {
 	Source  Source
 	Fetcher Fetcher
 	Remote  Remote
+	// Attestation is the operator's policy. On the push path the operator checks the archive
+	// itself (the remote has no internet to do it); when it is off, the remotes are told not to
+	// check either.
+	Attestation Attestation
 	// CacheDir holds archives fetched for the push path.
 	CacheDir string
 	// Parallel is how many machines at once after the hub host (default 4).
@@ -199,6 +203,9 @@ func UpdateFleet(ctx context.Context, o FleetOptions) ([]FleetResult, bool) {
 func updateOne(ctx context.Context, o FleetOptions, m FleetMachine) FleetResult {
 	res := FleetResult{Name: m.Name, To: o.Version}
 	argv := []string{m.sy(), "update", "--yes", "--json", "--version", o.Version}
+	if !o.Attestation.Auto && !o.Attestation.Required {
+		argv = append(argv, "--no-attestation")
+	}
 	rctx, rcancel := context.WithTimeout(ctx, remoteRunTimeout)
 	defer rcancel()
 	out, exit, err := o.Remote.Run(rctx, m, argv)
@@ -258,6 +265,9 @@ func pushUpdate(ctx context.Context, o FleetOptions, m FleetMachine, res FleetRe
 	if err != nil {
 		return failWith("push path: %v", err)
 	}
+	if _, err := VerifyAttestation(ctx, o.Attestation, arch.Path); err != nil {
+		return failWith("push path: %v", err)
+	}
 	// A per-call temp file: machines of one platform share cache, and pushes run in parallel.
 	sf, err := os.CreateTemp(cache, "SHA256SUMS."+rel.Version+".*")
 	if err != nil {
@@ -282,7 +292,8 @@ func pushUpdate(ctx context.Context, o FleetOptions, m FleetMachine, res FleetRe
 	if err != nil {
 		return failWith("push path: uploading SHA256SUMS: %v", err)
 	}
-	argv := []string{m.sy(), "update", "--yes", "--json", "--version", o.Version, "--from-file", rArch, "--sums-file", rSums}
+	argv := []string{m.sy(), "update", "--yes", "--json", "--version", o.Version, "--from-file", rArch, "--sums-file", rSums,
+		"--no-attestation"} // the operator checked it above; the remote cannot reach GitHub
 	rctx, rcancel := context.WithTimeout(ctx, remoteRunTimeout)
 	defer rcancel()
 	out, exit, err := o.Remote.Run(rctx, m, argv)

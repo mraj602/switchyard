@@ -172,8 +172,8 @@ options such as `-Version` or `-NoSetup`, run it as a script block, as the heade
 [install/install.ps1](install/install.ps1) shows.
 
 To check where a file came from, run `gh attestation verify <file> --repo mraj602/switchyard`.
-Or set `SY_VERIFY_ATTESTATION=1` and the install script does it for you (it needs the `gh`
-CLI). `sy update` keeps `sy` current ([maintenance](docs/guide/maintenance.md#sy-update)). The
+The install script and `sy update` do it for you when the `gh` CLI is installed, and say so
+when it is not (then only the checksum is checked). `sy update` keeps `sy` current ([maintenance](docs/guide/maintenance.md#sy-update)). The
 desktop app and the Android app update as their guides describe.
 
 ## FAQ

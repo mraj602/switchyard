@@ -187,12 +187,27 @@ project, account or session. Turn it on per device or as the hub default ([alert
 
 ## Supply chain
 
-Release archives come with `SHA256SUMS` and GitHub build provenance attestations, and the
-install scripts check the checksum before they install anything. Desktop packages have
-`SHA256SUMS-desktop` and attestations too. To check one yourself, run
-`gh attestation verify <file> --repo mraj602/switchyard`; it shows the file was built by this
-repository's release workflow. Setting `SY_VERIFY_ATTESTATION=1` makes the install scripts do
-that check (it needs the `gh` CLI). The desktop packages are not code-signed
+Release archives come with `SHA256SUMS` and GitHub build provenance attestations. Desktop
+packages have `SHA256SUMS-desktop` and attestations too.
+
+The two checks prove different things:
+
+- **The checksum** shows the download is intact. `SHA256SUMS` comes from the same release as
+  the archive, so it cannot tell you who built the archive: someone who could replace the
+  archive on the release could replace the sums too.
+- **The attestation** shows the file was built by this repository's release workflow. It
+  needs the `gh` CLI.
+
+The install scripts and `sy update` check the attestation whenever `gh` is installed, and stop
+if it fails. When `gh` is not installed they say so and install on the checksum alone. To make
+that an error, set `SY_VERIFY_ATTESTATION=1`; to skip the check (for example offline), set
+`SY_VERIFY_ATTESTATION=0`, or use `sy update --no-attestation` or
+`update.verify_attestation = false`. With `sy update --machines`, a machine that cannot reach
+the internet gets the archive from you after your `sy` checked it. To check one yourself, run
+`gh attestation verify <file> --repo mraj602/switchyard`.
+
+The install scripts only talk https (TLS 1.2 or newer); `SY_INSTALL_BASE_URL` must be https,
+except for a loopback address used in tests. The desktop packages are not code-signed
 ([desktop.md](desktop.md#unsigned-builds-on-macos-and-windows)). The Android APK is signed
 with the maintainer's own key; check it as [android.md](android.md#verify-the-apk) says. You
 can also build from source ([install.md](install.md)). The Android app's updater installs an update only if its signing

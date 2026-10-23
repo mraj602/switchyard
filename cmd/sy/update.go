@@ -93,7 +93,7 @@ func osUpdateEnv() (updateEnv, error) {
 	}, nil
 }
 
-// runUpdate is `sy update [--version v] [--check] [--yes] [--json] [--allow-downgrade]
+// runUpdate is `sy update [--version v] [--check] [--yes] [--json] [--allow-downgrade] [--no-attestation]
 // [--from-file f --sums-file s] [--rollback] [--machines all|a,b]` (machines.md 7.3, 7.4).
 // Exit codes: 0 updated or current; 2 usage; 3 verification failed; 4 download failed;
 // 5 refused; 1 replace, post-update or (with --machines) any machine failed.
@@ -115,6 +115,7 @@ type updateFlags struct {
 	rollback       bool
 	machines       string
 	postUpdate     string
+	noAttestation  bool
 }
 
 func (e updateEnv) source() update.Source {
@@ -125,12 +126,26 @@ func (e updateEnv) source() update.Source {
 	return update.Source{BaseURL: base}
 }
 
+// attestation is the build-attestation policy: on when gh is installed, unless the person
+// turned it off (--no-attestation, SY_VERIFY_ATTESTATION=0, update.verify_attestation =
+// false); SY_VERIFY_ATTESTATION=1 makes a missing gh an error.
+func (e updateEnv) attestation(f updateFlags) update.Attestation {
+	switch env := e.getenv("SY_VERIFY_ATTESTATION"); {
+	case f.noAttestation || env == "0":
+		return update.Attestation{}
+	case env == "1":
+		return update.Attestation{Required: true}
+	default:
+		return update.Attestation{Auto: e.cfg.Update.VerifyAttestation}
+	}
+}
+
 func (e updateEnv) options(f updateFlags) update.Options {
 	o := update.Options{
 		Source: e.source(), Version: f.version, Current: e.current, Exe: e.exe,
 		StateDir: e.dirs.State.Path, GOOS: e.goos, GOARCH: e.goarch, AllowDowngrade: f.allowDowngrade,
 		FromFile: f.fromFile, SumsFile: f.sumsFile, Run: e.run,
-		Attestation: update.Attestation{Required: e.getenv("SY_VERIFY_ATTESTATION") == "1" || e.cfg.Update.VerifyAttestation},
+		Attestation: e.attestation(f),
 	}
 	// On a hub host the new binary must open the database as it is. A database that exists
 	// but cannot be read leaves the guard unable to vouch: Apply and Rollback refuse.
@@ -196,6 +211,7 @@ func updateMain(ctx context.Context, e updateEnv, args []string, stdout, stderr 
 	var f updateFlags
 	fs.StringVar(&f.version, "version", "", "update to this version (default latest)")
 	fs.BoolVar(&f.check, "check", false, "only say what is current and what is latest")
+	fs.BoolVar(&f.noAttestation, "no-attestation", false, "do not check the build attestation with gh (the checksum is still checked)")
 	fs.BoolVar(&f.yes, "yes", false, "do not ask for confirmation")
 	fs.BoolVar(&f.asJSON, "json", false, "print the result as JSON")
 	fs.BoolVar(&f.allowDowngrade, "allow-downgrade", false, "allow a version older than the installed one")
@@ -309,8 +325,15 @@ func updateSelf(ctx context.Context, e updateEnv, f updateFlags, stdout, stderr 
 	if f.asJSON {
 		jsonLine(stdout, res)
 	} else {
-		fmt.Fprintf(stdout, "sy %s downloaded, checksum ok, installed to %s (was %s; %s kept for --rollback)\n",
-			res.To, displayPath(res.Path), res.From, filepath.Base(res.OldKept))
+		proof := "checksum ok, build attestation ok"
+		if !res.Attested {
+			proof = "checksum ok"
+		}
+		fmt.Fprintf(stdout, "sy %s downloaded, %s, installed to %s (was %s; %s kept for --rollback)\n",
+			res.To, proof, displayPath(res.Path), res.From, filepath.Base(res.OldKept))
+		if a := e.attestation(f); !res.Attested && (a.Auto || a.Required) {
+			fmt.Fprintln(stderr, "note: the build attestation was not checked because the gh CLI is not installed. The checksum shows the download is intact, not who built it. Install gh (https://cli.github.com) to check it.")
+		}
 	}
 	if perr != nil {
 		return res, updateFail(f, io.Discard, update.PostUpdateError(perr))
@@ -424,7 +447,7 @@ func updateFleet(ctx context.Context, e updateEnv, f updateFlags, stdout, stderr
 		return exitWith(update.ExitUsage, fmt.Errorf("this sy is %q, not a release: pass --version to say what the machines should run", target))
 	}
 	results, failed := update.UpdateFleet(ctx, update.FleetOptions{
-		Machines: sel, Version: target, Source: e.source(), Remote: remote,
+		Machines: sel, Version: target, Source: e.source(), Remote: remote, Attestation: e.attestation(f),
 		CacheDir: filepath.Join(e.dirs.State.Path, "update", "cache"),
 		Progress: func(r update.FleetResult) {
 			if !f.asJSON {

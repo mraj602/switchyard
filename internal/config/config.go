@@ -152,6 +152,7 @@ func Defaults() Config {
 	c.Terminal.Source = TerminalSourceAuto
 	c.Peers.Delivery = "honest"
 	c.Peers.HubMayWiden = true
+	c.Update.VerifyAttestation = true
 	return c
 }
 
@@ -186,7 +187,7 @@ var known = map[string]spec{
 	"push.direct.private":       {kind: kBool, def: true},
 	"push.direct.after_s":       {kind: kInt, def: int64(DefaultDirectAfterS)},
 	"update.base_url":           {kind: kString, def: ""},
-	"update.verify_attestation": {kind: kBool, def: false},
+	"update.verify_attestation": {kind: kBool, def: true},
 	"machines.hub_admin":        {kind: kString, def: ""},
 	"privacy.last_message":      {kind: kBool, def: true},
 	"hooks.tool_events":         {kind: kBool, def: false},

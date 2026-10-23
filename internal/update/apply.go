@@ -25,8 +25,14 @@ const (
 // Attestation says whether and how to check a release archive's build provenance with the
 // gh CLI (machines.md 7.3 step 3).
 type Attestation struct {
-	// Required: SY_VERIFY_ATTESTATION=1 or update.verify_attestation. When set and gh is
-	// missing the update fails closed (exit 3), exactly as install.sh does.
+	// Auto is the default of `sy update`: verify when the gh CLI is installed, and say so when
+	// it is not (the archive is then checked against SHA256SUMS only, which proves it was not
+	// damaged but not who built it). A failed verification is exit 3. Off by default here so
+	// that code using the package without gh is unchanged; cmd/sy turns it on unless
+	// SY_VERIFY_ATTESTATION=0, update.verify_attestation = false or --no-attestation.
+	Auto bool
+	// Required: SY_VERIFY_ATTESTATION=1. When set and gh is missing the update fails closed
+	// (exit 3), exactly as install.sh does.
 	Required bool
 	// GH is the gh executable ("" = look up "gh" on PATH).
 	GH string
@@ -39,16 +45,21 @@ type Attestation struct {
 
 // VerifyAttestation runs `gh attestation verify <archive> --repo <o>/switchyard
 // --signer-workflow <o>/switchyard/.github/workflows/release.yml`. It is a no-op unless
-// a.Required; a missing gh or a failed verification is exit 3.
-func VerifyAttestation(ctx context.Context, a Attestation, archive string) error {
-	if !a.Required {
-		return nil
+// a.Required or a.Auto. verified says the attestation was checked and held. With only Auto and
+// no gh it returns (false, nil); with Required a missing gh, and in both modes a failed
+// verification, is exit 3.
+func VerifyAttestation(ctx context.Context, a Attestation, archive string) (verified bool, err error) {
+	if !a.Required && !a.Auto {
+		return false, nil
 	}
 	gh := a.GH
 	if gh == "" {
 		p, err := exec.LookPath("gh")
 		if err != nil {
-			return fail(ExitVerify, "attestation verification was requested but the gh CLI is not installed; nothing installed")
+			if a.Required {
+				return false, fail(ExitVerify, "attestation verification was requested but the gh CLI is not installed; nothing installed")
+			}
+			return false, nil
 		}
 		gh = p
 	}
@@ -71,9 +82,9 @@ func VerifyAttestation(ctx context.Context, a Attestation, archive string) error
 		}
 	}
 	if err := run(ctx, gh, args...); err != nil {
-		return fail(ExitVerify, "attestation verification failed for %s; nothing installed (%v)", filepath.Base(archive), err)
+		return false, fail(ExitVerify, "attestation verification failed for %s; nothing installed (%v). If gh cannot reach GitHub or is not signed in, fix that, or skip the check with --no-attestation", filepath.Base(archive), err)
 	}
-	return nil
+	return true, nil
 }
 
 func lastLine(s string) string {
@@ -311,7 +322,7 @@ type Result struct {
 	SHA256   string `json:"sha256,omitempty"`
 	Newer    bool   `json:"newer,omitempty"`
 	OldKept  string `json:"old_kept,omitempty"` // the sy.old path to roll back to
-	Attested bool   `json:"attested,omitempty"`
+	Attested bool   `json:"attested,omitempty"` // the build attestation was checked with gh; false: checksum only
 }
 
 func (o Options) check() error {
@@ -405,10 +416,11 @@ func Apply(ctx context.Context, o Options) (Result, error) {
 		return r, err
 	}
 	r.Archive, r.SHA256 = arch.Name, arch.SHA256
-	if err := VerifyAttestation(ctx, o.Attestation, arch.Path); err != nil {
+	attested, err := VerifyAttestation(ctx, o.Attestation, arch.Path)
+	if err != nil {
 		return r, err
 	}
-	r.Attested = o.Attestation.Required
+	r.Attested = attested
 	bin, _, err := o.Fetcher.Extract(arch)
 	if err != nil {
 		return r, err

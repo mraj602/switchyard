@@ -111,7 +111,9 @@ See [deploy/README.md](../../deploy/README.md).
 
 ### `sy update`
 
-`sy` updates itself from the GitHub releases, verifying the checksum:
+`sy` updates itself from the GitHub releases, verifying the checksum and, when the `gh` CLI is
+installed, the build attestation ([security](security.md#supply-chain)). Without `gh` it says
+the attestation was not checked. `--no-attestation` skips that check:
 
 ```sh
 sy update --check            # what is installed and what is latest

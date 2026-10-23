@@ -318,29 +318,35 @@ func TestFromFile(t *testing.T) {
 
 func TestAttestation(t *testing.T) {
 	ctx := context.Background()
-	if err := VerifyAttestation(ctx, Attestation{}, "x"); err != nil {
-		t.Fatal(err)
+	if ok, err := VerifyAttestation(ctx, Attestation{}, "x"); err != nil || ok {
+		t.Fatal(ok, err)
 	}
 	t.Setenv("PATH", t.TempDir()) // no gh
-	err := VerifyAttestation(ctx, Attestation{Required: true}, "x")
+	_, err := VerifyAttestation(ctx, Attestation{Required: true}, "x")
 	if code(err) != ExitVerify || !strings.Contains(err.Error(), "gh") {
 		t.Fatalf("missing gh must fail closed: %v", err)
+	}
+	// the default: no gh means checksum only, said honestly by the caller
+	if ok, err := VerifyAttestation(ctx, Attestation{Auto: true}, "x"); err != nil || ok {
+		t.Fatalf("auto without gh: %v %v", ok, err)
 	}
 	var got []string
 	run := func(_ context.Context, name string, args ...string) error {
 		got = append([]string{name}, args...)
 		return nil
 	}
-	if err := VerifyAttestation(ctx, Attestation{Required: true, GH: "/bin/gh", Run: run}, "/tmp/a.tar.gz"); err != nil {
-		t.Fatal(err)
+	if ok, err := VerifyAttestation(ctx, Attestation{Auto: true, GH: "/bin/gh", Run: run}, "/tmp/a.tar.gz"); err != nil || !ok {
+		t.Fatal(ok, err)
 	}
 	want := "/bin/gh attestation verify /tmp/a.tar.gz --repo mraj602/switchyard --signer-workflow mraj602/switchyard/.github/workflows/release.yml"
 	if strings.Join(got, " ") != want {
 		t.Fatalf("argv %q", strings.Join(got, " "))
 	}
 	bad := func(context.Context, string, ...string) error { return errors.New("no attestation") }
-	if err := VerifyAttestation(ctx, Attestation{Required: true, GH: "gh", Run: bad}, "a"); code(err) != ExitVerify {
-		t.Fatalf("%v", err)
+	for _, a := range []Attestation{{Required: true, GH: "gh", Run: bad}, {Auto: true, GH: "gh", Run: bad}} {
+		if _, err := VerifyAttestation(ctx, a, "a"); code(err) != ExitVerify {
+			t.Fatalf("%v", err)
+		}
 	}
 }
 

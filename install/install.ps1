@@ -5,10 +5,12 @@
 #
 # Puts a checksum-verified sy.exe in $HOME\.local\bin and nothing else (PATH is not changed).
 # Then runs `sy setup` unless -NoSetup or the host is non-interactive.
+# When the gh CLI is installed it also verifies the archive's build attestation (who built it);
+# without gh only the checksum is checked, which shows the download is intact but not its origin.
 #
 # Exit codes: 0 ok, 2 unsupported or usage, 3 verification failed, 4 download failed.
-# Environment: SY_INSTALL_BASE_URL (mirror/tests), SY_VERIFY_ATTESTATION=1 (needs the gh CLI;
-# also checks the build-provenance attestation of the archive, like install.sh).
+# Environment: SY_INSTALL_BASE_URL (mirror/tests; https, or http on a loopback host only),
+# SY_VERIFY_ATTESTATION=1 (fail when gh is missing) or =0 (do not check the attestation).
 param(
     [string]$Version = 'latest',
     [string]$BinDir = '',
@@ -24,6 +26,14 @@ function Install-Sy {
     $base = $env:SY_INSTALL_BASE_URL
     if (-not $base) { $base = "https://github.com/$owner/switchyard/releases" }
     $base = $base.TrimEnd('/')
+    # https only; plain http just to a loopback host (the tests' local server).
+    $baseUri = $null
+    if (-not [Uri]::TryCreate($base, [UriKind]::Absolute, [ref]$baseUri) -or $baseUri.UserInfo) {
+        [Console]::Error.WriteLine("install.ps1: SY_INSTALL_BASE_URL must be an https URL without credentials"); return 2
+    }
+    if ($baseUri.Scheme -ne 'https' -and -not ($baseUri.Scheme -eq 'http' -and $baseUri.IsLoopback)) {
+        [Console]::Error.WriteLine("install.ps1: SY_INSTALL_BASE_URL must be https (http is allowed only for a loopback host)"); return 2
+    }
 
     if ($Version -ne 'latest') { $Version = $Version.TrimStart('v') }
     if ($Version -notmatch '^[0-9A-Za-z.+-]+\z') {
@@ -42,8 +52,9 @@ function Install-Sy {
 
     if ($Version -eq 'latest') { $dl = "$base/latest/download" } else { $dl = "$base/download/v$Version" }
 
-    # Windows PowerShell 5.1 defaults to TLS 1.0/1.1 on some systems.
-    try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 } catch { }
+    # Windows PowerShell 5.1 defaults to TLS 1.0/1.1 on some systems: allow TLS 1.2 and newer only.
+    try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch { }
+    try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]12288 } catch { }
     $ProgressPreference = 'SilentlyContinue'
 
     $tmp = Join-Path ([IO.Path]::GetTempPath()) ("sy-install-" + [Guid]::NewGuid().ToString('N'))
@@ -96,10 +107,13 @@ function Install-Sy {
             [Console]::Error.WriteLine("install.ps1: checksum mismatch for $archive; nothing installed"); return 3
         }
 
-        if ($env:SY_VERIFY_ATTESTATION -eq '1') {
-            if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-                [Console]::Error.WriteLine("install.ps1: SY_VERIFY_ATTESTATION=1 needs the gh CLI, which is not installed; nothing installed"); return 3
-            }
+        # The build attestation shows the archive was built by this repository's release
+        # workflow, which a checksum from the same release cannot. Checked whenever gh is installed.
+        $proof = 'checksum ok'
+        $note = $null
+        if ($env:SY_VERIFY_ATTESTATION -eq '0') {
+            $note = 'build attestation not checked (SY_VERIFY_ATTESTATION=0); the checksum shows the download is intact, not who built it'
+        } elseif (Get-Command gh -ErrorAction SilentlyContinue) {
             # 5.1 turns native stderr into an error record under Stop; any failure here is exit 3.
             $ok = $false
             try {
@@ -107,8 +121,13 @@ function Install-Sy {
                 $ok = ($LASTEXITCODE -eq 0)
             } catch { $ok = $false }
             if (-not $ok) {
-                [Console]::Error.WriteLine("install.ps1: attestation verification failed for $archive; nothing installed"); return 3
+                [Console]::Error.WriteLine("install.ps1: attestation verification failed for $archive; nothing installed (gh must be signed in and reach github.com; SY_VERIFY_ATTESTATION=0 skips this check)"); return 3
             }
+            $proof = 'checksum ok, build attestation ok'
+        } elseif ($env:SY_VERIFY_ATTESTATION -eq '1') {
+            [Console]::Error.WriteLine("install.ps1: SY_VERIFY_ATTESTATION=1 needs the gh CLI, which is not installed; nothing installed"); return 3
+        } else {
+            $note = 'build attestation not checked because the gh CLI is not installed; the checksum shows the download is intact, not who built it. Install gh (https://cli.github.com) and run the installer again to check it'
         }
 
         Expand-Archive -Path (Join-Path $tmp $archive) -DestinationPath (Join-Path $tmp 'x') -Force
@@ -119,8 +138,8 @@ function Install-Sy {
 
         New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
         $dest = Join-Path $BinDir 'sy.exe'
-        $new = Join-Path $BinDir 'sy.exe.new'
-        Copy-Item -Force $exe $new
+        $new = Join-Path $BinDir ('sy.exe.' + [Guid]::NewGuid().ToString('N') + '.new')
+        [IO.File]::Copy($exe, $new, $false) # fails if the name exists: an exclusive temp file
         $moved = $false
         for ($i = 0; $i -lt 5 -and -not $moved; $i++) {
             try { Move-Item -Force -Path $new -Destination $dest; $moved = $true }
@@ -134,7 +153,8 @@ function Install-Sy {
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $tmp
     }
 
-    Write-Host "sy $Version downloaded, checksum ok, installed to $dest"
+    Write-Host "sy $Version downloaded, $proof, installed to $dest"
+    if ($note) { Write-Host "note: $note" }
     $onPath = ($env:PATH -split ';') | Where-Object { $_.TrimEnd('\') -eq $BinDir.TrimEnd('\') }
     if (-not $onPath) {
         Write-Host "$BinDir is not on your PATH. Add it:"

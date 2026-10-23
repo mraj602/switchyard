@@ -63,9 +63,12 @@ curl -fsSL https://github.com/mraj602/switchyard/releases/latest/download/instal
 - `--no-setup`: only install `sy`.
 - `-- <args>`: everything after a second `--` goes to `sy setup`.
 
-To also check the build-provenance attestation, install the `gh` CLI and set
-`SY_VERIFY_ATTESTATION=1` before `sh`. The script then runs `gh attestation verify` and
-installs nothing if it fails.
+If the `gh` CLI is installed, the script also checks the build-provenance attestation
+(`gh attestation verify`) and installs nothing if it fails. Without `gh` it says so and installs
+on the checksum alone, which shows the download is intact but not who built it
+([security](security.md#supply-chain)). Set `SY_VERIFY_ATTESTATION=1` to make a missing `gh` an
+error, or `SY_VERIFY_ATTESTATION=0` to skip the check. `SY_INSTALL_BASE_URL` must be https
+(http only for a loopback address).
 
 ### From a release (Windows)
 

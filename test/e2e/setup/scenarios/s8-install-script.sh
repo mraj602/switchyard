@@ -49,6 +49,44 @@ assert_no_file "$H3/.local/bin/sy" "sy in the default folder when --bin-dir is g
 run_install "$H3" --bogus
 assert_rc "unknown option" 2 $rc
 
+# 3b. The base URL must be https (http only for loopback); a bin dir that exists keeps its mode.
+H8=$(new_home policy fresh)
+INSTALL_BASE_OVERRIDE=http://example.invalid/releases run_install "$H8" --no-setup
+assert_rc "plain http to a remote host is refused" 2 $rc
+assert_contains "says why" "must be https" "$(cat "$SY_E2E_TMP/install.out")"
+INSTALL_BASE_OVERRIDE=http://127.0.0.1.example.invalid/releases run_install "$H8" --no-setup
+assert_rc "a look-alike loopback name is refused" 2 $rc
+unset INSTALL_BASE_OVERRIDE
+mkdir -p "$SY_E2E_TMP/modebin"
+chmod 0711 "$SY_E2E_TMP/modebin"
+run_install "$H8" --bin-dir "$SY_E2E_TMP/modebin" --no-setup
+assert_rc "install into an existing bin dir" 0 $rc
+assert_eq "an existing bin dir keeps its mode" "711" "$(stat -c %a "$SY_E2E_TMP/modebin" 2>/dev/null || stat -f %Lp "$SY_E2E_TMP/modebin")"
+
+# 3c. Build attestation: checked when gh is installed (a fake gh here), and said so when not.
+mkdir -p "$SY_E2E_TMP/gh-ok" "$SY_E2E_TMP/gh-bad"
+printf '#!/bin/sh\necho "$@" > "%s/gh-args"\nexit 0\n' "$SY_E2E_TMP" > "$SY_E2E_TMP/gh-ok/gh"
+printf '#!/bin/sh\nexit 1\n' > "$SY_E2E_TMP/gh-bad/gh"
+chmod 0755 "$SY_E2E_TMP/gh-ok/gh" "$SY_E2E_TMP/gh-bad/gh"
+H9=$(new_home attest fresh)
+SY_VERIFY_ATTESTATION= INSTALL_PATH_PREFIX=$SY_E2E_TMP/gh-ok run_install "$H9" --no-setup
+unset SY_VERIFY_ATTESTATION INSTALL_PATH_PREFIX
+assert_rc "gh present, attestation ok" 0 $rc
+assert_contains "reports the attestation" "checksum ok, build attestation ok" "$(cat "$SY_E2E_TMP/install.out")"
+assert_contains "gh was asked to verify" "attestation verify" "$(cat "$SY_E2E_TMP/gh-args")"
+H10=$(new_home attestbad fresh)
+SY_VERIFY_ATTESTATION= INSTALL_PATH_PREFIX=$SY_E2E_TMP/gh-bad run_install "$H10" --no-setup
+unset SY_VERIFY_ATTESTATION INSTALL_PATH_PREFIX
+assert_rc "gh present, attestation fails" 3 $rc
+assert_no_file "$H10/.local/bin/sy" "sy after a failed attestation"
+if ! command -v gh >/dev/null 2>&1; then
+	H11=$(new_home nogh fresh)
+	SY_VERIFY_ATTESTATION= run_install "$H11" --no-setup
+	unset SY_VERIFY_ATTESTATION
+	assert_rc "no gh: installs on the checksum" 0 $rc
+	assert_contains "says the attestation was not checked" "gh CLI is not installed" "$(cat "$SY_E2E_TMP/install.out")"
+fi
+
 # 4. Tampered archive: exit 3, nothing installed.
 cp -R "$RELEASE" "$SY_E2E_TMP/tampered"
 for f in "$SY_E2E_TMP"/tampered/sy_*.tar.gz; do printf 'x' >> "$f"; done

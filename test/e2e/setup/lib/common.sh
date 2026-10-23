@@ -109,7 +109,12 @@ run_install() {
 	mkdir -p "$SY_E2E_TMP/tmp"
 	rc=0
 	(
-		export HOME=$h SY_INSTALL_BASE_URL=$BASE_URL TMPDIR=$SY_E2E_TMP/tmp
+		export HOME=$h SY_INSTALL_BASE_URL=${INSTALL_BASE_OVERRIDE:-$BASE_URL} TMPDIR=$SY_E2E_TMP/tmp
+		# The release fixtures are not attested: skip the gh check unless a scenario sets
+		# SY_VERIFY_ATTESTATION (empty = the default). INSTALL_PATH_PREFIX goes first on PATH;
+		# INSTALL_BASE_OVERRIDE replaces the base URL the script is told to use.
+		SY_VERIFY_ATTESTATION=${SY_VERIFY_ATTESTATION-0}; export SY_VERIFY_ATTESTATION
+		[ -z "${INSTALL_PATH_PREFIX:-}" ] || PATH=$INSTALL_PATH_PREFIX:$PATH
 		curl -fsSL "$BASE_URL/install.sh" | notty sh -s -- "$@"
 	) >"$SY_E2E_TMP/install.out" 2>&1 || rc=$?
 }

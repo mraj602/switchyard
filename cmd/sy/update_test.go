@@ -74,8 +74,10 @@ func testEnv(t *testing.T, cur string, srv *httptest.Server) (updateEnv, string)
 	if srv != nil {
 		env["SY_INSTALL_BASE_URL"] = srv.URL
 	}
+	cfg := config.Defaults()
+	cfg.Update.VerifyAttestation = false // tests must not run the real gh; see TestUpdateAttestationDefault
 	return updateEnv{
-		stdin: strings.NewReader(""), exe: exe, current: cur, cfg: config.Defaults(),
+		stdin: strings.NewReader(""), exe: exe, current: cur, cfg: cfg,
 		dirs:   paths.Dirs{State: paths.Dir{Path: filepath.Join(dir, "state")}, Data: paths.Dir{Path: filepath.Join(dir, "data")}, Config: paths.Dir{Path: filepath.Join(dir, "config")}},
 		getenv: func(k string) string { return env[k] }, goos: "linux", goarch: "amd64",
 	}, exe
@@ -260,7 +262,7 @@ func TestUpdateMachinesFleet(t *testing.T) {
 	if len(fr.argv) != 2 || fr.argv[0][0] != "hub-host" {
 		t.Errorf("hub host must go first: %v", fr.argv)
 	}
-	if got := strings.Join(fr.argv[0][1:], " "); got != ".local/bin/sy update --yes --json --version 0.5.0" {
+	if got := strings.Join(fr.argv[0][1:], " "); got != ".local/bin/sy update --yes --json --version 0.5.0 --no-attestation" {
 		t.Errorf("remote argv %q", got)
 	}
 	if !strings.Contains(out.String(), "hub-host") || !strings.Contains(out.String(), "0.4.2 -> 0.5.0") {
@@ -316,5 +318,80 @@ func TestRealBinariesUpdate(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(exe + ".old"); !bytes.Equal(b, v0) {
 		t.Error("sy.old is not the previous binary")
+	}
+}
+
+// fakeGH puts a `gh` that exits with code on PATH (alone) and logs its arguments.
+func fakeGH(t *testing.T, code int) string {
+	t.Helper()
+	dir := t.TempDir()
+	log := filepath.Join(dir, "gh.log")
+	script := fmt.Sprintf("#!/bin/sh\necho \"$@\" >> %q\nexit %d\n", log, code)
+	if err := os.WriteFile(filepath.Join(dir, "gh"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir)
+	return log
+}
+
+// By default `sy update` verifies the build attestation when gh is installed, fails when that
+// check fails, and says plainly when it could not check (checksum only).
+func TestUpdateAttestationDefault(t *testing.T) {
+	srv := releaseServer(t, map[string][]byte{"0.5.0": fakeSy("0.5.0", 4)})
+	run := func(env updateEnv, args ...string) (error, string, string) {
+		var out, errb bytes.Buffer
+		err := updateMain(context.Background(), env, append(args, "--yes"), &out, &errb)
+		return err, out.String(), errb.String()
+	}
+	// gh present and happy: verified
+	env, exe := testEnv(t, "0.4.2", srv)
+	env.cfg.Update.VerifyAttestation = true
+	log := fakeGH(t, 0)
+	err, out, _ := run(env)
+	if err != nil || !strings.Contains(out, "build attestation ok") {
+		t.Fatalf("with gh: %v %s", err, out)
+	}
+	if b, _ := os.ReadFile(log); !strings.Contains(string(b), "attestation verify") {
+		t.Errorf("gh was not asked: %q", b)
+	}
+	// gh present and the attestation fails: nothing installed
+	env, exe = testEnv(t, "0.4.2", srv)
+	env.cfg.Update.VerifyAttestation = true
+	before, _ := os.ReadFile(exe)
+	fakeGH(t, 1)
+	if err, _, _ := run(env); codeOf(err) != 3 {
+		t.Errorf("failed attestation: %v", err)
+	}
+	if after, _ := os.ReadFile(exe); !bytes.Equal(before, after) {
+		t.Error("binary changed after a failed attestation")
+	}
+	// the opt-outs skip gh
+	for name, e := range map[string]updateEnv{"flag": env, "env": env} {
+		if name == "env" {
+			base := e.getenv
+			e.getenv = func(k string) string {
+				if k == "SY_VERIFY_ATTESTATION" {
+					return "0"
+				}
+				return base(k)
+			}
+		}
+		args := []string{}
+		if name == "flag" {
+			args = append(args, "--no-attestation")
+		}
+		if err, _, _ := run(e, args...); err != nil {
+			t.Errorf("opt-out %s: %v", name, err)
+		}
+		env, exe = testEnv(t, "0.4.2", srv)
+		env.cfg.Update.VerifyAttestation = true
+	}
+	// no gh: installs on the checksum alone and says so
+	env, _ = testEnv(t, "0.4.2", srv)
+	env.cfg.Update.VerifyAttestation = true
+	t.Setenv("PATH", t.TempDir())
+	err, out, errs := run(env)
+	if err != nil || strings.Contains(out, "attestation ok") || !strings.Contains(errs, "gh CLI is not installed") {
+		t.Fatalf("without gh: %v %q %q", err, out, errs)
 	}
 }

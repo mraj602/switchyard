@@ -70,15 +70,19 @@ Steps, POSIX `sh` only (no bash-isms; `set -eu`):
 3. Base URL: `${SY_INSTALL_BASE_URL:-https://github.com/<owner>/switchyard/releases}`.
    Version: `--version` (with or without `v`), else `latest`. For `latest` the files come from
    `<base>/latest/download/<name>`; for a version from `<base>/download/v<ver>/<name>`. No
-   GitHub API call, so no rate limit. `SY_INSTALL_BASE_URL` exists for tests and mirrors.
+   GitHub API call, so no rate limit. `SY_INSTALL_BASE_URL` exists for tests and mirrors; it
+   must be https (http only for a loopback host, no credentials). Downloads use
+   `curl --proto '=https' --proto-redir '=https' --tlsv1.2` (`wget --https-only`).
 4. Download `SHA256SUMS` and the archive into a fresh `mktemp -d` (removed by `trap` on
    exit). For `latest`, the version is read from the archive name listed in `SHA256SUMS`.
 5. Verify: the archive's line must be present in `SHA256SUMS`, and `sha256sum -c` (or
    `shasum -a 256`, or `openssl dgst -sha256`) must match. No tool or a mismatch → exit 3,
-   nothing installed. If `gh` is installed and `SY_VERIFY_ATTESTATION=1`, also
-   `gh attestation verify <archive> --repo <owner>/switchyard`; failure → exit 3.
+   nothing installed. If `gh` is installed (and `SY_VERIFY_ATTESTATION` is not `0`), also
+   `gh attestation verify <archive> --repo <owner>/switchyard`; failure → exit 3. Without `gh`
+   the script installs on the checksum alone and prints a `note:` saying the attestation was
+   not checked; `SY_VERIFY_ATTESTATION=1` makes a missing `gh` exit 3.
 6. Extract only `sy`. Install to `--bin-dir` (default `$HOME/.local/bin`, created with
-   `mkdir -p`, mode 0755): copy to `<bin>/.sy.<pid>.tmp`, `chmod 0755`, `mv -f` over `<bin>/sy`
+   `mkdir -p`, mode 0755): an existing folder's mode is left alone), copy to a `mktemp` file `<bin>/.sy.XXXXXX`, `chmod 0755`, `mv -f` over `<bin>/sy`
    (atomic on one filesystem; a running `sy hook` keeps its old inode).
 7. Print `sy <ver> downloaded, checksum ok, installed to ~/.local/bin/sy` (screen `Main`).
    If `<bin>` is not on `PATH`, print the one line to add for the user's shell (bash, zsh,

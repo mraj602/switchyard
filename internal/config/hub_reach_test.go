@@ -16,7 +16,7 @@ func TestHubReachDirectPushUpdateKeys(t *testing.T) {
 	}
 	if c.Hub.Reach != ReachDirect || c.Hub.Dial != "" || c.Push.Direct.Enabled ||
 		c.Push.Direct.Server != "https://ntfy.sh" || !c.Push.Direct.Private || c.Push.Direct.AfterS != 120 ||
-		c.Update.BaseURL != "" || c.Update.VerifyAttestation || c.Machines.HubAdmin != "" {
+		c.Update.BaseURL != "" || !c.Update.VerifyAttestation || c.Machines.HubAdmin != "" {
 		t.Fatalf("defaults: %+v", c)
 	}
 	for k, args := range map[string][]string{
@@ -27,7 +27,7 @@ func TestHubReachDirectPushUpdateKeys(t *testing.T) {
 		"push.direct.private":       {"false"},
 		"push.direct.after_s":       {"90"},
 		"update.base_url":           {"http://127.0.0.1:9999/releases"},
-		"update.verify_attestation": {"true"},
+		"update.verify_attestation": {"false"},
 		"machines.hub_admin":        {"ssh hub sy"},
 	} {
 		if err := f.Set(k, args); err != nil {
@@ -39,7 +39,7 @@ func TestHubReachDirectPushUpdateKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 	if c.Hub.Reach != "forward" || c.Hub.Dial != "127.0.0.1:47830" || !c.Push.Direct.Enabled || c.Push.Direct.Private ||
-		c.Push.Direct.AfterS != 90 || c.Machines.HubAdmin != "ssh hub sy" || !c.Update.VerifyAttestation {
+		c.Push.Direct.AfterS != 90 || c.Machines.HubAdmin != "ssh hub sy" || c.Update.VerifyAttestation {
 		t.Fatalf("after set: %+v", c)
 	}
 	if u := f.Unknown(); len(u) != 0 {

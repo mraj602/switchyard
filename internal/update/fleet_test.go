@@ -104,7 +104,7 @@ func TestFleetOrderParallelAndPush(t *testing.T) {
 	if by["c"].Outcome != "updated" || by["d"].Outcome != "updated" {
 		t.Error("one failure stopped the others")
 	}
-	if got := strings.Join(f.runs["a"][0], " "); got != ".local/bin/sy update --yes --json --version 0.5.0" {
+	if got := strings.Join(f.runs["a"][0], " "); got != ".local/bin/sy update --yes --json --version 0.5.0 --no-attestation" {
 		t.Errorf("argv %q", got)
 	}
 }

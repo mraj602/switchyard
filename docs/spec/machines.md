@@ -771,9 +771,13 @@ same way:
 2. **Pick** `sy_<v>_<os>_<arch>.tar.gz` (`.zip` on Windows) for this machine (`runtime.GOOS`,
    `GOARCH`; on Darwin under Rosetta, arm64). Its line must be in `SHA256SUMS`.
 3. **Download** to `<state>/update/` (0700), at most 200 MB, then compare SHA-256 with the
-   line. Mismatch or missing line: exit 3, nothing changed. If `gh` is installed and
-   `SY_VERIFY_ATTESTATION=1` or `update.verify_attestation = true`:
-   `gh attestation verify <archive> --repo <owner>/switchyard`; failure: exit 3.
+   line. Mismatch or missing line: exit 3, nothing changed. If `gh` is installed
+   and the check is not off (`update.verify_attestation`, default true; `SY_VERIFY_ATTESTATION=0`
+   or `--no-attestation` turn it off): `gh attestation verify <archive> --repo
+   <owner>/switchyard`; failure: exit 3. Without `gh` the update goes on with the checksum
+   alone and prints a note saying the attestation was not checked; `SY_VERIFY_ATTESTATION=1`
+   makes a missing `gh` exit 3. On the fleet path (7.4) the operator checks the archive it
+   downloaded and the remote update runs with `--no-attestation` (the remote has no internet).
 4. **Extract** only the `sy` (`sy.exe`) entry: a regular file, no path components, at most
    100 MB. Run it with `version --short`: it must print the target version (proves it runs
    here).
