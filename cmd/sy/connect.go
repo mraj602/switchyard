@@ -202,6 +202,7 @@ func connect(ctx context.Context, deps connectDeps, args []string, stdout, stder
 		if cf, lerr := config.Load(deps.dirs.Config.Path); lerr == nil {
 			if c, terr := cf.Typed(); terr == nil && c.Hub.Dial != "" {
 				c.Hub.URL = url
+				c.Hub.InsecureLAN = true // url passed CheckURL above, with --insecure-lan if it needed it
 				if fc, ferr := client.ForConfig(c, tok); ferr == nil {
 					cl.HTTP = fc.HTTP
 				}
