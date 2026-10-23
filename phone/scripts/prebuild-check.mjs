@@ -69,10 +69,20 @@ try {
     for (const name of widgetNames) check(receivers.some((r) => r.includes(`.widget.${name}"`)), `widget receiver ${name}`);
     check(/<application[^>]*android:allowBackup="false"/.test(manifest), 'allowBackup="false"');
     check(!/<application[^>]*android:usesCleartextTraffic="true"/.test(manifest), 'no cleartext in release');
+    check(/<application[^>]*android:dataExtractionRules="@xml\/sy_data_extraction_rules"/.test(manifest), 'dataExtractionRules set');
+    check(/<application[^>]*android:fullBackupContent="@xml\/sy_backup_rules"/.test(manifest), 'fullBackupContent set');
+    for (const f of ['sy_data_extraction_rules.xml', 'sy_backup_rules.xml']) {
+      const p = path.join(app, 'android', 'app', 'src', 'main', 'res', 'xml', f);
+      check(fs.existsSync(p) && !/<include/.test(fs.readFileSync(p, 'utf8')) && fs.readFileSync(p, 'utf8').includes('<exclude domain="sharedpref" path="." />'), `${f} excludes everything`);
+    }
     const xml = findFiles(path.join(app, 'android', 'app', 'src', 'main', 'res'), /\.xml$/);
     const infos = xml.filter((f) => fs.readFileSync(f, 'utf8').includes('<appwidget-provider'));
     check(infos.length === widgetNames.length, `${widgetNames.length} appwidget-provider infos (found ${infos.length})`);
     check(!fs.existsSync(path.join(app, 'android', 'android')), 'no doubled android/android path');
+    // Widget taps open links with an explicit intent (with-sy-native.js patches the providers).
+    const providers = findFiles(path.join(app, 'android', 'app', 'src', 'main', 'java'), /\.java$/).filter((f) => fs.readFileSync(f, 'utf8').includes('extends RNWidgetProvider'));
+    check(providers.length === widgetNames.length, `${widgetNames.length} widget provider classes (found ${providers.length})`);
+    check(providers.every((f) => fs.readFileSync(f, 'utf8').includes('WidgetOpen.handle(context, intent)')), 'every widget provider hands taps to WidgetOpen (explicit intents)');
     // The link build (P13, push.md 14.2). The sy-link module's own manifest is merged
     // by Gradle, so its entries are read there; the app's must carry no FCM entry.
     const link = fs.readFileSync(path.join(app, 'modules', 'sy-link', 'android', 'src', 'main', 'AndroidManifest.xml'), 'utf8');

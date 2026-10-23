@@ -3,7 +3,8 @@
 //
 // iOS:     NSSupportsLiveActivities = true (P12).
 // Android: application android:allowBackup="false" (the keychain token never leaves the
-//          phone, P3); RECORD_AUDIO and SYSTEM_ALERT_WINDOW removed if a library adds them;
+//          phone, P3) plus dataExtractionRules and fullBackupContent that exclude every domain
+//          from cloud backup and from device-to-device transfer (res/xml/sy_*.xml); RECORD_AUDIO and SYSTEM_ALERT_WINDOW removed if a library adds them;
 //          android:usesCleartextTraffic only in development builds;
 //          every androidx.work artifact is forced to one version (WORK_VERSION) in
 //          app/build.gradle. react-native-android-widget declares work-runtime 2.8.1 while
@@ -17,11 +18,14 @@
 //          mipmap (app.config.ts android.adaptiveIcon) as the centre icon. AppTheme's window
 //          background is the same ink, so the gap between the splash and the first React frame
 //          is not a white flash.
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   AndroidConfig,
   withAndroidColors,
   withAndroidManifest,
   withAndroidStyles,
+  withDangerousMod,
   withAppBuildGradle,
   withInfoPlist,
 } = require('expo/config-plugins');
@@ -82,6 +86,93 @@ function withSySplash(config) {
   });
 }
 
+// Every backup domain (android.app.backup): the app's data never leaves the phone by any route.
+const BACKUP_DOMAINS = ['root', 'file', 'database', 'sharedpref', 'external', 'device_root', 'device_file'];
+const excludes = (indent) => BACKUP_DOMAINS.map((d) => `${indent}<exclude domain="${d}" path="." />`).join('\n');
+
+/** res/xml for android:dataExtractionRules (Android 12+): nothing for cloud backup or device transfer. */
+function dataExtractionRulesXml() {
+  return `<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+  <cloud-backup>
+${excludes('    ')}
+  </cloud-backup>
+  <device-transfer>
+${excludes('    ')}
+  </device-transfer>
+</data-extraction-rules>
+`;
+}
+
+/** res/xml for android:fullBackupContent (Android 11 and below): nothing. */
+function fullBackupContentXml() {
+  return `<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+${excludes('  ')}
+</full-backup-content>
+`;
+}
+
+const RULES_FILES = { sy_data_extraction_rules: dataExtractionRulesXml, sy_backup_rules: fullBackupContentXml };
+
+function withSyBackupRules(config) {
+  return withDangerousMod(config, [
+    'android',
+    (c) => {
+      const dir = path.join(c.modRequest.platformProjectRoot, 'app', 'src', 'main', 'res', 'xml');
+      fs.mkdirSync(dir, { recursive: true });
+      for (const [name, xml] of Object.entries(RULES_FILES)) fs.writeFileSync(path.join(dir, `${name}.xml`), xml());
+      return c;
+    },
+  ]);
+}
+
+// Widget taps (P11): react-native-android-widget's providers open an OPEN_URI tap with an implicit
+// ACTION_VIEW, which any app registering switchyard:// could answer. The generated provider classes
+// (`class X extends RNWidgetProvider {}`, written by that library's own plugin) get an onReceive
+// that gives the tap to dev.switchyard.link.WidgetOpen first (explicit component, switchyard://
+// links only). This runs on the files the library's plugin wrote, so this plugin must be listed
+// BEFORE react-native-android-widget in app.config.ts (Expo runs mods last-listed first);
+// scripts/prebuild-check.mjs fails if a provider is not patched.
+const PROVIDER_EMPTY = /public class (\w+) extends RNWidgetProvider \{\s*\}/;
+
+/** The patched source of a generated provider class, or null when it is not an empty provider. Idempotent. */
+function patchWidgetProvider(java) {
+  if (java.includes('WidgetOpen.handle')) return java;
+  if (!PROVIDER_EMPTY.test(java)) return null;
+  return java
+    .replace('import com.reactnativeandroidwidget.RNWidgetProvider;', 'import android.content.Context;\nimport android.content.Intent;\nimport com.reactnativeandroidwidget.RNWidgetProvider;\nimport dev.switchyard.link.WidgetOpen;')
+    .replace(
+      PROVIDER_EMPTY,
+      'public class $1 extends RNWidgetProvider {\n  @Override\n  public void onReceive(Context context, Intent intent) {\n    if (WidgetOpen.handle(context, intent)) return;\n    super.onReceive(context, intent);\n  }\n}',
+    );
+}
+
+function findProviderFiles(dir, out = []) {
+  if (!fs.existsSync(dir)) return out;
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) findProviderFiles(p, out);
+    else if (e.name.endsWith('.java') && fs.readFileSync(p, 'utf8').includes('extends RNWidgetProvider')) out.push(p);
+  }
+  return out;
+}
+
+function withSyWidgetOpen(config) {
+  return withDangerousMod(config, [
+    'android',
+    (c) => {
+      const java = path.join(c.modRequest.platformProjectRoot, 'app', 'src', 'main', 'java');
+      for (const file of findProviderFiles(java)) {
+        const out = patchWidgetProvider(fs.readFileSync(file, 'utf8'));
+        if (out === null) throw new Error(`with-sy-native: ${path.basename(file)} is not a widget provider this plugin knows how to patch`);
+        fs.writeFileSync(file, out);
+      }
+      return c;
+    },
+  ]);
+}
+
 const REMOVED_PERMISSIONS = ['android.permission.RECORD_AUDIO', 'android.permission.SYSTEM_ALERT_WINDOW'];
 
 const WORK_VERSION = '2.8.1';
@@ -121,6 +212,8 @@ function withSyAndroid(config, { development }) {
     const manifest = c.modResults;
     const app = AndroidConfig.Manifest.getMainApplicationOrThrow(manifest);
     app.$['android:allowBackup'] = 'false';
+    app.$['android:dataExtractionRules'] = '@xml/sy_data_extraction_rules';
+    app.$['android:fullBackupContent'] = '@xml/sy_backup_rules';
     if (development) {
       app.$['android:usesCleartextTraffic'] = 'true';
     } else {
@@ -144,12 +237,18 @@ module.exports = function withSyNative(config, props = {}) {
   const development = props.development === true;
   config = withSyIos(config);
   config = withSyAndroid(config, { development });
+  config = withSyBackupRules(config);
+  config = withSyWidgetOpen(config);
   config = withSyWorkAlignment(config);
   config = withSySplash(config);
   return config;
 };
 module.exports.REMOVED_PERMISSIONS = REMOVED_PERMISSIONS;
 module.exports.WORK_VERSION = WORK_VERSION;
+module.exports.BACKUP_DOMAINS = BACKUP_DOMAINS;
+module.exports.dataExtractionRulesXml = dataExtractionRulesXml;
+module.exports.fullBackupContentXml = fullBackupContentXml;
+module.exports.patchWidgetProvider = patchWidgetProvider;
 module.exports.alignWorkVersions = alignWorkVersions;
 module.exports.brandSplash = brandSplash;
 module.exports.setColor = setColor;

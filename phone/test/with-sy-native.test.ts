@@ -58,3 +58,39 @@ describe('brandSplash (the Android splash)', () => {
     expect(out.resources.color).toEqual([{ _: '#17191B', $: { name: 'splashscreen_background' } }]);
   });
 });
+
+describe('backup rules', () => {
+  it('exclude every domain from cloud backup and device transfer', () => {
+    const rules: string = plugin.dataExtractionRulesXml();
+    const cloud = rules.slice(rules.indexOf('<cloud-backup>'), rules.indexOf('</cloud-backup>'));
+    const transfer = rules.slice(rules.indexOf('<device-transfer>'), rules.indexOf('</device-transfer>'));
+    for (const section of [cloud, transfer]) {
+      for (const d of plugin.BACKUP_DOMAINS) expect(section).toContain(`<exclude domain="${d}" path="." />`);
+      expect(section).not.toContain('<include');
+    }
+    const legacy: string = plugin.fullBackupContentXml();
+    for (const d of plugin.BACKUP_DOMAINS) expect(legacy).toContain(`<exclude domain="${d}" path="." />`);
+    expect(legacy).not.toContain('<include');
+  });
+
+  it('cover the domains Android defines', () => {
+    expect([...plugin.BACKUP_DOMAINS].sort()).toEqual(['database', 'device_file', 'device_root', 'external', 'file', 'root', 'sharedpref']);
+  });
+});
+
+describe('widget providers open links with an explicit intent', () => {
+  const generated = 'package io.github.mraj602.switchyard.widget;\n\nimport com.reactnativeandroidwidget.RNWidgetProvider;\n\npublic class SyNeeds extends RNWidgetProvider {\n}\n';
+
+  it('hands the tap to WidgetOpen before the library sees it', () => {
+    const out: string = plugin.patchWidgetProvider(generated);
+    expect(out).toContain('import dev.switchyard.link.WidgetOpen;');
+    expect(out).toContain('public class SyNeeds extends RNWidgetProvider {');
+    expect(out.indexOf('WidgetOpen.handle(context, intent)')).toBeLessThan(out.indexOf('super.onReceive(context, intent)'));
+  });
+
+  it('is idempotent and refuses a provider it does not know', () => {
+    const once = plugin.patchWidgetProvider(generated);
+    expect(plugin.patchWidgetProvider(once)).toBe(once);
+    expect(plugin.patchWidgetProvider('public class X extends RNWidgetProvider { int a; }')).toBeNull();
+  });
+});

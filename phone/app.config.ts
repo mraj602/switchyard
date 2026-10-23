@@ -159,7 +159,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...(foreground
         ? { adaptiveIcon: { foregroundImage: foreground, backgroundColor: BRAND_INK, ...(monochrome ? { monochromeImage: monochrome } : {}) } }
         : {}),
-      // Never back up the app's data (the keychain token, P3); with-sy-native.js also sets it.
+      // Never back up the app's data (the keychain token, P3); with-sy-native.js also sets it and
+      // adds dataExtractionRules and fullBackupContent that exclude every domain from cloud
+      // backup and device transfer.
       allowBackup: false,
       // Listed explicitly so the prebuilt manifest shows them (modules/sy-notify and sy-scan also
       // merge them at Gradle time); nothing else is needed (P13).
@@ -198,8 +200,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           widgets: IOS_WIDGETS,
         },
       ],
-      ['react-native-android-widget', { widgets: ANDROID_WIDGETS }],
+      // Order matters: Expo runs mods of the last-listed plugin first, and with-sy-native.js patches
+      // the widget provider classes that react-native-android-widget writes, so it is listed first.
       ['./plugins/with-sy-native.js', { development: DEV }],
+      ['react-native-android-widget', { widgets: ANDROID_WIDGETS }],
     ],
     experiments: { typedRoutes: false },
   };
