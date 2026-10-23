@@ -34,7 +34,25 @@ which account still has room. Switchyard gives you one view of all of it, on you
 
 ![The board with sample data: sessions that need you, every session, account limits and peers, then an alert and a limits widget on Android](docs/media/demo.gif)
 
-Recorded from the mock hub with sample data (`scripts/demo/record.cjs`).
+Recorded from the mock hub with sample data (`scripts/demo/record.cjs`). All the screenshots
+below use sample data too.
+
+The desktop app: the board in its Hub tab, and one tab per claude.ai account with that
+account's limits above it.
+
+<p>
+  <img src="docs/media/desktop-hub.png" alt="The Switchyard desktop app's Hub view: the board's Now screen with four sessions that need you and three accounts in the sidebar" width="49%">
+  <img src="docs/media/desktop.png" alt="The Switchyard desktop app with one tab per claude.ai account and a usage strip showing the active account's 5-hour and 7-day limits" width="49%">
+</p>
+
+The Android app (Now and Accounts) and the board in a terminal (`sy board`):
+
+<p>
+  <img src="docs/media/android-needs-you.png" alt="Switchyard Android app, Now screen: three account limit rings and a Needs you list with a rate-limited session, a question from Claude and a permission request" width="240">
+  <img src="docs/media/android-accounts.png" alt="Switchyard Android app, Accounts screen: each account's 5-hour and 7-day limits with reset times and pace forecasts" width="240">
+</p>
+
+![sy board in a terminal: sessions that need you, then each account's sessions with state, context used and time in state](docs/media/terminal-board.png)
 
 Android home-screen widgets (rendered previews from the app):
 

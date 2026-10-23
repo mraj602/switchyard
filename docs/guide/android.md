@@ -9,6 +9,11 @@ spec is [phone.md](../spec/phone.md); notifications over the app's link are
 Requirements: Android 12 or later (minimum SDK 31), and a hub with an `https://` address.
 There is no iOS app; on an iPhone use the web app (see [alerts.md](alerts.md#web-push-the-web-app)).
 
+<p>
+  <img src="../media/android-needs-you.png" alt="The Now screen: account limit rings and the sessions that need you (sample data)" width="240">
+  <img src="../media/android-accounts.png" alt="The Accounts screen: 5-hour and 7-day limits with reset times and pace (sample data)" width="240">
+</p>
+
 ## No push service
 
 The app keeps its own encrypted connection to your hub (the link) and posts notifications

@@ -25,13 +25,31 @@
   });
 })();
 
-// The demo video plays on its own unless the visitor asked for reduced motion; then it waits
-// on its poster with controls.
+// The demo video: a visible Pause/Play button (WCAG 2.2.2). The page ships native controls so it
+// still works without script; with script they are swapped for the button. Visitors who asked
+// for reduced motion get it paused on the poster.
 (function () {
   "use strict";
   var v = document.getElementById("demo-media");
-  if (!v || !window.matchMedia || !window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  v.removeAttribute("autoplay");
-  v.pause();
-  v.controls = true;
+  var b = document.getElementById("demo-toggle");
+  if (!v || !b) return;
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var sync = function () { b.textContent = v.paused ? "Play" : "Pause"; };
+  v.removeAttribute("controls");
+  b.hidden = false;
+  if (reduce) {
+    v.removeAttribute("autoplay");
+    v.pause();
+  }
+  b.addEventListener("click", function () {
+    if (v.paused) {
+      var p = v.play();
+      if (p && p.catch) p.catch(function () {});
+    } else {
+      v.pause();
+    }
+  });
+  v.addEventListener("play", sync);
+  v.addEventListener("pause", sync);
+  sync();
 })();

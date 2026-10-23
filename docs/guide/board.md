@@ -54,6 +54,8 @@ backlog, version, reach), **Alerts** (rules, quiet hours, recent notifications),
 
 ## In a terminal
 
+![sy board in a terminal: sessions that need you, then each account's sessions (sample data)](../media/terminal-board.png)
+
 ```sh
 sy status                 # this machine's sessions, from the local outbox (no hub needed)
 sy board                  # the interactive board

@@ -96,3 +96,21 @@ footer .small{color:var(--muted)}
   .hero{padding:44px 0 36px}
   .btn{flex:1 1 100%;text-align:center}
 }
+
+/* demo video: pause/play control and transcript */
+.demo-bar{display:flex;align-items:flex-start;gap:14px;margin-top:10px}
+.demo-bar figcaption{margin:0;flex:1}
+.vbtn{font:600 .9rem var(--sans);padding:8px 16px;border-radius:8px;border:2px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;min-width:5.5em;min-height:44px}
+.vbtn:hover{border-color:var(--accent)}
+.vbtn[hidden]{display:none}
+.transcript{margin-top:10px;color:var(--muted);font-size:.95rem}
+.transcript summary{cursor:pointer;color:var(--text);font-weight:600}
+.transcript ol{margin:.6em 0 0;padding-left:1.4em;max-width:70ch}
+.transcript li+li{margin-top:.4em}
+
+/* app screenshots */
+.shot{display:block;max-width:100%;height:auto;margin-top:16px;border-radius:10px;border:1px solid var(--border);background:var(--code-bg)}
+.phones{display:flex;gap:12px;align-items:flex-start}
+.phones .shot{width:calc(50% - 6px);min-width:0}
+.panel.term{margin-top:16px}
+.panel.term .shot{width:100%;max-width:1000px}

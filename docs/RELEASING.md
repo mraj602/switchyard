@@ -148,13 +148,17 @@ Update the release line on the website (`site/index.html`) and the README if a s
 changed. Write the release note so it stands on its own: what changed, how to update
 (`sy update`, the app's **Check for update**), and the APK fingerprint.
 
-## Android stores
+## Where the Android app is published
 
-- **GitHub Releases** is the primary source. Everything else reads from it.
+For now the APK is published **only on GitHub Releases**, as `phone-vX.Y.Z`. Users install it
+from there; after that the app's **Check for update** and Obtainium keep it current. There are
+no store submissions yet. The notes below are for later.
+
+- **GitHub Releases** is the only source.
 - **Obtainium:** users add `https://github.com/mraj602/switchyard` and filter releases with
   the regex `^Android ` (the release title), so `sy` releases are skipped. Nothing for you to
   do.
-- **IzzyOnDroid:** open an inclusion request on their repository once a signed `phone-v*`
+- **IzzyOnDroid (later, optional):** open an inclusion request on their repository once a signed `phone-v*`
   release exists. It needs a FOSS licence (AGPL-3.0), an APK in GitHub Releases, no
   proprietary libraries (`phone.yml` checks this), and the same signing key on every release.
 - **F-Droid:** possible later. F-Droid builds from source itself. With reproducible builds it

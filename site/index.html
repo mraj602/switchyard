@@ -51,7 +51,7 @@
   <main id="main">
     <section class="hero" id="top">
       <div class="wrap">
-        <p class="eyebrow">Unofficial, self-hosted, Apache-2.0</p>
+        <p class="eyebrow">Unofficial, self-hosted, AGPL-3.0</p>
         <h1>One board for every Claude Code account and machine.</h1>
         <p class="lead">See every session's state, every account's limits, and get a notification when a session needs you. It runs on your own hub, with no cloud service in the middle.</p>
         <p class="cta">
@@ -99,8 +99,22 @@
         <h2 id="demo-h">See it</h2>
         <figure class="demo">
           <!-- Recorded from the mock hub with sample data: scripts/demo/record.cjs. -->
-          <video id="demo-media" src="media/demo.mp4" poster="media/demo-poster.jpg" width="1280" height="800" autoplay muted loop playsinline aria-label="Demo: the Switchyard board showing sessions that need you, every session, account limits and peers, then an alert and a limits widget on an Android phone."></video>
-          <figcaption>Sample data from the mock hub: sessions that need you, every session, account limits, peers, and an alert on Android.</figcaption>
+          <video id="demo-media" src="media/demo.mp4" poster="media/demo-poster.jpg" width="1280" height="800" controls autoplay muted loop playsinline aria-label="Demo of the Switchyard board and Android alerts" aria-describedby="demo-transcript"></video>
+          <div class="demo-bar">
+            <button type="button" id="demo-toggle" class="vbtn" hidden aria-controls="demo-media">Pause</button>
+            <figcaption id="demo-cap">Sample data from the mock hub: sessions that need you, every session, account limits, peers, and an alert on Android. About 25 seconds, no sound, loops.</figcaption>
+          </div>
+          <details class="transcript" id="demo-transcript">
+            <summary>Text transcript of the demo</summary>
+            <ol>
+              <li>The board's Now screen: "Every session that needs you, across accounts and machines." Four sessions are waiting: a rate-limited account, two questions from Claude and a permission request, each with the account, project and machine, and buttons to copy the resume command or view the session.</li>
+              <li>Scrolling down, the accounts with their 5-hour and 7-day limits and reset times.</li>
+              <li>Sessions: every session on every machine, live.</li>
+              <li>Accounts: which account has room right now.</li>
+              <li>Peers: sessions in different accounts can talk, only where you allow it.</li>
+              <li>An Android phone's lock screen: a notification "work, api, asked a question" with Open, Snooze 15 min and Seen, then a limits widget showing every account's usage.</li>
+            </ol>
+          </details>
         </figure>
       </div>
     </section>
@@ -162,14 +176,25 @@ sy hub owner-link   # open the printed link: the board, signed in as the owner</
             <p>One tab per claude.ai account, each with its own sign-in, a usage strip per account, and the board in a Hub view. Linux (AppImage, deb, rpm), macOS (dmg) and Windows (installer).</p>
             <p class="small"><strong>Unsigned builds.</strong> Packages are not code-signed, so macOS and Windows warn on first start. Download one from the <a href="https://github.com/mraj602/switchyard/releases/latest">latest release</a> and check it against <code>SHA256SUMS-desktop</code>, or build it with <code>make app-dist</code>.</p>
             <p><a href="https://github.com/mraj602/switchyard/blob/main/docs/guide/desktop.md">Desktop guide</a></p>
+            <img class="shot" src="media/desktop.png" width="1280" height="800" loading="lazy" alt="The Switchyard desktop app with a tab per claude.ai account, Hub, alex, platform-team and contractor, and a usage strip under the active tab showing its 5-hour and 7-day limits.">
+            <img class="shot" src="media/desktop-hub.png" width="1280" height="800" loading="lazy" alt="The desktop app's Hub view: the board's Now screen with four sessions that need you (a rate limit, two questions and a permission request) and the three accounts in the sidebar.">
           </article>
           <article class="panel">
             <h3>Android app</h3>
             <p>The board's screens, native notifications with Open, Snooze and Seen, and six widgets. Android 12 or later, and a hub with an <code>https://</code> address. It keeps its own encrypted link to your hub: no Google push, no Firebase.</p>
             <p class="small"><strong>Install:</strong> download the APK from the <code>phone-v*</code> release on GitHub and check its signing certificate against the fingerprint in the release note. Obtainium can follow the releases. IzzyOnDroid is planned. Or build it from source.</p>
             <p><a href="https://github.com/mraj602/switchyard/blob/main/docs/guide/android.md">Android guide</a></p>
+            <div class="phones">
+              <img class="shot" src="media/android-needs-you.png" width="720" height="1600" loading="lazy" alt="The Android app's Now screen: three account limit rings and a Needs you list with a rate-limited session, a question from Claude and a permission request.">
+              <img class="shot" src="media/android-accounts.png" width="720" height="1600" loading="lazy" alt="The Android app's Accounts screen: each account's 5-hour and 7-day limits with reset times and pace forecasts.">
+            </div>
           </article>
         </div>
+        <article class="panel term">
+          <h3>Terminal board</h3>
+          <p>The same sessions without a browser: <code>sy board</code> is a full-screen board of what needs you, grouped by account, and <code>sy board --once</code> prints one frame.</p>
+          <img class="shot" src="media/terminal-board.png" width="1000" height="396" loading="lazy" alt="The terminal board in a dark terminal: a Needs you group with a rate-limited session and two questions, then each account's sessions with state, context used and time in state.">
+        </article>
       </div>
     </section>
 
@@ -195,7 +220,7 @@ sy hub owner-link   # open the printed link: the board, signed in as the owner</
         <li><a href="https://github.com/mraj602/switchyard/tree/main/docs/guide">Docs</a></li>
         <li><a href="https://github.com/mraj602/switchyard/blob/main/CONTRIBUTING.md">Contributing</a></li>
         <li><a href="https://github.com/mraj602/switchyard/blob/main/SECURITY.md">Security</a></li>
-        <li><a href="https://github.com/mraj602/switchyard/blob/main/LICENSE">Apache-2.0</a></li>
+        <li><a href="https://github.com/mraj602/switchyard/blob/main/LICENSE">AGPL-3.0</a></li>
       </ul>
       <p class="small">Contact: GitHub <a href="https://github.com/mraj602">@mraj602</a>, <a href="mailto:mraj602@gmail.com">mraj602@gmail.com</a>. Fonts: IBM Plex, SIL OFL 1.1 (<a href="fonts/OFL.txt">licence</a>). This page sets no cookies and uses no trackers.</p>
     </div>

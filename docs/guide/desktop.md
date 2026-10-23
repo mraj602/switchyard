@@ -5,6 +5,10 @@ with its own sign-in. Under each tab a usage strip shows that account's limits. 
 shows the board, and the app turns hub alerts into OS notifications and a tray badge. It is
 optional: `sy` and the hub work without it. The spec is [desktop.md](../spec/desktop.md).
 
+![The desktop app's Hub tab: four sessions that need you, with the accounts in the sidebar (sample data)](../media/desktop-hub.png)
+
+![An account tab with its usage strip: 5-hour and 7-day limits and reset times (sample data)](../media/desktop.png)
+
 Platforms: Linux (AppImage, deb, rpm), macOS (dmg) and Windows (NSIS installer). Packages are
 not code-signed, so macOS and Windows warn on first start (see
 [Unsigned builds](#unsigned-builds-on-macos-and-windows)).
