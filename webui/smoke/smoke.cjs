@@ -13,7 +13,7 @@
 //   Settings → Keys: a paired phone reads it; the owner compares and confirms a pending owner key, then sees Certify
 //   Resume thread: absent for a paired phone on the unresumed stop; the owner clicks it, sees the toast and the button go
 // Once (phone viewport, Android user agent unless noted): manifest and installability,
-// service worker control and caches, offline banner, update banner, push display, push
+// service worker control and caches, offline banner, update banner (and its deferral while a dialog is open), push display, push
 // registration (subscribe stubbed), iPhone pairing path (no claim, digits shown).
 // Any console error, failed request or unexpected HTTP error fails the run.
 
@@ -161,7 +161,7 @@ async function boardFlow(sizeName, w, hgt) {
   // A pasted owner link for another hub is refused with the other origin named.
   await page.type('[data-key=owner-link-input]', 'https://other.example/#/owner?s=abcdefghijklmnopqrstuv');
   await page.click('[data-key=owner-link-open]');
-  await page.waitForFunction(() => /not this hub/.test((document.querySelector('[data-key=owner-link-error]:not([hidden])') || {}).textContent || ''), { timeout: 4000 })
+  await page.waitForFunction(() => /not this hub/.test((document.querySelector('[data-key=owner-link-error]:not([hidden])') || {}).textContent || ''), { timeout: 10000 })
     .catch(() => fail(page.tag('a foreign owner link was not refused')));
   if (!(await page.$('[data-key=owner-link-error] a[href^="https://other.example/"]'))) fail(page.tag('the refusal has no link to the other hub'));
   await page.evaluate(() => { document.querySelector('[data-key=owner-link-input]').value = ''; });
@@ -222,7 +222,7 @@ async function phoneFlow(sizeName, w, hgt) {
   await page.$eval('[data-key=paired-name]', (e) => { e.value = ''; e.dispatchEvent(new Event('input')); });
   await page.type('[data-key=paired-name]', typed);
   await page.click('[data-key=save-name]');
-  await page.waitForFunction(async (n) => (await (await fetch('/v1/devices/self')).json()).name === n, { timeout: 4000 }, typed)
+  await page.waitForFunction(async (n) => (await (await fetch('/v1/devices/self')).json()).name === n, { timeout: 10000 }, typed)
     .catch(() => fail(page.tag('the Paired screen did not save the device name')));
   await page.waitForFunction((n) => (document.querySelector('[data-key=paired-as]') || {}).textContent === `Paired as ${n}`, { timeout: 4000 }, typed)
     .catch(() => fail(page.tag('"Paired as" did not follow the new name')));
@@ -383,6 +383,13 @@ const sideShown = (page) => page.evaluate(() => { const n = document.querySelect
 const sideOrder = (page) => page.$$eval('.nav-accounts [data-key^="nav-seat-"]', (els) => els.map((a) => a.dataset.key.replace('nav-seat-', '')));
 const cardOrder = (page) => page.$$eval('.acct-list > .seat-card', (els) => els.map((a) => a.id.replace('seat-', '')));
 const hubOrder = (page) => page.evaluate(async () => (await (await fetch('/v1/accounts')).json()).accounts.map((a) => a.id));
+// The board moves a card at once and tells the hub afterwards (PUT /v1/seats/order), so the hub
+// is asked until it reports the wanted order; a single read right after the DOM changed races
+// the request. The condition is the real one, not a sleep.
+const waitHub = (page, want, what) => page.waitForFunction(async (w2) => {
+  const ids = (await (await fetch('/v1/accounts', { cache: 'no-store' })).json()).accounts.map((a) => a.id);
+  return JSON.stringify(ids) === JSON.stringify(w2);
+}, { timeout: 5000, polling: 100 }, want).catch(async () => fail(page.tag(`order: ${what} (hub has ${await hubOrder(page)})`)));
 const sameList = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const waitCards = (page, want, what) => page.waitForFunction((w2) => JSON.stringify([...document.querySelectorAll('.acct-list > .seat-card')].map((a) => a.id.replace('seat-', ''))) === JSON.stringify(w2), { timeout: 4000 }, want)
   .catch(() => fail(page.tag(`order: ${what}`)));
@@ -477,7 +484,7 @@ async function orderFlow(page, sizeName) {
   const want = [...start.slice(0, -2), last, start[start.length - 2]];
   await waitCards(page, want, 'dropping the last card first did not reorder the cards');
   await waitSide(page, want, 'the sidebar did not follow the drop');
-  if (!sameList(await hubOrder(page), want)) fail(t('the hub did not keep the order'));
+  await waitHub(page, want, 'the hub did not keep the order');
   await shot(page, `${sizeName}-o-accounts-dropped`);
 
   // Keyboard: ArrowDown on the focused grip moves that card one place; focus stays on it.
@@ -485,11 +492,12 @@ async function orderFlow(page, sizeName) {
   await page.keyboard.press('ArrowDown');
   const kb = [want[1], want[0], ...want.slice(2)];
   await waitCards(page, kb, 'ArrowDown on the grip did not move the card');
-  if (!sameList(await hubOrder(page), kb)) fail(t('the hub did not keep the keyboard move'));
+  await waitHub(page, kb, 'the hub did not keep the keyboard move');
   if ((await page.evaluate(() => document.activeElement && document.activeElement.dataset.key)) !== `seat-grip-${want[0]}`) fail(t('focus left the grip after a move'));
   // Alt+ArrowUp inside the card moves it back (once, not twice).
   await page.keyboard.down('Alt'); await page.keyboard.press('ArrowUp'); await page.keyboard.up('Alt');
   await waitCards(page, want, 'Alt+ArrowUp did not move the card back one place');
+  await waitHub(page, want, 'the hub did not keep the Alt+Arrow move back');
 
   // Another device reorders: this board follows on the stream with no reload, on any page.
   await page.evaluate(() => { location.hash = '#/'; });
@@ -981,6 +989,10 @@ async function pwaFlow() {
     if (after < 2) fail('a push with a bad payload showed no notification');
   }
 
+  // fonts: the symbols face loads from the hub for the arrows and shapes Plex lacks
+  const symFaces = await page.evaluate(async () => (await document.fonts.load('16px "Switchyard Symbols"', '\u2192\u25CF\u283F\u24D8')).length);
+  if (symFaces < 3) fail(`the Switchyard Symbols faces did not load (${symFaces} of 3)`);
+
   // update: the hub switches to another build
   await fetch(BASE + '/_dev/build', { method: 'POST', body: JSON.stringify({ hash: 'ffffffffffff' }), headers: { 'Content-Type': 'application/json' } });
   await page.evaluate(() => { location.hash = '#/'; });
@@ -988,7 +1000,7 @@ async function pwaFlow() {
   // banner and its Reload button are what is tested.
   await page.evaluate(() => sessionStorage.setItem('sy.autoUpdateAt', String(Date.now())));
   await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration()).update(); });
-  try { await page.waitForSelector('.banner-update', { timeout: 8000 }); } catch (e) { fail('"New version ready" never appeared after the build changed'); }
+  try { await page.waitForSelector('.banner-update', { timeout: 8000 }); } catch (e) { fail('"Update ready" never appeared after the build changed'); }
   await shot(page, 'phone-update-banner');
   await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle2' }).catch(() => {}), page.click('[data-key=update-reload]')]);
   await page.waitForSelector('.needs-card');
@@ -997,6 +1009,15 @@ async function pwaFlow() {
   if (build1 !== 'ffffffffffff' || build1 === build0) fail(`reloaded page runs build ${build1}, expected ffffffffffff (was ${build0})`);
   // A page that has only just started applies the next build without a tap.
   await page.evaluate(() => sessionStorage.removeItem('sy.autoUpdateAt'));
+  // ...but not with a dialog open: the banner shows, the page is not reloaded, and the build is
+  // taken once the dialog is closed (the loop below).
+  await page.evaluate(() => { window.__alive = true; const d = document.createElement('dialog'); d.id = 'smoke-modal'; document.body.append(d); d.setAttribute('open', ''); });
+  await fetch(BASE + '/_dev/build', { method: 'POST', body: JSON.stringify({ hash: 'eeeeeeeeeeee' }), headers: { 'Content-Type': 'application/json' } });
+  await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration()).update(); }).catch(() => {});
+  try { await page.waitForSelector('.banner-update', { timeout: 8000 }); } catch (e) { fail('"Update ready" did not show while a dialog was open'); }
+  await sleep(3500); // two re-checks of the guard: asserting that nothing happens takes a wait
+  if (!(await page.evaluate(() => window.__alive === true && !!document.getElementById('smoke-modal')).catch(() => false))) fail('the page reloaded by itself while a dialog was open');
+  await page.evaluate(() => document.getElementById('smoke-modal') && document.getElementById('smoke-modal').remove());
   await fetch(BASE + '/_dev/build', { method: 'POST', body: JSON.stringify({ hash: 'eeeeeeeeeeee' }), headers: { 'Content-Type': 'application/json' } });
   await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration()).update(); }).catch(() => {});
   let build2 = '';

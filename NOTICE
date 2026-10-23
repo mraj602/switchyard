@@ -64,6 +64,12 @@ dependency or an asset is added.
    License 1.1. The web board serves them itself (self-hosted with its static files, together
    with the OFL text); the desktop app names the same fonts and falls back to system fonts.
 
+   Noto Sans Math, Noto Sans Symbols and Noto Sans Symbols 2, Copyright 2022 Google LLC and
+   The Noto Project Authors, licensed under the SIL Open Font License 1.1. Three subsets of
+   about 3 KB in all (the arrows, shapes and marks the board draws, which Plex lacks) are
+   served by the web board next to the Plex files under webui/static/fonts, from the
+   @fontsource packages of the same names, with the OFL text.
+
    Every icon and image in this repository (app/assets, app/build, phone/assets,
    webui/static/icons, scripts/icons) is original Switchyard artwork, drawn from the SVG
    sources in app/build/icons-src, phone/assets/src and scripts/icons. No Anthropic logo or

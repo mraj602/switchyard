@@ -173,7 +173,7 @@ function announceNeeds() {
   }
 }
 
-// ---- banners: offline and "new version ready" --------------------------------------------
+// ---- banners: offline and "update ready" --------------------------------------------
 
 function renderBanners() {
   const kids = [];
@@ -182,7 +182,7 @@ function renderBanners() {
     kids.push(h('div', { class: 'banner banner-offline', role: 'status' }, `Offline · showing ${hm}`));
   }
   if (updateReady()) {
-    kids.push(h('div', { class: 'banner banner-update', role: 'status' }, h('span', {}, 'New version ready'),
+    kids.push(h('div', { class: 'banner banner-update', role: 'status' }, h('span', {}, 'Update ready'),
       h('button', { type: 'button', class: 'btn btn-primary btn-sm', 'data-key': 'update-reload', onclick: applyUpdate }, 'Reload')));
   }
   bannersEl.replaceChildren(...kids);

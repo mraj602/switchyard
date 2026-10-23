@@ -9,7 +9,7 @@ const FALLBACK = ['#0E7C76', '#6A4FD6', '#9A7400', '#2F6FDE'];
 const NAMED = { teal: FALLBACK[0], violet: FALLBACK[1], gold: FALLBACK[2], blue: FALLBACK[3] };
 export const NEUTRAL = '#8A9098';
 
-// Colours end up in a style attribute, so only hex or known names get through.
+// Colours end up in a custom property set through the CSSOM, so only hex or known names get through.
 export function validColour(c) {
   if (typeof c !== 'string') return null;
   if (/^#[0-9a-fA-F]{3,8}$/.test(c)) return c;

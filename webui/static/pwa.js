@@ -1,10 +1,14 @@
 // Installing and updating the app (pwa.md 4 and 7): service worker registration, the
-// "New version ready" flow, the install prompt and what the page can tell about itself.
+// "Update ready" flow, the install prompt and what the page can tell about itself.
 //
 // State lives in `pwa`; call subscribe(fn) to redraw when it changes.
 
 import { getHealth } from './api.js';
 import { autoApplyOk } from './components/update-policy.js';
+import { createPending } from './components/pending.js';
+
+// Open dialogs and unsaved form edits: a reload by itself waits for these (pwa.md 7).
+export const guard = createPending(document);
 
 export const pwa = {
   supported: 'serviceWorker' in navigator,
@@ -45,9 +49,18 @@ export const updateReady = () =>
 // waiting worker (the build check above), ask the browser for the new worker first: a plain
 // reload would still be answered by the old worker's copy of the files.
 let reloading = false;
-export async function applyUpdate() {
+let asked = false; // the person pressed Reload: the page reloads whatever is pending
+function reloadNow() { if (!reloading) { reloading = true; location.reload(); } }
+// A worker change that nobody asked for (another tab applied the update, or an automatic
+// apply) waits until no dialog is open and no form has unsaved edits.
+function reloadWhenIdle() {
+  if (asked || !guard.pending()) { reloadNow(); return; }
+  const t = setInterval(() => { if (!guard.pending()) { clearInterval(t); reloadNow(); } }, 1000);
+}
+export function applyUpdate() { asked = true; return doApply(); }
+async function doApply() {
   const reg = pwa.registration;
-  if (!reg) { location.reload(); return; }
+  if (!reg) { reloadNow(); return; }
   if (!reg.waiting) { try { await reg.update(); } catch (_) { /* offline */ } }
   const inst = reg.installing;
   if (!reg.waiting && inst) {
@@ -61,7 +74,7 @@ export async function applyUpdate() {
     ]);
   }
   if (reg.waiting) reg.waiting.postMessage({ type: 'skip-waiting' });
-  else location.reload();
+  else reloadNow();
 }
 
 const PAGE_START = Date.now();
@@ -80,10 +93,11 @@ export function applyIfIdle() {
   const ok = autoApplyOk({
     waiting: !!w, editing: editing(), hidden: document.visibilityState === 'hidden',
     pageAgeMs: Date.now() - PAGE_START, sinceLastAutoMs: lastAutoAge(),
+    pending: guard.pending(),
   });
   if (!ok) return false;
   try { sessionStorage.setItem(AUTO_KEY, String(Date.now())); } catch (_) { /* no storage */ }
-  applyUpdate();
+  doApply();
   return true;
 }
 
@@ -128,7 +142,7 @@ export async function initPwa() {
     pwa.controlled = hadController;
     // The first activation claims the page: nothing to reload. Every later change of worker is
     // an update, and the page reloads once to load its files.
-    if (was && !reloading) { reloading = true; location.reload(); }
+    if (was && !reloading) reloadWhenIdle();
     else { askBuild(); emit(); }
   });
   navigator.serviceWorker.addEventListener('message', (e) => {
@@ -147,6 +161,9 @@ export async function initPwa() {
   askBuild();
   navigator.serviceWorker.ready.then(() => { pwa.controlled = !!navigator.serviceWorker.controller; askBuild(); emit(); });
   checkForUpdate();
+  // A waiting build that was held back by an open dialog or an unsaved form goes in once
+  // that is over (the policy still decides whether the moment is a free one).
+  setInterval(() => { if (pwa.waiting) applyIfIdle(); }, 2000);
 
   // An installed iOS app is often resumed, not reloaded.
   document.addEventListener('visibilitychange', () => {
