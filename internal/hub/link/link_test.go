@@ -187,7 +187,8 @@ func TestTamperedRowsRejected(t *testing.T) {
 			if p.Last() != 0 {
 				t.Fatalf("last moved to %d", p.Last())
 			}
-			waitFor(t, "row deleted", func() bool { return len(f.queued(p)) == 0 })
+			// The hub deletes the row, then counts the rejection: wait for both.
+			waitFor(t, "row deleted and counted", func() bool { return len(f.queued(p)) == 0 && f.h.Rejected(p.ID) == 1 })
 			if f.h.Rejected(p.ID) != 1 || f.state(p).AckedSeq != 0 {
 				t.Fatalf("rejected %d, acked %d", f.h.Rejected(p.ID), f.state(p).AckedSeq)
 			}
