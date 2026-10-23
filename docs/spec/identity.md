@@ -56,7 +56,7 @@ stable when the home folder differs between machines.
 
 **Finding all folders** (for `sy agents`, `sy scan`, `sy doctor`): `~/.claude` and every
 directory directly in the home folder whose name matches `^\.claude([-_].+)?$` (the
-prototype's rule), plus folders listed in `config.toml` (`slots.extra`). A folder counts
+rule `sy` uses everywhere), plus folders listed in `config.toml` (`slots.extra`). A folder counts
 only if it is a directory and contains `settings.json`, `.claude.json`, `projects/` or
 `sessions/`.
 

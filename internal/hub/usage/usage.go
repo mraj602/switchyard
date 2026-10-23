@@ -20,8 +20,8 @@ type Sample struct {
 	Inactive     bool // model-scoped limit with is_active = false
 }
 
-// labels are the friendly names the prototype used (main.js LABELS); other keys show
-// as their raw key.
+// labels are the friendly names of the known window keys; other keys show as their
+// raw key.
 var labels = map[string]string{
 	"five_hour":            "5-hour",
 	"seven_day":            "7-day",
@@ -34,7 +34,7 @@ var labels = map[string]string{
 
 var order = []string{"five_hour", "seven_day", "seven_day_opus", "seven_day_sonnet", "seven_day_oauth_apps", "seven_day_cowork", "iguana_necktie"}
 
-// Label is a window key's display name: the prototype's names, "7-day · Fable" for
+// Label is a window key's display name: the known names, "7-day · Fable" for
 // model-scoped weekly keys, else the key itself.
 func Label(key string) string {
 	if l, ok := labels[key]; ok {
@@ -52,7 +52,7 @@ func Label(key string) string {
 	return key
 }
 
-// Rank orders keys like the prototype: known ones first in a fixed order, then the rest.
+// Rank orders keys: known ones first in a fixed order, then the rest.
 func Rank(key string) int {
 	for i, k := range order {
 		if k == key {
@@ -118,8 +118,8 @@ func num(raw json.RawMessage) *float64 {
 	return f
 }
 
-// WindowsOf reads the windows of a raw claude.ai usage response with the prototype's
-// windowsOf rules (main.js): every top-level key whose value is an object with a non-null
+// WindowsOf reads the windows of a raw claude.ai usage response with these
+// rules: every top-level key whose value is an object with a non-null
 // `utilization` is a window (iguana_necktie and future keys included); model-scoped limits
 // come from `limits[]` items with scope.model.display_name, keyed
 // lower(group || kind) + "_" + lower(model). Values are kept unrounded.
@@ -243,7 +243,7 @@ var maxTier = regexp.MustCompile(`max_20x`)
 
 // PlanOf normalises an org's plan (schema.sql org.plan) from claude.ai org fields or
 // Claude Code's rate tier / subscription type: free, pro, max_5x, max_20x, team,
-// enterprise or unknown. Port of the prototype's planOf.
+// enterprise or unknown.
 func PlanOf(capabilities []string, rateTier, ravenType, subscription string) string {
 	has := func(c string) bool {
 		for _, x := range capabilities {

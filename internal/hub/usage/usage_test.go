@@ -24,16 +24,17 @@ func lines(t *testing.T, path string, fn func([]byte)) {
 	}
 }
 
-// WindowsOf finds the same windows the prototype stored for each snapshot, including keys
-// it has never heard of (iguana_necktie).
-func TestWindowsOfMatchesPrototype(t *testing.T) {
+// WindowsOf finds the windows recorded in the golden file for each snapshot (testdata/
+// snapshots.jsonl holds raw usage responses, windows.jsonl the expected windows), including
+// keys it has never heard of (iguana_necktie).
+func TestWindowsOfMatchesGolden(t *testing.T) {
 	type snap struct {
 		TS      int64  `json:"ts"`
 		Account string `json:"account_id"`
 		Raw     string `json:"raw"`
 	}
 	samples := map[string]map[string]Sample{}
-	lines(t, "../../../testdata/prototype/snapshots.jsonl", func(b []byte) {
+	lines(t, "testdata/snapshots.jsonl", func(b []byte) {
 		var s snap
 		if err := json.Unmarshal(b, &s); err != nil {
 			t.Fatal(err)
@@ -46,7 +47,7 @@ func TestWindowsOfMatchesPrototype(t *testing.T) {
 	})
 	checked := 0
 	keys := map[string]bool{}
-	lines(t, "../../../testdata/prototype/windows.jsonl", func(b []byte) {
+	lines(t, "testdata/windows.jsonl", func(b []byte) {
 		var w struct {
 			TS           int64    `json:"ts"`
 			Account      string   `json:"account_id"`
@@ -69,17 +70,17 @@ func TestWindowsOfMatchesPrototype(t *testing.T) {
 			t.Errorf("%d %s: window %s not found", w.TS, w.Account, w.Key)
 			return
 		}
-		if w.Pct != nil && (s.UsedPct == nil || math.Abs(*s.UsedPct-*w.Pct) > 0.05) { // the prototype rounded to 0.1
-			t.Errorf("%s: used %v, prototype %v", w.Key, s.UsedPct, *w.Pct)
+		if w.Pct != nil && (s.UsedPct == nil || math.Abs(*s.UsedPct-*w.Pct) > 0.05) { // the golden values are rounded to 0.1
+			t.Errorf("%s: used %v, golden %v", w.Key, s.UsedPct, *w.Pct)
 		}
 		if w.ResetsAt != "" {
 			want, _ := time.Parse(time.RFC3339Nano, w.ResetsAt)
 			if !s.ResetsAt.Equal(want) {
-				t.Errorf("%s: resets %v, prototype %v", w.Key, s.ResetsAt, want)
+				t.Errorf("%s: resets %v, golden %v", w.Key, s.ResetsAt, want)
 			}
 		}
 		if w.LimitDollars != nil && (s.LimitDollars == nil || *s.LimitDollars != *w.LimitDollars) {
-			t.Errorf("%s: limit dollars %v, prototype %v", w.Key, s.LimitDollars, *w.LimitDollars)
+			t.Errorf("%s: limit dollars %v, golden %v", w.Key, s.LimitDollars, *w.LimitDollars)
 		}
 	})
 	if checked == 0 || !keys["iguana_necktie"] || !keys["five_hour"] {

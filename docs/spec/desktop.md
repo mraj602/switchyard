@@ -3,10 +3,9 @@
 Status: spec v1. Implemented in `app/` (Electron) and `sy desktop` (`cmd/sy/desktop.go`,
 `internal/desktop`). Unofficial; not affiliated with Anthropic.
 
-The desktop app is a new Electron app in `app/`, next to the legacy prototype in the repository root, which stays usable
-until it is retired. It holds one tab per claude.ai account, reads web usage into
+The desktop app is the Electron app in `app/`. It holds one tab per claude.ai account, reads web usage into
 `web_usage` records (record.md 4.3) through `sy`, and shows the hub board. Everything else is
-done by `sy` and the hub. It never opens the prototype's user-data folder (paths.md 2).
+done by `sy` and the hub.
 
 Related: record.md 4.3 (`web_usage`), paths.md 2 (folders), api.yaml (`PATCH /v1/accounts/{seat}`,
 `Seat.places[].stopped_reason`), schema.sql v5 (`seat.look_src`), tokens.md (desktop tokens),
@@ -38,15 +37,14 @@ pairing.md (desktop codes, owner links), machines.md 4.4 (admin channel).
   `{"status": 429, "at": "…"}`. `warning_accepted` is the warning version that was accepted,
   or `0`.
 - Tab id: `t_` + 16 lowercase hex characters from `crypto.randomBytes(8)`. Tab ids of the
-  earlier 8-hex form (from the removed prototype import) are still accepted. Pattern:
+  earlier 8-hex form (tab ids from earlier versions) are still accepted. Pattern:
   `^(t_[0-9a-f]{16}|[0-9a-f]{8})$`. Partition: `persist:tab-<tab id>`.
 - `client` in records: `switchyard-desktop/<app version>`.
 - Single-instance lock (per user-data folder). `--background` starts hidden. A second launch
   shows the window, or applies `--autostart=on|off` and exits.
 - Run at login: on Linux, `~/.config/autostart/switchyard-desktop.desktop` and
   `~/.local/share/applications/switchyard-desktop.desktop`. On macOS and Windows,
-  `app.setLoginItemSettings` with `--background`. The prototype's `switchyard.desktop` is
-  never read or written.
+  `app.setLoginItemSettings` with `--background`.
 
 ## C2. Security baseline
 
@@ -268,7 +266,7 @@ sy desktop hub status|start|stop --json
 
 ## C5. Web usage reading
 
-**Reader.** `webContents.executeJavaScriptInIsolatedWorld(1001, [{code}])`, the prototype's
+**Reader.** `webContents.executeJavaScriptInIsolatedWorld(1001, [{code}])`, the reader
 script, made to return the raw objects:
 `{orgs: [{org (the six keys of record.md 4.3), usage | {__status}}], account: {uuid, email_address,
 full_name, display_name} | {__status}, active_org, fetch_ms}`.
@@ -437,7 +435,6 @@ account in a hidden or background start until the window is shown.
   at the link) and opens the link there; the person signs in there if the tab is signed out.
   Only a link whose seat is unknown (no session record, no hub) keeps the old fallback: the
   first signed-in tab, else the system browser. `openLink(url, seat)` is therefore async.
-  This replaces the prototype's `openCode`.
 - Accounts with no tab: the hub's accounts (`/v1/accounts`, one per account uuid, hidden ones
   left out) that no tab is signed in as or was made for are `ShellState.missing`
   (`[{seat, label}]`). While any exist, the Hub tab's top line (the same 44 px strip as the
@@ -549,7 +546,7 @@ Switchyard menu: Hub, Account 1…9, Refresh usage, Run at login, Keep running, 
   Additive, no version bump.
 - `0005_desktop.sql`: `ALTER TABLE seat ADD COLUMN look_src TEXT CHECK (look_src IS NULL OR
   look_src IN ('ui', 'slot', 'import'))`, with a backfill: `'import'` where the label came
-  from the prototype importer (device `dev_import`), else `'slot'` where a label is set. Then
+  from the importer of earlier versions (device `dev_import`), else `'slot'` where a label is set. Then
   `schema.sql` is v5.
 - No change to `/v1/ingest`, to record kinds or to `v`. `web_usage` from a machine device is
   already valid (tokens.md 3: write for its own machine id).

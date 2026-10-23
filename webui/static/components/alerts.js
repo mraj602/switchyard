@@ -3,14 +3,10 @@
 import { h } from './dom.js';
 import { toast } from './ui.js';
 import { clock } from '../format.js';
+import { reasonText } from './alerts-fmt.js';
 import { store, markSeen, snooze, canPush, actionable } from '../store.js';
 
-const REASONS = {
-  remote_control: 'the Claude app already notifies', rule_off: 'rule is off', stale: 'too old to send',
-  superseded: 'replaced by a later alert', baseline: 'existing at first start', answered: 'you answered first',
-  ended: 'session ended', recovered: 'recovered', reset_passed: 'window reset', seen: 'seen',
-};
-export const reasonText = (r) => REASONS[r] || (r ? String(r).replace(/_/g, ' ') : '');
+export { reasonText };
 
 // "notifies in 40 s" counts down; the app refreshes [data-due] every few seconds.
 export function untilShort(ts, now = Date.now()) {

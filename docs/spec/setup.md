@@ -149,8 +149,7 @@ Read-only. Collects a `State` (the planner's whole input):
 4. **Plugins:** for each distinct plugin root: `installed_plugins.json` and
    `known_marketplaces.json` (parsed, never rewritten by `sy` except on undo, section 7.4);
    for each settings target: `enabledPlugins`, `extraKnownMarketplaces`, `env` *keys only*,
-   `statusLine`, and `hooks` entries whose command contains `switchyard-hook` (the
-   prototype, section 10).
+   `statusLine`.
 5. **Launchers:**
    - executables named `claude-*` on `PATH` and in `~/.local/bin`; a file whose second-line
      marker is `# sy-launcher v1` is ours;
@@ -260,7 +259,6 @@ sy setup [--dry-run] [--yes] [--json] [--detect]
          [--hub keep|here|later|pull|join:<url>] [--token-stdin | --code <code> | --code-stdin]
          [--hub-dial <addr>] [--reach direct|forward] [--insecure-lan] [--listen <addr>]
          [--no-plugin] [--no-statusline] [--no-launchers] [--named-launchers] [--launcher-dir <dir>]
-         [--prototype keep|remove]
          [--login ask|never]
          [--expect-plan <plan id>]
 sy setup --undo [<backup id>] [--force] [--dry-run] [--json]
@@ -291,7 +289,6 @@ sy setup --undo-list [--json]
 | `--no-launchers` | | Write no launchers. |
 | `--named-launchers` | off | Also write `claude-<label>` next to `claude-N`. |
 | `--launcher-dir` | `~/.local/bin` | Where launchers go. |
-| `--prototype` | `keep` | `remove` strips the prototype hooks (section 10); refused unless a hub is connected and healthy at the end of the hub step. |
 | `--login` | `ask` interactive, `never` under `--yes` | `ask` offers `claude auth login` for folders not logged in. |
 | `--expect-plan` | | Apply only if the freshly computed plan id equals this one (6.3), else exit 4 with the new plan. This is how Claude shows a plan, asks, then applies exactly that plan. |
 
@@ -544,7 +541,6 @@ editor (5.4 step 3–5, without the lock or session checks):
 | `/statusLine/command` (and `/statusLine/type` if `statusLine` was absent) | Status line wrap (section 9.1) |
 | `/env/CLAUDE_CODE_PLUGIN_CACHE_DIR` | Shared plugin root (5.2) |
 | `/env/CLAUDE_CODE_DISABLE_TERMINAL_TITLE` | Switchyard tab titles on (`sy term titles on`, terminal.md T6, T10) |
-| `/hooks/<Event>/<i>` entries whose command contains `switchyard-hook` | Prototype removal (10) |
 
 Everything else in `settings.json` (`enabledPlugins`, `extraKnownMarketplaces`) is written by
 `claude plugin ...`, never by `sy`. A settings file is edited at its resolved target (all
@@ -630,10 +626,8 @@ run, and restoring it would undo a login refresh.
    the service, make a new code with `sy hub pair --kind machine`, rerun `sy setup --hub
    …`); `hub` in the JSON carries `step` and `fix`. The backup set is still `applied` (its
    local steps are done and undoable).
-6. Prototype removal, only if requested and the hub answered `/health` with the token
-   accepted in step 5 (or was already connected and healthy).
-7. Logins (interactive only), one folder at a time.
-8. `sy doctor`, summary, mark the set `applied`, update the ledger.
+6. Logins (interactive only), one folder at a time.
+7. `sy doctor`, summary, mark the set `applied`, update the ledger.
 
 ### 6.3 Output formats
 
@@ -849,7 +843,7 @@ sy account remove <folder|label> [--unshare] [--yes] [--dry-run] [--json]
 
 ### 8.2 Login handoff
 
-`sy account login` (and step 7 of apply) runs `claude auth login --claudeai` with
+`sy account login` (and step 6 of apply) runs `claude auth login --claudeai` with
 `CLAUDE_CONFIG_DIR` set to the folder (unset for `~/.claude`), stdin/stdout/stderr inherited
 from `sy`, so Claude Code's own flow runs unchanged: it opens a browser, or, on an SSH
 server with no browser, prints the URL and waits for the pasted code. `sy` prints one line
@@ -943,7 +937,7 @@ What is installed now: `plugin` (marketplace path, plugin id, roots and settings
 was enabled in, adopted or ours), `statusline` (per target: original command, or "created"),
 `env_keys` (targets where `CLAUDE_CODE_PLUGIN_CACHE_DIR` was set by `sy`), `launchers`
 (path, sha256), `mcp_sync` (set of files), `copies` (Windows), `hub_service`, `timer`,
-`prototype_removed` (the hook entries, kept for restore), `terminal` (pane, Warp
+`terminal` (pane, Warp
 plugin, titles, tab configs; terminal.md T10). Updated at the end of every
 apply, undo and uninstall. A command that cannot read it changes nothing; uninstall keeps
 the record of everything it did not remove (left as is, skipped, or failed).
@@ -955,8 +949,7 @@ status line ours; every shared item still linked (baseline from the ledger, not 
 `doctor.json`); conflicts left `separate` (info); MCP drift and conflicts; Windows copies in
 conflict. Machine: `sy` on `PATH` (warn) and at the path baked into the plugin (fail);
 hub reachable and token accepted; timer active; on Linux `Linger=yes` when the hub runs here
-or the machine is a server; prototype hooks still present while a hub is live (warn with
-`sy setup --prototype remove`); an `in-progress` backup set while `setup.lock` is free (fail,
+or the machine is a server; an `in-progress` backup set while `setup.lock` is free (fail,
 with `sy setup --undo`); an MCP pass refused by the guard (warn, 5.4); the latest MCP
 servers removed by the sync (info, from `mcp-removed.jsonl`).
 
@@ -985,7 +978,7 @@ step. It holds `setup.lock` (7.6).
    applied; a failure is reported (exit 1) and its ledger record kept.
 4. Launchers `sy` wrote and that still have `sy`'s hash removed.
 5. MCP sync stops (`share.mcp = false`). `mcpServers` keys stay as they are.
-6. Kept: every config folder, every login, every link and copy, labels, the prototype, the
+6. Kept: every config folder, every login, every link and copy, labels, the
    backups, `config.toml`, the outbox and the device token.
 
 `--purge` also removes `config.toml` and `config.toml.bak` (never the folder: paths.md 2),
@@ -995,20 +988,11 @@ may point anywhere, it refuses (exit 2, before any change) a state folder withou
 `machine.json` or `setup/ledger.json`, and one that is or holds the home or config folder. It does not remove the
 `sy` binary; the last line prints `rm ~/.local/bin/sy`.
 
-## 10. The prototype
+## 10. Hooks already in settings.json
 
-The prototype adds hook entries with `switchyard-hook` in the command (`bash
-~/.claude/switchyard-hook.sh # switchyard-hook`) to settings targets (via `bin/connect.sh`).
-They post to the Electron app's local receiver and do not conflict with `sy hook`.
-
-- Detect lists them (`Hooks 3 → ~/.claude/switchyard-hook.sh (prototype)`).
-- Default: **keep**. The prototype is the user's only board until a hub is live.
-- Removal is offered (interactive default **yes**) only when the hub step ends with a healthy
-  hub that accepted this machine's token; `--prototype remove` does the same in scripts and
-  is refused otherwise. Removal = `json_delete` of exactly those entries (the same filter as
-  `connect.sh --uninstall`: drop matching hook commands, then empty matchers, then empty
-  events); `~/.claude/switchyard-hook.sh` itself and the Electron app are left alone.
-  Undo puts the entries back.
+`sy setup` never edits a `hooks` entry. The only pointers it writes in a settings file are the
+ones in 9.1, so hook entries that `sy` did not write stay as they are, and undo and uninstall
+leave them alone.
 
 ## 11. This laptop (the acceptance example)
 
@@ -1023,7 +1007,7 @@ replaced):
   `CLAUDE.md`, `commands`, `skills`, `plugins`, `projects`, `history.jsonl`, `plans` (48
   links). No folder has `agents/`, `rules/` or `keybindings.json`.
 - `~/.claude/settings.json`: `statusLine.command` = `bash /home/u/.claude/statusline-command.sh`;
-  three prototype hook entries; `enabledPlugins` has three plugins, all off; one
+  three hook entries of another tool; `enabledPlugins` has three plugins, all off; one
   `extraKnownMarketplaces` entry.
 - `~/.claude/plugins/installed_plugins.json`: three plugins, one `installPath` through
   `~/.claude-2/plugins/...` (last installer wins; works through the link).
@@ -1076,9 +1060,6 @@ Config
 Hub
   · later   (sy connect <url> --token-stdin, or sy setup --hub join:<url>)
 
-Prototype
-  = 3 hooks → ~/.claude/switchyard-hook.sh   kept until a hub is live
-
 Needs you
   ? log in ~/.claude-4 … ~/.claude-7 when you want them: claude-4 auth login …
 
@@ -1086,9 +1067,7 @@ Needs you
 ```
 
 With `--hub join:https://<hub>.<tailnet>.ts.net --token-stdin` the Hub
-section becomes `+ connect https://… (token from stdin), timer every minute, linger: yes`,
-and the Prototype section offers `− 3 hooks → ~/.claude/switchyard-hook.sh (backup kept)`
-once the connect succeeds.
+section becomes `+ connect https://… (token from stdin), timer every minute, linger: yes`.
 
 **Acceptance test on a laptop:**
 
@@ -1152,7 +1131,7 @@ once the connect succeeds.
 10. **Undo's byte-for-byte promise** holds only for paths nothing else changed since the run;
     `settings.json` is shared and edited by Claude Code (`/config`, `/plugin`), so in real use
     undo will often be key-level. That is by design, and the summary says which it was.
-11. **The prototype's `settings.json.bak.*` files** in each folder and `~/.claude.json`'s
+11. **Other tools' `settings.json.bak.*` files** in each folder and `~/.claude.json`'s
     leftovers are ignored; they are not backups `sy` can use.
 
 ## 13. What was checked against Claude Code 2.1.296

@@ -61,7 +61,7 @@ func commands() map[string]command {
 		"disconnect":  {summary: "Remove the hub link, token and timer", run: runDisconnect},
 		"flush":       {summary: "Send queued records to the hub", run: runFlush},
 		"tick":        {summary: "Timer entry point: flush, share sync, agents, scan", run: runTick},
-		"hub":         {summary: "Run and manage the hub (serve, pair, owner-link, token, backup, prune, import-prototype)", run: runHub},
+		"hub":         {summary: "Run and manage the hub (serve, pair, owner-link, token, backup, prune)", run: runHub},
 		"phone":       {summary: "Pair a phone with this hub (sy phone pair; run on the hub)", run: runPhone},
 		"setup":       {summary: "Set up accounts, sharing, hub and phone (--undo reverses a run)", run: runSetup},
 		"account":     {summary: "Add, log in, label, share and remove accounts", run: runAccount},

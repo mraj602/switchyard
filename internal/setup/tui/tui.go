@@ -207,9 +207,6 @@ func DetectText(st model.State) string {
 		if t.StatusLine != nil && t.StatusLine.Command != "" && !t.StatusLine.Ours {
 			hand = append(hand, "wrap     status line in "+tildeOf(st.Home, t.Path))
 		}
-		if len(t.PrototypeHooks) > 0 {
-			hand = append(hand, fmt.Sprintf("note     %d prototype hooks in %s (kept until a hub is live)", len(t.PrototypeHooks), tildeOf(st.Home, t.Path)))
-		}
 	}
 	if len(hand) > 0 {
 		b.WriteString("\nAlready set up by hand\n")

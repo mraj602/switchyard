@@ -9,14 +9,13 @@ const golden = JSON.parse(fs.readFileSync(new URL('./usage.golden.json', import.
 const fixture = (f) => JSON.parse(fs.readFileSync(new URL(f, root), 'utf8'));
 const files = JSON.parse(fs.readFileSync(new URL('index.json', root), 'utf8')).map((e) => e.file);
 
-// usage.golden.json is the output of the prototype's own windowsOf / planOf (main.js, read-only)
-// on these fixtures.
-test('windowsOf matches the prototype on every fixture', () => {
+// usage.golden.json holds the expected windowsOf / planOf output for these fixtures.
+test('windowsOf matches the golden file on every fixture', () => {
   assert.deepEqual(Object.keys(golden.windows).sort(), [...files].sort());
   for (const f of files) assert.deepEqual(JSON.parse(JSON.stringify(windowsOf(fixture(f)))), golden.windows[f], f);
 });
 
-test('planOf matches the prototype', () => {
+test('planOf matches the golden file', () => {
   for (const { org, plan } of golden.plans) assert.equal(planOf(org), plan, JSON.stringify(org));
 });
 

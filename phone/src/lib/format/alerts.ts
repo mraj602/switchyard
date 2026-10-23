@@ -5,7 +5,7 @@ import { clock } from './core';
 const REASONS: Record<string, string> = {
   remote_control: 'Claude app already notifies', rule_off: 'rule is off', stale: 'too old to push',
   superseded: 'replaced by a later alert', baseline: 'existing at first start', answered: 'you answered first',
-  ended: 'session ended', recovered: 'recovered', reset_passed: 'window reset', seen: 'seen',
+  peers: 'talking to another session (peers)', ended: 'session ended', recovered: 'recovered', reset_passed: 'window reset', seen: 'seen',
 };
 export const reasonText = (r: string | null | undefined): string =>
   (r && REASONS[r]) || (r ? String(r).replace(/_/g, ' ') : '');

@@ -5,8 +5,6 @@
 
 /** Basename of the app's own user-data folder under app.getPath('appData'). */
 export const USER_DATA_DIRNAME = 'switchyard-desktop';
-/** The prototype's folder basename: refused as user data in any case (C1). */
-export const PROTOTYPE_DIRNAME = 'switchyard';
 /** Files the app owns in its user-data folder. */
 export const APP_STATE_FILE = 'app-state.json';
 export const HUB_TOKEN_FILE = 'hub-token.bin';
@@ -15,7 +13,7 @@ export const APP_STATE_V = 1;
 /** Mode of every file the app writes (app-state.json, hub-token.bin). */
 export const FILE_MODE = 0o600;
 
-/** Tab id: `t_` + 16 lowercase hex, or a prototype 8-hex account id kept on import. */
+/** Tab id: `t_` + 16 lowercase hex, or an 8-hex tab id from earlier versions. */
 export const TAB_ID_PATTERN = '^(t_[0-9a-f]{16}|[0-9a-f]{8})$';
 export const TAB_ID_RE = new RegExp(TAB_ID_PATTERN);
 /** Partition of an account tab: PARTITION_PREFIX + tab id. */
@@ -28,11 +26,8 @@ export const TAB_NAME_MAX = 24;
 /** `client` in records: CLIENT_NAME + '/' + app version. */
 export const CLIENT_NAME = 'switchyard-desktop';
 
-/** Linux autostart and launcher entry name; the prototype's `switchyard.desktop` is never touched. */
+/** Linux autostart and launcher entry name. */
 export const DESKTOP_ENTRY = 'switchyard-desktop.desktop';
-export const PROTOTYPE_DESKTOP_ENTRY = 'switchyard.desktop';
-/** The prototype's hook port: never bound, never connected to. */
-export const PROTOTYPE_HOOK_PORT = 47821;
 
 /** Command-line flags (C1). */
 export const FLAG_BACKGROUND = '--background';

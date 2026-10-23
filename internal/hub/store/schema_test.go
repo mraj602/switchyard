@@ -227,8 +227,8 @@ func lookSrcs(t *testing.T, s *Store) map[string]string {
 }
 
 // Schema v5 (desktop.md C10): migrating a seeded v4 database backfills seat.look_src:
-// 'import' for a labelled or coloured seat on a hub that ran the prototype importer
-// (device dev_import), else 'slot' where a label is set, else NULL.
+// 'import' for a labelled or coloured seat on a hub that ran the importer of earlier
+// versions (device dev_import), else 'slot' where a label is set, else NULL.
 func TestSchemaV5BackfillsLookSrc(t *testing.T) {
 	ctx := context.Background()
 	for _, c := range []struct {
@@ -239,9 +239,9 @@ func TestSchemaV5BackfillsLookSrc(t *testing.T) {
 		{"no importer", []string{v4Seats},
 			map[string]string{"seat_labelled": "slot", "seat_colour": "NULL", "seat_plain": "NULL"}},
 		{"importer ran", []string{v4Seats,
-			`INSERT INTO machine (id, name, first_seen) VALUES ('m_proto', 'laptop', 0)`,
+			`INSERT INTO machine (id, name, first_seen) VALUES ('m_import', 'laptop', 0)`,
 			`INSERT INTO device (id, kind, name, machine_id, token_hash, token_hint, scopes, created_at, created_by, revoked_at)
-			 VALUES ('dev_import', 'machine', 'prototype import', 'm_proto', randomblob(32), 'import', '["write"]', 0, 'import', 0)`},
+			 VALUES ('dev_import', 'machine', 'import', 'm_import', randomblob(32), 'import', '["write"]', 0, 'import', 0)`},
 			map[string]string{"seat_labelled": "import", "seat_colour": "import", "seat_plain": "NULL"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {

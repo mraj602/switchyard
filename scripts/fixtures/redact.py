@@ -14,7 +14,7 @@ What it does
   * /home/<real user> -> /home/user, hostname -> host-1, area/company words -> area-a / area-b
   * token-looking strings (sk-ant-, gho_/ghp_/github_pat_, Bearer, JWTs, claude.ai session ids) and
     values under secret-like keys (token, cookie, authorization, sessionKey, signature ...) removed
-  * under hooks/, transcripts/ and prototype/: long free text (assistant text, prompts, tool output,
+  * under hooks/ and transcripts/: long free text (assistant text, prompts, tool output,
     thinking) cut to its first few words; JSON embedded in string values is redacted recursively
 Idempotent: redacting already redacted output is a no-op.
 """
@@ -31,7 +31,7 @@ ACCT_ID_KEYS = {"account_id"}
 LABEL_ROWS = ("label",)  # accounts.jsonl label column
 SECRET_KEY = re.compile(r"^(token|accesstoken|refreshtoken|idtoken|hooktoken|apikey|secret|clientsecret|password|"
                         r"cookie|cookies|setcookie|authorization|sessionkey|signature|credentials)$", re.I)
-TEXT_DIRS = ("hooks", "transcripts", "prototype")
+TEXT_DIRS = ("hooks", "transcripts")
 # Area/company words come from scripts/fixtures/private-words.txt (gitignored), one per line;
 # the Nth word becomes area-<letter N>.
 _WF = os.path.join(os.path.dirname(os.path.abspath(__file__)), "private-words.txt")

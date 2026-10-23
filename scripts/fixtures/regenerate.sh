@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# MAINTAINER ONLY: rebuilds testdata/ from the maintainer's real ~/.claude* folders and usage.db, and
+# MAINTAINER ONLY: rebuilds testdata/ from the maintainer's real ~/.claude* folders, and
 # (without capdir) spends real Claude usage. Contributors do not need it; the committed testdata/ is
 # what the tests use. Redacted output only ever lands in testdata/.
 # usage: scripts/fixtures/regenerate.sh [capdir]   (capdir = dir holding cap1..8.jsonl from capture-runs.sh;
@@ -20,11 +20,7 @@ for i in "" -2 -3 -4 -5 -6 -7; do
   python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1])); o=d.get("oauthAccount"); print(json.dumps({"oauthAccount":o},indent=2)) if o else sys.exit(1)' "$cj" >"$STAGE/raw/auth/oauth-$n.json" 2>/dev/null || rm -f "$STAGE/raw/auth/oauth-$n.json"
 done
 
-# 2. prototype db (copy first; the desktop app keeps writing the original)
-mkdir -p "$STAGE/db"; cp ~/.config/switchyard/usage.db* "$STAGE/db/"
-python3 -I "$HERE/extract-prototype.py" "$STAGE/db/usage.db" "$STAGE/raw"
-
-# 3. hooks + transcripts from the capture runs
+# 2. hooks + transcripts from the capture runs
 python3 -I "$HERE/collect-hooks.py" "$STAGE/raw" 01-write-and-bash="$CAP/cap1.jsonl" 02-permission-needed="$CAP/cap2.jsonl" \
   03-question="$CAP/cap3.jsonl" 04-subagent="$CAP/cap4.jsonl" 05-tool-failure="$CAP/cap5.jsonl" \
   06-stop-failure="$CAP/cap6.jsonl" 07-compact="$CAP/cap7.jsonl" 08-plain-with-env="$CAP/cap8.jsonl" >/dev/null
@@ -34,8 +30,8 @@ for pair in 01-write-and-bash:1 03-question:3 07-compact:7; do
   cp "$tp" "$STAGE/raw/transcripts/${pair%%:*}.jsonl"
 done
 
-# 4. redact into testdata/ (keeps hand-written README.md and the synthetic statusline files)
+# 3. redact into testdata/ (keeps hand-written README.md and the synthetic statusline files)
 rm -rf "$STAGE/out"; python3 -I "$HERE/redact.py" "$STAGE/raw" "$STAGE/out"
-for d in auth hooks usage prototype transcripts; do rm -rf "$ROOT/testdata/$d"; cp -r "$STAGE/out/$d" "$ROOT/testdata/$d"; done
+for d in auth hooks transcripts; do rm -rf "$ROOT/testdata/$d"; cp -r "$STAGE/out/$d" "$ROOT/testdata/$d"; done
 python3 -I "$HERE/make-statusline.py" "$ROOT/testdata/statusline"
 "$HERE/check-redaction.sh"

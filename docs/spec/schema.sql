@@ -105,7 +105,7 @@ CREATE TABLE seat (
 -- new seat (max + 1) or one nobody ordered sorts after the ordered ones. No migration: the column
 -- is in version 1.
 -- look_src: v5 (desktop.md C10). Who set label and colour last: 'ui' (PATCH /v1/accounts/{seat}),
--- 'slot' (slot_info; applies only while look_src is NULL or 'slot'), 'import' (prototype importer).
+-- 'slot' (slot_info; applies only while look_src is NULL or 'slot'), 'import' (rows imported by earlier versions; nothing writes it now).
 
 -- A computer running sy. The id is made by sy on first run (identity.md).
 CREATE TABLE machine (

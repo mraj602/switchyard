@@ -338,7 +338,6 @@ func TestErrors(t *testing.T) {
 		"dup label":     {Labels: map[string]model.LabelColour{"~/.claude-2": {Label: "x"}, "~/.claude-3": {Label: "x"}}},
 		"unknown key":   {Labels: map[string]model.LabelColour{"~/.nope": {Label: "x"}}},
 		"bad colour":    {Add: []model.LabelColour{{Label: "w", Colour: "nope"}}},
-		"proto no hub":  {Prototype: "remove"},
 		"other primary": {Primary: "~/.claude-2"},
 	} {
 		if _, err := plan.PlanWith(st, c, opt); err == nil {

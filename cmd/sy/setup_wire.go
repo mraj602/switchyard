@@ -524,8 +524,7 @@ func (e *setupEnv) applyOptions(st model.State, command string) (apply.Options, 
 	return apply.Options{
 		StateDir: e.dirs.State.Path, Command: command, SyVersion: version.Version, Machine: m.ID,
 		SyPath: e.sy, Links: st.Links, MCPFiles: mcpFiles(st), ConfigPath: e.configPath(),
-		HubHealthy: st.Hub.URL != nil && st.Hub.Healthy && st.Hub.TokenPresent,
-		LockHeld:   e.lockHeld,
+		LockHeld: e.lockHeld,
 	}, nil
 }
 

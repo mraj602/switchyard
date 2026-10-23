@@ -271,8 +271,7 @@ defaults.
 
 ### 5.1 Sessions from transcript history
 
-`sy scan` reads whole transcript folders, so the first scan on a machine (and
-`sy hub import-prototype`) sends `token_rows` for every past session. Its per-session
+`sy scan` reads whole transcript folders, so the first scan on a machine sends `token_rows` for every past session. Its per-session
 facts (`sessions`, record.md 4.4) make a `session` row for a session the hub has never
 seen. Such a session has **no live signal**: no hook event and no `session_list` entry
 ever said it runs. The rules:

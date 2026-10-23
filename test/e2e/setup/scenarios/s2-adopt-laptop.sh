@@ -1,6 +1,6 @@
 #!/bin/sh
 # S2 adopt this laptop's layout (docs/spec/setup.md section 11): seven folders, 48 hand-made
-# links, shell-function launchers, prototype hooks, a status line to wrap, three plugins.
+# links, shell-function launchers, hook entries of another tool, a status line to wrap, three plugins.
 # BLESS=1 rewrites golden/s2-dry-run.json.
 . "$(dirname "$0")/../lib/common.sh"
 
@@ -54,7 +54,7 @@ assert a == b, (a, b)
 EOF
 assert_eq "settings.json is still a link in ~/.claude-2" "$P/settings.json" "$(readlink "$H/.claude-2/settings.json")"
 assert_eq "no env key (plugins/ is linked by hand)" 0 "$(grep -c CLAUDE_CODE_PLUGIN_CACHE_DIR "$P/settings.json")"
-assert_eq "prototype hooks kept" 3 "$(grep -c switchyard-hook.sh "$P/settings.json")"
+assert_eq "other hooks kept" 3 "$(grep -c notify-hook.sh "$P/settings.json")"
 assert_eq "one marketplace add" 1 "$(fake_calls '"marketplace","add"')"
 assert_eq "one install" 1 "$(fake_calls '"plugin","install"')"
 assert_eq "no plugin command ran in a folder other than ~/.claude" 0 "$(grep -F '"plugin"' "$FAKE_LOG" | grep -cF '"unset":false' || true)"

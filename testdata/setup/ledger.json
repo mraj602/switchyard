@@ -7,7 +7,5 @@
   "launchers": [{"path": "/home/u/.local/bin/claude-8", "sha256": "dddd"}],
   "mcp_sync": ["/home/u/.claude.json"],
   "hub_service": {"name": "switchyard-hub", "unit": "/home/u/.config/systemd/user/switchyard-hub.service"},
-  "timer": true,
-  "prototype_removed": [{"file": "/home/u/.claude/settings.json", "event": "Stop",
-                         "entry": {"hooks": [{"type": "command", "command": "bash ~/.claude/switchyard-hook.sh # switchyard-hook"}]}}]
+  "timer": true
 }

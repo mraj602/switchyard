@@ -102,8 +102,8 @@ type TokenRowIn struct {
 	Sidechain                                        bool
 }
 
-// MergeTokenRow upserts a token row keeping the largest value of each counter (the
-// prototype's tokenUpsert); record_id moves to the record that raised a count.
+// MergeTokenRow upserts a token row keeping the largest value of each counter (token
+// upsert); record_id moves to the record that raised a count.
 func (tx *Tx) MergeTokenRow(r TokenRowIn) error {
 	side := 0
 	if r.Sidechain {

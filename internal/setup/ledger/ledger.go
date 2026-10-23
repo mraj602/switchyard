@@ -150,17 +150,6 @@ func updateJSON(l *model.Ledger, a model.Action) {
 			_ = json.Unmarshal(a.Before, &o)
 			l.StatusLine[a.File] = model.LedgerStatus{Original: o.Command}
 		}
-	case a.Op == model.OpJSONDelete && strings.HasPrefix(a.Pointer, "/hooks/"):
-		parts := strings.Split(strings.TrimPrefix(a.Pointer, "/"), "/")
-		if len(parts) >= 2 && len(a.Before) > 0 {
-			for _, h := range l.PrototypeRemoved {
-				if h.File == a.File && h.Event == parts[1] && string(h.Entry) == string(a.Before) {
-					return
-				}
-			}
-			l.PrototypeRemoved = append(l.PrototypeRemoved, model.LedgerPrototypeHook{
-				File: a.File, Event: parts[1], Entry: a.Before})
-		}
 	}
 }
 
@@ -209,14 +198,6 @@ func Revert(prev model.Ledger, m model.Manifest) model.Ledger {
 						l.EnvKeys = remove(l.EnvKeys, pe.Path)
 					case k.Pointer == statusPtr || strings.HasPrefix(k.Pointer, statusPtr+"/"):
 						delete(l.StatusLine, pe.Path)
-					case strings.HasPrefix(k.Pointer, "/hooks/"):
-						var keep []model.LedgerPrototypeHook
-						for _, h := range l.PrototypeRemoved {
-							if h.File != pe.Path {
-								keep = append(keep, h)
-							}
-						}
-						l.PrototypeRemoved = keep
 					}
 				}
 			case model.OpWriteFile:

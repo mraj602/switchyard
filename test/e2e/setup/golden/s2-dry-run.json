@@ -422,11 +422,6 @@
   {
    "note": "later",
    "what": "hub"
-  },
-  {
-   "note": "3 hooks kept until a hub is live",
-   "path": "$HOME/.claude/switchyard-hook.sh",
-   "what": "prototype"
   }
  ],
  "mode": "dry-run",

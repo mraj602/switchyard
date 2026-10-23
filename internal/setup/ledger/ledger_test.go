@@ -38,7 +38,6 @@ func TestUpdateAndRevert(t *testing.T) {
 		{ID: "a6", Op: model.OpMCPSync, Step: model.StepMCP, Files: []string{"/h/.claude.json", "/h/.claude-2/.claude.json"}},
 		{ID: "a7", Op: model.OpService, Step: model.StepHub, Name: "switchyard-hub", Unit: "/u/hub.service"},
 		{ID: "a8", Op: model.OpConnect, Step: model.StepHub, URL: "https://h"},
-		{ID: "a9", Op: model.OpJSONDelete, Step: model.StepPrototype, File: "/h/.claude/settings.json", Pointer: "/hooks/Stop/0", Before: json.RawMessage(`{"c":"x"}`)},
 	}}
 	var m model.Manifest
 	for i, a := range plan.Actions {
@@ -70,7 +69,7 @@ func TestUpdateAndRevert(t *testing.T) {
 		t.Fatalf("status %+v", s)
 	}
 	if len(l.EnvKeys) != 1 || len(l.Launchers) != 1 || l.Launchers[0].SHA256 != "abc" || len(l.MCPSync) != 2 ||
-		l.HubService == nil || !l.Timer || len(l.PrototypeRemoved) != 1 || l.PrototypeRemoved[0].Event != "Stop" {
+		l.HubService == nil || !l.Timer {
 		t.Fatalf("%+v", l)
 	}
 	// idempotent: a second update with the same manifest changes nothing
@@ -83,7 +82,7 @@ func TestUpdateAndRevert(t *testing.T) {
 	}
 	r := ledger.Revert(l, m)
 	if r.Plugin != nil || len(r.StatusLine) != 0 || len(r.EnvKeys) != 0 || len(r.Launchers) != 0 || len(r.MCPSync) != 0 ||
-		r.HubService != nil || r.Timer || len(r.PrototypeRemoved) != 0 {
+		r.HubService != nil || r.Timer {
 		t.Fatalf("revert left %+v", r)
 	}
 }

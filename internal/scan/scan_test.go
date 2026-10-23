@@ -1,14 +1,10 @@
 package scan
 
 import (
-	"bytes"
 	"encoding/json"
-	"math"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -32,122 +28,6 @@ func slotWith(t *testing.T, files map[string]string) (Slot, string) {
 		}
 	}
 	return Slot{Folder: "~/.claude", Dir: dir}, home
-}
-
-type parityOut struct {
-	Rows    []map[string]any `json:"rows"`
-	Hits    []map[string]any `json:"hits"`
-	Owners  []map[string]any `json:"owners"`
-	Pricing []struct {
-		Model string   `json:"model"`
-		Cost  *float64 `json:"cost"`
-		Label string   `json:"label"`
-	} `json:"pricing"`
-}
-
-// toMap turns a Go value into the JSON object form node prints.
-func toMap(t *testing.T, v any) map[string]any {
-	t.Helper()
-	b, _ := json.Marshal(v)
-	var m map[string]any
-	if err := json.Unmarshal(b, &m); err != nil {
-		t.Fatal(err)
-	}
-	return m
-}
-
-func TestParityWithPrototype(t *testing.T) {
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node not installed")
-	}
-	var names []string
-	srcs := map[string]string{}
-	add := func(path string) {
-		b, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		srcs[filepath.Base(path)] = string(b)
-		names = append(names, filepath.Base(path))
-	}
-	m, _ := filepath.Glob("../../testdata/transcripts/*.jsonl")
-	for _, p := range m {
-		add(p)
-	}
-	add("testdata/edge.jsonl")
-	sort.Strings(names)
-
-	slot, _ := slotWith(t, srcs)
-	dir := filepath.Join(slot.Dir, "projects", "p")
-	args := []string{"testdata/parity.js"}
-	for _, n := range names {
-		args = append(args, filepath.Join(dir, n))
-	}
-	cmd := exec.Command("node", args...)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	out, err := cmd.Output()
-	if err != nil {
-		t.Skipf("prototype parser not runnable here: %v %s", err, stderr.String())
-	}
-	var want parityOut
-	if err := json.Unmarshal(out, &want); err != nil {
-		t.Fatal(err)
-	}
-
-	sc, err := New(Options{Slots: []Slot{slot}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	res, err := sc.Scan()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var rows, hits, owners []map[string]any
-	for _, b := range res.Batches {
-		for _, r := range b.Rows {
-			rows = append(rows, toMap(t, struct {
-				TokenRow
-				SessionID string `json:"session_id"`
-				CWD       string `json:"cwd"`
-				Model     string `json:"model"`
-			}{r, r.SessionID, r.CWD, r.Model}))
-		}
-		for _, h := range b.LimitHits {
-			hits = append(hits, toMap(t, struct {
-				LimitHit
-				Status   string `json:"status"`
-				ResetsAt int64  `json:"resets_at"`
-			}{h, h.Status, h.ResetsAt}))
-		}
-		for _, s := range b.Sessions {
-			if s.OwnerAccount != "" || s.OwnerOrg != "" {
-				owners = append(owners, map[string]any{"session_id": s.SessionID, "owner_account": s.OwnerAccount, "owner_org": s.OwnerOrg})
-			}
-		}
-	}
-	if len(want.Rows) < 6 || len(want.Hits) == 0 || len(want.Owners) == 0 {
-		t.Fatalf("fixture too thin: %d rows %d hits %d owners", len(want.Rows), len(want.Hits), len(want.Owners))
-	}
-	if !reflect.DeepEqual(rows, want.Rows) {
-		t.Errorf("rows differ\n go:   %v\n node: %v", rows, want.Rows)
-	}
-	if !reflect.DeepEqual(hits, want.Hits) {
-		t.Errorf("limit hits differ\n go:   %v\n node: %v", hits, want.Hits)
-	}
-	if !reflect.DeepEqual(owners, want.Owners) {
-		t.Errorf("owners differ\n go:   %v\n node: %v", owners, want.Owners)
-	}
-	tk := Tokens{Input: 1234567, Output: 76543, Cache5m: 345678, Cache1h: 23456, CacheRead: 9876543}
-	for _, p := range want.Pricing {
-		cost, ok := CostOf(p.Model, tk)
-		if ok != (p.Cost != nil) || (ok && math.Abs(cost-*p.Cost) > 1e-9*math.Max(1, *p.Cost)) {
-			t.Errorf("cost %q: go %v/%v node %v", p.Model, cost, ok, p.Cost)
-		}
-		if got := ModelLabel(p.Model); got != p.Label {
-			t.Errorf("label %q: go %q node %q", p.Model, got, p.Label)
-		}
-	}
 }
 
 func line(id string, out int) string {

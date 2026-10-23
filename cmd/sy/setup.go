@@ -72,7 +72,7 @@ func setupUsage(w io.Writer) {
                 [--hub keep|here|later|pull|join:<url>] [--token-stdin | --code <code> | --code-stdin]
                 [--hub-dial <addr>] [--reach direct|forward] [--insecure-lan] [--listen <addr>]
                 [--no-plugin] [--no-statusline] [--no-launchers] [--named-launchers] [--launcher-dir <dir>]
-                [--prototype keep|remove] [--login ask|never] [--expect-plan <plan id>] [--no-timer]
+                [--login ask|never] [--expect-plan <plan id>] [--no-timer]
                 [--terminal pane,titles,warp-plugin,warp-tabs]
        sy setup --undo [<backup id>] [--force] [--dry-run] [--yes] [--json]
        sy setup --undo-list [--json]
@@ -115,7 +115,6 @@ func parseSetup(e *setupEnv, args []string) (setupFlags, error) {
 	fs.BoolVar(&f.c.NoLaunchers, "no-launchers", false, "write no launchers")
 	fs.BoolVar(&f.c.NamedLaunchers, "named-launchers", false, "also write claude-<label>")
 	fs.StringVar(&f.c.LauncherDir, "launcher-dir", "", "where launchers go (default ~/.local/bin)")
-	fs.StringVar(&f.c.Prototype, "prototype", "", "keep|remove")
 	fs.StringVar(&f.c.Login, "login", "", "ask|never")
 	fs.StringVar(&f.c.ExpectPlan, "expect-plan", "", "apply only if the plan id equals this one")
 	pos, err := parseInterspersed(fs, args)
@@ -232,11 +231,6 @@ func parseSetup(e *setupEnv, args []string) (setupFlags, error) {
 	}
 	if f.c.Code != "" && f.c.Hub.Mode != model.HubJoin {
 		return bad("--code needs --hub join:<url> (a pairing code made by `sy hub pair --kind machine` on that hub)")
-	}
-	switch f.c.Prototype {
-	case "", "keep", "remove":
-	default:
-		return bad("--prototype must be keep or remove")
 	}
 	switch f.c.Login {
 	case "", "ask", "never":
@@ -471,7 +465,7 @@ func setupMain(ctx context.Context, e *setupEnv, args []string) error {
 		e.termAfterApply(p, false)
 	}
 
-	// Logins (6.2 step 7): interactive only, one folder at a time.
+	// Logins (6.2 step 6): interactive only, one folder at a time.
 	if aerr == nil && interactive && len(res.Logins) > 0 {
 		e.runLogins(ctx, st, res.Logins)
 	}

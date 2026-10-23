@@ -1,8 +1,7 @@
 #!/bin/sh
 # S6 hub, join variant: the hub runs as a background process on 127.0.0.1 (own HOME, own
 # database); `sy hub token create` there; `--hub join:<url> --token-stdin` here; the timer
-# unit is written; `--prototype remove` removes exactly the three fixture hook entries; undo
-# restores them. (The `--hub here` systemd variant is s6b-hub-here.sh.)
+# unit is written; hook entries of other tools are left alone; undo restores the tree. (The `--hub here` systemd variant is s6b-hub-here.sh.)
 . "$(dirname "$0")/../lib/common.sh"
 
 [ -d "$RELEASE" ] || skip_scenario "no release build in $RELEASE"
@@ -33,7 +32,7 @@ install_sy "$H"
 P=$H/.claude
 snap "$H" "$SY_E2E_TMP/before.json" -claude-json
 cp "$P/settings.json" "$SY_E2E_TMP/settings.before.json"
-assert_eq "three prototype hooks before" 3 "$(grep -c 'switchyard-hook.sh' "$P/settings.json")"
+assert_eq "three other hooks before" 3 "$(grep -c 'notify-hook.sh' "$P/settings.json")"
 sy machine --json
 MID=$(jget "$OUT" 'd["id"]')
 H=$HUBH
@@ -43,14 +42,8 @@ TOKEN=$(jget "$OUT" 'd["token"]')
 printf '%s\n' "$TOKEN" > "$SY_E2E_TMP/token"
 H=$SY_E2E_TMP/join/home
 
-# --prototype remove is refused while no hub is connected (setup.md 4, 10).
-sy setup --yes --hub later --prototype remove
-[ "$rc" -ne 0 ] && pass "--prototype remove refused without a live hub (exit $rc)" || fail "--prototype remove accepted without a hub"
-assert_eq "hooks still there after the refusal" 3 "$(grep -c 'switchyard-hook.sh' "$P/settings.json")"
-snap_equal "after the refused run" "$H" "$SY_E2E_TMP/before.json" -claude-json
-
-# Join with the token from stdin; remove the prototype hooks.
-sy_in "$SY_E2E_TMP/token" setup --yes --json --hub "join:$URL" --token-stdin --prototype remove
+# Join with the token from stdin.
+sy_in "$SY_E2E_TMP/token" setup --yes --json --hub "join:$URL" --token-stdin
 assert_rc "setup --hub join" 0 $rc
 assert_eq "applied" applied "$(jget "$OUT" 'd["mode"]')"
 S=$H/.local/state/switchyard
@@ -62,32 +55,19 @@ assert_file "$H/.config/systemd/user/switchyard-flush.service" "timer service un
 assert_file "$H/.config/systemd/user/switchyard-flush.timer" "timer unit"
 assert_contains "the unit runs sy tick" "tick" "$(cat "$H/.config/systemd/user/switchyard-flush.service")"
 assert_eq "no token in the setup output" 0 "$(grep -cF "$TOKEN" "$OUT" "$ERR" | awk -F: '{n += $2} END {print n + 0}')"
-assert_eq "no prototype hook entry left" 0 "$(grep -c 'switchyard-hook' "$P/settings.json")"
-assert_file "$P/switchyard-hook.sh" "the prototype script itself is left alone"
-# Exactly the three entries went: everything else in settings.json is as before.
-python3 -I - "$SY_E2E_TMP/settings.before.json" "$P/settings.json" <<'PYEOF' && pass "exactly the three hook entries were removed" || fail "settings.json differs beyond the hooks"
-import json, sys
-a, b = json.load(open(sys.argv[1])), json.load(open(sys.argv[2]))
-assert set(a["hooks"]) == {"SessionStart", "Stop", "Notification"}, a["hooks"]
-assert not b.get("hooks"), b.get("hooks")
-for k in ("statusLine", "enabledPlugins", "extraKnownMarketplaces"):
-    a.pop(k), b.pop(k)
-a.pop("hooks")
-b.pop("hooks", None)
-assert a == b, (a, b)
-PYEOF
+assert_eq "the other tool's hooks are untouched" 3 "$(grep -c 'notify-hook.sh' "$P/settings.json")"
 sy doctor --json
-assert_eq "doctor: no prototype warning, no hub failure" 0 "$(grep -cE '"name": "(prototype|hub)"' "$OUT")"
+assert_eq "doctor: no hub failure" 0 "$(grep -cE '"name": "hub"' "$OUT")"
 
 # A second run is idempotent.
-sy_in "$SY_E2E_TMP/token" setup --yes --json --hub "join:$URL" --token-stdin --prototype remove
+sy_in "$SY_E2E_TMP/token" setup --yes --json --hub "join:$URL" --token-stdin
 assert_rc "rerun" 0 $rc
 assert_eq "rerun: 0 changes" 0 "$(jget "$OUT" 'd["summary"]["changes"]')"
 
-# Undo: the hooks are back, the connection is gone, the tree is as before.
+# Undo: the connection is gone, the tree is as before.
 sy setup --undo --yes
 assert_rc "undo" 0 $rc
-assert_eq "three prototype hooks restored" 3 "$(grep -c 'switchyard-hook.sh' "$P/settings.json")"
+assert_eq "the other hooks are still there" 3 "$(grep -c 'notify-hook.sh' "$P/settings.json")"
 assert_eq "settings.json equals the original (as JSON)" "$(jget "$SY_E2E_TMP/settings.before.json" 'd')" "$(jget "$P/settings.json" 'd')"
 assert_no_file "$S/token" "device token after undo"
 assert_no_file "$H/.config/systemd/user/switchyard-flush.timer" "timer unit after undo"

@@ -302,29 +302,23 @@ func TestSharingOffAndExplicitOff(t *testing.T) {
 	_ = h
 }
 
-func TestHubPrototypeMCPLaunchers(t *testing.T) {
+func TestHubModes(t *testing.T) {
 	h := detecttest.Laptop(t)
 	st := h.State()
-	// join with a token source: connect action; prototype removal allowed, three entries.
-	c := model.Choices{Hub: model.HubChoice{Mode: model.HubJoin, URL: "https://hub.example"}, TokenStdin: true, Prototype: "remove"}
+	// join with a token source: connect action.
+	c := model.Choices{Hub: model.HubChoice{Mode: model.HubJoin, URL: "https://hub.example"}, TokenStdin: true}
 	p := mustPlan(t, st, c)
-	var del, conn int
+	var conn int
 	for _, a := range p.Actions {
-		if a.Op == model.OpJSONDelete {
-			del++
-			if !strings.HasPrefix(a.Pointer, "/hooks/") || strings.Count(a.Pointer, "/") != 2 {
-				t.Errorf("event pointer: %s", a.Pointer)
-			}
-		}
 		if a.Op == model.OpConnect && a.URL == "https://hub.example" {
 			conn++
 		}
 	}
-	if del != 3 || conn != 1 {
-		t.Errorf("delete %d connect %d", del, conn)
+	if conn != 1 {
+		t.Errorf("connect %d", conn)
 	}
 	// join without a token source: a need, no connect.
-	c.TokenStdin, c.Prototype = false, ""
+	c.TokenStdin = false
 	p = mustPlan(t, st, c)
 	if len(p.Needs) != 5 || p.Needs[0].Kind != "hub-token" {
 		t.Errorf("needs %+v", p.Needs)

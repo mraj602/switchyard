@@ -150,31 +150,11 @@ func checkSetup(rep *Report, o Options, cfg config.Config, slots []identity.Slot
 		}
 	}
 
-	// Hub, token, timer, prototype hooks while a hub is live.
+	// Hub token and timer while a hub is configured.
 	if cfg.Hub.URL != "" {
 		if _, err := os.Stat(filepath.Join(st, "token")); err != nil {
 			rep.add(Check{Name: "hub", Level: Fail, Detail: "hub.url is " + cfg.Hub.URL + " but there is no device token",
 				Fix: "sy connect " + cfg.Hub.URL + " --token-stdin"})
-		}
-		for _, s := range slots {
-			set, err := readSettings(o.FS, filepath.Join(s.Dir, "settings.json"))
-			if err != nil || !set.exists {
-				continue
-			}
-			n := 0
-			for _, cmds := range set.hooks {
-				for _, c := range cmds {
-					if strings.Contains(c, "switchyard-hook") {
-						n++
-					}
-				}
-			}
-			if n > 0 {
-				rep.add(Check{Name: "prototype", Slot: s.Name, Level: Warn,
-					Detail: fmt.Sprintf("%d prototype hooks still post to the Electron app while a hub is connected", n),
-					Fix:    "sy setup --prototype remove"})
-				break
-			}
 		}
 	}
 	if led.Timer {

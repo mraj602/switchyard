@@ -43,21 +43,20 @@ const (
 	StepLaunchers  Step = "launchers"
 	StepConfig     Step = "config"
 	StepHub        Step = "hub"
-	StepPrototype  Step = "prototype"
 	StepLogin      Step = "login"
 )
 
 // StepOrder lists the steps in apply order.
 var StepOrder = []Step{
 	StepFolders, StepSharing, StepPlugin, StepStatusLine, StepMCP, StepLaunchers, StepTerminal,
-	StepConfig, StepHub, StepPrototype, StepLogin,
+	StepConfig, StepHub, StepLogin,
 }
 
 // Local reports whether s belongs to the local steps, whose failure rolls everything
-// back (6.2 steps 3-4). Hub, prototype and login steps never roll the local steps back.
+// back (6.2 steps 3-4). Hub and login steps never roll the local steps back.
 func (s Step) Local() bool {
 	switch s {
-	case StepHub, StepPrototype, StepLogin:
+	case StepHub, StepLogin:
 		return false
 	}
 	return true

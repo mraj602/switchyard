@@ -193,7 +193,6 @@ func Text(in Input) string {
 	w.mcp(p)
 	w.hub(p)
 	w.hubFailure(in)
-	w.prototype(p)
 	w.needs(in)
 	w.warnings(p)
 
@@ -610,7 +609,7 @@ func (w *writer) plugin(p model.Plan) bool {
 	return true
 }
 
-// --- status line, launchers, config, mcp, hub, prototype, needs -----------------------------
+// --- status line, launchers, config, mcp, hub, needs -----------------------------
 
 func (w *writer) statusLine(p model.Plan) {
 	var acts []model.Action
@@ -772,35 +771,6 @@ func (w *writer) hub(p model.Plan) {
 		return
 	}
 	w.line("  · later")
-}
-
-func (w *writer) prototype(p model.Plan) {
-	var keeps []model.Keep
-	for _, k := range p.Keep {
-		if k.What == "prototype" {
-			keeps = append(keeps, k)
-		}
-	}
-	del := 0
-	script := ""
-	for _, a := range p.Actions {
-		if a.Step == model.StepPrototype {
-			del++
-			_, script, _ = strings.Cut(a.Note, "→ ")
-		}
-	}
-	if len(keeps) == 0 && del == 0 {
-		return
-	}
-	w.blank()
-	w.line("Prototype")
-	for _, k := range keeps {
-		n, rest, _ := strings.Cut(k.Note, " hooks ")
-		w.line("  = %s hooks → %s   %s", n, w.tilde(k.Path), rest)
-	}
-	if del > 0 {
-		w.line("  − %s → %s   (backup kept)", plural(del, "hook", "hooks"), w.tilde(script))
-	}
 }
 
 // hubFailure names the hub step that did not happen and how to finish it (exit 6).

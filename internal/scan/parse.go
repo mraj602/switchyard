@@ -8,8 +8,8 @@ import (
 )
 
 // TokenRow is one API response found in a transcript (docs/spec/record.md 4.4). TS is epoch
-// milliseconds, as in the prototype's tokens table; the record layer formats it as RFC 3339.
-// Empty SessionID, CWD and Model mean "absent" (the prototype stores null for both).
+// milliseconds; the record layer formats it as RFC 3339.
+// Empty SessionID, CWD and Model mean "absent" (stored as null).
 type TokenRow struct {
 	Key       string `json:"key"`
 	TS        int64  `json:"ts"`
@@ -31,7 +31,7 @@ func (r TokenRow) RFC3339() string {
 }
 
 // merge folds a later line of the same API response into r: counters keep their largest
-// value, everything else keeps the first line's value (the prototype's tokenUpsert).
+// value, everything else keeps the first line's value (token upsert).
 func (r *TokenRow) merge(o TokenRow) {
 	for _, p := range [][2]*int64{{&r.Input, &o.Input}, {&r.Output, &o.Output}, {&r.Cache5m, &o.Cache5m},
 		{&r.Cache1h, &o.Cache1h}, {&r.CacheRead, &o.CacheRead}, {&r.Thinking, &o.Thinking}} {

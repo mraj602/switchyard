@@ -14,7 +14,6 @@ Rules that always hold:
   one in a command line. If a hub token is needed, tell the person to run
   `sy connect <url> --token-stdin` themselves in their own terminal and paste the token
   there. (A short pairing code, such as `482-913`, may be typed in the chat.)
-- Never pass `--prototype remove` unless the person chose to remove the prototype hooks.
 - Never pass `--conflicts` with any value other than `keep` (or any `--resolve`) unless the
   person chose that for that item after seeing the conflict.
 - Never run `claude auth login` yourself and never touch `.credentials.json`, a Keychain item

@@ -565,7 +565,7 @@ func isKnownTable(name string) bool {
 
 // Save writes config.toml atomically (temp file in the same folder, fsync, rename), mode
 // 0600. It creates the folder (mode 0700) only if it does not exist, and creates no other
-// file in it: the folder is shared with the Electron prototype (paths.md section 2).
+// file in it: the folder is shared with other tools (paths.md section 2).
 func (f *File) Save() error {
 	if _, ok := f.doc["version"]; !ok {
 		f.doc["version"] = int64(Version)
