@@ -50,7 +50,7 @@ commands, environment variables of Claude Code, or records.
 
 | Device kind | Token | Scopes | Can |
 | --- | --- | --- | --- |
-| machine | `sy_m_` | `write` | `POST /v1/ingest` for its own machine id only. |
+| machine | `sy_m_` | `write` | `POST /v1/ingest` for its own machine id only. Also, by design (keys.md 3.3, peers.md 5.4): propose an owner key (`POST /v1/keys/owner`; it stays pending until an owner confirms its fingerprint, at most one pending, deleted after 24 hours), and narrow the peer matrix or pause peers (`PUT /v1/peers/matrix`, `POST /v1/peers/pause`; widening and resuming need the owner). |
 | desktop | `sy_d_` | `write`, `read` | Ingest for its own machine id (web usage); every read endpoint and `/v1/stream`. |
 | phone | `sy_p_` | `read`, `push` | Every read endpoint and `/v1/stream`; register push targets; snooze/seen alerts. |
 | browser | `sy_b_` | `read`, `push` | As phone; for the installed web app on a computer. |
