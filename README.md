@@ -8,6 +8,8 @@
 A self-hosted board for several Claude Code accounts on several machines: every session's
 state, every account's limits, and a notification when a session needs you.
 
+**Website: <https://mraj602.github.io/switchyard/>**
+
 > **Unofficial.** Switchyard is an independent community project. It is not affiliated with,
 > endorsed by, sponsored by or connected to Anthropic. "Claude" and "Claude Code" are
 > trademarks of Anthropic, PBC, used here only to describe compatibility. Use it only with
