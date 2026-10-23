@@ -247,7 +247,8 @@ jobs:
       - name: scenarios, native
         run: test/e2e/setup/run.sh --native
 
-  # Windows is best effort in v0.3 (docs/spec/setup.md 12 risk 8): junctions and synced
+  # Windows is best effort (docs/spec/setup.md 12 risk 8; peers and owner keys are off there,
+  # docs/guide/install.md): junctions and synced
   # copies (the share unit tests), install.ps1 against a local release server, and S1 with
   # `.cmd` launchers by hand. Allowed to fail; not run anywhere but here.
   setup-e2e-windows:
