@@ -25,7 +25,7 @@ func hasCheck(rep Report, name string) bool {
 func TestSetupChecksSilentBeforeSetup(t *testing.T) {
 	e := newFakeHome(t, `{"hooks":{`+allHooks+`}}`)
 	rep := Run(context.Background(), e.opts(identity.OSFS{}))
-	for _, n := range []string{"setup", "plugin", "sharing", "timer", "mcp", "copies", "prototype"} {
+	for _, n := range []string{"setup", "plugin", "sharing", "timer", "mcp", "copies"} {
 		if hasCheck(rep, n) {
 			t.Errorf("check %q shown before sy setup ran", n)
 		}

@@ -81,7 +81,6 @@ type planner struct {
 	touched         map[string]bool
 	envTargets      []string
 	ownPlugins      []ownPlugin
-	hubLive         bool
 }
 
 // PlanWith is Plan with explicit options.
@@ -102,7 +101,7 @@ func PlanWith(st model.State, c model.Choices, opt Options) (model.Plan, error) 
 	}
 	for _, step := range []func() error{
 		p.planNewFolders, p.planSharing, p.planPlugin, p.planStatusLine, p.planMCP,
-		p.planLaunchers, p.planConfig, p.planHub, p.planPrototype, p.planLogins,
+		p.planLaunchers, p.planConfig, p.planHub, p.planLogins,
 	} {
 		if err := step(); err != nil {
 			return model.Plan{}, err

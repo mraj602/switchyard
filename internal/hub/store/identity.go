@@ -135,7 +135,7 @@ func (tx *Tx) OrgInfo(uuid, name, plan, rateTier, billing string) error {
 	return err
 }
 
-// SeatLook sets a seat's label, colour and order (prototype importer, later the UI).
+// SeatLook sets a seat's label, colour and order (used by tests and tools; the UI uses PatchSeat).
 func (tx *Tx) SeatLook(seatID, label, colour string, order *int64) error {
 	_, err := tx.exec(`UPDATE seat SET label = coalesce(?, label), colour = coalesce(?, colour), sort_order = coalesce(?, sort_order) WHERE id = ?`,
 		nullStr(label), nullStr(colour), order, seatID)

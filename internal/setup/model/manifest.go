@@ -86,18 +86,17 @@ func BackupID(t time.Time) string { return t.UTC().Format("20060102T150405Z") }
 
 // Ledger is `<state>/setup/ledger.json`: what sy currently has installed (setup.md 9.3).
 type Ledger struct {
-	V                int                        `json:"v"` // 1
-	Plugin           *LedgerPlugin              `json:"plugin,omitempty"`
-	StatusLine       map[string]LedgerStatus    `json:"statusline,omitempty"` // per settings target
-	EnvKeys          []string                   `json:"env_keys,omitempty"`   // targets where sy set CLAUDE_CODE_PLUGIN_CACHE_DIR
-	Launchers        []LedgerLauncher           `json:"launchers,omitempty"`
-	MCPSync          []string                   `json:"mcp_sync,omitempty"` // state files in the sync set
-	Copies           []string                   `json:"copies,omitempty"`   // Windows synced copies
-	HubService       *LedgerService             `json:"hub_service,omitempty"`
-	Timer            bool                       `json:"timer,omitempty"`
-	PrototypeRemoved []LedgerPrototypeHook      `json:"prototype_removed,omitempty"`
-	Terminal         *LedgerTerminal            `json:"terminal,omitempty"` // terminal.md T10
-	Extra            map[string]json.RawMessage `json:"extra,omitempty"`    // forward-compatible slot
+	V          int                        `json:"v"` // 1
+	Plugin     *LedgerPlugin              `json:"plugin,omitempty"`
+	StatusLine map[string]LedgerStatus    `json:"statusline,omitempty"` // per settings target
+	EnvKeys    []string                   `json:"env_keys,omitempty"`   // targets where sy set CLAUDE_CODE_PLUGIN_CACHE_DIR
+	Launchers  []LedgerLauncher           `json:"launchers,omitempty"`
+	MCPSync    []string                   `json:"mcp_sync,omitempty"` // state files in the sync set
+	Copies     []string                   `json:"copies,omitempty"`   // Windows synced copies
+	HubService *LedgerService             `json:"hub_service,omitempty"`
+	Timer      bool                       `json:"timer,omitempty"`
+	Terminal   *LedgerTerminal            `json:"terminal,omitempty"` // terminal.md T10
+	Extra      map[string]json.RawMessage `json:"extra,omitempty"`    // forward-compatible slot
 }
 
 // LedgerPlugin records the plugin install.
@@ -125,11 +124,4 @@ type LedgerLauncher struct {
 type LedgerService struct {
 	Name string `json:"name"`
 	Unit string `json:"unit"`
-}
-
-// LedgerPrototypeHook is a prototype hook entry removed from a settings file, kept for restore.
-type LedgerPrototypeHook struct {
-	File  string          `json:"file"`
-	Event string          `json:"event"`
-	Entry json.RawMessage `json:"entry"`
 }

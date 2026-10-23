@@ -136,8 +136,6 @@ func TestLedgerGolden(t *testing.T) { // setup.md 9.3
 		HubService: &LedgerService{Name: "switchyard-hub",
 			Unit: "/home/u/.config/systemd/user/switchyard-hub.service"},
 		Timer: true,
-		PrototypeRemoved: []LedgerPrototypeHook{{File: "/home/u/.claude/settings.json", Event: "Stop",
-			Entry: json.RawMessage(`{"hooks": [{"type": "command", "command": "bash ~/.claude/switchyard-hook.sh # switchyard-hook"}]}`)}},
 	}
 	sameJSON(t, "ledger", marshal(t, l), golden(t, "ledger.json"))
 	roundTrip(t, "ledger.json", &Ledger{})
@@ -169,7 +167,7 @@ func TestEveryOpAndStepRoundTrips(t *testing.T) {
 			t.Fatalf("op %s: %v %+v", op, err, back)
 		}
 	}
-	if !StepFolders.Local() || StepHub.Local() || StepLogin.Local() || StepPrototype.Local() {
+	if !StepFolders.Local() || StepHub.Local() || StepLogin.Local() {
 		t.Fatal("Local() classifies steps wrongly")
 	}
 	if len(StepOrder) != 11 || !StepTerminal.Local() {
@@ -185,8 +183,7 @@ func TestStateExtrasRoundTrip(t *testing.T) {
 		Home:   "/home/u", Sy: "/home/u/.local/bin/sy",
 		SettingsTargets: []SettingsTarget{{Path: "/home/u/.claude/settings.json", Exists: true,
 			Folders: []string{"~/.claude"}, EnvKeys: []string{"FOO"},
-			StatusLine:     &StatusLine{Type: "command", Command: "x"},
-			PrototypeHooks: []PrototypeHook{{Event: "Stop", Index: 1, Command: "bash switchyard-hook.sh"}}}},
+			StatusLine: &StatusLine{Type: "command", Command: "x"}}},
 		PluginRoots: []PluginRoot{{Root: "/home/u/.claude/plugins", Folders: []string{"~/.claude"}}},
 		MCP:         MCPState{HandMade: true, Script: "~/.claude/sync-mcp-to-2.sh"},
 		Links:       []LinkRecord{{Path: "/home/u/.claude-2/skills", Raw: "/home/u/.claude/skills"}},

@@ -14,8 +14,8 @@ import (
 	"github.com/mraj602/switchyard/internal/scan"
 )
 
-// GET /v1/analytics/{report} (docs/spec/analytics.md, api.yaml analytics): the prototype's
-// analytics (core/analytics.js) on the hub. Scopes come from the route table. A "day" is a
+// GET /v1/analytics/{report} (docs/spec/analytics.md, api.yaml analytics): the usage
+// analytics reports. Scopes come from the route table. A "day" is a
 // day of the hub's time zone (hub.tz, else $TZ, else UTC), the same zone the alert rules use.
 // Routed from server.go like the other read endpoints.
 const (
@@ -500,7 +500,7 @@ func (s *Server) anaLimits(r *http.Request, head anaHead, f store.AnalyticsFilte
 }
 
 // anaHits lists limit hits, one per seat, type and reset time (several sessions of one
-// seat hit the same window; the prototype showed it once).
+// seat hit the same window).
 func (s *Server) anaHits(r *http.Request, head anaHead, f store.AnalyticsFilter) (any, error) {
 	ctx := r.Context()
 	rows, err := s.store.LimitHitsBetween(ctx, f)

@@ -21,6 +21,7 @@ const ASSETS = [
   'app.js',
   'components/accounts-fmt.js',
   'components/alerts.js',
+  'components/alerts-fmt.js',
   'components/analytics-fmt.js',
   'components/cards.js',
   'components/dom.js',

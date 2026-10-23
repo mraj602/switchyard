@@ -109,9 +109,6 @@ func TestLaptop(t *testing.T) {
 	if tg.StatusLine == nil || tg.StatusLine.Ours || !strings.HasSuffix(tg.StatusLine.Command, "statusline-command.sh") {
 		t.Errorf("statusline: %+v", tg.StatusLine)
 	}
-	if len(tg.PrototypeHooks) != 3 || tg.PrototypeHooks[0].EventLen != 1 {
-		t.Errorf("prototype hooks: %+v", tg.PrototypeHooks)
-	}
 	if len(tg.EnabledPlugins) != 3 || len(tg.SwitchyardPlugins) != 0 || len(tg.ExtraMarketplaces) != 1 {
 		t.Errorf("plugins: %+v", tg)
 	}

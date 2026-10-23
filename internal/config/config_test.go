@@ -162,7 +162,7 @@ func TestBrokenTOML(t *testing.T) {
 	}
 }
 
-// The config folder is shared with the Electron prototype: Save may add config.toml and
+// The config folder is shared with other tools: Save may add config.toml and
 // nothing else, and must leave every other entry (and no temp file) behind.
 func TestSaveOnlyTouchesConfigToml(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), ".config", "switchyard")

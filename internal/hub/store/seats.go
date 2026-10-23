@@ -11,7 +11,7 @@ import (
 const (
 	LookUI     = "ui"     // PATCH /v1/accounts/{seat}: always wins
 	LookSlot   = "slot"   // a slot_info label: applies only while look_src is NULL or 'slot'
-	LookImport = "import" // the prototype importer
+	LookImport = "import" // rows imported by earlier versions: still loads, nothing writes it now
 )
 
 var (
@@ -126,18 +126,6 @@ func (tx *Tx) SeatSlotLook(seatID, label, colour string) (bool, error) {
 	}
 	n, _ := res.RowsAffected()
 	return n > 0, nil
-}
-
-// SeatLookImport is the prototype importer's SeatLook: it sets look_src to 'import', but
-// leaves the label and colour of a seat set in the UI alone (the order is still applied).
-func (tx *Tx) SeatLookImport(seatID, label, colour string, order *int64) error {
-	_, err := tx.exec(`UPDATE seat SET
-		label = CASE WHEN look_src = 'ui' THEN label ELSE coalesce(?, label) END,
-		colour = CASE WHEN look_src = 'ui' THEN colour ELSE coalesce(?, colour) END,
-		sort_order = coalesce(?, sort_order),
-		look_src = CASE WHEN look_src = 'ui' OR (? = 0 AND ? = 0) THEN look_src ELSE 'import' END
-		WHERE id = ?`, nullStr(label), nullStr(colour), order, boolInt(label != ""), boolInt(colour != ""), seatID)
-	return err
 }
 
 func boolInt(b bool) int {

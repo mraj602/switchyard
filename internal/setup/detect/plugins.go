@@ -28,7 +28,7 @@ func (x *detector) readJSONFile(path string, v any) error {
 	return json.Unmarshal(b, v)
 }
 
-// detectPlugins is step 1.4: settings targets, plugin roots, duplicates, prototype hooks.
+// detectPlugins is step 1.4: settings targets, plugin roots, duplicates.
 func (x *detector) detectPlugins() {
 	targets := map[string]*model.SettingsTarget{}
 	var order []string
@@ -195,33 +195,6 @@ func (x *detector) parseSettings(t *model.SettingsTarget) {
 		sl.Command, _ = doc.StatusLine["command"].(string)
 		sl.Ours = sl.Command != "" && statuswrap.IsOurs(sl.Command)
 		t.StatusLine = sl
-	}
-	events := make([]string, 0, len(doc.Hooks))
-	for ev := range doc.Hooks {
-		events = append(events, ev)
-	}
-	sort.Strings(events)
-	for _, ev := range events {
-		groups := doc.Hooks[ev]
-		for i, g := range groups {
-			n := 0
-			first := ""
-			for _, h := range g.Hooks {
-				if strings.Contains(h.Command, "switchyard-hook") {
-					n++
-					if first == "" {
-						first = h.Command
-					}
-				}
-			}
-			switch {
-			case n == 0:
-			case n == len(g.Hooks):
-				t.PrototypeHooks = append(t.PrototypeHooks, model.PrototypeHook{Event: ev, Index: i, Command: first, EventLen: len(groups)})
-			default:
-				x.warn = append(x.warn, x.tilde(t.Path)+": hooks."+ev+"["+itoa(i)+"] mixes prototype and other hooks; it is left alone")
-			}
-		}
 	}
 }
 

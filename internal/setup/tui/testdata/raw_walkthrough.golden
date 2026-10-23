@@ -17,7 +17,6 @@ Already set up by hand
   keep     3 launcher(s): scripts
   keep     MCP sync by your launcher (~/.claude/sync-mcp-to-2.sh)
   wrap     status line in ~/.claude/settings.json
-  note     3 prototype hooks in ~/.claude/settings.json (kept until a hub is live)
 
 Nothing has been changed yet.
 

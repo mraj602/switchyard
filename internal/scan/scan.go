@@ -21,7 +21,7 @@ import (
 // MaxRowsPerBatch is the most rows one token_rows record may carry (record.md 4.4).
 const MaxRowsPerBatch = 2000
 
-// maxLine is the longest transcript line parsed; longer lines are skipped (as the prototype).
+// maxLine is the longest transcript line parsed; longer lines are skipped.
 const maxLine = 256 << 20
 
 // Slot is one Claude Code config folder.
@@ -35,7 +35,7 @@ type Slot struct {
 var slotRE = regexp.MustCompile(`^\.claude([-_].+)?$`)
 
 // DiscoverSlots lists ~/.claude and its ~/.claude-* / ~/.claude_* siblings (one per login),
-// sorted by name, like the prototype's configDirs.
+// sorted by name.
 func DiscoverSlots(home string) []Slot {
 	ents, _ := os.ReadDir(home)
 	var out []Slot
@@ -277,7 +277,7 @@ func (s *Scanner) scanFile(res *Result, agg *rootAgg, p string, info fs.FileInfo
 	prev, had := s.offsets[p]
 	f, err := os.Open(p)
 	if err != nil {
-		return // vanished or unreadable: skip, as the prototype
+		return // vanished or unreadable: skip
 	}
 	defer f.Close()
 	head := headPrint(f, size)

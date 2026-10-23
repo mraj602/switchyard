@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/mraj602/switchyard/internal/setup/launcher"
@@ -237,8 +236,6 @@ func (p *planner) planConfig() error {
 
 // --- hub (4, 6.2 step 5) ------------------------------------------------------------------
 
-func (p *planner) hubWillBeLive() bool { return p.hubLive }
-
 func (p *planner) planHub() error {
 	mode := p.c.Hub.Mode
 	h := p.st.Hub
@@ -257,7 +254,6 @@ func (p *planner) planHub() error {
 			note += " (not answering /health now)"
 		}
 		p.out.Keep = append(p.out.Keep, model.Keep{What: "hub", Path: *h.URL, Note: note})
-		p.hubLive = h.Healthy
 	case model.HubLater:
 		p.out.Keep = append(p.out.Keep, model.Keep{What: "hub", Note: "later"})
 	case model.HubHere:
@@ -268,7 +264,6 @@ func (p *planner) planHub() error {
 		url := "http://" + listen
 		if connected && *h.URL == url && h.Healthy && h.ServiceActive {
 			p.out.Keep = append(p.out.Keep, model.Keep{What: "hub", Path: url, Note: "hub already running here"})
-			p.hubLive = true
 			return nil
 		}
 		unit, name := p.serviceUnit()
@@ -277,7 +272,6 @@ func (p *planner) planHub() error {
 				Note: "sy hub serve --listen " + listen, Pre: pres(preAbsent(unit))})
 		}
 		p.add(model.StepHub, model.Action{Op: model.OpConnect, URL: url, Note: "token minted locally; installs the timer"})
-		p.hubLive = true
 		if p.st.OS == "linux" && h.LingerOff {
 			p.warn("the hub stops when you log out; run `loginctl enable-linger`")
 		}
@@ -306,7 +300,6 @@ func (p *planner) planHub() error {
 		sameLink := p.c.Dial == h.Dial && (reach == "" || reach == curReach)
 		if connected && *h.URL == url && h.Healthy && h.TokenPresent && sameLink {
 			p.out.Keep = append(p.out.Keep, model.Keep{What: "hub", Path: url, Note: "already connected"})
-			p.hubLive = true
 			return nil
 		}
 		if p.c.TokenStdin || p.c.Code != "" || p.c.CodeStdin || p.c.Interactive {
@@ -318,7 +311,6 @@ func (p *planner) planHub() error {
 				note = strings.Replace(note, ";", ", through an SSH forward;", 1)
 			}
 			p.add(model.StepHub, model.Action{Op: model.OpConnect, URL: url, Dial: p.c.Dial, Reach: reach, Note: note})
-			p.hubLive = true
 		} else {
 			p.out.Needs = append(p.out.Needs, model.Need{Kind: "hub-token", Command: "sy connect " + url + " --token-stdin"})
 			p.out.Keep = append(p.out.Keep, model.Keep{What: "hub", Path: url, Note: "needs a token from you"})
@@ -338,64 +330,6 @@ func (p *planner) serviceUnit() (unit, name string) {
 		return "", name
 	}
 	return filepath.Join(p.home, ".config", "systemd", "user", "switchyard-hub.service"), name
-}
-
-// --- prototype hooks (10) -----------------------------------------------------------------
-
-func (p *planner) planPrototype() error {
-	remove := p.c.Prototype == "remove"
-	if p.c.Prototype != "" && p.c.Prototype != "keep" && !remove {
-		return fmt.Errorf("--prototype must be keep or remove")
-	}
-	seen := map[string]bool{}
-	for _, n := range p.nodes {
-		t := p.finalTarget(n)
-		if seen[t] {
-			continue
-		}
-		seen[t] = true
-		ts := p.targetState(t)
-		if ts == nil || len(ts.PrototypeHooks) == 0 {
-			continue
-		}
-		script := scriptOf(ts.PrototypeHooks[0].Command)
-		if !remove {
-			p.out.Keep = append(p.out.Keep, model.Keep{What: "prototype", Path: script,
-				Note: fmt.Sprintf("%d hooks kept until a hub is live", len(ts.PrototypeHooks))})
-			continue
-		}
-		if !p.hubWillBeLive() {
-			return fmt.Errorf("--prototype remove is refused: no healthy hub is connected (connect one first)")
-		}
-		byEvent := map[string][]model.PrototypeHook{}
-		for _, h := range ts.PrototypeHooks {
-			byEvent[h.Event] = append(byEvent[h.Event], h)
-		}
-		for _, ev := range sortedKeys(byEvent) {
-			hs := byEvent[ev]
-			if hs[0].EventLen > 0 && len(hs) == hs[0].EventLen {
-				p.add(model.StepPrototype, model.Action{Op: model.OpJSONDelete, File: t, Via: p.viaOf(t), Pointer: "/hooks/" + ev,
-					Covers: p.covers(t), Note: "prototype hook → " + script, Pre: pres(preType(t, model.TypeFile))})
-				continue
-			}
-			sort.Slice(hs, func(i, j int) bool { return hs[i].Index > hs[j].Index })
-			for _, h := range hs {
-				p.add(model.StepPrototype, model.Action{Op: model.OpJSONDelete, File: t, Via: p.viaOf(t),
-					Pointer: fmt.Sprintf("/hooks/%s/%d", ev, h.Index), Covers: p.covers(t),
-					Note: "prototype hook → " + script, Pre: pres(preType(t, model.TypeFile))})
-			}
-		}
-	}
-	return nil
-}
-
-func scriptOf(cmd string) string {
-	for _, w := range strings.Fields(cmd) {
-		if strings.HasSuffix(w, ".sh") {
-			return w
-		}
-	}
-	return cmd
 }
 
 // --- logins -------------------------------------------------------------------------------

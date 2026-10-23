@@ -348,14 +348,12 @@ func TestStateFileNeverSavedWholeAndMCPKeyRevert(t *testing.T) {
 func hubPlan(t *testing.T, b *testtree.Builder) model.Plan {
 	return plan(
 		model.Action{Op: model.OpMkdir, Path: b.Abs("local"), Mode: "0700", Step: model.StepFolders},
-		model.Action{Op: model.OpConnect, URL: "https://hub.example", Step: model.StepHub},
-		model.Action{Op: model.OpJSONDelete, File: b.Abs("settings.json"), Pointer: "/hooks/Stop/0", Step: model.StepPrototype})
+		model.Action{Op: model.OpConnect, URL: "https://hub.example", Step: model.StepHub})
 }
 
-func TestHubFailureKeepsLocalExit6AndPrototypeSkipped(t *testing.T) {
+func TestHubFailureKeepsLocalExit6(t *testing.T) {
 	for _, mode := range []string{"error", "unhealthy"} {
 		b, o, d := simple(t)
-		b.File("settings.json", `{"hooks":{"Stop":[{"c":"switchyard-hook"}]}}`, 0o644)
 		c := &fakes.Connector{TokenPath: b.Abs("state/token"), ConfigPath: b.Abs("config.toml")}
 		if mode == "error" {
 			c.N = 1
@@ -371,12 +369,6 @@ func TestHubFailureKeepsLocalExit6AndPrototypeSkipped(t *testing.T) {
 		}
 		if _, err := os.Stat(b.Abs("local")); err != nil {
 			t.Fatalf("%s: local step lost", mode)
-		}
-		if len(res.Skipped) != 1 {
-			t.Fatalf("%s: prototype not skipped: %+v", mode, res)
-		}
-		if m := readJSON(t, b.Abs("settings.json")); m["hooks"] == nil {
-			t.Fatal("prototype removed")
 		}
 		if mode == "error" {
 			if _, err := os.Stat(b.Abs("state/token")); err == nil {
@@ -394,9 +386,8 @@ func TestHubFailureKeepsLocalExit6AndPrototypeSkipped(t *testing.T) {
 	}
 }
 
-func TestHubSuccessRemovesPrototypeAndUndoRestoresAll(t *testing.T) {
+func TestHubSuccessAndUndoRestoresAll(t *testing.T) {
 	b, o, d := simple(t)
-	b.File("settings.json", `{"hooks":{"Stop":[{"c":"switchyard-hook"}]}}`+"\n", 0o644)
 	b.File("config.toml", "old = 1\n", 0o600)
 	start := testtree.Take(t, b.Root, testtree.Opts{Ignore: ignoreState})
 	c := &fakes.Connector{TokenPath: b.Abs("state/token"), ConfigPath: b.Abs("config.toml")}
@@ -404,19 +395,12 @@ func TestHubSuccessRemovesPrototypeAndUndoRestoresAll(t *testing.T) {
 	timer := 0
 	d.RemoveTimer = func(context.Context) error { timer++; return nil }
 	o.Token, o.ConfigPath = "T", b.Abs("config.toml")
-	p := hubPlan(t, b)
-	p.Actions[2].Before = json.RawMessage(`{"c":"switchyard-hook"}`)
-	res, err := apply.Run(ctx, p, o, d)
+	res, err := apply.Run(ctx, hubPlan(t, b), o, d)
 	if err != nil || res.Hub == nil || !res.Hub.Healthy {
 		t.Fatalf("%v %+v", err, res)
 	}
-	if m := readJSON(t, b.Abs("settings.json")); len(m["hooks"].(map[string]any)["Stop"].([]any)) != 1 {
-		// fake deletes the key at /hooks/Stop/0 only when it is an object key; arrays are
-		// not addressed by the fake, so just check the run reached the step
-		t.Log("fake does not edit arrays")
-	}
 	l, _ := ledger.Read(o.StateDir)
-	if !l.Timer || len(l.PrototypeRemoved) != 1 {
+	if !l.Timer {
 		t.Fatalf("ledger: %+v", l)
 	}
 	ur, err := backup.Undo(ctx, o.StateDir, "", backup.Deps{Sharer: &fakes.Sharer{}, RemoveTimer: d.RemoveTimer}, backup.Options{})

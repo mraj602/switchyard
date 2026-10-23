@@ -1,8 +1,8 @@
 // Package cli implements `sy hub …`: serve, pair, owner-link, token create|list|revoke,
-// backup, prune and import-prototype, and `sy phone pair`. cmd/sy only routes here.
+// backup and prune, and `sy phone pair`. cmd/sy only routes here.
 //
 // Depends on: paths, hub/store, hub/auth, hub/api, hub/ingest, hub/pair, hub/pull,
-// hub/push/{clock,engine,model,webpush,ntfy,link,refresh}, hub/store/importproto, webui.
+// hub/push/{clock,engine,model,webpush,ntfy,link,refresh}, webui.
 package cli
 
 import (
@@ -47,7 +47,6 @@ import (
 	"github.com/mraj602/switchyard/internal/hub/push/rules"
 	"github.com/mraj602/switchyard/internal/hub/push/webpush"
 	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/hub/store/importproto"
 	"github.com/mraj602/switchyard/internal/keys"
 	"github.com/mraj602/switchyard/internal/localtime"
 	"github.com/mraj602/switchyard/internal/paths"
@@ -72,7 +71,6 @@ Commands:
   backup             Write a consistent copy of the database (--to file)
   refold             Rebuild every session's state and times from the stored records [--dry-run]
   prune              Delete raw records and fine-grained rows older than --older-than 90d / --before DATE
-  import-prototype   Import usage.db (a copy) from the earlier Electron prototype into the hub database
   pull               Pull servers over SSH: add|list|run|trust|enable|disable|remove|key
   export / import    Move the hub: freeze and pack it / unpack it into an empty hub
   unfreeze           Call off a move: the hub accepts records again
@@ -120,8 +118,6 @@ func Run(args []string, stdout, stderr io.Writer) error {
 		return prune(args[1:], stdout, stderr)
 	case "refold":
 		return refold(args[1:], stdout, stderr)
-	case "import-prototype":
-		return importPrototype(args[1:], stdout, stderr)
 	case "pull":
 		return Pull(args[1:], stdout, stderr)
 	case "export":
@@ -847,38 +843,5 @@ func prune(args []string, stdout, stderr io.Writer) error {
 	fmt.Fprintf(stdout, "before %s: %s %d records (%d hook events), %d limit samples, %d web usage responses, %d token rows, %d limit hits\n",
 		localtime.Format(cut), verb, res.Records, res.HookEvents, res.LimitSamples, res.WebUsage, res.TokenRows, res.LimitHits)
 	fmt.Fprintln(stdout, "kept: seats, machines, slots, sessions and their states, usage windows, history days, devices")
-	return nil
-}
-
-func importPrototype(args []string, stdout, stderr io.Writer) error {
-	fs, db := newFlags("import-prototype", stderr)
-	machine := fs.String("machine", "", "machine id for imported records (default <state>/machine.json, else a new id)")
-	name := fs.String("machine-name", "", "machine name if the machine row is new (default the hostname)")
-	asJSON := fs.Bool("json", false, "print the report as JSON")
-	pos, err := parse(fs, args)
-	if err != nil || len(pos) != 1 {
-		fmt.Fprintln(stderr, "usage: sy hub import-prototype <copy of the prototype's usage.db> [--db hub.db] [--machine m_…]")
-		return ErrUsage
-	}
-	ctx := context.Background()
-	st, err := openStore(ctx, *db, nil)
-	if err != nil {
-		return err
-	}
-	defer st.Close()
-	opt := importproto.Options{Machine: *machine, MachineName: *name}
-	if opt.Machine == "" {
-		if d, err := paths.Resolve(paths.FromOS()); err == nil {
-			opt.MachineFile = filepath.Join(d.State.Path, "machine.json")
-		}
-	}
-	rep, err := importproto.Import(ctx, st, pos[0], opt)
-	if err != nil {
-		return err
-	}
-	if *asJSON {
-		return json.NewEncoder(stdout).Encode(rep)
-	}
-	rep.Print(stdout)
 	return nil
 }

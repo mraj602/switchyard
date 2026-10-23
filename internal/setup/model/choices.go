@@ -46,7 +46,6 @@ type Choices struct {
 	NoLaunchers    bool   `json:"no_launchers,omitempty"`
 	NamedLaunchers bool   `json:"named_launchers,omitempty"`
 	LauncherDir    string `json:"launcher_dir,omitempty"` // default ~/.local/bin
-	Prototype      string `json:"prototype,omitempty"`    // keep (default) | remove
 	Login          string `json:"login,omitempty"`        // ask | never
 	ExpectPlan     string `json:"expect_plan,omitempty"`  // checked by the command layer, not the planner
 	Interactive    bool   `json:"interactive,omitempty"`  // a terminal is attached (login default: ask)

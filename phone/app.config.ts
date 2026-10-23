@@ -8,7 +8,7 @@
 //   SY_APP_VARIANT           "development" allows cleartext traffic (loopback hubs, P2)
 // Never put a credential here (phone.md P13).
 import type { ConfigContext, ExpoConfig } from 'expo/config';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const DEV = process.env.SY_APP_VARIANT === 'development';
@@ -16,7 +16,8 @@ const DEV = process.env.SY_APP_VARIANT === 'development';
 export const RELEASE_APP_ID = 'io.github.mraj602.switchyard';
 const APP_ID = process.env.SY_APP_ID || (DEV ? `${RELEASE_APP_ID}.dev` : RELEASE_APP_ID);
 const GROUP_ID = `group.${APP_ID}`;
-const VERSION = '0.8.0';
+/** The app version comes from package.json, so a release bumps it in one place. */
+const VERSION: string = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8')).version;
 /** The brand colours of the icon (phone/assets/src/icon.svg) and the board (webui base.css). */
 export const BRAND_INK = '#17191B';
 export const BRAND_ACCENT = '#E8B04B';

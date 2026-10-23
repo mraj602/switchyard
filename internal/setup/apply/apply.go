@@ -2,7 +2,7 @@
 // steps through the Sharer, PluginInstaller and Exec in plan order with every action
 // journaled by internal/setup/backup, preconditions re-checked, the link guard (7.5),
 // rollback of everything on a local failure (7.4), then the hub step (failure keeps the
-// local steps, exit 6), prototype removal gated on a healthy hub, and the ledger update.
+// local steps, exit 6), and the ledger update.
 //
 // Logins (op login) are never run here: the command layer does them one folder at a time
 // and the folders are returned in Result.Logins.
@@ -69,9 +69,6 @@ type Options struct {
 	// Hub inputs. Token is never journaled or logged.
 	Token       string
 	InsecureLAN bool
-	// HubHealthy says the hub was already connected and healthy (prototype removal allowed
-	// without a connect action in this plan).
-	HubHealthy bool
 
 	// LockHeld says the caller already holds <state>/setup.lock (taken with Lock before
 	// recovery of an interrupted run, for example); Run then does not take it again.
@@ -106,7 +103,7 @@ type Result struct {
 	Backup string
 	// Applied lists the ids of the actions that ran and stayed.
 	Applied []string
-	// Skipped lists actions not run (prototype removal without a healthy hub, logins).
+	// Skipped lists actions not run (logins, steps after a failed hub step).
 	Skipped []string
 	// Logins are the folders of login actions, for the command layer.
 	Logins []string
@@ -136,7 +133,6 @@ type runner struct {
 	exclude map[string]bool // link-guard paths the plan changes on purpose
 	// hub
 	serviceRan bool
-	hubOK      bool
 }
 
 func (r *runner) fail(code int, err error) (Result, error) {
@@ -229,10 +225,6 @@ func (r *runner) run(ctx context.Context) (Result, error) {
 				return r.rollback(ctx, err, ExitFailed)
 			}
 		}
-		if a.Step == model.StepPrototype && !(r.hubOK || r.o.HubHealthy) {
-			r.res.Skipped = append(r.res.Skipped, a.ID)
-			continue
-		}
 		if err := r.recheck(a); err != nil {
 			if a.Step.Local() {
 				return r.rollback(ctx, err, ExitPrecondition)
@@ -293,7 +285,7 @@ func (r *runner) rollback(ctx context.Context, cause error, code int) (Result, e
 	return r.fail(code, cause)
 }
 
-// nonLocalFailure drops only the failed hub/prototype entry, keeps the local steps.
+// nonLocalFailure drops only the failed hub entry, keeps the local steps.
 func (r *runner) nonLocalFailure(ctx context.Context, a model.Action, cause error, rest []model.Action) (Result, error) {
 	for _, x := range rest {
 		r.res.Skipped = append(r.res.Skipped, x.ID)
@@ -764,7 +756,6 @@ func (r *runner) connect(ctx context.Context, a model.Action) error {
 		r.res.Hub.Step = string(model.OpConnect)
 		return nil // entry stays; reported as exit 6 at the end
 	}
-	r.hubOK = true
 	return nil
 }
 

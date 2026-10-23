@@ -180,8 +180,6 @@ type SettingsTarget struct {
 	// PluginCacheDir is the value of env.CLAUDE_CODE_PLUGIN_CACHE_DIR when set (a path, not a secret).
 	PluginCacheDir string      `json:"plugin_cache_dir,omitempty"`
 	StatusLine     *StatusLine `json:"status_line,omitempty"`
-	// PrototypeHooks are hook entries whose command contains "switchyard-hook" (section 10).
-	PrototypeHooks []PrototypeHook `json:"prototype_hooks,omitempty"`
 	// SwitchyardPlugins are every enabled switchyard@* (and switchyard@skills-dir) id.
 	SwitchyardPlugins []string `json:"switchyard_plugins,omitempty"`
 }
@@ -191,16 +189,6 @@ type StatusLine struct {
 	Type    string `json:"type,omitempty"`
 	Command string `json:"command,omitempty"`
 	Ours    bool   `json:"ours,omitempty"`
-}
-
-// PrototypeHook is one prototype hook entry in a settings file.
-type PrototypeHook struct {
-	Event   string `json:"event"`
-	Index   int    `json:"index"` // position of its group in settings hooks.<Event>
-	Command string `json:"command"`
-	// EventLen is the number of groups in hooks.<Event>; when every group of an event is a
-	// prototype hook the event key is removed too (setup.md 10).
-	EventLen int `json:"event_len,omitempty"`
 }
 
 // PluginRoot is one distinct plugin root (5.2).

@@ -2,7 +2,7 @@ package main
 
 // `sy uninstall [--yes] [--dry-run] [--json] [--purge]` (docs/spec/setup.md 9.5): planned
 // from the ledger and applied with a backup set (so `sy setup --undo` reverses it). Kept:
-// every config folder, login, link and copy, labels, the prototype, the backups,
+// every config folder, login, link and copy, labels, the backups,
 // config.toml, the outbox and the device token; `--purge` also removes config.toml and the
 // state folder, after a confirmation. The timer and the hub service are in the plan shown
 // before the confirmation; nothing is removed without --yes or a terminal. The ledger keeps
@@ -513,7 +513,7 @@ func uninstallLines(e *setupEnv, s *model.UninstallSteps) []string {
 
 // uninstallLedger is what is installed after the run: the records of what was not removed
 // (actions not applied, items left as is, steps that failed) stay, with what uninstall keeps
-// on purpose (prototype restore info).
+// on purpose.
 func uninstallLedger(led model.Ledger, res apply.Result, tags map[string]string, left map[string]bool, steps *model.UninstallSteps) model.Ledger {
 	applied := map[string]bool{}
 	for _, id := range res.Applied {
@@ -530,7 +530,7 @@ func uninstallLedger(led model.Ledger, res apply.Result, tags map[string]string,
 	for _, s := range steps.Failed {
 		failed[s] = true
 	}
-	out := model.Ledger{V: 1, PrototypeRemoved: led.PrototypeRemoved}
+	out := model.Ledger{V: 1}
 	if led.Plugin != nil && !led.Plugin.Adopted && keep(recPlugin) {
 		out.Plugin = led.Plugin
 	}

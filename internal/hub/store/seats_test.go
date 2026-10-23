@@ -44,21 +44,18 @@ func TestSeatLookSources(t *testing.T) {
 	if _, _, k := look(); k != "<nil>" {
 		t.Fatalf("invalid label set look_src %s", k)
 	}
-	// The importer wins over slot, and sets 'import'.
+	// A slot label sets 'slot'.
 	_ = write(func(tx *Tx) error { _, err := tx.SeatSlotLook(seat, "slot-a", "#111111"); return err })
-	order := int64(3)
-	_ = write(func(tx *Tx) error { return tx.SeatLookImport(seat, "imported", "#222222", &order) })
-	if l, c, k := look(); l != "imported" || c != "#222222" || k != "import" {
-		t.Fatalf("after import: %s %s %s", l, c, k)
+	if l, c, k := look(); l != "slot-a" || c != "#111111" || k != "slot" {
+		t.Fatalf("after slot: %s %s %s", l, c, k)
 	}
-	// A UI patch sets 'ui'; neither slot_info nor the importer then changes it.
+	// A UI patch sets 'ui'; slot_info then no longer changes it.
 	lbl := "ui-name"
 	if err := write(func(tx *Tx) error { return tx.PatchSeat(seat, SeatPatch{LabelSet: true, Label: &lbl}) }); err != nil {
 		t.Fatal(err)
 	}
 	_ = write(func(tx *Tx) error { _, err := tx.SeatSlotLook(seat, "slot-b", "#333333"); return err })
-	_ = write(func(tx *Tx) error { return tx.SeatLookImport(seat, "imported-2", "#444444", nil) })
-	if l, c, k := look(); l != "ui-name" || c != "#222222" || k != "ui" {
+	if l, c, k := look(); l != "ui-name" || c != "#111111" || k != "ui" {
 		t.Fatalf("after ui patch: %s %s %s", l, c, k)
 	}
 
