@@ -1,4 +1,4 @@
--- Switchyard hub schema, version 13.
+-- Switchyard hub schema, version 14.
 --
 -- One SQLite file (WAL mode). Applied by the hub at start inside one transaction
 -- after `PRAGMA foreign_keys = ON`. Later versions add numbered migrations
@@ -21,6 +21,7 @@
 --       push_target.meta, delivery.ticket/receipt_at (channel, push_target, delivery recreated).
 --   v12 indexes: alert_seat, alert_machine, delivery_target.
 --   v13 session_state.peers (states.md 3.1, push.md 3.5).
+--   v14 device_accounts (keys.md 4.3, peers.md 5.3).
 --
 -- Conventions
 --   * Times are INTEGER milliseconds since the Unix epoch, UTC (`*_at`, `ts`).
@@ -45,7 +46,7 @@ CREATE TABLE schema_version (
 ) STRICT;
 
 INSERT INTO schema_version (version, applied_at, sy_version)
-VALUES (13, CAST(unixepoch('subsec') * 1000 AS INTEGER), 'spec');
+VALUES (14, CAST(unixepoch('subsec') * 1000 AS INTEGER), 'spec');
 
 -- Hub-wide settings that are not secrets (retention days, last-message policy, …).
 CREATE TABLE setting (
@@ -594,6 +595,18 @@ CREATE TABLE device_key (
   created_at    INTEGER NOT NULL,
   certified_at  INTEGER,
   CHECK ((owner_fp IS NULL) = (owner_sig IS NULL))
+) STRICT;
+
+-- The accounts a machine's device may speak for in peer messages (keys.md 4.3): the body and
+-- owner signature of its newest machine_accounts document. The hub re-verifies it against the
+-- device's current certificate whenever it reads it, so a row for replaced keys counts for
+-- nothing.
+CREATE TABLE device_accounts (
+  device_id     TEXT    NOT NULL PRIMARY KEY REFERENCES device(id) ON DELETE CASCADE,
+  body          BLOB    NOT NULL,                  -- machine_accounts body (JSON bytes, keys.md 4.3)
+  owner_fp      TEXT    NOT NULL,
+  owner_sig     BLOB    NOT NULL CHECK (length(owner_sig) = 64),
+  created_at    INTEGER NOT NULL
 ) STRICT;
 
 -- Every version of the signed revocation list (keys.md 6). The list only grows.

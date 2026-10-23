@@ -99,6 +99,9 @@ type QueuedPeerMsg struct {
 	V    int      `json:"v"`
 	Doc  keys.Doc `json:"doc"`
 	Cert keys.Doc `json:"cert"`
+	// Accounts is the sender's owner-signed machine_accounts document (keys.md 4.3): the
+	// receiver refuses a sender account it does not list. A hub older than it sends none.
+	Accounts *keys.Doc `json:"accounts,omitempty"`
 }
 
 // PeerStatusBody is the body of a queued `peer_status`: a sent message's final state.

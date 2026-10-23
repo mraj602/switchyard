@@ -326,6 +326,9 @@ func finalDetail(handle string, f peers.Final) string {
 			return handle + "'s machine refused it (uncertified): one of the two machines' link keys has no owner signature. To fix it, " +
 				peers.CertFix + ". Do not retry until then."
 		}
+		if f.Detail == peers.ReasonUnboundAccount {
+			return handle + "'s machine " + peers.UnboundLine
+		}
 		return handle + "'s machine refused it (" + f.Detail + "); do not retry"
 	}
 	return handle + "'s machine could not deliver it (" + f.Detail + ")"

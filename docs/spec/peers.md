@@ -350,7 +350,11 @@ counts in the sender's thread, and a later `peer_status` still answers `--wait` 
 A receiving machine that refuses an uncertified sender (`rejected` `uncertified`, 8.4) is
 reported as `not delivered: <handle>'s machine refused it (uncertified): one of the two
 machines' link keys has no owner signature. To fix it, <peers.CertFix>. Do not retry until
-then.` A rate refusal names the wait (`retry in 42s`); it is the one refusal the skill lets
+then.` A refusal for `unbound_account` (at the hub or the receiver) says the owner has not bound the
+sending session's account to its machine and names the fix (`sy keys certify --all` on the
+owner machine, `peers.AccountsFix`), then "Do not retry until then."
+
+A rate refusal names the wait (`retry in 42s`); it is the one refusal the skill lets
 Claude send again, once, after that wait (12).
 
 No notice is ever injected into the sender's session later. `sy peers status [<msg>]` shows
@@ -415,8 +419,20 @@ it uses its own pinned keys, its own `hub_may_widen` and its own thread state.
 
 Accounts come from different places: the hub from its own session records; the receiving
 agent from its own slot for the target and from the envelope for the sender (`from.account`).
-The sender's account is therefore the claim of an owner-certified machine: a compromised
-machine can lie about which of its own sessions is which account, but no other machine can.
+Both are what the sending machine reported, so on their own they would let a machine claim
+any account. They are therefore checked against the owner's **machine accounts** document
+(keys.md 4.3): the hub (8.3) and the receiving agent (8.4) refuse a sender account the owner
+did not bind to the sending machine (`unbound_account`). What this guarantees:
+
+- A machine speaks only for the accounts the owner bound to it. A session on machine M cannot
+  get a message delivered on machine N as an account that is not bound to M, whatever it
+  writes in the envelope or in M's records.
+- Inside that list a machine is trusted: a session on M can send as any account bound to M
+  (it could also start a session in that account's folder on M). The matrix is a boundary
+  between machines' account sets, not between two accounts on one machine (5.5).
+- The target's account is the receiving machine's own view (its slot), never the sender's.
+- A machine with no document (certified before keys.md 4.3, or never bound) cannot send to
+  other machines until the owner runs `sy keys certify --all`.
 
 ### 5.4 Changing it
 
@@ -464,8 +480,10 @@ your OS user. On its own machine a session can, without `sy`:
 - on the hub machine, read `hub_sign.key` (keys.md 5.4).
 
 What it cannot do from one machine is make **another** machine's agent deliver a pair that
-machine's matrix refuses: that needs an owner signature, or a hub signature that the receiving
-machine accepts (`hub_may_widen`). So the matrix is a real boundary between machines, and a
+machine's matrix refuses for the accounts the owner bound to the sending machine (5.3,
+keys.md 4.3): that needs an owner signature, or a hub signature that the receiving machine
+accepts (`hub_may_widen`). It can send as any account bound to its own machine, and as no
+other. So the matrix is a real boundary between machines, and a
 guard against mistakes and injected instructions on one machine, not against a session that
 sets out to escape on its own machine. The skill (12) tells Claude never to try.
 
@@ -716,13 +734,17 @@ On `peer_msg` the hub:
 2. looks up `to.session` (live, on `to.machine`, whose agent device is `to.device`) → else
    `refused` `unknown_target` or `target_gone`;
 3. runs 5.3 (matrix, with the accounts it knows for both sessions: the hub's own view wins
-   over the envelope's claim; a mismatch → `refused` `account_mismatch`), 6.3 and 9.2;
+   over the envelope's claim; a mismatch → `refused` `account_mismatch`; a sender account
+   that the sending device's `machine_accounts` document (keys.md 4.3, verified with the
+   active owner key) does not list, or no such document → `refused` `unbound_account`), 6.3
+   and 9.2;
    The hub counts the turn in `peer_thread` when it queues the message (it does not wait for
    the result). `exp` already passed → `refused` `expired`; a refused message gets its
    `peer_message` row too (status `refused`, the reason in `detail`);
 4. writes `peer_message` (status `queued`), updates `peer_thread`, and enqueues
    `peer_msg` to `to.device` (link.md 5.2, TTL from `exp`) with the body `{"v":1,"doc":
-   <envelope, unchanged>,"cert": <the sender's device_cert>}`; answers `peer_ack`.
+   <envelope, unchanged>,"cert": <the sender's device_cert>,"accounts": <the sender's
+   machine_accounts>}`; answers `peer_ack`.
 
 ### 8.4 Receiving agent
 
@@ -737,7 +759,9 @@ On a `peer_msg` frame:
    passed, at most `created_at` + 24 h (8.2) and at most 25 h ahead of this machine's clock, so
    the replay guard below always outlives it (a longer one is `bad_signature`, a malformed
    envelope) → else `rejected` with `bad_signature` /
-   `uncertified` / `revoked` / `wrong_device` / `expired`.
+   `uncertified` / `revoked` / `wrong_device` / `expired`. Then the sender's account: the
+   frame's `accounts` document verifies with the pinned owner key for that certificate
+   (keys.md 4.3) and lists `from.account` → else `rejected` `unbound_account`.
 2. 5.3 and 6.3 with its own matrix and threads, using the receiving session's account from its
    slot → `rejected` `not_allowed` / `paused` / `loop_guard`; `off` when `sy peers off`.
 3. The target session is live locally (3.1) → else `target_gone`.
@@ -1034,6 +1058,10 @@ captured on reply sockets.
   HPKE `info` with another `from.device` → open fails; uncertified or revoked sender → reject;
   a certificate whose `machine` differs from `from.machine` → reject; replay → single
   delivery; the sender refuses to seal to an uncertified target key.
+- Account binding (keys.md 4.3): a session on one machine that claims an account bound only
+  to another machine is refused `unbound_account` at the hub, and at the receiver when a hub
+  relays it anyway; a machine with no `machine_accounts` document cannot send across
+  machines; a bound account is delivered as before.
 - **Agent:** `internal/agent` tests the socket (modes 0600 / 0700, a live socket is not
   stolen, a stale one is replaced, other uid and bad lines refused, state, link started and
   reported, off/on terminal-only, prune on the tick, log rotation) and that nothing under the

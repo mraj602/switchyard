@@ -180,6 +180,40 @@ func TestKeysInitCertifyPasswdRevoke(t *testing.T) {
 		t.Fatalf("second certify: %v %s", err, r.out.String())
 	}
 
+	// keys.md 4.3: once the hub sees an account on the machine, certify --all binds it (the
+	// certificate is not signed again), and then has nothing left to do.
+	c, _ := r.ks.Cert(ctx, r.device)
+	if err := r.ks.Store.Write(ctx, func(tx *store.Tx) error {
+		seat, err := tx.UpsertSeat(store.SeatKey{Account: "acc-work", Org: "org-1"}, 1)
+		if err != nil {
+			return err
+		}
+		slot, err := tx.EnsureSlot(c.Body.MachineID(), "~/.claude", 1)
+		if err != nil {
+			return err
+		}
+		return tx.SlotLogin(slot, &seat, 1, "rec-1")
+	}); err != nil {
+		t.Fatal(err)
+	}
+	r.env.accounts = func() map[string]string { return map[string]string{"acc-work": "work"} }
+	if err := r.run(nil, "status"); err != nil || !strings.Contains(r.out.String(), "acc-work (work) not bound") {
+		t.Fatalf("status before binding: %v %s", err, r.out.String())
+	}
+	if err := r.run([]string{pass1}, "certify", "--all", "--yes"); err != nil || !strings.Contains(r.out.String(), "acc-work (work)") ||
+		!strings.Contains(r.out.String(), "bound 1 account(s) to "+r.device) || strings.Contains(r.out.String(), "certified ") {
+		t.Fatalf("bind: %v %s", err, r.out.String())
+	}
+	if _, b, ok, err := r.ks.Accounts(ctx, r.device, c); err != nil || !ok || !b.Has("acc-work") {
+		t.Fatalf("bound %+v %v %v", b, ok, err)
+	}
+	if err := r.run(nil, "status"); err != nil || !strings.Contains(r.out.String(), "acc-work (work)") || strings.Contains(r.out.String(), "not bound") {
+		t.Fatalf("status after binding: %v %s", err, r.out.String())
+	}
+	if err := r.run(nil, "certify", "--all", "--yes"); err != nil || !strings.Contains(r.out.String(), "Nothing to certify") {
+		t.Fatalf("certify after binding: %v %s", err, r.out.String())
+	}
+
 	// passwd: the old passphrase no longer opens the file.
 	pass2 := "a different long passphrase"
 	if err := r.run([]string{pass1, pass2, pass2}, "passwd"); err != nil {

@@ -44,6 +44,10 @@ func checkAgent(rep *Report, o Options, cfg config.Config) {
 type CertInfo struct {
 	Device, Reg, SignFP string
 	OwnerSigned         bool
+	// Bound are the accounts the owner bound to this machine (keys.md 4.3); BoundKnown is
+	// false when the hub does not say (older than that).
+	Bound      []string
+	BoundKnown bool
 }
 
 // ErrNoCert is a CertProbe answer: the hub has no keys for this machine.
@@ -97,8 +101,15 @@ func checkLinkKeys(rep *Report, o Options, cfg config.Config) {
 	case !ownerPinned:
 		rep.add(Check{Name: "link keys", Level: Warn, Detail: fmt.Sprintf("owner-certified (reg %s, sign %s), but no owner key pinned here: this machine cannot check other machines' certificates, so its messages to them are refused", ci.Reg, keys.GroupFP(signFP)),
 			Fix: "sy agent enable (pins the hub's confirmed owner key)"})
+	case ci.BoundKnown && len(ci.Bound) == 0:
+		rep.add(Check{Name: "link keys", Level: Warn, Detail: fmt.Sprintf("owner-certified (reg %s, sign %s), but no accounts are bound to this machine: peers on other machines refuse its messages (unbound_account)", ci.Reg, keys.GroupFP(signFP)),
+			Fix: "on the owner machine, in a terminal: sy keys certify " + ci.Device})
 	default:
-		rep.add(Check{Name: "link keys", Level: OK, Detail: fmt.Sprintf("owner-certified (reg %s, sign %s)", ci.Reg, keys.GroupFP(signFP))})
+		detail := fmt.Sprintf("owner-certified (reg %s, sign %s)", ci.Reg, keys.GroupFP(signFP))
+		if ci.BoundKnown {
+			detail += fmt.Sprintf(", %d account(s) bound", len(ci.Bound))
+		}
+		rep.add(Check{Name: "link keys", Level: OK, Detail: detail})
 	}
 }
 
@@ -111,7 +122,8 @@ func realCertProbe(ctx context.Context, o Options, cfg config.Config) (CertInfo,
 	if err != nil {
 		return CertInfo{}, err
 	}
-	doc, signed, err := c.DeviceCert(ctx, "self")
+	cr, err := c.DeviceCertInfo(ctx, "self")
+	doc, signed := cr.Cert, cr.OwnerSigned
 	var se *client.StatusError
 	if errors.As(err, &se) && se.Status == http.StatusNotFound {
 		return CertInfo{}, ErrNoCert
@@ -128,5 +140,6 @@ func realCertProbe(ctx context.Context, o Options, cfg config.Config) (CertInfo,
 	if err := json.Unmarshal(raw, &b); err != nil {
 		return CertInfo{}, err
 	}
-	return CertInfo{Device: b.Device, Reg: b.Reg, SignFP: b.SignFP(), OwnerSigned: signed}, nil
+	bound, known := cr.Bound()
+	return CertInfo{Device: b.Device, Reg: b.Reg, SignFP: b.SignFP(), OwnerSigned: signed, Bound: bound, BoundKnown: known}, nil
 }

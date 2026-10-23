@@ -14,6 +14,9 @@ const (
 	TypeMatrix       = "matrix"
 	TypeRevocations  = "revocations"
 	TypePeerEnvelope = "peer_envelope"
+	// TypeMachineAccounts binds the accounts a machine may speak for to its certificate
+	// (keys.md 4.3).
+	TypeMachineAccounts = "machine_accounts"
 )
 
 // Signers (the `by` of a signature).
@@ -27,11 +30,12 @@ const (
 // document carries them. Anything else (a missing, an extra or a repeated signer) is a
 // reject (keys.md 4.1).
 var signerSets = map[string][][]string{
-	TypeOwnerKey:     {{ByOwner}, {ByOwner, ByHub}},
-	TypeDeviceCert:   {{ByHub}, {ByHub, ByOwner}},
-	TypeMatrix:       {{ByOwner}, {ByHub}},
-	TypeRevocations:  {{ByOwner}, {ByHub}},
-	TypePeerEnvelope: {{ByDevice}},
+	TypeOwnerKey:        {{ByOwner}, {ByOwner, ByHub}},
+	TypeDeviceCert:      {{ByHub}, {ByHub, ByOwner}},
+	TypeMatrix:          {{ByOwner}, {ByHub}},
+	TypeRevocations:     {{ByOwner}, {ByHub}},
+	TypePeerEnvelope:    {{ByDevice}},
+	TypeMachineAccounts: {{ByOwner}},
 }
 
 // Errors of document checks. Each wraps one of these, so callers can map them to a reason

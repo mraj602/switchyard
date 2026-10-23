@@ -245,6 +245,8 @@ func hubRefusal(a peers.PeerAck) *peers.Refusal {
 		return peers.Refuse(peers.CodeLoopGuard, "the hub stopped this thread: too many automated turns without a human prompt in either session; paused until you type in one of them")
 	case peers.CodeRateLimited:
 		return peers.Refuse(peers.CodeRateLimited, "the hub's rate limit is reached; retry in a minute")
+	case peers.ReasonUnboundAccount:
+		return peers.Refuse(peers.CodeRejected, "%s", peers.UnboundLine)
 	}
 	if passThrough[a.Detail] {
 		return peers.Refuse(a.Detail, "the hub refused it (%s)", a.Detail)
@@ -678,6 +680,10 @@ func (r *Remote) check(q peers.QueuedPeerMsg, now time.Time) peers.PeerResultUp 
 	}
 	if env.To.Machine != "" && env.To.Machine != r.Env.Machine.ID {
 		return peers.PeerResultUp{Status: peers.CodeRejected, Detail: peers.ReasonWrongDevice}
+	}
+	if err := peers.CheckSenderAccount(q.Accounts, trust, cert, env.From.Account); err != nil {
+		r.Logger.Printf("peers: rejected a message: %v", err)
+		return peers.PeerResultUp{Status: peers.CodeRejected, Detail: peers.ReasonOf(err)}
 	}
 	// The receiving env names sessions with the hub's last answer (Names, the cache only).
 	env2 := r.Env

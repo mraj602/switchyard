@@ -215,6 +215,28 @@ func (h *testHub) certify(m *machine) {
 	if err := h.ks.Certify(h.ctx, m.device, keys.Fingerprint(ownerPub), keys.SignDoc(keys.TypeDeviceCert, raw, keys.ByOwner, h.owner).Sig); err != nil {
 		h.t.Fatal(err)
 	}
+	h.bind(m)
+}
+
+// bind is the accounts half of `sy keys certify` (keys.md 4.3): the owner signs the list of
+// the machine's accounts (those of its sessions) for its current certificate.
+func (h *testHub) bind(m *machine, extra ...string) {
+	h.t.Helper()
+	c, err := h.ks.Cert(h.ctx, m.device)
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	accts := append([]string(nil), extra...)
+	for _, s := range m.sessions {
+		accts = append(accts, s.account)
+	}
+	doc, err := keys.SignAccounts(keys.NewAccountsBody(c.Body, accts, h.clk.Now()), h.owner)
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	if _, err := h.ks.SetAccounts(h.ctx, m.device, doc); err != nil {
+		h.t.Fatal(err)
+	}
 }
 
 // ownerMatrix stores the next matrix version, signed by the owner key: the current body
@@ -569,6 +591,10 @@ func (h *testHub) newMachineWith(pair func(*testHub, *machine, auth.Created, key
 		}); err != nil {
 			t.Fatal(err)
 		}
+	}
+
+	if !h.noOwner {
+		h.bind(m)
 	}
 
 	quiet := log.New(io.Discard, "", 0)

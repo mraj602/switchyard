@@ -1596,6 +1596,10 @@ paths:
                 properties:
                   cert: {$ref: "#/components/schemas/SignedDoc"}
                   owner_signed: {type: boolean}
+                  accounts:
+                    type: [array, "null"]
+                    description: "The accounts bound to the device by its verified machine_accounts document (keys.md 4.3); null when none."
+                    items: {type: string}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "404": {$ref: "#/components/responses/NotFound"}
         "501": {$ref: "#/components/responses/NotImplemented"}
@@ -1622,6 +1626,46 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "404": {$ref: "#/components/responses/NotFound"}
+        "501": {$ref: "#/components/responses/NotImplemented"}
+
+  /v1/devices/{id}/accounts:
+    post:
+      tags: [keys]
+      operationId: bindDeviceAccounts
+      summary: Store the owner-signed list of accounts a machine may speak for (`sy keys certify`)
+      description: |
+        keys.md 4.3. The `machine_accounts` document must be signed by the active owner key and
+        name the device's current certificate (device, machine, sign key). It replaces the
+        device's earlier one. The peer relay and receiving agents refuse a sender account the
+        document does not list (peers.md 8.3, 8.4).
+      x-scopes: [owner, write]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [doc]
+              properties:
+                doc: {$ref: "#/components/schemas/SignedDoc"}
+      responses:
+        "200":
+          description: Stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accounts]
+                properties:
+                  accounts:
+                    type: array
+                    items: {type: string}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
         "501": {$ref: "#/components/responses/NotImplemented"}
 
   /v1/peers:
@@ -3026,7 +3070,7 @@ components:
       description: "keys.md 4.1. Each signature is Ed25519 over \"sy-doc-v1\\n\" + type + \"\\n\" + body bytes. A verifier requires exactly the signers keys.md 4.1 names for the type, each `by` once."
       required: [type, body, sigs]
       properties:
-        type: {type: string, enum: [owner_key, device_cert, matrix, revocations, peer_envelope]}
+        type: {type: string, enum: [owner_key, device_cert, matrix, revocations, peer_envelope, machine_accounts]}
         body: {type: string, description: The signed body bytes, base64url.}
         sigs:
           type: array
@@ -3106,6 +3150,14 @@ components:
               kind: {type: string}
               name: {type: string}
               keys: {$ref: "#/components/schemas/DeviceKeyInfo"}
+              accounts:
+                type: array
+                description: "Machines and desktops: the accounts the hub sees logged in on the device's machine now (keys.md 4.3), as the machine reported them."
+                items: {type: string}
+              bound_accounts:
+                type: array
+                description: "Machines and desktops: the accounts of the device's verified machine_accounts document; empty when it has none (keys.md 4.3)."
+                items: {type: string}
 
     LinkStatus:
       type: [object, "null"]

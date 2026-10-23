@@ -398,7 +398,7 @@ device that asked, on its TLS connection, at once, and hold nothing a session re
 | --- | --- | --- |
 | `alert` | phones | The push.md 6.5 payload, as built for the device's `link` target (push.md 13.2). `type` inside is `alert`, `summary`, `test` or `dismiss` (`{"v":1,"type":"dismiss","tag","alerts":[…]}`: clear the notification; sent when an alert is seen or resolved, push.md 13.3). |
 | `refresh` | phones with widgets | `{"v":1,"needs_you","seats":[{"seat","window","used_pct","resets_at"}],"ts"}`: the widget snapshot (push.md 13.5). |
-| `peer_msg` | machines | `{"v":1,"doc","cert"}` (peers.md 8.3): the sender's envelope, as the sender signed it (its own seal to this machine inside), and the sender's certificate. |
+| `peer_msg` | machines | `{"v":1,"doc","cert","accounts"}` (peers.md 8.3): the sender's envelope, as the sender signed it (its own seal to this machine inside), the sender's certificate, and the sender's owner-signed `machine_accounts` document (keys.md 4.3). |
 | `peer_status` | machines | `{"v":1,"msg","status","detail","at"}`: the final state of a message this machine sent. |
 | `peer_thread_resume` | machines | `{"v":1,"thread","by","at"}`: the owner resumed a thread the loop guard stopped (peers.md 6.3); `by` is the device that asked. |
 | `matrix` | machines (including phones) | The newest matrix document, wire form (keys.md 4.1). |

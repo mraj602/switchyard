@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"time"
 
 	"github.com/mraj602/switchyard/internal/keys"
@@ -146,6 +147,23 @@ type KeyDevice struct {
 		Reg         string `json:"reg"`
 		OwnerSigned bool   `json:"owner_signed"`
 	} `json:"keys"`
+	// Accounts are the accounts the hub sees logged in on the device's machine now, and
+	// Bound those of its verified machine_accounts document (nil: none, or a hub older than
+	// keys.md 4.3). Machines and desktops only.
+	Accounts []string  `json:"accounts,omitempty"`
+	Bound    *[]string `json:"bound_accounts,omitempty"`
+}
+
+// Unbound lists the accounts the hub sees on the device's machine that its machine_accounts
+// document does not bind (all of them when it has none).
+func (d KeyDevice) Unbound() []string {
+	var out []string
+	for _, a := range d.Accounts {
+		if d.Bound == nil || !slices.Contains(*d.Bound, a) {
+			out = append(out, a)
+		}
+	}
+	return out
 }
 
 // doJSON sends in (nil: no body) with the bearer token and decodes a 2xx reply into out
@@ -196,17 +214,43 @@ func (c *Client) ProposeOwner(ctx context.Context, doc keys.Doc) (OwnerKeyInfo, 
 
 // DeviceCert is GET /v1/devices/{id}/cert.
 func (c *Client) DeviceCert(ctx context.Context, id string) (keys.Doc, bool, error) {
-	var r struct {
-		Cert        keys.Doc `json:"cert"`
-		OwnerSigned bool     `json:"owner_signed"`
-	}
-	err := c.doJSON(ctx, http.MethodGet, "/v1/devices/"+url.PathEscape(id)+"/cert", nil, &r)
+	r, err := c.DeviceCertInfo(ctx, id)
 	return r.Cert, r.OwnerSigned, err
+}
+
+// CertReply is GET /v1/devices/{id}/cert's answer.
+type CertReply struct {
+	Cert        keys.Doc `json:"cert"`
+	OwnerSigned bool     `json:"owner_signed"`
+	// Accounts are the accounts bound to the device (keys.md 4.3): JSON null when none, absent
+	// from a hub older than that.
+	Accounts json.RawMessage `json:"accounts"`
+}
+
+// Bound is the bound account list; known is false when the hub did not say (an older hub).
+func (r CertReply) Bound() (list []string, known bool) {
+	if len(r.Accounts) == 0 {
+		return nil, false
+	}
+	_ = json.Unmarshal(r.Accounts, &list)
+	return list, true
+}
+
+// DeviceCertInfo is GET /v1/devices/{id}/cert with every field.
+func (c *Client) DeviceCertInfo(ctx context.Context, id string) (CertReply, error) {
+	var r CertReply
+	err := c.doJSON(ctx, http.MethodGet, "/v1/devices/"+url.PathEscape(id)+"/cert", nil, &r)
+	return r, err
 }
 
 // Certify is POST /v1/devices/{id}/cert.
 func (c *Client) Certify(ctx context.Context, id, fp, sig string) error {
 	return c.doJSON(ctx, http.MethodPost, "/v1/devices/"+url.PathEscape(id)+"/cert", map[string]string{"fp": fp, "sig": sig}, nil)
+}
+
+// SetAccounts is POST /v1/devices/{id}/accounts: an owner-signed machine_accounts document.
+func (c *Client) SetAccounts(ctx context.Context, id string, doc keys.Doc) error {
+	return c.doJSON(ctx, http.MethodPost, "/v1/devices/"+url.PathEscape(id)+"/accounts", map[string]any{"doc": doc}, nil)
 }
 
 // Revocations is GET /v1/keys/revocations; nil when nothing was revoked.

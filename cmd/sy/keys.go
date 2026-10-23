@@ -38,7 +38,8 @@ const keysUsageText = `Usage: sy keys <command> [flags]
 Commands:
   init [--replace] [--yes]              make the owner key, print its fingerprint and recovery code, propose it to the hub
   status [--json]                       pins, this device's keys and certificate, the hub's owner key
-  certify [<device>…|--all] [--yes]     owner-sign machine and desktop certificates (passphrase once)
+  certify [<device>…|--all] [--yes]     owner-sign machine and desktop certificates and the accounts each may
+                                        speak for in peer messages (passphrase once)
   revoke <device> [--reason R] [--yes]  owner-signed revocation, uploaded; the hub revokes the device
   passwd                                new passphrase for owner.sealed
   recover                               rebuild owner.sealed from the recovery code
@@ -72,6 +73,9 @@ type keysEnv struct {
 	now    func() time.Time
 	rand   io.Reader
 	iter   int
+	// accounts are this machine's accounts (uuid -> label) for `sy keys status` and the
+	// labels certify shows; nil: not known.
+	accounts func() map[string]string
 }
 
 func runKeys(args []string, stdout, stderr io.Writer) error {
@@ -97,6 +101,13 @@ func realKeysEnv(stdout, stderr io.Writer) (keysEnv, error) {
 		now:       time.Now,
 		rand:      rand.Reader,
 		iter:      keys.DefaultIter,
+		accounts: func() map[string]string {
+			pe, err := peersEnv()
+			if err != nil {
+				return nil
+			}
+			return pe.Accounts()
+		},
 	}
 	env.hub = func() (*client.Client, error) {
 		f, err := config.Load(d.Config.Path)
@@ -526,8 +537,15 @@ func keysStatus(ctx context.Context, env keysEnv, args []string) error {
 		Pending     []string `json:"pending"`
 		Certified   *bool    `json:"owner_signed"`
 		Reg         *string  `json:"reg"`
-		HubError    *string  `json:"hub_error,omitempty"`
+		// Accounts are this machine's accounts (uuid -> label), Bound those the owner bound
+		// to its certificate (keys.md 4.3; null: none, or a hub that does not say).
+		Accounts map[string]string `json:"accounts,omitempty"`
+		Bound    *[]string         `json:"bound_accounts"`
+		HubError *string           `json:"hub_error,omitempty"`
 	}{Pending: []string{}}
+	if env.accounts != nil {
+		out.Accounts = env.accounts()
+	}
 	if p, err := keys.ReadPin(env.hubPinPath()); err == nil {
 		out.HubPin = &pinJSON{FP: p.FP, How: p.How}
 	}
@@ -558,7 +576,7 @@ func keysStatus(ctx context.Context, env keysEnv, args []string) error {
 				for _, d := range info.Devices {
 					if d.ID == *out.Device {
 						signed, reg := d.Keys.OwnerSigned, d.Keys.Reg
-						out.Certified, out.Reg = &signed, &reg
+						out.Certified, out.Reg, out.Bound = &signed, &reg, d.Bound
 					}
 				}
 			}
@@ -596,6 +614,24 @@ func keysStatus(ctx context.Context, env keysEnv, args []string) error {
 			state = "owner-signed"
 		}
 		line("certificate", state+", reg "+*out.Reg)
+	}
+	if len(out.Accounts) > 0 {
+		var list []string
+		for a, l := range out.Accounts {
+			v := a
+			if l != "" {
+				v += " (" + l + ")"
+			}
+			if out.Bound != nil && !slices.Contains(*out.Bound, a) {
+				v += " not bound"
+			}
+			list = append(list, v)
+		}
+		slices.Sort(list)
+		line("accounts", strings.Join(list, ", "))
+		if out.Bound != nil && len(*out.Bound) == 0 {
+			line("", "no accounts bound: other machines refuse this machine's peer messages (sy keys certify on the owner machine)")
+		}
 	}
 	if out.HubOwner != nil {
 		v := keys.GroupFP(*out.HubOwner)
@@ -643,9 +679,12 @@ func keysShowOwner(env keysEnv, args []string) error {
 
 // ---- certify ----
 
+// keysCertify owner-signs machine and desktop certificates (keys.md 4.2 step 2) and the
+// machine_accounts document of each (keys.md 4.3): the accounts the hub sees on that machine
+// plus those already bound, so its sessions may send peer messages as those accounts.
 func keysCertify(ctx context.Context, env keysEnv, args []string) error {
 	fs := keysFlags("certify", env)
-	all := fs.Bool("all", false, "every machine and desktop without an owner signature")
+	all := fs.Bool("all", false, "every machine and desktop without an owner signature or with accounts not yet bound")
 	yes := fs.Bool("yes", false, "do not ask (the passphrase is still asked)")
 	ids, err := parseKeysFlags(fs, args)
 	if err != nil || (*all) == (len(ids) > 0) {
@@ -666,16 +705,22 @@ func keysCertify(ctx context.Context, env keysEnv, args []string) error {
 	if err != nil {
 		return fmt.Errorf("reading the hub's devices: %w", err)
 	}
-	var todo []client.KeyDevice
+	machineKind := func(d client.KeyDevice) bool { return d.Kind == "machine" || d.Kind == "desktop" }
+	// A hub older than keys.md 4.3 sends neither list: nothing to bind there.
+	bindable := func(d client.KeyDevice) bool { return machineKind(d) && d.Bound != nil }
+	var certs, binds []client.KeyDevice
 	for _, d := range info.Devices {
-		switch {
-		case *all && !d.Keys.OwnerSigned && (d.Kind == "machine" || d.Kind == "desktop"):
-			todo = append(todo, d)
-		case slices.Contains(ids, d.ID) || slices.Contains(ids, d.Name):
-			todo = append(todo, d)
+		named := slices.Contains(ids, d.ID) || slices.Contains(ids, d.Name)
+		if named || (*all && !d.Keys.OwnerSigned && machineKind(d)) {
+			if !d.Keys.OwnerSigned || named {
+				certs = append(certs, d)
+			}
+		}
+		if (named || *all) && bindable(d) && len(d.Unbound()) > 0 {
+			binds = append(binds, d)
 		}
 	}
-	if len(todo) == 0 {
+	if len(certs) == 0 && len(binds) == 0 {
 		fmt.Fprintln(env.stdout, "Nothing to certify.")
 		return nil
 	}
@@ -684,14 +729,46 @@ func keysCertify(ctx context.Context, env keysEnv, args []string) error {
 		return err
 	}
 	defer t.Close()
-	fmt.Fprintln(env.stdout, "Certificates to sign with the owner key:")
-	for _, d := range todo {
-		fmt.Fprintf(env.stdout, "  %s  %-8s %-20s reg %-5s sign %s\n", d.ID, d.Kind, d.Name, d.Keys.Reg, keys.GroupFP(d.Keys.SignFP))
+	if len(certs) > 0 {
+		fmt.Fprintln(env.stdout, "Certificates to sign with the owner key:")
+		for _, d := range certs {
+			fmt.Fprintf(env.stdout, "  %s  %-8s %-20s reg %-5s sign %s\n", d.ID, d.Kind, d.Name, d.Keys.Reg, keys.GroupFP(d.Keys.SignFP))
+		}
+		if slices.ContainsFunc(certs, func(d client.KeyDevice) bool { return d.Keys.Reg == keys.RegTOFU }) {
+			fmt.Fprintln(env.stdout, "For reg tofu devices, compare the sign fingerprint with `sy keys status` on that machine.")
+		}
 	}
-	if slices.ContainsFunc(todo, func(d client.KeyDevice) bool { return d.Keys.Reg == keys.RegTOFU }) {
-		fmt.Fprintln(env.stdout, "For reg tofu devices, compare the sign fingerprint with `sy keys status` on that machine.")
+	var local map[string]string
+	if env.accounts != nil {
+		local = env.accounts()
 	}
-	if ok, err := confirmed(t, *yes, fmt.Sprintf("Sign %d certificate(s)?", len(todo))); err != nil || !ok {
+	name := func(a string) string {
+		if l, ok := local[a]; ok && l != "" {
+			return a + " (" + l + ")"
+		}
+		return a
+	}
+	bindList := func(d client.KeyDevice) []string {
+		var list []string
+		if d.Bound != nil {
+			list = append(list, *d.Bound...)
+		}
+		list = append(list, d.Accounts...)
+		slices.Sort(list)
+		return slices.Compact(list)
+	}
+	if len(binds) > 0 {
+		fmt.Fprintln(env.stdout, "Accounts to bind (sessions of these accounts on that machine may send peer messages):")
+		for _, d := range binds {
+			var names []string
+			for _, a := range bindList(d) {
+				names = append(names, name(a))
+			}
+			fmt.Fprintf(env.stdout, "  %s  %-8s %-20s %s\n", d.ID, d.Kind, d.Name, strings.Join(names, ", "))
+		}
+		fmt.Fprintln(env.stdout, "These come from what each machine reported; compare them with `sy keys status` on that machine.")
+	}
+	if ok, err := confirmed(t, *yes, fmt.Sprintf("Sign %d certificate(s) and %d account list(s)?", len(certs), len(binds))); err != nil || !ok {
 		return errors.New("nothing signed")
 	}
 	priv, err := unseal(env, t)
@@ -703,19 +780,25 @@ func keysCertify(ctx context.Context, env keysEnv, args []string) error {
 	if info.OwnerKey == nil || info.OwnerKey.FP != ownerFP {
 		return fmt.Errorf("the hub's active owner key is not %s; confirm it first (sy hub keys confirm-owner, or the board)", keys.GroupFP(ownerFP))
 	}
-	failed := 0
-	for _, d := range todo {
+	// cert is the device's certificate as the pinned hub key signed it, for the keys listed
+	// above only.
+	cert := func(d client.KeyDevice) (keys.Cert, error) {
 		doc, _, err := hub.DeviceCert(ctx, d.ID)
+		if err != nil {
+			return keys.Cert{}, err
+		}
+		// The hub's signature only: an owner signature already on it is not needed here.
+		c, err := keys.VerifyCert(doc.Only(keys.ByHub), keys.Trust{Hub: hubPub}, false)
+		if err == nil && (c.Body.Device != d.ID || c.Body.SignFP() != d.Keys.SignFP) {
+			err = errors.New("the certificate does not match the listed keys")
+		}
+		return c, err
+	}
+	failed := 0
+	for _, d := range certs {
+		c, err := cert(d)
 		if err == nil {
-			// Sign only what the pinned hub key signed, and only the keys listed above.
-			var c keys.Cert
-			c, err = keys.VerifyCert(doc, keys.Trust{Hub: hubPub}, false)
-			if err == nil && (c.Body.Device != d.ID || c.Body.SignFP() != d.Keys.SignFP) {
-				err = errors.New("the certificate does not match the listed keys")
-			}
-			if err == nil {
-				err = hub.Certify(ctx, d.ID, ownerFP, keys.SignDoc(keys.TypeDeviceCert, c.Raw, keys.ByOwner, priv).Sig)
-			}
+			err = hub.Certify(ctx, d.ID, ownerFP, keys.SignDoc(keys.TypeDeviceCert, c.Raw, keys.ByOwner, priv).Sig)
 		}
 		if err != nil {
 			failed++
@@ -724,8 +807,24 @@ func keysCertify(ctx context.Context, env keysEnv, args []string) error {
 		}
 		fmt.Fprintf(env.stdout, "certified %s (%s)\n", d.ID, d.Name)
 	}
+	for _, d := range binds {
+		c, err := cert(d)
+		var doc keys.Doc
+		if err == nil {
+			doc, err = keys.SignAccounts(keys.NewAccountsBody(c.Body, bindList(d), env.now()), priv)
+		}
+		if err == nil {
+			err = hub.SetAccounts(ctx, d.ID, doc)
+		}
+		if err != nil {
+			failed++
+			fmt.Fprintf(env.stderr, "sy keys certify: %s accounts: %v\n", d.ID, err)
+			continue
+		}
+		fmt.Fprintf(env.stdout, "bound %d account(s) to %s (%s)\n", len(bindList(d)), d.ID, d.Name)
+	}
 	if failed > 0 {
-		return fmt.Errorf("%d certificate(s) not signed", failed)
+		return fmt.Errorf("%d signature(s) not made", failed)
 	}
 	return nil
 }

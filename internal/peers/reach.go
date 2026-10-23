@@ -16,6 +16,16 @@ const CertFix = "the owner certifies the machines in a terminal on the owner mac
 	"sy keys status shows no owner key), confirm it (board Settings → Keys, or sy hub keys confirm-owner on the hub " +
 	"machine), then sy keys certify --all; every other machine then runs sy agent enable to pin the owner key"
 
+// AccountsFix is what the owner does when a machine's accounts are not bound to it
+// (unbound_account, keys.md 4.3): the same terminal-only command that certifies machines.
+const AccountsFix = "the owner binds each machine's accounts in a terminal on the owner machine: sy keys certify --all " +
+	"(it lists the accounts the hub sees on each machine; compare them with sy keys status on that machine)"
+
+// UnboundLine is the refusal detail of a message whose sender account the owner has not bound
+// to its machine, at the hub or at the receiver.
+const UnboundLine = "refused (unbound_account): the owner has not bound this session's account to its machine. To fix it, " +
+	AccountsFix + ". Do not retry until then."
+
 // Reasons a session on another machine cannot be reached although the matrix may allow it
 // (ListEntry.Blocked). Uncertified ones are fixed by CertFix.
 const (

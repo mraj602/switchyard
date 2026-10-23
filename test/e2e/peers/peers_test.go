@@ -213,7 +213,11 @@ func (h *testHub) relayAnyway(device string, u link.Up, tamper func(*keys.Doc)) 
 	if tamper != nil {
 		tamper(&doc)
 	}
-	body, _ := json.Marshal(peers.QueuedPeerMsg{V: 1, Doc: doc, Cert: cert.Doc})
+	q := peers.QueuedPeerMsg{V: 1, Doc: doc, Cert: cert.Doc}
+	if ad, _, ok, err := h.ks.Accounts(h.ctx, device, cert); err == nil && ok {
+		q.Accounts = &ad // a rogue hub still has the sender's real account list
+	}
+	body, _ := json.Marshal(q)
 	now := h.clk.Now()
 	err = h.st.Write(h.ctx, func(tx *store.Tx) error {
 		if err := tx.InsertPeerMessage(store.PeerMessageRow{ID: e.Msg, Thread: e.Thread, FromSession: e.From.Session, FromDevice: device,

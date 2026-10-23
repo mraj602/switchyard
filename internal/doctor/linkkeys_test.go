@@ -86,4 +86,18 @@ func TestCheckLinkKeys(t *testing.T) {
 	if c := check(); len(c) != 1 || c[0].Level != OK {
 		t.Fatalf("certified: %+v", c)
 	}
+	// keys.md 4.3: certified before machine accounts existed, so nothing is bound.
+	probe = func(context.Context) (CertInfo, error) {
+		return CertInfo{Device: "dev_1", Reg: "ssh", SignFP: fp, OwnerSigned: true, BoundKnown: true}, nil
+	}
+	if c := check(); len(c) != 1 || c[0].Level != Warn || !strings.Contains(c[0].Detail, "no accounts are bound") ||
+		c[0].Fix != "on the owner machine, in a terminal: sy keys certify dev_1" {
+		t.Fatalf("no accounts bound: %+v", c)
+	}
+	probe = func(context.Context) (CertInfo, error) {
+		return CertInfo{Device: "dev_1", Reg: "ssh", SignFP: fp, OwnerSigned: true, BoundKnown: true, Bound: []string{"acc"}}, nil
+	}
+	if c := check(); len(c) != 1 || c[0].Level != OK || !strings.Contains(c[0].Detail, "1 account(s) bound") {
+		t.Fatalf("bound: %+v", c)
+	}
 }

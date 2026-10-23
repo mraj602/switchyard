@@ -310,6 +310,16 @@ func (r *Relay) relay(ctx context.Context, device string, doc keys.Doc) (peers.P
 				*p.claim = *p.hub
 			}
 		}
+		// The sender's account must be one the owner bound to the sending machine
+		// (keys.md 4.3): the session table is filled by that machine, so without the binding
+		// it could claim any account and get past the matrix (peers.md 5.3).
+		accDoc, bound, ok, err := r.Keys.AccountsTx(tx, device, cert)
+		if err != nil {
+			return err
+		}
+		if !ok || !bound.Has(row.FromAcct) {
+			return refuse(peers.ReasonUnboundAccount)
+		}
 		if env.Exp <= now.Unix() {
 			return refuse(peers.CodeExpired)
 		}
@@ -353,7 +363,7 @@ func (r *Relay) relay(ctx context.Context, device string, doc keys.Doc) (peers.P
 			return refuse(peers.CodeLoopGuard)
 		}
 		// 4. record, count in the thread, queue for the target machine.
-		body, err := json.Marshal(peers.QueuedPeerMsg{V: 1, Doc: doc, Cert: cert.Doc})
+		body, err := json.Marshal(peers.QueuedPeerMsg{V: 1, Doc: doc, Cert: cert.Doc, Accounts: &accDoc})
 		if err != nil {
 			return err
 		}

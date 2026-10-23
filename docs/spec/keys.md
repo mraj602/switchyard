@@ -222,8 +222,8 @@ Every signed object has one shape, whatever its type:
 - Unknown body fields are ignored (new fields need no version bump, and none may grant
   anything: an old verifier must be safe ignoring it); a body with `v` other than 1 is
   rejected.
-- The hub re-verifies every stored document (`owner_key`, `device_key`, `matrix_doc`,
-  `revocation_doc`) when it loads it, not only when it accepts it; a row that fails is ignored
+- The hub re-verifies every stored document (`owner_key`, `device_key`, `device_accounts`,
+  `matrix_doc`, `revocation_doc`) when it loads it, not only when it accepts it; a row that fails is ignored
   and logged, so editing the database changes nothing the hub enforces.
 
 | `type` | Body | Required signatures |
@@ -233,6 +233,7 @@ Every signed object has one shape, whatever its type:
 | `matrix` | peers.md 5.1 | One: `owner`, or `hub` under the rules of 5.4 |
 | `revocations` | 6 | One: `owner` or `hub` |
 | `peer_envelope` | peers.md 8.2 | `device`: the sending machine's key, checked against its certificate |
+| `machine_accounts` | 4.3 | `owner` |
 
 `matrix` and `revocations` bodies carry `"hub": "<hub fp>"` as certificates do, so a document
 made for a test hub with the same owner key is refused by machines of another hub.
@@ -306,6 +307,58 @@ Phones are certified by the hub signature only: the hub learned their keys under
 check code, push.md 14.7). `sy keys certify` may add an owner signature to a phone; nothing
 requires it.
 
+### 4.3 Machine accounts
+
+The peers matrix (peers.md 5) is a rule between **accounts**, but a machine reports which
+account each of its sessions belongs to itself. Without more, a machine could claim any
+account in a peer envelope (or in the records that fill the hub's session table) and get
+past the matrix on another machine. So the owner also signs which accounts each machine may
+speak for:
+
+```json
+{
+  "v": 1,
+  "hub": "<hub fp>",
+  "device": "dev_01JA4…",
+  "machine": "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K",
+  "sign": "<fp of the certificate's sign key>",
+  "accounts": ["3f1c…", "7a20…"],
+  "issued_at": "2026-10-15T09:00:00.000Z"
+}
+```
+
+| Field | Rule |
+| --- | --- |
+| `device`, `machine`, `sign` | The certificate it belongs to (4.2): its device, machine and sign key fingerprint. New keys need a new document; one made for earlier keys does not verify. |
+| `accounts` | Account uuids (the matrix's ids), sorted, no duplicates, at most 64. |
+| `hub` | The hub key's fingerprint. |
+
+- Signed by the owner key only (`by: owner`); never by the hub, so neither a stolen database
+  nor the hub key can bind an account to a machine.
+- Made by `sy keys certify` (11) for machines and desktops: it lists the accounts the hub sees
+  logged in on each machine now (`GET /v1/keys` `devices[].accounts`, from the machine's own
+  `slot_info` records) plus those already bound, and signs that list after you confirm it.
+  Those come from what the machine reported, so compare them with `sy keys status` on that
+  machine (it prints the machine's accounts and which are bound). `--all` picks every machine
+  with an account that is not bound yet.
+- Uploaded with `POST /v1/devices/{id}/accounts` and kept in `device_accounts` (one row per
+  device, the newest replaces the older). The hub accepts it only when it verifies with the
+  active owner key against the device's current certificate.
+- **Who checks it.** The peer relay (peers.md 8.3) refuses an envelope whose sender account
+  is not in the sending device's document (`unbound_account`), and attaches the document to the
+  queued `peer_msg`; the receiving agent checks it again with its own owner pin (peers.md 8.4)
+  and refuses the same way. A missing document is a refusal.
+- **What it does not do.** A machine may still say which of **its bound** accounts a session
+  belongs to: a session can run any account folder on its own machine, so that is no
+  extra power. Removing an account from a machine's list does not take effect against a
+  hub or machine that is handed the older document (there is no version counter); to take an
+  account away for certain, renew the machine's keys (`sy keys revoke`, then pair again or
+  `sy machine add`), which makes every older document fail.
+- **Machines certified before this document existed** have none, so their peer messages to
+  other machines are refused (`unbound_account`) until the owner runs `sy keys certify --all`
+  once more. No re-pairing is needed. `sy doctor` says so on each such machine ("no accounts are
+  bound to this machine"), and `sy peers send` names the fix in its refusal line.
+
 ## 5. Who may sign what
 
 ### 5.1 Summary
@@ -313,6 +366,7 @@ requires it.
 | Change | Owner key (terminal, passphrase) | Owner session (board, desktop app) | Any device with a link or a token |
 | --- | --- | --- | --- |
 | Certify a machine or desktop | Yes | No | No |
+| Bind accounts to a machine (4.3) | Yes | No | No |
 | Widen the matrix, resume after pause, raise the loop limit | Yes | Yes, hub-signed (5.4) | No |
 | Resume one thread after the loop guard (peers.md 6.3) | No (a human prompt in either session does it) | Yes, hub-signed (5.4; `peer_thread_resume`) | No |
 | Narrow the matrix, pause | Yes | Yes | Yes (phones too), hub-signed |
@@ -578,6 +632,9 @@ link.md 5):
 `device_key.cert`, `*_doc.body`, signatures and `link_queue.body` are `BLOB` columns in STRICT
 tables: the store binds `[]byte`, never a string.
 
+Schema v14 (`0014_device_accounts.sql`) adds `device_accounts`: per device, the body and owner
+signature of its newest `machine_accounts` document (4.3).
+
 ## 10. Files (paths.md 3)
 
 ```
@@ -600,8 +657,10 @@ owner key; you need the recovery code to sign again").
 
 ```
 sy keys init [--replace]         owner machine: make the owner key, print fp + recovery code, propose it to the hub (3.3)
-sy keys status [--json]          pins (hub, owner), this device's keys and certificate state, pending proposals
-sy keys certify [<device>…|--all] [--yes]   owner-sign machine/desktop certificates (passphrase once)
+sy keys status [--json]          pins (hub, owner), this device's keys and certificate state, this machine's
+                                 accounts and which are bound (4.3), pending proposals
+sy keys certify [<device>…|--all] [--yes]   owner-sign machine/desktop certificates and the accounts each
+                                 may speak for (4.3; passphrase once)
 sy keys revoke <device> [--reason R] [--yes]  owner-signed revocation, uploaded; the hub revokes the device
 sy keys passwd                   new passphrase (and iteration count) for owner.sealed
 sy keys recover                  rebuild owner.sealed from the recovery code
@@ -649,3 +708,6 @@ passphrase.
   with clear `keys` → 400 and the code stays live; typed claim with `keys` → `reg = tofu`;
   algorithm/kind mismatch → 400; `PUT /v1/devices/{id}/keys` on a `qr` device → 409.
 - Export/import carries `hub_sign.key`; export without it fails.
+- `machine_accounts`: a document for another device, machine or sign key, another hub's, a
+  hub signature, unsorted accounts → reject; the hub stores only one by the active owner key;
+  `sy keys certify --all` binds the accounts the hub sees and then has nothing left to do.

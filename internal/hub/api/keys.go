@@ -38,6 +38,7 @@ func init() {
 	reg("PUT", "/v1/devices/{id}/keys", (*Server).keysPutDevice)
 	reg("GET", "/v1/devices/{id}/cert", (*Server).keysGetCert)
 	reg("POST", "/v1/devices/{id}/cert", (*Server).keysCertify)
+	reg("POST", "/v1/devices/{id}/accounts", (*Server).keysSetAccounts)
 }
 
 // ownerKeyJSON is api.yaml OwnerKey.
@@ -139,12 +140,16 @@ func (s *Server) keysGet(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-// keyDeviceJSON is one entry of KeysInfo.devices.
+// keyDeviceJSON is one entry of KeysInfo.devices. For a machine or desktop, Accounts are the
+// accounts the hub sees logged in on its machine now and Bound those of its verified
+// machine_accounts document (null: none), keys.md 4.3.
 type keyDeviceJSON struct {
-	ID   string     `json:"id"`
-	Kind string     `json:"kind"`
-	Name string     `json:"name"`
-	Keys devKeyJSON `json:"keys"`
+	ID       string     `json:"id"`
+	Kind     string     `json:"kind"`
+	Name     string     `json:"name"`
+	Keys     devKeyJSON `json:"keys"`
+	Accounts []string   `json:"accounts,omitempty"`
+	Bound    *[]string  `json:"bound_accounts,omitempty"`
 }
 
 func (s *Server) keysDevices(ctx context.Context) ([]keyDeviceJSON, error) {
@@ -162,10 +167,37 @@ func (s *Server) keysDevices(ctx context.Context) ([]keyDeviceJSON, error) {
 		if !ok || d.RevokedAt != 0 {
 			continue
 		}
-		out = append(out, keyDeviceJSON{ID: d.ID, Kind: i.Kind, Name: i.Name, Keys: devKeyJSON{SignFP: i.SignFP, BoxFP: i.BoxFP,
-			Reg: i.Reg, OwnerSigned: i.OwnerSigned, CertifiedAt: store.Time(i.CertifiedAt)}})
+		e := keyDeviceJSON{ID: d.ID, Kind: i.Kind, Name: i.Name, Keys: devKeyJSON{SignFP: i.SignFP, BoxFP: i.BoxFP,
+			Reg: i.Reg, OwnerSigned: i.OwnerSigned, CertifiedAt: store.Time(i.CertifiedAt)}}
+		if (i.Kind == "machine" || i.Kind == "desktop") && d.MachineID != "" {
+			if e.Accounts, err = s.Store().MachineAccounts(ctx, d.MachineID); err != nil {
+				return nil, err
+			}
+			bound := []string{}
+			if b, ok, err := s.boundAccounts(ctx, d.ID); err != nil {
+				return nil, err
+			} else if ok {
+				bound = b
+			}
+			e.Bound = &bound
+		}
+		out = append(out, e)
 	}
 	return out, nil
+}
+
+// boundAccounts is the account list of a device's verified machine_accounts document; ok is
+// false when it has none (keys.md 4.3).
+func (s *Server) boundAccounts(ctx context.Context, id string) ([]string, bool, error) {
+	c, err := s.cfg.Keys.Cert(ctx, id)
+	if err != nil {
+		return nil, false, nil
+	}
+	_, b, ok, err := s.cfg.Keys.Accounts(ctx, id, c)
+	if err != nil || !ok {
+		return nil, false, err
+	}
+	return b.Accounts, true, nil
 }
 
 func (s *Server) keysPropose(w http.ResponseWriter, r *http.Request) {
@@ -271,7 +303,29 @@ func (s *Server) keysGetCert(w http.ResponseWriter, r *http.Request) {
 		keysFail(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"cert": c.Doc, "owner_signed": c.OwnerSigned})
+	out := map[string]any{"cert": c.Doc, "owner_signed": c.OwnerSigned, "accounts": nil}
+	if _, b, ok, err := s.cfg.Keys.Accounts(r.Context(), id, c); err != nil {
+		keysFail(w, err)
+		return
+	} else if ok {
+		out["accounts"] = b.Accounts
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+func (s *Server) keysSetAccounts(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Doc keys.Doc `json:"doc"`
+	}
+	if !keysDecode(w, r, &body) {
+		return
+	}
+	b, err := s.cfg.Keys.SetAccounts(r.Context(), r.PathValue("id"), body.Doc)
+	if err != nil {
+		keysFail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"accounts": b.Accounts})
 }
 
 func (s *Server) keysCertify(w http.ResponseWriter, r *http.Request) {

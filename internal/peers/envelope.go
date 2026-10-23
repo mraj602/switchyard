@@ -77,6 +77,9 @@ const (
 	ReasonRevoked      = "revoked"
 	ReasonWrongDevice  = "wrong_device"
 	ReasonExpired      = "expired"
+	// ReasonUnboundAccount: the sender's account is not one the owner bound to the sending
+	// machine (keys.md 4.3, peers.md 5.3).
+	ReasonUnboundAccount = "unbound_account"
 )
 
 // EnvelopeError is a failed envelope or certificate check with its reason word.
@@ -211,6 +214,24 @@ func VerifyEnvelope(doc keys.Doc, sender keys.Cert) (Envelope, error) {
 			sender.Body.Device, sender.Body.MachineID())
 	}
 	return e, nil
+}
+
+// CheckSenderAccount is the account half of peers.md 8.4 step 1: the sender's
+// machine_accounts document is signed by the pinned owner key for the sender's certificate,
+// and lists the account the envelope claims. Anything else is unbound_account: the matrix may
+// only be decided on an account the owner let that machine speak for.
+func CheckSenderAccount(d *keys.Doc, t keys.Trust, sender keys.Cert, account string) error {
+	if d == nil {
+		return envErr(ReasonUnboundAccount, "the hub sent no machine_accounts for %s", sender.Body.Device)
+	}
+	b, err := keys.VerifyAccounts(*d, t, sender)
+	if err != nil {
+		return envErr(ReasonUnboundAccount, "machine_accounts: %v", err)
+	}
+	if !b.Has(account) {
+		return envErr(ReasonUnboundAccount, "account %q is not bound to machine %s", account, sender.Body.MachineID())
+	}
+	return nil
 }
 
 // ClockSkew is how far ahead of the receiver's clock an envelope's exp may be beyond MaxTTL

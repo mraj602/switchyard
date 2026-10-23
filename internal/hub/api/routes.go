@@ -120,6 +120,7 @@ var handlerRoutes = []Route{
 	{Method: "PUT", Path: "/v1/devices/{id}/keys", Scopes: []string{"write", "push"}},
 	{Method: "GET", Path: "/v1/devices/{id}/cert", Scopes: []string{"owner", "write"}},
 	{Method: "POST", Path: "/v1/devices/{id}/cert", Scopes: []string{"owner", "write"}},
+	{Method: "POST", Path: "/v1/devices/{id}/accounts", Scopes: []string{"owner", "write"}},
 
 	// Peers (peers.md).
 	{Method: "GET", Path: "/v1/peers", Scopes: []string{"owner", "read"}},

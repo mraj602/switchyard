@@ -127,11 +127,29 @@ On top of tokens, Switchyard uses keys for three things a token cannot give:
    receiving device, so the hub's queue and every proxy see ciphertext only. Android
    notifications sent over the app's link are sealed to a key in the Android Keystore.
 3. **An authority the hub does not hold.** The owner key, on your own computer behind a
-   passphrase, certifies machines and signs widenings of the peers matrix. The hub can always
-   narrow; it can widen only for an owner sign-in, and only on machines that allow it
-   (`peers.hub_may_widen`).
+   passphrase, certifies machines, binds the accounts each machine may speak for, and signs
+   widenings of the peers matrix. The hub can always narrow; it can widen only for an owner
+   sign-in, and only on machines that allow it (`peers.hub_may_widen`).
 
 See [peers.md](peers.md) for the owner key steps.
+
+**Accounts per machine.** The peers matrix is a rule between accounts, but each machine says
+itself which account a session belongs to. So `sy keys certify` also signs, per machine, the
+list of accounts it may speak for, and both the hub and the receiving machine refuse a peer
+message whose sender account is not on the sending machine's list (`unbound_account`). A
+session on one machine therefore cannot pose as an account that lives only on another
+machine. It can still act as any account bound to its own machine, as it could by starting
+Claude Code in that account's folder. Details:
+[keys.md section 4.3](../spec/keys.md#43-machine-accounts).
+
+**After upgrading.** Machines certified before this list existed have none, and their peer
+messages to other machines are refused until you run `sy keys certify --all` on the owner
+machine once more. It shows the accounts the hub sees on each machine; compare them with
+`sy keys status` on that machine before you confirm. `sy doctor` warns on a machine with no
+bound accounts. Update the hub and the machines together: a new `sy` refuses messages relayed
+by an older hub, which does not pass the list on. Removing an account from a machine's list
+does not reliably take it away (an older signed list may still be presented); renew that
+machine's keys for that.
 
 ## Threat model
 
@@ -142,7 +160,7 @@ See [peers.md](peers.md) for the owner key steps.
 | A read-only copy of `hub.db` or a backup | Read everything stored there | Forge link frames, notifications, certificates or peer messages (the hub signing key is not in it) |
 | Write access to `hub.db` only | Add or change rows | Mint an owner session, install an owner key (needs both signatures) |
 | Code running as the hub's OS user | Read `hub_sign.key` and sign as the hub; with the default `hub_may_widen = true`, widen the peers matrix | Sign as the owner without the passphrase |
-| A Claude Code session on your machine | Anything your OS user can do on that machine, including bypassing Switchyard locally | Type your owner passphrase; make another machine deliver a peer pair its matrix refuses |
+| A Claude Code session on your machine | Anything your OS user can do on that machine, including bypassing Switchyard locally and sending peer messages as any account bound to that machine | Type your owner passphrase; pose as an account bound only to another machine; make another machine deliver a peer pair its matrix refuses for the accounts bound to this machine |
 | A network observer between devices and the hub | See traffic metadata | Read traffic (TLS, and sealed frames on the link) |
 
 **The signing guard.** Owner-key commands refuse to run inside a Claude Code session or
