@@ -1,6 +1,8 @@
 // Expo app config (docs/spec/phone.md P13). The self-hosted build: pushes arrive over the app's
 // own link to the hub (push.md 13-14), with no Firebase, no Google push service and no EAS
-// project. Reads only non-secret environment values:
+// project. No proprietary Google code either (Firebase, Play services, ML Kit): notifications and
+// the QR scanner are the app's own modules (modules/sy-notify, modules/sy-scan), and
+// scripts/check-no-google.mjs fails the build on any of them. Reads only non-secret environment values:
 //   SY_APP_ID                bundle id and package name (default dev.switchyard.app.local)
 //   SY_APP_VARIANT           "development" allows cleartext traffic (loopback hubs, P2)
 // Never put a credential here (phone.md P13).
@@ -126,7 +128,6 @@ export const ANDROID_WIDGETS = [
 ] as const;
 
 export default ({ config }: ConfigContext): ExpoConfig => {
-  const notificationIcon = asset('assets/notification-icon.png');
   const icon = asset('assets/icon.png');
   const foreground = asset('assets/adaptive-foreground.png');
   const monochrome = asset('assets/adaptive-monochrome.png');
@@ -156,8 +157,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         : {}),
       // Never back up the app's data (the keychain token, P3); with-sy-native.js also sets it.
       allowBackup: false,
-      // Listed explicitly so the prebuilt manifest shows them (expo-notifications would also
-      // merge POST_NOTIFICATIONS at Gradle time); nothing else is needed (P13).
+      // Listed explicitly so the prebuilt manifest shows them (modules/sy-notify and sy-scan also
+      // merge them at Gradle time); nothing else is needed (P13).
       permissions: ['android.permission.POST_NOTIFICATIONS', 'android.permission.CAMERA'],
       blockedPermissions: [
         'android.permission.RECORD_AUDIO',
@@ -174,19 +175,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     plugins: [
       'expo-router',
-      // Before expo-notifications: mods run in reverse order, so this one sees its FCM meta-data.
-      './plugins/with-sy-no-firebase.js',
-      ['expo-notifications', { color: BRAND_ACCENT, ...(notificationIcon ? { icon: notificationIcon } : {}) }],
       ['expo-secure-store', { faceIDPermission: false, configureAndroidBackup: false }],
-      [
-        'expo-camera',
-        {
-          cameraPermission: 'Scan the pairing QR code from your hub',
-          microphonePermission: false,
-          recordAudioAndroid: false,
-          barcodeScannerEnabled: true,
-        },
-      ],
       [
         'expo-build-properties',
         {

@@ -1,6 +1,6 @@
 // Notification actions across pairings: an act goes only to the pairing that
 // issued the notification, and each tap acts once even when two JS runtimes both see it. Offline: fetch is a fake.
-import * as ExpoNotifications from 'expo-notifications';
+import * as ExpoNotifications from '../modules/sy-notify';
 import type { Clock, FetchLike, KVStore, RequestInitLike } from '../src/contract/platform';
 import { ACTED_KEY } from '../src/contract/constants';
 import {

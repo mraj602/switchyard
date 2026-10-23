@@ -2,7 +2,7 @@
 // notification bridge (decisions through performDecision). All offline. Seen and Snooze
 // are the screens' (src/components/alert-actions.tsx, test/screens.test.tsx).
 import { act, render } from '@testing-library/react-native';
-import * as Notifications from 'expo-notifications';
+import * as Notifications from '../modules/sy-notify';
 import { CACHE_KEY, KEYCHAIN_ACCESSIBLE, SECURE_HUB_KEY, SECURE_REVOKE_KEY, WIDGET_KEY } from '../src/contract/constants';
 import type { Overview } from '../src/contract/api';
 import { createMemorySecureStore, createSecureHub, secureOptions } from '../src/lib/secure';

@@ -4,7 +4,7 @@
 // fetch and every native module is a recording fake (test/fakes.ts).
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, render, screen } from '@testing-library/react-native';
-import * as Notifications from 'expo-notifications';
+import * as Notifications from '../modules/sy-notify';
 import { Platform } from 'react-native';
 import type { Me, Overview, Seat } from '../src/contract/api';
 import { KEYCHAIN_ACCESSIBLE, LOCAL_PREFS_KEY, WIDGET_KEY } from '../src/contract/constants';

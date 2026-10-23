@@ -3,7 +3,7 @@
 // the link's refresh frames, the words, the maker guides and Settings → Notifications. The
 // module is the recording fake of test/fakes.ts (`linkState`, `emitLink`).
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import * as ExpoNotifications from 'expo-notifications';
+import * as ExpoNotifications from '../modules/sy-notify';
 import { Linking } from 'react-native';
 import * as SyLink from '../modules/sy-link';
 import type { Device, Overview, Seat } from '../src/contract/api';

@@ -1,7 +1,6 @@
 // Adapters from the native modules to the platform interfaces of src/contract/platform.ts.
 // The only place (with app/) where src code imports expo-* for state.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as SecureStore from 'expo-secure-store';
@@ -13,10 +12,15 @@ import { createSecureHub, secureOptions } from '../lib/secure';
 import type { SecureHub } from '../lib/secure';
 
 export function getAppInfo(): AppInfo {
-  const extra = Constants.expoConfig?.extra as { cleartext?: boolean } | undefined;
+  const cfg = Constants.expoConfig;
+  const extra = cfg?.extra as { cleartext?: boolean } | undefined;
+  // The app config embedded at build time: the same version and versionCode the APK's manifest
+  // has (app.config.ts sets both). expo-application, which read them from the package manager,
+  // is not used: it links Google's Play Install Referrer library.
+  const code = cfg?.android?.versionCode;
   return {
-    version: Application.nativeApplicationVersion ?? Constants.expoConfig?.version ?? '0.0.0',
-    build: Application.nativeBuildVersion ?? '0',
+    version: cfg?.version ?? '0.0.0',
+    build: typeof code === 'number' ? String(code) : '0',
     model: Device.modelName ?? 'Phone',
     platform: Platform.OS === 'ios' ? 'ios' : 'android',
     // __DEV__, or a build made with SY_APP_VARIANT=development (extra.cleartext): the builds that

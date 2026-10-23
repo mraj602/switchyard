@@ -6,14 +6,13 @@
 // HubProvider (the one source of truth), the glue that derives the screens' HubApi from it,
 // and the gate: unpaired (including a 401 on any call) goes to Pair.
 import * as Linking from 'expo-linking';
-import * as Notifications from 'expo-notifications';
+import * as Notifications from '../modules/sy-notify';
 import { router, Stack, useSegments } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { StatusBar, useColorScheme } from 'react-native';
 import { createGlue } from '../src/lib/integrate';
 import type { Glue } from '../src/lib/integrate';
 import { initNotifications } from '../src/lib/notify';
-import type { NotificationsLike } from '../src/lib/notify';
 import { routeToHref } from '../src/lib/links';
 import { loadTheme } from '../src/components/appearance';
 import { bridge, HubGlue, HubProvider, installStateHooks, systemGluePlatform, useHub } from '../src/state';
@@ -29,7 +28,7 @@ if (!g.__syNotifInit || !g.__syGlue) {
   g.__syGlue = glue;
   installStateHooks(glue);
   initNotifications({
-    notifications: Notifications as unknown as NotificationsLike,
+    notifications: Notifications,
     app: getAppInfo(),
     run: (d, response) => {
       glue.noteResponse(response); // the auto countdown of a limit push (P12)
@@ -64,7 +63,7 @@ export default function RootLayout() {
       clock: systemClock,
       appState: systemAppState,
       app: getAppInfo(),
-      notifications: Notifications as unknown as NotificationsLike,
+      notifications: Notifications,
       link: systemLink(getAppInfo()),
     }),
     [],

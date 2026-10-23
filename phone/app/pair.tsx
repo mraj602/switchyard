@@ -3,12 +3,14 @@
 // token in the keychain through the state layer; then go to Now. `pairWith` resolves only after
 // the integration's onPaired (src/lib/integrate: GET /v1/rules, the notifications prompt and
 // registration, P6.3), so this is the one navigation and Now comes after the prompt (P2). A
-// second pairing asks "Unpair from <host>?" first.
-import { CameraView, useCameraPermissions } from 'expo-camera';
+// second pairing asks "Unpair from <host>?" first. The scanner is the sy-scan module's full-screen
+// zxing view: "Scan QR code" opens it (asking for the camera first) and its text comes back here.
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as SyScan from '../modules/sy-scan';
+import type { CameraPermission } from '../modules/sy-scan';
 import { Logo } from '../src/components/logo';
 import { claim, ClaimError, claimMessage, hostOf, networkKind, pairInputMessage, parsePairInput } from '../src/lib/pair';
 import type { PairInput } from '../src/lib/pair';
@@ -25,7 +27,8 @@ function paramString(v: string | string[] | undefined): string | undefined {
 export default function PairScreen() {
   const hub = useHub();
   const params = useLocalSearchParams<{ origin?: string; secret?: string; code?: string; hub?: string; key?: string }>();
-  const [permission, requestPermission] = useCameraPermissions();
+  // null until read; the scanner asks for it when it is not granted yet.
+  const [permission, setPermission] = useState<CameraPermission | null>(null);
   const [typed, setTyped] = useState(false);
   const [address, setAddress] = useState('');
   const [codeText, setCodeText] = useState('');
@@ -34,7 +37,18 @@ export default function PairScreen() {
   const [confirm, setConfirm] = useState<PairInput | null>(null);
   const [noticeSeen, setNoticeSeen] = useState(false);
   const busyRef = useRef(false);
-  const lastScan = useRef<string | null>(null);
+  const scanning = useRef(false);
+
+  useEffect(() => {
+    let live = true;
+    SyScan.cameraPermission().then(
+      (p) => live && setPermission(p),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, []);
 
   const finish = useCallback(
     async (input: PairInput) => {
@@ -121,29 +135,39 @@ export default function PairScreen() {
   const shownError = error ?? linkError;
 
   const onScanned = useCallback(
-    ({ data }: { data: string }) => {
-      if (busyRef.current || confirm || linkInput || data === lastScan.current) return;
-      lastScan.current = data;
+    (data: string) => {
+      if (busyRef.current || confirm || linkInput) return;
       setDoneLink(linkKey); // a scan replaces a refused link's message
       onText(data);
     },
     [onText, confirm, linkInput, linkKey],
   );
 
-  const camera = permission?.granted ? (
-    <CameraView
-      style={styles.camera}
-      facing="back"
-      barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-      onBarcodeScanned={onScanned}
-      testID="camera"
-    />
-  ) : (
-    <View style={[styles.camera, styles.center]}>
-      <Text style={styles.muted}>{permission && !permission.canAskAgain ? 'Camera access is off in system settings.' : 'The camera scans the QR code on your computer.'}</Text>
-      {permission?.canAskAgain !== false && (
-        <Pressable accessibilityRole="button" onPress={() => void requestPermission()} style={styles.link}>
-          <Text style={styles.linkText}>Allow camera</Text>
+  /** Opens the scanner (asking for the camera first when needed); one at a time. */
+  const scan = useCallback(async () => {
+    if (busyRef.current || scanning.current) return;
+    scanning.current = true;
+    setError(null);
+    try {
+      const r = await SyScan.scanQr('Scan the QR code from Add phone');
+      if (r.status === 'denied') setPermission({ granted: false, canAskAgain: r.canAskAgain });
+      else if (r.status === 'scanned' || r.status === 'cancelled') setPermission({ granted: true, canAskAgain: true });
+      if (r.status === 'scanned') onScanned(r.text);
+      else if (r.status === 'unavailable') setTyped(true);
+    } catch {
+      setError("The camera didn't open. Type the code and address instead.");
+    } finally {
+      scanning.current = false;
+    }
+  }, [onScanned]);
+
+  const blocked = permission !== null && !permission.granted && !permission.canAskAgain;
+  const camera = (
+    <View style={[styles.camera, styles.center]} testID="scanner">
+      <Text style={styles.muted}>{blocked ? 'Camera access is off in system settings.' : 'The camera scans the QR code on your computer.'}</Text>
+      {!blocked && (
+        <Pressable accessibilityRole="button" onPress={() => void scan()} style={[styles.button, styles.scanButton]}>
+          <Text style={styles.buttonText}>{permission?.granted === false ? 'Allow camera' : 'Scan QR code'}</Text>
         </Pressable>
       )}
     </View>
@@ -253,8 +277,7 @@ export default function PairScreen() {
                 setNoticeSeen(true);
                 setTyped(false);
                 setError(null);
-                lastScan.current = null;
-                if (!permission?.granted && permission?.canAskAgain !== false) void requestPermission();
+                if (!blocked) void scan();
               }}
               style={styles.button}
             >
@@ -270,7 +293,6 @@ export default function PairScreen() {
               setTyped((t) => !t);
               setError(null);
               setDoneLink(linkKey);
-              lastScan.current = null;
             }}
             style={styles.link}
           >
@@ -294,8 +316,9 @@ const styles = StyleSheet.create({
   h1: { color: C.text, fontSize: 26, fontWeight: '600' },
   muted: { color: C.muted, fontSize: 15, lineHeight: 22 },
   small: { color: C.muted, fontSize: 13, lineHeight: 19 },
-  camera: { height: 300, borderRadius: 18, overflow: 'hidden', backgroundColor: C.well },
-  center: { alignItems: 'center', justifyContent: 'center', padding: 20, gap: 8 },
+  camera: { minHeight: 180, borderRadius: 18, overflow: 'hidden', backgroundColor: C.well },
+  center: { alignItems: 'center', justifyContent: 'center', padding: 20, gap: 16 },
+  scanButton: { alignSelf: 'stretch' },
   link: { minHeight: 44, justifyContent: 'center' },
   linkText: { color: C.accent, fontSize: 15 },
   card: { backgroundColor: C.card, borderRadius: 14, padding: 14, gap: 10 },

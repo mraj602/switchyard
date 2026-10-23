@@ -3,13 +3,12 @@
 // modules and renders the screens' `HubApiProvider` from `useHub()`: the provider is the one
 // source of truth, and the screens' `HubApi` is derived from it here.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Notifications from 'expo-notifications';
+import * as Notifications from '../../modules/sy-notify';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import { HubApiProvider, type HubApi } from '../components/hub-api';
 import type { AppInfo, Clock } from '../contract/platform';
 import type { Glue, GluePlatform } from '../lib/integrate';
-import type { NotificationsLike } from '../lib/notify';
 import { hostOf } from '../lib/pair';
 import { createUpdater } from '../lib/update';
 import { clearAndroidWidgets, updateAndroidWidgets } from '../../widgets/android/task-handler';
@@ -32,7 +31,7 @@ function deviceTz(): string {
 /** The real platform pieces (in tests the native modules behind them are the recording fakes). */
 export function systemGluePlatform(app: AppInfo, clock: Clock = systemClock): GluePlatform {
   return {
-    notifications: Notifications as unknown as NotificationsLike,
+    notifications: Notifications,
     app,
     clock,
     local: AsyncStorage,

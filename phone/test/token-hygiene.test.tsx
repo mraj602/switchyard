@@ -8,7 +8,7 @@ import * as path from 'node:path';
 import { KEYCHAIN_ACCESSIBLE } from '../src/contract/constants';
 import { createMemorySecureStore, createSecureHub, secureOptions } from '../src/lib/secure';
 import type { StoredHub } from '../src/lib/secure';
-import * as Notifications from 'expo-notifications';
+import * as Notifications from '../modules/sy-notify';
 import { Platform } from 'react-native';
 import { createGlue } from '../src/lib/integrate';
 import type { NotificationsLike } from '../src/lib/notify';
