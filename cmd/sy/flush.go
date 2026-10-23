@@ -74,7 +74,7 @@ func runFlush(args []string, stdout, stderr io.Writer) error {
 			hookDirectPush(context.Background(), d, cfg, nil, stderr)
 		}
 		if !a.quiet {
-			fmt.Fprintln(stdout, "No hub configured; nothing to send. Connect one with `sy connect <url> --token <token>`.")
+			fmt.Fprintln(stdout, "No hub configured; nothing to send. Connect one with `sy connect <url> --code <code>`, or `sy connect <url> --token-stdin` (the token on standard input).")
 		}
 		return nil
 	}

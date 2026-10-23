@@ -303,7 +303,7 @@ func checkFlushStatus(rep *Report, o Options, dir, hub string) {
 	switch {
 	case fs.AuthFailed:
 		rep.add(Check{Name: "flush", Level: Fail, Detail: "token rejected by the hub (" + last + "): " + fs.Error,
-			Fix: "create a new token on the hub and run: sy connect " + hub + " --token <token>"})
+			Fix: "create a new token on the hub and run: sy connect " + hub + " --token-stdin (paste the token on standard input)"})
 	case fs.RefusesRecords:
 		rep.add(Check{Name: "flush", Level: Fail, Detail: "hub refuses records (" + last + "): " + fs.Error,
 			Fix: "the hub or a proxy in front of it answers 400/413 to everything; check its logs and size limits; nothing is dropped meanwhile"})

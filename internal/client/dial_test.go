@@ -124,3 +124,24 @@ func TestDialUnixSocketAndStaleRemoval(t *testing.T) {
 		t.Fatal("a non-socket file was removed")
 	}
 }
+
+func TestForConfigChecksTheURL(t *testing.T) {
+	var cfg config.Config
+	cfg.Hub.URL = "http://hub.example.com:8787"
+	if _, err := ForConfig(cfg, "sy_m_x"); err == nil {
+		t.Fatal("plain http to a public host was accepted")
+	}
+	cfg.Hub.URL = "http://home-box:8787"
+	if _, err := ForConfig(cfg, "sy_m_x"); err == nil {
+		t.Fatal("plain http to a single-label host was accepted")
+	}
+	cfg.Hub.InsecureLAN = true
+	if _, err := ForConfig(cfg, "sy_m_x"); err != nil {
+		t.Fatalf("insecure_lan: %v", err)
+	}
+	cfg.Hub.InsecureLAN = false
+	cfg.Hub.URL = "https://hub.example.com"
+	if _, err := ForConfig(cfg, "sy_m_x"); err != nil {
+		t.Fatalf("https: %v", err)
+	}
+}

@@ -62,9 +62,15 @@ func HTTPClient(dial string, timeout time.Duration) (*http.Client, error) {
 }
 
 // ForConfig returns a client for hub.url with token, dialing through hub.dial when set. The
-// HTTP client has the default 20 s timeout.
+// HTTP client has the default 20 s timeout. The URL is checked again here with CheckURL
+// (hub.insecure_lan), so a config.toml edited by hand, or written by an older sy, cannot send
+// the token over plain http to a host `sy connect` would have refused.
 func ForConfig(cfg config.Config, token string) (*Client, error) {
-	c := New(cfg.Hub.URL, token)
+	norm, _, err := CheckURL(cfg.Hub.URL, cfg.Hub.InsecureLAN)
+	if err != nil {
+		return nil, fmt.Errorf("hub.url in config.toml: %w (to allow it anyway, run sy config set hub.insecure_lan true)", err)
+	}
+	c := New(norm, token)
 	if cfg.Hub.Dial != "" {
 		hc, err := HTTPClient(cfg.Hub.Dial, 20*time.Second)
 		if err != nil {
