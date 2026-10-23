@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"errors"
+	"mime"
 	"net/http"
 	"strings"
 	"time"
@@ -55,10 +56,18 @@ func IsSessionDevice(d store.Device) bool {
 // session too. A desktop device keeps one board session: its Hub view is one cookie jar, so a
 // new login revokes the sessions it made before (in the same transaction), and an app that
 // signs in at every start or after a lost cookie leaves no trail of "board via" devices.
-// Unknown or revoked token: 401; no read scope: 403; malformed body: 400.
+// Unknown or revoked token: 401; no read scope: 403; malformed body: 400; not JSON, or a
+// foreign Origin: 403.
 func (a *Authenticator) LoginHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
+		// Login sets a cookie, so it is a login-CSRF target: JSON only, and a browser's Origin
+		// must be the hub's own (pairing.md 3.2). Callers without an Origin (sy, the desktop
+		// app's main process, curl) pass.
+		if mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); err != nil || mt != "application/json" || !a.SameOrigin(r) {
+			WriteError(w, http.StatusForbidden, "forbidden", "login must be same-origin JSON")
+			return
+		}
 		if a.tooManyFails(clientIP(r)) {
 			w.Header().Set("Retry-After", "60")
 			WriteError(w, http.StatusTooManyRequests, "rate_limited", "too many failed logins; wait a minute")

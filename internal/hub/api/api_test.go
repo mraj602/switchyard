@@ -364,9 +364,24 @@ func TestScopes(t *testing.T) {
 func TestBoardLoginCookie(t *testing.T) {
 	h := startHub(t, "")
 	phone := h.token("phone")
-	code, _ := h.do("POST", "/v1/session/login", "", []byte(`{"token":"sy_p_nope"}`))
+	code, _ := h.do("POST", "/v1/session/login", "", []byte(`{"token":"sy_p_nope"}`), "Content-Type", "application/json")
 	if code != 401 {
 		t.Fatalf("bad login: %d", code)
+	}
+	// Login CSRF: a form post (not JSON) or a foreign Origin never logs in, even with a
+	// valid token.
+	good := []byte(`{"token":"` + phone + `"}`)
+	if code, _ := h.do("POST", "/v1/session/login", "", good); code != 403 {
+		t.Errorf("no content type: %d", code)
+	}
+	if code, _ := h.do("POST", "/v1/session/login", "", good, "Content-Type", "text/plain"); code != 403 {
+		t.Errorf("text/plain: %d", code)
+	}
+	if code, _ := h.do("POST", "/v1/session/login", "", good, "Content-Type", "application/json", "Origin", "https://evil.example"); code != 403 {
+		t.Errorf("foreign origin: %d", code)
+	}
+	if code, _ := h.do("POST", "/v1/session/login", "", good, "Content-Type", "application/json", "Origin", h.http.URL); code != 204 {
+		t.Errorf("same origin: %d", code)
 	}
 	body, _ := json.Marshal(map[string]string{"token": phone})
 	resp, err := http.Post(h.http.URL+"/v1/session/login", "application/json", bytes.NewReader(body))

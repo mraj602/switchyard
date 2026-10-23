@@ -82,6 +82,8 @@ paths:
         revokes its board sessions. A desktop token keeps one board session: its login
         revokes the board sessions made from it before (the app's Hub view has one cookie
         jar). The board never keeps the token in JavaScript.
+        Needs `Content-Type: application/json` and, when the request has an `Origin`, the hub's
+        own: otherwise `403` (login CSRF, pairing.md 3.2).
         Unknown or revoked token: `401`; a token without `read`: `403`; more than 5 failed logins a minute from one address: `429`. Same-origin only; no CORS headers are sent.
       security: []
       x-scopes: []
