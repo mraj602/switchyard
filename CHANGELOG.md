@@ -6,6 +6,8 @@ All notable changes to Switchyard are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-23
+
 The first public version. Everything below is new.
 
 ### Added
@@ -45,4 +47,5 @@ The first public version. Everything below is new.
   policy, release guide, a website and a demo recorded from sample data.
 - Licensed under Apache-2.0.
 
-[Unreleased]: https://github.com/mraj602/switchyard/commits/main
+[Unreleased]: https://github.com/mraj602/switchyard/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/mraj602/switchyard/releases/tag/v0.9.0
