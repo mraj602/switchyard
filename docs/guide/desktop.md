@@ -6,13 +6,23 @@ shows the board, and the app turns hub alerts into OS notifications and a tray b
 optional: `sy` and the hub work without it. The spec is [desktop.md](../spec/desktop.md).
 
 Platforms: Linux (AppImage, deb, rpm), macOS (dmg) and Windows (NSIS installer). Packages are
-built locally and are not code-signed, so macOS and Windows warn on first start (see
+not code-signed, so macOS and Windows warn on first start (see
 [Unsigned builds](#unsigned-builds-on-macos-and-windows)).
+
+## Download
+
+Every `sy` release on [GitHub Releases](https://github.com/mraj602/switchyard/releases)
+(tags `vX.Y.Z`) also carries the desktop packages, built from the same commit as the `sy`
+archives, plus `SHA256SUMS-desktop`. The app inside has the same version as the tag, and
+bundles the `sy` of that release. Check a download against the sums:
+
+```sh
+sha256sum -c --ignore-missing SHA256SUMS-desktop      # Linux; on macOS: shasum -a 256 -c
+```
 
 ## Build and run
 
-There are no published packages yet. You need Node 22 or later and Go (the package bundles
-its own `sy`).
+To build it yourself you need Node 22 or later and Go (the package bundles its own `sy`).
 
 ```sh
 make app-dist                 # packages in app/dist/
@@ -59,9 +69,11 @@ check where a release file came from, use its GitHub build attestation:
 gh attestation verify <file> --repo mraj602/switchyard
 ```
 
-The release workflow attests the `sy` archives. Desktop packages are not yet published by any
-workflow (CI builds them only as short-lived test artifacts), so they have no attestation; build
-them yourself with `make app-dist` if you want to be sure of what you run.
+The release workflow builds every desktop package in CI, attests each one and publishes
+`SHA256SUMS-desktop`, so `gh attestation verify` works on them, as on the `sy` archives. The
+attestation proves the file was built by this repository's release workflow; it is not a code
+signature, so the OS warning stays. If you would rather not trust the download, build it
+yourself with `make app-dist`.
 
 ### Updates
 

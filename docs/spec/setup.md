@@ -45,7 +45,11 @@ Every tag `v<semver>` publishes on GitHub Releases:
 | `sy_<ver>_linux_amd64.tar.gz`, `_linux_arm64`, `_darwin_amd64`, `_darwin_arm64` | `sy`, `LICENSE`, `README.md` |
 | `sy_<ver>_windows_amd64.zip`, `_windows_arm64.zip` | `sy.exe`, `LICENSE`, `README.md` |
 | `SHA256SUMS` | `sha256sum` format, one line per archive |
-| (attestation) | GitHub build provenance for every archive (`actions/attest-build-provenance`) |
+| `Switchyard-<ver>-<os>-<arch>.<ext>` | The unsigned desktop app packages: `.AppImage`, `.deb`, `.rpm` (Linux x64), `.dmg` (macOS, the runner's arch) and `.exe` (Windows x64 NSIS installer); see desktop.md C13 |
+| `SHA256SUMS-desktop` | `sha256sum` format, one line per desktop package (the install scripts read only `SHA256SUMS`) |
+| (attestation) | GitHub build provenance for every archive and every desktop package (`actions/attest-build-provenance`) |
+
+The release is published only when every build succeeded, in one `gh release create`.
 
 `<ver>` has no leading `v`. Binaries are `CGO_ENABLED=0`, `-trimpath`, version stamped with
 `-ldflags -X` as in the Makefile.

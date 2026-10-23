@@ -616,3 +616,24 @@ modules call are:
 Shared constants (folder names, partitions, CSP, web preferences, permissions, cadence,
 backoff, timeouts, caps, test-only variable names) are in `src/shared/constants.js`; tests use
 the fakes of `app/test/fakes/electron.js`.
+
+## C13. Packaging and release
+
+- Targets (`app/electron-builder.yml`): Linux AppImage, deb and rpm; macOS dmg; Windows NSIS
+  installer. File names are `Switchyard-<version>-<os>-<arch>.<ext>`. Nothing is signed or
+  notarized (no paid certificates), and the app has no updater.
+- The bundled `sy` is built, not downloaded: `scripts/fetch-sy.mjs <os> <arch>` runs
+  `go build ./cmd/sy` on the checkout with `CGO_ENABLED=0`, `-trimpath` and the ldflags of
+  `scripts/release/build.sh` (`Version` from `SY_VERSION`, else `app/package.json`; `Commit` is
+  `git rev-parse --short HEAD`). It is placed in `resources/sy/<os>-<arch>/`.
+- A tag `v<semver>` (`.github/workflows/release.yml`) runs a `desktop` matrix job (ubuntu,
+  macos, windows) after `check`. Each job fails unless `app/package.json`'s version equals the
+  tag without `v`, bundles `sy` with `SY_VERSION=<tag>` and checks that `sy --version` reports
+  that version, runs `npm run dist`, checks it produced exactly the expected package types for
+  that OS, and uploads them as an artifact. `phone/package.json` is not checked: the Android
+  app is released by `phone-v*` tags.
+- The `release` job needs `check` and every `desktop` job, so one failed build publishes
+  nothing. It downloads the packages, writes `SHA256SUMS-desktop` (`sha256sum` format, one line
+  per package), attests build provenance for the `sy` archives and every package, and runs one
+  `gh release create` with all files. `SHA256SUMS` stays the `sy` archives' file only, because
+  the install scripts read it.

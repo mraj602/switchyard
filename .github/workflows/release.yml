@@ -1,6 +1,9 @@
-# Release: a tag v<semver> runs the checks, builds the six archives with
-# scripts/release/build.sh (the same script the E2E harness uses), attests build provenance
-# for every archive and publishes a GitHub Release with every file. See docs/spec/setup.md 1.1.
+# Release: a tag v<semver> runs the checks, builds the six sy archives with
+# scripts/release/build.sh (the same script the E2E harness uses) and the desktop app packages
+# (Linux AppImage/deb/rpm, macOS dmg, Windows NSIS; unsigned) on three OSes, attests build
+# provenance for every file and publishes ONE GitHub Release with every file at once. The
+# release job needs every build job, so a failed desktop build means no release at all, never
+# a half release. See docs/spec/setup.md 1.1, docs/spec/desktop.md C13 and docs/RELEASING.md.
 #
 # Phone releases (`phone-vX.Y.Z`) are not built here: `v*` does not match them, and the Android
 # APK is signed with the owner's own keystore on their laptop (`make phone-apk-release`,
@@ -56,8 +59,96 @@ jobs:
       - name: Check
         run: make check PYTHON=python
 
-  release:
+  # Builds the unsigned desktop packages on each OS and hands them to the release job as
+  # artifacts. Read-only: it can publish nothing. The bundled sy is built here from the tagged
+  # commit (see the "Bundle sy" step), never downloaded.
+  desktop:
+    name: desktop (${{ matrix.os }})
     needs: check
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false" # never sign
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      # The app version is the tag version. (phone/package.json is released by phone-v* tags.)
+      - name: App version must match the tag
+        run: |
+          want="${GITHUB_REF_NAME#v}"
+          have=$(node -p "require('./app/package.json').version")
+          [ "${have}" = "${want}" ] || {
+            echo "app/package.json version ${have} != tag version ${want}; refusing to release"; exit 1; }
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.27.x"
+          cache: false  # a release must not consume a cache a pull request could have poisoned
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "22.x"
+          cache: false
+
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm
+
+      # fetch-sy (no --from) runs `go build ./cmd/sy` on this checkout with CGO_ENABLED=0,
+      # -trimpath and the ldflags of scripts/release/build.sh, with the version taken from the
+      # tag (SY_VERSION), so the bundled sy is the sy of this commit and tag. Checked below.
+      - name: Bundle sy from this commit
+        working-directory: app
+        env:
+          SY_VERSION: ${{ github.ref_name }}
+        run: |
+          npm ci
+          node scripts/fetch-sy.mjs auto auto
+          want="${GITHUB_REF_NAME#v}"
+          bin=$(find resources/sy -type f -name 'sy*')
+          out=$("${bin}" --version)
+          echo "${out}"
+          case "${out}" in "sy ${want} ("*) ;; *) echo "bundled sy is not ${want}"; exit 1 ;; esac
+
+      - name: Package
+        working-directory: app
+        run: npm run dist -- --publish never
+
+      - name: Check the package set
+        run: |
+          for pat in AppImage deb rpm dmg exe; do
+            n=$(find app/dist -maxdepth 1 -name "*.${pat}" | wc -l | tr -d ' ')
+            case "${RUNNER_OS}:${pat}" in
+              Linux:AppImage|Linux:deb|Linux:rpm|macOS:dmg|Windows:exe) want=1 ;;
+              *) want=0 ;;
+            esac
+            [ "${n}" = "${want}" ] || { echo "expected ${want} .${pat}, found ${n}"; ls -l app/dist; exit 1; }
+          done
+
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: desktop-${{ matrix.os }}
+          path: |
+            app/dist/*.AppImage
+            app/dist/*.deb
+            app/dist/*.rpm
+            app/dist/*.dmg
+            app/dist/*.exe
+          retention-days: 7
+          if-no-files-found: error
+
+  release:
+    needs: [check, desktop]
     runs-on: ubuntu-latest
     permissions:
       contents: write      # gh release create
@@ -77,12 +168,30 @@ jobs:
       - name: Build archives
         run: scripts/release/build.sh "${GITHUB_REF_NAME}"
 
+      - name: Download the desktop packages
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+          path: dist/desktop
+
+      - name: Desktop checksums
+        working-directory: dist/desktop
+        run: |
+          for pat in AppImage deb rpm dmg exe; do
+            n=$(find . -maxdepth 1 -name "*.${pat}" | wc -l | tr -d ' ')
+            [ "${n}" = 1 ] || { echo "expected one .${pat}, found ${n}"; ls -l; exit 1; }
+          done
+          find . -maxdepth 1 -name 'Switchyard-*' -printf '%f\n' | LC_ALL=C sort | xargs sha256sum > SHA256SUMS-desktop
+          cat SHA256SUMS-desktop
+
       - name: Attest build provenance
         uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
           subject-path: |
             dist/release/sy_*.tar.gz
             dist/release/sy_*.zip
+            dist/desktop/Switchyard-*
 
       - name: Create release
         env:
@@ -90,5 +199,5 @@ jobs:
         run: |
           flags=""
           case "${GITHUB_REF_NAME}" in *-*) flags="--prerelease" ;; esac
-          gh release create "${GITHUB_REF_NAME}" dist/release/* \
+          gh release create "${GITHUB_REF_NAME}" dist/release/* dist/desktop/* \
             --verify-tag --generate-notes --title "${GITHUB_REF_NAME}" $flags
