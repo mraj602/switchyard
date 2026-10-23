@@ -209,10 +209,13 @@ use. In order of priority (plans, not promises; open an issue if one matters to 
 3. **Artifacts across accounts.** Detect which account made each claude.ai artifact (and the
    other tools' equivalents), and let sessions in your other accounts use and share them
    through peers.
-4. **Desktop updates** from inside the app, and code-signed macOS and Windows builds.
-5. **A hosted hub,** for people who would rather not run their own. Self-hosting stays free.
-6. **Android in app stores** (IzzyOnDroid, then F-Droid). Today the APK is on GitHub Releases.
-7. **An iPhone app.** Today an iPhone uses the board as a web app or ntfy.
+4. **Passkeys in desktop tabs.** claude.ai keeps offering passkeys after each sign-in, but
+   Electron has no passkey prompt, so today they are added and used in your normal browser.
+   Security keys first, then a phone as the passkey.
+5. **Desktop updates** from inside the app, and code-signed macOS and Windows builds.
+6. **A hosted hub,** for people who would rather not run their own. Self-hosting stays free.
+7. **Android in app stores** (IzzyOnDroid, then F-Droid). Today the APK is on GitHub Releases.
+8. **An iPhone app.** Today an iPhone uses the board as a web app or ntfy.
 
 Not planned: shared or team hubs. A hub belongs to one person, and only you see your sessions,
 accounts and usage.
