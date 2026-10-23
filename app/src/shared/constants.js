@@ -107,6 +107,7 @@ export const TAB_FRAME_HOSTS = Object.freeze([
   'hooks.stripe.com', // billing: Stripe's 3-D Secure hand-off frame
   'm.stripe.network', // billing: Stripe's fraud-signal frame that Stripe.js inserts
   'accounts.google.com', // the "Sign in with Google" button and One Tap frame
+  'hcaptcha.com', // the sign-in page's bot check (invisible hCaptcha: newassets.hcaptcha.com frames)
 ]);
 /** Subframe URLs that load nothing from the network and are always allowed (C2). */
 export const INERT_FRAME_URLS = Object.freeze(['about:blank', 'about:srcdoc']);

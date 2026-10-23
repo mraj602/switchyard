@@ -107,6 +107,7 @@ test('account tab: subframes load only allow-listed https hosts, the rest is blo
     'https://claude.ai/x', 'https://www.claude.ai/', 'https://a.claude.com/', 'https://console.anthropic.com/',
     'https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/b/turnstile/if/ov2/', 'https://abc.claudeusercontent.com/',
     'https://js.stripe.com/v3/elements-inner-card.html', 'https://hooks.stripe.com/3d_secure_2/hosted', 'https://m.stripe.network/inner.html',
+    'https://newassets.hcaptcha.com/captcha/v1/abc/static/hcaptcha.html#frame=checkbox-invisible',
     'https://accounts.google.com/gsi/iframe/select', 'about:blank', 'about:srcdoc', 'about:blank#x', 'blob:https://claude.ai/0c3e2d6a-1111-2222-3333-444455556666',
   ];
   for (const u of allowed) {

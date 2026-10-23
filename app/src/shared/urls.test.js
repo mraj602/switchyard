@@ -96,7 +96,7 @@ test('loopback hosts, same origin, shell URLs', () => {
 
 test('subframes of an account tab: the allow-list, https only, inert and blob: frames', () => {
   for (const u of ['https://claude.ai/', 'https://challenges.cloudflare.com/x', 'https://js.stripe.com/v3/', 'https://x.claudeusercontent.com/',
-    'https://accounts.google.com/gsi/', 'about:blank', 'about:srcdoc', 'ABOUT:BLANK', 'blob:https://claude.ai/abc']) {
+    'https://accounts.google.com/gsi/', 'https://newassets.hcaptcha.com/captcha/v1/abc/static/hcaptcha.html', 'about:blank', 'about:srcdoc', 'ABOUT:BLANK', 'blob:https://claude.ai/abc']) {
     assert.ok(urls.tabFrameAllowed(u), u);
   }
   for (const u of ['http://js.stripe.com/', 'https://stripe.com/', 'https://google.com/', 'about:config', 'data:text/html,x',

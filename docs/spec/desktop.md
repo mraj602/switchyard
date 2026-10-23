@@ -74,7 +74,7 @@ both enforce it.
 
   | View | Frames may load |
   | --- | --- |
-  | Account tab | `https:` only, no credentials in the URL, on `TAB_FRAME_HOSTS` or a subdomain: `claude.ai`, `anthropic.com`, `claude.com` (and `claudeusercontent.com`, where claude.ai renders artifacts), `challenges.cloudflare.com` (Turnstile), `js.stripe.com`, `hooks.stripe.com`, `m.stripe.network` (Stripe checkout and its 3-D Secure wrapper), `accounts.google.com` (Google sign-in). In an unpackaged test run, also `SY_APP_TEST_CLAUDE_ORIGIN`. |
+  | Account tab | `https:` only, no credentials in the URL, on `TAB_FRAME_HOSTS` or a subdomain: `claude.ai`, `anthropic.com`, `claude.com` (and `claudeusercontent.com`, where claude.ai renders artifacts), `challenges.cloudflare.com` (Turnstile), `js.stripe.com`, `hooks.stripe.com`, `m.stripe.network` (Stripe checkout and its 3-D Secure wrapper), `accounts.google.com` (Google sign-in), `hcaptcha.com` (the sign-in page's invisible hCaptcha check). In an unpackaged test run, also `SY_APP_TEST_CLAUDE_ORIGIN`. |
   | Hub view | The hub origin only |
   | Shell | nothing |
 

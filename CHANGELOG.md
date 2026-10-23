@@ -27,6 +27,8 @@ All notable changes to Switchyard are recorded here. The format follows
 
 - The web board's sign-in page no longer loses a half-typed token or owner link when the page
   updates in the background (for example while the offline app installs).
+- Desktop: signing in to claude.ai in an account tab works again. The tabs blocked the frames of
+  the sign-in page's hCaptcha check, so it failed with "Couldn't verify your browser".
 
 ## [1.0.0] - not released yet
 
