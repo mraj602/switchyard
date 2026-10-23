@@ -7,7 +7,8 @@ desktop app and the Android app. Contributors don't need it.
 
 - One version number is shared by `sy`, the desktop app (`app/package.json`) and the Android
   app (`phone/package.json`), so a bug report's version means the same thing everywhere.
-- `vX.Y.Z` releases `sy`, the hub and the install scripts (`.github/workflows/release.yml`).
+- `vX.Y.Z` releases `sy`, the hub, the install scripts and the desktop app packages
+  (`.github/workflows/release.yml`).
   The tagged commit must be on `main`, and CI must be green on it.
 - `phone-vX.Y.Z` releases the Android APK. You build and sign it on your own machine. CI never
   sees the signing key.
@@ -80,9 +81,9 @@ git tag -s vX.Y.Z -m "vX.Y.Z"      # -a if you don't sign tags
 git push origin vX.Y.Z
 ```
 
-`release.yml` checks the tag, runs `make check`, builds the six archives and attests their
-build provenance. It then publishes the GitHub release with the install scripts. After it
-finishes, check:
+`release.yml` checks the tag, runs `make check`, builds the six archives and the desktop app
+packages (section 3), attests their build provenance. It then publishes the GitHub release with
+the install scripts, in one step, only if every build succeeded. After it finishes, check:
 
 - `curl -fsSL https://github.com/mraj602/switchyard/releases/latest/download/install.sh | sh` works
   on a clean machine;
@@ -90,9 +91,24 @@ finishes, check:
 
 ### 3. The desktop app
 
-See "Releases" in `docs/guide/desktop.md` for how the packaged builds are made and published.
-The builds are unsigned (no paid certificates), so the release note links to the guide's
-"Opening an unsigned build" section.
+Nothing to run: the same `vX.Y.Z` tag builds and publishes the desktop app, in `release.yml`.
+
+- A `desktop` job per OS (Linux, macOS, Windows) builds the unsigned packages: AppImage, deb and
+  rpm; dmg; NSIS installer. It builds the bundled `sy` from the tagged commit with the same
+  ldflags as `scripts/release/build.sh`, and fails if `app/package.json`'s version is not the
+  tag's version or the bundled `sy` reports another version. So **`app/package.json` must be
+  set to the release version before you tag** (step 1); a mismatch fails the run before
+  anything is published.
+- The `release` job waits for all of them, writes `SHA256SUMS-desktop`, attests every package
+  and creates the release with the `sy` archives, install scripts and packages together. If one
+  OS fails there is no release (and no tag-triggered half release); fix it, delete the tag
+  (`git push --delete origin vX.Y.Z`, `git tag -d vX.Y.Z`) and tag again on a fixed commit on
+  `main`.
+- The builds are unsigned (no paid certificates), so the release note links to the guide's
+  "Unsigned builds on macOS and Windows" section (`docs/guide/desktop.md`).
+
+After the run, check that the release lists the five packages and `SHA256SUMS-desktop`, and
+that `gh attestation verify <package> --repo mraj602/switchyard` passes for one of them.
 
 ### 4. The Android app
 
