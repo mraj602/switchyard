@@ -8,6 +8,8 @@ import { create, pairError, FORBIDDEN_ERROR } from './index.js';
 import { createBus } from '../bus.js';
 import { fakeElectron } from '../../../test/fakes/electron.js';
 import { startFakeHub } from '../../../test/fakes/hub.js';
+import { haveOpenssl, makeCert, startTlsFront } from '../../../test/fakes/tls.js';
+import { probe as probeCertificate } from './pin.js';
 
 const silent = { warn() {}, error() {}, debug() {}, info() {} };
 const until = async (fn, ms = 3000) => {
@@ -78,7 +80,8 @@ async function harness(opts = {}) {
   const links = [];
   const h = create({
     electron: fake.electron, sy, security, window, bus, ipc: { register: (c, fn) => (handlers[c] = fn) }, fs: opts.fs ?? fsp, path, tokenFile,
-    fetch: globalThis.fetch, log: silent, timers: slow, platform: 'linux',
+    fetch: globalThis.fetch, log: silent, timers: slow, platform: 'linux', clientVersion: opts.clientVersion,
+    probeCertificate: opts.probe ?? (async () => ({ ok: false, error: 'no TLS probe in this test' })),
     openSessionLink: (url, seat) => { links.push({ url, seat }); return opts.openResult ?? true; },
   });
   const events = { hub: [], needs_you: [], alert: [] };
@@ -664,7 +667,7 @@ test('hub:service, accounts:local and accounts:share', async () => {
 
 test('every handler of the WP is registered', async () => {
   const t = await harness();
-  assert.deepEqual(Object.keys(t.handlers).sort(), ['accounts:local', 'accounts:share', 'hub:connect', 'hub:owner-sign-in', 'hub:owner-sign-out', 'hub:pair', 'hub:retry', 'hub:route', 'hub:service', 'hub:unpair', 'seat:update']);
+  assert.deepEqual(Object.keys(t.handlers).sort(), ['accounts:local', 'accounts:share', 'app:open-release', 'hub:connect', 'hub:owner-sign-in', 'hub:owner-sign-out', 'hub:pair', 'hub:retry', 'hub:route', 'hub:service', 'hub:trust-cert', 'hub:unpair', 'seat:update']);
   await t.close();
 });
 
@@ -928,4 +931,90 @@ test('a hub never seen reachable is reported unreachable at once', async () => {
   await t.handlers['hub:pair']({}).catch(() => {});
   assert.equal(lastHub(t).reachable, false);
   await t.close();
+});
+
+// ---- the certificate of an https hub (C6): trust on first use, pinned, refused when it changes
+
+const NO_OPENSSL = haveOpenssl() ? false : 'the openssl CLI is not installed';
+const certDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-hubcert-'));
+const certs = NO_OPENSSL ? {} : { a: makeCert(certDir, 'a'), b: makeCert(certDir, 'b') };
+
+test('direct: a self-signed https hub is pinned once the person confirms its fingerprint; a changed certificate is refused until re-pinned', { skip: NO_OPENSSL }, async () => {
+  const t = await directHarness({ probe: probeCertificate });
+  const front = await startTlsFront({ target: t.hub.url, ...certs.a });
+  const directFile = path.join(t.dir, 'direct.json');
+  await t.h.start();
+  const r = await t.handlers['hub:connect']({ url: front.url, code: '123-456' });
+  assert.equal(r.ok, false);
+  assert.match(r.error, /not signed by an authority this computer trusts/);
+  assert.equal(r.cert.fingerprint, certs.a.fingerprint);
+  assert.equal(r.cert.changed, false);
+  assert.equal(r.cert.origin, front.url);
+  assert.equal(front.requests.length, 0, 'nothing was sent before the person decided');
+  assert.equal(fs.existsSync(directFile) ? readJson(directFile).url : null, null);
+
+  assert.match((await t.handlers['hub:trust-cert']({ url: front.url, fingerprint: certs.b.fingerprint })).error, /different certificate/);
+  assert.match((await t.handlers['hub:trust-cert']({ url: front.url, fingerprint: 'nope' })).error, /not a SHA-256/);
+  assert.match((await t.handlers['hub:trust-cert']({ url: t.hub.url, fingerprint: certs.a.fingerprint })).error, /Only an https address/);
+  assert.deepEqual(await t.handlers['hub:trust-cert']({ url: front.url, fingerprint: certs.a.fingerprint.toLowerCase() }), { ok: true, pinned: true });
+  assert.equal(readJson(directFile).pins[front.url].sha256, certs.a.fingerprint, 'kept with the hub config');
+
+  assert.deepEqual(await t.handlers['hub:connect']({ url: front.url, code: '123-456' }), { ok: true });
+  assert.equal(lastHub(t).status, 'ok');
+  assert.equal(lastHub(t).pinned, true);
+  assert.equal(lastHub(t).insecure, false);
+  await until(() => t.hub.streamCount() === 1);
+  assert.ok(front.requests.some((q) => q.url === '/v1/stream' && q.headers.authorization === 'Bearer sy_d_good'), 'the token goes over the pinned TLS');
+
+  // The certificate changes: nothing is sent, the state says so and the board is hidden.
+  front.use(certs.b);
+  t.hub.cutStreams();
+  const sent = front.requests.length;
+  await t.handlers['hub:retry']();
+  await until(() => lastHub(t).cert?.changed === true);
+  assert.equal(lastHub(t).cert.fingerprint, certs.b.fingerprint);
+  assert.equal(lastHub(t).cert.pinned, certs.a.fingerprint);
+  assert.equal(lastHub(t).status, 'unreachable');
+  assert.equal(front.requests.length, sent, 'no request crossed the changed certificate');
+
+  // Re-pin after comparing the new fingerprint.
+  assert.deepEqual(await t.handlers['hub:trust-cert']({ url: front.url, fingerprint: certs.b.fingerprint }), { ok: true, pinned: true });
+  assert.equal(lastHub(t).cert, null);
+  assert.equal(lastHub(t).status, 'ok');
+  assert.equal(readJson(directFile).pins[front.url].sha256, certs.b.fingerprint);
+
+  // Forgetting the hub forgets its certificate.
+  await t.handlers['hub:unpair']({ forget: true });
+  assert.equal(readJson(directFile).pins[front.url], undefined);
+  await front.close();
+  await t.close();
+});
+
+test('plain http to another computer is flagged insecure; loopback and https are not', async () => {
+  const t = await harness();
+  t.sy.state.info = info('http://192.168.1.5:8787', { hub: { reachable: false } });
+  await t.h.start();
+  assert.equal(lastHub(t).insecure, true);
+  t.sy.state.info = info(t.hub.url);
+  await t.handlers['hub:retry']();
+  assert.equal(lastHub(t).insecure, false, 'loopback');
+  t.sy.state.info = info('https://hub.example.com', { hub: { reachable: false } });
+  await t.handlers['hub:retry']();
+  assert.equal(lastHub(t).insecure, false);
+  await t.close();
+});
+
+test('versions: sy’s is reported, and the release link opens the newer version’s page through openExternalSafe', async () => {
+  const t = await harness({ clientVersion: '0.5.0' });
+  t.sy.state.info = info(t.hub.url, { sy: '0.6.1' });
+  await t.h.start();
+  assert.equal(lastHub(t).sy_version, '0.6.1');
+  assert.deepEqual(await t.handlers['app:open-release'](), { ok: true });
+  assert.deepEqual(t.opened, ['https://github.com/mraj602/switchyard/releases/tag/v0.6.1']);
+  await t.close();
+  const same = await harness({ clientVersion: '0.6.0' });
+  await same.h.start();
+  await same.handlers['app:open-release']();
+  assert.deepEqual(same.opened, ['https://github.com/mraj602/switchyard/releases']);
+  await same.close();
 });

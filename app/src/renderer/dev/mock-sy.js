@@ -160,6 +160,8 @@ const sy = {
   hubConnect: async () => { state.hub.paired = true; state.hub.status = 'ok'; state.hub.url = 'https://hub.example.com'; push(); return { ok: true }; },
   hubUnpair: async () => { state.hub.paired = false; state.hub.owner = false; state.hub.status = 'needs_pairing'; push(); return { ok: true, revoked: true }; },
   hubRetry: async () => ({ ok: true }),
+  trustCert: async () => { state.hub.cert = null; state.hub.pinned = true; push(); return { ok: true, pinned: true }; },
+  openRelease: async () => ({ ok: true }),
   hubService: async ({ action }) => ({ service: action === 'stop' ? 'stopped' : 'running', health: action !== 'stop' }),
   updateSeat: async ({ seat, label, colour }) => {
     const t = state.tabs.find((x) => x.seat === seat);

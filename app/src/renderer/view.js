@@ -227,6 +227,13 @@ export const lastReadTitle = (tab, now) => (tab.last_read ? `last read ${clock(t
  */
 export function hubBanner(hub, now = Date.now()) {
   if (!hub) return null;
+  // The hub's https certificate is not trusted, or not the pinned one: nothing else can work
+  // until the person compares its fingerprint and trusts it (C6).
+  if (hub.cert) {
+    return hub.cert.changed
+      ? { level: 'error', title: "The hub's certificate changed.", text: `${hub.cert.origin} now presents a different certificate than the one this computer trusted. If you did not replace it, someone may be intercepting the connection. Nothing is sent to the hub until you decide.`, command: null, action: 'cert' }
+      : { level: 'warn', title: "This hub's certificate is not trusted yet.", text: `${hub.cert.origin} uses a certificate that this computer cannot check (for example a self-signed one). Compare its fingerprint with the one on the hub's computer, then trust it.`, command: null, action: 'cert' };
+  }
   switch (hub.status) {
     case 'ok':
       if (hub.board_blocked) {
@@ -268,13 +275,52 @@ export function shortDate(iso) {
   return new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
+// ---- the hub's certificate (C6) and plain http
+
+/** The warning shown while the hub is reached over plain http from another computer. */
+export const INSECURE_TEXT = 'Not encrypted: this hub uses plain http, so the hub token and everything the app exchanges with it cross the network unencrypted. Use an https address (for example tailscale serve or a reverse proxy) to fix this.';
+
+/** The warning under the Connect form when the typed address is plain http to another computer. */
+export function insecureAddress(text) {
+  const t = String(text || '').trim();
+  if (!/^http:\/\//i.test(t)) return false;
+  try {
+    const h = new URL(t).hostname.replace(/^\[|\]$/g, '').toLowerCase();
+    return !(h === 'localhost' || h === '::1' || /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h));
+  } catch {
+    return false;
+  }
+}
+
+/** A fingerprint split in groups of four pairs, one group per line half, for comparing by eye. */
+export function fingerprintGroups(fp) {
+  const pairs = String(fp || '').split(':').filter(Boolean);
+  const out = [];
+  for (let i = 0; i < pairs.length; i += 4) out.push(pairs.slice(i, i + 4).join(':'));
+  return out;
+}
+
+/** The command that prints the fingerprint on the hub's computer (or the computer serving https for it). */
+export function fingerprintCommand(origin) {
+  let u;
+  try {
+    u = new URL(origin);
+  } catch {
+    return '';
+  }
+  const host = u.hostname.replace(/^\[|\]$/g, '');
+  const ip = /^[\d.]+$/.test(host) || host.includes(':');
+  const target = host.includes(':') ? `[${host}]:${u.port || 443}` : `${host}:${u.port || 443}`;
+  return `openssl s_client -connect ${target}${ip ? '' : ` -servername ${host}`} </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256`;
+}
+
 /** The top-bar chip: text and level for any state ("Hub · Connected"). */
 export function hubChip(hub) {
   if (!hub) return { text: 'Hub · Unknown', level: 'info' };
   switch (hub.status) {
     case 'ok': return hub.board_blocked ? { text: 'Hub · Sign-in failed', level: 'error' } : { text: 'Hub · Connected', level: hub.error ? 'error' : 'ok' };
     case 'needs_pairing': return { text: hub.removed ? 'Hub · Removed' : 'Hub · Not paired', level: 'warn' };
-    case 'unreachable': return { text: 'Hub · Unreachable', level: 'error' };
+    case 'unreachable': return hub.cert ? { text: hub.cert.changed ? 'Hub · Certificate changed' : 'Hub · Certificate', level: 'error' } : { text: 'Hub · Unreachable', level: 'error' };
     case 'dial': return { text: 'Hub · Forward mode', level: 'warn' };
     default: return { text: 'Hub · Not connected', level: 'info' };
   }
@@ -309,7 +355,7 @@ export function hubSummary(hub) {
     case 'not_connected': return 'Not connected';
     case 'dial': return 'Forward mode (unsupported)';
     case 'needs_pairing': return hub.removed ? 'Removed from the hub' : 'Needs pairing';
-    case 'unreachable': return 'Unreachable';
+    case 'unreachable': return hub.cert ? (hub.cert.changed ? 'Certificate changed' : 'Certificate not trusted') : 'Unreachable';
     default: return 'Unknown';
   }
 }

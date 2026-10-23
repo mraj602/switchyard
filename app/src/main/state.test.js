@@ -70,8 +70,26 @@ test('snapshot before anything is known', () => {
   assert.deepEqual(st.snapshot(), {
     tabs: [], missing: [], view: 'hub', hub: defaultHub(),
     settings: { keep_running: true, notifications: true, start_hidden: false, autostart: false, close_notice_shown: false },
-    banners: [],
+    banners: [], update: null,
   });
+});
+
+test('the hub certificate, the http warning and the update notice are copied field by field', () => {
+  const fp = 'AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89';
+  const { bus, st } = setup({ about: { app: '0.6.0', electron: '1', chrome: '1', platform: 'x' } });
+  bus.emit('hub', {
+    status: 'unreachable', url: 'https://hub.lan:8443', version: '0.7.0', sy_version: '0.6.0', insecure: false, pinned: true,
+    cert: { url: 'https://hub.lan:8443', origin: 'https://hub.lan:8443', fingerprint: fp, pinned: 'nope', changed: true, trusted: false, reason: 'X', subject: 'CN=a', issuer: 'CN=a', valid_to: 'y', pem: 'leak' },
+  });
+  const s = st.snapshot();
+  assert.deepEqual(s.hub.cert, { url: 'https://hub.lan:8443', origin: 'https://hub.lan:8443', fingerprint: fp, pinned: null, changed: true, trusted: false, reason: 'X', subject: 'CN=a', issuer: 'CN=a', valid_to: 'y' });
+  assert.equal(s.hub.pinned, true);
+  assert.equal(s.hub.sy_version, '0.6.0');
+  assert.deepEqual(s.update, { kind: 'update', app: '0.6.0', version: '0.7.0', from: 'hub' });
+  bus.emit('hub', { status: 'ok', url: 'http://192.168.1.5:8787', insecure: true, version: '0.6.0', cert: { fingerprint: 'bad' } });
+  assert.equal(st.snapshot().hub.insecure, true);
+  assert.equal(st.snapshot().hub.cert, null);
+  assert.equal(st.snapshot().update, null);
 });
 
 test('the About versions are copied by name, and only when boot gives them', () => {

@@ -87,6 +87,76 @@ test('account tab: allowed hosts navigate, others are prevented and https goes t
   assert.equal(wc._cancellable('will-redirect', 'https://js.stripe.com/x', false, false), false);
 });
 
+/** A will-frame-navigate as Electron emits it: one details object; true when it was prevented. */
+function frameNav(wc, url, isMainFrame = false) {
+  let prevented = false;
+  wc.emit('will-frame-navigate', { url, isMainFrame, preventDefault: () => (prevented = true) });
+  return prevented;
+}
+
+function recordingLog() {
+  const lines = [];
+  return { lines, log: { debug: (m) => lines.push(m), info() {}, warn() {}, error() {} } };
+}
+
+test('account tab: subframes load only allow-listed https hosts, the rest is blocked and logged by host', async () => {
+  const { lines, log } = recordingLog();
+  const { sec, e, fake } = setup({ deps: { log } });
+  const wc = view(e, 'tab', sec, TAB);
+  const allowed = [
+    'https://claude.ai/x', 'https://www.claude.ai/', 'https://a.claude.com/', 'https://console.anthropic.com/',
+    'https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/b/turnstile/if/ov2/', 'https://abc.claudeusercontent.com/',
+    'https://js.stripe.com/v3/elements-inner-card.html', 'https://hooks.stripe.com/3d_secure_2/hosted', 'https://m.stripe.network/inner.html',
+    'https://accounts.google.com/gsi/iframe/select', 'about:blank', 'about:srcdoc', 'about:blank#x', 'blob:https://claude.ai/0c3e2d6a-1111-2222-3333-444455556666',
+  ];
+  for (const u of allowed) {
+    assert.equal(frameNav(wc, u), false, u);
+    assert.equal(wc._cancellable('will-redirect', u, false, false), false, `redirect ${u}`);
+  }
+  const blocked = [
+    'https://evil.example/frame', 'http://claude.ai/', 'https://claude.ai.evil.com/', 'https://evilclaude.ai/', 'https://stripe.com/',
+    'https://checkout.stripe.com/x', 'https://www.google.com/', 'https://user:pw@claude.ai/', 'data:text/html,<p>x</p>',
+    'javascript:alert(1)', 'file:///etc/passwd', 'blob:https://evil.example/0c3e2d6a', 'app://shell/index.html', 'not a url',
+  ];
+  for (const u of blocked) {
+    assert.equal(frameNav(wc, u), true, u);
+    assert.equal(wc._cancellable('will-redirect', u, false, false), true, `redirect ${u}`);
+  }
+  assert.ok(lines.some((l) => l.includes('subframe to evil.example blocked in a tab view')), lines.join('\n'));
+  assert.ok(lines.every((l) => !l.includes('/frame')), 'only the host is logged, never the path');
+  // The main frame is will-navigate's: a main-frame will-frame-navigate is left alone.
+  assert.equal(frameNav(wc, 'https://evil.example/', true), false);
+  await tick();
+  assert.equal(fake.callsOf('shell.openExternal').length, 0, 'a blocked subframe never opens anything outside');
+});
+
+test('account tab: the test claude origin may be framed only when unpackaged', () => {
+  const origin = 'http://127.0.0.1:5555';
+  const dev = setup({ deps: { claudeOrigin: origin } });
+  assert.equal(frameNav(view(dev.e, 'tab', dev.sec, TAB), `${origin}/frame`), false);
+  const pkg = setup({ fake: { isPackaged: true }, deps: { claudeOrigin: origin } });
+  assert.equal(frameNav(view(pkg.e, 'tab', pkg.sec, TAB), `${origin}/frame`), true);
+});
+
+test('hub view and shell: subframes only from the hub origin; the shell frames nothing', () => {
+  const { sec, e } = setup();
+  let origin = 'http://127.0.0.1:8787';
+  const hub = view(e, 'hub', sec, {}, { hubOrigin: () => origin });
+  assert.equal(frameNav(hub, 'http://127.0.0.1:8787/x'), false);
+  assert.equal(frameNav(hub, 'about:blank'), false);
+  assert.equal(frameNav(hub, 'http://127.0.0.1:9999/x'), true);
+  assert.equal(frameNav(hub, 'https://claude.ai/'), true);
+  origin = 'https://hub.example';
+  assert.equal(frameNav(hub, 'http://127.0.0.1:8787/x'), true, 'the origin is read per navigation');
+  assert.equal(frameNav(hub, 'https://hub.example/a'), false);
+  const shell = view(e, 'shell', sec, { preload: '/p.cjs' });
+  assert.equal(frameNav(shell, 'about:blank'), true);
+  assert.equal(frameNav(shell, 'https://claude.ai/'), true);
+  const bare = new e.WebContentsView({}).webContents;
+  e.app.emit('web-contents-created', {}, bare);
+  assert.equal(frameNav(bare, 'https://claude.ai/'), true, 'an unguarded webContents frames nothing');
+});
+
 test('account tab: window.open loads allowed hosts in the tab, sends https/mailto out, drops the rest', async () => {
   const { sec, e, fake } = setup();
   const wc = view(e, 'tab', sec, TAB);
@@ -250,6 +320,7 @@ test('lint: each rule fires on a sample and respects its allowed files', () => {
     'child-process': "import { execFile } from 'node:child_process'",
     'ipc-on': "ipcMain.on('x', fn)",
     'certificate-override': "app.on('certificate-error', ok)",
+    'certificate-verify-proc': 'ses.setCertificateVerifyProc((r, cb) => cb(0))',
     'crash-reporter': 'crashReporter.start({})',
   };
   for (const [rule, code] of Object.entries(bad)) {
@@ -261,6 +332,9 @@ test('lint: each rule fires on a sample and respects its allowed files', () => {
   assert.deepEqual(lintText('main/security.js', 'electron.shell.openExternal(u)'), []);
   assert.deepEqual(lintText('main/sy/run.js', "import { execFile } from 'node:child_process'"), []);
   assert.deepEqual(lintText('main/tabs/index.js', 'await security.openExternalSafe(url)'), []);
+  assert.deepEqual(lintText('main/hub/pin.js', 'session.setCertificateVerifyProc(fn)'), []);
+  assert.equal(lintText('main/hub/index.js', 'session.setCertificateVerifyProc(fn)').length, 1);
+  assert.equal(lintText('main/hub/pin.js', "app.on('certificate-error', ok)").length, 1, 'the pin file still cannot override errors');
 });
 
 test('lint: the safe forms and comments do not fire', () => {

@@ -10,7 +10,8 @@
 //   executeJavaScript…( outside main/usage/reader.js, openExternal outside main/security.js
 //   (its openExternalSafe is the one caller), child_process outside main/sy/, ipcMain.on /
 //   sendSync (C3: ipcMain.handle only), certificate overrides ('certificate-error',
-//   setCertificateVerifyProc, ignore-certificate-errors), crashReporter (C2: never started).
+//   ignore-certificate-errors), setCertificateVerifyProc outside main/hub/pin.js (the hub
+//   certificate pin, C6), crashReporter (C2: never started).
 //
 // HTML under src/renderer/: no inline <script>, no <style>, no style= or on…= attributes,
 // no javascript: URLs.
@@ -50,8 +51,14 @@ export const JS_RULES = Object.freeze([
   },
   { id: 'ipc-on', re: /\bipcMain\s*\.\s*(on|once|addListener)\s*\(|\bsendSync\b/, why: 'IPC is ipcMain.handle only (C3)' },
   {
-    id: 'certificate-override', re: /['"]certificate-error['"]|\bsetCertificateVerifyProc\b|ignore-certificate-errors/,
+    id: 'certificate-override', re: /['"]certificate-error['"]|ignore-certificate-errors/,
     why: 'certificate errors are never overridden',
+  },
+  {
+    // The hub certificate pin (C6) is the one verify proc, on the hub partition only.
+    id: 'certificate-verify-proc', re: /\bsetCertificateVerifyProc\b/,
+    why: 'setCertificateVerifyProc only in main/hub/pin.js (the pinned hub certificate)',
+    allow: (rel) => rel === 'main/hub/pin.js',
   },
   { id: 'crash-reporter', re: /\bcrashReporter\b/, why: 'the crash reporter is not started' },
 ]);

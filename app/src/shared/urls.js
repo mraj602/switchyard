@@ -11,6 +11,8 @@ import {
   NOT_READABLE_PATHS,
   CLAUDE_SESSION_LINK_PATTERN,
   SHELL_ORIGIN,
+  TAB_FRAME_HOSTS,
+  INERT_FRAME_URLS,
 } from './constants.js';
 
 const SESSION_LINK_RE = new RegExp(CLAUDE_SESSION_LINK_PATTERN);
@@ -176,6 +178,61 @@ export function tabLinkAction(url, opts = {}) {
   if (tabMayLoad(url, opts)) return 'tab';
   if (isExternalAllowed(url)) return 'external';
   return 'deny';
+}
+
+/** True for about:blank and about:srcdoc (with or without a fragment): a subframe with no network load. */
+export function isInertFrameUrl(url) {
+  if (typeof url !== 'string') return false;
+  const base = url.split('#')[0].toLowerCase();
+  return INERT_FRAME_URLS.includes(base);
+}
+
+/**
+ * The URL a blob: URL was made by (blob:https://claude.ai/<uuid> → https://claude.ai), else null.
+ * @param {URL} u
+ */
+function blobOrigin(u) {
+  if (u.protocol !== 'blob:') return null;
+  const inner = parse(u.pathname);
+  return inner && inner.origin !== 'null' ? inner : null;
+}
+
+/**
+ * May a subframe of an account tab load url (C2)? https on a TAB_FRAME_HOSTS host (or a
+ * subdomain), the test origin, about:blank / about:srcdoc, or a blob: URL made by an allowed
+ * origin. Everything else is blocked.
+ * @param {unknown} url
+ * @param {{claudeOrigin?: string|null}} [opts]
+ */
+export function tabFrameAllowed(url, opts = {}) {
+  if (isInertFrameUrl(url)) return true;
+  const u = parse(url);
+  if (!u) return false;
+  const inner = blobOrigin(u);
+  if (inner) return tabFrameAllowed(inner.href, opts);
+  if (opts.claudeOrigin && sameOrigin(u, opts.claudeOrigin)) return true;
+  return u.protocol === 'https:' && !u.username && !u.password && TAB_FRAME_HOSTS.some((h) => hostIs(u.hostname, h));
+}
+
+/**
+ * May a subframe of the hub view load url (C2)? The hub's own origin (or a blob: URL it made),
+ * about:blank and about:srcdoc only.
+ * @param {unknown} url
+ * @param {{hubOrigin?: string|null}} [opts]
+ */
+export function hubFrameAllowed(url, opts = {}) {
+  if (isInertFrameUrl(url)) return true;
+  const u = parse(url);
+  if (!u || !opts.hubOrigin) return false;
+  const inner = blobOrigin(u);
+  return sameOrigin(inner ?? u, opts.hubOrigin);
+}
+
+/** The host of url for a log line (no path or query, which may carry secrets); the scheme when there is no host. */
+export function hostForLog(url) {
+  const u = parse(url);
+  if (!u) return '(not a URL)';
+  return (u.host || u.protocol).slice(0, 253);
 }
 
 /**

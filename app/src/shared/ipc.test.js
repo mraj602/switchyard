@@ -86,6 +86,7 @@ const good = {
   'hub:owner-sign-in': [{}, { link: 'http://127.0.0.1:8787/#/owner?s=abc' }],
   'hub:owner-sign-out': [undefined],
   'hub:connect': [{ url: 'https://hub.example.com' }, { url: '192.168.1.5:8787', code: '123-456' }],
+  'hub:trust-cert': [{ url: 'https://192.168.1.5:8443', fingerprint: 'AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89' }, { url: 'hub.lan', fingerprint: 'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789' }],
   'hub:unpair': [{}, { forget: true }],
   'hub:retry': [undefined],
   'hub:service': [{ action: 'status' }, { action: 'start' }, { action: 'stop' }],
@@ -93,6 +94,7 @@ const good = {
   'accounts:local': [undefined],
   'accounts:share': [{ folder: '~/.claude-2', share: 'all' }, { folder: '/home/me/.claude', share: 'projects,todos=off' }],
   'settings:set': [{}, { keep_running: true, notifications: false, autostart: true, start_hidden: false }],
+  'app:open-release': [undefined],
   toast: [{ level: 'warn', text: 'sy not found' }],
 };
 
@@ -111,12 +113,14 @@ const bad = {
   'hub:owner-sign-in': [{ link: '' }, { link: 5 }, { link: 'x'.repeat(2049) }],
   'hub:owner-sign-out': [{}],
   'hub:connect': [{}, { url: '' }, { url: 'x', code: 'abc' }],
+  'hub:trust-cert': [{ url: 'https://h' }, { fingerprint: 'AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89' }, { url: 'https://h', fingerprint: 'not hex' }, { url: 'https://h', fingerprint: 'AB' }],
   'hub:unpair': [{ forget: 'yes' }],
   'hub:retry': [{}],
   'hub:service': [{ action: 'restart' }, {}],
   'seat:update': [{ label: 'x' }, { seat: 'seat_x' }, { seat: SEAT, label: 'Work' }, { seat: SEAT, colour: '#FFF' }, { seat: SEAT, colour: 'red' }],
   'accounts:share': [{ folder: '~/.claude; rm -rf /', share: 'all' }, { folder: '~/x', share: 'ALL' }, { folder: '~/x' }],
   'settings:set': [{ keep_running: 1 }, { theme: 'dark' }],
+  'app:open-release': [{}],
   toast: [{ level: 'debug', text: 'x' }, { level: 'info', text: '' }],
 };
 

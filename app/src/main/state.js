@@ -15,9 +15,11 @@
 //   autostart false.
 // - banners: setBanner(key, banner|null), for notices main wants to keep on screen.
 // - about: deps.about (app, Electron and Chromium versions, platform), when boot gives it.
+// - update: shared/version.js updateNotice of the app's version against the hub's and sy's.
 
 import { WARNING_VERSION, READING_ON, READING_OFF, READING_NEVER_ASKED, STATE_PUSH_DEBOUNCE_MS, TAB_ID_RE } from '../shared/constants.js';
 import { TOAST_LEVELS, SEAT_ID_PATTERN } from '../shared/ipc.js';
+import { updateNotice } from '../shared/version.js';
 
 const SEAT_ID_RE = new RegExp(SEAT_ID_PATTERN);
 
@@ -36,6 +38,26 @@ export function defaultHub() {
     url: null, connected: false, reachable: false, paired: false, owner: false, version: null,
     local: false, service: null, admin: null, needs_you: 0, status: 'no_sy', storage_backend: null, error: null,
     removed: false, board_blocked: false, direct: false, owner_until: null, last_seen: null, machine: '',
+    cert: null, insecure: false, pinned: false, sy_version: null,
+  };
+}
+
+const FP_RE = /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/;
+
+/** The hub's certificate problem, field by field (HubCert); null when it is not one. */
+function cleanCert(c) {
+  if (!c || typeof c !== 'object' || typeof c.fingerprint !== 'string' || !FP_RE.test(c.fingerprint)) return null;
+  return {
+    url: str(c.url, 2048),
+    origin: str(c.origin, 2048),
+    fingerprint: c.fingerprint,
+    pinned: typeof c.pinned === 'string' && FP_RE.test(c.pinned) ? c.pinned : null,
+    changed: bool(c.changed),
+    trusted: bool(c.trusted),
+    reason: str(c.reason, 80),
+    subject: str(c.subject, 200),
+    issuer: str(c.issuer, 200),
+    valid_to: str(c.valid_to, 40),
   };
 }
 
@@ -155,9 +177,19 @@ function hubState(h, needsYou) {
     d.owner_until = str(h.owner_until, 40);
     d.last_seen = str(h.last_seen, 40);
     d.machine = str(h.machine, 80) ?? '';
+    d.cert = cleanCert(h.cert);
+    d.insecure = bool(h.insecure);
+    d.pinned = bool(h.pinned);
+    d.sy_version = str(h.sy_version, 64);
   }
   if (needsYou && Number.isSafeInteger(needsYou.count) && needsYou.count >= 0) d.needs_you = needsYou.count;
   return d;
+}
+
+/** UpdateNotice (shared/ipc.js) without the URL, which main alone opens (app:open-release). */
+function updateState(app, h) {
+  const n = updateNotice({ app, hub: h?.version, sy: h?.sy_version });
+  return n ? { kind: n.kind, app: n.app, version: n.version, from: n.from } : null;
 }
 
 function settingsState(s, stored, hubBackend) {
@@ -223,6 +255,7 @@ export function create(deps) {
       settings: settingsState(bus.last('settings'), deps.store?.get?.().settings, bus.last('hub')?.storage_backend),
       banners: [...banners.values()],
       ...(deps.about ? { about: aboutState(deps.about) } : {}),
+      update: updateState(deps.about?.app, bus.last('hub')),
     };
   }
 

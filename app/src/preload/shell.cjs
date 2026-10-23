@@ -31,6 +31,7 @@ const INVOKE = {
   ownerSignIn: 'hub:owner-sign-in',
   ownerSignOut: 'hub:owner-sign-out',
   hubConnect: 'hub:connect',
+  trustCert: 'hub:trust-cert',
   hubUnpair: 'hub:unpair',
   hubRetry: 'hub:retry',
   hubService: 'hub:service',
@@ -38,10 +39,11 @@ const INVOKE = {
   localAccounts: 'accounts:local',
   shareAccount: 'accounts:share',
   setSettings: 'settings:set',
+  openRelease: 'app:open-release',
 };
 
 // Channels that take no argument: the function passes none, whatever it is called with.
-const NO_ARGS = new Set(['state:get', 'hub:owner-sign-out', 'hub:retry', 'accounts:local']);
+const NO_ARGS = new Set(['state:get', 'hub:owner-sign-out', 'hub:retry', 'accounts:local', 'app:open-release']);
 
 // Push channels the shell may subscribe to.
 const PUSH = new Set(['state', 'toast']);

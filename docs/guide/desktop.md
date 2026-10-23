@@ -6,7 +6,8 @@ shows the board, and the app turns hub alerts into OS notifications and a tray b
 optional: `sy` and the hub work without it. The spec is [desktop.md](../spec/desktop.md).
 
 Platforms: Linux (AppImage, deb, rpm), macOS (dmg) and Windows (NSIS installer). Packages are
-built locally and are not code-signed, so macOS and Windows warn on first start.
+built locally and are not code-signed, so macOS and Windows warn on first start (see
+[Unsigned builds](#unsigned-builds-on-macos-and-windows)).
 
 ## Build and run
 
@@ -32,6 +33,42 @@ npm start
 The app looks for `sy` on `PATH` or in `~/.local/bin` (when it is recent enough), else uses
 its bundled copy. Without any `sy` the account tabs still work, and the Hub tab says to run
 `sy setup` ([install.md](install.md)).
+
+### Unsigned builds on macOS and Windows
+
+Switchyard does not pay for Apple or Microsoft code-signing certificates, so the macOS and
+Windows packages are unsigned and the OS warns the first time you open them.
+
+- **macOS:** in Finder, right-click (or Control-click) **Switchyard** in Applications, choose
+  **Open**, then **Open** again in the dialog. macOS remembers the choice. On recent macOS,
+  if there is no Open button, go to System Settings, Privacy & Security, and click
+  **Open Anyway** for Switchyard. From a terminal you can instead remove the quarantine flag
+  that the download added:
+
+  ```sh
+  xattr -dr com.apple.quarantine /Applications/Switchyard.app
+  ```
+
+- **Windows:** when SmartScreen says "Windows protected your PC", click **More info**, then
+  **Run anyway**.
+
+Do this only for a package you built yourself or got from the project's GitHub releases. To
+check where a release file came from, use its GitHub build attestation:
+
+```sh
+gh attestation verify <file> --repo mraj602/switchyard
+```
+
+The release workflow attests the `sy` archives. Desktop packages are not yet published by any
+workflow (CI builds them only as short-lived test artifacts), so they have no attestation; build
+them yourself with `make app-dist` if you want to be sure of what you run.
+
+### Updates
+
+The app has no updater and asks no update server. Settings, About lists this app's version,
+sy's and the hub's. When sy or the hub runs a newer release than the app, Settings says
+"Update available" with **Open the release page**; when the app is newer, it suggests
+`sy update`. Install the new package the same way as the first.
 
 ## Account tabs
 
@@ -107,6 +144,36 @@ The token is stored encrypted with the OS keyring (`safeStorage`) and never ente
 page; the app signs the Hub view in with a read-only cookie. On Linux without a keyring the
 token falls back to basic storage, and Settings warns.
 
+**Plain http.** A hub address like `http://192.168.1.5:8787` works, but the desktop token and
+everything else the app exchanges with the hub then cross your network unencrypted: anyone on
+that network can read them, and with the token, read your board. The app says so in the Hub
+tab and in Settings for as long as the address is http. Loopback addresses
+(`http://127.0.0.1`, `localhost`) are not warned about. To fix it, give the hub an https
+address, for example with `tailscale serve` or a reverse proxy (see [install.md](install.md#3b-hub-on-a-server)).
+
+**Self-signed https.** If the hub's https certificate is self-signed (or signed by an
+authority this computer does not trust), the app does not just accept it. It shows the
+certificate's SHA-256 fingerprint and asks you to compare it with the real one. On the
+computer that serves https for the hub (the reverse proxy, not necessarily the hub itself),
+run:
+
+```sh
+openssl s_client -connect hub.lan:8443 -servername hub.lan </dev/null 2>/dev/null \
+  | openssl x509 -noout -fingerprint -sha256
+```
+
+(Leave out `-servername` for an IP address.) If every pair matches, click **The fingerprints
+match: trust it**. The app pins that certificate for this hub: from then on it accepts exactly
+that certificate for it, in its own requests and in the Hub tab, and nothing else. `sy` and the
+hub cannot print this fingerprint, because the hub itself speaks plain http behind the proxy
+and never sees the certificate.
+
+If the hub later presents another certificate, the app says **The hub's certificate changed**
+and sends nothing to it, not even the token. If you replaced the certificate yourself (a
+renewal, a new proxy), compare the new fingerprint the same way and trust it. If you did not,
+someone may be intercepting the connection: do not trust it. Unpairing and forgetting the hub
+removes the pin.
+
 **Owner sign-in.** Changing rules, devices, peers or keys needs an owner session. Settings,
 Hub, **Sign in as owner** asks `sy desktop owner-link` for a one-time link and opens it in
 the Hub tab. It lasts 30 days. Keys and Peers are the board's own pages, shown in the Hub tab
@@ -119,8 +186,10 @@ the Hub tab. It lasts 30 days. Keys and Peers are the board's own pages, shown i
 - **This computer's Claude Code folders:** the output of `sy account list` with the sharing
   switches. Adding an account or logging in needs a terminal, so the app shows the
   `sy account add` and `sy account login` commands to copy. See [accounts.md](accounts.md).
-- **Hub:** address, connection, version, owner yes or no, pairing, and for a local hub the
-  service state with Start and Stop.
+- **Hub:** address, connection, version, owner yes or no, pairing, the certificate state of
+  an https hub (verified, pinned, or not trusted), an encryption warning for plain http, and
+  for a local hub the service state with Start and Stop.
+- **About:** the versions of this app, sy and the hub, and the update notice.
 - **Notifications** and **Background:** run at login, start hidden, keep running when the
   window is closed, tray.
 - **Hub settings:** links to the board's Machines, Alerts and rules, Devices, Phone pairing
@@ -174,6 +243,12 @@ every sign-in (see [uninstall.md](uninstall.md)).
 - The shell is served with a strict content security policy and loads nothing from the
   network.
 - Permissions (camera, notifications from pages and so on) are denied by default.
+- An account tab can only show claude.ai and the pages that sign-in and billing need, and
+  frames inside it are limited to the same list (claude.ai, Anthropic, Cloudflare's
+  challenge, Stripe checkout, Google sign-in). Any other frame is blocked. The Hub tab can only
+  show your hub. See [claude-ai.md](claude-ai.md).
+- Certificate errors are never overridden, except for a hub certificate you pinned yourself
+  (above), and only in the Hub tab and the app's own hub requests.
 - `sy` is run without a shell, from an allow-list of commands; secrets go on stdin, never on
   the command line. Nothing the hub sends can make the app run anything.
 - Packaged builds disable `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS` and `--inspect`, and check
