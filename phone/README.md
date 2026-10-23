@@ -127,7 +127,7 @@ A fork that publishes its own releases changes `DEFAULT_REPO` in
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `SY_APP_ID` | `dev.switchyard.app.local` | Android package. Use your own reverse-DNS id for builds you distribute |
+| `SY_APP_ID` | `io.github.mraj602.switchyard` (`.dev` for a development build) | Android package. Forks that distribute their own build use their own reverse-DNS id |
 | `SY_APP_VARIANT` | release | `development` allows cleartext `http://` to loopback and LAN hubs; anything else is a release configuration |
 
 ## Layout

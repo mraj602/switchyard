@@ -11,7 +11,7 @@
 # Env: ANDROID_HOME (default ~/Android/Sdk), SY_E2E_APK, SY_E2E_GRADLE_ARGS (extra Gradle args;
 #      the default builds x86_64 only, for the emulator: ~6 min instead of ~15; set
 #      SY_E2E_GRADLE_ARGS="" for all ABIs), SY_SKIP_PREBUILD=1 (reuse phone/android),
-#      SY_APP_ID (default dev.switchyard.app.local).
+#      SY_APP_ID (default io.github.mraj602.switchyard.dev, the development build's id).
 # Never a store build, never uploads. Gradle runs --no-daemon with -Xmx2g.
 set -euo pipefail
 phone="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"

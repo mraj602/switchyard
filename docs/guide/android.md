@@ -62,8 +62,10 @@ phone must uninstall and reinstall).
 3. The output is in `phone/dist/`: `switchyard-<version>.apk`, `SHA256SUMS` and
    `manifest.json`. The signing certificate's fingerprint is printed; note it.
 
-`SY_APP_ID` sets the Android package name (default `dev.switchyard.app.local`); use your own
-reverse-DNS id if you plan to share your build.
+The published app's package name is `io.github.mraj602.switchyard`; a development build is
+`io.github.mraj602.switchyard.dev`, so both can be installed side by side. `SY_APP_ID` overrides
+it: a fork that shares its own build must use its own reverse-DNS id, because only the original
+signing key can update the published app.
 
 ### F-Droid and IzzyOnDroid
 

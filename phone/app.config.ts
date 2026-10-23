@@ -3,17 +3,20 @@
 // project. No proprietary Google code either (Firebase, Play services, ML Kit): notifications and
 // the QR scanner are the app's own modules (modules/sy-notify, modules/sy-scan), and
 // scripts/check-no-google.mjs fails the build on any of them. Reads only non-secret environment values:
-//   SY_APP_ID                bundle id and package name (default dev.switchyard.app.local)
+//   SY_APP_ID                bundle id and package name (default io.github.mraj602.switchyard,
+//                            or io.github.mraj602.switchyard.dev for a development build)
 //   SY_APP_VARIANT           "development" allows cleartext traffic (loopback hubs, P2)
 // Never put a credential here (phone.md P13).
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-const APP_ID = process.env.SY_APP_ID || 'dev.switchyard.app.local';
+const DEV = process.env.SY_APP_VARIANT === 'development';
+/** The published app's id never changes (a new id is a new app); a development build gets its own, so both can be installed. */
+export const RELEASE_APP_ID = 'io.github.mraj602.switchyard';
+const APP_ID = process.env.SY_APP_ID || (DEV ? `${RELEASE_APP_ID}.dev` : RELEASE_APP_ID);
 const GROUP_ID = `group.${APP_ID}`;
 const VERSION = '0.8.0';
-const DEV = process.env.SY_APP_VARIANT === 'development';
 /** The brand colours of the icon (phone/assets/src/icon.svg) and the board (webui base.css). */
 export const BRAND_INK = '#17191B';
 export const BRAND_ACCENT = '#E8B04B';

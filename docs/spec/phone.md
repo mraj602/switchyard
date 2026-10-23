@@ -608,7 +608,8 @@ then gets the 401 that shows Pair, P3).
 ## P13. Build configuration
 
 - `app.config.ts` reads only non-secret environment values:
-  - `SY_APP_ID`: bundle id and package name, default `dev.switchyard.app.local`;
+  - `SY_APP_ID`: bundle id and package name, default `io.github.mraj602.switchyard` (the
+    published app; never change it) or `io.github.mraj602.switchyard.dev` for a development build;
   - `SY_APP_VARIANT`: `development` allows cleartext traffic (P2's loopback hubs); any
     other value, or none, is a release config.
 - `scheme: "switchyard"`; iOS `ios.deploymentTarget` 16.4 (the app config field: the

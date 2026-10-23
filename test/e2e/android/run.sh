@@ -43,7 +43,7 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 ROOT="$(cd "$HERE/../../.." && pwd -P)"
 LIB="$HERE/lib.py"
-PKG="${SY_APP_ID:-dev.switchyard.app.local}"
+PKG="${SY_APP_ID:-io.github.mraj602.switchyard.dev}"
 AVD="${SY_E2E_AVD:-pixel_7_api35}"
 EMU_PORT="${SY_E2E_EMU_PORT:-5584}"
 GPU="${SY_E2E_GPU:-swangle_indirect}"
