@@ -4,7 +4,7 @@
 #   echo 'SY_BIND=100.101.102.103' > .env
 #   docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d
 #
-# Only machines on your tailnet can then reach http://<tailscale-name>:8787. Traffic between
+# Only machines on your tailnet can then reach http://<name>.<tailnet>.ts.net:8787. Traffic between
 # tailnet machines is encrypted by WireGuard, so plain http is fine there; for https in
 # the browser use `tailscale serve --bg 8787` instead and keep the default loopback bind.
 #

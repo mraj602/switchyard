@@ -260,8 +260,9 @@ func ReadToken(stateDir string) (string, error) {
 }
 
 // CheckURL validates a hub URL for `sy connect` and returns it normalised (scheme and
-// host only). Plain http is accepted for loopback, Tailscale (*.ts.net, 100.64.0.0/10) and
-// single-label hostnames (MagicDNS short names), which WireGuard already encrypts; any
+// host only). Plain http is accepted for loopback and Tailscale (*.ts.net names, 100.64.0.0/10
+// addresses), which WireGuard already encrypts; a single-label name is not (it could be any LAN
+// name), so use the full MagicDNS name; any
 // other http host needs insecureLAN. The warning, when not empty, is for the user.
 func CheckURL(raw string, insecureLAN bool) (norm, warning string, err error) {
 	u, err := url.Parse(strings.TrimSpace(raw))

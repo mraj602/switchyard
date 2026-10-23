@@ -1,7 +1,6 @@
 package client
 
 import (
-	"net"
 	"net/netip"
 	"strings"
 )
@@ -24,7 +23,8 @@ func isTailscale(host string) bool {
 	if ip, err := netip.ParseAddr(h); err == nil {
 		return cgnat.Contains(ip)
 	}
-	// A single-label name is a MagicDNS short name (or a LAN name; --insecure-lan is the
-	// honest flag for that, but short names are by far the Tailscale case).
-	return h != "" && !strings.Contains(h, ".") && net.ParseIP(h) == nil
+	// A single-label name is not accepted: it could be any LAN name, which the system's search
+	// domains may even send to the wrong network. Use the full <name>.<tailnet>.ts.net name, or
+	// --insecure-lan.
+	return false
 }

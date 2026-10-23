@@ -109,8 +109,8 @@ the hub machine already owns the data, so this needs no password.
 
 - The hub listens on `127.0.0.1` by default and the shipped Docker files never publish it on
   `0.0.0.0`.
-- Clients use `https://` except to loopback or Tailscale addresses. Plain `http://` to any other
-  address is refused unless you pass `--insecure-lan` (to `sy connect` or `sy hub serve`).
+- Clients use `https://` except to loopback or Tailscale (a `*.ts.net` name or a `100.64.0.0/10`
+  address). Plain `http://` to any other address, including a short name such as `myhub`, is refused unless you pass `--insecure-lan` (to `sy connect` or `sy hub serve`).
 - Phones need `https://` for the web app, Web Push and the Android app's release build. Use
   `tailscale serve` or a reverse proxy with TLS ([install.md](install.md)).
 - Never expose the hub port to the internet directly. The read API returns project names and

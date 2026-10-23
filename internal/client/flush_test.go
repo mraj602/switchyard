@@ -652,7 +652,10 @@ func TestCheckURL(t *testing.T) {
 		{"http://127.0.0.1:8787", false, "http://127.0.0.1:8787", false},
 		{"http://localhost:8787/", false, "http://localhost:8787", false},
 		{"https://hub.example.com", false, "https://hub.example.com", false},
-		{"http://home-box:8787", false, "http://home-box:8787", false},
+		{"http://home-box:8787", false, "", true}, // a single-label name could be any LAN host
+		{"http://home-box:8787", true, "http://home-box:8787", false},
+		{"http://100.63.255.255:8787", false, "", true},
+		{"http://100.127.255.255:8787", false, "http://100.127.255.255:8787", false},
 		{"http://oci.tail1234.ts.net:8787", false, "http://oci.tail1234.ts.net:8787", false},
 		{"http://100.101.102.103:8787", false, "http://100.101.102.103:8787", false},
 		{"http://198.51.100.5:8787", false, "", true},

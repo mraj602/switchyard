@@ -175,14 +175,14 @@ func TestCheckServer(t *testing.T) {
 	ok := map[string]string{
 		"": "https://ntfy.sh", "https://ntfy.sh/": "https://ntfy.sh", "https://ntfy.example.com/sub/": "https://ntfy.example.com/sub",
 		"http://127.0.0.1:8080": "http://127.0.0.1:8080", "http://localhost": "http://localhost", "http://ntfy.hub.example.ts.net": "http://ntfy.hub.example.ts.net",
-		"http://100.101.102.103": "http://100.101.102.103", "http://192.168.1.5": "http://192.168.1.5", "https://10.0.0.7": "https://10.0.0.7", "http://hub-box:8080": "http://hub-box:8080",
+		"http://100.101.102.103": "http://100.101.102.103", "http://192.168.1.5": "http://192.168.1.5", "https://10.0.0.7": "https://10.0.0.7",
 	}
 	for in, want := range ok {
 		if got, err := ntfy.CheckServer(in, true); err != nil || got != want {
 			t.Errorf("CheckServer(%q) = %q, %v; want %q", in, got, err, want)
 		}
 	}
-	for _, bad := range []string{"http://ntfy.example.com", "ftp://x", "https://", "https://u:p@ntfy.sh", "https://ntfy.sh?x=1", "nonsense"} {
+	for _, bad := range []string{"http://ntfy.example.com", "http://hub-box:8080", "ftp://x", "https://", "https://u:p@ntfy.sh", "https://ntfy.sh?x=1", "nonsense"} {
 		if _, err := ntfy.CheckServer(bad, true); err == nil {
 			t.Errorf("%q accepted", bad)
 		}

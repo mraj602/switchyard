@@ -170,8 +170,8 @@ TOML, read with a small, well-maintained parser (candidate
 `github.com/pelletier/go-toml/v2`). Unknown keys are kept on rewrite and reported by
 `sy doctor`. Written atomically (temp file, fsync, rename), preserving comments where the
 parser allows; `sy config set` is the supported way to change it. `sy config set hub.url <url>`
-applies the same check as `sy connect` (plain `http` only to loopback, Tailscale or
-single-label hosts, unless `hub.insecure_lan` is true or `--insecure-lan` is given, which
+applies the same check as `sy connect` (plain `http` only to loopback or Tailscale
+(`*.ts.net` names, `100.64.0.0/10` addresses), unless `hub.insecure_lan` is true or `--insecure-lan` is given, which
 records it) and stores the normalised scheme://host[:port].
 
 ```toml

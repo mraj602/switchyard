@@ -43,8 +43,7 @@ func ValidTopic(s string) bool { return topicRE.MatchString(s) }
 
 // CheckServer validates an ntfy server URL and returns it normalised (no trailing slash).
 // Empty means DefaultServer. The owner may point at their own server: https anywhere, or
-// plain http for loopback, private, Tailscale (*.ts.net, 100.64.0.0/10) and single-label
-// MagicDNS hosts, the rule of `sy connect` (tokens.md 4). A push-scoped caller (owner false)
+// plain http for loopback, private, Tailscale (*.ts.net, 100.64.0.0/10), the rule of `sy connect` (tokens.md 4). A push-scoped caller (owner false)
 // gets https to a public DNS name or public address only; the sender's dial guard enforces
 // the same at connect time (push.md 7.4).
 func CheckServer(raw string, owner bool) (string, error) {
@@ -77,7 +76,7 @@ func plainHTTPOK(host string) bool {
 	if ip, err := netip.ParseAddr(h); err == nil {
 		return ip.IsLoopback() || ip.IsPrivate() || !netguard.PublicIP(ip)
 	}
-	return h != "" && !strings.Contains(h, ".") // MagicDNS short name
+	return false // not a single-label name: it could be any LAN name; use the full .ts.net name
 }
 
 // publicHost reports whether host could be a public server: a dotted DNS name that is not a

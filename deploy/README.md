@@ -43,7 +43,7 @@ docker compose logs hub
 Only machines on your tailnet can reach the port. If you would rather not use the override,
 leave `SY_BIND` out: the hub then listens on `127.0.0.1` of the server only, and you can put
 HTTPS in front with `tailscale serve --bg 8787` (then use the `https://<name>.<tailnet>.ts.net`
-address below instead of `http://<name>:8787`).
+address below instead of `http://<name>.<tailnet>.ts.net:8787`).
 
 The data lives in the Docker volume `switchyard_hub-data` (`/data` in the container): the
 database, backups made by `sy hub backup`, and the pull key (`/data/state/pull`, see D).
@@ -75,10 +75,11 @@ server `docker compose exec hub sy hub pair --kind machine` prints a one-time co
 ### 3. Connect each machine (on the laptop)
 
 ```sh
-# Use the server's Tailscale name (MagicDNS) or its 100.x address.
-sy connect http://hub-server:8787 --token sy_m_...
+# Use the server's full Tailscale name (hub-server.<tailnet>.ts.net) or its 100.x address.
+# A short name like "hub-server" is refused over plain http; --insecure-lan allows it.
+sy connect http://hub-server.<tailnet>.ts.net:8787 --token sy_m_...
 # or keep the token out of your shell history:
-printf '%s\n' "$TOKEN" | sy connect http://hub-server:8787 --token-stdin
+printf '%s\n' "$TOKEN" | sy connect http://hub-server.<tailnet>.ts.net:8787 --token-stdin
 ```
 
 `sy connect` checks `GET /health`, checks the token (it stores nothing for a rejected one),
