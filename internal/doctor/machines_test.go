@@ -148,7 +148,7 @@ func TestForwardPort(t *testing.T) {
 	e := newFakeHome(t, `{}`)
 	fwd := func(url, dial string) config.Config {
 		c := config.Defaults()
-		c.Hub.URL, c.Hub.Dial, c.Hub.Reach = url, dial, config.ReachForward
+		c.Hub.URL, c.Hub.Dial, c.Hub.Reach, c.Hub.InsecureLAN = url, dial, config.ReachForward, true
 		return c
 	}
 
@@ -169,7 +169,7 @@ func TestForwardPort(t *testing.T) {
 	}))
 	defer hub.Close()
 	addr := strings.TrimPrefix(hub.URL, "http://")
-	if c := pcheck(t, runMachine(t, e, fwd("https://hub.example:8787", addr)), "forward port"); c.Level != OK || !strings.Contains(c.Detail, "the hub answers") {
+	if c := pcheck(t, runMachine(t, e, fwd("http://hub.example:8787", addr)), "forward port"); c.Level != OK || !strings.Contains(c.Detail, "the hub answers") {
 		t.Errorf("open: %+v", c)
 	}
 
