@@ -153,15 +153,6 @@ Switchyard does not ask you to sign a contributor licence agreement. Instead, ev
 carries a `Signed-off-by` line, which certifies that you wrote the change or have the right to
 submit it, as set out in the DCO 1.1 text at <https://developercertificate.org/>.
 
-### Licence of contributions
-
-Switchyard is licensed under the GNU AGPL-3.0. By submitting a contribution, you license it
-to the maintainer (mraj602) and to everyone else under the Apache License 2.0, and to the
-public under the project's licence (AGPL-3.0). The Apache-2.0 grant lets the maintainer
-also offer Switchyard under other terms, for example a hosted service or a commercial
-edition, without asking each contributor again. You keep the copyright in your contribution.
-If you cannot agree to this, say so in the pull request before it is merged.
-
 Add it with `-s`:
 
 ```sh
@@ -176,6 +167,19 @@ Signed-off-by: Your Name <you@example.com>
 
 Use your real name or a consistent pseudonym, and an email address you control. To sign off
 commits you already made: `git rebase --signoff main`.
+
+A `dco` check on every pull request confirms that each commit has a `Signed-off-by` line
+with the commit author's email address. If it fails, sign off the commits and force-push the
+branch.
+
+### Licence of contributions
+
+Switchyard is licensed under the GNU AGPL-3.0. By submitting a contribution, you license it
+to the maintainer (mraj602) and to everyone else under the Apache License 2.0, and to the
+public under the project's licence (AGPL-3.0). The Apache-2.0 grant lets the maintainer
+also offer Switchyard under other terms, for example a hosted service or a commercial
+edition, without asking each contributor again. You keep the copyright in your contribution.
+If you cannot agree to this, say so in the pull request before it is merged.
 
 ## Pull requests
 

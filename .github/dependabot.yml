@@ -30,6 +30,11 @@ updates:
         patterns: ["expo", "expo-*", "@expo/*", "react", "react-native", "react-dom", "@react-native/*"]
       phone:
         patterns: ["*"]
+    # Major versions (the next Expo SDK, Jest, TypeScript, ESLint) are a planned upgrade done
+    # by hand and tested on a device, not a weekly pull request. Security updates still come.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # The Python tools the spec check uses in CI.
   - package-ecosystem: pip
