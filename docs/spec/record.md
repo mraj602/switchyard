@@ -205,6 +205,8 @@ question line, cut to 120 characters.
 | `permission_suggestions` | integer | Number of permission suggestions. |
 | `session_crons`, `background_tasks` | integer | Number of items in the Stop/SubagentStop list of that name. |
 | `remote_url` | string | Remote Control session URL, if `sy` found one in the transcript tail (the prototype's `remoteUrlFor`). The hub keeps it only when it starts with `https://claude.ai/` (the board renders it as a link) and drops anything else. |
+| `peer_prompt` | boolean | UserPromptSubmit only, present only when `true`: a peer message started this turn. The prompt starts with `<cross-session-message`, or it came within 10 s of a delivery into the session ([peers.md](peers.md) 2.4). Only the prefix is compared; nothing of the prompt is kept. Set whether or not peers are enabled (Claude Code's own `/peers` uses the same wrapper). |
+| `peer_wait` | boolean | Stop only, present only when `true` and `[peers] enabled`: the session waits on another session's reply ([peers.md](peers.md) 6.4). |
 | `hook_ms` | integer | How long `sy hook` took until the outbox write returned. For the 20 ms budget. |
 
 Example (Stop, last messages allowed):

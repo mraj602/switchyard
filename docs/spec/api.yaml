@@ -2339,6 +2339,7 @@ components:
           properties:
             quiet_hours: {$ref: "#/components/schemas/QuietHours"}
             skip_remote: {type: boolean}
+            skip_peers: {type: boolean}
             max_age_s: {type: integer}
         rules:
           type: array
@@ -2818,6 +2819,10 @@ components:
         quiet_hours: {$ref: "#/components/schemas/QuietHours"}
         private: {type: boolean}
         skip_remote: {type: boolean}
+        skip_peers:
+          type: boolean
+          default: true
+          description: "No push for a plain-text question that ends a turn of coordination between sessions (push.md 3.5)."
         snooze_min: {type: integer, minimum: 5, maximum: 240}
         max_age_s: {type: integer, minimum: 60, maximum: 86400}
         batch_s: {type: integer, minimum: 0, maximum: 30}

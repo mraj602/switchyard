@@ -165,7 +165,7 @@ func sessionNow(id string, r store.AlertSessionRow, found bool) rules.SessionNow
 	}
 	return rules.SessionNow{
 		ID: id, Found: true, State: r.State, NeedsYou: r.NeedsYou, SinceMS: r.SinceAt, Seat: r.SeatID,
-		Project: r.Project, Machine: r.MachineID, Remote: r.Remote, Facts: sessionFacts(r),
+		Project: r.Project, Machine: r.MachineID, Remote: r.Remote, Detail: r.Detail, Peers: r.Peers, Facts: sessionFacts(r),
 	}
 }
 

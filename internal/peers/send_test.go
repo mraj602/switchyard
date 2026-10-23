@@ -119,7 +119,7 @@ func TestSendEndToEnd(t *testing.T) {
 	}
 	// State written: thread, audit (no text), delivered stamp, rate file.
 	th := peers.LoadThreads(e.ThreadsPath())
-	if len(th.Threads) != 1 || th.Threads[0].Turns != 1 || th.Threads[0].A != "sess-a" || th.Threads[0].ID != res.Thread {
+	if len(th.Threads) != 1 || th.Threads[0].Turns != 1 || th.Threads[0].A != "sess-a" || th.Threads[0].LastFrom != "sess-a" || th.Threads[0].ID != res.Thread {
 		t.Errorf("threads: %+v", th.Threads)
 	}
 	audit, _ := os.ReadFile(e.AuditPath())

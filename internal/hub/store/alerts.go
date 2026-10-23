@@ -183,13 +183,14 @@ type AlertSessionRow struct {
 	SeatName                                string // the board's name of the seat (SeatDisplayNames)
 	Project, MachineID, MachineName, Remote string
 	Tool, Message, LastMessage              string
-	LimitResetsAt                           int64 // newest limit_hit resets_at of the session
+	LimitResetsAt                           int64  // newest limit_hit resets_at of the session
+	Peers                                   string // session_state.peers (states.md 3.1)
 }
 
 // AlertSession reads a session's state and labels (found false when there is none).
 func (tx *Tx) AlertSession(id string) (AlertSessionRow, bool, error) {
 	var r AlertSessionRow
-	var detail, question, seat, label, email, project, machine, mname, remote, tool, msg, lm sql.NullString
+	var detail, question, seat, label, email, project, machine, mname, remote, tool, msg, lm, peers sql.NullString
 	var needs int
 	var limitResets sql.NullInt64
 	err := tx.queryRow(`SELECT s.id, coalesce(st.state, 'done'), st.detail, st.question, coalesce(st.needs_you, 0),
@@ -199,11 +200,11 @@ func (tx *Tx) AlertSession(id string) (AlertSessionRow, bool, error) {
 		(SELECT r.body ->> '$.payload.message' FROM hook_event h JOIN record r ON r.id = h.record_id
 		   WHERE h.session_id = s.id AND h.event = 'Notification' AND h.ts >= coalesce(st.since_at, 0) ORDER BY h.ts DESC LIMIT 1),
 		(SELECT h.last_message FROM hook_event h WHERE h.session_id = s.id AND h.event IN ('Stop', 'StopFailure') ORDER BY h.ts DESC LIMIT 1),
-		(SELECT l.resets_at FROM limit_hit l WHERE l.session_id = s.id ORDER BY l.ts DESC LIMIT 1)
+		(SELECT l.resets_at FROM limit_hit l WHERE l.session_id = s.id ORDER BY l.ts DESC LIMIT 1), st.peers
 		FROM session s LEFT JOIN session_state st ON st.session_id = s.id LEFT JOIN seat se ON se.id = s.seat_id
 		LEFT JOIN account a ON a.uuid = se.account_uuid LEFT JOIN machine m ON m.id = s.machine_id WHERE s.id = ?`, id).
 		Scan(&r.ID, &r.State, &detail, &question, &needs, &r.SinceAt, &seat, &label, &email, &project, &machine, &mname, &remote,
-			&tool, &msg, &lm, &limitResets)
+			&tool, &msg, &lm, &limitResets, &peers)
 	if errors.Is(err, sql.ErrNoRows) {
 		return r, false, nil
 	}
@@ -213,7 +214,7 @@ func (tx *Tx) AlertSession(id string) (AlertSessionRow, bool, error) {
 	r.Detail, r.Question, r.NeedsYou = detail.String, question.String, needs == 1
 	r.SeatID, r.SeatLabel, r.Email, r.Project = seat.String, label.String, email.String, project.String
 	r.MachineID, r.MachineName, r.Tool, r.Message, r.LastMessage = machine.String, mname.String, tool.String, msg.String, lm.String
-	r.LimitResetsAt = limitResets.Int64
+	r.LimitResetsAt, r.Peers = limitResets.Int64, peers.String
 	if r.SeatID != "" {
 		names, err := tx.alertSeatNames(r.SeatID)
 		if err != nil {

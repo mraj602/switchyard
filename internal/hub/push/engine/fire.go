@@ -241,6 +241,11 @@ func (w *work) recheck(a model.Alert) (firing, bool, error) {
 		if _, want := rules.SessionWant(cur); want != a.Episode {
 			return firing{}, false, w.end(a, rules.EndStatus(a.Status), rules.EndReason(cur.State, found))
 		}
+		if w.env.Settings.SkipPeers && rules.PeersOnly(a.Trigger, cur.Detail, cur.Peers) {
+			// The turn turned out to be sessions coordinating (a Stop that waits on a peer's
+			// reply, folded during the delay): no push (push.md 3.5).
+			return firing{}, false, w.end(a, rules.EndStatus(a.Status), model.ReasonPeers)
+		}
 		// Refresh the text inputs (a Remote Control link or question found during the delay).
 		a.Facts = cur.Facts
 		project = r.Project

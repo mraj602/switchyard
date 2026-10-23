@@ -60,8 +60,14 @@ type QuietHours struct {
 type Settings struct {
 	QuietHours QuietHours `json:"quiet_hours"`
 	SkipRemote bool       `json:"skip_remote"`
-	MaxAgeS    int        `json:"max_age_s"`
+	// SkipPeers is push.settings.skip_peers (push.md 2); absent (a policy from a hub that
+	// predates it, or no policy) means the hub default, true.
+	SkipPeers *bool `json:"skip_peers,omitempty"`
+	MaxAgeS   int   `json:"max_age_s"`
 }
+
+// SkipsPeers is SkipPeers with its default.
+func (s Settings) SkipsPeers() bool { return s.SkipPeers == nil || *s.SkipPeers }
 
 // Policy is api.yaml DirectPolicy, as cached in <state>/push/policy.json. FetchedAt is
 // added by the cache (RFC 3339).

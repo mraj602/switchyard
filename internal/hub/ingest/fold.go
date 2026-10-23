@@ -31,6 +31,7 @@ func hookInput(id string, ts time.Time, r *record.Record) (state.Input, error) {
 	if q, ok := derivedStr(r, "question"); ok {
 		in.Hook.Question = q
 	}
+	in.Hook.PeerFacts(r.Derived)
 	return in, nil
 }
 
@@ -66,7 +67,7 @@ func tm(v int64) time.Time {
 
 func sessionFrom(f store.FoldRow) state.Session {
 	return state.Session{
-		State: state.State(f.State), Detail: f.Detail, Since: tm(f.Since), Question: f.Question, Detector: f.Detector,
+		State: state.State(f.State), Detail: f.Detail, Since: tm(f.Since), Question: f.Question, Detector: f.Detector, Peers: f.Peers,
 		LastEventAt: tm(f.LastEventAt), LastListedAt: tm(f.LastListedAt), MissedLists: f.MissedLists,
 		EndedAt: tm(f.EndedAt), EndReason: f.EndReason,
 	}
@@ -74,7 +75,7 @@ func sessionFrom(f store.FoldRow) state.Session {
 
 func foldRowOf(s *state.Session, updated int64, lastEvent, lastRecord string) store.FoldRow {
 	return store.FoldRow{
-		State: string(s.State), Detail: s.Detail, Question: s.Question, Detector: s.Detector,
+		State: string(s.State), Detail: s.Detail, Question: s.Question, Detector: s.Detector, Peers: s.Peers,
 		LastEvent: lastEvent, LastRecord: lastRecord, Since: ms(s.Since), UpdatedAt: updated, NeedsYou: s.NeedsYou(),
 		LastEventAt: ms(s.LastEventAt), LastListedAt: ms(s.LastListedAt), EndedAt: ms(s.EndedAt), EndReason: s.EndReason,
 		MissedLists: s.MissedLists,

@@ -203,7 +203,7 @@ func (e Env) SendWith(c Caller, to, text string, o SendOpts) (SendResult, *Refus
 		}
 		return SendResult{}, Refuse(code, "%v", err)
 	}
-	th.RecordMessage(now)
+	th.RecordMessageFrom(sender.Entry.SessionID, now)
 	_ = threads.Save(e.ThreadsPath())
 	_ = MarkDelivered(e.State, target.Entry.SessionID, now)
 	e.audit(auditLine{Msg: msg, Thread: th.ID, From: sender.Entry.SessionID, To: target.Entry.SessionID, FromA: sender.Account,
@@ -240,7 +240,7 @@ func (e Env) sendRemote(unlock *func(), out Outgoing, thread Thread) (SendResult
 		// The loop guard reset the count for a new human prompt on the copy it checked.
 		th.HumanAt, th.Turns, th.PausedAt = thread.HumanAt, 0, nil
 	}
-	th.RecordMessage(out.Now)
+	th.RecordMessageFrom(out.From.Entry.SessionID, out.Now)
 	_ = ts.Save(e.ThreadsPath())
 	line.Status = "queued"
 	e.audit(line, out.Now)

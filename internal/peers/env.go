@@ -110,6 +110,12 @@ type Caller struct {
 // environment: the one managed slot whose registry holds `<pid>.json` with the matching
 // start time is used, and more than one is a refusal. The calling process's own environment
 // is never consulted. No candidate: not_a_session (exit 4).
+//
+// The walk never skips past a Claude Code process it cannot identify (StopsWalk): a
+// `claude -p` started from inside another session (its Bash tool, a script) has no registry
+// file of its own and inherits the parent's environment, and continuing the walk would send
+// as the parent session. Such a caller is refused instead. Only a process that merely looks
+// like Claude Code by name (a wrapper script called `claude`) is passed over.
 func (e Env) Whoami() (Caller, *Refusal) {
 	if e.Proc == nil {
 		return Caller{}, Refuse(CodeUnsupported, "%v", ErrUnsupported)
@@ -127,15 +133,16 @@ func (e Env) Whoami() (Caller, *Refusal) {
 			slot, ok := e.managed(e.SlotFor(dir, set))
 			if !ok {
 				reason = "its config folder is not one Switchyard manages"
-				continue
+				break
 			}
 			ent, err := ReadRegistryPID(e.fs(), slot, c.PID)
 			if err != nil {
-				continue
+				reason = "no registry file for the Claude Code process above this command"
+				break
 			}
 			if !ProcStartMatches(ent.ProcStartString(), live) {
 				reason = "its registry file belongs to an older process with the same pid"
-				continue
+				break
 			}
 			return Caller{ClaudePID: c.PID, Slot: slot, Entry: ent}, nil
 		case err == ErrNoEnv:
@@ -152,11 +159,47 @@ func (e Env) Whoami() (Caller, *Refusal) {
 			if len(found) > 1 {
 				return Caller{}, Refuse(CodeNotASession, "more than one config folder holds a registry file for pid %d", c.PID)
 			}
+			reason = "no registry file for the Claude Code process above this command"
 		default:
 			reason = "cannot read the Claude Code process's configuration folder"
 		}
+		if e.StopsWalk(c) {
+			return Caller{}, Refuse(CodeNotASession,
+				"the nearest Claude Code process (pid %d) is not a session Switchyard can identify (%s; a `claude -p` started inside another session has none), so this does not send as the session above it",
+				c.PID, reason)
+		}
 	}
 	return Caller{}, Refuse(CodeNotASession, "not inside a session Switchyard can identify: %s", reason)
+}
+
+// StopsWalk reports whether the Whoami walk must stop at candidate c when c cannot be
+// identified as a session: c is Claude Code itself (IsClaudeProgram, not a wrapper that is
+// only named claude), or a hook of a live session recorded c's pid in its session file
+// (2.4). A nested `claude -p` is such a process: it is a session of its own, with its own
+// hooks and session id, so the session above it must not be used in its place.
+func (e Env) StopsWalk(c ProcInfo) bool {
+	return IsClaudeProgram(c) || e.knownSessionPID(c.PID)
+}
+
+// knownSessionPID reports whether a session file of a session that has not ended names pid.
+func (e Env) knownSessionPID(pid int) bool {
+	if e.State == "" || pid <= 0 {
+		return false
+	}
+	ents, err := os.ReadDir(SessionsDir(e.State))
+	if err != nil {
+		return false
+	}
+	for _, d := range ents {
+		id, ok := strings.CutSuffix(d.Name(), ".json")
+		if !ok {
+			continue
+		}
+		if f, ok := ReadSessionFile(e.State, id); ok && f.PID == pid && f.EndedAt == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // OffPath is <state>/peers/off (peers.md 11).

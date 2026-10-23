@@ -197,6 +197,27 @@ func LooksLikeClaude(p ProcInfo) bool {
 	return strings.HasSuffix(p.Argv0, "/claude")
 }
 
+// IsClaudeProgram reports whether p is the Claude Code program itself, not only something
+// named like it: its executable is a Claude Code binary (native installer: a file under
+// .../claude/versions/, or one named claude), or its command line runs the npm package's
+// entry point. A shell wrapper called `claude` has the shell as its executable and fails it.
+func IsClaudeProgram(p ProcInfo) bool {
+	if p.Exe != "" {
+		b := filepath.Base(strings.TrimSpace(p.Exe))
+		for _, n := range claudeBaseNames {
+			if b == n {
+				return true
+			}
+		}
+		for _, part := range claudePathParts {
+			if strings.Contains(p.Exe, part) {
+				return true
+			}
+		}
+	}
+	return strings.Contains(p.Args, "/@anthropic-ai/claude-code/")
+}
+
 // Ancestors returns start and the processes above it, nearest first, up to MaxWalk steps,
 // stopping at pid 1 or a pid that cannot be read. Callers pass os.Getppid().
 func Ancestors(p Proc, start int) []ProcInfo {

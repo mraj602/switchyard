@@ -86,6 +86,7 @@ func Run(args []string, stdin io.Reader, getenv func(string) string) {
 	if rec.Derived == nil {
 		rec.Derived = record.Derived{}
 	}
+	peerDerived(env, in, rec.Derived, time.Now())
 	rec.Derived.Set("hook_ms", time.Since(start).Milliseconds())
 
 	ob := outbox.New(env.OutboxDir())

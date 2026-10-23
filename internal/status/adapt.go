@@ -82,6 +82,7 @@ func Adapt(recs []*record.Record) map[string]*Session {
 			if q := derivedString(r, "question"); q != nil {
 				in.Hook.Question = *q
 			}
+			in.Hook.PeerFacts(r.Derived)
 			s := get(p.SessionID, r.Slot, r.Seat)
 			if p.Cwd != "" {
 				s.Cwd = p.Cwd

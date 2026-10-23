@@ -67,6 +67,7 @@ type Episode struct {
 	Project   string // base name of cwd, as the hub derives it
 	RemoteURL string
 	Detail    string // state detail (failed:<detail>, asked:question|tool|elicitation)
+	Peers     string // the turn is sessions coordinating: "message" or "wait" (states.md 3.1)
 	Question  string
 	LastMsg   string
 	Notice    string // the last Notification message, for needs_permission
@@ -138,7 +139,7 @@ func Scan(outboxDir, machine string, now time.Time) ([]Episode, error) {
 			continue
 		}
 		e := Episode{Key: EpisodeKey(id, string(f.State), f.Since), Trigger: trig, Session: id, Since: f.Since, Record: enter,
-			Slot: s.Slot, Project: projectOf(s.Cwd), Detail: f.Detail, Question: f.Question, LastMsg: f.LastMessage, LastAt: last}
+			Slot: s.Slot, Project: projectOf(s.Cwd), Detail: f.Detail, Peers: f.Peers, Question: f.Question, LastMsg: f.LastMessage, LastAt: last}
 		if l, ok := where[enter]; ok {
 			e.Answered = l.answered(cur)
 		}

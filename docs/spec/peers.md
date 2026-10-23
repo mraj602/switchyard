@@ -159,6 +159,11 @@ When `[peers] enabled = true`, `sy hook` also writes
 The hook does a single small atomic write and nothing else; it never connects to the agent
 (hooks never wait). The prompt text is never stored.
 
+The same test (the wrapper prefix, or the 10 s window) also marks the hook record itself:
+`derived.peer_prompt = true` on a UserPromptSubmit a peer message started, whether or not peers
+are enabled; and on a Stop, with peers enabled, `derived.peer_wait = true` when the session waits
+on a reply (6.4). They let the hub tell coordination from a question to the person (6.4).
+
 ### 2.5 Telling a new session that peers exist (SessionStart context)
 
 Claude Code's own ListAgents and SendMessage see only sessions of the same account, and the
@@ -283,6 +288,18 @@ another session's alias. Several matches in a step (an alias two sessions share,
    a registry file in a managed slot (step 4) is `claude_pid`; the registry decides, so a false
    process-name hit costs one lookup. None → exit 4 "sy peers send works only inside a Claude
    Code session".
+   The walk never passes a candidate that is a session it cannot identify: one that is the
+   Claude Code program itself (its executable is a Claude Code binary, or its command line
+   runs the npm package's entry point), or whose pid a live session's file names (2.4). Such a
+   candidate with no usable registry file (none, an unmanaged folder, a stale start time, an
+   unreadable environment) refuses with exit 4. A `claude -p` started from inside another
+   session (its Bash tool, a script) is the case this exists for: it inherits the parent's
+   whole environment (`CLAUDECODE`, `CLAUDE_CONFIG_DIR` and every other variable) and may have
+   no registry file, and walking on would send as the parent. Only a candidate that merely
+   carries the name (a wrapper script called `claude`, whose executable is the shell) is
+   passed over. Hooks and the status line never have this problem: their session is always
+   the payload's `session_id` (and `transcript_path`), and no inherited variable is read to
+   find it.
 2. `config_dir` = `CLAUDE_CONFIG_DIR` from the environment, else `~/.claude`.
 3. Send `{"op":"send","claude_pid","config_dir",…}` to the agent.
 4. The agent verifies the caller's pid (peer credentials) has `claude_pid` as an ancestor,
@@ -470,6 +487,8 @@ sets out to escape on its own machine. The skill (12) tells Claude never to try.
 The sender's agent, the hub (for remote pairs) and the receiving agent each keep the threads
 they see: `peer_thread` at the hub; `<state>/peers/threads.json` on each machine. Every
 message of a thread passes through both sessions' agents, so both always see the whole thread.
+Each machine's file also keeps `last_from`, the session that sent the newest message (set when
+the message is delivered or queued; absent in a file from before it was kept), which 6.4 reads.
 
 ### 6.3 Loop guard
 
@@ -520,6 +539,30 @@ message of a thread passes through both sessions' agents, so both always see the
   the hub as well, still bound it.
 - Claude Code's own hop-chain guard also applies (8.3): Switchyard carries `hop-chain`
   unchanged when it has one.
+
+### 6.4 Coordination is not "needs you"
+
+Sessions coordinating end many turns on a plain-text question meant for the other session
+("Want me to take the migration too?"), or stop to wait for a reply ("Sent the schema to
+api; waiting for its answer."). The question detector (states.md 4) makes those `asked`, and
+before this rule each one pushed an `asked` alert to the owner. Now a turn is **coordination**
+when either holds:
+
+- **A peer message started it**: its UserPromptSubmit carries `derived.peer_prompt` (2.4: the
+  prompt starts with `<cross-session-message`, or came within 10 s of a delivery).
+- **It ended waiting on a reply**: its Stop carries `derived.peer_wait`, which `sy hook` sets
+  (peers enabled only) when the session sent the newest message (`last_from`, 6.2) of an open
+  thread that the loop guard has not stopped (`paused_at` unset), after its own newest human
+  prompt (`human_at` of its session file, 2.4), and less than 24 h ago. A thread the loop
+  guard stopped needs the person, so it is not waiting. Both "a thread it opened" and a
+  later message it sent in a thread the other session opened count: either way the other side
+  owes the next message.
+
+The hub folds these into `session_state.peers` (states.md 3.1), and the alert rules skip an
+`asked:question` in such a turn with reason `peers` while `skip_peers` is on (the default,
+[push.md](push.md) 2 and 3.5). Nothing else changes: the board shows the session as `asked`, and
+a permission prompt, AskUserQuestion, ExitPlanMode, an elicitation dialog or a failure in the
+same turn alerts as always. The first prompt a person types in the session clears it.
 
 ## 7. CLI
 
