@@ -51,32 +51,38 @@ export function completeRecord(r, nowMs = Date.now()) {
   return { ...r, v: r.v || 1, id: r.id || newRecordId(nowMs), ts: r.ts || new Date(nowMs).toISOString() };
 }
 
-/** Plain http is fine on this computer, a private network, Tailscale or a single-label (MagicDNS) name. */
-export function isLocalNetworkHost(h) {
+/**
+ * Plain http is fine on this computer and to a Tailscale name (`.ts.net`: the tunnel is
+ * encrypted). Any other host (a LAN address, `.local`, a single-label name, a Tailscale IP)
+ * needs the person's explicit opt-in (`insecureLan`), like `sy connect --insecure-lan`.
+ */
+export function isLocalNetworkHost(h, { insecureLan = false } = {}) {
   const host = String(h).replace(/^\[|\]$/g, '').toLowerCase();
   if (isLoopbackHost(host)) return true;
+  if (host.endsWith('.ts.net') && host.length > '.ts.net'.length) return true;
+  if (!insecureLan) return false;
   if (/^10(\.\d{1,3}){3}$/.test(host) || /^192\.168(\.\d{1,3}){2}$/.test(host) || /^169\.254(\.\d{1,3}){2}$/.test(host)) return true;
   const m = /^172\.(\d{1,3})(\.\d{1,3}){2}$/.exec(host);
   if (m && Number(m[1]) >= 16 && Number(m[1]) <= 31) return true;
   const t = /^100\.(\d{1,3})(\.\d{1,3}){2}$/.exec(host);
   if (t && Number(t[1]) >= 64 && Number(t[1]) <= 127) return true;
   if (/^f[cd][0-9a-f]{2}:/.test(host) || /^fe80:/.test(host)) return true;
-  return host.endsWith('.ts.net') || host.endsWith('.local') || (!host.includes('.') && !host.includes(':'));
+  return host.endsWith('.local') || (!host.includes('.') && !host.includes(':'));
 }
 
 /**
  * Check what the person typed as a hub address.
  * @returns {{ok: true, url: string}|{ok: false, error: string}}
  */
-export function checkAddress(raw) {
+export function checkAddress(raw, { insecureLan = false } = {}) {
   let text = String(raw ?? '').trim();
   if (!text) return { ok: false, error: 'Enter the hub address, for example https://hub.example.com.' };
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(text)) text = `https://${text}`;
   const url = normalizeHubUrl(text);
   if (!url) return { ok: false, error: 'That is not a hub address. Use the form https://hub.example.com.' };
   const u = new URL(url);
-  if (u.protocol === 'http:' && !isLocalNetworkHost(u.hostname)) {
-    return { ok: false, error: 'This address uses http. Use https, or an address on this computer or your local network.' };
+  if (u.protocol === 'http:' && !isLocalNetworkHost(u.hostname, { insecureLan })) {
+    return { ok: false, error: 'This address uses http. Use https, a .ts.net address, or an address on this computer. For a hub on your own network, tick "Allow plain http" and accept that the token is not encrypted.' };
   }
   return { ok: true, url };
 }
@@ -93,7 +99,7 @@ export function createDirect(deps) {
   const timers = deps.timers ?? { setTimeout, clearTimeout };
   const queueFile = path.join(path.dirname(file), 'direct-outbox.ndjson');
   const client = `${deps.clientName}/${deps.version}`;
-  let data = { machine: null, url: null, pins: {} };
+  let data = { machine: null, url: null, insecureLan: false, pins: {} };
   let loaded = false;
   let queue = []; // complete records, oldest first
   let flushTimer = null;
@@ -130,7 +136,9 @@ export function createDirect(deps) {
       const j = JSON.parse(await fs.readFile(file, 'utf8'));
       if (j && typeof j === 'object') {
         if (typeof j.machine === 'string' && MACHINE_RE.test(j.machine)) data.machine = j.machine;
-        if (typeof j.url === 'string' && normalizeHubUrl(j.url)) data.url = normalizeHubUrl(j.url);
+        data.insecureLan = j.insecureLan === true;
+        // A remembered http address is held to the same rule as a typed one.
+        if (typeof j.url === 'string' && normalizeHubUrl(j.url) && checkAddress(j.url, { insecureLan: data.insecureLan }).ok) data.url = normalizeHubUrl(j.url);
         if (j.pins && typeof j.pins === 'object') {
           for (const [origin, p] of Object.entries(j.pins).slice(0, PINS_MAX)) {
             if (pinOrigin(origin) === origin && typeof p?.sha256 === 'string' && FINGERPRINT_RE.test(p.sha256)) {
@@ -195,8 +203,8 @@ export function createDirect(deps) {
   }
 
   /** A typed address: checked for form and scheme, then for a hub that answers /health. */
-  async function check(raw) {
-    const c = checkAddress(raw);
+  async function check(raw, opts) {
+    const c = checkAddress(raw, opts);
     if (!c.ok) return c;
     const h = await health(c.url);
     if (!h.ok) return { ok: false, error: `No hub answered at ${c.url}. Check the address and that the hub is running.` };
@@ -278,9 +286,9 @@ export function createDirect(deps) {
   return {
     load,
     url: () => data.url,
-    async setUrl(url) {
+    async setUrl(url, { insecureLan = false } = {}) {
       await load();
-      data = { ...data, url: url ? normalizeHubUrl(url) : null };
+      data = { ...data, url: url ? normalizeHubUrl(url) : null, insecureLan: !!url && insecureLan === true };
       await save();
     },
     /** The pinned certificate fingerprint of an https origin, or null (sync: after load()). */

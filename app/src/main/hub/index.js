@@ -651,12 +651,13 @@ export function create(deps) {
   }
 
   /** Check a hub address, remember it (no sy needed) and pair with a code when one is given. */
-  async function connect({ url, code } = {}) {
+  async function connect({ url, code, insecureLan } = {}) {
     await refreshInfo();
     if (state.connected && !state.direct) return { ok: false, error: `sy on this computer is already connected to ${state.url}. Use Pair this computer.` };
     // An https address whose certificate fails normal validation (or is not its pinned one)
     // stops here: the shell shows the fingerprint and asks the person to trust it (hub:trust-cert).
-    const a = checkAddress(url);
+    const opts = { insecureLan: insecureLan === true };
+    const a = checkAddress(url, opts);
     const origin = a.ok ? pinOrigin(a.url) : null;
     if (origin) {
       const p = await probe(a.url);
@@ -665,9 +666,9 @@ export function create(deps) {
         return { ok: false, error: pinned ? CHANGED_TEXT : UNTRUSTED_TEXT, cert: certInfo(a.url, p, pinned) };
       }
     }
-    const c = await direct.check(url);
+    const c = await direct.check(url, opts);
     if (!c.ok) return { ok: false, error: c.error };
-    await direct.setUrl(c.url);
+    await direct.setUrl(c.url, opts);
     await refreshInfo();
     if (typeof code === 'string' && code !== '') return pair({ code });
     return { ok: true };

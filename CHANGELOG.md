@@ -6,6 +6,14 @@ All notable changes to Switchyard are recorded here. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- Desktop: the tabs' sign-in cookies are encrypted on disk (Electron's cookie encryption fuse is
+  on). A tab signed in by an earlier unpacked build may ask you to sign in again once.
+- Desktop: sites that ask for a client certificate get none.
+- The web board's "Open in app" link is now an Android intent pinned to the Switchyard package,
+  so no other app can receive the pairing secret.
+
 ## [1.0.0] - not released yet
 
 The first public version. Everything below is new.

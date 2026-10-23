@@ -11,10 +11,10 @@ const silent = { warn() {}, error() {}, debug() {}, info() {} };
 test('checkAddress: https always, http only on this computer or a local network', () => {
   assert.deepEqual(checkAddress('https://hub.example.com/'), { ok: true, url: 'https://hub.example.com' });
   assert.deepEqual(checkAddress('hub.example.com'), { ok: true, url: 'https://hub.example.com' }, 'no scheme means https');
-  for (const ok of ['http://127.0.0.1:8787', 'http://localhost:8787', 'http://192.168.1.20:8787', 'http://10.0.0.5', 'http://172.20.1.1', 'http://100.101.102.103', 'http://myhub.tailnet.ts.net', 'http://nas', 'http://nas.local:8787']) {
+  for (const ok of ['http://127.0.0.1:8787', 'http://localhost:8787', 'http://myhub.tailnet.ts.net']) {
     assert.equal(checkAddress(ok).ok, true, ok);
   }
-  for (const bad of ['http://hub.example.com', 'http://172.32.0.1', 'http://8.8.8.8', 'http://100.128.0.1']) {
+  for (const bad of ['http://hub.example.com', 'http://172.32.0.1', 'http://8.8.8.8', 'http://100.128.0.1', 'http://192.168.1.20:8787', 'http://10.0.0.5', 'http://172.20.1.1', 'http://100.101.102.103', 'http://nas', 'http://nas.local:8787', 'http://ts.net', 'http://evil-ts.net.example.com']) {
     const r = checkAddress(bad);
     assert.equal(r.ok, false, bad);
     assert.match(r.error, /https/);
@@ -23,6 +23,13 @@ test('checkAddress: https always, http only on this computer or a local network'
   assert.equal(checkAddress('ftp://hub.example.com').ok, false);
   assert.equal(checkAddress('https://user:pw@hub.example.com').ok, false);
   assert.equal(isLocalNetworkHost('[::1]'), true);
+  // the explicit opt-in (like sy --insecure-lan) allows a private network, never a public host
+  for (const ok of ['http://192.168.1.20:8787', 'http://10.0.0.5', 'http://172.20.1.1', 'http://100.101.102.103', 'http://nas.local:8787', 'http://nas']) {
+    assert.equal(checkAddress(ok, { insecureLan: true }).ok, true, ok);
+  }
+  for (const bad of ['http://hub.example.com', 'http://8.8.8.8', 'http://172.32.0.1']) {
+    assert.equal(checkAddress(bad, { insecureLan: true }).ok, false, bad);
+  }
 });
 
 test('record ids are ULIDs in time order; completeRecord fills v, id and ts only when missing', () => {

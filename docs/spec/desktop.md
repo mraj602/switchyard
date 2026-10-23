@@ -121,9 +121,12 @@ both enforce it.
 - The crash reporter is not started. No telemetry of any kind is sent.
 - Packaged fuses: `RunAsNode` off, `EnableNodeOptionsEnvironmentVariable` off,
   `EnableNodeCliInspectArguments` off, `EnableEmbeddedAsarIntegrityValidation` on,
-  `OnlyLoadAppFromAsar` on, `GrantFileProtocolExtraPrivileges` off. `EnableCookieEncryption`
-  is **left off**, because existing and imported sign-ins are stored unencrypted
-  (a known limitation).
+  `OnlyLoadAppFromAsar` on, `GrantFileProtocolExtraPrivileges` off, `EnableCookieEncryption`
+  on (the tabs' sign-in cookies are encrypted on disk with the OS key store). The fuse is one
+  way. A tab signed in by an earlier build may ask for a new sign-in; that is expected.
+  On Linux without a keyring, Chromium falls back to a weak built-in key.
+- A site that asks for a client certificate gets none: `applyGlobal` answers
+  `select-client-certificate` with no certificate.
 - Remote debugging (`main/cdp.js`): a packaged app started with `--remote-debugging-port`,
   `--remote-debugging-pipe` or `--remote-debugging-address` (in argv or on Chromium's command
   line) exits with code 1 before `ready`, unless its asar's `package.json` has
@@ -363,6 +366,11 @@ account in a hidden or background start until the window is shown.
 - Requests use Node's `fetch` in main with `Authorization: Bearer`, a 10 s timeout and no
   redirects. Plain `http:` is allowed only for loopback hosts, or when `sy desktop info`
   reports a URL that sy itself accepted (`--insecure-lan`). Replies are capped at 2 MiB.
+- A typed hub address (direct mode, `main/hub/direct.js`) may use `http:` only for loopback
+  hosts and `.ts.net` names. A private-network address, `.local` or a single-label name needs
+  the explicit `insecureLan` choice (the "Allow plain http" box, like `sy connect
+  --insecure-lan`), which is stored with the address. A public host is refused even with it. A
+  remembered address that fails this rule is dropped when the app starts.
 - Plain `http:` to a host that is not loopback: `HubState.insecure` is true, and the shell
   shows, for as long as it stays so, "Not encrypted: …the hub token and everything the app
   exchanges with it cross the network unencrypted" in the Hub tab's top strip, in Settings →

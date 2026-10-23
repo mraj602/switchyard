@@ -77,7 +77,7 @@ export function start({ sy, root }) {
   const ui = {
     v: 0, overlayFor: null, returnView: null, dialog: null, drafts: {}, errors: {}, busy: new Set(),
     dismissed: new Set(), toast: null, folders: null, foldersError: '', foldersLoading: false,
-    section: 'computer', pairCode: '', pairError: '', useCode: false, connectUrl: '', connectCode: '', connectError: '',
+    section: 'computer', pairCode: '', pairError: '', useCode: false, connectUrl: '', connectCode: '', connectError: '', connectInsecure: false,
   };
   const last = {};
   let ready = false;
@@ -524,6 +524,11 @@ export function start({ sy, root }) {
       }),
       h('div', { class: 'hint small', text: 'Get a code on any owner device: More, Devices, Add desktop app.' }),
       insecureAddress(ui.connectUrl) ? h('div', { class: 'banner warn small', role: 'status', fk: `connect-insecure-${where}`, text: INSECURE_TEXT }) : null,
+      insecureAddress(ui.connectUrl)
+        ? h('label', { class: 'small', fk: `connect-insecure-ok-${where}` },
+          h('input', { type: 'checkbox', checked: ui.connectInsecure, onchange: (e) => { ui.connectInsecure = e.target.checked; } }),
+          ' Allow plain http to this address (only for a hub on my own network)')
+        : null,
       h('div', { class: 'row-actions' },
         h('button', { class: 'btn btn-primary', fk: `connect-btn-${where}`, text: 'Connect', disabled: busy('connect'), onclick: () => doConnect() }),
         ui.connectError ? h('span', { class: 'err', role: 'alert', text: ui.connectError }) : null));
@@ -536,7 +541,7 @@ export function start({ sy, root }) {
     if (code && !PAIR_CODE_RE.test(code)) return connectFail('The code is 6 digits, like 123-456.');
     if (!code) return connectFail('Type the pairing code. Get one on any owner device: More, Devices, Add desktop app.');
     ui.connectError = '';
-    const r = await act('connect', () => sy.hubConnect({ url, code }));
+    const r = await act('connect', () => sy.hubConnect({ url, code, ...(ui.connectInsecure && insecureAddress(url) ? { insecureLan: true } : {}) }));
     if (r && r.ok) {
       ui.connectCode = '';
       toast('info', 'Paired with the hub.');

@@ -88,7 +88,7 @@ export const CHANNELS = Object.freeze({
   // Connect to a hub without sy: check the address (/health), remember it, pair with the code when given.
   'hub:connect': {
     kind: INVOKE, fn: 'hubConnect', handler: 'hub', returns: '{ok, error?}',
-    args: obj({ url: { type: 'string', min: 1, max: 300 }, code: { type: 'string', max: 7, pattern: new RegExp(PAIR_CODE_PATTERN) } }, ['url']),
+    args: obj({ url: { type: 'string', min: 1, max: 300 }, code: { type: 'string', max: 7, pattern: new RegExp(PAIR_CODE_PATTERN) }, insecureLan: BOOL }, ['url']),
   },
   // Trust the certificate an https hub presents (C6): it must still have this SHA-256 fingerprint; it is pinned with the hub config.
   'hub:trust-cert': {

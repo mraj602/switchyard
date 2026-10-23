@@ -114,6 +114,9 @@ How sign-in is handled:
 - Each tab's sign-in lives in its own local Electron session (`persist:tab-<id>`) on this
   computer. It never reaches the hub or any other machine.
 - Switchyard never reads, exports or sends cookies or tokens.
+- The cookies that keep a tab signed in are encrypted on disk with your operating system's key
+  store. If you update from an early build, a tab may ask you to sign in again once.
+- A website cannot use a certificate from your computer to identify you: the app offers none.
 - Account tabs present a plain Chrome user agent for the real operating system instead of
   Electron's default, because claude.ai's bot protection rejects Electron's. claude.ai sees an
   ordinary Chrome browser; see [claude-ai.md](claude-ai.md#the-browser-identity-of-the-tabs).
@@ -175,7 +178,10 @@ The token is stored encrypted with the OS keyring (`safeStorage`) and never ente
 page; the app signs the Hub view in with a read-only cookie. On Linux without a keyring the
 token falls back to basic storage, and Settings warns.
 
-**Plain http.** A hub address like `http://192.168.1.5:8787` works, but the desktop token and
+**Plain http.** The app accepts a typed `http://` address only for this computer and for a
+`.ts.net` name. For a hub on your own network (`http://192.168.1.5:8787`, `http://nas.local`, a
+single name like `http://nas`, a Tailscale IP) tick **Allow plain http** under the address first.
+Public names are never accepted over http. With that, the desktop token and
 everything else the app exchanges with the hub then cross your network unencrypted: anyone on
 that network can read them, and with the token, read your board. The app says so in the Hub
 tab and in Settings for as long as the address is http. Loopback addresses
