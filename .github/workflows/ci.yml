@@ -288,6 +288,8 @@ jobs:
           $server = Start-Process -PassThru -WindowStyle Hidden python -ArgumentList '-m', 'http.server', $port, '--bind', '127.0.0.1', '--directory', $srv
           Start-Sleep -Seconds 2
           $env:SY_INSTALL_BASE_URL = "http://127.0.0.1:$port"
+          # a locally built archive has no GitHub attestation (as SY_VERIFY_ATTESTATION in test/e2e/setup/lib/common.sh)
+          $env:SY_VERIFY_ATTESTATION = '0'
           $home1 = Join-Path $env:RUNNER_TEMP 'home-install'
           New-Item -ItemType Directory -Force -Path $home1 | Out-Null
           $env:USERPROFILE = $home1
