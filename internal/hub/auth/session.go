@@ -3,7 +3,6 @@ package auth
 import (
 	"encoding/json"
 	"errors"
-	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -24,11 +23,7 @@ func SecureRequest(r *http.Request) bool {
 	if r.TLS != nil {
 		return true
 	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		host = r.RemoteAddr
-	}
-	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+	if fromTrustedProxy(r) {
 		return strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")), "https")
 	}
 	return false

@@ -406,7 +406,7 @@ func bearer(r *http.Request) string {
 }
 
 // ClientIP is the caller's address. The hub listens on loopback behind tailscale serve or
-// Caddy, so RemoteAddr is the proxy; when it is a loopback address and X-Forwarded-For is
+// Caddy, so RemoteAddr is the proxy; when it is a loopback address (or in --trusted-proxy) and X-Forwarded-For is
 // present, the client is the right-most entry (the one the proxy added; earlier entries
 // are whatever the caller claimed). Otherwise it is RemoteAddr (pairing.md 3.3).
 func ClientIP(r *http.Request) string {
@@ -414,7 +414,7 @@ func ClientIP(r *http.Request) string {
 	if err != nil {
 		host = r.RemoteAddr
 	}
-	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+	if fromTrustedProxy(r) {
 		if xff := strings.Join(r.Header.Values("X-Forwarded-For"), ","); xff != "" {
 			parts := strings.Split(xff, ",")
 			last := strings.TrimSpace(parts[len(parts)-1])

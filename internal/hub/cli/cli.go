@@ -194,6 +194,7 @@ func serve(args []string, stdout, stderr io.Writer) error {
 	listen := fs.String("listen", "127.0.0.1:8787", "address to listen on")
 	fs.StringVar(listen, "addr", "127.0.0.1:8787", "alias of --listen")
 	insecure := fs.Bool("insecure-lan", false, "allow a non-loopback address without TLS in front (a proxy or tailscale serve must provide it)")
+	trustedProxy := fs.String("trusted-proxy", os.Getenv("SY_TRUSTED_PROXY"), "comma-separated CIDRs whose X-Forwarded-For/-Proto headers are trusted, besides loopback (also: SY_TRUSTED_PROXY); for a hub in Docker, the bridge network")
 	quiet := fs.Bool("quiet", false, "do not log each request")
 	publicURL := fs.String("public-url", "", "the hub's https address phones open, e.g. https://hub.tail1234.ts.net (stored as hub.public_url)")
 	noPush := fs.Bool("no-push", false, "run without the alert engine and push channels")
@@ -210,6 +211,11 @@ func serve(args []string, stdout, stderr io.Writer) error {
 	if !isLoopback(*listen) && !*insecure {
 		return fmt.Errorf("refusing to listen on %s without TLS: the hub speaks plain HTTP. Put it behind tailscale serve or a reverse proxy and pass --insecure-lan, or listen on 127.0.0.1", *listen)
 	}
+	proxies, err := auth.ParseTrustedProxies(*trustedProxy)
+	if err != nil {
+		return fmt.Errorf("--trusted-proxy: %w", err)
+	}
+	auth.SetTrustedProxies(proxies)
 	pub := ""
 	if *publicURL != "" {
 		origin, _, err := pair.NormalizeURL(*publicURL, "machine", true)

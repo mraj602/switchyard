@@ -28,7 +28,10 @@ services:
       - hub-data:/data
     # SY_PUBLIC_URL (in .env) is the https address phones open, e.g. the
     # https://<name>.<tailnet>.ts.net of `tailscale serve --bg 8787` (deploy/README.md C).
-    command: ["hub", "serve", "--listen", "0.0.0.0:8787", "--insecure-lan", "--public-url", "${SY_PUBLIC_URL:-}"]
+    command: ["hub", "serve", "--listen", "0.0.0.0:8787", "--insecure-lan", "--trusted-proxy", "${SY_TRUSTED_PROXY:-172.16.0.0/12}", "--public-url", "${SY_PUBLIC_URL:-}"]
+    # Published ports reach the container from the Docker bridge gateway, so the hub trusts
+    # X-Forwarded-For/-Proto from Docker's default bridge ranges (172.16.0.0/12). Set
+    # SY_TRUSTED_PROXY if your Docker uses other ranges (docker network inspect).
     environment:
       TZ: ${TZ:-UTC}
     read_only: true

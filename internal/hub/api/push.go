@@ -5,9 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"net"
 	"net/http"
-	"net/netip"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -217,10 +215,8 @@ func (s *Server) hubURL(r *http.Request) string {
 	scheme := "http"
 	if r.TLS != nil {
 		scheme = "https"
-	} else if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		if ip, err := netip.ParseAddr(host); err == nil && ip.IsLoopback() && r.Header.Get("X-Forwarded-Proto") == "https" {
-			scheme = "https"
-		}
+	} else if auth.SecureRequest(r) {
+		scheme = "https"
 	}
 	return scheme + "://" + r.Host
 }

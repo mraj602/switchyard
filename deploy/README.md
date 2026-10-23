@@ -227,7 +227,17 @@ every phone subscription valid.
 **Caddy (VPS mode).** The `Caddyfile` already serves HTTPS and does not buffer the stream;
 start the hub with `--public-url https://hub.example.com` so the phone app, the QR codes
 and the cookie `Origin` check use that address. Caddy sets `X-Forwarded-Proto`, and the hub
-trusts it only from loopback.
+trusts it only from loopback and from `--trusted-proxy`.
+
+**Forwarded headers in Docker.** With a published port, the hub sees the Docker bridge
+gateway (for example `172.17.0.1`) as the caller, not loopback. The compose file therefore
+starts it with `--trusted-proxy 172.16.0.0/12` (override with `SY_TRUSTED_PROXY` in `.env`; a
+comma-separated list of CIDRs). Without it, every client shares the bridge address, so the
+per-client rate limits become one shared limit and the session cookie loses its `Secure` flag
+behind `tailscale serve`. Only list ranges that carry your own proxy: a caller from a trusted
+range can set `X-Forwarded-For` to anything. If you publish the hub directly on the Tailscale
+address (no proxy), tailnet peers arrive from the bridge too, so set `SY_TRUSTED_PROXY` to an
+unused range such as `192.0.2.1/32` to turn this off.
 
 ---
 
