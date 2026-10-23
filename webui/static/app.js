@@ -117,6 +117,9 @@ async function render() {
     const view = VIEWS[route.view];
     const key = routeKey(route, lastRouteKey);
     const changed = key !== lastRouteKey;
+    // The sign-in page keeps no state of its own: rebuilding it on a data or PWA update would
+    // drop a half-typed token or owner link, and the node the reader is about to press.
+    if (!changed && route.view === 'login' && mainEl.querySelector('.login-card')) return;
     const onLoggedIn = route.view === 'owner' ? () => { ownerSignedIn = true; return boot(); } : boot;
     const ctx = { store, route, now: Date.now(), onLoggedIn, onLogout: doLogout, rerender: render };
 

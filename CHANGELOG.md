@@ -23,6 +23,11 @@ All notable changes to Switchyard are recorded here. The format follows
 - The web board's "Open in app" link is now an Android intent pinned to the Switchyard package,
   so no other app can receive the pairing secret.
 
+### Fixed
+
+- The web board's sign-in page no longer loses a half-typed token or owner link when the page
+  updates in the background (for example while the offline app installs).
+
 ## [1.0.0] - not released yet
 
 The first public version. Everything below is new.

@@ -160,6 +160,9 @@ async function boardFlow(sizeName, w, hgt) {
   await page.waitForSelector('.login-card [data-key=owner-cli] [data-key=owner-link-cmd]');
   // A pasted owner link for another hub is refused with the other origin named.
   await page.type('[data-key=owner-link-input]', 'https://other.example/#/owner?s=abcdefghijklmnopqrstuv');
+  // A redraw (a data or PWA update) must not rebuild the sign-in page and drop what was typed.
+  await page.evaluate(() => window.dispatchEvent(new Event('sy-rerender')));
+  if (!(await page.$eval('[data-key=owner-link-input]', (e) => e.value))) fail(page.tag('a redraw dropped the typed owner link'));
   await page.click('[data-key=owner-link-open]');
   await page.waitForFunction(() => /not this hub/.test((document.querySelector('[data-key=owner-link-error]:not([hidden])') || {}).textContent || ''), { timeout: 10000 })
     .catch(() => fail(page.tag('a foreign owner link was not refused')));
