@@ -1,6 +1,6 @@
 # testdata
 
-Realistic, redacted sample data for Switchyard's Go tests (golden files, record round-trips). Captured on 2026-10-12 with **Claude Code 2.1.296**, on Linux, from the Warp terminal.
+Realistic, redacted sample data for Watchyard's Go tests (golden files, record round-trips). Captured on 2026-10-12 with **Claude Code 2.1.296**, on Linux, from the Warp terminal.
 
 Maintainer note: `scripts/fixtures/regenerate.sh` reads the maintainer's real `~/.claude*` folders and
 spends real Claude usage; contributors should not run it. Run
@@ -117,7 +117,7 @@ kept so the line types are all there: `queue-operation`, `user`, `attachment`, `
 set to `~/.claude`, `-2`, `-3`), plus `sessions-dir/<pid>.json` (the fallback source, copied from `~/.claude-2/sessions/`; the `*.key` files
 next to them are never read). Interactive items carry `pid` + `status`, background items `id` + `state: "blocked"` and no pid. Session ids are
 replaced by `00000000-0000-4000-8000-00000000000N`, `name` by `session N`, `pidDomain`'s hash by zeros (`scripts/fixtures/collect-agents.sh`, which
-then runs `redact.py` and `check-redaction.sh`). `messagingSocketPath` is kept on purpose: a test proves `sy` drops it.
+then runs `redact.py` and `check-redaction.sh`). `messagingSocketPath` is kept on purpose: a test proves `wy` drops it.
 
 ## Regenerating
 

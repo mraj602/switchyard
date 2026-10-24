@@ -1,6 +1,6 @@
 # Security and privacy
 
-What Switchyard sends, what the hub keeps, who can do what, and what it does not protect
+What Watchyard sends, what the hub keeps, who can do what, and what it does not protect
 against. The specs hold the detail: [record.md](../spec/record.md) (what a record may contain),
 [tokens.md](../spec/tokens.md), [pairing.md](../spec/pairing.md), [keys.md](../spec/keys.md),
 [link.md](../spec/link.md), [push.md](../spec/push.md) and [peers.md](../spec/peers.md).
@@ -9,18 +9,18 @@ To report a vulnerability, follow [SECURITY.md](../../SECURITY.md). Do not open 
 
 ## Principles
 
-- **Your hub, your data.** The hub is a program you run. There is no hosted Switchyard service
+- **Your hub, your data.** The hub is a program you run. There is no hosted Watchyard service
   and nothing is sent to the project's authors.
 - **The hub never talks to Anthropic and never holds a Claude login.** It only receives what
   your machines send.
-- **Claude logins are never touched.** `sy` never reads, copies, backs up or sends
+- **Claude logins are never touched.** `wy` never reads, copies, backs up or sends
   `.credentials.json`, a Keychain item, `oauthAccount` or `sessions/*.key`. Logging in is always
   Claude Code's own `claude auth login`, run by you.
-- **Hooks never decide anything.** `sy hook` always exits successfully with no decision, so it
+- **Hooks never decide anything.** `wy hook` always exits successfully with no decision, so it
   cannot approve a permission or type into a session.
-- **No automatic account switching.** Switchyard may show which account has room; it never
+- **No automatic account switching.** Watchyard may show which account has room; it never
   switches or rotates accounts to get around limits.
-- **The hub cannot command clients.** `sy` never runs anything it receives from the hub. Hub
+- **The hub cannot command clients.** `wy` never runs anything it receives from the hub. Hub
   replies to ingest are lists of accepted record ids. A compromised hub can leak what it stores;
   it cannot reach into your machines.
 
@@ -28,32 +28,32 @@ To report a vulnerability, follow [SECURITY.md](../../SECURITY.md). Do not open 
 
 | Never | By default | Only if you turn it on (or off) |
 | --- | --- | --- |
-| Cookies, Claude Code tokens, prompts, code, file contents, tool input and output, permission suggestions | Session ids, states and times, the project folder name, the account email and organisation, models and token counts, limit percentages and reset times, Claude Code's own notification text ("Claude needs your permission to use Bash"), lengths of removed fields | The tail of Claude's last message (up to 400 characters) and the text of an AskUserQuestion question, used for the board, question detection and push text. **On by default for your own hub.** Turn it off with `sy config set privacy.last_message false` |
+| Cookies, Claude Code tokens, prompts, code, file contents, tool input and output, permission suggestions | Session ids, states and times, the project folder name, the account email and organisation, models and token counts, limit percentages and reset times, Claude Code's own notification text ("Claude needs your permission to use Bash"), lengths of removed fields | The tail of Claude's last message (up to 400 characters) and the text of an AskUserQuestion question, used for the board, question detection and push text. **On by default for your own hub.** Turn it off with `wy config set privacy.last_message false` |
 
-`sy hook` strips content fields before a record is written to the local outbox; the exact
+`wy hook` strips content fields before a record is written to the local outbox; the exact
 field-by-field rules are in [record.md](../spec/record.md).
 
 ## What the hub stores
 
-Everything is in one SQLite file, `hub.db`, in the hub's data folder (`sy paths`).
+Everything is in one SQLite file, `hub.db`, in the hub's data folder (`wy paths`).
 
 | Group | Contents |
 | --- | --- |
 | Records | Every record exactly as received (after the client-side stripping above), kept by default so state and analytics can be rebuilt |
 | Accounts | Account ids, emails, organisation names and plans, your labels and colours |
-| Machines and sessions | Machine names, OS, `sy` version, last seen; session ids, folders, projects, titles, states, Remote Control links |
+| Machines and sessions | Machine names, OS, `wy` version, last seen; session ids, folders, projects, titles, states, Remote Control links |
 | Usage | Token counts per reply, limit samples, web usage responses (the raw numbers claude.ai returned to the desktop app), limit windows |
 | Devices | One row per paired device with the **SHA-256 hash** of its token, its scopes, and when it was used or revoked |
 | Alerts | Rules, alerts, delivery log, push targets (Web Push subscriptions, ntfy topics, Android link targets) |
 | Keys and peers | Device certificates, the owner key's public part, matrix versions, peer message and audit **metadata** (never the text) |
 
-Treat `hub.db`, its backups and `sy hub export` archives as sensitive: they hold project names,
+Treat `hub.db`, its backups and `wy hub export` archives as sensitive: they hold project names,
 emails, session snippets, token hashes, the Web Push private key and the pull key. Keep them on
-an encrypted disk. Export archives can be encrypted with `sy hub export --encrypt`. The hub
+an encrypted disk. Export archives can be encrypted with `wy hub export --encrypt`. The hub
 signing key lives outside the database (`<state>/hub_sign.key`), so a copy of `hub.db` cannot
 forge frames or certificates.
 
-Prune old data with `sy hub prune` ([maintenance.md](maintenance.md#pruning)).
+Prune old data with `wy hub prune` ([maintenance.md](maintenance.md#pruning)).
 
 ## claude.ai sign-ins
 
@@ -62,7 +62,7 @@ The desktop app and the Android app each show one claude.ai tab per account.
 - You sign in on Anthropic's own page, in that tab.
 - Each tab keeps its sign-in in its own local browser session on that device (an Electron
   partition on the desktop, a WebView profile on Android).
-- Switchyard never reads, exports or sends the tabs' cookies or tokens. Nothing from a tab's
+- Watchyard never reads, exports or sends the tabs' cookies or tokens. Nothing from a tab's
   session reaches the hub.
 - The desktop app's account tabs present a plain Chrome user agent string, because claude.ai's
   bot protection rejects Electron's default one. claude.ai sees an ordinary Chrome browser; the
@@ -71,10 +71,10 @@ The desktop app and the Android app each show one claude.ai tab per account.
 - The Android app asks claude.ai only which account a tab is signed in to, so it can warn about
   a tab signed in to the wrong account. It does not read chats, page content or usage.
 
-**Usage reading** in the desktop app is the one part of Switchyard that calls claude.ai's
+**Usage reading** in the desktop app is the one part of Watchyard that calls claude.ai's
 undocumented endpoints. It is off for each account until you accept a warning for that
 account. When on, a small script inside that account's tab reads the numbers claude.ai shows
-under Settings → Usage every 5 minutes and hands them to `sy`. It stops on 401, 403 or 429 and
+under Settings → Usage every 5 minutes and hands them to `wy`. It stops on 401, 403 or 429 and
 backs off on errors. These endpoints can change or break at any time, and automated access may
 not be allowed by your plan's terms. See [usage.md](usage.md).
 
@@ -95,15 +95,15 @@ owner-key proposal that you would have to confirm, but it reads nothing and cann
 anything. The hub ties each session to the machine that first reported it and ignores records
 from any other machine about it, so the token cannot end, rename or raise alerts on other
 machines' sessions ([record.md section 5.1](../spec/record.md#51-sessions-belong-to-one-machine)). Revoke any device on the board
-(Devices) or with `sy hub token revoke <id|name>`.
+(Devices) or with `wy hub token revoke <id|name>`.
 
-**Pairing codes.** A code from `sy hub pair`, `sy phone pair` or the board's Add phone / Add
+**Pairing codes.** A code from `wy hub pair`, `wy phone pair` or the board's Add phone / Add
 machine is single use, lasts 10 minutes by default, is rate limited, and is tied to one device
 kind. The QR code also carries the hub key's fingerprint and a seal for the phone's keys, so a
 phone paired by QR knows it reached your hub.
 
-**Owner sign-in.** `sy hub owner-link`, run on the hub machine, prints a one-time link (10
-minutes). Opening it signs that browser in as the owner for 30 days. Whoever can run `sy` on
+**Owner sign-in.** `wy hub owner-link`, run on the hub machine, prints a one-time link (10
+minutes). Opening it signs that browser in as the owner for 30 days. Whoever can run `wy` on
 the hub machine already owns the data, so this needs no password.
 
 ## Transport
@@ -111,7 +111,7 @@ the hub machine already owns the data, so this needs no password.
 - The hub listens on `127.0.0.1` by default and the shipped Docker files never publish it on
   `0.0.0.0`.
 - Clients use `https://` except to loopback or Tailscale (a `*.ts.net` name or a `100.64.0.0/10`
-  address). Plain `http://` to any other address, including a short name such as `myhub`, is refused unless you pass `--insecure-lan` (to `sy connect` or `sy hub serve`).
+  address). Plain `http://` to any other address, including a short name such as `myhub`, is refused unless you pass `--insecure-lan` (to `wy connect` or `wy hub serve`).
 - Phones need `https://` for the web app, Web Push and the Android app's release build. Use
   `tailscale serve` or a reverse proxy with TLS ([install.md](install.md)).
 - Never expose the hub port to the internet directly. The read API returns project names and
@@ -119,7 +119,7 @@ the hub machine already owns the data, so this needs no password.
 
 ## Keys and signatures
 
-On top of tokens, Switchyard uses keys for three things a token cannot give:
+On top of tokens, Watchyard uses keys for three things a token cannot give:
 
 1. **Signatures a stolen database cannot make.** The hub signs every frame on the link and
    every device certificate with a key kept outside `hub.db`. Devices pin that key when they
@@ -135,7 +135,7 @@ On top of tokens, Switchyard uses keys for three things a token cannot give:
 See [peers.md](peers.md) for the owner key steps.
 
 **Accounts per machine.** The peers matrix is a rule between accounts, but each machine says
-itself which account a session belongs to. So `sy keys certify` also signs, per machine, the
+itself which account a session belongs to. So `wy keys certify` also signs, per machine, the
 list of accounts it may speak for, and both the hub and the receiving machine refuse a peer
 message whose sender account is not on the sending machine's list (`unbound_account`). A
 session on one machine therefore cannot pose as an account that lives only on another
@@ -144,10 +144,10 @@ Claude Code in that account's folder. Details:
 [keys.md section 4.3](../spec/keys.md#43-machine-accounts).
 
 **After upgrading.** Machines certified before this list existed have none, and their peer
-messages to other machines are refused until you run `sy keys certify --all` on the owner
+messages to other machines are refused until you run `wy keys certify --all` on the owner
 machine once more. It shows the accounts the hub sees on each machine; compare them with
-`sy keys status` on that machine before you confirm. `sy doctor` warns on a machine with no
-bound accounts. Update the hub and the machines together: a new `sy` refuses messages relayed
+`wy keys status` on that machine before you confirm. `wy doctor` warns on a machine with no
+bound accounts. Update the hub and the machines together: a new `wy` refuses messages relayed
 by an older hub, which does not pass the list on. Removing an account from a machine's list
 does not reliably take it away (an older signed list may still be presented); renew that
 machine's keys for that.
@@ -161,7 +161,7 @@ machine's keys for that.
 | A read-only copy of `hub.db` or a backup | Read everything stored there | Forge link frames, notifications, certificates or peer messages (the hub signing key is not in it) |
 | Write access to `hub.db` only | Add or change rows | Mint an owner session, install an owner key (needs both signatures) |
 | Code running as the hub's OS user | Read `hub_sign.key` and sign as the hub; with the default `hub_may_widen = true`, widen the peers matrix | Sign as the owner without the passphrase |
-| A Claude Code session on your machine | Anything your OS user can do on that machine, including bypassing Switchyard locally and sending peer messages as any account bound to that machine | Type your owner passphrase; pose as an account bound only to another machine; make another machine deliver a peer pair its matrix refuses for the accounts bound to this machine |
+| A Claude Code session on your machine | Anything your OS user can do on that machine, including bypassing Watchyard locally and sending peer messages as any account bound to that machine | Type your owner passphrase; pose as an account bound only to another machine; make another machine deliver a peer pair its matrix refuses for the accounts bound to this machine |
 | A network observer between devices and the hub | See traffic metadata | Read traffic (TLS, and sealed frames on the link) |
 
 **The signing guard.** Owner-key commands refuse to run inside a Claude Code session or
@@ -171,8 +171,8 @@ really protects the owner key is the passphrase, which is never stored and which
 cannot type into your terminal. Details: [keys.md section 8.1](../spec/keys.md#81-what-the-guard-can-and-cannot-do).
 
 If Claude Code sessions run on the hub machine as the hub's user (merged mode, or a server that
-is also the hub), set `sy config set peers.hub_may_widen false` on every machine, or run the hub
-as its own OS user. `sy doctor` warns about this.
+is also the hub), set `wy config set peers.hub_may_widen false` on every machine, or run the hub
+as its own OS user. `wy doctor` warns about this.
 
 ## Who can read push text
 
@@ -202,15 +202,15 @@ The two checks prove different things:
 - **The attestation** shows the file was built by this repository's release workflow. It
   needs the `gh` CLI.
 
-The install scripts and `sy update` check the attestation whenever `gh` is installed, and stop
+The install scripts and `wy update` check the attestation whenever `gh` is installed, and stop
 if it fails. When `gh` is not installed they say so and install on the checksum alone. To make
-that an error, set `SY_VERIFY_ATTESTATION=1`; to skip the check (for example offline), set
-`SY_VERIFY_ATTESTATION=0`, or use `sy update --no-attestation` or
-`update.verify_attestation = false`. With `sy update --machines`, a machine that cannot reach
-the internet gets the archive from you after your `sy` checked it. To check one yourself, run
-`gh attestation verify <file> --repo mraj602/switchyard`.
+that an error, set `WY_VERIFY_ATTESTATION=1`; to skip the check (for example offline), set
+`WY_VERIFY_ATTESTATION=0`, or use `wy update --no-attestation` or
+`update.verify_attestation = false`. With `wy update --machines`, a machine that cannot reach
+the internet gets the archive from you after your `wy` checked it. To check one yourself, run
+`gh attestation verify <file> --repo mraj602/watchyard`.
 
-The install scripts only talk https (TLS 1.2 or newer); `SY_INSTALL_BASE_URL` must be https,
+The install scripts only talk https (TLS 1.2 or newer); `WY_INSTALL_BASE_URL` must be https,
 except for a loopback address used in tests. The desktop packages are not code-signed
 ([desktop.md](desktop.md#unsigned-builds-on-macos-and-windows)). The Android APK is signed
 with the maintainer's own key; check it as [android.md](android.md#verify-the-apk) says. You

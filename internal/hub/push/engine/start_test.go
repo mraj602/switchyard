@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/push/engine"
+	"github.com/mraj602/watchyard/internal/hub/push/engine"
 )
 
 // A Start that fails leaves no scheduler goroutine behind, so Stop must not wait for one.

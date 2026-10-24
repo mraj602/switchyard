@@ -29,8 +29,8 @@ import (
 	"sync"
 
 	"github.com/coder/websocket"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/link"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/link"
 )
 
 // ErrDup is a queued frame at or below `last` (link.md 4.3 step 3): dropped, not processed.

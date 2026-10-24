@@ -13,8 +13,8 @@ func TestAgentGolden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	golden(t, "switchyard-agent.service.golden", SystemdUnit(envFor("linux", "/home/alice", nil), sp))
-	golden(t, "com.switchyard.switchyard-agent.plist.golden", LaunchdPlist(envFor("darwin", "/Users/alice", nil), sp))
+	golden(t, "watchyard-agent.service.golden", SystemdUnit(envFor("linux", "/home/alice", nil), sp))
+	golden(t, "com.watchyard.watchyard-agent.plist.golden", LaunchdPlist(envFor("darwin", "/Users/alice", nil), sp))
 }
 
 func TestAgentInstallStatusUninstall(t *testing.T) {
@@ -25,12 +25,12 @@ func TestAgentInstallStatusUninstall(t *testing.T) {
 	if err := s.Install(ctx, AgentSpec()); err != nil {
 		t.Fatal(err)
 	}
-	unit := filepath.Join(home, ".config", "systemd", "user", "switchyard-agent.service")
+	unit := filepath.Join(home, ".config", "systemd", "user", "watchyard-agent.service")
 	b, err := os.ReadFile(unit)
-	if err != nil || !strings.Contains(string(b), "ExecStart=/home/alice/.local/bin/sy agent run\n") {
+	if err != nil || !strings.Contains(string(b), "ExecStart=/home/alice/.local/bin/wy agent run\n") {
 		t.Fatalf("unit %v:\n%s", err, b)
 	}
-	want := []string{"systemctl --user daemon-reload", "systemctl --user enable --now switchyard-agent.service"}
+	want := []string{"systemctl --user daemon-reload", "systemctl --user enable --now watchyard-agent.service"}
 	if got := r.lines(); len(got) < 2 || got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("calls %v", got)
 	}
@@ -46,7 +46,7 @@ func TestAgentInstallStatusUninstall(t *testing.T) {
 	}
 	found := false
 	for _, l := range r.lines() {
-		found = found || l == "systemctl --user disable --now switchyard-agent.service"
+		found = found || l == "systemctl --user disable --now watchyard-agent.service"
 	}
 	if !found {
 		t.Errorf("no disable call: %v", r.lines())
@@ -58,7 +58,7 @@ func TestAgentInstallStatusUninstall(t *testing.T) {
 	if err := New(envFor("darwin", mhome, mr)).Install(ctx, AgentSpec()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(mhome, "Library", "LaunchAgents", "com.switchyard.switchyard-agent.plist")); err != nil {
+	if _, err := os.Stat(filepath.Join(mhome, "Library", "LaunchAgents", "com.watchyard.watchyard-agent.plist")); err != nil {
 		t.Error(err)
 	}
 }

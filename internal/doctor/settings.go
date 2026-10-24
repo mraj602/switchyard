@@ -13,9 +13,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/identity"
 )
 
 func lookPath(name string) (string, error) { return exec.LookPath(name) }
@@ -25,8 +25,8 @@ var RequiredEvents = []string{"SessionStart", "UserPromptSubmit", "PermissionReq
 	"PreToolUse", "Stop", "StopFailure", "SubagentStop", "SessionEnd", "PreCompact", "PermissionDenied"}
 
 var (
-	syHookRe       = regexp.MustCompile(`(^|[\s/\\"'])sy(\.exe)?["']?\s+hook(\s|$|["'])`)
-	syStatuslineRe = regexp.MustCompile(`(^|[\s/\\"'])sy(\.exe)?["']?\s+statusline(\s|$|["'])`)
+	syHookRe       = regexp.MustCompile(`(^|[\s/\\"'])wy(\.exe)?["']?\s+hook(\s|$|["'])`)
+	syStatuslineRe = regexp.MustCompile(`(^|[\s/\\"'])wy(\.exe)?["']?\s+statusline(\s|$|["'])`)
 )
 
 // settings is the part of a settings.json that doctor reads.
@@ -99,11 +99,11 @@ func readSettings(fsys identity.FS, path string) (settings, error) {
 	return s, nil
 }
 
-// switchyardPlugin returns the enabled plugin key that is the switchyard plugin, if any.
-func (s settings) switchyardPlugin() string {
+// watchyardPlugin returns the enabled plugin key that is the watchyard plugin, if any.
+func (s settings) watchyardPlugin() string {
 	var keys []string
 	for k, on := range s.plugins {
-		if on && (k == "switchyard" || strings.HasPrefix(k, "switchyard@")) {
+		if on && (k == "watchyard" || strings.HasPrefix(k, "watchyard@")) {
 			keys = append(keys, k)
 		}
 	}
@@ -136,24 +136,24 @@ func (s settings) legacyPlugin() string {
 func checkHooks(rep *Report, slot identity.Slot, s settings, err error) {
 	c := Check{Name: "hooks", Slot: slot.Name}
 	if err != nil {
-		c.Level, c.Detail, c.Fix = Warn, "cannot read settings.json: "+err.Error(), "fix the file, then run sy doctor again"
+		c.Level, c.Detail, c.Fix = Warn, "cannot read settings.json: "+err.Error(), "fix the file, then run wy doctor again"
 		rep.add(c)
 		return
 	}
 	if !s.exists {
 		c.Level, c.Detail = Warn, "no settings.json in this folder"
-		c.Fix = "install the switchyard plugin (plugin/switchyard) in this folder's settings.json, or share the one from ~/.claude by symlink"
+		c.Fix = "install the watchyard plugin (plugin/watchyard) in this folder's settings.json, or share the one from ~/.claude by symlink"
 		rep.add(c)
 		return
 	}
-	if p := s.switchyardPlugin(); p != "" {
+	if p := s.watchyardPlugin(); p != "" {
 		c.Level, c.Detail = OK, "plugin "+p+" is enabled"
 		rep.add(c)
 		return
 	}
 	if p := s.legacyPlugin(); p != "" {
 		c.Level, c.Detail = Warn, "plugin "+p+" from before the rename is enabled"
-		c.Fix = "sy setup --yes replaces it with " + brand.Slug + "@" + brand.Marketplace
+		c.Fix = "wy setup --yes replaces it with " + brand.Slug + "@" + brand.Marketplace
 		rep.add(c)
 		return
 	}
@@ -174,18 +174,18 @@ func checkHooks(rep *Report, slot identity.Slot, s settings, err error) {
 	}
 	switch {
 	case len(have) == 0:
-		c.Level, c.Detail = Warn, "no `sy hook` command and no switchyard plugin in the effective settings"
+		c.Level, c.Detail = Warn, "no `wy hook` command and no watchyard plugin in the effective settings"
 		for k, on := range s.plugins {
-			if !on && (k == "switchyard" || strings.HasPrefix(k, "switchyard@")) {
-				c.Detail = "the switchyard plugin " + k + " is disabled"
+			if !on && (k == "watchyard" || strings.HasPrefix(k, "watchyard@")) {
+				c.Detail = "the watchyard plugin " + k + " is disabled"
 			}
 		}
-		c.Fix = "enable the switchyard plugin in settings.json enabledPlugins (see plugin/switchyard/README.md)"
+		c.Fix = "enable the watchyard plugin in settings.json enabledPlugins (see plugin/watchyard/README.md)"
 	case len(missing) > 0:
-		c.Level, c.Detail = Warn, "`sy hook` is missing for: "+strings.Join(missing, ", ")
+		c.Level, c.Detail = Warn, "`wy hook` is missing for: "+strings.Join(missing, ", ")
 		c.Fix = "add those events (docs/spec/states.md section 2), or use the plugin, which has them all"
 	default:
-		c.Level, c.Detail = OK, "`sy hook` runs on all "+strconv.Itoa(len(RequiredEvents))+" events"
+		c.Level, c.Detail = OK, "`wy hook` runs on all "+strconv.Itoa(len(RequiredEvents))+" events"
 	}
 	rep.add(c)
 }
@@ -194,15 +194,15 @@ func checkStatusline(rep *Report, slot identity.Slot, s settings, err error) {
 	c := Check{Name: "status line", Slot: slot.Name}
 	switch {
 	case err != nil:
-		c.Level, c.Detail, c.Fix = Warn, "cannot read settings.json: "+err.Error(), "fix the file, then run sy doctor again"
+		c.Level, c.Detail, c.Fix = Warn, "cannot read settings.json: "+err.Error(), "fix the file, then run wy doctor again"
 	case !s.exists || !s.hasStat || strings.TrimSpace(s.status) == "":
 		c.Level, c.Detail = Warn, "no status line command"
-		c.Fix = "set statusLine.command to: sy statusline --wrap '<your old command>' (context % and limits come from it)"
+		c.Fix = "set statusLine.command to: wy statusline --wrap '<your old command>' (context % and limits come from it)"
 	case syStatuslineRe.MatchString(s.status):
-		c.Level, c.Detail = OK, "wrapped by sy statusline"
+		c.Level, c.Detail = OK, "wrapped by wy statusline"
 	default:
-		c.Level, c.Detail = Warn, "status line does not run sy statusline"
-		c.Fix = "set statusLine.command to: sy statusline --wrap '" + oneLine(s.status) + "'"
+		c.Level, c.Detail = Warn, "status line does not run wy statusline"
+		c.Fix = "set statusLine.command to: wy statusline --wrap '" + oneLine(s.status) + "'"
 	}
 	rep.add(c)
 }
@@ -248,10 +248,10 @@ func checkSymlinks(rep *Report, o Options, slots []identity.Slot) {
 			c.Detail = "recorded: " + describe(cur)
 		case old.Symlink && !cur.Symlink:
 			c.Level, c.Detail = Warn, "settings.json was a symlink to "+old.Target+" and is not any more (something replaced it)"
-			c.Fix = "restore the link, or run sy doctor --rebaseline if this is intended"
+			c.Fix = "restore the link, or run wy doctor --rebaseline if this is intended"
 		case old.Symlink && cur.Target != old.Target:
 			c.Level, c.Detail = Warn, "settings.json now links to "+cur.Target+" (was "+old.Target+")"
-			c.Fix = "relink it, or run sy doctor --rebaseline if this is intended"
+			c.Fix = "relink it, or run wy doctor --rebaseline if this is intended"
 		default:
 			c.Level, c.Detail = OK, describe(cur)
 		}

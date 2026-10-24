@@ -112,7 +112,7 @@ func TestAllowList(t *testing.T) {
 		"warp://session/" + strings.ToUpper(hex32),
 		"warp://session/" + hex32[:31], "warp://session/" + hex32 + "0",
 		"warp://session/%2f" + hex32[:29], "warp://session/" + hex32 + " ", "warp://session/" + hex32 + "\n",
-		" warp://session/" + hex32, "warp://tab_config/switchyard-work", "warp://session/", "",
+		" warp://session/" + hex32, "warp://tab_config/watchyard-work", "warp://session/", "",
 		"warp://session/" + hex32 + "/../x", "WARP://session/" + hex32,
 	}
 	for _, u := range bad {
@@ -120,8 +120,8 @@ func TestAllowList(t *testing.T) {
 			t.Errorf("accepts %q", u)
 		}
 	}
-	if !ValidTabConfigURL("warp://tab_config/switchyard-work") || ValidTabConfigURL("warp://tab_config/other") ||
-		ValidTabConfigURL("warp://tab_config/switchyard-Work") || ValidTabConfigURL("warp://tab_config/switchyard-a b") {
+	if !ValidTabConfigURL("warp://tab_config/watchyard-work") || ValidTabConfigURL("warp://tab_config/other") ||
+		ValidTabConfigURL("warp://tab_config/watchyard-Work") || ValidTabConfigURL("warp://tab_config/watchyard-a b") {
 		t.Error("tab config pattern")
 	}
 	if !ValidRemoteURL("https://claude.ai/code/session_1") || ValidRemoteURL("https://evil.example/") ||

@@ -11,10 +11,10 @@ import (
 	"fmt"
 	"time"
 
-	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/link"
+	hubkeys "github.com/mraj602/watchyard/internal/hub/keys"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/link"
 )
 
 // loginError is a refused login: the close code of link.md 8 and a reason word.

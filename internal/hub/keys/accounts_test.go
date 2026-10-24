@@ -8,7 +8,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 // keys.md 4.3: the hub stores a machine_accounts document only when the active owner key

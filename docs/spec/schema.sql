@@ -1,4 +1,4 @@
--- Switchyard hub schema, version 14.
+-- Watchyard hub schema, version 14.
 --
 -- One SQLite file (WAL mode). Applied by the hub at start inside one transaction
 -- after `PRAGMA foreign_keys = ON`. Later versions add numbered migrations
@@ -108,7 +108,7 @@ CREATE TABLE seat (
 -- look_src: v5 (desktop.md C10). Who set label and colour last: 'ui' (PATCH /v1/accounts/{seat}),
 -- 'slot' (slot_info; applies only while look_src is NULL or 'slot'), 'import' (rows imported by earlier versions; nothing writes it now).
 
--- A computer running sy. The id is made by sy on first run (identity.md).
+-- A computer running wy. The id is made by wy on first run (identity.md).
 CREATE TABLE machine (
   id            TEXT    NOT NULL PRIMARY KEY,       -- 'm_' + ULID
   owner_id      TEXT    NOT NULL DEFAULT 'owner' REFERENCES owner(id),
@@ -375,7 +375,7 @@ CREATE TABLE limit_hit (
   PRIMARY KEY (session_id, ts)
 ) STRICT;
 
--- Claude Code's own daily totals from before Switchyard (history_import).
+-- Claude Code's own daily totals from before Watchyard (history_import).
 CREATE TABLE history_day (
   slot_id       INTEGER NOT NULL REFERENCES slot(id) ON DELETE CASCADE,
   day           TEXT    NOT NULL CHECK (day GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
@@ -541,7 +541,7 @@ CREATE TABLE pull_target (
   port          INTEGER NOT NULL DEFAULT 22 CHECK (port BETWEEN 1 AND 65535),
   user          TEXT    NOT NULL,
   jump          TEXT,                                       -- ProxyJump, as typed
-  remote_sy     TEXT    NOT NULL DEFAULT '.local/bin/sy',   -- used only without a forced command
+  remote_sy     TEXT    NOT NULL DEFAULT '.local/bin/wy',   -- used only without a forced command
   host_keys     TEXT    NOT NULL CHECK (json_valid(host_keys)),  -- ["ssh-ed25519 AAAA…", …] pinned public keys
   interval_s    INTEGER NOT NULL DEFAULT 60 CHECK (interval_s BETWEEN 15 AND 3600),
   enabled       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
@@ -630,7 +630,7 @@ CREATE TABLE link_state (
   last_seen_at  INTEGER,                           -- last frame, ping or poll
   last_close    TEXT,                              -- close code and word: '4409 superseded'
   last_ip       TEXT,
-  hello         TEXT    CHECK (hello IS NULL OR json_valid(hello))   -- last hello's app/sy version and known doc versions
+  hello         TEXT    CHECK (hello IS NULL OR json_valid(hello))   -- last hello's app/wy version and known doc versions
 ) STRICT;
 
 -- The durable queue: one sealed, signed frame per row until the device acks it (link.md 5).

@@ -17,18 +17,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/client"
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/machineadd"
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/paths"
-	"github.com/mraj602/switchyard/internal/service"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/version"
+	"github.com/mraj602/watchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/machineadd"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/paths"
+	"github.com/mraj602/watchyard/internal/service"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/version"
 )
 
-// Controller is the hub user service as `sy desktop hub` uses it: *service.Service.
+// Controller is the hub user service as `wy desktop hub` uses it: *service.Service.
 type Controller interface {
 	Status(ctx context.Context, name string) (model.ServiceStatus, error)
 	Start(ctx context.Context, name string) error
@@ -42,7 +42,7 @@ type Env struct {
 	Dirs   paths.Dirs
 	Config config.Config
 	// Admin is the admin channel of machines.md 4.4 (nil: none) and AdminName how the person
-	// gave it ("local", "ssh hub-host sy").
+	// gave it ("local", "ssh hub-host wy").
 	Admin     machineadd.Admin
 	AdminName string
 	// AdminErr is why the configured admin channel (machines.hub_admin) could not be used,
@@ -50,7 +50,7 @@ type Env struct {
 	AdminErr error
 	Service  Controller
 	GOOS     string
-	// Version is sy's version; empty means version.Version.
+	// Version is wy's version; empty means version.Version.
 	Version string
 	// Stdin is read for --code-stdin: the first line.
 	Stdin io.Reader
@@ -115,7 +115,7 @@ func (e Env) machine() (identity.Machine, error) {
 	return identity.LoadOrCreateMachine(e.Dirs.State.Path, identity.MachineOptions{})
 }
 
-// health asks GET /health of the hub sy is connected to. Version is "" when unreachable.
+// health asks GET /health of the hub wy is connected to. Version is "" when unreachable.
 func (e Env) health(ctx context.Context, timeout time.Duration) (string, bool) {
 	if e.Config.Hub.URL == "" {
 		return "", false
@@ -175,7 +175,7 @@ func strp(s string) *string {
 	return &s
 }
 
-// RunInfo is `sy desktop info --json` (C4). It never fails because the hub or the service is
+// RunInfo is `wy desktop info --json` (C4). It never fails because the hub or the service is
 // out of reach: an unconnected machine reports connected: false.
 func RunInfo(ctx context.Context, e Env) (Info, error) {
 	m, err := e.machine()
@@ -248,7 +248,7 @@ func serviceState(st model.ServiceStatus) string {
 	return ServiceStopped
 }
 
-// TokenOptions are the flags of `sy desktop token`.
+// TokenOptions are the flags of `wy desktop token`.
 type TokenOptions struct {
 	CodeStdin bool
 	Name      string
@@ -267,7 +267,7 @@ func (e Env) needHub() (string, error) {
 		return "", fail(ExitNotHere, "forward mode (hub.dial) is not supported in the desktop app")
 	}
 	if e.Config.Hub.URL == "" {
-		return "", fail(ExitNotHere, "sy is not connected to a hub: run `sy setup`")
+		return "", fail(ExitNotHere, "wy is not connected to a hub: run `wy setup`")
 	}
 	return e.Config.Hub.URL, nil
 }
@@ -295,7 +295,7 @@ func (e Env) noAdmin(hint string) error {
 	if e.AdminErr != nil {
 		return fail(ExitNotHere, "machines.hub_admin cannot be used: %v", e.AdminErr)
 	}
-	return fail(ExitNotHere, "no admin channel to the hub: set machines.hub_admin (sy machine add --hub-admin) %s", hint)
+	return fail(ExitNotHere, "no admin channel to the hub: set machines.hub_admin (wy machine add --hub-admin) %s", hint)
 }
 
 func firstJSON(out []byte) []byte {
@@ -308,9 +308,9 @@ func firstJSON(out []byte) []byte {
 	return out
 }
 
-// RunToken is `sy desktop token` (C4). Without CodeStdin it asks the admin channel for a
+// RunToken is `wy desktop token` (C4). Without CodeStdin it asks the admin channel for a
 // desktop token for this machine; with it, it claims the pairing code (or secret) on the
-// first line of stdin, expecting a desktop code. The token is returned once; sy stores none.
+// first line of stdin, expecting a desktop code. The token is returned once; wy stores none.
 func RunToken(ctx context.Context, e Env, o TokenOptions) (Token, error) {
 	name := o.Name
 	if name == "" {
@@ -357,7 +357,7 @@ func (e Env) claimToken(ctx context.Context, hubURL, machine, name string) (Toke
 	if line == "" {
 		return Token{}, &Error{Code: ExitUsage, Err: errors.New("--code-stdin: no code on stdin")}
 	}
-	req := client.ClaimRequest{Name: name, Machine: machine, ExpectKind: "desktop", Client: "sy/" + e.version()}
+	req := client.ClaimRequest{Name: name, Machine: machine, ExpectKind: "desktop", Client: "wy/" + e.version()}
 	if digitsRE.MatchString(line) {
 		req.Code = line
 	} else {
@@ -381,20 +381,20 @@ func (e Env) claimToken(ctx context.Context, hubURL, machine, name string) (Toke
 	if r.Kind != "" && r.Kind != "desktop" {
 		return Token{}, fail(ExitRefused, "the code made a %s device, not a desktop", r.Kind)
 	}
-	// Bind to the URL sy dialled, not the hub's own idea of its address (r.Hub.URL): the
+	// Bind to the URL wy dialled, not the hub's own idea of its address (r.Hub.URL): the
 	// board looks the token up by the configured URL.
 	return Token{Device: r.Device, Token: r.Token, Scopes: r.Scopes, Hub: TokenHub{URL: hubURL}}, nil
 }
 
-// RunOwnerLink is `sy desktop owner-link` (C4): the admin channel's `hub owner-link --json`
-// for the hub address sy uses.
+// RunOwnerLink is `wy desktop owner-link` (C4): the admin channel's `hub owner-link --json`
+// for the hub address wy uses.
 func RunOwnerLink(ctx context.Context, e Env) (OwnerLink, error) {
 	hubURL, err := e.needHub()
 	if err != nil {
 		return OwnerLink{}, err
 	}
 	if e.Admin == nil {
-		return OwnerLink{}, e.noAdmin("or run `sy hub owner-link` on the hub")
+		return OwnerLink{}, e.noAdmin("or run `wy hub owner-link` on the hub")
 	}
 	args := []string{"owner-link", "--url", hubURL, "--json"}
 	if strings.HasPrefix(hubURL, "http://") && e.Config.Hub.InsecureLAN {
@@ -411,7 +411,7 @@ func RunOwnerLink(ctx context.Context, e Env) (OwnerLink, error) {
 	return OwnerLink{URL: r.URL, ExpiresAt: r.ExpiresAt}, nil
 }
 
-// RunHub is `sy desktop hub status|start|stop` (C4) for the hub user service on this
+// RunHub is `wy desktop hub status|start|stop` (C4) for the hub user service on this
 // machine. start and stop exit 4 when the service is not installed.
 func RunHub(ctx context.Context, e Env, action string) (HubService, error) {
 	if e.Service == nil {

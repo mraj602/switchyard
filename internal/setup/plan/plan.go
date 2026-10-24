@@ -1,4 +1,4 @@
-// Package plan is the pure planner of `sy setup`: Plan(State, Choices) gives the ordered
+// Package plan is the pure planner of `wy setup`: Plan(State, Choices) gives the ordered
 // actions, what is kept, the conflicts, what needs the person, a summary and a plan id
 // (setup.md 5, 6, 9.1, 10). It reads no file and runs no command; everything it knows is in
 // the State that detect built.
@@ -17,15 +17,15 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/version"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/version"
 )
 
 // Options carries the facts that are not part of State or Choices.
 type Options struct {
-	// Version is the sy version baked into the plugin marketplace; default version.Version.
+	// Version is the wy version baked into the plugin marketplace; default version.Version.
 	Version string
 }
 
@@ -33,7 +33,7 @@ type Options struct {
 // detect marked primary: detect must be run with the same primary (Deps.Primary).
 var ErrPrimaryMismatch = errors.New("plan: primary differs from the one detect used")
 
-// PluginID is the plugin sy installs through its own marketplace.
+// PluginID is the plugin wy installs through its own marketplace.
 const (
 	MarketplaceName = brand.Marketplace
 	PluginID        = brand.Slug + "@" + brand.Marketplace

@@ -85,10 +85,10 @@ async function openDialog(kind) {
 function machineCommands(c) {
   let hub = '<hub>';
   try { hub = new URL(c.url).origin; } catch (_) { hub = location.origin; }
-  const install = `curl -fsSL https://github.com/mraj602/switchyard/releases/latest/download/install.sh | sh -s -- -- --hub join:${hub} --code ${c.code}`;
+  const install = `curl -fsSL https://github.com/mraj602/watchyard/releases/latest/download/install.sh | sh -s -- -- --hub join:${hub} --code ${c.code}`;
   return h('div', { class: 'col machine-cmds' },
     h('p', {}, h('strong', {}, 'From your laptop'), ' (uses your own SSH; the server needs no internet):'),
-    h('pre', { class: 'cmd mono', 'data-key': 'cmd-machine-add' }, 'sy machine add user@host'),
+    h('pre', { class: 'cmd mono', 'data-key': 'cmd-machine-add' }, 'wy machine add user@host'),
     h('p', {}, h('strong', {}, 'On the server itself'), ' (it must reach GitHub and this hub):'),
     h('pre', { class: 'cmd mono', 'data-key': 'cmd-install' }, install),
     copyButton(install, 'Copy install command', 'copy-install'),
@@ -126,7 +126,7 @@ function dialog() {
   if (d.ask) {
     body = h('div', { class: 'col' },
       h('p', {}, d.kind === 'phone'
-        ? 'This makes a one-time code for the Switchyard Android app or a phone’s browser. It works once and expires after 10 minutes.'
+        ? 'This makes a one-time code for the Watchyard Android app or a phone’s browser. It works once and expires after 10 minutes.'
         : owner ? 'This makes a one-time owner link for another device. It works once and expires after 10 minutes.'
           : 'This makes a one-time code. It works once and expires after 10 minutes.'),
       h('button', { type: 'button', class: 'btn btn-primary', 'data-key': 'make-code', onclick: () => openDialog(d.kind) }, owner ? 'Make a link' : 'Make a code'));
@@ -158,7 +158,7 @@ function dialog() {
       ? h('div', { class: 'pair-box' },
         qrSvg(c.qr, 'QR code to pair'),
         h('div', { class: 'col' },
-          h('p', {}, 'Scan the QR code with the Switchyard Android app, or with the phone camera to use the browser. Or open this hub on the phone and type this code:'),
+          h('p', {}, 'Scan the QR code with the Watchyard Android app, or with the phone camera to use the browser. Or open this hub on the phone and type this code:'),
           digits,
           h('details', { class: 'tech', 'data-key': 'pair-link' }, h('summary', {}, 'Pairing link'),
             h('div', { class: 'tech-body' }, h('p', { class: 'muted small break' }, c.url), copyButton(c.url, 'Copy link', 'copy-pair-link')))))
@@ -250,7 +250,7 @@ export function render({ now }) {
       h('button', { type: 'button', class: 'btn', 'data-key': 'make-owner', onclick: () => openDialog('owner') }, 'Make another device owner')) : null),
   moreTabs('devices', { owner }));
   if (!owner) {
-    return { title: 'Devices · Switchyard', node: h('div', { class: 'page' }, head,
+    return { title: 'Devices · Watchyard', node: h('div', { class: 'page' }, head,
       ownerHintNode({ app: inApp(), lead: 'Only the owner manages devices.', key: 'devices-owner-hint', cls: 'calm' })) };
   }
   const list = st.devices;
@@ -259,5 +259,5 @@ export function render({ now }) {
       : list.length === 0 ? h('p', { class: 'calm' }, 'No devices yet.')
       : h('ul', { class: 'panel dev-list' }, list.map((d) => deviceRow(d, now, list))),
     dialog());
-  return { title: 'Devices · Switchyard', node };
+  return { title: 'Devices · Watchyard', node };
 }

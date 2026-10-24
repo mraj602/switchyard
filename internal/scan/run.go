@@ -9,14 +9,14 @@ import (
 	"sort"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
-// ErrLocked means another `sy scan` holds <state>/scan/scan.lock.
-var ErrLocked = errors.New("another sy scan is running")
+// ErrLocked means another `wy scan` holds <state>/scan/scan.lock.
+var ErrLocked = errors.New("another wy scan is running")
 
 // FromIdentity converts discovered slots to the slots the scanner takes.
 func FromIdentity(slots []identity.Slot) []Slot {
@@ -27,7 +27,7 @@ func FromIdentity(slots []identity.Slot) []Slot {
 	return out
 }
 
-// RunOptions configures Run, the `sy scan` command.
+// RunOptions configures Run, the `wy scan` command.
 type RunOptions struct {
 	Home     string
 	StateDir string
@@ -38,7 +38,7 @@ type RunOptions struct {
 	AllSlots []Slot
 	Outbox   *outbox.Outbox
 	Machine  string // machine id, "m_..."
-	Client   string // "sy/0.1.0"
+	Client   string // "wy/0.1.0"
 	// SeatOf returns the login of a slot for history_import records; nil or a nil result
 	// means no seat.
 	SeatOf  func(folder string) *record.Seat

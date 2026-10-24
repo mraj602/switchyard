@@ -4,13 +4,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/setup/backup"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/setup/backup"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
-// marketplaceName is sy's local marketplace ("sy-local", plan.MarketplaceName): the only
+// marketplaceName is wy's local marketplace ("wy-local", plan.MarketplaceName): the only
 // name under the plugin roots whose new paths undo of a `run` removes.
 const marketplaceName = brand.Marketplace
 

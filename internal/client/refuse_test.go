@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/outbox"
 )
 
 // A hub or proxy that answers 400 to everything must not drain the outbox: one lone drop,

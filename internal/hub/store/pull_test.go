@@ -26,7 +26,7 @@ func TestPullTargetLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tg.State != PullStateNew || tg.Port != 22 || tg.IntervalS != 60 || tg.RemoteSy != ".local/bin/sy" || tg.DeviceID == "" {
+	if tg.State != PullStateNew || tg.Port != 22 || tg.IntervalS != 60 || tg.RemoteSy != ".local/bin/wy" || tg.DeviceID == "" {
 		t.Fatalf("%+v", tg)
 	}
 	// The pull device: kind machine, bound to the machine, created_by pull:<id>, scope write.

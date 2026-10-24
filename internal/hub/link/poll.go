@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/link"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/link"
 )
 
 // PollRequest is the body of POST /v1/link/poll (link.md 2.1).

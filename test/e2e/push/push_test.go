@@ -1,6 +1,6 @@
 // Package push is the end-to-end test for web push (docs/spec/push.md 11.4): the
-// real `sy` binary, built with `-tags fakeclock`, runs `sy hub serve` in a temporary home
-// with a fake clock (SY_FAKE_CLOCK control socket), a fake Web Push service (webpushtest)
+// real `wy` binary, built with `-tags fakeclock`, runs `wy hub serve` in a temporary home
+// with a fake clock (WY_FAKE_CLOCK control socket), a fake Web Push service (webpushtest)
 // and an ntfy stub (ntfytest). The test pairs a phone through the API, registers a Web Push
 // and an ntfy target, and ingests records as a machine:
 //
@@ -20,7 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 	"io"
 	"net"
 	"net/http"
@@ -35,9 +35,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/push/ntfytest"
-	"github.com/mraj602/switchyard/internal/hub/push/webpushtest"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/push/ntfytest"
+	"github.com/mraj602/watchyard/internal/hub/push/webpushtest"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 const (
@@ -48,7 +48,7 @@ const (
 // rig is one running hub.
 type rig struct {
 	t       *testing.T
-	sy      string
+	wy      string
 	env     []string
 	base    string // http://127.0.0.1:port
 	clock   *http.Client
@@ -83,7 +83,7 @@ var (
 	buildDir  string
 )
 
-// TestMain removes the shared sy build after the package's tests.
+// TestMain removes the shared wy build after the package's tests.
 func TestMain(m *testing.M) {
 	code := m.Run()
 	if buildDir != "" {
@@ -92,7 +92,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// buildSy builds sy with the fakeclock tag once per test binary.
+// buildSy builds wy with the fakeclock tag once per test binary.
 func buildSy(t *testing.T) string {
 	t.Helper()
 	buildOnce.Do(func() {
@@ -105,8 +105,8 @@ func buildSy(t *testing.T) string {
 		if buildDir, buildErr = os.MkdirTemp("", "sye2e-bin"); buildErr != nil {
 			return
 		}
-		bin := filepath.Join(buildDir, "sy")
-		cmd := exec.Command("go", "build", "-tags", "fakeclock", "-o", bin, "./cmd/sy")
+		bin := filepath.Join(buildDir, "wy")
+		cmd := exec.Command("go", "build", "-tags", "fakeclock", "-o", bin, "./cmd/wy")
 		cmd.Dir = root
 		if b, err := cmd.CombinedOutput(); err != nil {
 			buildErr = fmt.Errorf("%v\n%s", err, b)
@@ -115,18 +115,18 @@ func buildSy(t *testing.T) string {
 		builtSy = bin
 	})
 	if buildErr != nil {
-		t.Fatalf("build sy: %v", buildErr)
+		t.Fatalf("build wy: %v", buildErr)
 	}
 	return builtSy
 }
 
-// cleanEnv is the parent's environment without anything that could point sy or Claude
+// cleanEnv is the parent's environment without anything that could point wy or Claude
 // Code at a real home, plus a temp HOME.
 func cleanEnv(home string) []string {
 	var env []string
 	for _, kv := range os.Environ() {
 		k, _, _ := strings.Cut(kv, "=")
-		if strings.HasPrefix(k, "CLAUDE") || strings.HasPrefix(k, "SY_") || strings.HasPrefix(k, "XDG_") ||
+		if strings.HasPrefix(k, "CLAUDE") || strings.HasPrefix(k, "WY_") || strings.HasPrefix(k, "XDG_") ||
 			(brand.OldEnvPrefix() != "" && strings.HasPrefix(k, brand.OldEnvPrefix())) ||
 			k == "HOME" || k == "TZ" || k == "NO_COLOR" {
 			continue
@@ -139,13 +139,13 @@ func cleanEnv(home string) []string {
 func newRig(t *testing.T) *rig {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("end-to-end: builds and runs sy")
+		t.Skip("end-to-end: builds and runs wy")
 	}
 	if runtime.GOOS == "windows" {
 		t.Skip("the fake clock control socket is a unix socket")
 	}
 	tmp := t.TempDir()
-	r := &rig{t: t, sy: buildSy(t), hubLog: &syncBuf{}}
+	r := &rig{t: t, wy: buildSy(t), hubLog: &syncBuf{}}
 	home := filepath.Join(tmp, "home")
 	if err := os.MkdirAll(home, 0o700); err != nil {
 		t.Fatal(err)
@@ -164,13 +164,13 @@ func newRig(t *testing.T) *rig {
 	t.Cleanup(r.nf.Close)
 	wpURL, _ := url.Parse(r.wp.URL())
 
-	r.env = append(cleanEnv(home), "SY_FAKE_CLOCK="+sock, "SY_TEST_WEBPUSH_DIAL="+wpURL.Host)
+	r.env = append(cleanEnv(home), "WY_FAKE_CLOCK="+sock, "WY_TEST_WEBPUSH_DIAL="+wpURL.Host)
 	r.clock = &http.Client{Timeout: 30 * time.Second, Transport: &http.Transport{
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 			return (&net.Dialer{}).DialContext(ctx, "unix", sock)
 		}}}
 
-	cmd := exec.Command(r.sy, "hub", "serve", "--listen", "127.0.0.1:0", "--public-url", publicURL)
+	cmd := exec.Command(r.wy, "hub", "serve", "--listen", "127.0.0.1:0", "--public-url", publicURL)
 	cmd.Env = r.env
 	pr, pw := io.Pipe()
 	cmd.Stderr = pw
@@ -222,15 +222,15 @@ func newRig(t *testing.T) *rig {
 	return r
 }
 
-// run runs a sy command in the rig's home and returns stdout.
+// run runs a wy command in the rig's home and returns stdout.
 func (r *rig) run(args ...string) string {
 	r.t.Helper()
-	cmd := exec.Command(r.sy, args...)
+	cmd := exec.Command(r.wy, args...)
 	cmd.Env = r.env
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
 	if err := cmd.Run(); err != nil {
-		r.t.Fatalf("sy %s: %v\n%s%s", strings.Join(args, " "), err, out.String(), errb.String())
+		r.t.Fatalf("wy %s: %v\n%s%s", strings.Join(args, " "), err, out.String(), errb.String())
 	}
 	return out.String()
 }
@@ -307,7 +307,7 @@ func (r *rig) ingest(rec *record.Record) {
 		r.t.Fatal(err)
 	}
 	out := r.must(200, "POST", "/v1/ingest", "Bearer "+r.mtoken,
-		map[string]any{"v": 1, "client": "sy/e2e", "records": []json.RawMessage{b}})
+		map[string]any{"v": 1, "client": "wy/e2e", "records": []json.RawMessage{b}})
 	if bytes.Contains(out, []byte(`"rejected":[{`)) {
 		r.t.Fatalf("rejected: %s", out)
 	}
@@ -324,7 +324,7 @@ func (r *rig) hook(sid, event string, fields map[string]any) {
 		p[k] = v
 	}
 	raw, _ := json.Marshal(p)
-	rec, err := record.NewHookEvent(record.Meta{Machine: r.machine, Slot: "~/.claude", Seat: seat, Client: "sy/e2e", Now: r.now()},
+	rec, err := record.NewHookEvent(record.Meta{Machine: r.machine, Slot: "~/.claude", Seat: seat, Client: "wy/e2e", Now: r.now()},
 		raw, record.HookOptions{LastMessages: true})
 	if err != nil {
 		r.t.Fatal(err)
@@ -340,7 +340,7 @@ func (r *rig) limit(pct float64, resets time.Time) {
 	r.t.Helper()
 	raw, _ := json.Marshal(map[string]any{"session_id": "", "rate_limits": map[string]any{
 		"five_hour": map[string]any{"used_percentage": pct, "resets_at": resets.Unix()}}})
-	rec, err := record.NewLimitSample(record.Meta{Machine: r.machine, Slot: "~/.claude", Seat: seat, Client: "sy/e2e", Now: r.now()}, raw)
+	rec, err := record.NewLimitSample(record.Meta{Machine: r.machine, Slot: "~/.claude", Seat: seat, Client: "wy/e2e", Now: r.now()}, raw)
 	if err != nil {
 		r.t.Fatal(err)
 	}

@@ -52,8 +52,8 @@ type relFiles map[string][]byte // request path -> body
 // add serves a version's linux/amd64 archive and SHA256SUMS under download/v<v>/ (and latest/).
 func (r relFiles) add(t *testing.T, version string, schema int, latest bool) {
 	arch := tgz(t, map[string][]byte{BinaryName(goos): fakeBin(version, schema), "README.md": []byte("r")}, tar.TypeReg)
-	name := "sy_" + version + "_linux_amd64.tar.gz"
-	sums := []byte(sum(arch) + "  " + name + "\n" + strings.Repeat("0", 64) + "  sy_" + version + "_darwin_arm64.tar.gz\n")
+	name := "wy_" + version + "_linux_amd64.tar.gz"
+	sums := []byte(sum(arch) + "  " + name + "\n" + strings.Repeat("0", 64) + "  wy_" + version + "_darwin_arm64.tar.gz\n")
 	dirs := []string{"/download/v" + version}
 	if latest {
 		dirs = append(dirs, "/latest/download")
@@ -83,7 +83,7 @@ func setup(t *testing.T, cur string) (Options, string, relFiles, *httptest.Serve
 		t.Skip("fake binaries are shell scripts")
 	}
 	dir := t.TempDir()
-	exe := filepath.Join(dir, "bin", "sy")
+	exe := filepath.Join(dir, "bin", "wy")
 	os.MkdirAll(filepath.Dir(exe), 0o755)
 	os.WriteFile(exe, fakeBin(cur, 4), 0o755)
 	r := relFiles{}
@@ -115,14 +115,14 @@ func TestHappyPathLatestAndRollback(t *testing.T) {
 		t.Fatalf("%+v", res)
 	}
 	if !bytes.Equal(read(t, exe), fakeBin("0.0.1-e2e", 4)) || !bytes.Equal(read(t, exe+".old"), oldBytes) {
-		t.Fatal("binary not replaced or sy.old not kept")
+		t.Fatal("binary not replaced or wy.old not kept")
 	}
 	if st, _ := os.Stat(exe); st.Mode().Perm() != 0o755 {
 		t.Errorf("mode %v", st.Mode())
 	}
 	entries, _ := os.ReadDir(filepath.Dir(exe))
 	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), ".sy.") {
+		if strings.HasPrefix(e.Name(), ".wy.") {
 			t.Errorf("temp file left: %s", e.Name())
 		}
 	}
@@ -175,7 +175,7 @@ func TestTamperedArchiveLeavesBinary(t *testing.T) {
 		t.Fatal("binary changed")
 	}
 	if _, err := os.Stat(exe + ".old"); err == nil {
-		t.Error("sy.old written for a failed update")
+		t.Error("wy.old written for a failed update")
 	}
 	left, _ := filepath.Glob(filepath.Join(o.StateDir, "update", "*"))
 	if len(left) != 0 {
@@ -188,7 +188,7 @@ func TestMissingSumsLine(t *testing.T) {
 	r.add(t, "0.0.1-e2e", 4, true)
 	for k := range r {
 		if strings.HasSuffix(k, "SHA256SUMS") {
-			r[k] = []byte(strings.Repeat("0", 64) + "  sy_0.0.1-e2e_darwin_arm64.tar.gz\n")
+			r[k] = []byte(strings.Repeat("0", 64) + "  wy_0.0.1-e2e_darwin_arm64.tar.gz\n")
 		}
 	}
 	before := read(t, exe)
@@ -218,19 +218,19 @@ func TestDowngradeRefusedUnlessAllowed(t *testing.T) {
 }
 
 func TestPackageManagerRefused(t *testing.T) {
-	for _, p := range []string{"/opt/homebrew/Cellar/sy/1/bin/sy", "/usr/local/Cellar/sy/1/bin/sy", "/home/linuxbrew/.linuxbrew/bin/sy",
-		"/nix/store/abc-sy/bin/sy", "/usr/bin/sy", "/usr/sbin/sy", `C:\Users\a\AppData\Local\Microsoft\WinGet\Packages\x\sy.exe`} {
+	for _, p := range []string{"/opt/homebrew/Cellar/wy/1/bin/wy", "/usr/local/Cellar/wy/1/bin/wy", "/home/linuxbrew/.linuxbrew/bin/wy",
+		"/nix/store/abc-sy/bin/wy", "/usr/bin/wy", "/usr/sbin/wy", `C:\Users\a\AppData\Local\Microsoft\WinGet\Packages\x\wy.exe`} {
 		if _, owned := PackageManager(p); !owned {
 			t.Errorf("%s should be refused", p)
 		}
 	}
-	for _, p := range []string{"/home/a/.local/bin/sy", "/usr/local/bin/sy", "/usr/binx/sy", "/opt/homebrewish/sy"} {
+	for _, p := range []string{"/home/a/.local/bin/wy", "/usr/local/bin/wy", "/usr/binx/wy", "/opt/homebrewish/wy"} {
 		if _, owned := PackageManager(p); owned {
 			t.Errorf("%s should be allowed", p)
 		}
 	}
 	o, _, _, _ := setup(t, "0.0.0-e2e")
-	o.Exe = "/usr/bin/sy"
+	o.Exe = "/usr/bin/wy"
 	if _, err := Apply(context.Background(), o); code(err) != ExitRefused {
 		t.Fatalf("got %v", err)
 	}
@@ -257,7 +257,7 @@ func TestHubSchemaIncompatibleRefused(t *testing.T) {
 func TestSmokeFailureAndWrongVersion(t *testing.T) {
 	o, exe, r, _ := setup(t, "0.0.0-e2e")
 	arch := tgz(t, map[string][]byte{BinaryName(goos): fakeBin("0.0.9", 4)}, tar.TypeReg) // claims 0.0.1, says 0.0.9
-	name := "sy_0.0.1_linux_amd64.tar.gz"
+	name := "wy_0.0.1_linux_amd64.tar.gz"
 	r["/latest/download/"+name], r["/download/v0.0.1/"+name] = arch, arch
 	r["/latest/download/SHA256SUMS"] = []byte(sum(arch) + "  " + name + "\n")
 	r["/download/v0.0.1/SHA256SUMS"] = r["/latest/download/SHA256SUMS"]
@@ -289,7 +289,7 @@ func TestFromFile(t *testing.T) {
 	o, exe, r, _ := setup(t, "0.0.0-e2e")
 	r.add(t, "0.0.1-e2e", 4, false)
 	dir := t.TempDir()
-	name := "sy_0.0.1-e2e_linux_amd64.tar.gz"
+	name := "wy_0.0.1-e2e_linux_amd64.tar.gz"
 	os.WriteFile(filepath.Join(dir, name), r["/download/v0.0.1-e2e/"+name], 0o600)
 	os.WriteFile(filepath.Join(dir, "SHA256SUMS"), r["/download/v0.0.1-e2e/SHA256SUMS"], 0o600)
 	o.Source = Source{BaseURL: "http://127.0.0.1:1"} // never used
@@ -338,7 +338,7 @@ func TestAttestation(t *testing.T) {
 	if ok, err := VerifyAttestation(ctx, Attestation{Auto: true, GH: "/bin/gh", Run: run}, "/tmp/a.tar.gz"); err != nil || !ok {
 		t.Fatal(ok, err)
 	}
-	want := "/bin/gh attestation verify /tmp/a.tar.gz --repo mraj602/switchyard --signer-workflow mraj602/switchyard/.github/workflows/release.yml"
+	want := "/bin/gh attestation verify /tmp/a.tar.gz --repo mraj602/watchyard --signer-workflow mraj602/watchyard/.github/workflows/release.yml"
 	if strings.Join(got, " ") != want {
 		t.Fatalf("argv %q", strings.Join(got, " "))
 	}
@@ -390,7 +390,7 @@ func TestRedirectToPlainHTTPRefused(t *testing.T) {
 func TestFetchCacheAndOtherPlatform(t *testing.T) {
 	_, _, r, s := setup(t, "0.0.0")
 	arch := tgz(t, map[string][]byte{BinaryName(goos): []byte("mach-o")}, tar.TypeReg)
-	nm := "sy_0.5.0_darwin_arm64.tar.gz"
+	nm := "wy_0.5.0_darwin_arm64.tar.gz"
 	r["/latest/download/"+nm], r["/download/v0.5.0/"+nm] = arch, arch
 	r["/latest/download/SHA256SUMS"] = []byte(sum(arch) + "  " + nm + "\n")
 	r["/download/v0.5.0/SHA256SUMS"] = r["/latest/download/SHA256SUMS"]
@@ -424,8 +424,8 @@ func TestExtractRefusals(t *testing.T) {
 		return Archive{Path: p, GOOS: "linux", GOARCH: "amd64", Name: name}
 	}
 	for label, data := range map[string][]byte{
-		"nested":  tgz(t, map[string][]byte{"bin/sy": []byte("x")}, tar.TypeReg),
-		"dotted":  tgz(t, map[string][]byte{"./sy": []byte("x")}, tar.TypeReg),
+		"nested":  tgz(t, map[string][]byte{"bin/wy": []byte("x")}, tar.TypeReg),
+		"dotted":  tgz(t, map[string][]byte{"./wy": []byte("x")}, tar.TypeReg),
 		"missing": tgz(t, map[string][]byte{"README.md": []byte("x")}, tar.TypeReg),
 		"symlink": tgz(t, map[string][]byte{BinaryName(goos): nil}, tar.TypeSymlink),
 		"notgz":   []byte("plain"),
@@ -436,20 +436,20 @@ func TestExtractRefusals(t *testing.T) {
 	}
 	var zb bytes.Buffer
 	zw := zip.NewWriter(&zb)
-	w, _ := zw.Create("sy.exe")
+	w, _ := zw.Create("wy.exe")
 	w.Write([]byte("MZ"))
 	zw.Close()
 	a := mk("w.zip", zb.Bytes())
 	a.GOOS = "windows"
 	bin, h, err := Extract(a)
-	if err != nil || filepath.Base(bin) != "sy.exe" || h != sum([]byte("MZ")) {
+	if err != nil || filepath.Base(bin) != "wy.exe" || h != sum([]byte("MZ")) {
 		t.Fatalf("%s %s %v", bin, h, err)
 	}
 }
 
 func TestWindowsRenameDance(t *testing.T) {
 	dir := t.TempDir()
-	exe := filepath.Join(dir, "sy.exe")
+	exe := filepath.Join(dir, "wy.exe")
 	os.WriteFile(exe, []byte("old"), 0o755)
 	os.WriteFile(exe+".old", []byte("older"), 0o755)
 	nb := filepath.Join(dir, "new")
@@ -468,7 +468,7 @@ func TestWindowsRenameDance(t *testing.T) {
 	}
 	CleanupOld(exe, "linux")
 	if _, err := os.Stat(exe + ".old"); err != nil {
-		t.Fatal("CleanupOld removed sy.old off Windows")
+		t.Fatal("CleanupOld removed wy.old off Windows")
 	}
 	CleanupOld(exe, "windows")
 	if _, err := os.Stat(exe + ".old"); err == nil {

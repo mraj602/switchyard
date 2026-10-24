@@ -10,7 +10,7 @@
 #   /install.sh  /install.ps1
 #   /latest/download/<file>
 #   /download/v<ver>/<file>
-# so SY_INSTALL_BASE_URL=<base URL> makes install.sh download from here. To test a tampered
+# so WY_INSTALL_BASE_URL=<base URL> makes install.sh download from here. To test a tampered
 # release, copy the release folder, change it, and start a second server on the copy.
 # Needs python3 (stdlib http.server) and nothing else. Loopback only.
 set -eu

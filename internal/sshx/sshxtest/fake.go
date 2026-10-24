@@ -1,8 +1,8 @@
-// Package sshxtest is the fake `ssh` program of the sshx and machineadd tests: the test binary itself, started through SY_SSH_COMMAND, records every argv and
+// Package sshxtest is the fake `ssh` program of the sshx and machineadd tests: the test binary itself, started through WY_SSH_COMMAND, records every argv and
 // stdin and either replays a scripted answer or runs the remote command line with `sh -c`
 // in a fake remote home folder, as a real sshd would hand it to a login shell.
 //
-// Use: call Main() first thing in TestMain, then New(t) in a test; it sets SY_SSH_COMMAND.
+// Use: call Main() first thing in TestMain, then New(t) in a test; it sets WY_SSH_COMMAND.
 // Only tests import this package.
 package sshxtest
 
@@ -21,7 +21,7 @@ import (
 const marker = "-sy-fake-ssh"
 
 // envDir names the fake's folder in the fake process's environment.
-const envDir = "SY_FAKE_SSH_DIR"
+const envDir = "WY_FAKE_SSH_DIR"
 
 // Rule is a scripted answer: the first rule whose Match is a substring of the remote command
 // line (and whose Host matches, when set) answers instead of running anything.
@@ -62,8 +62,8 @@ func Main() {
 	}
 }
 
-// New makes a fake in a temp folder and points SY_SSH_COMMAND at it (with extra fixed
-// words, as a person's SY_SSH_COMMAND="ssh -F cfg" would have).
+// New makes a fake in a temp folder and points WY_SSH_COMMAND at it (with extra fixed
+// words, as a person's WY_SSH_COMMAND="ssh -F cfg" would have).
 func New(t testing.TB, extra ...string) *Fake {
 	t.Helper()
 	exe, err := os.Executable()
@@ -77,12 +77,12 @@ func New(t testing.TB, extra ...string) *Fake {
 		}
 	}
 	t.Setenv(envDir, f.Dir)
-	t.Setenv("SY_SSH_COMMAND", strings.Join(append([]string{exe, marker}, extra...), " "))
+	t.Setenv("WY_SSH_COMMAND", strings.Join(append([]string{exe, marker}, extra...), " "))
 	return f
 }
 
-// Command is the SY_SSH_COMMAND value of this fake.
-func (f *Fake) Command() []string { return strings.Fields(os.Getenv("SY_SSH_COMMAND")) }
+// Command is the WY_SSH_COMMAND value of this fake.
+func (f *Fake) Command() []string { return strings.Fields(os.Getenv("WY_SSH_COMMAND")) }
 
 // Rules replaces the scripted answers.
 func (f *Fake) Rules(rs ...Rule) {
@@ -254,8 +254,8 @@ func fakeMain(args []string) int {
 	return 0
 }
 
-// remoteEnv is a clean environment for the fake remote: its own HOME, no SY_*/XDG_*/CLAUDE_*
-// from the test, so a real sy run there uses the fake remote's folders.
+// remoteEnv is a clean environment for the fake remote: its own HOME, no WY_*/XDG_*/CLAUDE_*
+// from the test, so a real wy run there uses the fake remote's folders.
 func remoteEnv(home string) []string {
 	// A fixed PATH: the person's own tools (a real claude in ~/.local/bin) stay out of sight.
 	// A test puts fake remote programs in <remote home>/bin.
@@ -264,9 +264,9 @@ func remoteEnv(home string) []string {
 	for _, kv := range os.Environ() {
 		k, _, _ := strings.Cut(kv, "=")
 		switch {
-		case k == "TMPDIR", strings.HasPrefix(k, "GO"), k == "SYSTEMROOT", k == "SY_NO_SPAWN":
+		case k == "TMPDIR", strings.HasPrefix(k, "GO"), k == "SYSTEMROOT", k == "WY_NO_SPAWN":
 			env = append(env, kv)
-		case strings.HasPrefix(k, "SY_FAKE_REMOTE_"):
+		case strings.HasPrefix(k, "WY_FAKE_REMOTE_"):
 			env = append(env, kv) // test knobs for fake remote programs
 		}
 	}

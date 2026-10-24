@@ -9,7 +9,7 @@ import (
 )
 
 // token_rows are never dropped by the cap: a dropped record could not be re-read, because
-// sy scan has already committed its transcript offsets.
+// wy scan has already committed its transcript offsets.
 func TestCapNeverDropsTokenRows(t *testing.T) {
 	o, now := newBox(t)
 	pad := `{"pad":"` + strings.Repeat("p", 2000) + `"}`

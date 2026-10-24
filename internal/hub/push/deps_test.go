@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-const mod = "github.com/mraj602/switchyard/"
+const mod = "github.com/mraj602/watchyard/"
 
 // deps lists the module packages pkg depends on, directly or not (go list -deps), test
 // files excluded.

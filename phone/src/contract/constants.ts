@@ -4,45 +4,45 @@
 import type { AndroidChannelId } from './payload';
 
 /** SecureStore key of the paired hub: {origin, token, device, name, paired_at} (P3). */
-export const SECURE_HUB_KEY = 'sy.hub.v1';
+export const SECURE_HUB_KEY = 'wy.hub.v1';
 
 /**
  * SecureStore key of unpairings the hub has not confirmed yet (P3): a JSON list of
  * `{origin, token}`, retried with DELETE /v1/devices/self until the hub answers 2xx, 401 or 404.
  */
-export const SECURE_REVOKE_KEY = 'sy.revoke.v1';
+export const SECURE_REVOKE_KEY = 'wy.revoke.v1';
 
 /**
  * AsyncStorage key of the notification actions already carried out (P6.4): the
  * "<notification id>|<action>" keys of the last few, so two JS runtimes never both act on one
  * tap. Never a token.
  */
-export const ACTED_KEY = 'sy.acted.v1';
+export const ACTED_KEY = 'wy.acted.v1';
 
 /** AsyncStorage key of the last good replies (P5). Never a token or secret. */
-export const CACHE_KEY = 'sy.cache.v1';
+export const CACHE_KEY = 'wy.cache.v1';
 
 /** AsyncStorage key of the last WidgetSnapshot for Android widgets (P11). */
-export const WIDGET_KEY = 'sy.widget.v1';
+export const WIDGET_KEY = 'wy.widget.v1';
 
 /** AsyncStorage key of the account each Account-ring widget shows: {[widgetId]: seatId} (P11; ids only, never a secret). */
-export const WIDGET_RING_KEY = 'sy.widget.ring.v1';
+export const WIDGET_RING_KEY = 'wy.widget.ring.v1';
 
 /** AsyncStorage key of the window ("5 h" or "7 d") each Limits and ring widget shows: {[widgetId]: window} (P11). */
-export const WIDGET_WINDOW_KEY = 'sy.widget.window.v1';
+export const WIDGET_WINDOW_KEY = 'wy.widget.window.v1';
 
 /**
  * AsyncStorage key of the app's own settings (P12): `{auto_countdown: boolean}`. Local to this
  * install, not a hub pref; never a token or secret.
  */
-export const LOCAL_PREFS_KEY = 'sy.local.v1';
+export const LOCAL_PREFS_KEY = 'wy.local.v1';
 
 /**
  * AsyncStorage key of what each claude.ai tab showed when it was last open (P17.7):
  * `{<seat>: {signed_in, account, at}}`, `account` being the Anthropic account uuid claude.ai
  * named in the tab. Never a cookie, an email or page content; local to this install, never sent.
  */
-export const TAB_MEMO_KEY = 'sy.tabs.v1';
+export const TAB_MEMO_KEY = 'wy.tabs.v1';
 
 /** Notification category with Open, Snooze and Seen (P6.2). No '-' or ':' (an Expo rule). */
 export const ALERT_CATEGORY = 'sy_alert';

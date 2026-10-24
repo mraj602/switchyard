@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 func execT(t *testing.T, st *store.Store, ctx context.Context, q string, args ...any) {

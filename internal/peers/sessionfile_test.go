@@ -1,7 +1,7 @@
 package peers_test
 
 import (
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/peers"
 	"os"
 	"path/filepath"
 	"strings"

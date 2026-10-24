@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
 // rename.md 2.3: Install and Uninstall take away the timer of the name before a rename, so
-// the two never both run `sy tick`.
+// the two never both run `wy tick`.
 func TestInstallReplacesLegacyTimer(t *testing.T) {
 	defer brand.SetLegacyForTest("oldname", "Oldname")()
 	for _, goos := range []string{"linux", "darwin", "windows"} {

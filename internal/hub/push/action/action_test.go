@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
 )
 
 var key = bytes.Repeat([]byte{7}, 32)

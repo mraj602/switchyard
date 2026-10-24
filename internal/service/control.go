@@ -6,20 +6,20 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
-// Start and Stop (`sy desktop hub start|stop`, desktop.md C4) start or stop the hub
+// Start and Stop (`wy desktop hub start|stop`, desktop.md C4) start or stop the hub
 // service that Install made, without touching its unit file. They use the same Runner as
 // Install, so tests record the commands and nothing real runs.
 
 // ErrNotInstalled is returned by Start and Stop when the service was never installed (no
-// unit file, no task): the desktop app then shows `sy setup --hub here`.
-var ErrNotInstalled = errors.New("the hub service is not installed (run `sy setup --hub here`)")
+// unit file, no task): the desktop app then shows `wy setup --hub here`.
+var ErrNotInstalled = errors.New("the hub service is not installed (run `wy setup --hub here`)")
 
 // UnitName is the service manager's name for the service, for display: the systemd unit
-// ("switchyard-hub.service"), the LaunchAgent label ("com.switchyard.hub") or the Task
-// Scheduler task ("Switchyard Hub").
+// ("watchyard-hub.service"), the LaunchAgent label ("com.watchyard.hub") or the Task
+// Scheduler task ("Watchyard Hub").
 func UnitName(goos, name string) string {
 	if name == "" {
 		name = DefaultName

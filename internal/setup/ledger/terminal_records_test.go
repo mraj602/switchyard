@@ -7,11 +7,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/setup/ledger"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/ledger"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
-const stateDir = "/home/u/.local/state/switchyard"
+const stateDir = "/home/u/.local/state/watchyard"
 
 func termRun(id, piece, verb, root, registry string, argv ...string) model.Action {
 	return model.Action{ID: id, Op: model.OpRun, Step: model.StepTerminal, Argv: append([]string{"claude", "plugin"}, argv...),
@@ -26,13 +26,13 @@ func revertAll(m model.Manifest) model.Manifest {
 	return m
 }
 
-// The pane's `marketplace add sy-local` in a root that lacked it is recorded (Markets), its
+// The pane's `marketplace add wy-local` in a root that lacked it is recorded (Markets), its
 // install root too (Installed); their reverse and their undo take them away.
 func TestPaneMarketplaceRecorded(t *testing.T) {
 	root := "/home/u/.claude-3/plugins"
 	on := model.Plan{Actions: []model.Action{
 		termRun("a1", ledger.PiecePane, ledger.VerbMarketplaceAdd, root, "known_marketplaces.json", "marketplace", "add", stateDir+"/plugin/marketplace", "--json"),
-		termRun("a2", ledger.PiecePane, ledger.VerbInstall, root, "installed_plugins.json", "install", "switchyard-pane@sy-local", "--json"),
+		termRun("a2", ledger.PiecePane, ledger.VerbInstall, root, "installed_plugins.json", "install", "watchyard-pane@wy-local", "--json"),
 	}}
 	m := manifestOf(on, model.PhaseDone)
 	l := ledger.Update(baseLedger(), on, m)
@@ -47,8 +47,8 @@ func TestPaneMarketplaceRecorded(t *testing.T) {
 		t.Fatalf("undo of on: %s", b)
 	}
 	off := model.Plan{Actions: []model.Action{
-		termRun("b1", ledger.PiecePane, ledger.VerbUninstall, root, "installed_plugins.json", "uninstall", "switchyard-pane@sy-local", "--json"),
-		termRun("b2", ledger.PiecePane, ledger.VerbMarketplaceRemove, root, "known_marketplaces.json", "marketplace", "remove", "sy-local", "--json"),
+		termRun("b1", ledger.PiecePane, ledger.VerbUninstall, root, "installed_plugins.json", "uninstall", "watchyard-pane@wy-local", "--json"),
+		termRun("b2", ledger.PiecePane, ledger.VerbMarketplaceRemove, root, "known_marketplaces.json", "marketplace", "remove", "wy-local", "--json"),
 	}}
 	mo := manifestOf(off, model.PhaseDone)
 	gone := ledger.Update(l, off, mo)

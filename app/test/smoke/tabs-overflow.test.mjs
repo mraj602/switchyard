@@ -1,7 +1,7 @@
 // Electron smoke S13: the top bar with 7 account tabs at 1024, 1280 and 1440 px. Tabs that do not
 // fit go into the "N more" menu (never off the edge), the shown tab is always visible, the right
 // side compacts on a narrow window. Also the progress line of a slow "Pair this computer".
-// Screenshots go to SY_TABS_SHOTS (default: the smoke out dir).
+// Screenshots go to WY_TABS_SHOTS (default: the smoke out dir).
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,12 +14,12 @@ const WIDTHS = [1024, 1280, 1440];
 
 test('S13 top bar overflow and pairing progress', { timeout: 3 * 60_000 }, async (t) => {
   const sb = sandbox('s13');
-  const out = process.env.SY_TABS_SHOTS || outDir(sb.root);
+  const out = process.env.WY_TABS_SHOTS || outDir(sb.root);
   fs.mkdirSync(out, { recursive: true });
-  const run = await launch(sb, { env: { SY_BIN: path.join(sb.root, 'no-such-sy') } });
+  const run = await launch(sb, { env: { WY_BIN: path.join(sb.root, 'no-such-sy') } });
   t.after(async () => {
     await run.close();
-    if (!process.env.SY_SMOKE_KEEP) sb.cleanup();
+    if (!process.env.WY_SMOKE_KEEP) sb.cleanup();
   });
 
   const open = async (width, query) => {

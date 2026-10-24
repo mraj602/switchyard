@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/atomicfile"
 )
 
 // Seat is the login behind a slot: (account uuid, org uuid) plus display data
@@ -29,7 +29,7 @@ type Seat struct {
 // Key is the identity of the seat: (account uuid, org uuid).
 func (s Seat) Key() [2]string { return [2]string{s.Account, s.Org} }
 
-// OAuth is the part of .claude.json's oauthAccount that sy keeps. No other key is read.
+// OAuth is the part of .claude.json's oauthAccount that wy keeps. No other key is read.
 type OAuth struct {
 	AccountUUID      string `json:"accountUuid"`
 	OrganizationUUID string `json:"organizationUuid"`
@@ -252,7 +252,7 @@ type AuthResult struct {
 
 // RefreshAuthStatusAsync runs RefreshAuthStatus in a goroutine. A short-lived process
 // (the hook) must still stay alive until the channel delivers, or hand the work to a
-// detached `sy` process; that decision belongs to the hook command.
+// detached `wy` process; that decision belongs to the hook command.
 func (s *Store) RefreshAuthStatusAsync(ctx context.Context, slot Slot, environ []string, run Runner) <-chan AuthResult {
 	ch := make(chan AuthResult, 1)
 	go func() {

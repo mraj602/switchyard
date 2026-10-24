@@ -15,7 +15,7 @@ import { patchJSON } from '../api.js';
 import { toast } from '../components/ui.js';
 
 // Owner edit of a seat's label and colour (desktop.md C10): PATCH /v1/accounts/{seat}. The
-// hub keeps a UI label over any label `sy` sends from a folder.
+// hub keeps a UI label over any label `wy` sends from a folder.
 const LABEL_RE = /^[a-z0-9][a-z0-9-]{0,23}$/;
 const again = () => window.dispatchEvent(new Event('sy-rerender'));
 const edit = { id: '', label: '', colour: '', clearColour: false, error: '', busy: false };
@@ -201,7 +201,7 @@ export function render({ store, route, now }) {
     focused = want;
     requestAnimationFrame(() => { const el = document.getElementById(`seat-${want}`); if (el) el.scrollIntoView({ block: 'center' }); });
   }
-  return { title: 'Accounts · Switchyard', node };
+  return { title: 'Accounts · Watchyard', node };
 }
 
 function roomLine(seats, now) {

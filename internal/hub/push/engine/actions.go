@@ -5,11 +5,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/events"
-	"github.com/mraj602/switchyard/internal/hub/push/action"
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/push/rules"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/events"
+	"github.com/mraj602/watchyard/internal/hub/push/action"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/rules"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // Snooze moves the alert's next push (push.md 4): allowed in pending, fired and snoozed;

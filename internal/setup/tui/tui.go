@@ -1,4 +1,4 @@
-// Package tui is the interactive side of `sy setup` (docs/spec/setup.md 3): the five screens
+// Package tui is the interactive side of `wy setup` (docs/spec/setup.md 3): the five screens
 // Detect, Accounts, Sharing, Hub and Done, drawn on a terminal in raw mode (keys: Enter
 // continue, Esc back, q quit, space toggle, arrows move, a add an account), with a numbered
 // line-prompt fallback for `TERM=dumb` or a terminal without raw mode. No TUI framework: the
@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // ErrQuit is returned when the person quits (`q`, or end of input): nothing is applied.
@@ -429,8 +429,8 @@ func (u *ui) hubText(cursor bool) string {
 	}
 	switch u.hubOpts[u.hubAt] {
 	case hubAnother:
-		b.WriteString("  On that server: docker run ... ghcr.io/<owner>/switchyard-hub, then\n" +
-			"  sy hub token create --kind machine; connect later with sy connect <url> --token-stdin\n")
+		b.WriteString("  On that server: docker run ... ghcr.io/<owner>/watchyard-hub, then\n" +
+			"  wy hub token create --kind machine; connect later with wy connect <url> --token-stdin\n")
 	case hubJoin:
 		b.WriteString("  The token is asked for with echo off after the plan is accepted.\n")
 	}
@@ -443,7 +443,7 @@ func (u *ui) hubText(cursor bool) string {
 func (u *ui) doneText() string {
 	var b strings.Builder
 	b.WriteString("Phone and done\n")
-	b.WriteString("  Phone: later (sy phone pair)\n")
+	b.WriteString("  Phone: later (wy phone pair)\n")
 	b.WriteString("  Next: the plan is shown, and nothing changes until you accept it.\n")
 	return b.String()
 }
@@ -470,7 +470,7 @@ func (u *ui) screenText(cursor bool) string {
 	default:
 		body = u.doneText()
 	}
-	head := fmt.Sprintf("sy setup — %d/5 %s\n\n", u.scr+1, Screens[u.scr])
+	head := fmt.Sprintf("wy setup — %d/5 %s\n\n", u.scr+1, Screens[u.scr])
 	s := head + body
 	if u.note != "" {
 		s += "\n" + u.note + "\n"

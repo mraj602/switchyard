@@ -1,0 +1,9 @@
+[Unit]
+Description=Watchyard: send queued records to the hub
+Documentation=https://github.com/mraj602/watchyard
+
+[Service]
+Type=oneshot
+ExecStart=/home/alice/.local/bin/wy tick --quiet
+Nice=10
+TimeoutStartSec=60

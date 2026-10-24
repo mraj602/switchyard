@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/api"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/api"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // /v1/actions/{token} is unauthenticated, so it is rate limited per IP.

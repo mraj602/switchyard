@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/mraj602/switchyard/internal/clientenv"
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/clientenv"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
-// PeersContextFlag is the argument that turns `sy hook` into the SessionStart context entry:
-// `sy hook --peers-context SessionStart` (docs/spec/peers.md 2.5).
+// PeersContextFlag is the argument that turns `wy hook` into the SessionStart context entry:
+// `wy hook --peers-context SessionStart` (docs/spec/peers.md 2.5).
 const PeersContextFlag = "--peers-context"
 
 // sessionStartOutput is Claude Code's SessionStart hook JSON output: additionalContext is
@@ -21,7 +21,7 @@ type sessionStartOutput struct {
 	} `json:"hookSpecificOutput"`
 }
 
-// RunPeersContext is `sy hook --peers-context <Event>`: on SessionStart, when [peers] enabled
+// RunPeersContext is `wy hook --peers-context <Event>`: on SessionStart, when [peers] enabled
 // is true and the local matrix lets this session's account reach another account, it prints
 // the SessionStart hook JSON with peers.StartContextText as additionalContext; otherwise it
 // prints nothing. It reads only local files (config, the slot's cached login, the off file,

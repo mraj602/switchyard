@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // runEnv is a fake home with ~/.claude holding the redacted capture transcripts.
@@ -50,7 +50,7 @@ func newRunEnv(t *testing.T) runEnv {
 
 func (e runEnv) opts() RunOptions {
 	return RunOptions{Home: e.home, StateDir: e.state, Slots: []Slot{e.slot}, Outbox: e.ob,
-		Machine: "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K", Client: "sy/test"}
+		Machine: "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K", Client: "wy/test"}
 }
 
 func readAll(t *testing.T, ob *outbox.Outbox) []*record.Record {
@@ -88,7 +88,7 @@ func TestRunWritesTokenRowsThenCommits(t *testing.T) {
 		if r.Kind != record.KindTokenRows {
 			t.Fatalf("kind %s", r.Kind)
 		}
-		if r.Machine != "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K" || r.Client != "sy/test" || r.Seat != nil {
+		if r.Machine != "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K" || r.Client != "wy/test" || r.Seat != nil {
 			t.Errorf("envelope %+v", r)
 		}
 		if r.Slot != "~/.claude" {
@@ -248,7 +248,7 @@ func TestRunSplitsOversizedRecords(t *testing.T) {
 	}
 	state := t.TempDir()
 	ob := outbox.New(filepath.Join(state, "outbox"))
-	sum, err := Run(RunOptions{Home: home, StateDir: state, Slots: []Slot{{Folder: "~/.claude", Dir: dir}}, Outbox: ob, Machine: "m_x", Client: "sy/test"})
+	sum, err := Run(RunOptions{Home: home, StateDir: state, Slots: []Slot{{Folder: "~/.claude", Dir: dir}}, Outbox: ob, Machine: "m_x", Client: "wy/test"})
 	if err != nil {
 		t.Fatal(err)
 	}

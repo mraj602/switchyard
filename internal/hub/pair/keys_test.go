@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
-	"github.com/mraj602/switchyard/internal/keys"
+	hubkeys "github.com/mraj602/watchyard/internal/hub/keys"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 func keyedFixture(t *testing.T) *fixture {

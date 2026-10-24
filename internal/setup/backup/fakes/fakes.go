@@ -19,10 +19,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/claudecli"
-	"github.com/mraj602/switchyard/internal/setup/backup"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/claudecli"
+	"github.com/mraj602/watchyard/internal/setup/backup"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // ErrInjected is the error a double returns at its injected failure.
@@ -310,7 +310,7 @@ type Plugins struct {
 
 var _ model.PluginInstaller = (*Plugins)(nil)
 
-// WriteMarketplace writes dir/.claude-plugin/marketplace.json and plugins/switchyard/x.
+// WriteMarketplace writes dir/.claude-plugin/marketplace.json and plugins/watchyard/x.
 func (p *Plugins) WriteMarketplace(dir, syPath, version string) error {
 	return p.run(func() error {
 		if _, err := os.Lstat(dir); err == nil {
@@ -319,8 +319,8 @@ func (p *Plugins) WriteMarketplace(dir, syPath, version string) error {
 		tmp := dir + ".tmp"
 		_ = os.RemoveAll(tmp)
 		for rel, body := range map[string]string{
-			".claude-plugin/marketplace.json": `{"name":"sy-local","version":"` + version + `"}`,
-			"plugins/switchyard/hooks.json":   `{"sy":"` + syPath + `"}`,
+			".claude-plugin/marketplace.json": `{"name":"wy-local","version":"` + version + `"}`,
+			"plugins/watchyard/hooks.json":    `{"sy":"` + syPath + `"}`,
 		} {
 			if err := os.MkdirAll(filepath.Dir(filepath.Join(tmp, rel)), 0o755); err != nil {
 				return err

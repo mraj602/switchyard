@@ -304,7 +304,7 @@ function phones() {
   const list = notifiable(state.devices);
   return h('div', { class: 'cards-2 desk-only' },
     h('div', { class: 'card' }, h('h2', {}, 'Add a phone'),
-      h('p', { class: 'muted' }, 'Pair the Switchyard Android app, or a phone’s browser: scan the QR code or type the 6-digit code.'),
+      h('p', { class: 'muted' }, 'Pair the Watchyard Android app, or a phone’s browser: scan the QR code or type the 6-digit code.'),
       h('a', { class: 'btn btn-primary', href: '#/more/devices?add=phone', 'data-key': 'add-phone' }, 'Add phone')),
     h('div', { class: 'card' }, h('h2', {}, 'Devices that can get notifications'),
       list.length ? h('ul', { class: 'plain receivers' }, list.map(({ device: d, targets }) => h('li', { class: 'row', 'data-key': `receiver-${d.id}` },
@@ -349,5 +349,5 @@ export function render({ store }) {
         : h('div', { class: 'panel' }, ruleRows(mode), quiet ? h('div', { class: 'row' }, quiet) : null)),
     state.rules ? overrides(mode, idx) : null,
     recent());
-  return { title: 'Alerts · Switchyard', node };
+  return { title: 'Alerts · Watchyard', node };
 }

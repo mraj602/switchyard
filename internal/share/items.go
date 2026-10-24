@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // Item is one row of the setup.md 5.1 table that is shared by linking.

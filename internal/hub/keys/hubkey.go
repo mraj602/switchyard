@@ -18,8 +18,8 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/paths"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/paths"
 )
 
 // KeyFile is the hub signing key's file name in the state folder (keys.md 3.4).

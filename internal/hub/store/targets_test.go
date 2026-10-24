@@ -7,8 +7,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 func openTargets(t *testing.T) (*store.Store, context.Context) {

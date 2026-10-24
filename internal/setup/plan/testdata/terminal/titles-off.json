@@ -1,5 +1,5 @@
 {
-  "plan_id": "p_85d009c36bae",
+  "plan_id": "p_0a1be7eff603",
   "actions": [
     {
       "id": "a1",
@@ -49,12 +49,12 @@
       "id": "a3",
       "step": "config",
       "op": "config_set",
-      "path": "/home/u/.config/switchyard/config.toml",
+      "path": "/home/u/.config/watchyard/config.toml",
       "value": false,
       "key": "terminal.titles",
       "pre": [
         {
-          "path": "/home/u/.config/switchyard/config.toml",
+          "path": "/home/u/.config/watchyard/config.toml",
           "state": {
             "type": "file"
           }

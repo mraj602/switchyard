@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/board"
+	"github.com/mraj602/watchyard/internal/board"
 )
 
 const (

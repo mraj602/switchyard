@@ -1,4 +1,4 @@
-// Switchyard service worker (pwa.md 4 and 5). A classic script, scope "/".
+// Watchyard service worker (pwa.md 4 and 5). A classic script, scope "/".
 //
 // - App shell: precached on install, served cache-first. The hub replaces __SY_BUILD__
 //   with a hash of every embedded file, so any change to the app changes this file and the

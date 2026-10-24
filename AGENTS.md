@@ -2,10 +2,10 @@
 
 Instructions for AI coding agents. Two kinds of task bring an agent here:
 
-- **Helping someone install or set up Switchyard** on their machines: follow
+- **Helping someone install or set up Watchyard** on their machines: follow
   [docs/guide/agents.md](docs/guide/agents.md). It points to the setup procedure and lists what
   stays with the person (logins, tokens, the owner key, their network).
-- **Changing Switchyard's code or docs:** read [CONTRIBUTING.md](CONTRIBUTING.md). It is the
+- **Changing Watchyard's code or docs:** read [CONTRIBUTING.md](CONTRIBUTING.md). It is the
   single source for the repository tour, development setup, the checks each component needs,
   style and commits. The rules below are the ones an agent most often gets wrong; they do not
   replace it.

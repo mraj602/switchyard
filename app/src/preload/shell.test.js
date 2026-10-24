@@ -26,27 +26,27 @@ function loadPreload() {
   };
   sandbox.exports = sandbox.module.exports;
   vm.runInNewContext(source, sandbox, { filename: file });
-  return { fake, required, sy: fake.exposed.sy };
+  return { fake, required, wy: fake.exposed.wy };
 }
 
-test('window.sy has exactly one function per invoke channel, plus on', () => {
-  const { sy, required, fake } = loadPreload();
+test('window.wy has exactly one function per invoke channel, plus on', () => {
+  const { wy, required, fake } = loadPreload();
   assert.deepEqual(required, ['electron']);
-  assert.deepEqual(fake.callsOf('contextBridge.exposeInMainWorld'), [['sy']]);
-  assert.ok(Object.isFrozen(sy));
-  assert.deepEqual(Object.keys(sy).sort(), [...Object.keys(FUNCTIONS), 'on'].sort());
-  for (const v of Object.values(sy)) assert.equal(typeof v, 'function');
-  assert.equal(sy.ipcRenderer, undefined);
-  assert.equal(sy.require, undefined);
+  assert.deepEqual(fake.callsOf('contextBridge.exposeInMainWorld'), [['wy']]);
+  assert.ok(Object.isFrozen(wy));
+  assert.deepEqual(Object.keys(wy).sort(), [...Object.keys(FUNCTIONS), 'on'].sort());
+  for (const v of Object.values(wy)) assert.equal(typeof v, 'function');
+  assert.equal(wy.ipcRenderer, undefined);
+  assert.equal(wy.require, undefined);
 });
 
 test('each function invokes its own channel with its argument, or none', async () => {
-  const { sy, fake } = loadPreload();
+  const { wy, fake } = loadPreload();
   for (const channel of INVOKE_CHANNELS) {
     const fn = CHANNELS[channel].fn;
     const before = fake.callsOf('ipcRenderer.invoke').length;
     const arg = { probe: channel };
-    await sy[fn](arg, 'extra');
+    await wy[fn](arg, 'extra');
     const got = fake.callsOf('ipcRenderer.invoke').slice(before);
     assert.equal(got.length, 1, fn);
     if (CHANNELS[channel].args === null) assert.deepEqual(got[0], [channel], `${fn} must pass no argument`);
@@ -57,20 +57,20 @@ test('each function invokes its own channel with its argument, or none', async (
 });
 
 test('on() takes only push channels and hands the payload, never the event', () => {
-  const { sy, fake } = loadPreload();
+  const { wy, fake } = loadPreload();
   const ipc = fake.electron.ipcRenderer;
   for (const ev of PUSH_CHANNELS) {
     const got = [];
-    const off = sy.on(ev, (...a) => got.push(a));
+    const off = wy.on(ev, (...a) => got.push(a));
     ipc._fromMain(ev, { n: 1 });
     off();
     ipc._fromMain(ev, { n: 2 });
     assert.deepEqual(got, [[{ n: 1 }]], ev);
     assert.equal(ipc.listenerCount(ev), 0, `${ev}: listener removed`);
   }
-  assert.throws(() => sy.on('tab:add', () => {}));
-  assert.throws(() => sy.on('ipc-message', () => {}));
-  assert.throws(() => sy.on('state', 'not a function'));
+  assert.throws(() => wy.on('tab:add', () => {}));
+  assert.throws(() => wy.on('ipc-message', () => {}));
+  assert.throws(() => wy.on('state', 'not a function'));
 });
 
 test('the preload is self-contained and names the same channels as shared/ipc.js', () => {

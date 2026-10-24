@@ -107,7 +107,7 @@ func (s *Store) RenewDeviceExpiry(ctx context.Context, id string, at, before int
 
 // HadOwnerSession reports whether this hub ever made an owner session (a device whose
 // created_by starts with owner-link:, revoked and expired ones included). Until it has,
-// `sy hub serve` prints a first owner link at start (pairing.md 4.1).
+// `wy hub serve` prints a first owner link at start (pairing.md 4.1).
 func (s *Store) HadOwnerSession(ctx context.Context) (bool, error) {
 	var n int
 	err := s.r.QueryRowContext(ctx, `SELECT count(*) FROM device WHERE created_by GLOB 'owner-link:*'`).Scan(&n)
@@ -142,7 +142,7 @@ func (s *Store) UpdateDevice(ctx context.Context, id string, name, prefs *string
 // RevokeDeviceCascade revokes a device and the board/owner sessions made from it
 // (created_by = login:<id>), deletes their push targets and cancels their pending and held
 // deliveries (pairing.md 6, push.md 5.6), also for a device that is already revoked.
-// ErrNotFound when the device is missing, or already revoked with nothing left to clean. `sy hub token revoke` and DELETE /v1/devices/{id} both end here.
+// ErrNotFound when the device is missing, or already revoked with nothing left to clean. `wy hub token revoke` and DELETE /v1/devices/{id} both end here.
 func (tx *Tx) RevokeDeviceCascade(id string) error {
 	ids := []string{id}
 	rows, err := tx.QueryContext(tx.ctx, `SELECT id FROM device WHERE created_by = ? OR created_by GLOB ?`, "login:"+id, "owner-link:*@"+id)

@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // SaveMode says how Begin keeps the original of a path.
@@ -63,7 +63,7 @@ type Spec struct {
 	Watch []string
 	// Expect limits what undo removes of the paths created under Watch to those with one of
 	// these names as a path element below the watched root (plus the new folders above
-	// them), for example "sy-local" for the plugin commands. Empty means every created path
+	// them), for example "wy-local" for the plugin commands. Empty means every created path
 	// counts after a finished run, and none after an interrupted one.
 	Expect []string
 }
@@ -226,7 +226,7 @@ func (t *Tx) Finish(created []string) error {
 		}
 		if after.Type == model.TypeDir && treeOp(e.Op) && !isAncestor(e.Paths, pe.Path) {
 			// A folder the action wrote (a copied tree, the marketplace): its tree hash, so
-			// undo removes it only while it holds nothing but what sy wrote.
+			// undo removes it only while it holds nothing but what wy wrote.
 			if h, err := TreeHash(pe.Path); err == nil {
 				after.SHA256 = h
 			}

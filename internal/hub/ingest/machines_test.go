@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 var t0 = time.Date(2026, 10, 12, 12, 0, 0, 0, time.UTC)
@@ -64,14 +64,14 @@ func body(t *testing.T, recs ...*record.Record) []byte {
 		}
 		raws = append(raws, b)
 	}
-	b, _ := json.Marshal(map[string]any{"v": 1, "client": "sy/0.0.0-test", "records": raws})
+	b, _ := json.Marshal(map[string]any{"v": 1, "client": "wy/0.0.0-test", "records": raws})
 	return b
 }
 
 func info(t *testing.T, machine string, at time.Time, reach string, held int64) *record.Record {
 	t.Helper()
 	oldest := at.Add(-time.Hour).Format(time.RFC3339Nano)
-	r, err := record.NewMachineInfo(record.Meta{Machine: machine, Client: "sy/0.5.0", Now: at}, record.MachineInfoPayload{
+	r, err := record.NewMachineInfo(record.Meta{Machine: machine, Client: "wy/0.5.0", Now: at}, record.MachineInfoPayload{
 		OS: "linux", Arch: "amd64", Sy: "0.5.0", RecordV: 1, Reach: reach,
 		Outbox:     record.OutboxHealth{Held: held, OldestUnflushed: &oldest},
 		DirectPush: record.DirectPushState{Enabled: true, ServerHost: "ntfy.sh", Private: true},
@@ -138,7 +138,7 @@ func TestMachineInfoNewestWins(t *testing.T) {
 
 // machine_info.name (record.md 4.8): the hub's machine name follows the machine's own name
 // when the machine reports a new one, and never on the first report or a repeat, so a
-// rename on the board stays until the machine is renamed (`sy machine rename`).
+// rename on the board stays until the machine is renamed (`wy machine rename`).
 func TestMachineInfoNameFollowsARename(t *testing.T) {
 	f := newFixture(t)
 	m := "m_" + record.NewID(t0)
@@ -181,7 +181,7 @@ func TestMachineInfoNameFollowsARename(t *testing.T) {
 	if got := send("lab-box3"); got != "lab-box3" {
 		t.Fatalf("rename not followed: %q", got)
 	}
-	// An older sy (no name), then a newer one again: that report counts as a first one.
+	// An older wy (no name), then a newer one again: that report counts as a first one.
 	if got := send(""); got != "lab-box3" {
 		t.Fatalf("a report without a name renamed: %q", got)
 	}

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 // fx is a throwaway world: a HOME with config folders, an XDG_RUNTIME_DIR, a state folder

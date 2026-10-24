@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/setup/apply"
-	"github.com/mraj602/switchyard/internal/setup/backup"
-	"github.com/mraj602/switchyard/internal/setup/backup/fakes"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/testtree"
+	"github.com/mraj602/watchyard/internal/setup/apply"
+	"github.com/mraj602/watchyard/internal/setup/backup"
+	"github.com/mraj602/watchyard/internal/setup/backup/fakes"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/testtree"
 )
 
 // fakeExec is an Exec that creates a plugin-cache tree and edits two registries, like
@@ -30,14 +30,14 @@ func (f *fakeExec) Run(_ context.Context, argv []string, _ map[string]*string) (
 	if f.fail {
 		return []byte(`{"outcome":"error","error":"boom"}`), nil
 	}
-	dir := filepath.Join(f.root, "cache", "sy-local", "switchyard")
+	dir := filepath.Join(f.root, "cache", "wy-local", "watchyard")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}
 	if err := os.WriteFile(filepath.Join(dir, "plugin.json"), []byte("{}"), 0o644); err != nil {
 		return nil, err
 	}
-	// Like the real CLI, add sy's entry to the registry and keep everyone else's.
+	// Like the real CLI, add wy's entry to the registry and keep everyone else's.
 	reg := filepath.Join(f.root, "installed_plugins.json")
 	doc := map[string]any{}
 	if b, err := os.ReadFile(reg); err == nil {
@@ -49,7 +49,7 @@ func (f *fakeExec) Run(_ context.Context, argv []string, _ map[string]*string) (
 	if plugins == nil {
 		plugins = map[string]any{}
 	}
-	plugins["switchyard@sy-local"] = []any{map[string]any{"v": 1}}
+	plugins["watchyard@wy-local"] = []any{map[string]any{"v": 1}}
 	doc["plugins"] = plugins
 	b, _ := json.Marshal(doc)
 	if err := os.WriteFile(reg, b, 0o644); err != nil {
@@ -223,7 +223,7 @@ func build(t *testing.T, seed int64) *world {
 		},
 		func() *model.Action {
 			return &model.Action{Op: model.OpJSONSet, File: abs("home/primary/settings.json"), Via: []string{abs("home/a/settings.json")},
-				Pointer: "/statusLine/command", Value: json.RawMessage(`"sy statusline"`), Step: model.StepStatusLine}
+				Pointer: "/statusLine/command", Value: json.RawMessage(`"wy statusline"`), Step: model.StepStatusLine}
 		},
 		func() *model.Action {
 			return &model.Action{Op: model.OpJSONSet, File: abs("home/b/settings.json"), Pointer: "/env/CLAUDE_CODE_PLUGIN_CACHE_DIR",
@@ -286,7 +286,7 @@ func build(t *testing.T, seed int64) *world {
 func contents(a model.Action) ([]byte, error) { return []byte("content of " + a.Path + "\n"), nil }
 
 func (w *world) opts() apply.Options {
-	return apply.Options{StateDir: w.state, Command: "test", SyVersion: "0.3.0", Machine: "m", SyPath: "/bin/sy"}
+	return apply.Options{StateDir: w.state, Command: "test", SyVersion: "0.3.0", Machine: "m", SyPath: "/bin/wy"}
 }
 
 func (w *world) deps() apply.Deps {

@@ -2,7 +2,7 @@ package config
 
 import "fmt"
 
-// terminal.source values (docs/spec/terminal.md T3, T12): where `sy board` reads from.
+// terminal.source values (docs/spec/terminal.md T3, T12): where `wy board` reads from.
 const (
 	TerminalSourceAuto  = "auto"
 	TerminalSourceHub   = "hub"

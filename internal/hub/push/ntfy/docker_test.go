@@ -11,19 +11,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/push/ntfy"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/ntfy"
 )
 
-// Real ntfy (push.md 11.3). Opt in with SY_NTFY_DOCKER=1; runs binwiederhier/ntfy under
+// Real ntfy (push.md 11.3). Opt in with WY_NTFY_DOCKER=1; runs binwiederhier/ntfy under
 // podman (preferred) or docker on a loopback port, publishes through the Sender, reads the
 // message back with GET /<topic>/json?poll=1 and checks the actions survived. The image
-// is pulled on first use. SY_NTFY_RUNTIME overrides the container command.
+// is pulled on first use. WY_NTFY_RUNTIME overrides the container command.
 func TestRealNtfyInContainer(t *testing.T) {
-	if os.Getenv("SY_NTFY_DOCKER") != "1" {
-		t.Skip("set SY_NTFY_DOCKER=1 to run (needs podman or docker)")
+	if os.Getenv("WY_NTFY_DOCKER") != "1" {
+		t.Skip("set WY_NTFY_DOCKER=1 to run (needs podman or docker)")
 	}
-	rt := os.Getenv("SY_NTFY_RUNTIME")
+	rt := os.Getenv("WY_NTFY_RUNTIME")
 	if rt == "" {
 		for _, c := range []string{"podman", "docker"} {
 			if p, err := exec.LookPath(c); err == nil {

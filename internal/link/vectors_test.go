@@ -18,9 +18,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/hub/push/webpush"
-	"github.com/mraj602/switchyard/internal/hub/push/webpushtest"
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/hub/push/webpush"
+	"github.com/mraj602/watchyard/internal/hub/push/webpushtest"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 var update = flag.Bool("update", false, "rewrite testdata/*.json (the vectors shared with the Kotlin tests)")

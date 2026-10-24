@@ -1,6 +1,6 @@
 #!/bin/sh
 # S5: three logged-in folders with different mcpServers. Server values hold fake secrets
-# (homes/mcp.secrets, one per line): no secret may ever appear in sy output or logs.
+# (homes/mcp.secrets, one per line): no secret may ever appear in wy output or logs.
 #   ~/.claude    only-primary, shared-name (primary version)
 #   ~/.claude-2  only-two,     shared-name (different command: a same-name conflict)
 #   ~/.claude-3  only-three

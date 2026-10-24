@@ -1,9 +1,0 @@
-[Unit]
-Description=Switchyard: send queued records to the hub
-Documentation=https://github.com/mraj602/switchyard
-
-[Service]
-Type=oneshot
-ExecStart=/home/alice/.local/bin/sy tick --quiet
-Nice=10
-TimeoutStartSec=60

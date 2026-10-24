@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/setup/launcher"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/statuswrap"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/setup/launcher"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/statuswrap"
 )
 
 // --- status line (9.1) --------------------------------------------------------------------
@@ -270,7 +270,7 @@ func (p *planner) planHub() error {
 		unit, name := p.serviceUnit()
 		if !(h.ServiceInstalled && h.ServiceActive) {
 			p.add(model.StepHub, model.Action{Op: model.OpService, Name: name, Unit: unit, Listen: p.c.Listen,
-				Note: "sy hub serve --listen " + listen, Pre: pres(preAbsent(unit))})
+				Note: "wy hub serve --listen " + listen, Pre: pres(preAbsent(unit))})
 		}
 		p.add(model.StepHub, model.Action{Op: model.OpConnect, URL: url, Note: "token minted locally; installs the timer"})
 		if p.st.OS == "linux" && h.LingerOff {
@@ -283,7 +283,7 @@ func (p *planner) planHub() error {
 			return nil
 		}
 		p.add(model.StepHub, model.Action{Op: model.OpConnect, Reach: model.HubPull,
-			Note: "pulled over SSH (run `sy machine add --reach pull` from your laptop, or `sy hub pull add` on the hub); installs the timer"})
+			Note: "pulled over SSH (run `wy machine add --reach pull` from your laptop, or `wy hub pull add` on the hub); installs the timer"})
 	case model.HubJoin:
 		url := p.c.Hub.URL
 		if url == "" {
@@ -313,7 +313,7 @@ func (p *planner) planHub() error {
 			}
 			p.add(model.StepHub, model.Action{Op: model.OpConnect, URL: url, Dial: p.c.Dial, Reach: reach, Note: note})
 		} else {
-			p.out.Needs = append(p.out.Needs, model.Need{Kind: "hub-token", Command: "sy connect " + url + " --token-stdin"})
+			p.out.Needs = append(p.out.Needs, model.Need{Kind: "hub-token", Command: "wy connect " + url + " --token-stdin"})
 			p.out.Keep = append(p.out.Keep, model.Keep{What: "hub", Path: url, Note: "needs a token from you"})
 		}
 	default:
@@ -324,7 +324,7 @@ func (p *planner) planHub() error {
 
 // serviceUnit is where internal/service installs the hub (service.UnitPath of DefaultName):
 // the plist is named after its label, com.<slug>.hub (before the rename the plan said
-// dev.<slug>.hub.plist, which `sy update` then did not find; service.InstalledPath still
+// dev.<slug>.hub.plist, which `wy update` then did not find; service.InstalledPath still
 // reads it).
 func (p *planner) serviceUnit() (unit, name string) {
 	name = brand.Slug + "-hub"

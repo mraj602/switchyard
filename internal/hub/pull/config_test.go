@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/hub/pull"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/pull"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // ssh expands %-tokens in file names, so a state folder with a % in it is written doubled.
@@ -89,7 +89,7 @@ func TestWriteConfigRefusesInjection(t *testing.T) {
 		{ID: "pt_4", Host: "good", Port: 22, User: "me", Jump: "a b"},
 		{ID: "pt_5", Host: "good", Port: 22, User: "-oBad"},
 		{ID: "pt_6", Host: "good", Port: 0, User: "me"},
-		{ID: "pt_7", Host: "good", Port: 22, User: "me", RemoteSy: "sy; rm -rf /"},
+		{ID: "pt_7", Host: "good", Port: 22, User: "me", RemoteSy: "wy; rm -rf /"},
 	}
 	for _, tg := range bad {
 		if err := pull.ValidateTarget(tg); err == nil {
@@ -188,7 +188,7 @@ func TestEnsureKeyMakesAndKeepsTheKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(pub, "ssh-ed25519 ") || !strings.HasSuffix(pub, "switchyard-pull@hub") {
+	if !strings.HasPrefix(pub, "ssh-ed25519 ") || !strings.HasSuffix(pub, "watchyard-pull@hub") {
 		t.Fatalf("%q", pub)
 	}
 	st, err := os.Stat(filepath.Join(dir, "id_ed25519"))
@@ -221,7 +221,7 @@ func TestEnsureKeyUsesKeygenWithoutSecretsInArgv(t *testing.T) {
 		for i, a := range args {
 			if a == "-f" {
 				_ = os.WriteFile(args[i+1], []byte("PRIVATE"), 0o600)
-				_ = os.WriteFile(args[i+1]+".pub", []byte("ssh-ed25519 AAAA switchyard-pull@h\n"), 0o644)
+				_ = os.WriteFile(args[i+1]+".pub", []byte("ssh-ed25519 AAAA watchyard-pull@h\n"), 0o644)
 			}
 		}
 		return nil, nil
@@ -229,7 +229,7 @@ func TestEnsureKeyUsesKeygenWithoutSecretsInArgv(t *testing.T) {
 	if _, err := pull.EnsureKey(context.Background(), t.TempDir(), "h", run); err != nil {
 		t.Fatal(err)
 	}
-	if len(calls) != 1 || calls[0][0] != "ssh-keygen" || !strings.Contains(strings.Join(calls[0], " "), "-t ed25519 -N  -C switchyard-pull@h") {
+	if len(calls) != 1 || calls[0][0] != "ssh-keygen" || !strings.Contains(strings.Join(calls[0], " "), "-t ed25519 -N  -C watchyard-pull@h") {
 		t.Fatalf("%q", calls)
 	}
 }

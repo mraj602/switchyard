@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
-var replyLine = regexp.MustCompile(`(?m)^Reply with: sy peers send (\S+) "…"$`)
+var replyLine = regexp.MustCompile(`(?m)^Reply with: wy peers send (\S+) "…"$`)
 
 // replyHandle is the handle of the "Reply with" line of the newest message in a session's
 // inbox (n frames in all).

@@ -1,4 +1,4 @@
--- Switchyard hub schema, version 1.
+-- Watchyard hub schema, version 1.
 --
 -- One SQLite file (WAL mode). Applied by the hub at start inside one transaction
 -- after `PRAGMA foreign_keys = ON`. Later versions add numbered migrations; this file is
@@ -83,7 +83,7 @@ CREATE TABLE seat (
   UNIQUE (account_uuid, org_uuid)
 ) STRICT;
 
--- A computer running sy. The id is made by sy on first run (identity.md).
+-- A computer running wy. The id is made by wy on first run (identity.md).
 CREATE TABLE machine (
   id            TEXT    NOT NULL PRIMARY KEY,       -- 'm_' + ULID
   owner_id      TEXT    NOT NULL DEFAULT 'owner' REFERENCES owner(id),
@@ -303,7 +303,7 @@ CREATE TABLE limit_hit (
   PRIMARY KEY (session_id, ts)
 ) STRICT;
 
--- Claude Code's own daily totals from before Switchyard (history_import).
+-- Claude Code's own daily totals from before Watchyard (history_import).
 CREATE TABLE history_day (
   slot_id       INTEGER NOT NULL REFERENCES slot(id) ON DELETE CASCADE,
   day           TEXT    NOT NULL CHECK (day GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),

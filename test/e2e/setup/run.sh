@@ -9,17 +9,17 @@
 # platform (version 0.0.0-e2e), the treesnap tool and, when it exists, the fake claude
 # (test/e2e/setup/fakeclaude, built as "claude"). Output goes to dist/e2e/. Then every
 # scenarios/*.sh matching PATTERN (default all) runs as a separate process; exit 77 = skipped.
-# Scenario contract: lib/common.sh (SY_E2E_SRC, SY_E2E_OUT). Never touches the real HOME:
+# Scenario contract: lib/common.sh (WY_E2E_SRC, WY_E2E_OUT). Never touches the real HOME:
 # scenarios build fixture homes in temp folders.
 #
 # Internal: --inside <out dir> runs the scenarios against an existing build (used in the
 # container, where the repo is mounted read-only at /src and the build output at /e2e).
 set -eu
 
-# Never let the caller's Claude Code / sy / XDG settings reach the build or the scenarios (a
-# leaked CLAUDE_CONFIG_DIR would point sy and the fake claude at the real folders).
+# Never let the caller's Claude Code / wy / XDG settings reach the build or the scenarios (a
+# leaked CLAUDE_CONFIG_DIR would point wy and the fake claude at the real folders).
 # (XDG_RUNTIME_DIR is kept for the systemd container; lib/common.sh passes it on only there.)
-for v in $(env | sed -n 's/^\([A-Za-z0-9_]*\)=.*/\1/p' | grep -E '^(CLAUDE[A-Za-z0-9_]*|SY_[A-Z_]*|XDG_[A-Z_]*|FAKE_[A-Z_]*)$'); do
+for v in $(env | sed -n 's/^\([A-Za-z0-9_]*\)=.*/\1/p' | grep -E '^(CLAUDE[A-Za-z0-9_]*|WY_[A-Z_]*|XDG_[A-Z_]*|FAKE_[A-Z_]*)$'); do
 	[ "$v" = XDG_RUNTIME_DIR ] || unset "$v"
 done
 for v in $(env | sed -n 's/^\(SY_[A-Za-z0-9_]*\)=.*/\1/p' | grep -v _E2E_); do unset "$v"; done # rename:keep: the old prefix, which the command still reads (rename.md 2.13)
@@ -31,7 +31,7 @@ die() { echo "run.sh: $*" >&2; exit 2; }
 
 run_scenarios() { # <out dir>
 	out=$1
-	export SY_E2E_SRC=$src SY_E2E_OUT=$out
+	export WY_E2E_SRC=$src WY_E2E_OUT=$out
 	# The fake claude (when built) is first on PATH, as in a real user's shell.
 	PATH=$out/bin:$PATH
 	export PATH
@@ -57,7 +57,7 @@ build() { # <out dir> <goos> <goarch>
 	out=$1; os=$2; arch=$3
 	mkdir -p "$out/bin"
 	echo "building release (${os}_${arch}) and tools into $out"
-	SY_RELEASE_DIR=$out/release SY_RELEASE_TARGETS="${os}_${arch}" "$src/scripts/release/build.sh" 0.0.0-e2e >/dev/null
+	WY_RELEASE_DIR=$out/release WY_RELEASE_TARGETS="${os}_${arch}" "$src/scripts/release/build.sh" 0.0.0-e2e >/dev/null
 	(cd "$src" && CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -o "$out/bin/treesnap" ./test/e2e/setup/treesnap)
 	if ls "$here"/fakeclaude/*.go >/dev/null 2>&1; then
 		(cd "$src" && CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -o "$out/bin/claude" ./test/e2e/setup/fakeclaude)
@@ -66,7 +66,7 @@ build() { # <out dir> <goos> <goarch>
 	fi
 }
 
-# systemd_pass: s6b (`sy setup --hub here`) in a Fedora container whose PID 1 is systemd
+# systemd_pass: s6b (`wy setup --hub here`) in a Fedora container whose PID 1 is systemd
 # (`podman run --systemd=always`), with the user manager of "me" started (no linger, so the
 # linger warning shows). Docker cannot do this; the scenario is then reported as skipped.
 systemd_pass() {
@@ -92,7 +92,7 @@ systemd_pass() {
 		if [ "$i" -gt 40 ]; then echo "s6b-hub-here: SKIP the user bus did not come up"; "$engine" rm -f "$cid" >/dev/null; return 0; fi
 		sleep 0.5
 	done
-	"$engine" exec --user me -e SY_E2E_SYSTEMD=1 -e XDG_RUNTIME_DIR=/run/user/1000 \
+	"$engine" exec --user me -e WY_E2E_SYSTEMD=1 -e XDG_RUNTIME_DIR=/run/user/1000 \
 		-e DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus \
 		"$cid" /src/test/e2e/setup/run.sh --inside /e2e -s s6b || rc=$?
 	"$engine" rm -f "$cid" >/dev/null 2>&1 || true

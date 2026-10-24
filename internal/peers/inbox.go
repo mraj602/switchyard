@@ -31,7 +31,7 @@ var (
 	ErrTargetGone = errors.New("the session's inbox socket is gone")
 	// ErrFrameTooBig: the frame line is over MaxFrameBytes.
 	ErrFrameTooBig = errors.New("frame is too big for Claude Code's inbox")
-	// ErrUnsupported: this OS has no inbox sockets Switchyard can write (Windows).
+	// ErrUnsupported: this OS has no inbox sockets Watchyard can write (Windows).
 	ErrUnsupported = errors.New("peers are not supported on this platform")
 )
 
@@ -52,7 +52,7 @@ type FrameMessage struct {
 	Content string `json:"content"`
 }
 
-// NewFrame builds the type "user" frame for a wrapper. msgID is the Switchyard message id,
+// NewFrame builds the type "user" frame for a wrapper. msgID is the Watchyard message id,
 // sessionID the target's session id (a guard against a recycled pid), and the wrapper's
 // From is repeated as the frame's `from`.
 func NewFrame(msgID, sessionID string, w Wrapper) Frame {

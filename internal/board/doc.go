@@ -1,7 +1,7 @@
 // Package board builds the session board's view model, the versioned View of
 // docs/spec/terminal.md T2, from either source: the hub's read API (T3, internal/board/hubsrc)
-// or this machine's outbox folded with the same code as `sy status` (local.go). The two
-// renderers, `sy board` (internal/board/tui) and the pane mod (plugin/switchyard-pane), only
+// or this machine's outbox folded with the same code as `wy status` (local.go). The two
+// renderers, `wy board` (internal/board/tui) and the pane mod (plugin/watchyard-pane), only
 // lay a View out; every word, age, state label and ordering rule is computed here, once.
 //
 // Rules for this package and its sub-packages:

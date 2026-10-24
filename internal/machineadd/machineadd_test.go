@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/client"
-	"github.com/mraj602/switchyard/internal/setup/testtree"
-	"github.com/mraj602/switchyard/internal/sshx"
-	"github.com/mraj602/switchyard/internal/sshx/sshxtest"
-	"github.com/mraj602/switchyard/internal/update"
+	"github.com/mraj602/watchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/setup/testtree"
+	"github.com/mraj602/watchyard/internal/sshx"
+	"github.com/mraj602/watchyard/internal/sshx/sshxtest"
+	"github.com/mraj602/watchyard/internal/update"
 )
 
 func TestMain(m *testing.M) {
@@ -24,7 +24,7 @@ func TestMain(m *testing.M) {
 	// Never let a test see the person's real folders.
 	for _, kv := range os.Environ() {
 		k, _, _ := strings.Cut(kv, "=")
-		if strings.HasPrefix(k, "CLAUDE_") || strings.HasPrefix(k, "SY_") || strings.HasPrefix(k, "XDG_") {
+		if strings.HasPrefix(k, "CLAUDE_") || strings.HasPrefix(k, "WY_") || strings.HasPrefix(k, "XDG_") {
 			os.Unsetenv(k)
 		}
 	}
@@ -38,11 +38,11 @@ const (
 	testMID    = "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K"
 )
 
-// fakeSy is the "sy" machine add copies over in tests: a shell script that answers the
+// fakeSy is the "wy" machine add copies over in tests: a shell script that answers the
 // commands machine add runs and records what it got.
 const fakeSy = `#!/bin/sh
 case "$1" in
-version) echo "${SY_FAKE_REMOTE_VERSION:-0.0.0-dev}";;
+version) echo "${WY_FAKE_REMOTE_VERSION:-0.0.0-dev}";;
 machine)
   case "$2" in
   probe) echo "$@" > "$HOME/probe.args"; cat "$HOME/probe.json";;
@@ -97,7 +97,7 @@ func hubAnswers(now time.Time) func(args []string, stdin []byte) ([]byte, error)
 		case "pull list":
 			return []byte("[]\n"), nil
 		case "pull add":
-			return []byte(`{"target":"pt_01ABC","name":"gpu-box","public_key":"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHub switchyard-pull@hub"}`), nil
+			return []byte(`{"target":"pt_01ABC","name":"gpu-box","public_key":"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHub watchyard-pull@hub"}`), nil
 		case "pull remove", "token revoke":
 			return []byte("ok\n"), nil
 		case "pull run":
@@ -117,7 +117,7 @@ type world struct {
 	remote string // fake remote home
 	home   string // operator home
 	state  string // operator state
-	bin    string // the sy file to copy
+	bin    string // the wy file to copy
 	admin  *fakeAdmin
 	events []Event
 	now    time.Time
@@ -126,7 +126,7 @@ type world struct {
 func newWorld(t *testing.T) *world {
 	w := &world{t: t, fake: sshxtest.New(t), home: t.TempDir(), state: t.TempDir(), now: time.Now()}
 	w.remote = w.fake.RemoteHome(testHost)
-	w.bin = filepath.Join(t.TempDir(), "sy")
+	w.bin = filepath.Join(t.TempDir(), "wy")
 	if err := os.WriteFile(w.bin, []byte(fakeSy), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func (w *world) env() *Env {
 	}
 	return &Env{SSH: r, Admin: w.admin, StateDir: w.state, Home: w.home, SelfVersion: "0.0.0-dev",
 		Events: func(e Event) { w.events = append(w.events, e) }, Now: func() time.Time { return w.now },
-		HostKeyDir: filepath.Join(w.remote, "etc-ssh"), Command: "sy machine add test"}
+		HostKeyDir: filepath.Join(w.remote, "etc-ssh"), Command: "wy machine add test"}
 }
 
 func (w *world) read(rel string) string {
@@ -170,12 +170,12 @@ func TestAddDirect(t *testing.T) {
 	if !sum.Verified || sum.Reach != ReachDirect || sum.Machine != testMID || sum.OS == "" {
 		t.Fatalf("summary %+v", sum)
 	}
-	got, _ := os.ReadFile(filepath.Join(w.remote, ".local/bin/sy"))
+	got, _ := os.ReadFile(filepath.Join(w.remote, ".local/bin/wy"))
 	if string(got) != fakeSy {
-		t.Fatalf("remote sy not the copied file")
+		t.Fatalf("remote wy not the copied file")
 	}
-	if fi, _ := os.Stat(filepath.Join(w.remote, ".local/bin/sy")); fi.Mode().Perm()&0o100 == 0 {
-		t.Fatalf("remote sy not executable")
+	if fi, _ := os.Stat(filepath.Join(w.remote, ".local/bin/wy")); fi.Mode().Perm()&0o100 == 0 {
+		t.Fatalf("remote wy not executable")
 	}
 	if s := w.read("setup.stdin"); s != testSecret+"\n" {
 		t.Fatalf("setup stdin %q", s)
@@ -420,27 +420,27 @@ func TestPushRefusesPathLikeNames(t *testing.T) {
 func TestPushHashMismatchReplacesNothing(t *testing.T) {
 	w := newWorld(t)
 	os.MkdirAll(filepath.Join(w.remote, ".local/bin"), 0o755)
-	os.WriteFile(filepath.Join(w.remote, ".local/bin/sy"), []byte("old"), 0o755)
+	os.WriteFile(filepath.Join(w.remote, ".local/bin/wy"), []byte("old"), 0o755)
 	r := remote{ssh: w.env().SSH, host: testHost}
 	w.fake.Rules(sshxtest.Rule{Match: `cat > "$t"`, Stdout: "path=x\nsha=" + strings.Repeat("ab", 32) + "  -\n"})
-	if _, err := r.push(context.Background(), w.bin, "bin", "sy", ""); err == nil || !strings.Contains(err.Error(), "nothing was replaced") {
+	if _, err := r.push(context.Background(), w.bin, "bin", "wy", ""); err == nil || !strings.Contains(err.Error(), "nothing was replaced") {
 		t.Fatalf("want mismatch, got %v", err)
 	}
-	if w.read(".local/bin/sy") != "old" {
+	if w.read(".local/bin/wy") != "old" {
 		t.Fatal("mismatch replaced the binary")
 	}
 	// No hash tool and no version to check: refused.
 	w.fake.Rules(sshxtest.Rule{Match: `cat > "$t"`, Stdout: "path=x\nsha=none\n"})
-	if _, err := r.push(context.Background(), w.bin, "bin", "sy", ""); err == nil {
+	if _, err := r.push(context.Background(), w.bin, "bin", "wy", ""); err == nil {
 		t.Fatal("unchecked copy accepted")
 	}
 	// The real script on the fake remote: verified and moved.
 	w.fake.Rules()
 	p, err := r.push(context.Background(), w.bin, "update", "sy-1.2.3", "")
-	if err != nil || !p.Verified || p.Path != filepath.Join(w.remote, ".local/state/switchyard/update/sy-1.2.3") {
+	if err != nil || !p.Verified || p.Path != filepath.Join(w.remote, ".local/state/watchyard/update/sy-1.2.3") {
 		t.Fatalf("push %+v %v", p, err)
 	}
-	ents, _ := os.ReadDir(filepath.Join(w.remote, ".local/state/switchyard/update"))
+	ents, _ := os.ReadDir(filepath.Join(w.remote, ".local/state/watchyard/update"))
 	if len(ents) != 1 {
 		t.Fatalf("leftover temporary files: %v", ents)
 	}
@@ -466,7 +466,7 @@ func TestFleetRemote(t *testing.T) {
 	reg.Upsert(Entry{Name: "hub", Machine: "m_h", SSH: "hub-host"}, w.now)
 	reg.Upsert(Entry{Name: "gpu-box", Machine: testMID, SSH: testHost, OS: "linux", Arch: "amd64"}, w.now)
 	reg.Save()
-	ms, err := FleetRegistry{StateDir: w.state, HubAdmin: "ssh -p 22 hub-host sy"}.Machines()
+	ms, err := FleetRegistry{StateDir: w.state, HubAdmin: "ssh -p 22 hub-host wy"}.Machines()
 	if err != nil || len(ms) != 2 || !ms[1].Hub || ms[0].Hub || ms[0].Target != testHost {
 		t.Fatalf("fleet %+v %v", ms, err)
 	}
@@ -559,7 +559,7 @@ func TestForwardRemoveAfterOtherEdits(t *testing.T) {
 		t.Fatalf("remove other %v %v", done, err)
 	}
 	if _, err := os.Stat(filepath.Join(home, ".ssh", ForwardConf)); !os.IsNotExist(err) {
-		t.Fatal("empty switchyard.conf left")
+		t.Fatal("empty watchyard.conf left")
 	}
 	cfg3, _ := os.ReadFile(cfgPath)
 	if string(cfg3) != "Host a\n  User x\nHost b\n" {
@@ -583,12 +583,12 @@ func TestAuthorizePullTwiceOneLine(t *testing.T) {
 	home := t.TempDir()
 	orig := "# my keys\nssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMine me@laptop\n\nssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ== other\n"
 	testtree.New(t, home).Dir(".ssh", 0o700).File(".ssh/authorized_keys", orig, 0o640)
-	pub := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHub switchyard-pull@hub"
-	line, key, err := PullKeyLine(pub, "/home/me/.local/bin/sy", "pt_01ABC", "10.0.0.0/8", true)
+	pub := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHub watchyard-pull@hub"
+	line, key, err := PullKeyLine(pub, "/home/me/.local/bin/wy", "pt_01ABC", "10.0.0.0/8", true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `restrict,from="10.0.0.0/8",command="/home/me/.local/bin/sy outbox drain --stdio" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHub switchyard-pull@hub sy-pull:pt_01ABC`
+	want := `restrict,from="10.0.0.0/8",command="/home/me/.local/bin/wy outbox drain --stdio" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHub watchyard-pull@hub sy-pull:pt_01ABC`
 	if line != want {
 		t.Fatalf("line\n%s\nwant\n%s", line, want)
 	}
@@ -598,7 +598,7 @@ func TestAuthorizePullTwiceOneLine(t *testing.T) {
 		}
 	}
 	// A new target id with the same key replaces it too.
-	line2, _, _ := PullKeyLine(pub, "/home/me/.local/bin/sy", "pt_01ABC", "", false)
+	line2, _, _ := PullKeyLine(pub, "/home/me/.local/bin/wy", "pt_01ABC", "", false)
 	if _, err := AuthorizePull(home, line2, key, "pt_01ABC"); err != nil {
 		t.Fatal(err)
 	}
@@ -623,7 +623,7 @@ func TestAuthorizePullTwiceOneLine(t *testing.T) {
 
 func TestAuthorizePullNewFile(t *testing.T) {
 	home := t.TempDir()
-	line, key, _ := PullKeyLine("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHub", "/u/sy", "pt_1", "", true)
+	line, key, _ := PullKeyLine("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHub", "/u/wy", "pt_1", "", true)
 	if _, err := AuthorizePull(home, line, key, "pt_1"); err != nil {
 		t.Fatal(err)
 	}
@@ -633,10 +633,10 @@ func TestAuthorizePullNewFile(t *testing.T) {
 		t.Fatalf("modes %v %v", fi.Mode(), fk.Mode())
 	}
 	for _, bad := range [][4]string{
-		{"not a key", "/u/sy", "pt_1", ""},
-		{"ssh-ed25519 AAAA", "relative/sy", "pt_1", ""},
-		{"ssh-ed25519 AAAA", "/u/sy", "xx", ""},
-		{"ssh-ed25519 AAAA", "/u/sy", "pt_1", `1.2.3.4",command="x`},
+		{"not a key", "/u/wy", "pt_1", ""},
+		{"ssh-ed25519 AAAA", "relative/wy", "pt_1", ""},
+		{"ssh-ed25519 AAAA", "/u/wy", "xx", ""},
+		{"ssh-ed25519 AAAA", "/u/wy", "pt_1", `1.2.3.4",command="x`},
 		{"ssh-ed25519 AAAA", "/u/s y", "pt_1", ""},
 	} {
 		if _, _, err := PullKeyLine(bad[0], bad[1], bad[2], bad[3], true); err == nil {
@@ -648,21 +648,21 @@ func TestAuthorizePullNewFile(t *testing.T) {
 // --- admin, registry, repoint, list, probe --------------------------------------------
 
 func TestPrefixAdmin(t *testing.T) {
-	if _, err := NewPrefixAdmin("ssh -o StrictHostKeyChecking=no hub-host sy"); !errors.Is(err, sshx.ErrForbidden) {
+	if _, err := NewPrefixAdmin("ssh -o StrictHostKeyChecking=no hub-host wy"); !errors.Is(err, sshx.ErrForbidden) {
 		t.Fatalf("forbidden prefix: %v", err)
 	}
-	if h := AdminSSHHost("ssh -p 2222 -o BatchMode=yes hub-host sy"); h != "hub-host" {
+	if h := AdminSSHHost("ssh -p 2222 -o BatchMode=yes hub-host wy"); h != "hub-host" {
 		t.Fatalf("host %q", h)
 	}
-	if h := AdminSSHHost("docker compose exec hub sy"); h != "" {
+	if h := AdminSSHHost("docker compose exec hub wy"); h != "" {
 		t.Fatalf("host %q", h)
 	}
-	p, err := NewPrefixAdmin("echo sy")
+	p, err := NewPrefixAdmin("echo wy")
 	if err != nil {
 		t.Fatal(err)
 	}
 	out, err := p.Hub(context.Background(), []string{"pull", "list", "--json"}, nil)
-	if err != nil || string(out) != "sy hub pull list --json\n" {
+	if err != nil || string(out) != "wy hub pull list --json\n" {
 		t.Fatalf("out %q %v", out, err)
 	}
 	if _, err := p.Hub(context.Background(), []string{"x;rm"}, nil); err == nil {
@@ -735,10 +735,10 @@ func TestRegistry(t *testing.T) {
 func TestRepointAndList(t *testing.T) {
 	w := newWorld(t)
 	os.MkdirAll(filepath.Join(w.remote, ".local/bin"), 0o755)
-	os.WriteFile(filepath.Join(w.remote, ".local/bin/sy"), []byte(fakeSy), 0o755)
+	os.WriteFile(filepath.Join(w.remote, ".local/bin/wy"), []byte(fakeSy), 0o755)
 	other := w.fake.RemoteHome("nas")
 	os.MkdirAll(filepath.Join(other, ".local/bin"), 0o755)
-	os.WriteFile(filepath.Join(other, ".local/bin/sy"), []byte(fakeSy), 0o755)
+	os.WriteFile(filepath.Join(other, ".local/bin/wy"), []byte(fakeSy), 0o755)
 	os.WriteFile(filepath.Join(other, "connect.exit"), []byte("1"), 0o644)
 	r := mustReg(t, w.state)
 	r.Upsert(Entry{Name: "gpu-box", Machine: testMID, SSH: testHost, Reach: ReachDirect, HubURL: "https://old"}, w.now)
@@ -826,7 +826,7 @@ func TestProbe(t *testing.T) {
 }
 
 func TestParsePreProbe(t *testing.T) {
-	out := "home=/home/me\nshell=/bin/bash\nclaude=/home/me/.local/bin/claude\nsy=0.4.0\nsysha=ABCDEF  -\nhostkey=ssh-ed25519 AAAA root@x\nhostkey=ecdsa-sha2-nistp256 BBBB\nend=1\n"
+	out := "home=/home/me\nshell=/bin/bash\nclaude=/home/me/.local/bin/claude\nwy=0.4.0\nsysha=ABCDEF  -\nhostkey=ssh-ed25519 AAAA root@x\nhostkey=ecdsa-sha2-nistp256 BBBB\nend=1\n"
 	p, err := parsePreProbe([]byte(out))
 	if err != nil || p.Sy != "0.4.0" || p.SySHA256 != "abcdef" || len(p.HostKeys) != 2 || p.HostKeys[0] != "ssh-ed25519 AAAA" {
 		t.Fatalf("%+v %v", p, err)

@@ -9,5 +9,5 @@ package appmirror
 //
 // A fork that signs with its own key sets this at build time instead of editing the file:
 //
-//	-ldflags "-X github.com/mraj602/switchyard/internal/hub/appmirror.ReleaseCertSHA256=<hex>"
+//	-ldflags "-X github.com/mraj602/watchyard/internal/hub/appmirror.ReleaseCertSHA256=<hex>"
 var ReleaseCertSHA256 = "0b715b03eb515301851200431ff21a5114f51d97d615812f6554e46dd644eddd"

@@ -1,5 +1,5 @@
-// Package clientenv gathers what every short-lived client command (`sy hook`,
-// `sy statusline`) needs before it writes a record: the folders, the config, the machine,
+// Package clientenv gathers what every short-lived client command (`wy hook`,
+// `wy statusline`) needs before it writes a record: the folders, the config, the machine,
 // the current slot and its cached login. It never runs `claude`.
 //
 // Depends on: paths, config, identity, record, version.
@@ -9,11 +9,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/paths"
-	"github.com/mraj602/switchyard/internal/record"
-	"github.com/mraj602/switchyard/internal/version"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/paths"
+	"github.com/mraj602/watchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/version"
 )
 
 // Env is the resolved context of one client invocation.
@@ -69,7 +69,7 @@ func (e *Env) OutboxDir() string { return filepath.Join(e.Dirs.State.Path, "outb
 
 // Meta is the envelope data common to the records of this slot.
 func (e *Env) Meta(term *record.Term) record.Meta {
-	m := record.Meta{Machine: e.Machine.ID, Slot: e.Slot.Name, Term: term, Client: "sy/" + version.Version}
+	m := record.Meta{Machine: e.Machine.ID, Slot: e.Slot.Name, Term: term, Client: "wy/" + version.Version}
 	if e.Login.HasSeat {
 		s := e.Login.Seat
 		m.Seat = &record.Seat{Account: s.Account, Org: s.Org, Email: s.Email, Src: s.Src}

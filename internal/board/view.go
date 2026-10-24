@@ -31,7 +31,7 @@ const (
 	HubLive     = "live"
 	HubOffline  = "offline"
 	HubNone     = "none"     // no hub.url
-	HubUnpaired = "unpaired" // hub.url but no usable board token: "run `sy board connect`"
+	HubUnpaired = "unpaired" // hub.url but no usable board token: "run `wy board connect`"
 )
 
 // Row glyphs (Row.Glyph): what the renderers draw (● ▲ ○ ■, or * ! o x with --ascii).
@@ -63,7 +63,7 @@ const (
 )
 
 // View is the whole board at one moment: one JSON object, one NDJSON line of
-// `sy board --follow --ndjson`, the value of `sy board --once --json`, and what the pane mod
+// `wy board --follow --ndjson`, the value of `wy board --once --json`, and what the pane mod
 // keeps in one atom. JSON tags are fixed by T2.
 type View struct {
 	V           int       `json:"v"`
@@ -127,7 +127,7 @@ type Window struct {
 
 // Row is one session. Every string in it has passed T2's text safety (no C0/C1 controls,
 // no ESC, no bidi overrides), so a renderer may print it raw. The focus URL itself is never
-// here: CanFocus only says `sy term focus --session <id>` will find one (T7).
+// here: CanFocus only says `wy term focus --session <id>` will find one (T7).
 type Row struct {
 	ID string `json:"id"`
 	// State and Detail are the states.md state and detail.

@@ -16,7 +16,7 @@
     "id": "00000000000000000000000000000001",
     "focus_url": "warp://session/00000000000000000000000000000001"
   },
-  "client": "sy/dev",
+  "client": "wy/dev",
   "redacted": [
     "last_assistant_message",
     "session_crons",

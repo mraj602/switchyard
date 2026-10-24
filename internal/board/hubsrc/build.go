@@ -3,7 +3,7 @@ package hubsrc
 import (
 	"time"
 
-	"github.com/mraj602/switchyard/internal/board"
+	"github.com/mraj602/watchyard/internal/board"
 )
 
 // BuildInput is what a hub snapshot builder is given: the hub's reads, in the hub's order.

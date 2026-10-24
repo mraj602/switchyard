@@ -1,5 +1,5 @@
 // An HTTP fake of claude.ai for unit, smoke and e2e tests (docs/spec/desktop.md C5). It never
-// talks to the real claude.ai. Point the app at it with SY_APP_TEST_CLAUDE_ORIGIN=<origin>.
+// talks to the real claude.ai. Point the app at it with WY_APP_TEST_CLAUDE_ORIGIN=<origin>.
 //
 //   const fake = await startFakeClaude({ orgs: 2 });
 //   fake.origin            // http://127.0.0.1:<port>

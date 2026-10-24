@@ -12,7 +12,7 @@ func (e Env) List(all bool) (entries []ListEntry, asked bool, rf *Refusal) {
 	case rf.Code == CodeNotASession && all:
 		// A terminal: every session, no asking session.
 	case rf.Code == CodeNotASession:
-		return nil, false, Refuse(CodeNotASession, "sy peers list works inside a Claude Code session; at a terminal use --all")
+		return nil, false, Refuse(CodeNotASession, "wy peers list works inside a Claude Code session; at a terminal use --all")
 	default:
 		return nil, false, rf
 	}

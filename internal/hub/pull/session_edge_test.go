@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/client"
-	"github.com/mraj602/switchyard/internal/drainproto"
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	"github.com/mraj602/switchyard/internal/hub/pull"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/drainproto"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	"github.com/mraj602/watchyard/internal/hub/pull"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // A store error while checking the target is not "refuse disabled".

@@ -72,34 +72,34 @@ func TestFakePluginSemantics(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(mkt, ".claude-plugin"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(mkt, ".claude-plugin", "marketplace.json"), []byte(`{"name":"sy-local"}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(mkt, ".claude-plugin", "marketplace.json"), []byte(`{"name":"wy-local"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	// install before the marketplace exists fails
-	if _, err := f.PluginInstall(ctx, owner, "switchyard@sy-local"); err == nil {
+	if _, err := f.PluginInstall(ctx, owner, "watchyard@wy-local"); err == nil {
 		t.Fatal("install without marketplace succeeded")
 	}
 	if r, err := f.PluginMarketplaceAdd(ctx, owner, mkt); err != nil || !r.OK() {
 		t.Fatal(r, err)
 	}
-	if got := f.Marketplaces(linked.Dir); !reflect.DeepEqual(got, []string{"sy-local"}) {
+	if got := f.Marketplaces(linked.Dir); !reflect.DeepEqual(got, []string{"wy-local"}) {
 		t.Fatalf("marketplaces via shared root = %v", got)
 	}
-	if _, err := f.PluginInstall(ctx, owner, "switchyard@sy-local"); err != nil {
+	if _, err := f.PluginInstall(ctx, owner, "watchyard@wy-local"); err != nil {
 		t.Fatal(err)
 	}
-	if !f.Enabled(owner.Dir, "switchyard@sy-local") || !f.Enabled(shared.Dir, "switchyard@sy-local") {
+	if !f.Enabled(owner.Dir, "watchyard@wy-local") || !f.Enabled(shared.Dir, "watchyard@wy-local") {
 		t.Fatal("not enabled in the owner's settings target (and the folder sharing it)")
 	}
-	if f.Enabled(linked.Dir, "switchyard@sy-local") {
+	if f.Enabled(linked.Dir, "watchyard@wy-local") {
 		t.Fatal("a folder with its own settings must not be enabled by someone else's install")
 	}
 	if got := f.Installed(linked.Dir); len(got) != 1 {
 		t.Fatalf("installed via shared root = %v", got)
 	}
 	// Enable in the folder with its own settings.
-	if _, err := f.PluginEnable(ctx, linked, "switchyard@sy-local"); err != nil || !f.Enabled(linked.Dir, "switchyard@sy-local") {
+	if _, err := f.PluginEnable(ctx, linked, "watchyard@wy-local"); err != nil || !f.Enabled(linked.Dir, "watchyard@wy-local") {
 		t.Fatal(err)
 	}
 	list, _ := f.PluginList(ctx, linked)
@@ -107,26 +107,26 @@ func TestFakePluginSemantics(t *testing.T) {
 		t.Fatalf("%+v", list)
 	}
 	// Uninstall from one folder removes the record for all; enabledPlugins stay.
-	if _, err := f.PluginUninstall(ctx, linked, "switchyard@sy-local"); err != nil {
+	if _, err := f.PluginUninstall(ctx, linked, "watchyard@wy-local"); err != nil {
 		t.Fatal(err)
 	}
 	if len(f.Installed(owner.Dir)) != 0 || len(f.Installed(shared.Dir)) != 0 {
 		t.Fatal("record not removed for every folder sharing the root")
 	}
-	if !f.Enabled(owner.Dir, "switchyard@sy-local") {
+	if !f.Enabled(owner.Dir, "watchyard@wy-local") {
 		t.Fatal("enabledPlugins must survive an uninstall")
 	}
-	if _, err := f.PluginEnable(ctx, linked, "switchyard@sy-local"); err == nil {
+	if _, err := f.PluginEnable(ctx, linked, "watchyard@wy-local"); err == nil {
 		t.Fatal("enable of an uninstalled plugin succeeded")
 	}
-	if _, err := f.PluginMarketplaceRemove(ctx, owner, "sy-local"); err != nil {
+	if _, err := f.PluginMarketplaceRemove(ctx, owner, "wy-local"); err != nil {
 		t.Fatal(err)
 	}
 	if len(f.Marketplaces(owner.Dir)) != 0 {
 		t.Fatal("marketplace not removed")
 	}
 	// removing it again is "already done", as with the real claude
-	if res, err := f.PluginMarketplaceRemove(ctx, owner, "sy-local"); err != nil || !res.AlreadyInGoalState || !res.OK() {
+	if res, err := f.PluginMarketplaceRemove(ctx, owner, "wy-local"); err != nil || !res.AlreadyInGoalState || !res.OK() {
 		t.Fatalf("second remove: %+v %v", res, err)
 	}
 }

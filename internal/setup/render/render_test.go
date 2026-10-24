@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/setup/detect/detecttest"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/plan"
-	"github.com/mraj602/switchyard/internal/setup/render"
+	"github.com/mraj602/watchyard/internal/setup/detect/detecttest"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/plan"
+	"github.com/mraj602/watchyard/internal/setup/render"
 )
 
 func specBlock(t *testing.T) string {
@@ -20,7 +20,7 @@ func specBlock(t *testing.T) string {
 		t.Fatal(err)
 	}
 	s := string(b)
-	i := strings.Index(s, "sy setup — plan (dry run: nothing changed)")
+	i := strings.Index(s, "wy setup — plan (dry run: nothing changed)")
 	if i < 0 {
 		t.Fatal("block not found in setup.md")
 	}

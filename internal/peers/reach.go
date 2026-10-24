@@ -4,22 +4,22 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 // CertFix is what the owner does when messages between machines are refused because link
-// keys are not owner-certified (keys.md 3.3, 4.2): it is said in `sy peers list`, in the
-// refusal line of `sy peers send` and by `sy doctor`, so the person reading any of them knows
+// keys are not owner-certified (keys.md 3.3, 4.2): it is said in `wy peers list`, in the
+// refusal line of `wy peers send` and by `wy doctor`, so the person reading any of them knows
 // the next step. The commands need a terminal (the signing guard refuses them inside Claude
 // Code).
-const CertFix = "the owner certifies the machines in a terminal on the owner machine: sy keys init (once, when " +
-	"sy keys status shows no owner key), confirm it (board Settings → Keys, or sy hub keys confirm-owner on the hub " +
-	"machine), then sy keys certify --all; every other machine then runs sy agent enable to pin the owner key"
+const CertFix = "the owner certifies the machines in a terminal on the owner machine: wy keys init (once, when " +
+	"wy keys status shows no owner key), confirm it (board Settings → Keys, or wy hub keys confirm-owner on the hub " +
+	"machine), then wy keys certify --all; every other machine then runs wy agent enable to pin the owner key"
 
 // AccountsFix is what the owner does when a machine's accounts are not bound to it
 // (unbound_account, keys.md 4.3): the same terminal-only command that certifies machines.
-const AccountsFix = "the owner binds each machine's accounts in a terminal on the owner machine: sy keys certify --all " +
-	"(it lists the accounts the hub sees on each machine; compare them with sy keys status on that machine)"
+const AccountsFix = "the owner binds each machine's accounts in a terminal on the owner machine: wy keys certify --all " +
+	"(it lists the accounts the hub sees on each machine; compare them with wy keys status on that machine)"
 
 // UnboundLine is the refusal detail of a message whose sender account the owner has not bound
 // to its machine, at the hub or at the receiver.

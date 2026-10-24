@@ -18,11 +18,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/api"
-	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
-	"github.com/mraj602/switchyard/internal/hub/pair"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/hub/api"
+	hubkeys "github.com/mraj602/watchyard/internal/hub/keys"
+	"github.com/mraj602/watchyard/internal/hub/pair"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 type keysHub struct {

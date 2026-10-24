@@ -85,7 +85,7 @@ export const TURNS_MIN = 2;
 export const TURNS_MAX = 500;
 // The number the field offers when the limit is off and someone unticks "No limit".
 export const TURNS_SUGGEST = 30;
-export const TURNS_HELP = 'When two sessions message each other on their own, with no one typing, Switchyard stops delivering after this many messages, so two agents cannot keep replying to each other forever. Typing in either session (or Resume thread) starts the count again.';
+export const TURNS_HELP = 'When two sessions message each other on their own, with no one typing, Watchyard stops delivering after this many messages, so two agents cannot keep replying to each other forever. Typing in either session (or Resume thread) starts the count again.';
 export const NO_LIMIT_HELP = 'No limit lets agents keep talking with no one watching; the other limits still apply.';
 
 // max_turns in words: "no limit" for 0, else the number.

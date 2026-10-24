@@ -8,11 +8,11 @@ plugins {
   id 'expo-module-gradle-plugin'
 }
 
-group = 'dev.switchyard'
+group = 'dev.watchyard'
 version = '0.1.0'
 
 android {
-  namespace 'dev.switchyard.notify'
+  namespace 'dev.watchyard.notify'
   defaultConfig {
     versionCode 1
     versionName '0.1.0'

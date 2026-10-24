@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// installed puts the unit file where Status looks for it, as `sy setup --hub here` would.
+// installed puts the unit file where Status looks for it, as `wy setup --hub here` would.
 func installed(t *testing.T, goos string) (*Service, *rec) {
 	t.Helper()
 	home := t.TempDir()
@@ -35,14 +35,14 @@ func TestStartStopCommands(t *testing.T) {
 		start, stop []string
 	}{
 		{"linux",
-			[]string{"systemctl --user is-active switchyard-hub.service", "loginctl show-user alice --property=Linger", "systemctl --user start switchyard-hub.service"},
-			[]string{"systemctl --user is-active switchyard-hub.service", "loginctl show-user alice --property=Linger", "systemctl --user stop switchyard-hub.service"}},
+			[]string{"systemctl --user is-active watchyard-hub.service", "loginctl show-user alice --property=Linger", "systemctl --user start watchyard-hub.service"},
+			[]string{"systemctl --user is-active watchyard-hub.service", "loginctl show-user alice --property=Linger", "systemctl --user stop watchyard-hub.service"}},
 		{"darwin",
-			[]string{"launchctl print gui/1000/com.switchyard.hub", "launchctl kickstart gui/1000/com.switchyard.hub"},
-			[]string{"launchctl print gui/1000/com.switchyard.hub", "launchctl bootout gui/1000/com.switchyard.hub"}},
+			[]string{"launchctl print gui/1000/com.watchyard.hub", "launchctl kickstart gui/1000/com.watchyard.hub"},
+			[]string{"launchctl print gui/1000/com.watchyard.hub", "launchctl bootout gui/1000/com.watchyard.hub"}},
 		{"windows",
-			[]string{`schtasks /Query /TN Switchyard Hub`, `schtasks /Run /TN Switchyard Hub`},
-			[]string{`schtasks /Query /TN Switchyard Hub`, `schtasks /End /TN Switchyard Hub`}},
+			[]string{`schtasks /Query /TN Watchyard Hub`, `schtasks /Run /TN Watchyard Hub`},
+			[]string{`schtasks /Query /TN Watchyard Hub`, `schtasks /End /TN Watchyard Hub`}},
 	}
 	for _, c := range cases {
 		for _, start := range []bool{true, false} {
@@ -84,8 +84,8 @@ func TestStartDarwinBootstrapsWhenNotLoaded(t *testing.T) {
 		t.Fatal(err)
 	}
 	plist := UnitPath(svc.Env, spec)
-	want := []string{"launchctl print gui/1000/com.switchyard.hub", "launchctl kickstart gui/1000/com.switchyard.hub",
-		"launchctl bootstrap gui/1000 " + plist, "launchctl kickstart gui/1000/com.switchyard.hub"}
+	want := []string{"launchctl print gui/1000/com.watchyard.hub", "launchctl kickstart gui/1000/com.watchyard.hub",
+		"launchctl bootstrap gui/1000 " + plist, "launchctl kickstart gui/1000/com.watchyard.hub"}
 	if got := r.lines(); !reflect.DeepEqual(got, want) {
 		t.Errorf("got %q\nwant %q", got, want)
 	}
@@ -122,7 +122,7 @@ func TestStartFailureIsReported(t *testing.T) {
 }
 
 func TestUnitName(t *testing.T) {
-	for goos, want := range map[string]string{"linux": "switchyard-hub.service", "darwin": "com.switchyard.hub", "windows": "Switchyard Hub"} {
+	for goos, want := range map[string]string{"linux": "watchyard-hub.service", "darwin": "com.watchyard.hub", "windows": "Watchyard Hub"} {
 		if got := UnitName(goos, ""); got != want {
 			t.Errorf("%s: %q, want %q", goos, got, want)
 		}

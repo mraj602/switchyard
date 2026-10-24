@@ -9,12 +9,12 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/atomicfile"
 )
 
 // authorized_keys for pull mode (machines.md 3.4, remote side):
 //
-//	restrict,command="/home/me/.local/bin/sy outbox drain --stdio" ssh-ed25519 AAAA… switchyard-pull@hub-host sy-pull:pt_01JA…
+//	restrict,command="/home/me/.local/bin/wy outbox drain --stdio" ssh-ed25519 AAAA… watchyard-pull@hub-host sy-pull:pt_01JA…
 //
 // The trailing `sy-pull:<target id>` finds the line again. A line with the same key (or the
 // same marker) is replaced; any other line is never touched, byte for byte.
@@ -37,8 +37,8 @@ var (
 )
 
 // PullKeyLine builds the authorized_keys line. pub is the hub's public key line ("<type>
-// <base64> [comment]"), sy the absolute path of the installed sy, from a CIDR list or "".
-func PullKeyLine(pub, sy, target, from string, restrict bool) (line string, key string, err error) {
+// <base64> [comment]"), wy the absolute path of the installed wy, from a CIDR list or "".
+func PullKeyLine(pub, wy, target, from string, restrict bool) (line string, key string, err error) {
 	f := strings.Fields(pub)
 	if len(f) < 2 || !keyType.MatchString(f[0]) || !b64Re.MatchString(f[1]) {
 		return "", "", errors.New("--key-stdin: not an SSH public key line")
@@ -46,8 +46,8 @@ func PullKeyLine(pub, sy, target, from string, restrict bool) (line string, key 
 	if !targetRe.MatchString(target) {
 		return "", "", fmt.Errorf("--target: %q is not a pull target id (pt_...)", target)
 	}
-	if !filepath.IsAbs(sy) || !syPathRe.MatchString(sy) {
-		return "", "", fmt.Errorf("the sy path %q cannot go in a forced command", sy)
+	if !filepath.IsAbs(wy) || !syPathRe.MatchString(wy) {
+		return "", "", fmt.Errorf("the wy path %q cannot go in a forced command", wy)
 	}
 	if from != "" && !cidrRe.MatchString(from) {
 		return "", "", fmt.Errorf("--from: %q is not a list of addresses or CIDRs", from)
@@ -59,7 +59,7 @@ func PullKeyLine(pub, sy, target, from string, restrict bool) (line string, key 
 	if from != "" {
 		opts += `,from="` + from + `"`
 	}
-	opts += `,command="` + sy + ` outbox drain --stdio"`
+	opts += `,command="` + wy + ` outbox drain --stdio"`
 	comment := ""
 	if len(f) >= 3 {
 		c := strings.Join(f[2:], " ")

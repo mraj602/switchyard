@@ -1,8 +1,8 @@
-// Fixture for scripts/pane-check.sh --self-test: a program other than sy, hidden behind an
+// Fixture for scripts/pane-check.sh --self-test: a program other than wy, hidden behind an
 // alias of $.process. pane-check.sh must fail on it.
 import type { Register } from 'claude-code'
 
-const SY = "/usr/local/bin/sy"
+const SY = "/usr/local/bin/wy"
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {

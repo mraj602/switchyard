@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // Device kinds and their token letters and scopes (tokens.md 1 and 3).
@@ -117,7 +117,7 @@ func LooksLikeToken(s string) bool {
 	return true
 }
 
-// CreateRequest is `sy hub token create`.
+// CreateRequest is `wy hub token create`.
 type CreateRequest struct {
 	Kind, Name, Machine string
 	CreatedBy           string   // "cli" by default
@@ -239,7 +239,7 @@ func Create(ctx context.Context, s *store.Store, req CreateRequest) (Created, er
 	return p.Created, nil
 }
 
-// Find resolves a device by id, token hint or name (`sy hub token revoke`). Only devices
+// Find resolves a device by id, token hint or name (`wy hub token revoke`). Only devices
 // not yet revoked match a hint or a name.
 func Find(ctx context.Context, s *store.Store, q string) ([]store.Device, error) {
 	if d, err := s.DeviceByID(ctx, q); err == nil {

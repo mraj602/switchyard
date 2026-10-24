@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/sshx"
+	"github.com/mraj602/watchyard/internal/sshx"
 )
 
 // ManageEnv is what remove, repoint and list need.
@@ -38,7 +38,7 @@ func (e *ManageEnv) emit(step, status, text string) {
 	}
 }
 
-// RemoveOptions are the flags of `sy machine remove`.
+// RemoveOptions are the flags of `wy machine remove`.
 type RemoveOptions struct {
 	Revoke     bool
 	KeepRemote bool
@@ -55,9 +55,9 @@ type RemoveResult struct {
 	Next       string   `json:"next"`
 }
 
-// Remove is `sy machine remove <name>` (4.5): the forward block, the remote's
+// Remove is `wy machine remove <name>` (4.5): the forward block, the remote's
 // authorized_keys line and the pull target, the registry entry; with Revoke the machine's
-// devices on the hub. The remote's sy, outbox and Claude folders stay.
+// devices on the hub. The remote's wy, outbox and Claude folders stay.
 func Remove(ctx context.Context, name string, o RemoveOptions, e *ManageEnv) (RemoveResult, error) {
 	reg, err := LoadRegistry(e.StateDir)
 	if err != nil {
@@ -65,14 +65,14 @@ func Remove(ctx context.Context, name string, o RemoveOptions, e *ManageEnv) (Re
 	}
 	ent, ok := reg.Find(name)
 	if !ok {
-		return RemoveResult{}, exitf(ExitUsage, "%s is not in %s (sy machine list)", name, RegistryPath(e.StateDir))
+		return RemoveResult{}, exitf(ExitUsage, "%s is not in %s (wy machine list)", name, RegistryPath(e.StateDir))
 	}
 	res := RemoveResult{Name: ent.Name, Next: fmt.Sprintf("ssh %s %s uninstall", ent.SSH, RemoteSy)}
 	warn := func(s string) {
 		res.Warnings = append(res.Warnings, s)
 		e.emit("remove", "warn", s)
 	}
-	// A block for this machine id in switchyard.conf is sy's own (a forward the person's own
+	// A block for this machine id in watchyard.conf is wy's own (a forward the person's own
 	// config had is never written there), so it goes whatever the entry's adopted flag says.
 	if ent.ForwardSet != "" || ent.Reach == ReachForward {
 		changed, err := RemoveForward(e.Home, e.StateDir, ent.Machine, ent.ForwardSet, e.Command, e.now())
@@ -81,7 +81,7 @@ func Remove(ctx context.Context, name string, o RemoveOptions, e *ManageEnv) (Re
 		}
 		res.Forward = changed
 		if changed {
-			e.emit("forward", "ok", "removed the forward block for "+ent.Name+" from ~/.ssh/switchyard.conf")
+			e.emit("forward", "ok", "removed the forward block for "+ent.Name+" from ~/.ssh/watchyard.conf")
 		}
 	}
 	if ent.PullTarget != "" && !o.KeepRemote && e.SSH != nil {
@@ -119,7 +119,7 @@ func Remove(ctx context.Context, name string, o RemoveOptions, e *ManageEnv) (Re
 			}
 		}
 	} else if ent.PullTarget != "" || o.Revoke {
-		warn("no admin channel: remove it on the hub with sy hub pull remove / sy hub token revoke")
+		warn("no admin channel: remove it on the hub with wy hub pull remove / wy hub token revoke")
 	}
 	reg.Remove(ent.Name)
 	if err := reg.Save(); err != nil {
@@ -129,14 +129,14 @@ func Remove(ctx context.Context, name string, o RemoveOptions, e *ManageEnv) (Re
 	return res, nil
 }
 
-// RepointRow is one machine's answer to `sy machine repoint`.
+// RepointRow is one machine's answer to `wy machine repoint`.
 type RepointRow struct {
 	Name   string `json:"name"`
 	Status string `json:"status"` // ok, skip, fail
 	Detail string `json:"detail,omitempty"`
 }
 
-// Repoint is `sy machine repoint <url>` (4.5, 8.3): `sy connect <url> --keep-token` on each
+// Repoint is `wy machine repoint <url>` (4.5, 8.3): `wy connect <url> --keep-token` on each
 // registered direct and forward machine, 4 at a time. which is nil for all.
 func Repoint(ctx context.Context, url string, which []string, e *ManageEnv) ([]RepointRow, error) {
 	if err := sshx.CheckWord(url); err != nil {
@@ -217,7 +217,7 @@ func repointOne(ctx context.Context, url string, ent Entry, e *ManageEnv) (Entry
 	var oldBlock *Forward
 	if ent.Reach == ReachForward {
 		if ent.Port == 0 && ent.Socket == "" {
-			return ent, errors.New("the registry has no forward port for this machine: run sy machine add again")
+			return ent, errors.New("the registry has no forward port for this machine: run wy machine add again")
 		}
 		target, err := hostPortOf(url)
 		if err != nil {
@@ -235,7 +235,7 @@ func repointOne(ctx context.Context, url string, ent Entry, e *ManageEnv) (Entry
 		words = append(words, "--reach", ReachForward)
 		upd.HubURL, upd.ForwardTarget = remoteURL, target
 		if _, _, owned := OwnedForward(e.Home, ent.Machine); owned && ent.ForwardTarget != target {
-			// The block is sy's: point it at the new hub before the remote connects through it.
+			// The block is wy's: point it at the new hub before the remote connects through it.
 			old := f
 			old.Target = ent.ForwardTarget
 			oldBlock = &old
@@ -299,7 +299,7 @@ type ListRow struct {
 	HubErr  string      `json:"hub_error,omitempty"`
 }
 
-// List is `sy machine list` (4.5): the registry, with each machine's hub view when the admin
+// List is `wy machine list` (4.5): the registry, with each machine's hub view when the admin
 // channel answers.
 func List(ctx context.Context, e *ManageEnv) ([]ListRow, error) {
 	reg, err := LoadRegistry(e.StateDir)
@@ -316,7 +316,7 @@ func List(ctx context.Context, e *ManageEnv) ([]ListRow, error) {
 			switch {
 			case errors.As(err, &ae) && ae.NotImplemented():
 				unsupported = true
-				row.HubErr = "the hub's sy cannot show machines yet"
+				row.HubErr = "the hub's wy cannot show machines yet"
 			case err != nil:
 				row.HubErr = err.Error()
 			default:

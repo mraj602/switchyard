@@ -1,5 +1,5 @@
 // Web usage reading (C5): reader, scheduler, backoff and stop, warning acceptance,
-// records (shared/record.js) published through sy.append / sy.flushSoon, local strip windows
+// records (shared/record.js) published through wy.append / wy.flushSoon, local strip windows
 // (shared/usage.js), the usage:* handlers and the usage bus event.
 //
 // Contract: docs/spec/desktop.md C5.
@@ -25,19 +25,19 @@ const realClock = {
 };
 
 /**
- * @param {{tabs: object, sy: object, store: object, bus: object, ipc: object, log: object,
+ * @param {{tabs: object, wy: object, store: object, bus: object, ipc: object, log: object,
  *          clientVersion: string, cadenceMs?: number, clock?: object, random?: () => number,
  *          claudeOrigin?: string, readerTimeoutMs?: number}} deps
- *   sy: only append(records), flushSoon() and machineId() are used (main/sy/index.js)
+ *   wy: only append(records), flushSoon() and machineId() are used (main/wy/index.js)
  * @returns {{
  *   start(): void,
  *   refresh(id?: string): Promise<void>,   // manual read (usage:refresh, tray Refresh usage)
  *   pauseAll(): Promise<void>,             // every tab off (tray Pause all reading)
- *   stop(): Promise<void>,                 // cancel timers; wait ≤ 5 s for the last sy.append
+ *   stop(): Promise<void>,                 // cancel timers; wait ≤ 5 s for the last wy.append
  * }}
  */
 export function create(deps) {
-  const { tabs, sy, store, bus, ipc, log } = deps;
+  const { tabs, wy, store, bus, ipc, log } = deps;
   const clock = deps.clock ?? realClock;
   const claudeOrigin = deps.claudeOrigin ?? CLAUDE_ORIGIN;
   const client = clientOf(deps.clientVersion);
@@ -108,28 +108,28 @@ export function create(deps) {
   async function getMachine() {
     if (machine) return machine;
     try {
-      machine = (await sy.machineId()) || null;
+      machine = (await wy.machineId()) || null;
     } catch (err) {
-      log.warn?.('usage: sy machine id failed:', err?.message ?? err);
+      log.warn?.('usage: wy machine id failed:', err?.message ?? err);
     }
     return machine;
   }
 
-  /** Append records through sy; the ids must match in count, else a failure that is not retried. */
+  /** Append records through wy; the ids must match in count, else a failure that is not retried. */
   async function publish(records, id) {
     if (!records.length) return;
     let res;
     try {
-      res = await sy.append(records);
+      res = await wy.append(records);
     } catch (err) {
-      log.warn?.(`usage: ${id}: sy outbox append failed:`, err?.message ?? err);
+      log.warn?.(`usage: ${id}: wy outbox append failed:`, err?.message ?? err);
       return;
     }
     if (!res?.ok || !Array.isArray(res.ids) || res.ids.length !== records.length) {
-      log.warn?.(`usage: ${id}: sy outbox append failed (${res?.error ?? `got ${res?.ids?.length ?? 0} ids for ${records.length} records`}); not retried`);
+      log.warn?.(`usage: ${id}: wy outbox append failed (${res?.error ?? `got ${res?.ids?.length ?? 0} ids for ${records.length} records`}); not retried`);
       return;
     }
-    sy.flushSoon();
+    wy.flushSoon();
   }
 
   async function readOnce(id, ctx) {
@@ -172,7 +172,7 @@ export function create(deps) {
     // Only the orgs that make a seat: never a free personal org beside a paid one (chooseOrgs).
     const { report, pick } = chooseOrgs(res.orgs, res.activeOrg, fresh?.seat ?? null, res.account.uuid);
     const records = send && m ? buildRecords({ orgs: report, account: res.account, activeOrg: res.activeOrg, fetchMs: res.fetchMs, tabId: id, machine: m, client, ts }) : [];
-    const done = publish(records, id); // synchronous up to sy.append
+    const done = publish(records, id); // synchronous up to wy.append
     track(done);
     f.lastRead = ts;
     f.seats = seatsOf(report, res.account, res.activeOrg);

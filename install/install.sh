@@ -1,34 +1,34 @@
 #!/bin/sh
-# Switchyard installer (docs/spec/setup.md 1.2).
+# Watchyard installer (docs/spec/setup.md 1.2).
 #
-#   curl -fsSL https://github.com/mraj602/switchyard/releases/latest/download/install.sh | sh
-#   curl -fsSL .../install.sh | sh -s -- [--version 0.3.0] [--bin-dir DIR] [--no-setup] [-- <sy setup args>]
+#   curl -fsSL https://github.com/mraj602/watchyard/releases/latest/download/install.sh | sh
+#   curl -fsSL .../install.sh | sh -s -- [--version 0.3.0] [--bin-dir DIR] [--no-setup] [-- <wy setup args>]
 #
-# Puts a checksum-verified `sy` in ~/.local/bin and nothing else: no shell profile, no PATH,
-# no Claude folder. Then runs `sy setup` when a terminal is available, unless --no-setup.
+# Puts a checksum-verified `wy` in ~/.local/bin and nothing else: no shell profile, no PATH,
+# no Claude folder. Then runs `wy setup` when a terminal is available, unless --no-setup.
 # When the gh CLI is installed it also verifies the archive's build attestation (who built it);
 # without gh only the checksum is checked, which shows the download is intact but not its origin.
 #
 # Exit codes: 0 ok, 2 unsupported or usage, 3 verification failed, 4 download failed.
-# Environment: SY_INSTALL_BASE_URL (mirror/tests; https, or http on a loopback host only),
-# SY_VERIFY_ATTESTATION=1 (fail when gh is missing) or =0 (do not check the attestation).
+# Environment: WY_INSTALL_BASE_URL (mirror/tests; https, or http on a loopback host only),
+# WY_VERIFY_ATTESTATION=1 (fail when gh is missing) or =0 (do not check the attestation).
 set -eu
 
 OWNER=mraj602
-REPO=switchyard
+REPO=watchyard
 # The repository's name before a rename: releases from before it were attested under that name
 # (docs/spec/rename.md 2.7). Equal to REPO when there was no rename.
 LEGACY_REPO=switchyard # rename:keep
 # The command's name before a rename (rename.md 2.13): its variables still apply, and its
-# binary in the same folder becomes a link to the new one. Equal to sy when there was none.
+# binary in the same folder becomes a link to the new one. Equal to wy when there was none.
 LEGACY_CLI=sy # rename:keep
-if [ "$LEGACY_CLI" != sy ]; then
+if [ "$LEGACY_CLI" != wy ]; then
 	for v in INSTALL_BASE_URL VERIFY_ATTESTATION; do
 		old=$(printf '%s' "$LEGACY_CLI" | tr '[:lower:]' '[:upper:]')_$v
-		eval "if [ -z \"\${SY_$v:-}\" ] && [ -n \"\${$old:-}\" ]; then SY_$v=\"\$$old\"; fi"
+		eval "if [ -z \"\${WY_$v:-}\" ] && [ -n \"\${$old:-}\" ]; then WY_$v=\"\$$old\"; fi"
 	done
 fi
-BASE=${SY_INSTALL_BASE_URL:-https://github.com/$OWNER/$REPO/releases}
+BASE=${WY_INSTALL_BASE_URL:-https://github.com/$OWNER/$REPO/releases}
 BASE=${BASE%/}
 
 say() { printf '%s\n' "$*"; }
@@ -37,11 +37,11 @@ die() { code=$1; shift; err "$*"; exit "$code"; }
 
 usage() {
 	cat <<'USAGE'
-usage: install.sh [--version VER] [--bin-dir DIR] [--no-setup] [-- <sy setup args>]
+usage: install.sh [--version VER] [--bin-dir DIR] [--no-setup] [-- <wy setup args>]
   --version VER   install this version (with or without a leading v); default: latest
   --bin-dir DIR   install into DIR (default: $HOME/.local/bin)
-  --no-setup      only install sy; do not run `sy setup`
-  --              everything after goes to `sy setup`
+  --no-setup      only install wy; do not run `wy setup`
+  --              everything after goes to `wy setup`
 USAGE
 }
 
@@ -93,7 +93,7 @@ case $BASE in
 	https://*) ;;
 	http://*)
 		auth=${BASE#http://}; auth=${auth%%/*}
-		case $auth in *@*) die 2 "SY_INSTALL_BASE_URL must not carry credentials" ;; esac
+		case $auth in *@*) die 2 "WY_INSTALL_BASE_URL must not carry credentials" ;; esac
 		host=${auth%%:*}
 		case $auth in "["*) host=${auth%%]*}"]" ;; esac
 		ok=0
@@ -101,9 +101,9 @@ case $BASE in
 			localhost|"[::1]") ok=1 ;;
 			127.*[0-9]) case $host in *[!0-9.]*) ;; *) ok=1 ;; esac ;;
 		esac
-		[ "$ok" = 1 ] || die 2 "SY_INSTALL_BASE_URL must be https (http is allowed only for a loopback host)"
+		[ "$ok" = 1 ] || die 2 "WY_INSTALL_BASE_URL must be https (http is allowed only for a loopback host)"
 		loopback_http=1 ;;
-	*) die 2 "SY_INSTALL_BASE_URL must be an https URL" ;;
+	*) die 2 "WY_INSTALL_BASE_URL must be an https URL" ;;
 esac
 
 # 3. Downloader: https only (no downgrade by redirect), TLS 1.2 or newer.
@@ -145,13 +145,13 @@ fetch "$dl/SHA256SUMS" "$tmp/SHA256SUMS" || die 4 "download failed: $dl/SHA256SU
 if [ "$version" = latest ]; then
 	archive=$(awk -v suffix="_${os}_${arch}.tar.gz" '
 		{ n = $2; sub(/^\*/, "", n) }
-		n ~ /^sy_/ && substr(n, length(n) - length(suffix) + 1) == suffix { print n; exit }
+		n ~ /^wy_/ && substr(n, length(n) - length(suffix) + 1) == suffix { print n; exit }
 	' "$tmp/SHA256SUMS")
 	[ -n "$archive" ] || die 3 "SHA256SUMS lists no archive for ${os}_${arch}"
-	version=${archive#sy_}
+	version=${archive#wy_}
 	version=${version%"_${os}_${arch}.tar.gz"}
 else
-	archive=sy_${version}_${os}_${arch}.tar.gz
+	archive=wy_${version}_${os}_${arch}.tar.gz
 fi
 
 fetch "$dl/$archive" "$tmp/$archive" || die 4 "download failed: $dl/$archive"
@@ -173,45 +173,45 @@ fi
 # which a checksum from the same release cannot. Checked whenever gh is installed.
 proof="checksum ok"
 note=
-case ${SY_VERIFY_ATTESTATION:-} in
-	0) note="build attestation not checked (SY_VERIFY_ATTESTATION=0); the checksum shows the download is intact, not who built it" ;;
+case ${WY_VERIFY_ATTESTATION:-} in
+	0) note="build attestation not checked (WY_VERIFY_ATTESTATION=0); the checksum shows the download is intact, not who built it" ;;
 	*)
 		if command -v gh >/dev/null 2>&1; then
 			{ gh attestation verify "$tmp/$archive" --repo "$OWNER/$REPO" \
 				--signer-workflow "$OWNER/$REPO/.github/workflows/release.yml" >/dev/null 2>&1 ||
 				{ [ "$LEGACY_REPO" != "$REPO" ] && gh attestation verify "$tmp/$archive" --repo "$OWNER/$LEGACY_REPO" \
 					--signer-workflow "$OWNER/$LEGACY_REPO/.github/workflows/release.yml" >/dev/null 2>&1; }; } ||
-				die 3 "attestation verification failed for $archive; nothing installed (gh must be signed in and reach github.com; SY_VERIFY_ATTESTATION=0 skips this check)"
+				die 3 "attestation verification failed for $archive; nothing installed (gh must be signed in and reach github.com; WY_VERIFY_ATTESTATION=0 skips this check)"
 			proof="checksum ok, build attestation ok"
-		elif [ "${SY_VERIFY_ATTESTATION:-}" = 1 ]; then
-			die 3 "SY_VERIFY_ATTESTATION=1 needs the gh CLI, which is not installed; nothing installed"
+		elif [ "${WY_VERIFY_ATTESTATION:-}" = 1 ]; then
+			die 3 "WY_VERIFY_ATTESTATION=1 needs the gh CLI, which is not installed; nothing installed"
 		else
 			note="build attestation not checked because the gh CLI is not installed; the checksum shows the download is intact, not who built it. Install gh (https://cli.github.com) and run the installer again to check it"
 		fi ;;
 esac
 
-# 7. Extract only sy, then replace atomically (a running `sy hook` keeps its old inode).
-tar -xzf "$tmp/$archive" -C "$tmp" sy || die 3 "$archive does not contain sy"
+# 7. Extract only wy, then replace atomically (a running `wy hook` keeps its old inode).
+tar -xzf "$tmp/$archive" -C "$tmp" wy || die 3 "$archive does not contain wy"
 if [ ! -d "$bindir" ]; then # only a folder made here gets a mode; an existing one is left alone
 	mkdir -p "$bindir"
 	chmod 0755 "$bindir" 2>/dev/null || true
 fi
-newfile=$(mktemp "$bindir/.sy.XXXXXX") || die 4 "cannot create a temp file in $bindir"
-cp "$tmp/sy" "$newfile"
+newfile=$(mktemp "$bindir/.wy.XXXXXX") || die 4 "cannot create a temp file in $bindir"
+cp "$tmp/wy" "$newfile"
 chmod 0755 "$newfile"
-mv -f "$newfile" "$bindir/sy"
+mv -f "$newfile" "$bindir/wy"
 newfile=
-if [ "$LEGACY_CLI" != sy ] && [ -f "$bindir/$LEGACY_CLI" ] && [ ! -L "$bindir/$LEGACY_CLI" ]; then
+if [ "$LEGACY_CLI" != wy ] && [ -f "$bindir/$LEGACY_CLI" ] && [ ! -L "$bindir/$LEGACY_CLI" ]; then
 	# Hooks, units and authorized_keys lines written for the old name keep working.
-	ln -sf sy "$bindir/.$LEGACY_CLI.link" && mv -f "$bindir/.$LEGACY_CLI.link" "$bindir/$LEGACY_CLI" &&
-		say "$bindir/$LEGACY_CLI (from before the rename) now links to sy"
+	ln -sf wy "$bindir/.$LEGACY_CLI.link" && mv -f "$bindir/.$LEGACY_CLI.link" "$bindir/$LEGACY_CLI" &&
+		say "$bindir/$LEGACY_CLI (from before the rename) now links to wy"
 fi
 
 # 8. Report. PATH is never edited: print the line to add.
 shown=$bindir
 pathdir=$bindir # for the PATH line: "~" is not expanded inside double quotes, $HOME is
 case $bindir in "$HOME"/*) shown="~${bindir#"$HOME"}"; pathdir="\$HOME${bindir#"$HOME"}" ;; esac
-say "sy $version downloaded, $proof, installed to $shown/sy"
+say "wy $version downloaded, $proof, installed to $shown/wy"
 [ -z "$note" ] || say "note: $note"
 case ":${PATH:-}:" in
 	*":$bindir:"*) ;;
@@ -226,13 +226,13 @@ case ":${PATH:-}:" in
 		;;
 esac
 
-# 9. Hand over to `sy setup` when there is a terminal.
+# 9. Hand over to `wy setup` when there is a terminal.
 if [ "$nosetup" = 1 ]; then
 	exit 0
 fi
 if (: </dev/tty) 2>/dev/null; then
 	trap - EXIT
 	cleanup
-	exec "$bindir/sy" setup "$@" </dev/tty
+	exec "$bindir/wy" setup "$@" </dev/tty
 fi
-say "run: sy setup"
+say "run: wy setup"

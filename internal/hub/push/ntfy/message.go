@@ -10,7 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
 )
 
 // MaxMessageBytes is ntfy's limit for a published message (push.md 7.2).

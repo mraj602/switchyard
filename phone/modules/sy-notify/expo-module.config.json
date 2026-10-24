@@ -1,6 +1,6 @@
 {
   "platforms": ["android"],
   "android": {
-    "modules": ["dev.switchyard.notify.SyNotifyModule"]
+    "modules": ["dev.watchyard.notify.SyNotifyModule"]
   }
 }

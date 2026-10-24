@@ -17,17 +17,17 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/mraj602/switchyard/internal/hub/pair"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/paths"
-	"github.com/mraj602/switchyard/internal/version"
+	"github.com/mraj602/watchyard/internal/hub/pair"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/paths"
+	"github.com/mraj602/watchyard/internal/version"
 )
 
 // ExitRefused is the exit status of an import into a hub that has data (machines.md 8.2).
-// cmd/sy maps a *RefusedError to it.
+// cmd/wy maps a *RefusedError to it.
 const ExitRefused = 5
 
-// RefusedError is an import refusal; cmd/sy exits 5 for it.
+// RefusedError is an import refusal; cmd/wy exits 5 for it.
 type RefusedError struct{ Err error }
 
 func (e *RefusedError) Error() string { return e.Err.Error() }
@@ -98,7 +98,7 @@ func readPassphrase(file string, confirm bool, stderr io.Writer) (string, error)
 	return string(a), nil
 }
 
-// Export is `sy hub export [--out f] [--moved-to url] [--no-freeze] [--encrypt]
+// Export is `wy hub export [--out f] [--moved-to url] [--no-freeze] [--encrypt]
 // [--passphrase-file f] [--json]` (machines.md 8.1).
 func Export(args []string, stdout, stderr io.Writer) error {
 	fs, db := newFlags("export", stderr)
@@ -108,7 +108,7 @@ func Export(args []string, stdout, stderr io.Writer) error {
 	encrypt := fs.Bool("encrypt", false, "encrypt the archive with a passphrase")
 	passFile := fs.String("passphrase-file", "", "read the passphrase from the first line of this file (implies --encrypt)")
 	asJSON := fs.Bool("json", false, "print the result as JSON")
-	pullDirFlag := fs.String("pull-dir", "", "the pull key folder (default <state>/pull; the one sy hub serve --pull-dir uses)")
+	pullDirFlag := fs.String("pull-dir", "", "the pull key folder (default <state>/pull; the one wy hub serve --pull-dir uses)")
 	if pos, err := parse(fs, args); err != nil || len(pos) > 0 {
 		return ErrUsage
 	}
@@ -164,7 +164,7 @@ func Export(args []string, stdout, stderr io.Writer) error {
 		if !*noFreeze {
 			// Whatever went wrong, say how to get out if the hub is still frozen from this run.
 			if fr, ferr := st.Frozen(context.WithoutCancel(ctx)); ferr != nil || fr != nil {
-				fmt.Fprintln(stderr, "if the hub is still frozen and should not be, run: sy hub unfreeze")
+				fmt.Fprintln(stderr, "if the hub is still frozen and should not be, run: wy hub unfreeze")
 			}
 		}
 		return err
@@ -179,14 +179,14 @@ func Export(args []string, stdout, stderr io.Writer) error {
 		c.Devices, c.Machines, c.Records, c.Sessions, c.PushTargets, c.PullTargets, res.Manifest.Schema)
 	if res.Frozen {
 		fmt.Fprintln(stdout, "this hub is now frozen: it answers 503 to machines, which keep their records and retry.")
-		fmt.Fprintln(stdout, "call the move off with: sy hub unfreeze")
+		fmt.Fprintln(stdout, "call the move off with: wy hub unfreeze")
 	}
 	fmt.Fprintln(stdout, "This file holds every device's token hash, the VAPID private key, ntfy access tokens, the pairing pepper and the pull key.")
 	fmt.Fprintln(stdout, "Anyone with it can impersonate this hub to your phones. Keep it like a password; delete it after the import.")
 	return nil
 }
 
-// Import is `sy hub import <file> [--public-url url] [--passphrase-file f] [--yes] [--json]`
+// Import is `wy hub import <file> [--public-url url] [--passphrase-file f] [--yes] [--json]`
 // (machines.md 8.2).
 func Import(args []string, stdout, stderr io.Writer) error {
 	fs, db := newFlags("import", stderr)
@@ -195,7 +195,7 @@ func Import(args []string, stdout, stderr io.Writer) error {
 	yes := fs.Bool("yes", false, "do not ask for confirmation")
 	asJSON := fs.Bool("json", false, "print the result as JSON")
 	listen := fs.String("listen", "127.0.0.1:8787", "address a running hub would answer on (refuse when it does)")
-	pullDirFlag := fs.String("pull-dir", "", "the pull key folder (default <state>/pull; the one sy hub serve --pull-dir uses)")
+	pullDirFlag := fs.String("pull-dir", "", "the pull key folder (default <state>/pull; the one wy hub serve --pull-dir uses)")
 	pos, err := parse(fs, args)
 	if err != nil || len(pos) != 1 {
 		return ErrUsage
@@ -267,14 +267,14 @@ func Import(args []string, stdout, stderr io.Writer) error {
 		fmt.Fprintln(stdout, "  (kept from the export; pass --public-url if this hub lives at another address)")
 	}
 	fmt.Fprint(stdout, `Next:
-  1. Start this hub: sy hub serve
+  1. Start this hub: wy hub serve
   2. Machine and desktop tokens keep working. On each machine run
-       sy connect <new url> --keep-token
-     (or, from the laptop, sy machine repoint <new url>). Until then their records wait,
+       wy connect <new url> --keep-token
+     (or, from the laptop, wy machine repoint <new url>). Until then their records wait,
      because the old hub is frozen.
   3. Pull targets keep working if this host can reach the remotes over SSH.
   4. Phones and browsers: re-pair, unless this hub has the same public address as the old one.
-     Sign in to the board again with sy hub owner-link.
+     Sign in to the board again with wy hub owner-link.
   5. Delete the export file when you are done: it holds secrets.
 `)
 	return nil
@@ -298,7 +298,7 @@ func hubAnswers(addr string) bool {
 	return resp.StatusCode == http.StatusOK
 }
 
-// Unfreeze is `sy hub unfreeze` (machines.md 8.1): clears hub.frozen.
+// Unfreeze is `wy hub unfreeze` (machines.md 8.1): clears hub.frozen.
 func Unfreeze(args []string, stdout, stderr io.Writer) error {
 	fs, db := newFlags("unfreeze", stderr)
 	if pos, err := parse(fs, args); err != nil || len(pos) > 0 {

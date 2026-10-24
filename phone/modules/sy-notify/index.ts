@@ -5,7 +5,7 @@
 // nothing.
 //
 // There are no response listeners: the notifications are posted by sy-link, natively, and a tap
-// or Open carries its own switchyard:// intent to the app (P6.4, "Native taps"); Snooze and Seen
+// or Open carries its own watchyard:// intent to the app (P6.4, "Native taps"); Snooze and Seen
 // run in sy-link's ActionReceiver. So no notification response ever reaches JS on Android.
 import { requireOptionalNativeModule } from 'expo';
 import { Platform } from 'react-native';

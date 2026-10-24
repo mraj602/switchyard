@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // counts.live and Session.dormant follow one rule, the board's isLive (states.md 5): open,

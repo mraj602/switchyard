@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/board"
+	"github.com/mraj602/watchyard/internal/board"
 )
 
 // DefaultBuild hands the wire reads to board.BuildHub: the words, text safety and order are

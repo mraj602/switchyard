@@ -12,11 +12,11 @@ export function meInApp(me) {
 }
 
 // The desktop app marks its Hub view so the board knows it is there even signed out (no
-// /v1/me): a user agent token "SwitchyardDesktop/<version>" on the view's session, or
+// /v1/me): a user agent token "WatchyardDesktop/<version>" on the view's session, or
 // "?in=desktop" in the start URL (before the #). Pure: ua is navigator.userAgent, search
 // location.search. An app from before a rename still sends the token with its old name
 // (docs/spec/rename.md 2.9).
-const UA_TOKEN = 'SwitchyardDesktop';
+const UA_TOKEN = 'WatchyardDesktop';
 const LEGACY_UA_TOKEN = 'SwitchyardDesktop'; // rename:keep
 export function markerInApp(ua, search) {
   const s = String(ua || '');
@@ -29,7 +29,7 @@ export function markerInApp(ua, search) {
 // fold-out (OWNER_CLI).
 export const OWNER_LINK_HOW = 'Sign in as owner: open an owner link from an owner device (More, Devices, Make another device owner).';
 export const OWNER_APP_HOW = 'Use Sign in as owner on the Hub tab.';
-export const OWNER_CLI = 'sy hub owner-link';
+export const OWNER_CLI = 'wy hub owner-link';
 export function ownerHint(app) {
   return app ? OWNER_APP_HOW : OWNER_LINK_HOW;
 }

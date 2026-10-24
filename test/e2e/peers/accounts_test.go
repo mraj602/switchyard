@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/link"
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/link"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 // claimAccount makes the laptop lie that its session "api" is account acct: its slot's
@@ -54,7 +54,7 @@ func TestClaimedAccountOfAnotherMachine(t *testing.T) {
 	rep := w.laptop.send("api", toSide, "I am personal now", 0, 0)
 	rf = rep.Refusal()
 	refusedWith(t, rf, peers.CodeRejected)
-	if !strings.Contains(rf.Detail, peers.ReasonUnboundAccount) || !strings.Contains(rf.Detail, "sy keys certify --all") {
+	if !strings.Contains(rf.Detail, peers.ReasonUnboundAccount) || !strings.Contains(rf.Detail, "wy keys certify --all") {
 		t.Errorf("detail %q", rf.Detail)
 	}
 	if rows := w.h.rows(); len(rows) != 1 || rows[0].Status != "refused" || rows[0].Detail != peers.ReasonUnboundAccount {

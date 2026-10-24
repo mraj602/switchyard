@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/board"
+	"github.com/mraj602/watchyard/internal/board"
 )
 
 // seats rewrites the Claude state files of a home so each slot has a real seat: slot 1 is
@@ -37,7 +37,7 @@ func (m *machine) slot(n int) []string {
 }
 
 // boardToken makes m a board reader of the hub by hand (the admin channel of
-// `sy board connect` only exists on the hub's own host): a desktop device bound to m's
+// `wy board connect` only exists on the hub's own host): a desktop device bound to m's
 // machine id, written as <state>/board/token.json.
 func (h *hubProc) boardToken(m *machine) {
 	h.t.Helper()
@@ -90,7 +90,7 @@ func (h *hubProc) ownerGet(path string, v any) {
 }
 
 // fleet is the shared setup of E1..E7 and E11: the laptop (which hosts the hub), a hub on a
-// loopback port, and the gpu-box (its own HOME and SY_HOME, a machine token, a board token).
+// loopback port, and the gpu-box (its own HOME and WY_HOME, a machine token, a board token).
 type fleet struct {
 	t   *testing.T
 	l   *laptop

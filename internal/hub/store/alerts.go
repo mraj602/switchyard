@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
 )
 
 // Alerts, deliveries and the facts the alert engine reads (push.md 3-5, 9). Every write

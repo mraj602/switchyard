@@ -8,7 +8,7 @@
   <application>
     <!-- zxing's CaptureActivity locked to portrait (its own declaration is landscape). -->
     <activity
-      android:name="dev.switchyard.scan.SyScanActivity"
+      android:name="dev.watchyard.scan.SyScanActivity"
       android:exported="false"
       android:screenOrientation="portrait"
       android:stateNotNeeded="true"

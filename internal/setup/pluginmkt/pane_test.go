@@ -11,18 +11,18 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/board"
-	"github.com/mraj602/switchyard/internal/claudecli"
-	"github.com/mraj602/switchyard/plugin"
+	"github.com/mraj602/watchyard/internal/board"
+	"github.com/mraj602/watchyard/internal/claudecli"
+	"github.com/mraj602/watchyard/plugin"
 )
 
 func TestPaneFileRewritesOnlyRegister(t *testing.T) {
 	src := []byte("// c\nexport const SY = \"__SY_PATH__\"\nuse(SY)\n")
-	got, err := paneFile("hooks/register.tsx", src, "/home/u/.local/bin/sy")
+	got, err := paneFile("hooks/register.tsx", src, "/home/u/.local/bin/wy")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "// c\nexport const SY = \"/home/u/.local/bin/sy\"\nuse(SY)\n"
+	want := "// c\nexport const SY = \"/home/u/.local/bin/wy\"\nuse(SY)\n"
 	if string(got) != want {
 		t.Fatalf("got %q want %q", got, want)
 	}
@@ -37,25 +37,25 @@ func TestPaneFileRewritesOnlyRegister(t *testing.T) {
 
 func TestPaneFileRefusesUnsafePaths(t *testing.T) {
 	src := []byte(`export const SY = "__SY_PATH__"`)
-	for _, p := range []string{"", `/a"b/sy`, "/a\nb/sy", "/a\rb/sy", `/a\b/sy`, `/a"; evil(); "/sy`} {
-		if runtime.GOOS == "windows" && p == `/a\b/sy` {
+	for _, p := range []string{"", `/a"b/wy`, "/a\nb/wy", "/a\rb/wy", `/a\b/wy`, `/a"; evil(); "/wy`} {
+		if runtime.GOOS == "windows" && p == `/a\b/wy` {
 			continue // on Windows a backslash is a separator and is written as "/"
 		}
 		if _, err := paneFile("hooks/register.tsx", src, p); err == nil {
 			t.Errorf("path %q accepted", p)
 		}
 	}
-	if _, err := paneFile("hooks/register.tsx", []byte("no placeholder"), "/x/sy"); err == nil {
+	if _, err := paneFile("hooks/register.tsx", []byte("no placeholder"), "/x/wy"); err == nil {
 		t.Error("a register.tsx without the placeholder was accepted")
 	}
 }
 
-// The written mod has the absolute sy path and nothing else changed in it.
+// The written mod has the absolute wy path and nothing else changed in it.
 func TestWrittenPaneHasAbsoluteSyPath(t *testing.T) {
 	state := t.TempDir()
-	sy := filepath.Join(state, "bin", "sy")
+	wy := filepath.Join(state, "bin", "wy")
 	dir := filepath.Join(state, "marketplace")
-	if err := New(claudecli.NewFake()).WriteMarketplace(dir, sy, "0.7.0"); err != nil {
+	if err := New(claudecli.NewFake()).WriteMarketplace(dir, wy, "0.7.0"); err != nil {
 		t.Fatal(err)
 	}
 	got, err := os.ReadFile(filepath.Join(PaneDir(dir), "hooks", "register.tsx"))
@@ -69,22 +69,22 @@ func TestWrittenPaneHasAbsoluteSyPath(t *testing.T) {
 	if n := bytes.Count(embedded, []byte(panePlaceholder)); n != 1 {
 		t.Fatalf("the embedded register.tsx has %d placeholders, want exactly 1", n)
 	}
-	lit := filepath.ToSlash(sy)
+	lit := filepath.ToSlash(wy)
 	if runtime.GOOS != "windows" {
-		lit = sy
+		lit = wy
 	}
 	want := bytes.Replace(embedded, []byte(panePlaceholder), []byte(`"`+lit+`"`), 1)
 	if !bytes.Equal(got, want) {
-		t.Fatal("the written register.tsx differs from the embedded one by more than the sy path")
+		t.Fatal("the written register.tsx differs from the embedded one by more than the wy path")
 	}
-	if !regexp.MustCompile(`export const SY = "[^"]+/bin/sy"`).Match(got) || bytes.Contains(got, []byte("__SY_PATH__")) {
+	if !regexp.MustCompile(`export const SY = "[^"]+/bin/wy"`).Match(got) || bytes.Contains(got, []byte("__SY_PATH__")) {
 		t.Fatalf("SY not set to the absolute path:\n%s", grepLine(got, "export const SY"))
 	}
 	// A path the rewrite refuses stops the whole write, not just the file.
-	bad := filepath.Join(state, `has"quote`, "sy")
+	bad := filepath.Join(state, `has"quote`, "wy")
 	if runtime.GOOS != "windows" {
 		if err := New(claudecli.NewFake()).WriteMarketplace(filepath.Join(state, "m2"), bad, "0.7.0"); err == nil {
-			t.Error("WriteMarketplace accepted a sy path with a quote")
+			t.Error("WriteMarketplace accepted a wy path with a quote")
 		}
 	}
 }

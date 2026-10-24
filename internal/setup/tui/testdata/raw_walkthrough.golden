@@ -1,4 +1,4 @@
-[H[2Jsy setup — 1/5 Main
+[H[2Jwy setup — 1/5 Main
 
 Claude Code 2.1.296 at ~/.local/bin/claude
 
@@ -21,7 +21,7 @@ Already set up by hand
 Nothing has been changed yet.
 
 Enter continue · e change something · q quit
-[H[2Jsy setup — 2/5 SetupSharing (accounts)
+[H[2Jwy setup — 2/5 SetupSharing (accounts)
 
 Accounts
   ~/.claude    claude     you@example.com  logged in · Max   launcher: claude (shell function)
@@ -34,7 +34,7 @@ Accounts
 
 a add an account · Enter continue · Esc back · q quit
 [KNew account label (label or label:colour): [KNew account label (label or label:colour): w[KNew account label (label or label:colour): wo[KNew account label (label or label:colour): wor[KNew account label (label or label:colour): work[KNew account label (label or label:colour): work:[KNew account label (label or label:colour): work:s[KNew account label (label or label:colour): work:sk[KNew account label (label or label:colour): work:sky
-[H[2Jsy setup — 2/5 SetupSharing (accounts)
+[H[2Jwy setup — 2/5 SetupSharing (accounts)
 
 Accounts
   ~/.claude    claude     you@example.com  logged in · Max   launcher: claude (shell function)
@@ -47,7 +47,7 @@ Accounts
   + new folder   work       sky   log in after setup
 
 a add an account · Enter continue · Esc back · q quit
-[H[2Jsy setup — 3/5 SetupSharing (sharing)
+[H[2Jwy setup — 3/5 SetupSharing (sharing)
 
 Sharing (primary ~/.claude)
 > [x] Settings                   linked by hand
@@ -60,7 +60,7 @@ Sharing (primary ~/.claude)
   Never shared: login and tokens, live sessions, caches, usage counters
 
 ↑↓ move · space toggle · Enter continue · Esc back · q quit
-[H[2Jsy setup — 3/5 SetupSharing (sharing)
+[H[2Jwy setup — 3/5 SetupSharing (sharing)
 
 Sharing (primary ~/.claude)
   [x] Settings                   linked by hand
@@ -73,7 +73,7 @@ Sharing (primary ~/.claude)
   Never shared: login and tokens, live sessions, caches, usage counters
 
 ↑↓ move · space toggle · Enter continue · Esc back · q quit
-[H[2Jsy setup — 3/5 SetupSharing (sharing)
+[H[2Jwy setup — 3/5 SetupSharing (sharing)
 
 Sharing (primary ~/.claude)
   [x] Settings                   linked by hand
@@ -86,7 +86,7 @@ Sharing (primary ~/.claude)
   Never shared: login and tokens, live sessions, caches, usage counters
 
 ↑↓ move · space toggle · Enter continue · Esc back · q quit
-[H[2Jsy setup — 4/5 SetupHub
+[H[2Jwy setup — 4/5 SetupHub
 
 Hub
 > (•) Just this computer
@@ -96,10 +96,10 @@ Hub
   Tailscale is up: the hub can be reached at laptop.example.ts.net if you run `tailscale serve`.
 
 ↑↓ choose · Enter continue · Esc back · q quit
-[H[2Jsy setup — 5/5 SetupDone
+[H[2Jwy setup — 5/5 SetupDone
 
 Phone and done
-  Phone: later (sy phone pair)
+  Phone: later (wy phone pair)
   Next: the plan is shown, and nothing changes until you accept it.
 
 Enter show the plan · Esc back · q quit

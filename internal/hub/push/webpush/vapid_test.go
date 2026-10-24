@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 func verifyJWT(t *testing.T, v *VAPID, token string) map[string]any {

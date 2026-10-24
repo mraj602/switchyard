@@ -33,11 +33,11 @@ type Session struct {
 	Blocked string
 }
 
-// ListEntry is one line of `sy peers list --json` (peers.md 3.2).
+// ListEntry is one line of `wy peers list --json` (peers.md 3.2).
 type ListEntry struct {
 	Session string `json:"session"`
 	Handle  string `json:"handle"`
-	// Aliases: other handles of the same session that sy peers send accepts (peers.md 3.3).
+	// Aliases: other handles of the same session that wy peers send accepts (peers.md 3.3).
 	Aliases      []string `json:"aliases,omitempty"`
 	Name         string   `json:"name"`
 	Account      string   `json:"account"`
@@ -308,7 +308,7 @@ func party(s Session) Party {
 	return Party{Session: s.Entry.SessionID, Account: s.Account, Label: s.AccountLabel}
 }
 
-// Resolve finds the session a `sy peers send <to>` names (peers.md 3.3): a handle or an alias
+// Resolve finds the session a `wy peers send <to>` names (peers.md 3.3): a handle or an alias
 // of one, a unique prefix of either, a session id or a unique prefix of at least 8
 // characters, or `@<name>`. A canonical handle wins over an alias. Several matches are an
 // ambiguity: the candidates' (canonical) handles are returned.
@@ -374,5 +374,5 @@ func Resolve(dir []Session, to string) (Session, []string, *Refusal) {
 			return Session{}, hs, Refuse(CodeAmbiguous, "%q matches %s", to, strings.Join(hs, ", "))
 		}
 	}
-	return Session{}, nil, Refuse(CodeUnknownTarget, "no live session matches %q (see sy peers list)", to)
+	return Session{}, nil, Refuse(CodeUnknownTarget, "no live session matches %q (see wy peers list)", to)
 }

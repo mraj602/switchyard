@@ -17,7 +17,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // Capture records what is at path without following a final symlink: type, permission
@@ -26,7 +26,7 @@ import (
 func Capture(path string) (model.PathState, error) { return capture(path, false) }
 
 // CaptureMeta is Capture without reading the file's bytes (no hash): used for a
-// `.claude.json`, whose content other than `mcpServers` sy never reads (rule 0.3).
+// `.claude.json`, whose content other than `mcpServers` wy never reads (rule 0.3).
 func CaptureMeta(path string) (model.PathState, error) { return capture(path, true) }
 
 // IsStateFile reports whether path is a Claude Code state file (`.claude.json`), which is

@@ -28,7 +28,7 @@ func TestHubReachDirectPushUpdateKeys(t *testing.T) {
 		"push.direct.after_s":       {"90"},
 		"update.base_url":           {"http://127.0.0.1:9999/releases"},
 		"update.verify_attestation": {"false"},
-		"machines.hub_admin":        {"ssh hub sy"},
+		"machines.hub_admin":        {"ssh hub wy"},
 	} {
 		if err := f.Set(k, args); err != nil {
 			t.Errorf("Set %s: %v", k, err)
@@ -39,7 +39,7 @@ func TestHubReachDirectPushUpdateKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 	if c.Hub.Reach != "forward" || c.Hub.Dial != "127.0.0.1:47830" || !c.Push.Direct.Enabled || c.Push.Direct.Private ||
-		c.Push.Direct.AfterS != 90 || c.Machines.HubAdmin != "ssh hub sy" || c.Update.VerifyAttestation {
+		c.Push.Direct.AfterS != 90 || c.Machines.HubAdmin != "ssh hub wy" || c.Update.VerifyAttestation {
 		t.Fatalf("after set: %+v", c)
 	}
 	if u := f.Unknown(); len(u) != 0 {
@@ -61,7 +61,7 @@ func TestHubReachDialUpdateValidation(t *testing.T) {
 			t.Errorf("Set %s %v accepted", k, args)
 		}
 	}
-	for _, v := range []string{"", "127.0.0.1:47830", "[::1]:8787", "localhost:1", "unix:/home/me/.local/state/switchyard/hub.sock"} {
+	for _, v := range []string{"", "127.0.0.1:47830", "[::1]:8787", "localhost:1", "unix:/home/me/.local/state/watchyard/hub.sock"} {
 		if err := CheckDial(v); err != nil {
 			t.Errorf("CheckDial(%q): %v", v, err)
 		}

@@ -24,7 +24,7 @@ const (
 	MaxNameRunes = 64
 	// FrameMsgV is the msgV of a frame.
 	FrameMsgV = 1
-	// FramePriority is the priority of every frame Switchyard writes.
+	// FramePriority is the priority of every frame Watchyard writes.
 	FramePriority = "next"
 )
 
@@ -61,7 +61,7 @@ type Wrapper struct {
 	Hop         []string
 	FromName    string
 	FromMode    Mode
-	Plugin      string // Switchyard never sets it (peers.md 8.5)
+	Plugin      string // Watchyard never sets it (peers.md 8.5)
 	Body        string // the text inside the element, before escaping
 }
 

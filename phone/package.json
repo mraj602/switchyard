@@ -1,7 +1,7 @@
 {
-  "name": "switchyard-phone",
+  "name": "watchyard-phone",
   "version": "1.0.0",
-  "description": "Switchyard phone app (Expo): the hub's screens, native pushes with Open, Snooze and Seen, and widgets. Unofficial; not affiliated with Anthropic.",
+  "description": "Watchyard phone app (Expo): the hub's screens, native pushes with Open, Snooze and Seen, and widgets. Unofficial; not affiliated with Anthropic.",
   "license": "AGPL-3.0-only",
   "private": true,
   "main": "index.js",

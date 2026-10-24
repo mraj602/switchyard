@@ -1,4 +1,4 @@
-// The app menu (C9b): Switchyard menu (Hub, Account 1…9, Refresh usage, Run at login,
+// The app menu (C9b): Watchyard menu (Hub, Account 1…9, Refresh usage, Run at login,
 // Keep running, Quit), editMenu, toggleDevTools only when unpackaged.
 
 /**
@@ -31,7 +31,7 @@ export function create(deps) {
     const s = store.get().settings ?? {};
     const list = (tabs.list?.() ?? []).slice(0, 9);
     const canSet = typeof deps.setSettings === 'function';
-    const switchyard = [
+    const watchyard = [
       { label: 'Hub', accelerator: 'CmdOrCtrl+0', click: () => select('hub') },
       ...list.map((t, i) => ({ label: `Account ${i + 1}: ${t.name ?? t.id}`, accelerator: `CmdOrCtrl+${i + 1}`, click: () => select(t.id) })),
       { type: 'separator' },
@@ -42,7 +42,7 @@ export function create(deps) {
       { type: 'separator' },
       { label: 'Quit', accelerator: 'CmdOrCtrl+Q', click: () => electron.app.quit() },
     ];
-    const out = [{ label: platform === 'darwin' ? electron.app.name : 'Switchyard', submenu: switchyard }, { role: 'editMenu' }];
+    const out = [{ label: platform === 'darwin' ? electron.app.name : 'Watchyard', submenu: watchyard }, { role: 'editMenu' }];
     if (!isPackaged) out.push({ label: 'View', submenu: [{ role: 'toggleDevTools' }] });
     return out;
   }

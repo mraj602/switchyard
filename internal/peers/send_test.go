@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/peers"
-	"github.com/mraj602/switchyard/internal/peers/fakeinbox"
+	"github.com/mraj602/watchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/peers/fakeinbox"
 )
 
 // world is two sessions in two accounts on one fake machine, each with a fake inbox.
@@ -112,8 +112,8 @@ func TestSendEndToEnd(t *testing.T) {
 	if wr.From != wantFrom || fr.From != wantFrom {
 		t.Errorf("from %q / %q, want %q", wr.From, fr.From, wantFrom)
 	}
-	wantBody := "[Switchyard] from api@work.laptop · account work · machine laptop · thread " + res.Thread + "\n" +
-		"Reply with: sy peers send api@work.laptop \"…\"\n\nplease run the tests\nthanks"
+	wantBody := "[Watchyard] from api@work.laptop · account work · machine laptop · thread " + res.Thread + "\n" +
+		"Reply with: wy peers send api@work.laptop \"…\"\n\nplease run the tests\nthanks"
 	if wr.Body != wantBody {
 		t.Errorf("body:\n%q\nwant\n%q", wr.Body, wantBody)
 	}

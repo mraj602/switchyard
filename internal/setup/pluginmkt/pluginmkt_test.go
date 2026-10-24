@@ -14,8 +14,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/claudecli"
-	"github.com/mraj602/switchyard/plugin"
+	"github.com/mraj602/watchyard/internal/claudecli"
+	"github.com/mraj602/watchyard/plugin"
 )
 
 func readEmbedded(t *testing.T, name string) []byte {
@@ -28,16 +28,16 @@ func readEmbedded(t *testing.T, name string) []byte {
 }
 
 func TestHookCommand(t *testing.T) {
-	got, err := HookCommand("command -v sy >/dev/null 2>&1 && sy hook Stop || true", "/home/u/.local/bin/sy")
-	want := `[ -x '/home/u/.local/bin/sy' ] && '/home/u/.local/bin/sy' hook Stop || true`
+	got, err := HookCommand("command -v wy >/dev/null 2>&1 && wy hook Stop || true", "/home/u/.local/bin/wy")
+	want := `[ -x '/home/u/.local/bin/wy' ] && '/home/u/.local/bin/wy' hook Stop || true`
 	if err != nil || got != want {
 		t.Fatalf("%q %v", got, err)
 	}
-	if _, err := HookCommand("echo hi", "/x/sy"); err == nil {
+	if _, err := HookCommand("echo hi", "/x/wy"); err == nil {
 		t.Fatal("unrecognised command accepted")
 	}
-	got, _ = HookCommand("command -v sy >/dev/null 2>&1 && sy hook Stop || true", "/home/o'brien/sy")
-	if !strings.Contains(got, `'/home/o'\''brien/sy'`) {
+	got, _ = HookCommand("command -v wy >/dev/null 2>&1 && wy hook Stop || true", "/home/o'brien/wy")
+	if !strings.Contains(got, `'/home/o'\''brien/wy'`) {
 		t.Fatalf("quote not escaped: %s", got)
 	}
 }
@@ -50,11 +50,11 @@ func TestHookCommandRuns(t *testing.T) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	sy := filepath.Join(dir, "sy")
-	if err := os.WriteFile(sy, []byte("#!/bin/sh\necho \"called: $*\"\n"), 0o755); err != nil {
+	wy := filepath.Join(dir, "wy")
+	if err := os.WriteFile(wy, []byte("#!/bin/sh\necho \"called: $*\"\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cmd, err := HookCommand("command -v sy >/dev/null 2>&1 && sy hook Stop || true", sy)
+	cmd, err := HookCommand("command -v wy >/dev/null 2>&1 && wy hook Stop || true", wy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,11 +63,11 @@ func TestHookCommandRuns(t *testing.T) {
 		t.Fatalf("%q %v", out, err)
 	}
 	// missing binary: exits 0 quietly
-	if err := os.Remove(sy); err != nil {
+	if err := os.Remove(wy); err != nil {
 		t.Fatal(err)
 	}
 	if out, err := exec.Command("sh", "-c", cmd).CombinedOutput(); err != nil || len(out) != 0 {
-		t.Fatalf("missing sy must be silent and exit 0: %q %v", out, err)
+		t.Fatalf("missing wy must be silent and exit 0: %q %v", out, err)
 	}
 }
 
@@ -86,8 +86,8 @@ type hooksDoc struct {
 
 func TestRewriteHooksOnlyCommandsChange(t *testing.T) {
 	orig := readEmbedded(t, "hooks/hooks.json")
-	const sy = "/home/u/.local/bin/sy"
-	out, err := RewriteHooks(orig, sy)
+	const wy = "/home/u/.local/bin/wy"
+	out, err := RewriteHooks(orig, wy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestRewriteHooksOnlyCommandsChange(t *testing.T) {
 			}
 			for j := range ga[i].Hooks {
 				x, y := ga[i].Hooks[j], gb[i].Hooks[j]
-				want, _ := HookCommand(x.Command, sy)
+				want, _ := HookCommand(x.Command, wy)
 				if y.Command != want {
 					t.Fatalf("%s: command %q", ev, y.Command)
 				}
@@ -133,7 +133,7 @@ func TestRewriteHooksOnlyCommandsChange(t *testing.T) {
 	for _, ga := range a.Hooks {
 		for _, g := range ga {
 			for _, h := range g.Hooks {
-				w, _ := HookCommand(h.Command, sy)
+				w, _ := HookCommand(h.Command, wy)
 				back = bytes.ReplaceAll(back, jsonString(w), jsonString(h.Command))
 			}
 		}
@@ -159,8 +159,8 @@ func TestWriteMarketplace(t *testing.T) {
 	state := t.TempDir()
 	dir := filepath.Join(state, "plugin", "marketplace")
 	in := New(claudecli.NewFake())
-	sy := filepath.Join(state, "bin", "sy")
-	if err := in.WriteMarketplace(dir, sy, "0.3.0"); err != nil {
+	wy := filepath.Join(state, "bin", "wy")
+	if err := in.WriteMarketplace(dir, wy, "0.3.0"); err != nil {
 		t.Fatal(err)
 	}
 	var mj struct {
@@ -174,9 +174,9 @@ func TestWriteMarketplace(t *testing.T) {
 	if err != nil || json.Unmarshal(b, &mj) != nil {
 		t.Fatalf("%v %s", err, b)
 	}
-	if mj.Name != "sy-local" || mj.Owner.Name == "" || len(mj.Plugins) != 2 ||
-		mj.Plugins[0].Name != "switchyard" || mj.Plugins[0].Source != "./plugins/switchyard" || mj.Plugins[0].Version != "0.3.0" ||
-		mj.Plugins[1].Name != "switchyard-pane" || mj.Plugins[1].Source != "./plugins/switchyard-pane" || mj.Plugins[1].Version != "0.3.0" {
+	if mj.Name != "wy-local" || mj.Owner.Name == "" || len(mj.Plugins) != 2 ||
+		mj.Plugins[0].Name != "watchyard" || mj.Plugins[0].Source != "./plugins/watchyard" || mj.Plugins[0].Version != "0.3.0" ||
+		mj.Plugins[1].Name != "watchyard-pane" || mj.Plugins[1].Source != "./plugins/watchyard-pane" || mj.Plugins[1].Version != "0.3.0" {
 		t.Fatalf("%+v", mj)
 	}
 	pd := PluginDir(dir)
@@ -185,7 +185,7 @@ func TestWriteMarketplace(t *testing.T) {
 		t.Fatalf("%v %s", err, pj)
 	}
 	hj, err := os.ReadFile(filepath.Join(pd, "hooks", "hooks.json"))
-	if err != nil || strings.Contains(string(hj), "command -v sy") || !strings.Contains(string(hj), "[ -x ") {
+	if err != nil || strings.Contains(string(hj), "command -v wy") || !strings.Contains(string(hj), "[ -x ") {
 		t.Fatalf("%v hooks not rewritten", err)
 	}
 	// every embedded file is present
@@ -205,7 +205,7 @@ func TestWriteMarketplace(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "stale.txt"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := in.WriteMarketplace(dir, sy, "0.4.0"); err != nil {
+	if err := in.WriteMarketplace(dir, wy, "0.4.0"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "stale.txt")); err == nil {
@@ -226,21 +226,21 @@ func TestWriteMarketplaceRefusals(t *testing.T) {
 	root := t.TempDir()
 	if runtime.GOOS != "windows" {
 		bad := filepath.Join(root, "a:b", "marketplace")
-		err := in.WriteMarketplace(bad, "/x/sy", "1")
+		err := in.WriteMarketplace(bad, "/x/wy", "1")
 		if !errors.Is(err, ErrPathSeparator) {
 			t.Fatalf("got %v", err)
 		}
 		if _, e := os.Stat(filepath.Join(root, "a:b")); e == nil {
 			t.Fatal("nothing may be written for a refused path")
 		}
-	} else if err := in.WriteMarketplace(filepath.Join(root, "a;b", "m"), `C:\sy.exe`, "1"); !errors.Is(err, ErrPathSeparator) {
+	} else if err := in.WriteMarketplace(filepath.Join(root, "a;b", "m"), `C:\wy.exe`, "1"); !errors.Is(err, ErrPathSeparator) {
 		t.Fatalf("got %v", err)
 	}
-	if err := in.WriteMarketplace("relative/dir", "/x/sy", "1"); err == nil {
+	if err := in.WriteMarketplace("relative/dir", "/x/wy", "1"); err == nil {
 		t.Fatal("relative dir accepted")
 	}
-	if err := in.WriteMarketplace(filepath.Join(root, "m"), "sy", "1"); err == nil {
-		t.Fatal("relative sy path accepted")
+	if err := in.WriteMarketplace(filepath.Join(root, "m"), "wy", "1"); err == nil {
+		t.Fatal("relative wy path accepted")
 	}
 }
 
@@ -250,7 +250,7 @@ func TestInstallerFlows(t *testing.T) {
 	mkt := filepath.Join(state, "plugin", "marketplace")
 	fake := claudecli.NewFake()
 	in := New(fake)
-	if err := in.WriteMarketplace(mkt, filepath.Join(state, "sy"), "0.3.0"); err != nil {
+	if err := in.WriteMarketplace(mkt, filepath.Join(state, "wy"), "0.3.0"); err != nil {
 		t.Fatal(err)
 	}
 	owner := claudecli.Folder{Dir: "/h/.claude", Unset: true}
@@ -329,13 +329,13 @@ func TestInstallerErrorsAreReturned(t *testing.T) {
 }
 
 // TestValidateStrict runs `claude plugin validate --strict` on the generated folder. It runs
-// only with SY_E2E_REAL_CLAUDE=1 (and SY_E2E_REAL_CLAUDE_BIN or claude on PATH), in a
+// only with WY_E2E_REAL_CLAUDE=1 (and WY_E2E_REAL_CLAUDE_BIN or claude on PATH), in a
 // throwaway HOME so no real ~/.claude* folder is touched.
 func TestValidateStrict(t *testing.T) {
-	if os.Getenv("SY_E2E_REAL_CLAUDE") != "1" {
-		t.Skip("set SY_E2E_REAL_CLAUDE=1 to run `claude plugin validate --strict`")
+	if os.Getenv("WY_E2E_REAL_CLAUDE") != "1" {
+		t.Skip("set WY_E2E_REAL_CLAUDE=1 to run `claude plugin validate --strict`")
 	}
-	bin := os.Getenv("SY_E2E_REAL_CLAUDE_BIN")
+	bin := os.Getenv("WY_E2E_REAL_CLAUDE_BIN")
 	if bin == "" {
 		var err error
 		if bin, err = exec.LookPath("claude"); err != nil {
@@ -344,7 +344,7 @@ func TestValidateStrict(t *testing.T) {
 	}
 	home := t.TempDir()
 	dir := filepath.Join(home, "state", "plugin", "marketplace")
-	if err := New(claudecli.NewFake()).WriteMarketplace(dir, filepath.Join(home, "sy"), "0.3.0"); err != nil {
+	if err := New(claudecli.NewFake()).WriteMarketplace(dir, filepath.Join(home, "wy"), "0.3.0"); err != nil {
 		t.Fatal(err)
 	}
 	for _, target := range []string{dir, PluginDir(dir)} {
@@ -394,7 +394,7 @@ func (alreadyRunner) PluginDisable(context.Context, claudecli.Folder, string) (c
 func TestInstallerTreatsAlreadyInGoalStateAsSuccess(t *testing.T) {
 	ctx := context.Background()
 	f := claudecli.Folder{Dir: "/h/.claude"}
-	mktDir := filepath.Join(t.TempDir(), "sy-local") // the fake names a marketplace after its folder
+	mktDir := filepath.Join(t.TempDir(), "wy-local") // the fake names a marketplace after its folder
 	base := claudecli.NewFake()
 	// the marketplace and plugin are listed so Uninstall reaches its remove calls
 	if _, err := base.PluginMarketplaceAdd(ctx, f, mktDir); err != nil {

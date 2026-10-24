@@ -82,7 +82,7 @@ type SendOpts struct {
 
 // stateMu and <state>/peers/state.lock serialise the read-change-write of the state files
 // (threads.json, limits.json): the mutex between the agent's sends and its deliveries of
-// remote messages, the file lock with `sy peers send` processes that write the inbox
+// remote messages, the file lock with `wy peers send` processes that write the inbox
 // themselves (no agent running), which would otherwise each start from the same budget.
 // Neither is held while waiting on the hub.
 var stateMu sync.Mutex

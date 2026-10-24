@@ -5,9 +5,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/events"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/events"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // PUT /v1/seats/order (api.yaml putSeatOrder): the owner's drag-and-drop order of the Accounts

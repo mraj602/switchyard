@@ -18,8 +18,8 @@ import (
 
 	"rsc.io/qr"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 var t0 = time.Date(2026, 10, 12, 9, 0, 0, 0, time.UTC)
@@ -376,7 +376,7 @@ func TestClaimFields(t *testing.T) {
 	if r := claimOK(t, f, "1.1.1.1", ClaimRequest{Secret: named.Secret}); r.Device.Name != "Suggested" {
 		t.Errorf("default name %q", r.Device.Name)
 	}
-	// The code's name (sy hub pair --name) wins over the claimer's (sy connect sends the host).
+	// The code's name (wy hub pair --name) wins over the claimer's (wy connect sends the host).
 	nm := f.code("machine", func(r *CreateRequest) { r.Name = "lab-machine" })
 	if r := claimOK(t, f, "1.1.1.1", ClaimRequest{Code: nm.Digits, Machine: testMachine, Name: "lab-box"}); r.Device.Name != "lab-machine" {
 		t.Errorf("code name lost to the claimer's: %q", r.Device.Name)
@@ -758,7 +758,7 @@ func TestCreateValidationAndCommand(t *testing.T) {
 		}
 	}
 	c := f.code("machine")
-	if c.Command != "sy connect https://hub.example.ts.net --code "+c.Code {
+	if c.Command != "wy connect https://hub.example.ts.net --code "+c.Code {
 		t.Errorf("command %q", c.Command)
 	}
 	if p := f.code("phone"); p.Command != "" {

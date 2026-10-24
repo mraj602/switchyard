@@ -24,11 +24,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
-	"github.com/mraj602/switchyard/internal/hub/push/webpush"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/link"
+	hubkeys "github.com/mraj602/watchyard/internal/hub/keys"
+	"github.com/mraj602/watchyard/internal/hub/push/webpush"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/link"
 )
 
 // Limits of link.md 2, 5.5 and 5.6.
@@ -499,7 +499,7 @@ func (h *Hub) sendKnown(ctx context.Context, device, kind string, known *link.Kn
 
 // PublishDocs queues the newest matrix and revocation documents to every machine when
 // either is newer than the last ones published (link.md 7). The hub calls it after a
-// change it made and from the sweeper, which catches changes made by `sy hub` commands.
+// change it made and from the sweeper, which catches changes made by `wy hub` commands.
 func (h *Hub) PublishDocs(ctx context.Context) error {
 	matrix, mv, revoke, rv, err := h.docFrames(ctx)
 	if err != nil {
@@ -610,7 +610,7 @@ func (h *Hub) Start(ctx context.Context) error {
 	return nil
 }
 
-// Sweep deletes expired rows, closes links of devices revoked behind the hub's back (`sy hub
+// Sweep deletes expired rows, closes links of devices revoked behind the hub's back (`wy hub
 // token revoke`) and publishes new documents.
 func (h *Hub) Sweep(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)

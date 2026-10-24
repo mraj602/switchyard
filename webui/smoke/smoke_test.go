@@ -8,26 +8,26 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/mraj602/switchyard/webui"
-	"github.com/mraj602/switchyard/webui/devserver"
+	"github.com/mraj602/watchyard/webui"
+	"github.com/mraj602/watchyard/webui/devserver"
 )
 
 // TestBrowserSmoke needs Chrome and puppeteer-core, so it only runs when asked:
 //
 //	mkdir -p $TMP/pp && (cd $TMP/pp && npm init -y && npm i puppeteer-core)
-//	SY_WEBUI_BROWSER=1 SY_PUPPETEER_MODULES=$TMP/pp/node_modules SY_WEBUI_SHOTS=$TMP/shots \
+//	WY_WEBUI_BROWSER=1 WY_PUPPETEER_MODULES=$TMP/pp/node_modules WY_WEBUI_SHOTS=$TMP/shots \
 //	    go test ./webui/smoke
 //
 // CHROME overrides the browser path (default /usr/bin/google-chrome).
 func TestBrowserSmoke(t *testing.T) {
-	if os.Getenv("SY_WEBUI_BROWSER") != "1" {
-		t.Skip("set SY_WEBUI_BROWSER=1 to run the headless browser smoke test")
+	if os.Getenv("WY_WEBUI_BROWSER") != "1" {
+		t.Skip("set WY_WEBUI_BROWSER=1 to run the headless browser smoke test")
 	}
-	modules := os.Getenv("SY_PUPPETEER_MODULES")
+	modules := os.Getenv("WY_PUPPETEER_MODULES")
 	if modules == "" {
-		t.Fatal("SY_PUPPETEER_MODULES must point at a node_modules directory containing puppeteer-core")
+		t.Fatal("WY_PUPPETEER_MODULES must point at a node_modules directory containing puppeteer-core")
 	}
-	out := os.Getenv("SY_WEBUI_SHOTS")
+	out := os.Getenv("WY_WEBUI_SHOTS")
 	if out == "" {
 		out = t.TempDir()
 	}

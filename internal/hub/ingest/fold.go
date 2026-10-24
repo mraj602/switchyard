@@ -6,10 +6,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/state"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/hub/usage"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/state"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/usage"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // The hub side of the state engine (states.md): the pure fold of internal/hub/state,

@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/record"
-	"github.com/mraj602/switchyard/internal/version"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/version"
 )
 
 // Limits from record.md 1.7 and 2.
@@ -195,7 +195,7 @@ func (g *Ingester) IngestWith(ctx context.Context, dev store.Device, body []byte
 		return Reply{}, fmt.Errorf("%w: v must be 1", ErrBadBatch)
 	}
 	if len(b.Records) == 0 {
-		// api.yaml Batch: minItems 1. (`sy connect` falls back to an empty batch to check a token without
+		// api.yaml Batch: minItems 1. (`wy connect` falls back to an empty batch to check a token without
 		// storing anything when it has no slot to report: a good token gets 400, a bad one 401/403.)
 		return Reply{}, fmt.Errorf("%w: records must be a non-empty array", ErrBadBatch)
 	}
@@ -234,7 +234,7 @@ func (g *Ingester) IngestWith(ctx context.Context, dev store.Device, body []byte
 	more := opt.More || (backlog != nil && *backlog > int64(len(b.Records)))
 	// The client counts this batch in its backlog; once the batch is answered (this
 	// transaction) it is no longer queued, so the stored backlog is what is left after it.
-	// Otherwise `sy machine` shows the last batch's size right after a flush that sent
+	// Otherwise `wy machine` shows the last batch's size right after a flush that sent
 	// everything (machines.md 6.1).
 	if backlog != nil {
 		left := max(0, *backlog-int64(len(b.Records)))

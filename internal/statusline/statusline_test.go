@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 const fixtures = "../../testdata/statusline"
@@ -26,9 +26,9 @@ func newSandbox(t *testing.T) *sandbox {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
-	t.Setenv("SY_HOME", filepath.Join(home, "sy"))
-	t.Setenv("SY_STATE_DIR", "")
-	t.Setenv("SY_CONFIG_DIR", "")
+	t.Setenv("WY_HOME", filepath.Join(home, "wy"))
+	t.Setenv("WY_STATE_DIR", "")
+	t.Setenv("WY_CONFIG_DIR", "")
 	t.Setenv("XDG_STATE_HOME", "")
 	t.Setenv("XDG_CONFIG_HOME", "")
 	slot := filepath.Join(home, ".claude-2")
@@ -42,7 +42,7 @@ func newSandbox(t *testing.T) *sandbox {
 	if err := os.WriteFile(filepath.Join(slot, ".claude.json"), oauth, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	return &sandbox{t: t, home: home, env: map[string]string{"CLAUDE_CONFIG_DIR": slot, "HOME": home, "SY_HOME": filepath.Join(home, "sy")}}
+	return &sandbox{t: t, home: home, env: map[string]string{"CLAUDE_CONFIG_DIR": slot, "HOME": home, "WY_HOME": filepath.Join(home, "wy")}}
 }
 
 func (sb *sandbox) getenv(k string) string { return sb.env[k] }
@@ -58,7 +58,7 @@ func (sb *sandbox) run(in []byte, args ...string) string {
 
 func (sb *sandbox) samples() []*record.Record {
 	var out []*record.Record
-	files, _ := filepath.Glob(filepath.Join(sb.home, "sy", "state", "outbox", "*.jsonl"))
+	files, _ := filepath.Glob(filepath.Join(sb.home, "wy", "state", "outbox", "*.jsonl"))
 	for _, f := range files {
 		b, _ := os.ReadFile(f)
 		for _, line := range bytes.Split(bytes.TrimSpace(b), []byte("\n")) {
@@ -76,7 +76,7 @@ func (sb *sandbox) samples() []*record.Record {
 }
 
 func (sb *sandbox) backdate(d time.Duration) {
-	p := filepath.Join(sb.home, "sy", "state", "statusline", stateName)
+	p := filepath.Join(sb.home, "wy", "state", "statusline", stateName)
 	b, err := os.ReadFile(p)
 	if err != nil {
 		sb.t.Fatal(err)
@@ -130,7 +130,7 @@ func TestFormatOnFixtures(t *testing.T) {
 
 func TestLabelFromConfig(t *testing.T) {
 	sb := newSandbox(t)
-	cfg := filepath.Join(sb.home, "sy", "config")
+	cfg := filepath.Join(sb.home, "wy", "config")
 	if err := os.MkdirAll(cfg, 0o700); err != nil {
 		t.Fatal(err)
 	}

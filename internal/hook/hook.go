@@ -1,4 +1,4 @@
-// Package hook implements `sy hook`: read the hook JSON from stdin, apply the content
+// Package hook implements `wy hook`: read the hook JSON from stdin, apply the content
 // rules, add machine, slot, seat and term, append one hook_event record to the outbox,
 // and start a background flush. It always exits 0 and never prints a decision, so it
 // cannot change what Claude Code does. Budget: 20 ms p95.
@@ -19,10 +19,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/clientenv"
-	"github.com/mraj602/switchyard/internal/detach"
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/clientenv"
+	"github.com/mraj602/watchyard/internal/detach"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 const (
@@ -41,7 +41,7 @@ const (
 	refreshName = "refresh-auth" // <state>/identity/refresh-auth-<slot>.stamp, one per slot
 )
 
-// Run is `sy hook [event]`. It never fails the caller: errors go to hook-errors.log and
+// Run is `wy hook [event]`. It never fails the caller: errors go to hook-errors.log and
 // nothing is printed. args are the arguments after "hook".
 func Run(args []string, stdin io.Reader, getenv func(string) string) {
 	start := time.Now()
@@ -194,7 +194,7 @@ func authStale(env *clientenv.Env, event string) bool {
 	return event == "SessionStart" && age > time.Hour
 }
 
-// startRefresh starts `sy hook --refresh-auth` in the background (at most once per 10
+// startRefresh starts `wy hook --refresh-auth` in the background (at most once per 10
 // minutes, so a missing or failing `claude` costs nothing). It inherits the environment,
 // so the child finds the same slot.
 func startRefresh(env *clientenv.Env) {
@@ -222,10 +222,10 @@ func refreshStampName(slot string) string {
 	return fmt.Sprintf("%s-%s-%x.stamp", refreshName, strings.Trim(b.String(), "._"), sum[:3])
 }
 
-// startFlush starts `sy flush` in the background, at most once per 2 seconds, debounced on
+// startFlush starts `wy flush` in the background, at most once per 2 seconds, debounced on
 // <state>/outbox/flush.stamp (outbox.md section 5), which the flusher touches as well. The
 // flush it starts lingers until the stamp is 2 s old (step 8), so a record written by a
-// debounced hook still goes out at once (cmd/sy hookFlushDebounce is this flushEvery).
+// debounced hook still goes out at once (cmd/wy hookFlushDebounce is this flushEvery).
 // --from-hook lets that flush wait for a direct push that is due soon when it fails
 // (machines.md 5.4).
 func startFlush(env *clientenv.Env) {
@@ -242,8 +242,8 @@ var (
 )
 
 func spawn(env *clientenv.Env, args []string) {
-	// SY_NO_SPAWN=1 turns background children off (tests, debugging).
-	if os.Getenv("SY_NO_SPAWN") == "1" {
+	// WY_NO_SPAWN=1 turns background children off (tests, debugging).
+	if os.Getenv("WY_NO_SPAWN") == "1" {
 		return
 	}
 	exe, err := executable()

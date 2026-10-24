@@ -8,7 +8,7 @@
 //   set to anything but false, webviewTag: true, enableRemoteModule / @electron/remote,
 //   eval(, new Function(, .innerHTML = / .outerHTML =, insertAdjacentHTML, document.write(,
 //   executeJavaScript…( outside main/usage/reader.js, openExternal outside main/security.js
-//   (its openExternalSafe is the one caller), child_process outside main/sy/, ipcMain.on /
+//   (its openExternalSafe is the one caller), child_process outside main/wy/, ipcMain.on /
 //   sendSync (C3: ipcMain.handle only), certificate overrides ('certificate-error',
 //   ignore-certificate-errors), setCertificateVerifyProc outside main/hub/pin.js (the hub
 //   certificate pin, C6), crashReporter (C2: never started).
@@ -46,8 +46,8 @@ export const JS_RULES = Object.freeze([
     allow: (rel) => rel === 'main/security.js',
   },
   {
-    id: 'child-process', re: /['"](node:)?child_process['"]/, why: 'child_process only under main/sy/',
-    allow: (rel) => rel.startsWith('main/sy/'),
+    id: 'child-process', re: /['"](node:)?child_process['"]/, why: 'child_process only under main/wy/',
+    allow: (rel) => rel.startsWith('main/wy/'),
   },
   { id: 'ipc-on', re: /\bipcMain\s*\.\s*(on|once|addListener)\s*\(|\bsendSync\b/, why: 'IPC is ipcMain.handle only (C3)' },
   {

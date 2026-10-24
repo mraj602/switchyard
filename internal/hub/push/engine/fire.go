@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/events"
-	"github.com/mraj602/switchyard/internal/hub/push/action"
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/push/rules"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/events"
+	"github.com/mraj602/watchyard/internal/hub/push/action"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/rules"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // Retry schedule of push.md 5.6: after the 1st, 2nd, 3rd, 4th failed try; the 5th failure

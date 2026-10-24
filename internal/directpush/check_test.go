@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 const sid1 = "c41e0000-0000-4000-8000-000000000001"
@@ -74,7 +74,7 @@ func newRig(t *testing.T) *rig {
 	cfg.Push.Direct.Private = false
 	cfg.Slots.Labels = map[string]string{"~/.claude-2": "work"}
 	r.o = Options{StateDir: state, OutboxDir: filepath.Join(state, "outbox"), MachineID: "m_" + record.NewID(t0), Machine: "gpu-box",
-		Config: cfg, Client: "sy/0.5.0-test", Now: func() time.Time { return r.now }}
+		Config: cfg, Client: "wy/0.5.0-test", Now: func() time.Time { return r.now }}
 	r.ob = outbox.New(r.o.OutboxDir)
 	r.ob.Now, r.ob.NoFsync = r.o.Now, true
 	if err := SaveSecret(state, Secret{Topic: "sy-test-topic", Token: "tk_abc"}); err != nil {
@@ -91,7 +91,7 @@ func (r *rig) hook(sid, event string, at time.Duration, fields map[string]any) *
 		p[k] = v
 	}
 	raw, _ := json.Marshal(p)
-	rec, err := record.NewHookEvent(record.Meta{Machine: r.o.MachineID, Slot: r.slot, Client: "sy/0.5.0-test",
+	rec, err := record.NewHookEvent(record.Meta{Machine: r.o.MachineID, Slot: r.slot, Client: "wy/0.5.0-test",
 		Seat: &record.Seat{Account: "acc", Org: "org", Email: r.email}, Now: t0.Add(at)}, raw, record.HookOptions{LastMessages: true})
 	if err != nil {
 		r.t.Fatal(err)
@@ -379,7 +379,7 @@ func TestBuildMessages(t *testing.T) {
 		}
 	}
 	p := Build(e, MessageOptions{Topic: "t", Machine: "gpu-box", PublicURL: "https://hub.example.ts.net", Private: true})
-	if p.Title != "Switchyard" || p.Message != "1 session needs you" || strings.Contains(p.Click, sid1) || len(p.Actions) != 1 {
+	if p.Title != "Watchyard" || p.Message != "1 session needs you" || strings.Contains(p.Click, sid1) || len(p.Actions) != 1 {
 		t.Fatalf("private %+v", p)
 	}
 	f := Build(Episode{Trigger: TriggerFailed, Detail: "rate_limit", Project: "api"}, MessageOptions{Machine: "gpu-box"})

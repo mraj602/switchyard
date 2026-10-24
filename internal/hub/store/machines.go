@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/version"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/version"
 )
 
 // The hub's machines model (machines.md 6, 9): the read model with reach, info,
@@ -264,7 +264,7 @@ func semver(v string) ([3]int, bool) {
 	return out, true
 }
 
-// VersionStatus compares a machine's sy version with the hub's by semver (machines.md 6.1):
+// VersionStatus compares a machine's wy version with the hub's by semver (machines.md 6.1):
 // same, older, newer, or unknown when either is missing, a pre-release or a dev build.
 func VersionStatus(machine, hub string) string {
 	// The same build string is the same version, semver or not: builds from a commit

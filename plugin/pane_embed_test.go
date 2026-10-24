@@ -8,7 +8,7 @@ import (
 )
 
 // The pane mod is embedded on its own: its manifest names it, its hooks.json lists only
-// modules (no settings-style hooks, so it never records anything), and the switchyard tree
+// modules (no settings-style hooks, so it never records anything), and the watchyard tree
 // does not contain it.
 func TestPaneEmbed(t *testing.T) {
 	fsys := PaneFS()
@@ -47,6 +47,6 @@ func TestPaneEmbed(t *testing.T) {
 		}
 	}
 	if _, err := fs.Stat(FS(), PaneName); err == nil {
-		t.Error("the switchyard tree contains the pane")
+		t.Error("the watchyard tree contains the pane")
 	}
 }

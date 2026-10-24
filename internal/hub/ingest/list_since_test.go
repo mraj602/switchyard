@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 func sessionList(t *testing.T, machine string, at time.Time, items ...map[string]any) *record.Record {
@@ -17,18 +17,18 @@ func sessionList(t *testing.T, machine string, at time.Time, items ...map[string
 		b, _ := json.Marshal(it)
 		p.Sessions = append(p.Sessions, b)
 	}
-	r, err := record.NewSessionList(record.Meta{Machine: machine, Slot: "~/.claude", Client: "sy/0.5.0", Now: at}, p)
+	r, err := record.NewSessionList(record.Meta{Machine: machine, Slot: "~/.claude", Client: "wy/0.5.0", Now: at}, p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return r
 }
 
-// A session first seen idle by a session_list (sy set up on a
+// A session first seen idle by a session_list (wy set up on a
 // machine with old Claude processes still running) is done since its last transcript row,
 // not since the list ran, whichever of the list and the transcript import the hub gets
 // first; so an idle process from last week is dormant, not open, although it is listed.
-// sy hub refold repairs rows a hub without this rule left.
+// wy hub refold repairs rows a hub without this rule left.
 func TestListedIdleSessionIsDoneSinceItsLastActivity(t *testing.T) {
 	const (
 		idle    = "eeeeeeee-0000-4000-8000-000000000001" // idle for a week, rows imported after the list

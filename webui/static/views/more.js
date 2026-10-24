@@ -26,5 +26,5 @@ export function render({ store }) {
       owner ? item('#/more/devices', 'Devices', 'Phones, browsers and machines paired with this hub; add a phone') : null,
       item('#/more/analytics', 'Analytics', 'Tokens and their cost at API prices, by day, model and project')),
     owner ? null : ownerHintNode({ app: inApp(), lead: 'Devices needs an owner sign-in.', key: 'more-owner-hint' }));
-  return { title: 'More · Switchyard', node };
+  return { title: 'More · Watchyard', node };
 }

@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/client"
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/directpush"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/directpush"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 func runMachine(t *testing.T, e fakeEnv, cfg config.Config) Report {
@@ -94,7 +94,7 @@ func TestFrozenHubPrintsTheKeepTokenLine(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := pcheck(t, runMachine(t, e, cfg), "hub frozen")
-	if c.Level != Fail || c.Fix != "sy connect https://new.example --keep-token" {
+	if c.Level != Fail || c.Fix != "wy connect https://new.example --keep-token" {
 		t.Errorf("frozen: %+v", c)
 	}
 	// Already pointed elsewhere: the old hub's cache does not count.
@@ -219,7 +219,7 @@ func TestHubPullTargetsAndKey(t *testing.T) {
 	if c := pcheck(t, rep, "pull srv1"); c.Level != OK || c.Detail != "ok, last pull 1m ago" {
 		t.Errorf("srv1: %+v", c)
 	}
-	if c := pcheck(t, rep, "pull srv2"); c.Level != Fail || c.Fix != "check the server really changed its key, then: sy hub pull trust srv2" {
+	if c := pcheck(t, rep, "pull srv2"); c.Level != Fail || c.Fix != "check the server really changed its key, then: wy hub pull trust srv2" {
 		t.Errorf("srv2: %+v", c)
 	}
 	if c := pcheck(t, rep, "pull srv3"); c.Level != OK || !strings.Contains(c.Detail, "first pull") {

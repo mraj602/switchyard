@@ -11,9 +11,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 func fixture(t *testing.T, name string) []byte {
@@ -101,7 +101,7 @@ func TestAgentsFromClaude(t *testing.T) {
 	ob := outbox.New(filepath.Join(t.TempDir(), "outbox"))
 	seat := &record.Seat{Account: "a", Org: "o", Src: "claude_json"}
 	res, err := Agents(context.Background(), AgentsOptions{Slots: slots, Run: fc.run, Outbox: ob,
-		Machine: "m_x", Client: "sy/test", SeatOf: func(identity.Slot) *record.Seat { return seat }})
+		Machine: "m_x", Client: "wy/test", SeatOf: func(identity.Slot) *record.Seat { return seat }})
 	if err != nil {
 		t.Fatal(err)
 	}

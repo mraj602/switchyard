@@ -1,6 +1,6 @@
 // Deep links (phone.md P7). Pure: no URL class, no platform imports.
 // Two vocabularies map onto AppRoute: a push payload's `url` (a PWA hash route) and an incoming
-// switchyard:// URL (the allow-list). Anything else is refused (null) or opens Now.
+// watchyard:// URL (the allow-list). Anything else is refused (null) or opens Now.
 import { INCOMING_HOSTS, ROUTE_ID, ROUTE_PATHS, SCHEME } from '../../contract/routes';
 import type { AppRoute, SessionFilter } from '../../contract/routes';
 
@@ -132,12 +132,12 @@ function pairRoute(query: Record<string, string>): AppRoute {
   return r;
 }
 
-/** An incoming switchyard:// URL through the allow-list; anything else is Now. */
+/** An incoming watchyard:// URL through the allow-list; anything else is Now. */
 export function incomingToRoute(url: string): AppRoute {
   if (typeof url !== 'string' || url.includes('\\') || /[\s\u0000-\u001f]/.test(url)) return NOW;
   const m = /^([A-Za-z][A-Za-z0-9+.-]*):\/\/(.*)$/s.exec(url);
   if (!m || m[1]!.toLowerCase() !== SCHEME) return NOW;
-  if (m[2]!.startsWith('/')) return NOW; // switchyard:///x has no host
+  if (m[2]!.startsWith('/')) return NOW; // watchyard:///x has no host
   const p = splitPath(m[2]!);
   if (!p || p.segs.length === 0) return NOW;
   const host = p.segs[0]!.toLowerCase();
@@ -146,8 +146,8 @@ export function incomingToRoute(url: string): AppRoute {
   if (host === 'now') return NOW;
   if (host === 'pair') return segs.length === 1 ? pairRoute(p.query) : NOW;
   if (host === 'settings') {
-    // switchyard://settings/notifications: the link's persistent notification (push.md 14.4).
-    // Only that one page: switchyard://settings alone stays off the allow-list.
+    // watchyard://settings/notifications: the link's persistent notification (push.md 14.4).
+    // Only that one page: watchyard://settings alone stays off the allow-list.
     return segs.length === 2 && segs[1] === 'notifications' ? { name: 'notify-settings' } : NOW;
   }
   return commonRoute(segs, p.query) ?? NOW;
@@ -183,7 +183,7 @@ export function routeToHref(route: AppRoute): string {
 
 /**
  * app/+native-intent.ts: whatever the OS hands expo-router, to an href on the allow-list. A
- * bare path ("/sessions/x", as some Android intents arrive) is read as switchyard://sessions/x.
+ * bare path ("/sessions/x", as some Android intents arrive) is read as watchyard://sessions/x.
  * A pair link only opens the Pair screen pre-filled; it never claims by itself.
  */
 export function nativeIntentToHref(path: string): string {

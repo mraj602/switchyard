@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/setup/apply"
-	"github.com/mraj602/switchyard/internal/setup/ledger"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/setup/apply"
+	"github.com/mraj602/watchyard/internal/setup/ledger"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // A refused MCP pass (it would have removed every server) is a warning naming

@@ -17,7 +17,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 func main() {
@@ -53,7 +53,7 @@ func main() {
 	}
 	raw, _ := json.Marshal(p)
 	seat := &record.Seat{Account: *account, Org: *org, Email: *email}
-	meta := record.Meta{Machine: *machine, Slot: "~/.claude", Seat: seat, Client: "sy/e2e-android", Now: time.Now()}
+	meta := record.Meta{Machine: *machine, Slot: "~/.claude", Seat: seat, Client: "wy/e2e-android", Now: time.Now()}
 	var rec *record.Record
 	var err error
 	if action == "tokens" {
@@ -78,7 +78,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	body, _ := json.Marshal(map[string]any{"v": 1, "client": "sy/e2e-android", "records": []json.RawMessage{b}})
+	body, _ := json.Marshal(map[string]any{"v": 1, "client": "wy/e2e-android", "records": []json.RawMessage{b}})
 	req, _ := http.NewRequest("POST", *hub+"/v1/ingest", bytes.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+*token)
 	req.Header.Set("Content-Type", "application/json")

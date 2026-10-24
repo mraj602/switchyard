@@ -61,7 +61,7 @@ CREATE TABLE link_state (
   last_seen_at  INTEGER,                           -- last frame, ping or poll
   last_close    TEXT,                              -- close code and word: '4409 superseded'
   last_ip       TEXT,
-  hello         TEXT    CHECK (hello IS NULL OR json_valid(hello))   -- last hello's app/sy version and known doc versions
+  hello         TEXT    CHECK (hello IS NULL OR json_valid(hello))   -- last hello's app/wy version and known doc versions
 ) STRICT;
 
 -- The durable queue: one sealed, signed frame per row until the device acks it (link.md 5).
@@ -82,6 +82,6 @@ CREATE INDEX link_queue_exp ON link_queue(exp);
 
 -- Owner sessions now store HMAC-SHA256(pair_pepper, "token:" + token) instead of SHA-256
 -- (tokens.md 2, keys.md 5.4); a session made before cannot be found any more, so it is
--- revoked here. Sign in again with a new `sy hub owner-link`.
+-- revoked here. Sign in again with a new `wy hub owner-link`.
 UPDATE device SET revoked_at = CAST(strftime('%s', 'now') AS INTEGER) * 1000
   WHERE created_by LIKE 'owner-link:%' AND revoked_at IS NULL;

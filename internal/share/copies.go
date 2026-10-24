@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/atomicfile"
 )
 
 // CopyGroup is one file shared by synced copies on Windows when symlinks are not allowed
@@ -106,7 +106,7 @@ func registerCopy(stateDir, primary, copyPath string) error {
 }
 
 // ForgetCopies removes every registered copy path for which match is true from copies.json
-// (undo of a LinkCopy, `sy account remove`, `sy uninstall`) and returns them. A group whose
+// (undo of a LinkCopy, `wy account remove`, `wy uninstall`) and returns them. A group whose
 // primary matches, or that is left with no copy, is dropped whole. The file is rewritten only
 // when something was removed.
 func ForgetCopies(stateDir string, match func(path string) bool) ([]string, error) {
@@ -160,7 +160,7 @@ type CopySyncResult struct {
 
 // SyncCopies compares each synced-copy group with its last-synced hash: if only one side
 // changed it is copied to the others; if two changed, nothing is copied and the group is
-// marked in copies.json for `sy doctor`. Line-union groups merge instead. It writes
+// marked in copies.json for `wy doctor`. Line-union groups merge instead. It writes
 // copies.json only when something changed, and nothing at all when nothing did.
 //
 // Only copies listed in managed (the ledger's copies, setup.md 9.3) take part: a path

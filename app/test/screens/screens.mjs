@@ -2,12 +2,12 @@
 // 1440x900 and 1024x700, against a sandbox hub filled by test/e2e/android/seed and the fake
 // claude.ai (one extra run opens the real claude.ai sign-in page, never typing into it).
 //
-//   SY_BIN=<sy> xvfb-run -a -s "-screen 0 1440x900x24" dbus-run-session -- \
+//   WY_BIN=<wy> xvfb-run -a -s "-screen 0 1440x900x24" dbus-run-session -- \
 //     node test/screens/screens.mjs <out dir> [phase ...]
 //
 // Phases: main (pairing, board routes, tabs, Settings, owner, error states), notify (an alert
 // on the sandbox hub, the libnotify call caught by test/screens/notifyd.py on the private bus),
-// claude (the real claude.ai sign-in page, no hub: also the "sy missing" state). Default: all.
+// claude (the real claude.ai sign-in page, no hub: also the "wy missing" state). Default: all.
 // Everything runs in the smoke harness's sandbox (temp HOME, user data and D-Bus address), so
 // the real home, keyring and desktop are never touched. Needs `import` (ImageMagick) for the
 // window grabs: the native views are composited only on the X screen.
@@ -91,7 +91,7 @@ async function seedHub(sb, hub, bin, part) {
   if (!sb.machines) {
     sb.machines = [];
     for (const [id, name] of [['m_01J9SEED000000000000000001', 'laptop'], ['m_01J9SEED000000000000000002', 'gpu-box']]) {
-      const r = await hub.sy(['hub', 'token', 'create', '--kind', 'machine', '--name', name, '--machine', id, '--json']);
+      const r = await hub.wy(['hub', 'token', 'create', '--kind', 'machine', '--name', name, '--machine', id, '--json']);
       if (r.code !== 0) throw new Error(`token create: ${r.stderr}`);
       sb.machines.push(`${id}=${JSON.parse(r.stdout).token}`);
     }
@@ -143,7 +143,7 @@ async function boardTour(run, hub, prefix, routes = BOARD_ROUTES, opts = {}) {
 }
 
 async function shellSection(run, id) {
-  await run.shell.evaluate(() => window.sy.selectView({ view: 'settings' }));
+  await run.shell.evaluate(() => window.wy.selectView({ view: 'settings' }));
   await sleep(300);
   await run.shell.evaluate((sec) => {
     const b = document.querySelector(`[data-fk="nav-${sec}"]`);
@@ -158,7 +158,7 @@ async function phaseMain() {
   await seedHub(sb, hub, bin);
   const fixture = freshFixture(sb.root, { five: 42, week: 61 });
   const claude = await startFakeClaude({ fixtures: [path.relative(USAGE_DIR, fixture)] });
-  const env = { SY_BIN: bin, SY_APP_TEST_CLAUDE_ORIGIN: claude.origin, SY_APP_TEST_CADENCE_MS: '4000' };
+  const env = { WY_BIN: bin, WY_APP_TEST_CLAUDE_ORIGIN: claude.origin, WY_APP_TEST_CADENCE_MS: '4000' };
   let run = null;
   try {
     run = await launch(sb, { env });
@@ -169,7 +169,7 @@ async function phaseMain() {
     await shots(run, 'pair-settings-hub-unpaired', { themes: ['light'] });
     // code entry (no local hub, no admin channel): the state main would send for a remote hub
     await main(run.app, (m) => m.bus.emit('hub', { ...m.bus.last('hub'), local: false, admin: null }));
-    await run.shell.evaluate(() => window.sy.selectView({ view: 'hub' }));
+    await run.shell.evaluate(() => window.wy.selectView({ view: 'hub' }));
     await sleep(500);
     await shots(run, 'pair-code-entry', { themes: ['light', 'dark'] });
     await run.shell.evaluate(async () => {
@@ -179,34 +179,34 @@ async function phaseMain() {
     });
     await waitFor(() => run.shell.evaluate(() => !!document.querySelector('.banner .err')), 30_000, 'the pair error').catch((e) => notes.push(`pair error: ${e.message}`));
     await shots(run, 'pair-code-error', { themes: ['light'] });
-    const r = await run.shell.evaluate(() => window.sy.pair({}));
+    const r = await run.shell.evaluate(() => window.wy.pair({}));
     if (!r.ok) throw new Error(`pair: ${JSON.stringify(r)}`);
     await waitFor(async () => (await shellState(run.shell)).hub.status === 'ok', 20_000, 'hub ok');
-    await run.shell.evaluate(() => window.sy.selectView({ view: 'hub' }));
+    await run.shell.evaluate(() => window.wy.selectView({ view: 'hub' }));
     await sleep(2500);
     // ---- the board, read-only sign-in
     await boardTour(run, hub, 'board');
     await boardTour(run, hub, 'board', [['login', '#/login'], ['pair', '#/pair'], ['owner-nosecret', '#/owner']], { themes: ['light'] });
     // ---- account tabs
     const ids = {};
-    ids.work = (await run.shell.evaluate(() => window.sy.addTab({ name: 'work' }))).id;
+    ids.work = (await run.shell.evaluate(() => window.wy.addTab({ name: 'work' }))).id;
     await sleep(1500);
     await waitFor(async () => /\/login$/.test(await tabUrl(run.app, ids.work)), 20_000, 'fake login').catch(() => {});
     await shots(run, 'tab-fake-login', { themes: ['light'], sizes: [BIG] });
     await inTab(run.app, ids.work, "document.getElementById('go').click()");
     await waitFor(async () => /\/new$/.test(await tabUrl(run.app, ids.work)), 20_000, 'signed in');
-    await run.shell.evaluate((id) => window.sy.selectView({ view: id }), ids.work);
+    await run.shell.evaluate((id) => window.wy.selectView({ view: id }), ids.work);
     await waitFor(() => run.shell.evaluate(() => !!document.querySelector('dialog[open]')), 15_000, 'the warning').catch(() => {});
     await shots(run, 'tab-warning-dialog');
     await run.shell.getByRole('button', { name: 'Read usage for this account', exact: true }).click().catch((e) => notes.push(`accept: ${e.message}`));
     await sleep(6000);
     await shots(run, 'tab-work-strip');
-    ids.home = (await run.shell.evaluate(() => window.sy.addTab({ name: 'home' }))).id;
+    ids.home = (await run.shell.evaluate(() => window.wy.addTab({ name: 'home' }))).id;
     await waitFor(async () => /\/login$/.test(await tabUrl(run.app, ids.home)), 20_000, 'fake login 2').catch(() => {});
     await inTab(run.app, ids.home, "document.getElementById('go').click()");
-    ids.client = (await run.shell.evaluate(() => window.sy.addTab({ name: 'client-long-name' }))).id;
+    ids.client = (await run.shell.evaluate(() => window.wy.addTab({ name: 'client-long-name' }))).id;
     await sleep(1500);
-    await run.shell.evaluate((id) => window.sy.selectView({ view: id }), ids.home);
+    await run.shell.evaluate((id) => window.wy.selectView({ view: id }), ids.home);
     await sleep(1500);
     await shots(run, 'tab-home-not-accepted', { themes: ['light'] });
     await run.shell.evaluate(() => document.querySelector('dialog[open] [data-fk="warn-not-now"]')?.click());
@@ -253,7 +253,7 @@ async function phaseMain() {
     await shots(run, 'dialog-remove-tab', { themes: ['light'], sizes: [BIG] });
     await run.shell.keyboard.press('Escape');
     // ---- owner
-    const o = await run.shell.evaluate(() => window.sy.ownerSignIn({}));
+    const o = await run.shell.evaluate(() => window.wy.ownerSignIn({}));
     if (!o.ok) notes.push(`owner: ${JSON.stringify(o)}`);
     await sleep(3000);
     await boardTour(run, hub, 'owner', BOARD_ROUTES.filter(([n]) => ['now', 'settings', 'devices', 'accounts', 'alerts', 'more'].includes(n)));
@@ -277,7 +277,7 @@ async function phaseMain() {
     }).catch((e) => [`error: ${e.message}`]);
     fs.writeFileSync(path.join(OUT, 'tray-menu.txt'), menu.join('\n'));
     // ---- error states: the hub goes down
-    await run.shell.evaluate(() => window.sy.selectView({ view: 'hub' }));
+    await run.shell.evaluate(() => window.wy.selectView({ view: 'hub' }));
     await hub.stop();
     await sleep(9000);
     await shots(run, 'error-hub-down-board', { themes: ['light'] });
@@ -312,11 +312,11 @@ async function phaseNotify() {
   let run = null;
   try {
     // The private bus of dbus-run-session (never the desktop's): the fake daemon is on it.
-    run = await launch(sb, { env: { SY_BIN: bin, DBUS_SESSION_BUS_ADDRESS: bus } });
-    const r = await run.shell.evaluate(() => window.sy.pair({}));
+    run = await launch(sb, { env: { WY_BIN: bin, DBUS_SESSION_BUS_ADDRESS: bus } });
+    const r = await run.shell.evaluate(() => window.wy.pair({}));
     if (!r.ok) throw new Error(`pair: ${JSON.stringify(r)}`);
     await waitFor(async () => (await shellState(run.shell)).hub.status === 'ok', 20_000, 'hub ok');
-    await run.shell.evaluate(() => window.sy.selectView({ view: 'settings' }));
+    await run.shell.evaluate(() => window.wy.selectView({ view: 'settings' }));
     await sleep(3000);
     await seedHub(sb, hub, bin, 'alerts');
     await waitFor(() => fs.existsSync(logFile) && fs.readFileSync(logFile, 'utf8').trim(), 120_000, 'a Notify call').catch((e) => notes.push(`notify: ${e.message}`));
@@ -336,16 +336,16 @@ async function phaseClaude() {
   const sb = sandbox('screens-claude');
   let run = null;
   try {
-    // No sy at all: the "sy missing" state, then a tab on the real claude.ai (nothing typed).
-    run = await launch(sb, { env: { SY_BIN: path.join(sb.root, 'no-such-sy') } });
+    // No wy at all: the "wy missing" state, then a tab on the real claude.ai (nothing typed).
+    run = await launch(sb, { env: { WY_BIN: path.join(sb.root, 'no-such-sy') } });
     await sleep(2500);
     await shots(run, 'error-sy-missing');
     await shellSection(run, 'hub');
     await shots(run, 'error-sy-missing-settings', { themes: ['light'] });
     await shellSection(run, 'tabs');
     await shots(run, 'settings-tabs-empty', { themes: ['light', 'dark'] });
-    const id = (await run.shell.evaluate(() => window.sy.addTab({ name: 'personal' }))).id;
-    await run.shell.evaluate((t) => window.sy.selectView({ view: t }), id);
+    const id = (await run.shell.evaluate(() => window.wy.addTab({ name: 'personal' }))).id;
+    await run.shell.evaluate((t) => window.wy.selectView({ view: t }), id);
     await sleep(12_000);
     await shots(run, 'tab-claude-login', { themes: ['light', 'dark'] });
   } finally {

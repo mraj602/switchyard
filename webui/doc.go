@@ -21,7 +21,7 @@
 //
 // Development and tests use the mock hub in webui/devserver (run it with
 // `go run ./cmd/webui-dev`). The browser smoke test in webui/smoke is gated by
-// SY_WEBUI_BROWSER=1.
+// WY_WEBUI_BROWSER=1.
 //
 // Handler (serve.go) serves FS() with the build hash templated into sw.js, content types and
 // the strict CSP; UIBuild is the hash for /health.

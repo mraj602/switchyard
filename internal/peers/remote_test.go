@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 // fakeRemote is a hub with one session on another machine that queues every message. names

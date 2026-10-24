@@ -13,7 +13,7 @@ const { notifNote, meInApp, markerInApp, ownerHint, ownerHow, signedOutReason, o
   `(function () {\n${src}\nreturn { notifNote, meInApp, markerInApp, ownerHint, ownerHow, signedOutReason, ownerLinkTarget };\n})()`, { URL, URLSearchParams });
 
 test('the desktop app marks its Hub view: a user agent token or ?in=desktop', () => {
-  assert.equal(markerInApp('Mozilla/5.0 (X11; Linux x86_64) Chrome/130.0 Electron/33.0 SwitchyardDesktop/0.4.0', ''), true);
+  assert.equal(markerInApp('Mozilla/5.0 (X11; Linux x86_64) Chrome/130.0 Electron/33.0 WatchyardDesktop/0.4.0', ''), true);
   assert.equal(markerInApp('Mozilla/5.0 Chrome/130.0', '?in=desktop'), true);
   assert.equal(markerInApp('Mozilla/5.0 Chrome/130.0', '?in=browser'), false);
   assert.equal(markerInApp('Mozilla/5.0 Chrome/130.0', ''), false);
@@ -24,8 +24,8 @@ test('a non-owner is told to open an owner link from an owner device; the app na
   assert.equal(ownerHint(false), 'Sign in as owner: open an owner link from an owner device (More, Devices, Make another device owner).');
   assert.equal(ownerHint(true), 'Use Sign in as owner on the Hub tab.');
   for (const app of [true, false]) {
-    assert.doesNotMatch(ownerHint(app), /sy hub|owner-link/);
-    assert.doesNotMatch(ownerHow(app), /sy hub|owner-link|Settings, Hub/);
+    assert.doesNotMatch(ownerHint(app), /wy hub|owner-link/);
+    assert.doesNotMatch(ownerHow(app), /wy hub|owner-link|Settings, Hub/);
   }
 });
 
@@ -71,7 +71,7 @@ test('a desktop browser signs in as the owner or pairs; a phone pairs with a cod
 
 test('the Hub view of the desktop app: a session opened from a desktop device (via), not the browser kind', () => {
   // What the hub answers for the app's cookie session: a browser device, via the desktop device.
-  const appBoard = { device: { kind: 'browser', name: 'board via Switchyard-desktop-box', scopes: ['read'] }, owner: false, via: { id: 'dev_1', kind: 'desktop', name: 'Switchyard-desktop-box' } };
+  const appBoard = { device: { kind: 'browser', name: 'board via Watchyard-desktop-box', scopes: ['read'] }, owner: false, via: { id: 'dev_1', kind: 'desktop', name: 'Watchyard-desktop-box' } };
   assert.equal(meInApp(appBoard), true);
   // an owner session opened in the app keeps the via
   assert.equal(meInApp({ device: { kind: 'browser' }, owner: true, via: { kind: 'desktop' } }), true);

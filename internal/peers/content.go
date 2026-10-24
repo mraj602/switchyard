@@ -35,7 +35,7 @@ var secretPatterns = []struct {
 	re   *regexp.Regexp
 }{
 	{"a PEM private key", regexp.MustCompile(`-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----`)},
-	{"a Switchyard token", regexp.MustCompile(`\bsy_[mdpbo]_[0-9A-Za-z]{16,}`)},
+	{"a Watchyard token", regexp.MustCompile(`\bsy_[mdpbo]_[0-9A-Za-z]{16,}`)},
 	{"an Anthropic API key", regexp.MustCompile(`sk-ant-[0-9A-Za-z_-]{8,}`)},
 	{"an AWS access key id", regexp.MustCompile(`\b(?:AKIA|ASIA)[0-9A-Z]{16}\b`)},
 	{"a GitHub token", regexp.MustCompile(`\b(?:ghp_[0-9A-Za-z]{20,}|github_pat_[0-9A-Za-z_]{20,})`)},

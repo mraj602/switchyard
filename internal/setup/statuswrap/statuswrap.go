@@ -2,7 +2,7 @@
 //
 // A status line command C that is not ours becomes `S statusline --wrap 'C'` (POSIX single
 // quotes; a quote inside C becomes '\”). A command that is already ours is never wrapped
-// again: only the path to sy is updated.
+// again: only the path to wy is updated.
 //
 // Depends on: nothing.
 package statuswrap
@@ -11,12 +11,12 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
 // Wrap returns the command to store in settings for status line command cmd and the
-// absolute path syPath of sy. An empty cmd gives the bare `S statusline`. A cmd that is
-// already ours is returned with only the path to sy replaced (idempotent, never nested).
+// absolute path syPath of wy. An empty cmd gives the bare `S statusline`. A cmd that is
+// already ours is returned with only the path to wy replaced (idempotent, never nested).
 func Wrap(cmd, syPath string) string {
 	if words, ok := parseOurs(cmd); ok {
 		if len(words) == 4 {
@@ -40,7 +40,7 @@ func Unwrap(cmd string) (orig string, ok bool) {
 	return words[3], true
 }
 
-// IsOurs reports whether cmd matches `<path>/sy[.exe] statusline [--wrap <one shell word>]`.
+// IsOurs reports whether cmd matches `<path>/wy[.exe] statusline [--wrap <one shell word>]`.
 func IsOurs(cmd string) bool {
 	_, ok := parseOurs(cmd)
 	return ok

@@ -3,10 +3,10 @@ package share
 import (
 	"context"
 
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
-// SyncConfig is what `sy tick` hands to Sync.
+// SyncConfig is what `wy tick` hands to Sync.
 type SyncConfig struct {
 	// MCP is the sync request (the files of the MCP sync set); nil when MCP sharing is off
 	// or "external" (setup.md 5.4).
@@ -28,7 +28,7 @@ func (r SyncResult) Idle() bool {
 	return len(r.MCP.Written) == 0 && len(r.Copies.Synced) == 0
 }
 
-// Sync is the share part of `sy tick`: the MCP merge and the synced copies. When nothing
+// Sync is the share part of `wy tick`: the MCP merge and the synced copies. When nothing
 // changed it writes nothing (no state file, no base, no log line).
 func (s *Sharer) Sync(ctx context.Context, cfg SyncConfig) (SyncResult, error) {
 	var out SyncResult

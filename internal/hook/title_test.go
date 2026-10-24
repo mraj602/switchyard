@@ -11,14 +11,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // titleSandbox is a sandbox with titles on and the slot labelled "work".
 func titleSandbox(t *testing.T, toml string) *sandbox {
 	t.Helper()
 	sb := newSandbox(t)
-	cfg := filepath.Join(sb.home, "sy", "config")
+	cfg := filepath.Join(sb.home, "wy", "config")
 	if err := os.MkdirAll(cfg, 0o700); err != nil {
 		t.Fatal(err)
 	}

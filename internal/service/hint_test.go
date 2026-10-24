@@ -45,7 +45,7 @@ func TestInstalledListen(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(unit), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	body := "[Service]\nExecStart=/home/u/.local/bin/sy hub serve --listen 127.0.0.1:19100 --no-pull\n"
+	body := "[Service]\nExecStart=/home/u/.local/bin/wy hub serve --listen 127.0.0.1:19100 --no-pull\n"
 	if err := os.WriteFile(unit, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}

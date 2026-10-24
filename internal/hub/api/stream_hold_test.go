@@ -12,18 +12,18 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/api"
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/api"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
-// /v1/stream must stay open through the http.Server that `sy hub serve`
+// /v1/stream must stay open through the http.Server that `wy hub serve`
 // runs, for as long as the client wants, with a ping every PingEvery. A ReadTimeout or
-// WriteTimeout on that server would cut it at that age. SY_SSE_HOLD=70s holds it for the
+// WriteTimeout on that server would cut it at that age. WY_SSE_HOLD=70s holds it for the
 // real duration with the real ping interval (25 s); by default it holds 40 pings of 50 ms.
 func TestStreamStaysOpenThroughServeServer(t *testing.T) {
 	ping, hold := 50*time.Millisecond, 2*time.Second
-	if v := os.Getenv("SY_SSE_HOLD"); v != "" {
+	if v := os.Getenv("WY_SSE_HOLD"); v != "" {
 		d, err := time.ParseDuration(v)
 		if err != nil {
 			t.Fatal(err)

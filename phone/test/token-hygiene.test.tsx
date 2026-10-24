@@ -42,7 +42,7 @@ describe('the token stays in the keychain', () => {
   });
 
   it('a whole session of pairing, registering, polling, widgets, a 401 and an unpair leaves it nowhere else', async () => {
-    const os = jest.replaceProperty(Platform, 'OS', 'android'); // widgets write sy.widget.v1
+    const os = jest.replaceProperty(Platform, 'OS', 'android'); // widgets write wy.widget.v1
     const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((m) => jest.spyOn(console, m).mockImplementation(() => {}));
     await AsyncStorage.clear();
     const secureMem = createMemorySecureStore();
@@ -90,11 +90,11 @@ describe('the token stays in the keychain', () => {
       await latest!.refresh();
       await flush(80);
     });
-    expect(await AsyncStorage.getItem('sy.widget.v1')).toBeTruthy(); // the widgets ran
+    expect(await AsyncStorage.getItem('wy.widget.v1')).toBeTruthy(); // the widgets ran
     expect(f.calls.some((c) => c.init.method === 'PATCH' && c.url.endsWith('/v1/devices/self'))).toBe(true); // and the registration
 
     // paired and polled: the cache and every AsyncStorage key are token-free
-    expect(secureMem.dump()['sy.hub.v1']).toContain(TOKEN);
+    expect(secureMem.dump()['wy.hub.v1']).toContain(TOKEN);
     const keys = await AsyncStorage.getAllKeys();
     expect(keys.length).toBeGreaterThan(0);
     for (const k of keys) expect(`${k}=${await AsyncStorage.getItem(k)}`).not.toContain(TOKEN);

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/pair"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/pair"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // ownerLinkSecret is the s= of an owner link URL (<hub>/#/owner?s=<secret>).
@@ -75,7 +75,7 @@ func TestOwnerLinksAPI(t *testing.T) {
 		t.Fatalf("row %+v %v", row, err)
 	}
 
-	// Consumed like `sy hub owner-link`: a new owner session.
+	// Consumed like `wy hub owner-link`: a new owner session.
 	r = h.call("POST", "/v1/session/owner", map[string]string{"secret": secret, "name": "Laptop"}, same)
 	if r.code != 204 {
 		t.Fatalf("sign-in: %d %s", r.code, r.body)

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 // A `claude -p` started from inside a session (its Bash tool runs it) inherits the parent's
@@ -13,7 +13,7 @@ import (
 // its own. The walk must stop at it: sending as the parent session above it would put the
 // child's words in the parent's name.
 //
-// world: claude (500, sess-a, registered) -> bash (501) -> claude -p (600) -> bash (601) -> sy
+// world: claude (500, sess-a, registered) -> bash (501) -> claude -p (600) -> bash (601) -> wy
 func nestedWorld(t *testing.T) (*fx, peers.Env) {
 	f, slot := whoamiWorld(t)
 	env := []string{"HOME=" + f.home, "CLAUDECODE=1", "CLAUDE_CONFIG_DIR=" + slot, "CLAUDE_CODE_SESSION_ID=sess-a"}
@@ -67,7 +67,7 @@ func TestWhoamiPassesOverAClaudeNamedWrapper(t *testing.T) {
 	// the walk.
 	f, _ := whoamiWorld(t)
 	f.proc(650, 501, "claude", "/usr/bin/bash", "/bin/bash /home/u/bin/claude", 6000)
-	f.proc(651, 650, "sy", "/usr/local/bin/sy", "sy peers send", 6001)
+	f.proc(651, 650, "wy", "/usr/local/bin/wy", "wy peers send", 6001)
 	e := f.env()
 	e.StartPID = 651
 	if c, rf := e.Whoami(); rf != nil || c.Entry.SessionID != "sess-a" {

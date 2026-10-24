@@ -1,15 +1,15 @@
 {
-  "name": "switchyard-desktop",
-  "productName": "Switchyard",
-  "desktopName": "switchyard-desktop.desktop",
+  "name": "watchyard-desktop",
+  "productName": "Watchyard",
+  "desktopName": "watchyard-desktop.desktop",
   "version": "1.0.0",
-  "description": "Switchyard desktop app: claude.ai account tabs, web usage and the hub board. Unofficial; not affiliated with Anthropic.",
+  "description": "Watchyard desktop app: claude.ai account tabs, web usage and the hub board. Unofficial; not affiliated with Anthropic.",
   "license": "AGPL-3.0-only",
-  "author": "Switchyard contributors",
-  "homepage": "https://github.com/mraj602/switchyard",
+  "author": "Watchyard contributors",
+  "homepage": "https://github.com/mraj602/watchyard",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mraj602/switchyard.git",
+    "url": "git+https://github.com/mraj602/watchyard.git",
     "directory": "app"
   },
   "private": true,
@@ -18,7 +18,7 @@
   "engines": {
     "node": ">=22"
   },
-  "switchyard": {
+  "watchyard": {
     "minSy": "0.6.0"
   },
   "scripts": {

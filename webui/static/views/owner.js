@@ -1,5 +1,5 @@
 // Owner sign-in: #/owner?s=<secret> from an owner device (More, Devices, Make another device
-// owner), the hub's first start or `sy hub owner-link`. Swaps the one-time secret for an owner
+// owner), the hub's first start or `wy hub owner-link`. Swaps the one-time secret for an owner
 // session cookie, then opens Settings.
 
 import { h } from '../components/dom.js';
@@ -19,10 +19,10 @@ let sent = '';
 // Where a new link comes from: an owner device first; the hub's computer only in a browser
 // (inside the desktop app, the Hub tab's Sign in as owner).
 const newLink = () => (inApp() ? 'Use Sign in as owner on the Hub tab for a new one.'
-  : 'Get a new one on an owner device (More, Devices, Make another device owner), or run sy hub owner-link on the hub’s computer.');
+  : 'Get a new one on an owner device (More, Devices, Make another device owner), or run wy hub owner-link on the hub’s computer.');
 const clock = (at) => { const t = at ? clockOf(at) : ''; return t ? ` (${t})` : ''; };
 // lasted is how long the link worked: the hub sends the lifetime it was made with
-// (`sy hub owner-link --ttl`), which is not always the default 10 minutes.
+// (`wy hub owner-link --ttl`), which is not always the default 10 minutes.
 const lasted = (ttlS) => { const d = lifetime(ttlS); return d ? `: it worked for ${d} after it was made` : ''; };
 function refusal(e) {
   switch (e.code) {
@@ -61,5 +61,5 @@ export function render() {
     ? h('div', { class: 'card login-card' }, h('h1', {}, 'Owner sign-in'), h('p', { class: 'form-error', role: 'alert', 'data-key': 'owner-error' }, st.error),
       inApp() ? null : h('a', { class: 'btn', href: '#/login', 'data-key': 'owner-other-ways' }, 'Other ways to sign in'))
     : h('div', { class: 'card login-card' }, h('h1', {}, 'Owner sign-in'), h('p', { class: 'muted', role: 'status' }, 'Signing in…'));
-  return { title: 'Owner sign-in · Switchyard', node: h('div', { class: 'login-wrap' }, h('div', { class: 'login-col' }, brandRow(), body)) };
+  return { title: 'Owner sign-in · Watchyard', node: h('div', { class: 'login-wrap' }, h('div', { class: 'login-col' }, brandRow(), body)) };
 }

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/identity"
 )
 
 // Env is everything the local peers code looks at, all injectable so tests run in a temp
@@ -57,7 +57,7 @@ func (e Env) fs() identity.FS {
 
 func (e Env) locator() identity.Locator { return identity.Locator{Home: e.Home, FS: e.fs()} }
 
-// Slots are the config folders sy manages (identity.md 3), without CLAUDE_CONFIG_DIR.
+// Slots are the config folders wy manages (identity.md 3), without CLAUDE_CONFIG_DIR.
 func (e Env) Slots() []identity.Slot {
 	s, _ := e.locator().Discover(e.SlotExtra, func(string) string { return "" })
 	return s
@@ -94,7 +94,7 @@ func (e Env) managed(s identity.Slot) (identity.Slot, bool) {
 	return identity.Slot{}, false
 }
 
-// Caller is the session `sy peers send` runs in (peers.md 4.1).
+// Caller is the session `wy peers send` runs in (peers.md 4.1).
 type Caller struct {
 	ClaudePID int
 	Slot      identity.Slot
@@ -102,7 +102,7 @@ type Caller struct {
 }
 
 // Whoami finds the calling session: the nearest ancestor of StartPID that is a Claude Code
-// process with a registry file in a slot sy manages.
+// process with a registry file in a slot wy manages.
 //
 // Linux: the config folder is CLAUDE_CONFIG_DIR read from the claude process's environment
 // (that one variable only; unset means ~/.claude), and `<config>/sessions/<pid>.json` must
@@ -122,7 +122,7 @@ func (e Env) Whoami() (Caller, *Refusal) {
 	}
 	cands := ClaudeCandidates(e.Proc, e.StartPID)
 	if len(cands) == 0 {
-		return Caller{}, Refuse(CodeNotASession, "sy peers send works only inside a Claude Code session")
+		return Caller{}, Refuse(CodeNotASession, "wy peers send works only inside a Claude Code session")
 	}
 	reason := "no registry file for the Claude Code process above this command"
 	for _, c := range cands {
@@ -132,7 +132,7 @@ func (e Env) Whoami() (Caller, *Refusal) {
 		case err == nil:
 			slot, ok := e.managed(e.SlotFor(dir, set))
 			if !ok {
-				reason = "its config folder is not one Switchyard manages"
+				reason = "its config folder is not one Watchyard manages"
 				break
 			}
 			ent, err := ReadRegistryPID(e.fs(), slot, c.PID)
@@ -165,11 +165,11 @@ func (e Env) Whoami() (Caller, *Refusal) {
 		}
 		if e.StopsWalk(c) {
 			return Caller{}, Refuse(CodeNotASession,
-				"the nearest Claude Code process (pid %d) is not a session Switchyard can identify (%s; a `claude -p` started inside another session has none), so this does not send as the session above it",
+				"the nearest Claude Code process (pid %d) is not a session Watchyard can identify (%s; a `claude -p` started inside another session has none), so this does not send as the session above it",
 				c.PID, reason)
 		}
 	}
-	return Caller{}, Refuse(CodeNotASession, "not inside a session Switchyard can identify: %s", reason)
+	return Caller{}, Refuse(CodeNotASession, "not inside a session Watchyard can identify: %s", reason)
 }
 
 // StopsWalk reports whether the Whoami walk must stop at candidate c when c cannot be
@@ -205,7 +205,7 @@ func (e Env) knownSessionPID(pid int) bool {
 // OffPath is <state>/peers/off (peers.md 11).
 func (e Env) OffPath() string { return filepath.Join(e.State, "peers", "off") }
 
-// Off reports whether `sy peers off` is in force on this machine.
+// Off reports whether `wy peers off` is in force on this machine.
 func (e Env) Off() bool {
 	_, err := os.Stat(e.OffPath())
 	return err == nil

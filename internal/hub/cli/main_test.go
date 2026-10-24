@@ -12,7 +12,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	os.Setenv("SY_STATE_DIR", dir)
+	os.Setenv("WY_STATE_DIR", dir)
 	code := m.Run()
 	os.RemoveAll(dir)
 	os.Exit(code)

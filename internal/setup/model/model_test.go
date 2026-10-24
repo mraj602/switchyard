@@ -63,7 +63,7 @@ func marshal(t *testing.T, v any) []byte {
 }
 
 func TestReportGolden(t *testing.T) { // setup.md 6.3
-	statusCmd := json.RawMessage(`"/home/u/.local/bin/sy statusline --wrap 'bash ~/.claude/statusline-command.sh'"`)
+	statusCmd := json.RawMessage(`"/home/u/.local/bin/wy statusline --wrap 'bash ~/.claude/statusline-command.sh'"`)
 	r := Report{
 		V: 1, Mode: ModeDryRun, Primary: "~/.claude",
 		State: &State{
@@ -100,7 +100,7 @@ func TestReportGolden(t *testing.T) { // setup.md 6.3
 
 func TestManifestGolden(t *testing.T) { // setup.md 7.2
 	m := Manifest{
-		V: 1, ID: "20261012T173000Z", Command: "sy setup --yes --hub later", SyVersion: "0.3.0",
+		V: 1, ID: "20261012T173000Z", Command: "wy setup --yes --hub later", SyVersion: "0.3.0",
 		Machine: "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K", PlanID: "p_9c41e0a7d2b3",
 		StartedAt: "2026-10-12T17:30:00.120Z", FinishedAt: "2026-10-12T17:30:04.880Z",
 		Status: StatusApplied,
@@ -125,16 +125,16 @@ func TestManifestGolden(t *testing.T) { // setup.md 7.2
 func TestLedgerGolden(t *testing.T) { // setup.md 9.3
 	l := Ledger{
 		V: 1,
-		Plugin: &LedgerPlugin{Marketplace: "/home/u/.local/state/switchyard/plugin/marketplace",
-			ID: "switchyard@sy-local", Roots: []string{"/home/u/.claude/plugins"},
+		Plugin: &LedgerPlugin{Marketplace: "/home/u/.local/state/watchyard/plugin/marketplace",
+			ID: "watchyard@wy-local", Roots: []string{"/home/u/.claude/plugins"},
 			Targets: []string{"/home/u/.claude/settings.json"}},
 		StatusLine: map[string]LedgerStatus{
 			"/home/u/.claude/settings.json": {Original: "bash /home/u/.claude/statusline-command.sh"}},
 		EnvKeys:   []string{"/home/u/.claude/settings.json"},
 		Launchers: []LedgerLauncher{{Path: "/home/u/.local/bin/claude-8", SHA256: "dddd"}},
 		MCPSync:   []string{"/home/u/.claude.json"},
-		HubService: &LedgerService{Name: "switchyard-hub",
-			Unit: "/home/u/.config/systemd/user/switchyard-hub.service"},
+		HubService: &LedgerService{Name: "watchyard-hub",
+			Unit: "/home/u/.config/systemd/user/watchyard-hub.service"},
 		Timer: true,
 	}
 	sameJSON(t, "ledger", marshal(t, l), golden(t, "ledger.json"))
@@ -145,7 +145,7 @@ func TestActionRunGolden(t *testing.T) { // setup.md 6.1 (run, with precondition
 	cfg := "/home/u/.claude/plugins"
 	a := Action{
 		ID: "a2", Step: StepPlugin, Op: OpRun,
-		Argv:    []string{"claude", "plugin", "install", "switchyard@sy-local", "--json"},
+		Argv:    []string{"claude", "plugin", "install", "watchyard@wy-local", "--json"},
 		Env:     map[string]*string{"CLAUDE_CONFIG_DIR": nil, "CLAUDE_CODE_PLUGIN_CACHE_DIR": &cfg},
 		Touches: []string{"/home/u/.claude/settings.json", "/home/u/.claude/plugins/installed_plugins.json"},
 		Watch:   []string{"/home/u/.claude/plugins"},
@@ -180,7 +180,7 @@ func TestStateExtrasRoundTrip(t *testing.T) {
 	st := State{
 		Claude: ClaudeInfo{Path: "~/.local/bin/claude", Version: "2.1.296"},
 		Hub:    HubState{URL: &url, Healthy: true},
-		Home:   "/home/u", Sy: "/home/u/.local/bin/sy",
+		Home:   "/home/u", Sy: "/home/u/.local/bin/wy",
 		SettingsTargets: []SettingsTarget{{Path: "/home/u/.claude/settings.json", Exists: true,
 			Folders: []string{"~/.claude"}, EnvKeys: []string{"FOO"},
 			StatusLine: &StatusLine{Type: "command", Command: "x"}}},

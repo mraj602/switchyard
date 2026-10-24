@@ -255,7 +255,7 @@ export function seatRows(snapshot: WidgetSnapshot, reset: string[]): SeatRow[] {
 
 /** What a widget component renders for one timeline entry. Plain JSON: it crosses to Swift. */
 export interface WidgetTimelineProps {
-  /** null: nothing written yet ("Open Switchyard once to load"). */
+  /** null: nothing written yet ("Open Watchyard once to load"). */
   snapshot: WidgetSnapshot | null;
   /** Windows whose reset has passed by this entry read "reset" at 0% (see resetKey). */
   reset: string[];
@@ -389,7 +389,7 @@ export function rowsThatFit(heightDp: number | undefined, total: number): number
 
 /** Props of the Android widgets (resets as clock times, "resets 17:00"). */
 export interface AndroidWidgetProps {
-  snapshot: WidgetSnapshot | null; // null: "Open Switchyard once to load"
+  snapshot: WidgetSnapshot | null; // null: "Open Watchyard once to load"
   now: number;
   tz?: string;
   /** The widget's current height, so the Limits widget draws as many rows as fit. */

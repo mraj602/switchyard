@@ -66,7 +66,7 @@ func (tx *Tx) CancelOldestLiveCodes(keep int, now int64) (int, error) {
 
 // CancelOldestLiveBoardOwnerLinks cancels the oldest live owner links made on the board
 // (created_by "owner:<device id>") until at most keep remain (pairing.md 4.1). Links made by
-// `sy hub owner-link` are not counted or touched. It returns how many it cancelled.
+// `wy hub owner-link` are not counted or touched. It returns how many it cancelled.
 func (tx *Tx) CancelOldestLiveBoardOwnerLinks(keep int, now int64) (int, error) {
 	res, err := tx.exec(`UPDATE pair_code SET cancelled_at = ? WHERE id IN (
 		SELECT id FROM pair_code WHERE kind = 'owner' AND created_by GLOB 'owner:*' AND claimed_at IS NULL AND cancelled_at IS NULL

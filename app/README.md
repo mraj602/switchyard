@@ -1,4 +1,4 @@
-# Switchyard desktop app (`app/`)
+# Watchyard desktop app (`app/`)
 
 The desktop app: one tab per claude.ai account (each in its own signed-in session),
 the web usage of each account sent to your hub, and the hub board in a Hub view, with OS
@@ -9,7 +9,7 @@ Spec: `docs/spec/desktop.md` (contracts C1-C12).
 
 ## Develop
 
-Node 22 or newer, and Go (for `sy`).
+Node 22 or newer, and Go (for `wy`).
 
 ```
 cd app
@@ -17,30 +17,30 @@ npm ci                 # with scripts: downloads the Electron binary
 npm start              # electron .
 ```
 
-The app runs `sy` for everything that touches the hub: `SY_BIN` (unpackaged only), else `sy`
-on `PATH` or `~/.local/bin/sy` when it is at least `switchyard.minSy` (package.json), else the
-copy bundled in the package. Without `sy` the account tabs still work and the Hub view says
-how to set it up (`sy setup`).
+The app runs `wy` for everything that touches the hub: `WY_BIN` (unpackaged only), else `wy`
+on `PATH` or `~/.local/bin/wy` when it is at least `watchyard.minSy` (package.json), else the
+copy bundled in the package. Without `wy` the account tabs still work and the Hub view says
+how to set it up (`wy setup`).
 
 Variables read only when the app is **unpackaged** (`main/test-hooks.js`, which the package
 does not contain):
 
 | Variable | Effect |
 | --- | --- |
-| `SY_APP_USER_DATA` | Absolute user data folder (tests use a temp one) |
-| `SY_APP_TEST_CLAUDE_ORIGIN` | A stand-in for `https://claude.ai` (the fake in `test/fakes/claude/`) |
-| `SY_APP_TEST_CADENCE_MS` | Replaces the 300 s / 60 s / 10 s usage cadences |
-| `SY_BIN` | The `sy` binary to run |
-| `SY_APP_TEST_EXPOSE=1` | Puts the main-process modules on `globalThis.__switchyard` for the smoke test |
+| `WY_APP_USER_DATA` | Absolute user data folder (tests use a temp one) |
+| `WY_APP_TEST_CLAUDE_ORIGIN` | A stand-in for `https://claude.ai` (the fake in `test/fakes/claude/`) |
+| `WY_APP_TEST_CADENCE_MS` | Replaces the 300 s / 60 s / 10 s usage cadences |
+| `WY_BIN` | The `wy` binary to run |
+| `WY_APP_TEST_EXPOSE=1` | Puts the main-process modules on `globalThis.__watchyard` for the smoke test |
 
-The renderer's dev page runs the real renderer against a mock `sy`, in any browser:
+The renderer's dev page runs the real renderer against a mock `wy`, in any browser:
 `python3 -m http.server -d app/src`, then open
 `/renderer/dev/index.html?scenario=default|empty|no_sy|needs_pairing|stopped|warning|owner`.
 
 Layout: `src/main/` (main process; `boot.js` wires the modules in `START_ORDER`, each module
 exports `create(deps)` and gets Electron and Node as arguments; only `main/index.js` imports
-`electron` and only `main/sy/` imports `child_process`), `src/preload/shell.cjs` (the only
-preload, the shell's `window.sy`), `src/renderer/` (the shell UI), `src/shared/` (constants,
+`electron` and only `main/wy/` imports `child_process`), `src/preload/shell.cjs` (the only
+preload, the shell's `window.wy`), `src/renderer/` (the shell UI), `src/shared/` (constants,
 IPC table, pure helpers used by both sides).
 
 ## Test
@@ -54,18 +54,18 @@ npm run e2e            # the packaged AppImage end to end (after npm run dist:li
 
 Or from the repo root: `make app-test`, `make app-smoke`, `make app-dist`, `make app-e2e`.
 
-The smoke (`test/smoke/`) starts a real hub (`sy hub serve` on a free loopback port, built
-from this repo, or `SY_BIN`), connects to it with `sy connect`, serves the fake claude.ai and
-launches the app with Playwright. Everything lives in a temp folder: `HOME`, `SY_HOME`, the XDG
+The smoke (`test/smoke/`) starts a real hub (`wy hub serve` on a free loopback port, built
+from this repo, or `WY_BIN`), connects to it with `wy connect`, serves the fake claude.ai and
+launches the app with Playwright. Everything lives in a temp folder: `HOME`, `WY_HOME`, the XDG
 folders, the user data folder and a dead D-Bus address, so the real `~/.claude*`,
-`~/.config/switchyard`, the keyring and your services are never touched. On Linux the app
+`~/.config/watchyard`, the keyring and your services are never touched. On Linux the app
 gets `--ozone-platform=x11 --password-store=basic`; unset `WAYLAND_DISPLAY` so Electron does
-not pick Wayland. `SY_SMOKE_OUT=<dir>` keeps the screenshots and logs; `SY_SMOKE_KEEP=1` keeps
+not pick Wayland. `WY_SMOKE_OUT=<dir>` keeps the screenshots and logs; `WY_SMOKE_KEEP=1` keeps
 the temp folder.
 
 The e2e (`test/e2e/`) checks the packaged AppImage: the asar holds only the app's code, the
-fuses are flipped (`ELECTRON_RUN_AS_NODE=1` does not run Node), the bundled `sy` is found with
-no `sy` on `PATH`, and after `sy connect` the app pairs and the Hub view shows the signed-in
+fuses are flipped (`ELECTRON_RUN_AS_NODE=1` does not run Node), the bundled `wy` is found with
+no `wy` on `PATH`, and after `wy connect` the app pairs and the Hub view shows the signed-in
 board. The Chromium sandbox stays on: on Ubuntu 24.04 that needs
 `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`. The packaged app ignores the
 test variables, so the usage read itself is covered by the smoke, not here.
@@ -75,7 +75,7 @@ CI: `.github/workflows/app.yml` (unit tests on Linux, macOS and Windows; smoke; 
 ## Package
 
 ```
-node scripts/fetch-sy.mjs auto auto      # builds the bundled sy into resources/sy/<os>-<arch>/
+node scripts/fetch-sy.mjs auto auto      # builds the bundled wy into resources/wy/<os>-<arch>/
 npm run dist:linux                       # or dist:mac, dist:win; output in dist/
 ```
 
@@ -89,7 +89,7 @@ npm run dist:linux                       # or dist:mac, dist:win; output in dist
 Details and the tests that hold them: desktop.md C2 (baseline), C3 (IPC), C6 (token).
 
 - Every window and view has `contextIsolation`, `sandbox`, no Node integration, no webview
-  tag. Only the shell has a preload, and it exposes a fixed list of functions (`window.sy`);
+  tag. Only the shell has a preload, and it exposes a fixed list of functions (`window.wy`);
   each IPC channel checks its sender and its arguments against `shared/ipc.js`.
 - The shell is served from `app://shell/` with a strict CSP header (no inline script or
   style, no network); only files under `src/renderer/` and `src/shared/` are served.
@@ -98,10 +98,10 @@ Details and the tests that hold them: desktop.md C2 (baseline), C3 (IPC), C6 (to
   (`persist:sy-hub`) may navigate only to the hub's origin. Permissions are deny by default.
 - Usage is read in the main process, through the tab's own session, only after you accept the
   warning for that tab, and stops at once when you turn it off or claude.ai answers 429.
-- The hub token comes from `sy desktop token`, is stored encrypted with `safeStorage` in
+- The hub token comes from `wy desktop token`, is stored encrypted with `safeStorage` in
   `hub-token.bin` (mode 0600; on Linux without a keyring, `basic_text`, and Settings warns),
   and never enters a page: main signs the Hub view in with a cookie.
-- `sy` is run with `execFile` (never a shell) from an argv allow-list (`main/sy/commands.js`);
+- `wy` is run with `execFile` (never a shell) from an argv allow-list (`main/wy/commands.js`);
   secrets go on stdin, never argv. Nothing from the hub can make the app run anything.
 - Packaged builds flip the fuses: no `ELECTRON_RUN_AS_NODE`, no `NODE_OPTIONS`, no
   `--inspect`, asar integrity on, app only from the asar.

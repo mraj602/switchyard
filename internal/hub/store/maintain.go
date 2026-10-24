@@ -41,7 +41,7 @@ type PruneResult struct {
 }
 
 // Prune removes raw and fine-grained rows older than before (record.received_at…, sample
-// ts), as `sy hub prune`. It never removes seats, accounts, orgs,
+// ts), as `wy hub prune`. It never removes seats, accounts, orgs,
 // machines, slots, slot logins, sessions, session_state, session_transition, usage_window,
 // history_day or devices: everything the board needs to show a summary stays.
 //

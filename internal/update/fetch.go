@@ -21,10 +21,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
-// Exit codes of `sy update` (machines.md 7.3).
+// Exit codes of `wy update` (machines.md 7.3).
 const (
 	ExitFailed   = 1 // replace or post-update failed
 	ExitUsage    = 2
@@ -40,7 +40,7 @@ const (
 	maxSumsBytes    = 1 << 20
 )
 
-// Error carries the exit code `sy update` ends with. Every error of this package that has a
+// Error carries the exit code `wy update` ends with. Every error of this package that has a
 // meaning for the caller is an *Error; errors.As finds it.
 type Error struct {
 	Code int
@@ -209,7 +209,7 @@ func versionFromSums(sums []SumLine) (string, error) {
 		v = m[1]
 	}
 	if v == "" {
-		return "", fail(ExitVerify, "SHA256SUMS lists no sy archive")
+		return "", fail(ExitVerify, "SHA256SUMS lists no wy archive")
 	}
 	return v, nil
 }
@@ -392,10 +392,10 @@ func BinaryName(goos string) string {
 	return brand.CLI
 }
 
-// Extract takes the single `sy` (`sy.exe` on Windows) entry out of a verified archive:
+// Extract takes the single `wy` (`wy.exe` on Windows) entry out of a verified archive:
 // a regular file, no path components, at most 100 MB (machines.md 7.3 step 4). It returns the
 // extracted file's path (in a folder next to the archive, `<archive>.x/`) and its SHA-256,
-// which `sy machine add` compares with the hash the remote prints after receiving the stream.
+// which `wy machine add` compares with the hash the remote prints after receiving the stream.
 func Extract(a Archive) (binPath string, sha256sum string, err error) {
 	if a.Path == "" {
 		return "", "", fail(ExitVerify, "no archive to extract")

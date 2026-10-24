@@ -186,11 +186,11 @@ describe('Pair screen', () => {
   it('has no CLI or missing-screen wording', async () => {
     const { ui } = renderPair(fakeFetch(() => response(500)));
     await render(ui);
-    expect(screen.queryByText(/sy phone pair/)).toBeNull();
+    expect(screen.queryByText(/wy phone pair/)).toBeNull();
     expect(screen.getByText(/Remove it any time on the board's Devices page\./)).toBeTruthy();
   });
 
-  it('a switchyard:// link shows a pre-filled "Pair with <host>" card and claims only on the tap (P7)', async () => {
+  it('a watchyard:// link shows a pre-filled "Pair with <host>" card and claims only on the tap (P7)', async () => {
     mockParams = { origin: 'https://hub.example.ts.net', secret: SECRET };
     const f = fakeFetch(() => response(200, claimOk));
     const { ui, pairWith } = renderPair(f);
@@ -227,7 +227,7 @@ describe('Pair screen', () => {
   });
 
   it('end to end: an "Open in app" link through +native-intent and the router opens a pre-filled card; one claim after the tap', async () => {
-    const link = `switchyard://pair?u=${encodeURIComponent('https://hub.example.ts.net')}&s=${SECRET}&c=482913`;
+    const link = `watchyard://pair?u=${encodeURIComponent('https://hub.example.ts.net')}&s=${SECRET}&c=482913`;
     const href = redirectSystemPath({ path: link, initial: true });
     // What expo-router hands the screen: the href's query as search params.
     const qi = href.indexOf('?');

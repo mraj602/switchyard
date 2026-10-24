@@ -20,7 +20,7 @@ import (
 //
 //   - os.UserHomeDir, os.UserConfigDir, os.UserCacheDir, os.ExpandEnv, os.Environ;
 //   - os.Getenv / os.LookupEnv with a home-like name (HOME, USERPROFILE, APPDATA,
-//     LOCALAPPDATA, XDG_*, SY_HOME, CLAUDE_CONFIG_DIR) or with a name that is not a
+//     LOCALAPPDATA, XDG_*, WY_HOME, CLAUDE_CONFIG_DIR) or with a name that is not a
 //     string literal (it could be any of them);
 //   - importing os/user.
 //
@@ -32,7 +32,7 @@ var lintedTrees = []string{"internal/board", "internal/termctl", "internal/warp"
 const allowedFile = "internal/termenv/env.go"
 
 var homeVars = map[string]bool{
-	"HOME": true, "USERPROFILE": true, "APPDATA": true, "LOCALAPPDATA": true, "SY_HOME": true,
+	"HOME": true, "USERPROFILE": true, "APPDATA": true, "LOCALAPPDATA": true, "WY_HOME": true,
 	"CLAUDE_CONFIG_DIR": true, "HOMEDRIVE": true, "HOMEPATH": true,
 }
 

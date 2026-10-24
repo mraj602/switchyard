@@ -1,0 +1,16 @@
+[Unit]
+Description=Watchyard hub (merged mode)
+Documentation=https://github.com/mraj602/watchyard
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/alice/.local/bin/wy hub serve --listen 127.0.0.1:8787
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=default.target

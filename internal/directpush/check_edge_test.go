@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/outbox"
 )
 
 // A record that entered the state sits in a spill file the hub then answers: Apply deletes

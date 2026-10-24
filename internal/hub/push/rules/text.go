@@ -7,7 +7,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
 )
 
 // Field limits of push.md 5.5.
@@ -217,7 +217,7 @@ func privateText(t model.Trigger) string {
 }
 
 // PrivateTitle is the title of every private push.
-const PrivateTitle = "Switchyard"
+const PrivateTitle = "Watchyard"
 
 // waited is the "19 min" of a re-push: how long the condition has held.
 func waited(a model.Alert, now time.Time) string {

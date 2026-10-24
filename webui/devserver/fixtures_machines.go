@@ -63,11 +63,11 @@ func (d *Data) machineFixtures(now time.Time) {
 		case "failing":
 			lastErr = "ssh: connect to host pull-failing port 22: No route to host"
 		case "host_key":
-			lastErr = "host key changed: SHA256:Zq9H…; run sy hub pull trust pull-host_key"
+			lastErr = "host key changed: SHA256:Zq9H…; run wy hub pull trust pull-host_key"
 		case "auth":
 			lastErr = "permission denied (publickey)"
 		case "refused":
-			lastErr = "the remote refused: its sy is older than the hub's drain protocol"
+			lastErr = "the remote refused: its wy is older than the hub's drain protocol"
 		}
 		name := "pull-" + st
 		last := ago(2 * min)

@@ -1,5 +1,5 @@
 // The one IPC table (docs/spec/desktop.md C3): every channel between the shell and main, its
-// argument schema, its direction, the `window.sy` function name the preload exposes for it
+// argument schema, its direction, the `window.wy` function name the preload exposes for it
 // and the module that registers its handler. Pure data and pure validation: main/ipc.js
 // checks every call against it, src/preload/shell.cjs mirrors its names (a test checks
 // they agree), and the renderer may import it from app://shell/shared/ipc.js.
@@ -25,7 +25,7 @@ export const SEAT_ID_PATTERN = '^seat_[0-9A-HJKMNP-TV-Z]{26}$';
 /** Seat label and colour (api.yaml SeatPatch; null clears). */
 export const SEAT_LABEL_PATTERN = '^[a-z0-9][a-z0-9-]{0,23}$';
 export const SEAT_COLOUR_PATTERN = '^#[0-9a-f]{6}$';
-/** `sy account share` arguments (C11 argv allow-list). */
+/** `wy account share` arguments (C11 argv allow-list). */
 export const SHARE_FOLDER_PATTERN = '^~?[A-Za-z0-9._/-]{1,200}$';
 export const SHARE_SPEC_PATTERN = '^[a-z,=:+-]{1,200}$';
 /** Pairing code typed by the person: 123-456 or 123456. */
@@ -43,7 +43,7 @@ export const TOAST_LEVELS = Object.freeze(['info', 'warn', 'error']);
  * takes no argument (the preload passes none and main refuses one), else an object schema.
  * `returns` documents the reply (not checked). For a push channel, `args` is the payload
  * schema (checked by main before sending, in tests), and `fn` is null: the renderer
- * subscribes with `window.sy.on(<channel>, cb)`.
+ * subscribes with `window.wy.on(<channel>, cb)`.
  */
 export const CHANNELS = Object.freeze({
   'state:get': { kind: INVOKE, fn: 'state', handler: 'state', args: null, returns: 'ShellState' },
@@ -82,10 +82,10 @@ export const CHANNELS = Object.freeze({
     kind: INVOKE, fn: 'pair', handler: 'hub', returns: '{ok, error?}',
     args: obj({ code: { type: 'string', max: 7, pattern: new RegExp(PAIR_CODE_PATTERN) } }), // {} = local or admin channel
   },
-  // {} = through sy (local hub or admin channel); {link} = a pasted owner link (own hub's origin only)
+  // {} = through wy (local hub or admin channel); {link} = a pasted owner link (own hub's origin only)
   'hub:owner-sign-in': { kind: INVOKE, fn: 'ownerSignIn', handler: 'hub', returns: '{ok, error?}', args: obj({ link: { type: 'string', min: 8, max: 2048 } }) },
   'hub:owner-sign-out': { kind: INVOKE, fn: 'ownerSignOut', handler: 'hub', args: null, returns: '{ok}' },
-  // Connect to a hub without sy: check the address (/health), remember it, pair with the code when given.
+  // Connect to a hub without wy: check the address (/health), remember it, pair with the code when given.
   'hub:connect': {
     kind: INVOKE, fn: 'hubConnect', handler: 'hub', returns: '{ok, error?}',
     args: obj({ url: { type: 'string', min: 1, max: 300 }, code: { type: 'string', max: 7, pattern: new RegExp(PAIR_CODE_PATTERN) }, insecureLan: BOOL }, ['url']),
@@ -110,7 +110,7 @@ export const CHANNELS = Object.freeze({
       colour: { type: 'string', max: 7, pattern: new RegExp(SEAT_COLOUR_PATTERN), nullable: true },
     }, ['seat']),
   },
-  'accounts:local': { kind: INVOKE, fn: 'localAccounts', handler: 'hub', args: null, returns: 'sy account list --json result' },
+  'accounts:local': { kind: INVOKE, fn: 'localAccounts', handler: 'hub', args: null, returns: 'wy account list --json result' },
   'accounts:share': {
     kind: INVOKE, fn: 'shareAccount', handler: 'hub', returns: '{ok, error?}',
     args: obj({
@@ -138,7 +138,7 @@ export const CHANNELS = Object.freeze({
 export const INVOKE_CHANNELS = Object.freeze(Object.keys(CHANNELS).filter((c) => CHANNELS[c].kind === INVOKE));
 /** Push channel names, in table order. */
 export const PUSH_CHANNELS = Object.freeze(Object.keys(CHANNELS).filter((c) => CHANNELS[c].kind === PUSH));
-/** window.sy function name → channel. */
+/** window.wy function name → channel. */
 export const FUNCTIONS = Object.freeze(Object.fromEntries(INVOKE_CHANNELS.map((c) => [CHANNELS[c].fn, c])));
 
 /** IpcArgError is what validate throws; main/ipc.js turns it into a rejected invoke. */
@@ -229,9 +229,9 @@ function check(channel, path, s, v) {
  * @property {'hub'|'settings'|string} view  the selected view: 'hub', 'settings' or a tab id
  * @property {HubState} hub
  * @property {Settings} settings
- * @property {{level: 'info'|'warn'|'error', text: string}[]} [banners]  e.g. "sy not found: run sy setup"
+ * @property {{level: 'info'|'warn'|'error', text: string}[]} [banners]  e.g. "wy not found: run wy setup"
  * @property {{app: string, electron: string, chrome: string, platform: string}} [about]  versions for Settings, About
- * @property {UpdateNotice|null} [update]  this app's version against the hub's and sy's (shared/version.js)
+ * @property {UpdateNotice|null} [update]  this app's version against the hub's and wy's (shared/version.js)
  *
  * @typedef {object} TabState
  * @property {string} id
@@ -260,7 +260,7 @@ function check(channel, path, s, v) {
  *
  * @typedef {object} HubState
  * @property {string|null} url
- * @property {boolean} connected      sy is connected to a hub (sy desktop info)
+ * @property {boolean} connected      wy is connected to a hub (wy desktop info)
  * @property {boolean} reachable
  * @property {boolean} paired         the app holds a desktop token for url
  * @property {boolean} owner          the hub view has an owner session
@@ -270,7 +270,7 @@ function check(channel, path, s, v) {
  * @property {string|null} admin      admin channel ('local', a command prefix) or null
  * @property {number} needs_you
  * @property {boolean} removed        the hub refused this app's token (its device was removed): pair again
- * @property {boolean} direct          the app dials the hub itself (no sy, or sy has no hub)
+ * @property {boolean} direct          the app dials the hub itself (no wy, or wy has no hub)
  * @property {string|null} owner_until  RFC 3339, when the owner session ends (owner only)
  * @property {string|null} last_seen    RFC 3339, when the hub was last reached or lost
  * @property {string} machine           this computer's name
@@ -278,7 +278,7 @@ function check(channel, path, s, v) {
  * @property {HubCert|null} cert      the hub's https certificate is not trusted (no pin) or not the pinned one (changed): status is 'unreachable' until it is trusted
  * @property {boolean} insecure       the hub URL is plain http to another computer: the token crosses the network unencrypted
  * @property {boolean} pinned         the hub's https certificate is pinned (trusted on first use)
- * @property {string|null} sy_version sy's version from `sy desktop info`
+ * @property {string|null} sy_version wy's version from `wy desktop info`
  * @property {'ok'|'no_sy'|'not_connected'|'dial'|'needs_pairing'|'unreachable'} status
  *
  * @typedef {object} HubCert
@@ -294,10 +294,10 @@ function check(channel, path, s, v) {
  * @property {string|null} valid_to
  *
  * @typedef {object} UpdateNotice
- * @property {'update'|'older'} kind  update: the hub or sy runs a newer release; older: they run an older one
+ * @property {'update'|'older'} kind  update: the hub or wy runs a newer release; older: they run an older one
  * @property {string} app             this app's version
  * @property {string} version         the other version
- * @property {'hub'|'sy'} from
+ * @property {'hub'|'wy'} from
  *
  * @typedef {object} Settings
  * @property {boolean} keep_running

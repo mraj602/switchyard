@@ -1,7 +1,7 @@
 {
   "v": 1,
   "id": "20261012T173000Z",
-  "command": "sy setup --yes --hub later",
+  "command": "wy setup --yes --hub later",
   "sy_version": "0.3.0",
   "machine": "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K",
   "plan_id": "p_9c41e0a7d2b3",

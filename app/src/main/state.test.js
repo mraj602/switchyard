@@ -151,8 +151,8 @@ test('hub state is copied field by field; needs_you from its own event; tokens n
   assert.equal(hub.service, 'running');
   assert.equal(hub.storage_backend, null);
   assert.equal(hub.error, null);
-  bus.emit('hub', { status: 'no_sy', storage_backend: 'basic_text', error: 'sy was not found' });
-  assert.equal(st.snapshot().hub.error, 'sy was not found');
+  bus.emit('hub', { status: 'no_sy', storage_backend: 'basic_text', error: 'wy was not found' });
+  assert.equal(st.snapshot().hub.error, 'wy was not found');
   assert.equal(st.snapshot().hub.storage_backend, 'basic_text');
   assert.equal(st.snapshot().settings.storage_backend, 'basic_text', 'before the settings event, from the hub');
   assert.equal(JSON.stringify(st.snapshot()).includes('sy_d_'), false);
@@ -197,10 +197,10 @@ test('usage of removed tabs is forgotten', () => {
 
 test('banners and stop', () => {
   const { bus, st, sent, timers } = setup();
-  st.setBanner('sy', { level: 'warn', text: 'sy not found: run sy setup' });
-  assert.deepEqual(st.snapshot().banners, [{ level: 'warn', text: 'sy not found: run sy setup' }]);
+  st.setBanner('wy', { level: 'warn', text: 'wy not found: run wy setup' });
+  assert.deepEqual(st.snapshot().banners, [{ level: 'warn', text: 'wy not found: run wy setup' }]);
   assert.throws(() => st.setBanner('x', { level: 'loud', text: 'x' }), /bad banner/);
-  st.setBanner('sy', null);
+  st.setBanner('wy', null);
   assert.deepEqual(st.snapshot().banners, []);
   st.stop();
   assert.equal(timers.pending, 0);

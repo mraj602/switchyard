@@ -9,7 +9,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/atomicfile"
 )
 
 // MaxMachineName is the longest machine name (characters), as the hub's PATCH /v1/machines
@@ -34,7 +34,7 @@ func CleanMachineName(name string) (string, error) {
 	return n, nil
 }
 
-// RenameMachine changes the name in <state>/machine.json (identity.md 2, `sy machine
+// RenameMachine changes the name in <state>/machine.json (identity.md 2, `wy machine
 // rename`), creating the file first when it does not exist. The id never changes. The write
 // is atomic and holds <state>/machine.lock, like the first creation.
 func RenameMachine(stateDir, name string, opt MachineOptions) (old Machine, renamed Machine, err error) {

@@ -9,7 +9,7 @@
 //                   (+ registerSchemes) → ipc → store (created, not loaded) → autostart →
 //                   background → background.claim() (single instance; a second launch or a
 //                   --autostart=on|off launch stops here)
-//   after 'ready'   protocol.handle → store.load → sy → hub → ipc.start() (before the shell can call) → window (hidden with
+//   after 'ready'   protocol.handle → store.load → wy → hub → ipc.start() (before the shell can call) → window (hidden with
 //                   --background only) → state → tabs.start() → usage.start() →
 //                   hub.start() (the hub view is made when Hub is selected) → tray, notify,
 //                   menu.build() → background.start()
@@ -18,8 +18,8 @@
 // state:get comes after its page has loaded, by when the tabs and usage events are on the bus.
 //
 // Shutdown (background's before-quit → onQuit): usage.stop() (waits ≤ 5 s for the last
-// sy outbox append) → tabs.stop() (cookies flushed, lastUrl written) → hub.stop() (the stream)
-// → sy.flushNow() (a pending flush, capped) → store.flush() → notify, tray, state.
+// wy outbox append) → tabs.stop() (cookies flushed, lastUrl written) → hub.stop() (the stream)
+// → wy.flushNow() (a pending flush, capped) → store.flush() → notify, tray, state.
 
 import * as nodePath from 'node:path';
 import * as nodeFs from 'node:fs/promises';
@@ -35,7 +35,7 @@ import * as store from './store.js';
 import * as ipc from './ipc.js';
 import * as state from './state.js';
 import { missingAccounts } from './state.js';
-import * as sy from './sy/index.js';
+import * as wy from './wy/index.js';
 import * as hub from './hub/index.js';
 import * as window from './window.js';
 import { HUB_STRIP_PX } from './window.js';
@@ -50,14 +50,14 @@ import * as background from './background.js';
 /** The order of the create() calls (see the header). */
 export const START_ORDER = Object.freeze([
   'paths', 'security', 'protocol', 'ipc', 'store', 'autostart', 'background',
-  'sy', 'hub', 'window', 'state', 'tabs', 'usage', 'tray', 'notify', 'menu',
+  'wy', 'hub', 'window', 'state', 'tabs', 'usage', 'tray', 'notify', 'menu',
 ]);
 
 /** The order of the shutdown steps (onQuit). */
-export const SHUTDOWN_ORDER = Object.freeze(['usage.stop', 'tabs.stop', 'hub.stop', 'sy.flushNow', 'store.flush']);
+export const SHUTDOWN_ORDER = Object.freeze(['usage.stop', 'tabs.stop', 'hub.stop', 'wy.flushNow', 'store.flush']);
 
 export const MODULES = Object.freeze({
-  paths, security, protocol, store, ipc, state, sy, hub, window, tabs, usage, tray, notify, menu, autostart, background,
+  paths, security, protocol, store, ipc, state, wy, hub, window, tabs, usage, tray, notify, menu, autostart, background,
 });
 
 const here = nodePath.dirname(fileURLToPath(import.meta.url));
@@ -68,7 +68,7 @@ export const ASSETS_DIR = nodePath.join(APP_DIR, 'assets');
 /** The app icon for the window and notifications (Linux, Windows; a macOS bundle has its own). */
 export const ICON_PATH = nodePath.join(ASSETS_DIR, 'icon.png');
 
-/** A pending `sy flush` at quit may wait this long (at most 5 s); the outbox keeps the records anyway. */
+/** A pending `wy flush` at quit may wait this long (at most 5 s); the outbox keeps the records anyway. */
 export const QUIT_FLUSH_MAX_MS = 5_000;
 
 /** test-hooks.js is imported only when unpackaged; null when packaged or absent. */
@@ -195,12 +195,12 @@ export async function boot(electron, opts = {}) {
   made.protocol.handle();
   await made.store.load();
 
-  made.sy = m.sy.create({
+  made.wy = m.wy.create({
     env, fs, path, log, platform, resourcesPath: process.resourcesPath ?? '',
     minSy: opts.minSy ?? '0.6.0', syBin: testHooks?.syBin?.(env) ?? null,
   });
   made.hub = m.hub.create({
-    electron, sy: made.sy, security: made.security, bus, ipc: made.ipc, fs, path, log, platform,
+    electron, wy: made.wy, security: made.security, bus, ipc: made.ipc, fs, path, log, platform,
     tokenFile: made.paths.hubTokenFile, fetch: opts.fetch ?? globalThis.fetch, clientVersion: app.getVersion(), hostname: nodeOs.hostname(),
     get window() {
       return made.window;
@@ -226,16 +226,16 @@ export async function boot(electron, opts = {}) {
     claudeOrigin, userData: made.paths.userData, seats: () => made.hub.seats(),
   });
   await made.tabs.start();
-  // Usage records go to the hub through sy; without sy (or with a sy that has no hub) the app
+  // Usage records go to the hub through wy; without wy (or with a wy that has no hub) the app
   // uploads them itself with its desktop token (hub/direct.js).
   const recordSink = {
-    machineId: () => (useDirect() ? made.hub.direct.machineId() : made.sy.machineId()),
-    append: (records) => (useDirect() ? made.hub.direct.append(records) : made.sy.append(records)),
-    flushSoon: () => (useDirect() ? made.hub.direct.flushSoon() : made.sy.flushSoon()),
+    machineId: () => (useDirect() ? made.hub.direct.machineId() : made.wy.machineId()),
+    append: (records) => (useDirect() ? made.hub.direct.append(records) : made.wy.append(records)),
+    flushSoon: () => (useDirect() ? made.hub.direct.flushSoon() : made.wy.flushSoon()),
   };
   const useDirect = () => made.hub.state().direct === true;
   made.usage = m.usage.create({
-    tabs: made.tabs, sy: recordSink, store: made.store, bus, ipc: made.ipc, log, clientVersion: app.getVersion(),
+    tabs: made.tabs, wy: recordSink, store: made.store, bus, ipc: made.ipc, log, clientVersion: app.getVersion(),
     claudeOrigin, cadenceMs,
   });
   made.usage.start();
@@ -278,7 +278,7 @@ export async function boot(electron, opts = {}) {
   await made.menu.build();
   made.background.start();
 
-  if (testHooks?.expose?.(env) && !app.isPackaged) globalThis.__switchyard = { modules: made, electron };
+  if (testHooks?.expose?.(env) && !app.isPackaged) globalThis.__watchyard = { modules: made, electron };
   return made;
 }
 
@@ -296,7 +296,7 @@ async function shutdown(made, log) {
     await step('usage.stop', () => made.usage?.stop());
     await step('tabs.stop', () => made.tabs?.stop());
     await step('hub.stop', () => made.hub?.stop());
-    await step('sy.flushNow', () => withTimeout(made.sy?.flushNow(), QUIT_FLUSH_MAX_MS));
+    await step('wy.flushNow', () => withTimeout(made.wy?.flushNow(), QUIT_FLUSH_MAX_MS));
     await step('store.flush', () => made.store?.flush());
     await step('notify.stop', () => made.notify?.stop());
     await step('tray.stop', () => made.tray?.stop());

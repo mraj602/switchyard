@@ -9,11 +9,11 @@ import { machineGrid, machineRows, machinesHeader } from '../../src/lib/widget/e
 import { DIM, EMPTY_TEXT, FG, OFFLINE, ONLINE, ROOT } from './common';
 
 export function SyMachines({ snapshot, now, width, height }: AndroidWidgetProps) {
-  const open = { clickAction: 'OPEN_URI' as const, clickActionData: { uri: 'switchyard://machines' } };
+  const open = { clickAction: 'OPEN_URI' as const, clickActionData: { uri: 'watchyard://machines' } };
   if (!snapshot) {
     return (
       <FlexWidget style={ROOT} {...open}>
-        <Brand title="Switchyard · Machines" />
+        <Brand title="Watchyard · Machines" />
         <TextWidget text={EMPTY_TEXT} style={{ fontSize: 12, color: DIM, marginTop: 4 }} />
       </FlexWidget>
     );
@@ -25,7 +25,7 @@ export function SyMachines({ snapshot, now, width, height }: AndroidWidgetProps)
   return (
     <FlexWidget style={ROOT} {...open}>
       <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', justifyContent: 'space-between' }}>
-        <Brand title="Switchyard" />
+        <Brand title="Watchyard" />
         <TextWidget text={all.length ? machinesHeader(snapshot) : 'Machines'} maxLines={1} style={{ fontSize: 11, fontWeight: 'bold', color: FG }} />
         <TextWidget text={`updated ${agoWords(snapshot.as_of, now)}`} maxLines={1} style={{ fontSize: 9, color: DIM }} />
       </FlexWidget>

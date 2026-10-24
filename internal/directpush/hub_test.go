@@ -16,13 +16,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/push/rules"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/rules"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 var t0 = time.Date(2026, 10, 12, 9, 0, 0, 0, time.UTC)
@@ -46,7 +46,7 @@ func runRecords(t *testing.T, machine, file string) []*record.Record {
 		if err := json.Unmarshal(sc.Bytes(), &env); err != nil {
 			t.Fatal(err)
 		}
-		r, err := record.NewHookEvent(record.Meta{Machine: machine, Slot: "~/.claude", Client: "sy/0.0.0-test",
+		r, err := record.NewHookEvent(record.Meta{Machine: machine, Slot: "~/.claude", Client: "wy/0.0.0-test",
 			Seat: &record.Seat{Account: "acc", Org: "org", Email: "me@example.com"}, Now: t0.Add(time.Duration(i) * time.Second)},
 			env.Payload, record.HookOptions{LastMessages: true})
 		if err != nil {
@@ -84,7 +84,7 @@ func (h *hubSide) ingest(t *testing.T, recs ...*record.Record) {
 		b, _ := r.Encode()
 		raws = append(raws, b)
 	}
-	body, _ := json.Marshal(map[string]any{"v": 1, "client": "sy/0.0.0-test", "records": raws})
+	body, _ := json.Marshal(map[string]any{"v": 1, "client": "wy/0.0.0-test", "records": raws})
 	rep, err := h.ing.Ingest(context.Background(), h.dev, body, nil)
 	if err != nil || len(rep.Rejected) > 0 {
 		t.Fatalf("%+v %v", rep, err)

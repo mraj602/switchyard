@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/state"
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/state"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 var t0 = time.Date(2026, 10, 12, 9, 0, 0, 0, time.UTC)
@@ -67,7 +67,7 @@ func feed(t *testing.T, ob *outbox.Outbox, run string, n int, start time.Time, s
 	last := start
 	for i, e := range evs[:n] {
 		last = start.Add(time.Duration(i) * time.Second)
-		r, err := record.NewHookEvent(record.Meta{Machine: machine, Slot: slot, Seat: seat, Now: last, Client: "sy/test"},
+		r, err := record.NewHookEvent(record.Meta{Machine: machine, Slot: slot, Seat: seat, Now: last, Client: "wy/test"},
 			e.Payload, record.HookOptions{LastMessages: true})
 		if err != nil {
 			t.Fatal(err)

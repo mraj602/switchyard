@@ -24,10 +24,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/claudecli"
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/claudecli"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // MinClaudeVersion is the version setup.md was checked against; older gives a warning only.
@@ -52,7 +52,7 @@ type Deps struct {
 	Claude claudecli.Runner
 	// ConfigDir and StateDir are paths.Dirs.Config.Path and paths.Dirs.State.Path.
 	ConfigDir, StateDir string
-	// Sy is the absolute path of the sy binary that will be baked into hooks and the status
+	// Sy is the absolute path of the wy binary that will be baked into hooks and the status
 	// line; empty = os.Executable.
 	Sy string
 	// Primary is the --primary choice ("~" form or absolute); empty = share.primary of
@@ -148,7 +148,7 @@ func (x *detector) run(ctx context.Context) (model.State, error) {
 	x.detectPlugins()
 	x.detectLaunchers(ctx)
 	x.detectMCP()
-	x.detectSwitchyard(ctx)
+	x.detectWatchyard(ctx)
 
 	if x.GOOS == "windows" {
 		ok := false
@@ -352,8 +352,8 @@ func sameDir(a, b string) bool {
 	return e1 == nil && e2 == nil && ra == rb
 }
 
-// detectSwitchyard is step 1.7.
-func (x *detector) detectSwitchyard(ctx context.Context) {
+// detectWatchyard is step 1.7.
+func (x *detector) detectWatchyard(ctx context.Context) {
 	if x.cfg != nil {
 		if v, err := x.cfg.Get("hub.url"); err == nil {
 			if s, _ := v.(string); s != "" {

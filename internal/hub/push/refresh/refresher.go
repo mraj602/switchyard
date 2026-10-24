@@ -15,10 +15,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/events"
-	"github.com/mraj602/switchyard/internal/hub/push/clock"
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/events"
+	"github.com/mraj602/watchyard/internal/hub/push/clock"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // Refresh timing of push.md 13.5.

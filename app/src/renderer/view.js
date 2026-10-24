@@ -327,7 +327,7 @@ export function hubChip(hub) {
 }
 
 /**
- * What the one-click paths say while they wait. Through an SSH admin channel `sy` takes
+ * What the one-click paths say while they wait. Through an SSH admin channel `wy` takes
  * ~15 s, so the person is told what is happening and how long it can take.
  * kind: 'pair' | 'owner'.
  */
@@ -362,7 +362,7 @@ export function hubSummary(hub) {
 
 // ---- Claude Code folders (accounts:local) and sharing
 
-/** Share switches of `sy account share`, in the order of the table, with their rows' names. */
+/** Share switches of `wy account share`, in the order of the table, with their rows' names. */
 export const SHARE_SWITCHES = Object.freeze([
   { id: 'settings', label: 'Settings (hooks, permissions, plugins on/off)', items: ['settings.json'] },
   { id: 'instructions', label: 'Instructions (CLAUDE.md, rules)', items: ['CLAUDE.md', 'rules'] },
@@ -373,7 +373,7 @@ export const SHARE_SWITCHES = Object.freeze([
   { id: 'prompts', label: 'Prompt history and plans', items: ['history.jsonl', 'plans'] },
 ]);
 
-/** The `folders` array of an `sy account list --json` reply, whatever wrapper it has. */
+/** The `folders` array of an `wy account list --json` reply, whatever wrapper it has. */
 export function foldersOf(reply) {
   if (Array.isArray(reply)) return reply;
   if (reply && Array.isArray(reply.folders)) return reply.folders;
@@ -419,8 +419,8 @@ export function shareSpec(folder, changed, on) {
   return parts.join(',');
 }
 
-/** `sy account login` command text for a folder (copied by the person; needs a terminal). */
-export const loginCommand = (folder) => `sy account login ${folder.label || folder.folder}`;
+/** `wy account login` command text for a folder (copied by the person; needs a terminal). */
+export const loginCommand = (folder) => `wy account login ${folder.label || folder.folder}`;
 
 /** Whether a folder path is acceptable as `accounts:share.folder`. */
 export const SHARE_FOLDER_RE = /^~?[A-Za-z0-9._/-]{1,200}$/;

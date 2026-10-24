@@ -17,7 +17,7 @@ publish. The native phone app (built with Expo, phone.md) is the separate native
 an `https://` address with a publicly trusted certificate (`tailscale serve --bg 8787` gives
 `https://<host>.<tailnet>.ts.net`; Caddy on a VPS). The plain-HTTP tailnet bind in
 `deploy/docker-compose.tailscale.yml` still works as a board but cannot install or push; the
-deploy README and `sy doctor` say so.
+deploy README and `wy doctor` say so.
 
 ## 2. Manifest and icons
 
@@ -26,8 +26,8 @@ deploy README and `sy doctor` say so.
 ```json
 {
   "id": "/",
-  "name": "Switchyard",
-  "short_name": "Switchyard",
+  "name": "Watchyard",
+  "short_name": "Watchyard",
   "description": "Your Claude sessions and limits. Unofficial; not affiliated with Anthropic.",
   "start_url": "/#/",
   "scope": "/",
@@ -51,7 +51,7 @@ deploy README and `sy doctor` say so.
 `index.html` adds: `<link rel="manifest" href="manifest.webmanifest">`,
 `<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">`,
 `<meta name="theme-color" content="#F3F4F1" media="(prefers-color-scheme: light)">` and the
-`#17191B` dark one, `<meta name="apple-mobile-web-app-title" content="Switchyard">`,
+`#17191B` dark one, `<meta name="apple-mobile-web-app-title" content="Watchyard">`,
 `<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">` (the
 layout already uses `viewport-fit=cover`; tabs pad with `env(safe-area-inset-bottom)`).
 
@@ -112,7 +112,7 @@ the board asks `GET /v1/me` at once: the hub ends a revoked device's streams at 
 revoked board signs out (pair or login screen) at once instead of on its next poll; any other
 answer (a network error while the hub restarts) changes nothing. A `read`-only board session shows every
 screen; controls that need `push` or `owner` are hidden or show "Sign in as owner on the hub
-(`sy hub owner-link`)".
+(`wy hub owner-link`)".
 
 Rules on the phone (`PhoneAlerts`): one row per base trigger with its global delay as text
 ("· 30 s") and a switch. For a push-scoped device the switch edits `prefs.mute`
@@ -215,7 +215,7 @@ The desktop app's Hub tab shows this same page.
   switch turned on, widen, so they are enabled only for an owner session (`/v1/me` `owner`). A
   choice that only removes pairs, and the pause button, need an owner session or a device with
   the `push` scope; a read-only sign-in sees the grid with every control off. A control that is
-  off says why, in place ("Widening needs an owner sign-in: run `sy hub owner-link` on the hub").
+  off says why, in place ("Widening needs an owner sign-in: run `wy hub owner-link` on the hub").
   The hub refuses anything the page lets through wrongly; the page never signs.
 - **Audit**: newest first, one row per entry: what happened ("Matrix changed", "All peers
   paused"), who (or who to whom when the detail names both accounts), the plain metadata of its
@@ -231,16 +231,16 @@ The desktop app's Hub tab shows this same page.
 confirms with `POST /v1/keys/owner/confirm` (keys.md 3.3). It is also what the desktop app's Hub
 settings shows (the app embeds the board; it has no keys screen of its own). The page never signs.
 
-- **Next step** comes first and shows only the current step: no owner key (`sy keys init`, in a
+- **Next step** comes first and shows only the current step: no owner key (`wy keys init`, in a
   normal terminal, with a copy button); a proposal waiting (the fingerprint in groups of four,
   who proposed it and when, "Is this the fingerprint your terminal printed?", the 24-hour expiry,
   and **Yes, it matches: confirm** for an owner session); owner key active but machines
-  hub-signed only (`sy keys certify --all` with a copy button, and which machines are waiting; a phone is never waiting, as its hub signature is enough, keys.md 4.2);
+  hub-signed only (`wy keys certify --all` with a copy button, and which machines are waiting; a phone is never waiting, as its hub signature is enough, keys.md 4.2);
   all certified ("Peers between machines can now message each other"). The API does not say which
   machines have pinned the owner key, so there is no pin step. A replacement proposal while a key
   is active is shown under "A new owner key is waiting to replace this one".
 - **Owner key** (one line on what it is for, the active fingerprint, when it was confirmed, and a
-  "Replace the owner key" fold-out: `sy keys init --replace`), **Devices** (certified / hub-signed
+  "Replace the owner key" fold-out: `wy keys init --replace`), **Devices** (certified / hub-signed
   only, from `devices`, which owner and write sign-ins get; others see a note) and **Hub key**
   (fingerprint, revocations version).
 - A sign-in that is not an owner sees the same page read-only, with "confirming an owner key
@@ -310,7 +310,7 @@ therefore changes `sw.js`, which is how browsers notice an update. `/health` gai
 
 ## 5. Notifications in the service worker
 
-`push` event: parse the payload (push.md 6.5); if it does not parse, show "Switchyard ·
+`push` event: parse the payload (push.md 6.5); if it does not parse, show "Watchyard ·
 something needs you" (iOS revokes subscriptions that receive pushes without a notification,
 and Chrome shows a generic one). Then:
 
@@ -395,7 +395,7 @@ standalone)')` and `navigator.standalone` for "already installed").
   page under this policy (the app injects no CSS or markup into it), and the app's own shell
   already runs with `style-src 'self'` (desktop.md).
 - Fonts are served from `webui/static/fonts` (OFL, `NOTICE`): IBM Plex Sans and Mono, latin
-  subsets, plus `Switchyard Symbols`, three subsets (3 KB in all) of Noto Sans Math, Symbols and
+  subsets, plus `Watchyard Symbols`, three subsets (3 KB in all) of Noto Sans Math, Symbols and
   Symbols 2 for the glyphs Plex lacks: ← → ⇄ ⋯ ⓘ ■ ▸ ▾ ○ ◌ ● ⠿ ✓. `--sans` and `--mono` list it
   after Plex; each `@font-face` has the exact `unicode-range`.
   `TestNonLatinGlyphsAreInAFontRange` fails when the code writes a character above U+00FF that
@@ -410,7 +410,7 @@ standalone)')` and `navigator.standalone` for "already installed").
   parsing fallbacks, the data-cache URL matcher; the Peers cells, edits (only an added pair
   widens), "why not" sentences and audit text (`peers-fmt.test.cjs`). The devserver serves the
   matrix, pause and audit endpoints with the hub's who-may-do-what (`devserver/peers_test.go`).
-- Headless Chrome (extends `webui/smoke`, `SY_WEBUI_BROWSER=1`, puppeteer-core), against the
+- Headless Chrome (extends `webui/smoke`, `WY_WEBUI_BROWSER=1`, puppeteer-core), against the
   devserver at `http://127.0.0.1` (a secure context):
   - manifest: CDP `Page.getAppManifest` has no errors; `Page.getInstallabilityErrors` is
     empty;

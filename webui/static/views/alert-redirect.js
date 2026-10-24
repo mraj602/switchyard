@@ -25,5 +25,5 @@ export function render() {
   const node = h('div', { class: 'page' },
     st.error ? h('p', { class: 'calm', role: 'alert' }, st.error, ' ', h('a', { href: '#/' }, 'Go to Now'))
       : h('p', { class: 'muted pad', role: 'status' }, 'Opening…'));
-  return { title: 'Alert · Switchyard', node };
+  return { title: 'Alert · Watchyard', node };
 }

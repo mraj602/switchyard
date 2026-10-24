@@ -7,13 +7,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/setup/apply"
-	"github.com/mraj602/switchyard/internal/setup/backup"
-	"github.com/mraj602/switchyard/internal/setup/detect/detecttest"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	splan "github.com/mraj602/switchyard/internal/setup/plan"
-	"github.com/mraj602/switchyard/internal/setup/testtree"
-	"github.com/mraj602/switchyard/internal/share"
+	"github.com/mraj602/watchyard/internal/setup/apply"
+	"github.com/mraj602/watchyard/internal/setup/backup"
+	"github.com/mraj602/watchyard/internal/setup/detect/detecttest"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	splan "github.com/mraj602/watchyard/internal/setup/plan"
+	"github.com/mraj602/watchyard/internal/setup/testtree"
+	"github.com/mraj602/watchyard/internal/share"
 )
 
 // itemPlan plans h with choices and keeps only the actions on the named items of the
@@ -52,7 +52,7 @@ func homeSnap(t *testing.T, h *detecttest.Home) testtree.Snap {
 }
 
 func homeOpts(h *detecttest.Home) apply.Options {
-	return apply.Options{StateDir: h.Abs(".local/state/switchyard"), Command: "t", SyVersion: "0.3.0", Machine: "m"}
+	return apply.Options{StateDir: h.Abs(".local/state/watchyard"), Command: "t", SyVersion: "0.3.0", Machine: "m"}
 }
 
 func readFile(t *testing.T, p string) string {

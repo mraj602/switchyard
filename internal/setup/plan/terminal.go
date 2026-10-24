@@ -1,9 +1,9 @@
 package plan
 
-// The terminal planner of `sy term setup`, `sy term titles|warp on|off`, `sy term off` and
-// `sy setup --terminal` (docs/spec/terminal.md T10): pure and deterministic like Plan, with
+// The terminal planner of `wy term setup`, `wy term titles|warp on|off`, `wy term off` and
+// `wy setup --terminal` (docs/spec/terminal.md T10): pure and deterministic like Plan, with
 // the same plan_id rule. The command layer reads the few facts detect does not know into
-// TermFacts (the value of the title env key, config terminal.titles, whether sy's
+// TermFacts (the value of the title env key, config terminal.titles, whether wy's
 // marketplace is current, Warp's folders and the tab configs in them, jq).
 
 import (
@@ -16,17 +16,17 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/setup/launcher"
-	"github.com/mraj602/switchyard/internal/setup/ledger"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/pluginmkt"
-	"github.com/mraj602/switchyard/internal/version"
-	"github.com/mraj602/switchyard/internal/warp"
+	"github.com/mraj602/watchyard/internal/setup/launcher"
+	"github.com/mraj602/watchyard/internal/setup/ledger"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/pluginmkt"
+	"github.com/mraj602/watchyard/internal/version"
+	"github.com/mraj602/watchyard/internal/warp"
 )
 
 // Terminal plugin ids and sources (T10).
 const (
-	PaneID = pluginmkt.PaneID // switchyard-pane@sy-local
+	PaneID = pluginmkt.PaneID // watchyard-pane@wy-local
 	// PaneMinClaude is the Claude Code version the pane mod was checked on (T5).
 	PaneMinClaude = "2.1.296"
 
@@ -38,7 +38,7 @@ const (
 )
 
 // ErrTermRefused wraps the reasons plan.Terminal refuses a piece (an old Claude Code, no
-// Warp, no sy setup yet). The command layer exits 4 with the message.
+// Warp, no wy setup yet). The command layer exits 4 with the message.
 var ErrTermRefused = errors.New("cannot plan this terminal piece")
 
 // TermFacts are what the command layer read from disk for the terminal planner.
@@ -48,12 +48,12 @@ type TermFacts struct {
 	TitleEnv map[string]string `json:"title_env,omitempty"`
 	// TitlesOn is config.toml's terminal.titles.
 	TitlesOn bool `json:"titles_on,omitempty"`
-	// MarketExists: <state>/plugin/marketplace (sy's sy-local) is there. MarketCurrent: it
-	// holds exactly what this sy writes (so neither the title hooks nor the pane need a
+	// MarketExists: <state>/plugin/marketplace (wy's wy-local) is there. MarketCurrent: it
+	// holds exactly what this wy writes (so neither the title hooks nor the pane need a
 	// refresh).
 	MarketExists  bool `json:"market_exists,omitempty"`
 	MarketCurrent bool `json:"market_current,omitempty"`
-	// Warp is detection for the chosen channel; Tabs the switchyard-*.toml files found in its
+	// Warp is detection for the chosen channel; Tabs the watchyard-*.toml files found in its
 	// tab_configs folder and in the folders of the ledger's tabs.
 	Warp warp.Install `json:"warp"`
 	Tabs []warp.Found `json:"tabs,omitempty"`
@@ -284,7 +284,7 @@ func (tp *tplanner) marketDir() string { return filepath.Join(tp.st.StateDir, "p
 
 func (tp *tplanner) needMarket(what string) error {
 	if !tp.f.MarketExists {
-		return refused("%s needs the switchyard plugin from sy's marketplace (%s); run sy setup first", what, tp.tilde(tp.marketDir()))
+		return refused("%s needs the watchyard plugin from wy's marketplace (%s); run wy setup first", what, tp.tilde(tp.marketDir()))
 	}
 	if !tp.f.MarketCurrent {
 		tp.refresh = true
@@ -292,20 +292,20 @@ func (tp *tplanner) needMarket(what string) error {
 	return nil
 }
 
-// addRefresh rewrites sy-local (the existing write_tree of setup.md 5.2): the switchyard
-// plugin gets this sy's hooks (the title entries, T6) and the pane is written next to it.
+// addRefresh rewrites wy-local (the existing write_tree of setup.md 5.2): the watchyard
+// plugin gets this wy's hooks (the title entries, T6) and the pane is written next to it.
 func (tp *tplanner) addRefresh() {
 	dir := tp.marketDir()
 	sum := sha256.Sum256([]byte(MarketplaceName + "\x00" + tp.opt.Version + "\x00" + tp.st.Sy))
 	tp.add(model.StepPlugin, model.Action{Op: model.OpWriteTree, Path: dir, ContentSHA256: hex.EncodeToString(sum[:]),
-		Note: fmt.Sprintf("switchyard %s (%s): refresh", tp.opt.Version, MarketplaceName),
+		Note: fmt.Sprintf("watchyard %s (%s): refresh", tp.opt.Version, MarketplaceName),
 		Pre:  pres(preType(dir, model.TypeDir))})
 	if tp.c.Off {
 		return
 	}
 	// Claude Code runs an installed plugin from its cache, not from the marketplace folder:
-	// every root that has the switchyard plugin updates sy-local and then the plugin, so the
-	// new hooks (the title entries) are active (as `sy postupdate` does, pluginmkt.Update).
+	// every root that has the watchyard plugin updates wy-local and then the plugin, so the
+	// new hooks (the title entries) are active (as `wy postupdate` does, pluginmkt.Update).
 	for _, r := range tp.roots() {
 		if !r.has(PluginID) {
 			continue
@@ -313,9 +313,9 @@ func (tp *tplanner) addRefresh() {
 		ownerT := tp.targets([]model.Folder{r.owner})[0]
 		tp.hooks = append(tp.hooks,
 			tp.run([]string{"claude", "plugin", "marketplace", "update", MarketplaceName, "--json"}, r.owner, ownerT,
-				r.file("known_marketplaces.json"), r.root, ledger.PieceHooks, ledger.VerbMarketplaceUpdate, "switchyard hooks: refresh sy-local"),
+				r.file("known_marketplaces.json"), r.root, ledger.PieceHooks, ledger.VerbMarketplaceUpdate, "watchyard hooks: refresh wy-local"),
 			tp.run([]string{"claude", "plugin", "update", PluginID, "--json"}, r.owner, ownerT,
-				r.file("installed_plugins.json"), r.root, ledger.PieceHooks, ledger.VerbUpdate, "switchyard hooks: update the plugin"))
+				r.file("installed_plugins.json"), r.root, ledger.PieceHooks, ledger.VerbUpdate, "watchyard hooks: update the plugin"))
 	}
 }
 
@@ -394,7 +394,7 @@ func (tp *tplanner) pluginOn(piece, id, mkt, source string) {
 	}
 }
 
-// offRecord is what the ledger says sy did for a plugin piece: the settings targets it
+// offRecord is what the ledger says wy did for a plugin piece: the settings targets it
 // enabled the plugin in, the plugin roots it installed it in, and the roots it added the
 // marketplace to.
 type offRecord struct {
@@ -402,25 +402,25 @@ type offRecord struct {
 }
 
 // Plan Keep notes of a plugin piece's `off` that make the command layer drop the path from
-// the piece's ledger record (termAfterApply): there is nothing left of sy's there.
+// the piece's ledger record (termAfterApply): there is nothing left of wy's there.
 const (
 	KeepAlreadyOff = "already off"
-	KeepForSwitch  = "sy-local stays: the switchyard plugin uses it"
+	KeepForSwitch  = "wy-local stays: the watchyard plugin uses it"
 )
 
-// pluginOff takes back what rec says sy did, and nothing else: it disables id only in the
-// settings targets sy enabled it in, uninstalls it (as the root's owner) only in the roots
-// sy installed it in, and removes mkt only in the roots sy added it to (sy-local stays
-// where the switchyard plugin still is). A copy the person installed, enabled or added
+// pluginOff takes back what rec says wy did, and nothing else: it disables id only in the
+// settings targets wy enabled it in, uninstalls it (as the root's owner) only in the roots
+// wy installed it in, and removes mkt only in the roots wy added it to (wy-local stays
+// where the watchyard plugin still is). A copy the person installed, enabled or added
 // themselves stays. Nothing at all without a record (rec nil). Without claude nothing is
 // planned for the piece and a warning says so (its record stays in the ledger).
 func (tp *tplanner) pluginOff(piece, id, mkt string, rec *offRecord) error {
 	if rec == nil {
-		tp.keep(piece, "", "not installed by sy; nothing to remove")
+		tp.keep(piece, "", "not installed by wy; nothing to remove")
 		return nil
 	}
 	if tp.st.Claude.Path == "" {
-		tp.warn("removing %s needs Claude Code (claude not found): left as is, sy keeps its record (run sy term off again once claude is back)", id)
+		tp.warn("removing %s needs Claude Code (claude not found): left as is, wy keeps its record (run wy term off again once claude is back)", id)
 		return nil
 	}
 	acts := &tp.pane
@@ -473,7 +473,7 @@ func (tp *tplanner) pluginOff(piece, id, mkt string, rec *offRecord) error {
 			tp.keep(piece, r.root, KeepForSwitch)
 		case r.has(id) && !uninstall:
 			// The plugin is still there and not ours to remove: its marketplace stays too.
-			tp.warn("%s: %s is installed but not by sy, so the %s marketplace it comes from stays", tp.tilde(r.root), id, mkt)
+			tp.warn("%s: %s is installed but not by wy, so the %s marketplace it comes from stays", tp.tilde(r.root), id, mkt)
 		default:
 			*acts = append(*acts, tp.run([]string{"claude", "plugin", "marketplace", "remove", mkt, "--json"}, r.owner, ownerT,
 				r.file("known_marketplaces.json"), r.root, piece, ledger.VerbMarketplaceRemove, ""))
@@ -507,7 +507,7 @@ func (tp *tplanner) planWarpPlugin() error {
 	}
 	tp.pluginOn(ledger.PieceWarpPlugin, WarpPluginID, WarpMarketplace, WarpSource)
 	if len(tp.warpPlugin) > 0 {
-		tp.warn("Warp's plugin comes from github.com/warpdotdev/claude-code-warp at branch %s (a commit cannot be pinned); sy records the commit it got and sy doctor warns when it moves", ledger.WarpRef)
+		tp.warn("Warp's plugin comes from github.com/warpdotdev/claude-code-warp at branch %s (a commit cannot be pinned); wy records the commit it got and wy doctor warns when it moves", ledger.WarpRef)
 		if !tp.f.JQ {
 			tp.warn("jq is not on PATH: Warp's plugin needs it")
 		}
@@ -543,15 +543,15 @@ func (tp *tplanner) planTitles() error {
 				tp.keep("titles", path, "env key already gone")
 				continue
 			case cur != one:
-				tp.warn("%s: %s was changed since sy set it; left as is", tp.tilde(path), ledger.TitleEnvKey)
+				tp.warn("%s: %s was changed since wy set it; left as is", tp.tilde(path), ledger.TitleEnvKey)
 				continue
 			}
 			if prior, ok := tp.led.TitlePrior[path]; ok && prior != "" && prior != one {
-				// The person had a value before `titles on`: put it back (as sy setup --undo
+				// The person had a value before `titles on`: put it back (as wy setup --undo
 				// would), not delete it.
 				tp.titles = append(tp.titles, model.Action{Op: model.OpJSONSet, File: path, Via: t.via(), Covers: t.covers(),
 					Pointer: ledger.TitleEnvPointer, Value: json.RawMessage(prior), Before: json.RawMessage(cur),
-					Note: "the value from before sy term titles on", Pre: tp.touchPre(path, true)})
+					Note: "the value from before wy term titles on", Pre: tp.touchPre(path, true)})
 				continue
 			}
 			tp.titles = append(tp.titles, model.Action{Op: model.OpJSONDelete, File: path, Via: t.via(), Covers: t.covers(),
@@ -606,7 +606,7 @@ func (tp *tplanner) targetByPath(path string) ttarget {
 // ---- tab configs -------------------------------------------------------------------------
 
 // FolderLabel is the label a folder goes by: its config label, else its name without the
-// dot, as sy setup labels it ("~/.claude-2" is "claude-2").
+// dot, as wy setup labels it ("~/.claude-2" is "claude-2").
 func FolderLabel(f model.Folder) string {
 	if f.Label != "" && model.ValidLabel(f.Label) {
 		return f.Label
@@ -669,7 +669,7 @@ func launcherNameOf(fo model.Folder) string {
 }
 
 // launcherOf is the absolute path of the account's launcher file: claude itself for the
-// default folder, else a claude-N file found by detect or written by sy (a .cmd on
+// default folder, else a claude-N file found by detect or written by wy (a .cmd on
 // Windows). A shell function or alias cannot be run by a tab config: "".
 func launcherOf(p *planner, st model.State, fo model.Folder) string {
 	if fo.Default {
@@ -731,7 +731,7 @@ func (tp *tplanner) planTabs() error {
 			case cur == nil:
 				tp.keep("tab", lt.Path, "already gone")
 			case cur.SHA256 != lt.SHA256:
-				tp.warn("%s was edited since sy wrote it: it is yours now and stays", tp.tilde(lt.Path))
+				tp.warn("%s was edited since wy wrote it: it is yours now and stays", tp.tilde(lt.Path))
 				tp.keep("tab", lt.Path, "yours now")
 			default:
 				tp.tabs = append(tp.tabs, model.Action{Op: model.OpMoveToBackup, Path: lt.Path, Note: "tab config " + lt.Label,
@@ -765,12 +765,12 @@ func (tp *tplanner) planTabs() error {
 			tp.keep("tab", s.Path, "up to date")
 			continue
 		case !cur.Marker:
-			tp.warn("%s is not sy's (no %q line): left alone", tp.tilde(s.Path), strings.TrimSpace(warp.Marker))
+			tp.warn("%s is not wy's (no %q line): left alone", tp.tilde(s.Path), strings.TrimSpace(warp.Marker))
 			continue
 		case tp.ledgerTab(s.Path) != nil && tp.ledgerTab(s.Path).SHA256 == cur.SHA256:
 			a.Pre = pres(model.Precondition{Path: s.Path, State: model.PathState{Type: model.TypeFile, SHA256: cur.SHA256}})
 		default:
-			tp.warn("%s was edited since sy wrote it: it is yours now and stays", tp.tilde(s.Path))
+			tp.warn("%s was edited since wy wrote it: it is yours now and stays", tp.tilde(s.Path))
 			tp.keep("tab", s.Path, "yours now")
 			continue
 		}
@@ -785,7 +785,7 @@ func (tp *tplanner) planTabs() error {
 	return nil
 }
 
-// legacyTabs moves away the tab configs sy wrote under the name from before a rename
+// legacyTabs moves away the tab configs wy wrote under the name from before a rename
 // (docs/spec/rename.md 2.8): the new ones replace them. A file edited since is the person's.
 func (tp *tplanner) legacyTabs() {
 	for _, lt := range tp.led.Tabs {
@@ -796,7 +796,7 @@ func (tp *tplanner) legacyTabs() {
 		switch {
 		case cur == nil:
 		case cur.SHA256 != lt.SHA256:
-			tp.warn("%s (from before the rename) was edited since sy wrote it: it is yours now and stays", tp.tilde(lt.Path))
+			tp.warn("%s (from before the rename) was edited since wy wrote it: it is yours now and stays", tp.tilde(lt.Path))
 		default:
 			tp.tabs = append(tp.tabs, model.Action{Op: model.OpMoveToBackup, Path: lt.Path, Note: "tab config " + lt.Label + " from before the rename",
 				Pre: pres(model.Precondition{Path: lt.Path, State: model.PathState{Type: model.TypeFile, SHA256: lt.SHA256}})})
@@ -837,5 +837,5 @@ func vparts(v string) [3]int {
 	return out
 }
 
-// VersionLess is versionLess for the command layer (sy term status, sy doctor).
+// VersionLess is versionLess for the command layer (wy term status, wy doctor).
 func VersionLess(a, b string) bool { return versionLess(a, b) }

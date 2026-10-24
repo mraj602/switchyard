@@ -1,4 +1,4 @@
-# Contributing to Switchyard
+# Contributing to Watchyard
 
 Thank you for helping. This page covers the development setup for each component, the checks a
 change must pass, how behaviour changes are specified, and how pull requests are reviewed.
@@ -9,7 +9,7 @@ problems privately, as [SECURITY.md](SECURITY.md) explains, not in an issue.
 ## Ways to help
 
 - Report a bug or a confusing step in the docs (use the issue templates).
-- Try Switchyard on a setup we have not tested: another Linux distribution, macOS on Intel,
+- Try Watchyard on a setup we have not tested: another Linux distribution, macOS on Intel,
   Windows, an unusual terminal, an Android phone maker with strict battery rules.
 - Pick an issue labelled `good first issue` or `help wanted`.
 - Improve a guide in [docs/guide/](docs/guide/README.md).
@@ -24,8 +24,8 @@ and the repository layout. The short version:
 
 | Path | Component | Language |
 | --- | --- | --- |
-| `cmd/sy`, `internal/` | `sy` and the hub | Go |
-| `webui/` | The board (embedded into `sy`) | Plain ES modules and CSS, no build step |
+| `cmd/wy`, `internal/` | `wy` and the hub | Go |
+| `webui/` | The board (embedded into `wy`) | Plain ES modules and CSS, no build step |
 | `app/` | Desktop app | Electron, JavaScript |
 | `phone/` | Android app | Expo, React Native, TypeScript, Kotlin |
 | `plugin/` | Claude Code plugin and pane mod | Markdown, JSON, TypeScript |
@@ -34,22 +34,22 @@ and the repository layout. The short version:
 
 ## Development setup
 
-### `sy`, the hub and the board
+### `wy`, the hub and the board
 
 Needs Go 1.27 or newer, `make`, and Python 3 with `pyyaml` for the spec checks
 (`pip install -r scripts/ci/requirements.txt` adds the OpenAPI validator too). The `sqlite3`
 CLI is optional.
 
 ```sh
-make build        # ./dist/sy
+make build        # ./dist/wy
 make check        # gofmt check, go vet, go test ./..., spec checks
 ```
 
-Run a throwaway hub without touching your real setup by pointing `sy` at a temporary home:
+Run a throwaway hub without touching your real setup by pointing `wy` at a temporary home:
 
 ```sh
-export SY_HOME="$(mktemp -d)"
-./dist/sy hub serve --listen 127.0.0.1:8799
+export WY_HOME="$(mktemp -d)"
+./dist/wy hub serve --listen 127.0.0.1:8799
 ```
 
 For board work, `go run ./cmd/webui-dev -dir webui/static` serves the board files from disk
@@ -58,7 +58,7 @@ it with `-noauth`.
 
 ### Desktop app
 
-Needs Node.js 22 or newer and the Go toolchain (the smoke tests build `sy`). npm runs only
+Needs Node.js 22 or newer and the Go toolchain (the smoke tests build `wy`). npm runs only
 inside `app/`.
 
 ```sh
@@ -105,7 +105,7 @@ same ones.
 | `webui/` | `make check` (the hub serves it; there are Go tests for the embed) |
 | `app/` | `make app-test`, and `make app-smoke` for anything visible |
 | `phone/` | `make phone-check` |
-| `plugin/switchyard-pane/` | `make pane-check` |
+| `plugin/watchyard-pane/` | `make pane-check` |
 
 Tests never use your real home folder, Claude Code config or credentials: every suite runs
 against temporary folders, fake `claude` binaries and fixture data. Keep it that way. A test
@@ -135,7 +135,7 @@ the API, the database schema, session states, setup, alerts, keys, peers and the
   sentences.
 - JavaScript and TypeScript: the ESLint configs in `app/` and `phone/`.
 - User-facing text and docs: plain, direct English; say what happens and what to do next. Use
-  the names Switchyard, hub, board, desktop app, Android app and `sy`. Never use Anthropic's
+  the names Watchyard, hub, board, desktop app, Android app and `wy`. Never use Anthropic's
   logos, and refer to Claude and Claude Code only to describe compatibility.
 - Never log or store credentials, cookies, prompts or code. See
   [docs/guide/security.md](docs/guide/security.md) for what records may hold.
@@ -149,7 +149,7 @@ the API, the database schema, session states, setup, alerts, keys, peers and the
 
 ### Developer Certificate of Origin
 
-Switchyard does not ask you to sign a contributor licence agreement. Instead, every commit
+Watchyard does not ask you to sign a contributor licence agreement. Instead, every commit
 carries a `Signed-off-by` line, which certifies that you wrote the change or have the right to
 submit it, as set out in the DCO 1.1 text at <https://developercertificate.org/>.
 
@@ -174,10 +174,10 @@ branch.
 
 ### Licence of contributions
 
-Switchyard is licensed under the GNU AGPL-3.0. By submitting a contribution, you license it
+Watchyard is licensed under the GNU AGPL-3.0. By submitting a contribution, you license it
 to the maintainer (mraj602) and to everyone else under the Apache License 2.0, and to the
 public under the project's licence (AGPL-3.0). The Apache-2.0 grant lets the maintainer
-also offer Switchyard under other terms, for example a hosted service or a commercial
+also offer Watchyard under other terms, for example a hosted service or a commercial
 edition, without asking each contributor again. You keep the copyright in your contribution.
 If you cannot agree to this, say so in the pull request before it is merged.
 
@@ -200,7 +200,7 @@ desktop app's security settings, and the install and update paths.
 
 Issues labelled `good first issue` are small and well specified. Typical ones:
 
-- A clearer error message or `sy doctor` hint.
+- A clearer error message or `wy doctor` hint.
 - A missing test for an existing spec rule.
 - A docs fix, or a guide step that did not match what you saw.
 - Board accessibility: labels, focus order, contrast.

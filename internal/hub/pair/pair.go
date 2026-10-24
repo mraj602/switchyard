@@ -20,11 +20,11 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/paths"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	hubkeys "github.com/mraj602/watchyard/internal/hub/keys"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/paths"
 )
 
 // Lifetimes and caps of pairing.md 2.1.
@@ -35,7 +35,7 @@ const (
 	// MaxLive is how many typed codes can be live at once; a sixth cancels the oldest.
 	MaxLive = 5
 	// MaxLiveOwnerLinks is how many owner links made on the board (POST /v1/owner-links) can
-	// be live at once; another cancels the oldest. `sy hub owner-link` links do not count.
+	// be live at once; another cancels the oldest. `wy hub owner-link` links do not count.
 	MaxLiveOwnerLinks = 3
 	// MaxNameLen is the longest device name.
 	MaxNameLen = 60
@@ -79,7 +79,7 @@ const (
 
 // LinkError is a 401 of owner sign-in with its reason. At is when the link was used,
 // expired or was cancelled (ms; 0 for LinkUnknown). TTL is the lifetime the link was made
-// with (`sy hub owner-link --ttl`), so an expired link can say how long links last; 0 for
+// with (`wy hub owner-link --ttl`), so an expired link can say how long links last; 0 for
 // LinkUnknown.
 type LinkError struct {
 	Code string
@@ -405,7 +405,7 @@ type Code struct {
 	URL       string // the QR content
 	ExpiresAt time.Time
 	QR        Matrix
-	Command   string // machine and desktop: sy connect <hub> --code 482-913
+	Command   string // machine and desktop: wy connect <hub> --code 482-913
 	// PlainHTTP is true when a phone or browser code points at http: it pairs, but the web
 	// app cannot install or receive pushes.
 	PlainHTTP bool
@@ -441,7 +441,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Code, error) {
 			return Code{}, badRequest("a machine id is only for machine and desktop codes")
 		}
 		if !machinePattern.MatchString(req.Machine) {
-			return Code{}, badRequest("that does not look like a machine id (m_…; see `sy machine` on that machine)")
+			return Code{}, badRequest("that does not look like a machine id (m_…; see `wy machine` on that machine)")
 		}
 	}
 	origin, plain, err := NormalizeURL(req.URL, req.Kind, req.Insecure)
@@ -520,7 +520,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Code, error) {
 		return Code{}, err
 	}
 	if auth.NeedsMachine(out.Kind) {
-		out.Command = "sy connect " + out.Hub + " --code " + out.Code
+		out.Command = "wy connect " + out.Hub + " --code " + out.Code
 	}
 	return out, nil
 }
@@ -591,7 +591,7 @@ func (s *Service) CreateOwnerLink(ctx context.Context, req OwnerLinkRequest) (Ow
 // owner session makes a one-time owner link for another device. It always lives DefaultTTL
 // (the pair.ttl_s setting does not apply), is rate limited per client IP as claims are (3.3),
 // and at most MaxLiveOwnerLinks made this way are live. The link is consumed by
-// POST /v1/session/owner exactly as one from `sy hub owner-link`. One log line, never the
+// POST /v1/session/owner exactly as one from `wy hub owner-link`. One log line, never the
 // secret.
 func (s *Service) MintOwnerLink(ctx context.Context, ip string, by store.Device, hubURL string) (OwnerLink, error) {
 	if !auth.IsOwnerSession(by) || !by.HasScope("owner") {
@@ -618,7 +618,7 @@ type ClaimRequest struct {
 	ExpectKind string
 	Cookie     bool
 	Client     string
-	// Keys are the device's public keys in the clear (typed codes and `sy connect --code`,
+	// Keys are the device's public keys in the clear (typed codes and `wy connect --code`,
 	// reg tofu); KeysSealed the same JSON sealed with the QR's k (secret claims, reg qr).
 	// At most one; keys.md 7.1.
 	Keys       *keys.DeviceKeysNew
@@ -756,7 +756,7 @@ func (s *Service) Claim(ctx context.Context, ip string, req ClaimRequest) (Claim
 		if req.Cookie && auth.NeedsMachine(row.Kind) {
 			return badRequest("cookie mode is only for phone and browser codes")
 		}
-		// The name the owner gave the code (`sy hub pair --name`) wins over the claimer's
+		// The name the owner gave the code (`wy hub pair --name`) wins over the claimer's
 		// guess (pairing.md 3).
 		if row.Name != "" {
 			name = row.Name

@@ -1,12 +1,12 @@
-// Package machineadd is `sy machine add|remove|repoint|list|probe|authorize-pull`
-// (machines.md 4): from the operator, with the person's own SSH, copy the right sy to a
+// Package machineadd is `wy machine add|remove|repoint|list|probe|authorize-pull`
+// (machines.md 4): from the operator, with the person's own SSH, copy the right wy to a
 // remote (release for its os/arch, SHA-256 checked there before the atomic move), join the
 // hub with a one-time pairing secret passed on stdin, or register it for pull, write the
 // forward block for forward mode, and log accounts in with the person's own terminal. The
 // remote sides (probe, authorize-pull) are here too.
 //
 // It never imports internal/hub: everything the hub host must do goes through the admin
-// channel (Admin: `sy hub …` in process, over a command prefix, or a pasted code).
+// channel (Admin: `wy hub …` in process, over a command prefix, or a pasted code).
 //
 // Depends on: sshx, update, client, config, identity, setup/{apply,backup,model},
 // atomicfile, version.
@@ -30,14 +30,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/client"
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/sshx"
-	"github.com/mraj602/switchyard/internal/update"
+	"github.com/mraj602/watchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/sshx"
+	"github.com/mraj602/watchyard/internal/update"
 )
 
-// Exit codes of `sy machine add` (4.2).
+// Exit codes of `wy machine add` (4.2).
 const (
 	ExitFailed      = 1
 	ExitUsage       = 2
@@ -75,7 +75,7 @@ type Event struct {
 	Data   map[string]any `json:"data,omitempty"`
 }
 
-// Options are the flags of `sy machine add` (4.1).
+// Options are the flags of `wy machine add` (4.1).
 type Options struct {
 	Host          string
 	Name          string
@@ -134,7 +134,7 @@ type Env struct {
 	HubPin, OwnerPin func() *keys.Pin
 	// Certify owner-signs the new machine's certificate in the same run (keys.md 4.2 step 2):
 	// the signing guard, the terminal, the passphrase. It returns the owner fingerprint and
-	// the signature; an error leaves `sy keys certify` as the next step. Nil: never.
+	// the signature; an error leaves `wy keys certify` as the next step. Nil: never.
 	Certify func(ctx context.Context, name string, c keys.Cert) (fp, sig string, err error)
 }
 
@@ -176,7 +176,7 @@ type Summary struct {
 	Keys *KeysSummary `json:"keys,omitempty"`
 }
 
-// setupReply is the part of the remote `sy setup --json` report (setup.md 6.3) machine add
+// setupReply is the part of the remote `wy setup --json` report (setup.md 6.3) machine add
 // reads.
 type setupReply struct {
 	Mode string `json:"mode"`
@@ -241,7 +241,7 @@ func (a *adder) run(ctx context.Context) error {
 		return exitf(ExitUsage, "--code-stdin is for direct and forward; pull registers the machine through the admin channel")
 	}
 	if o.Reach == ReachPull && a.e.Admin == nil {
-		return exitf(ExitUsage, "pull mode needs the hub host: pass --hub-admin local or a command prefix such as \"ssh hub-host sy\"")
+		return exitf(ExitUsage, "pull mode needs the hub host: pass --hub-admin local or a command prefix such as \"ssh hub-host wy\"")
 	}
 	if o.Version != "" && o.Binary != "" {
 		return exitf(ExitUsage, "use --version or --binary, not both")
@@ -327,7 +327,7 @@ func (a *adder) connect(ctx context.Context) error {
 	a.cfg = cfg
 	a.e.SSH.ApplyDefaults(cfg)
 	if cfg.HostKeyCheckingOff() {
-		a.warn("connect", fmt.Sprintf("your ssh config turns host key checking off for %s; sy does not override it, but you should", a.o.Host))
+		a.warn("connect", fmt.Sprintf("your ssh config turns host key checking off for %s; wy does not override it, but you should", a.o.Host))
 	}
 	a.e.SSH.Batch = !a.e.Interactive
 	res, err := a.e.SSH.Run(ctx, sshx.Call{Host: a.o.Host, Remote: []string{"uname", "-sm"}, Interactive: a.e.Interactive})
@@ -372,9 +372,9 @@ func (a *adder) probe(ctx context.Context) error {
 	if p.Rosetta && a.sum.OS == "darwin" {
 		a.sum.Arch = "arm64"
 	}
-	state := "sy not installed"
+	state := "wy not installed"
 	if p.Sy != "" {
-		state = "sy " + p.Sy
+		state = "wy " + p.Sy
 	}
 	claude := "claude not found on the login PATH"
 	if p.Claude != "" {
@@ -385,7 +385,7 @@ func (a *adder) probe(ctx context.Context) error {
 	return nil
 }
 
-// probeNew runs `sy machine probe --json` with the installed sy (step 2, second half).
+// probeNew runs `wy machine probe --json` with the installed wy (step 2, second half).
 func (a *adder) probeNew(ctx context.Context) error {
 	words := []string{RemoteSy, "machine", "probe", "--json", "--ports", fmt.Sprintf("%d-%d", FirstForwardPort, LastForwardPort)}
 	if u := a.candidateURL(); u != "" {
@@ -399,11 +399,11 @@ func (a *adder) probeNew(ctx context.Context) error {
 		return exitf(ExitFailed, "%v", err)
 	}
 	if res.Exit != 0 {
-		return exitf(ExitFailed, "`sy machine probe` failed on %s (exit %d): %s", a.o.Host, res.Exit, firstLine(res.Stderr))
+		return exitf(ExitFailed, "`wy machine probe` failed on %s (exit %d): %s", a.o.Host, res.Exit, firstLine(res.Stderr))
 	}
 	var pr ProbeReport
 	if err := json.Unmarshal(firstJSON(res.Stdout), &pr); err != nil || pr.Machine == "" {
-		return exitf(ExitFailed, "unreadable answer from sy machine probe on %s", a.o.Host)
+		return exitf(ExitFailed, "unreadable answer from wy machine probe on %s", a.o.Host)
 	}
 	a.pr = &pr
 	a.sum.Machine = pr.Machine
@@ -426,7 +426,7 @@ func (a *adder) probeNew(ctx context.Context) error {
 		}
 	}
 	if a.sum.Name != a.old.Name && a.reg.NameTaken(a.sum.Name, pr.Machine) {
-		return exitf(ExitUsage, "the name %q belongs to another machine in the registry: pass a different --name (sy machine list)", a.sum.Name)
+		return exitf(ExitUsage, "the name %q belongs to another machine in the registry: pass a different --name (wy machine list)", a.sum.Name)
 	}
 	hub := ""
 	if pr.Hub != nil {
@@ -469,15 +469,15 @@ func isLoopbackURL(u string) bool {
 func (a *adder) dryRun() {
 	reach := a.o.Reach
 	steps := []string{
-		fmt.Sprintf("install sy %s for %s/%s into ~/.local/bin/sy (SHA-256 checked on the remote)", a.targetVersion(), a.sum.OS, a.sum.Arch),
+		fmt.Sprintf("install wy %s for %s/%s into ~/.local/bin/wy (SHA-256 checked on the remote)", a.targetVersion(), a.sum.OS, a.sum.Arch),
 	}
 	switch reach {
 	case ReachPull:
-		steps = append(steps, "register a pull target on the hub ("+a.adminName()+")", "sy setup --hub pull, then authorize the hub's key in ~/.ssh/authorized_keys")
+		steps = append(steps, "register a pull target on the hub ("+a.adminName()+")", "wy setup --hub pull, then authorize the hub's key in ~/.ssh/authorized_keys")
 	case ReachForward:
-		steps = append(steps, "mint a machine pairing code ("+a.adminName()+")", "write the forward block in ~/.ssh/switchyard.conf", "sy setup --hub join:<url> --code-stdin --reach forward")
+		steps = append(steps, "mint a machine pairing code ("+a.adminName()+")", "write the forward block in ~/.ssh/watchyard.conf", "wy setup --hub join:<url> --code-stdin --reach forward")
 	default:
-		steps = append(steps, "mint a machine pairing code ("+a.adminName()+")", "sy setup --hub join:<url> --code-stdin (reach "+reach+")")
+		steps = append(steps, "mint a machine pairing code ("+a.adminName()+")", "wy setup --hub join:<url> --code-stdin (reach "+reach+")")
 	}
 	steps = append(steps, "verify on the hub", "offer logins")
 	if reach != ReachPull {
@@ -526,11 +526,11 @@ func (a *adder) binary(ctx context.Context) error {
 		a.sum.DevBuild = true
 	default:
 		if !isRelease(want) {
-			return exitf(ExitUsage, "this sy is %q, not a release, and %s is %s/%s: pass --version <release> or --binary <file>", want, a.o.Host, a.sum.OS, a.sum.Arch)
+			return exitf(ExitUsage, "this wy is %q, not a release, and %s is %s/%s: pass --version <release> or --binary <file>", want, a.o.Host, a.sum.OS, a.sum.Arch)
 		}
 		if a.pre.Sy == want {
 			a.sum.Sy = want
-			a.e.emit("binary", "skip", fmt.Sprintf("%s already runs sy %s", a.o.Host, want), nil)
+			a.e.emit("binary", "skip", fmt.Sprintf("%s already runs wy %s", a.o.Host, want), nil)
 			return nil
 		}
 		f := a.e.Fetcher
@@ -557,14 +557,14 @@ func (a *adder) binary(ctx context.Context) error {
 	}
 	if a.pre.SySHA256 != "" && a.pre.SySHA256 == sum {
 		a.sum.Sy = a.pre.Sy
-		a.e.emit("binary", "skip", fmt.Sprintf("%s already has this sy (%s)", a.o.Host, short(sum)), nil)
+		a.e.emit("binary", "skip", fmt.Sprintf("%s already has this wy (%s)", a.o.Host, short(sum)), nil)
 		return nil
 	}
 	wantV := ""
 	if isRelease(want) && !a.sum.DevBuild {
 		wantV = want
 	}
-	p, err := a.r.push(ctx, bin, "bin", "sy", wantV)
+	p, err := a.r.push(ctx, bin, "bin", "wy", wantV)
 	if err != nil {
 		return exitf(ExitFailed, "%v", err)
 	}
@@ -577,7 +577,7 @@ func (a *adder) binary(ctx context.Context) error {
 	if a.sum.DevBuild {
 		note += "; not a release build"
 	}
-	a.e.emit("binary", "ok", fmt.Sprintf("installed sy %s on %s (%s)", want, a.o.Host, note), map[string]any{"sha256": sum})
+	a.e.emit("binary", "ok", fmt.Sprintf("installed wy %s on %s (%s)", want, a.o.Host, note), map[string]any{"sha256": sum})
 	return nil
 }
 
@@ -624,7 +624,7 @@ func (a *adder) decideReach() error {
 		}
 	}
 	if reach == ReachPull && a.e.Admin == nil {
-		return exitf(ExitUsage, "pull mode needs the hub host: pass --hub-admin local or a command prefix such as \"ssh hub-host sy\"")
+		return exitf(ExitUsage, "pull mode needs the hub host: pass --hub-admin local or a command prefix such as \"ssh hub-host wy\"")
 	}
 	a.sum.Reach = reach
 	return nil
@@ -645,7 +645,7 @@ func (a *adder) remoteURL(port int) (string, error) {
 	switch a.sum.Reach {
 	case ReachForward:
 		if a.e.OperatorHub == "" {
-			return "", exitf(ExitUsage, "forward mode needs this machine's hub.url (sy connect … here first)")
+			return "", exitf(ExitUsage, "forward mode needs this machine's hub.url (wy connect … here first)")
 		}
 		if isLoopbackURL(a.e.OperatorHub) {
 			return "http://127.0.0.1:" + strconv.Itoa(port), nil
@@ -661,7 +661,7 @@ func (a *adder) remoteURL(port int) (string, error) {
 func (a *adder) forwardTarget() (string, error) {
 	u, err := url.Parse(a.e.OperatorHub)
 	if err != nil || u.Host == "" {
-		return "", exitf(ExitUsage, "forward mode needs this machine's hub.url (sy connect … here first)")
+		return "", exitf(ExitUsage, "forward mode needs this machine's hub.url (wy connect … here first)")
 	}
 	port := u.Port()
 	if port == "" {
@@ -730,7 +730,7 @@ func (a *adder) hubAdmin(ctx context.Context) (credential, error) {
 	}
 	if a.e.Admin == nil {
 		if !a.e.Interactive || a.e.ReadSecret == nil {
-			return credential{}, exitf(ExitNeedsPerson, "no admin channel to the hub: pass --hub-admin \"ssh <hub host> sy\", or --code-stdin with a code from the board's Add machine")
+			return credential{}, exitf(ExitNeedsPerson, "no admin channel to the hub: pass --hub-admin \"ssh <hub host> wy\", or --code-stdin with a code from the board's Add machine")
 		}
 		if url == "" {
 			return credential{}, exitf(ExitUsage, "pass --hub-url: the address %s uses to reach the hub", a.o.Host)
@@ -756,8 +756,8 @@ func (a *adder) hubAdmin(ctx context.Context) (credential, error) {
 	return credential{secret: pc.Secret}, nil
 }
 
-// adopted is Adopted for the person's own forwards: the block sy wrote for this machine in
-// switchyard.conf is sy's (ssh -G shows it too), never the person's.
+// adopted is Adopted for the person's own forwards: the block wy wrote for this machine in
+// watchyard.conf is wy's (ssh -G shows it too), never the person's.
 func (a *adder) adopted(target, socket string) (int, bool) {
 	if _, _, owned := OwnedForward(a.e.Home, a.sum.Machine); owned {
 		return 0, false
@@ -777,7 +777,7 @@ func (a *adder) dialFor() string {
 
 func (a *adder) pullAdmin(ctx context.Context) (credential, error) {
 	if len(a.pre.HostKeys) == 0 {
-		return credential{}, exitf(ExitFailed, "cannot read the host keys of %s (/etc/ssh/ssh_host_*_key.pub); register it by hand with `sy hub pull add --fingerprint SHA256:…`", a.o.Host)
+		return credential{}, exitf(ExitFailed, "cannot read the host keys of %s (/etc/ssh/ssh_host_*_key.pub); register it by hand with `wy hub pull add --fingerprint SHA256:…`", a.o.Host)
 	}
 	t := PullTarget{Name: a.sum.Name, User: a.cfg.User(), Host: a.cfg.HostName(), Port: a.cfg.Port(), Jump: a.cfg.ProxyJump()}
 	if t.Host == "" {
@@ -815,9 +815,9 @@ func (a *adder) forward(ctx context.Context) error {
 		a.old.ForwardAdopted = false
 		a.sum.ChangedFw = res.Changed
 		status := "skip"
-		text := fmt.Sprintf("~/.ssh/switchyard.conf already forwards %s for %s", f.Listen(), a.o.Host)
+		text := fmt.Sprintf("~/.ssh/watchyard.conf already forwards %s for %s", f.Listen(), a.o.Host)
 		if res.Changed {
-			status, text = "ok", fmt.Sprintf("wrote the forward block for %s in ~/.ssh/switchyard.conf (port %s, backup %s)", HostPattern(a.o.Host), f.Listen(), res.Set)
+			status, text = "ok", fmt.Sprintf("wrote the forward block for %s in ~/.ssh/watchyard.conf (port %s, backup %s)", HostPattern(a.o.Host), f.Listen(), res.Set)
 		}
 		a.e.emit("forward", status, text, nil)
 	}
@@ -937,17 +937,17 @@ func (a *adder) setup(ctx context.Context, cred credential) (setupReply, error) 
 	switch res.Exit {
 	case 0:
 	case ExitNoClaude:
-		return rep, exitf(ExitNoClaude, "Claude Code is not installed on %s: install Claude Code on %s, then run this again (sy stays installed)", a.o.Host, a.o.Host)
+		return rep, exitf(ExitNoClaude, "Claude Code is not installed on %s: install Claude Code on %s, then run this again (wy stays installed)", a.o.Host, a.o.Host)
 	case ExitVerify:
 		msg := "the hub step failed"
 		if rep.Hub != nil && rep.Hub.Error != "" {
 			msg = rep.Hub.Error
 		}
-		return rep, exitf(ExitFailed, "sy setup on %s set up the machine but could not join the hub: %s (%s)", a.o.Host, msg, firstLine(res.Stderr))
+		return rep, exitf(ExitFailed, "wy setup on %s set up the machine but could not join the hub: %s (%s)", a.o.Host, msg, firstLine(res.Stderr))
 	default:
-		return rep, exitf(ExitFailed, "sy setup on %s failed (exit %d): %s", a.o.Host, res.Exit, lastLine(res.Stderr))
+		return rep, exitf(ExitFailed, "wy setup on %s failed (exit %d): %s", a.o.Host, res.Exit, lastLine(res.Stderr))
 	}
-	a.e.emit("setup", "ok", fmt.Sprintf("sy setup ran on %s (%s)", a.o.Host, a.sum.Reach), nil)
+	a.e.emit("setup", "ok", fmt.Sprintf("wy setup ran on %s (%s)", a.o.Host, a.sum.Reach), nil)
 	if a.sum.Reach == ReachPull {
 		aw := []string{RemoteSy, "machine", "authorize-pull", "--key-stdin", "--target", a.sum.PullID}
 		if a.o.PullFrom != "" {
@@ -963,7 +963,7 @@ func (a *adder) setup(ctx context.Context, cred credential) (setupReply, error) 
 		if r.Exit != 0 {
 			return rep, exitf(ExitFailed, "authorize-pull on %s failed (exit %d): %s", a.o.Host, r.Exit, firstLine(r.Stderr))
 		}
-		a.e.emit("setup", "ok", fmt.Sprintf("authorized the hub's pull key on %s (forced command sy outbox drain --stdio)", a.o.Host), nil)
+		a.e.emit("setup", "ok", fmt.Sprintf("authorized the hub's pull key on %s (forced command wy outbox drain --stdio)", a.o.Host), nil)
 	}
 	return rep, nil
 }
@@ -998,7 +998,7 @@ func (a *adder) verify(ctx context.Context) error {
 			if err != nil {
 				detail = ": " + err.Error()
 			}
-			return exitf(ExitVerify, "%s is set up, but the hub's first pull did not succeed (state %s%s); see sy hub pull list on the hub", a.o.Host, row.State, detail)
+			return exitf(ExitVerify, "%s is set up, but the hub's first pull did not succeed (state %s%s); see wy hub pull list on the hub", a.o.Host, row.State, detail)
 		}
 		a.sum.Verified = true
 		a.e.emit("verify", "ok", fmt.Sprintf("the hub pulled %s", a.sum.Name), nil)
@@ -1015,7 +1015,7 @@ func (a *adder) verify(ctx context.Context) error {
 		}
 		var ae *AdminError
 		if errors.As(err, &ae) && ae.NotImplemented() {
-			a.warn("verify", "the hub's sy cannot show machines yet; check the board's Machines screen")
+			a.warn("verify", "the hub's wy cannot show machines yet; check the board's Machines screen")
 			return nil
 		}
 		select {
@@ -1027,7 +1027,7 @@ func (a *adder) verify(ctx context.Context) error {
 	if err != nil {
 		return exitf(ExitVerify, "%s joined, but asking the hub about it failed: %v", a.o.Host, err)
 	}
-	return exitf(ExitVerify, "%s joined, but the hub has not seen it in the last minute; run `ssh %s .local/bin/sy doctor`", a.o.Host, a.o.Host)
+	return exitf(ExitVerify, "%s joined, but the hub has not seen it in the last minute; run `ssh %s .local/bin/wy doctor`", a.o.Host, a.o.Host)
 }
 
 // --- 8. logins ------------------------------------------------------------------------
@@ -1068,7 +1068,7 @@ func (a *adder) logins(ctx context.Context, rep setupReply) {
 }
 
 // LoginCommand is the command that logs a folder in on the remote, quoted to be shown and
-// pasted into the operator's shell: ~ stays literal for the remote sy (an unquoted one would
+// pasted into the operator's shell: ~ stays literal for the remote wy (an unquoted one would
 // expand here), and a folder name that is not a plain word is quoted for both shells.
 func LoginCommand(host, folder string) string {
 	words := []string{RemoteSy, "account", "login", folder}
@@ -1103,7 +1103,7 @@ func (a *adder) directPush(ctx context.Context) error {
 		return nil
 	}
 	if a.e.DirectPush == nil {
-		return errors.New("direct push is not set up on this machine (sy direct-push on here first)")
+		return errors.New("direct push is not set up on this machine (wy direct-push on here first)")
 	}
 	server, private, secret, err := a.e.DirectPush()
 	if err != nil {
@@ -1115,7 +1115,7 @@ func (a *adder) directPush(ctx context.Context) error {
 		return err
 	}
 	if res.Exit != 0 {
-		return fmt.Errorf("sy direct-push on failed on %s (exit %d): %s", a.o.Host, res.Exit, firstLine(res.Stderr))
+		return fmt.Errorf("wy direct-push on failed on %s (exit %d): %s", a.o.Host, res.Exit, firstLine(res.Stderr))
 	}
 	a.e.emit("direct_push", "ok", fmt.Sprintf("direct push is on for %s", a.o.Host), nil)
 	return nil
@@ -1138,7 +1138,7 @@ func (a *adder) saveRegistry(ctx context.Context, done bool) error {
 	if a.old.PullTarget != "" && e.Reach != ReachPull {
 		// Leaving pull mode: the hub's key must not stay in authorized_keys, nor the target on
 		// the hub. PullTarget stays in the entry until both are gone, so a rerun or
-		// `sy machine remove` finishes the job.
+		// `wy machine remove` finishes the job.
 		if !done || !a.dropPull(ctx, a.old.PullTarget) {
 			e.PullTarget = a.old.PullTarget
 		}
@@ -1174,7 +1174,7 @@ func (a *adder) dropPull(ctx context.Context, target string) bool {
 		a.e.emit("pull", "ok", "removed the hub's pull key from ~/.ssh/authorized_keys on "+a.o.Host, nil)
 	}
 	if a.e.Admin == nil {
-		a.warn("pull", "no admin channel: remove the pull target on the hub with sy hub pull remove")
+		a.warn("pull", "no admin channel: remove the pull target on the hub with wy hub pull remove")
 		return false
 	}
 	name := pullNameFor(ctx, a.e.Admin, target, a.old.Name)

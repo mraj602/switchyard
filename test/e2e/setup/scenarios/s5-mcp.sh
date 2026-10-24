@@ -1,7 +1,7 @@
 #!/bin/sh
 # S5 MCP sync: three logged-in folders with different mcpServers (fake secrets in the values).
 # First sync = union with the primary winning same-name conflicts; an edit in one folder
-# reaches the others on `sy tick`; a held lock and a live session each cause a skip; bytes
+# reaches the others on `wy tick`; a held lock and a live session each cause a skip; bytes
 # outside the mcpServers span never change; no secret value is printed or logged.
 . "$(dirname "$0")/../lib/common.sh"
 
@@ -11,9 +11,9 @@
 MS="python3 -I $E2E/lib/mcpspan.py"
 H=$(new_home mcp mcp)
 install_sy "$H"
-STATE=$H/.local/state/switchyard
+STATE=$H/.local/state/watchyard
 F1=$H/.claude.json F2=$H/.claude-2/.claude.json F3=$H/.claude-3/.claude.json
-SECRETS=$SY_E2E_TMP/secrets
+SECRETS=$WY_E2E_TMP/secrets
 cat "$E2E/homes/mcp.secrets" > "$SECRETS"
 echo "sk-FAKE-SECRET-edit-0006" >> "$SECRETS"
 echo "sk-FAKE-SECRET-edit-0007" >> "$SECRETS"
@@ -21,8 +21,8 @@ echo "sk-FAKE-SECRET-conflict-primary-0008" >> "$SECRETS"
 echo "sk-FAKE-SECRET-conflict-two-0009" >> "$SECRETS"
 echo "sk-FAKE-SECRET-live-0010" >> "$SECRETS"
 echo "sk-FAKE-SECRET-lock-0011" >> "$SECRETS"
-: > "$SY_E2E_TMP/all-output.txt"
-collect() { cat "$OUT" "$ERR" >> "$SY_E2E_TMP/all-output.txt"; }
+: > "$WY_E2E_TMP/all-output.txt"
+collect() { cat "$OUT" "$ERR" >> "$WY_E2E_TMP/all-output.txt"; }
 
 servers_equal() { # <what>: the three files hold the same mcpServers
 	a=$($MS servers "$F1"); b=$($MS servers "$F2"); c=$($MS servers "$F3")
@@ -32,7 +32,7 @@ names() { python3 -I -c 'import json, sys; print(" ".join(sorted(json.loads(sys.
 has_server() { python3 -I -c 'import json, sys; sys.exit(0 if sys.argv[2] in json.loads(sys.argv[1]) else 1)' "$($MS servers "$1")" "$2"; }
 
 # ---- 1. first sync (setup) ----
-sy setup --yes --json --hub later
+wy setup --yes --json --hub later
 assert_rc "setup" 0 $rc
 collect
 servers_equal "after the first sync"
@@ -45,16 +45,16 @@ assert_eq "base file mode" 600 "$(mode_of "$STATE/share/mcp-base.json")"
 
 # ---- 2. an edit in one folder reaches the others on tick ----
 $MS set "$F3" edited-three '{"type": "stdio", "command": "edited", "env": {"TOKEN": "sk-FAKE-SECRET-edit-0006"}}'
-for f in $F1 $F2 $F3; do $MS outside "$f" > "$SY_E2E_TMP/outside.$(echo "$f" | tr / _)"; done
-sy tick
+for f in $F1 $F2 $F3; do $MS outside "$f" > "$WY_E2E_TMP/outside.$(echo "$f" | tr / _)"; done
+wy tick
 assert_rc "tick" 0 $rc
 collect
 servers_equal "after tick"
 has_server "$F1" edited-three && pass "edited-three reached the primary" || fail "edited-three missing in the primary"
 has_server "$F2" edited-three && pass "edited-three reached ~/.claude-2" || fail "edited-three missing in ~/.claude-2"
 for f in $F1 $F2 $F3; do
-	$MS outside "$f" > "$SY_E2E_TMP/outside.after"
-	if cmp -s "$SY_E2E_TMP/outside.after" "$SY_E2E_TMP/outside.$(echo "$f" | tr / _)"; then pass "bytes outside mcpServers unchanged: ${f#$H/}"; else fail "bytes outside mcpServers changed: ${f#$H/}"; diff "$SY_E2E_TMP/outside.$(echo "$f" | tr / _)" "$SY_E2E_TMP/outside.after" | head -10 >&2; fi
+	$MS outside "$f" > "$WY_E2E_TMP/outside.after"
+	if cmp -s "$WY_E2E_TMP/outside.after" "$WY_E2E_TMP/outside.$(echo "$f" | tr / _)"; then pass "bytes outside mcpServers unchanged: ${f#$H/}"; else fail "bytes outside mcpServers changed: ${f#$H/}"; diff "$WY_E2E_TMP/outside.$(echo "$f" | tr / _)" "$WY_E2E_TMP/outside.after" | head -10 >&2; fi
 done
 assert_eq "oauthAccount of ~/.claude-2 intact" b@example.com "$(jget "$F2" 'd["oauthAccount"]["emailAddress"]')"
 
@@ -62,7 +62,7 @@ assert_eq "oauthAccount of ~/.claude-2 intact" b@example.com "$(jget "$F2" 'd["o
 before=$(wc -l < "$CONF" | tr -d ' ')
 $MS set "$F1" shared-name '{"type": "stdio", "command": "primary-cmd-2", "env": {"API_KEY": "sk-FAKE-SECRET-conflict-primary-0008"}}'
 $MS set "$F2" shared-name '{"type": "stdio", "command": "two-cmd-2", "env": {"API_KEY": "sk-FAKE-SECRET-conflict-two-0009"}}'
-sy tick
+wy tick
 assert_rc "tick (conflict)" 0 $rc
 collect
 servers_equal "after the conflict tick"
@@ -76,7 +76,7 @@ LIVE=$!
 mkdir -p "$H/.claude-2/sessions"
 printf '{"pid": %s, "sessionId": "fake"}\n' "$LIVE" > "$H/.claude-2/sessions/$LIVE.json"
 $MS set "$F3" live-test '{"type": "stdio", "command": "live", "env": {"TOKEN": "sk-FAKE-SECRET-live-0010"}}'
-sy tick
+wy tick
 assert_rc "tick (live session)" 0 $rc
 collect
 has_server "$F1" live-test && pass "live-test reached the primary" || fail "live-test missing in the primary"
@@ -84,7 +84,7 @@ has_server "$F2" live-test && fail "~/.claude-2 was written while a session was 
 assert_contains "tick says one file was skipped" "1 skipped" "$(cat "$OUT")"
 kill "$LIVE" 2>/dev/null || true
 wait "$LIVE" 2>/dev/null || true
-sy tick
+wy tick
 assert_rc "tick (session gone)" 0 $rc
 collect
 has_server "$F2" live-test && pass "~/.claude-2 caught up once the session ended" || fail "~/.claude-2 still lacks live-test"
@@ -92,13 +92,13 @@ has_server "$F2" live-test && pass "~/.claude-2 caught up once the session ended
 # ---- 5. a held fresh lock skips that file ----
 mkdir "$H/.claude-3/.claude.json.lock"
 $MS set "$F2" lock-test '{"type": "stdio", "command": "lock", "env": {"TOKEN": "sk-FAKE-SECRET-lock-0011"}}'
-sy tick
+wy tick
 assert_rc "tick (lock held)" 0 $rc
 collect
 has_server "$F1" lock-test && pass "lock-test reached the primary" || fail "lock-test missing in the primary"
 has_server "$F3" lock-test && fail "~/.claude-3 was written while its lock was held" || pass "~/.claude-3 skipped (lock held)"
 rmdir "$H/.claude-3/.claude.json.lock"
-sy tick
+wy tick
 assert_rc "tick (lock released)" 0 $rc
 collect
 has_server "$F3" lock-test && pass "~/.claude-3 caught up once the lock was released" || fail "~/.claude-3 still lacks lock-test"
@@ -107,13 +107,13 @@ assert_no_file "$H/.claude-3/.claude.json.lock" "lock left behind"
 assert_no_file "$H/.claude-2/.claude.json.lock" "lock left behind"
 
 # ---- 6. no secret anywhere it must not be ----
-sy doctor --json; collect
-sy account list --json; collect
-sy setup --dry-run --json; collect
+wy doctor --json; collect
+wy account list --json; collect
+wy setup --dry-run --json; collect
 leaks=0
 while read -r sec; do
 	[ -n "$sec" ] || continue
-	if grep -qF "$sec" "$SY_E2E_TMP/all-output.txt"; then leaks=$((leaks + 1)); fail "secret $sec printed on stdout/stderr"; fi
+	if grep -qF "$sec" "$WY_E2E_TMP/all-output.txt"; then leaks=$((leaks + 1)); fail "secret $sec printed on stdout/stderr"; fi
 	if [ -d "$STATE/logs" ] && grep -rqF "$sec" "$STATE/logs"; then leaks=$((leaks + 1)); fail "secret $sec in <state>/logs"; fi
 	if grep -qF "$sec" "$CONF"; then leaks=$((leaks + 1)); fail "secret $sec in mcp-conflicts.jsonl"; fi
 done < "$SECRETS"

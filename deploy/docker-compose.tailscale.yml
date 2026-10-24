@@ -1,7 +1,7 @@
 # Override: publish the hub on this machine's Tailscale address instead of loopback.
 #
 #   tailscale ip -4                      # e.g. 100.101.102.103
-#   echo 'SY_BIND=100.101.102.103' > .env
+#   echo 'WY_BIND=100.101.102.103' > .env
 #   docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d
 #
 # Only machines on your tailnet can then reach http://<name>.<tailnet>.ts.net:8787. Traffic between
@@ -13,4 +13,4 @@
 services:
   hub:
     ports: !override
-      - "${SY_BIND:?set SY_BIND to the Tailscale IPv4 address}:${SY_PORT:-8787}:8787"
+      - "${WY_BIND:?set WY_BIND to the Tailscale IPv4 address}:${WY_PORT:-8787}:8787"

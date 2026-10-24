@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# check-release-seams.sh: a release build of sy contains none of the test seams.
+# check-release-seams.sh: a release build of wy contains none of the test seams.
 #
-# Builds sy the way `make build` / scripts/release/build.sh do (CGO_ENABLED=0, -trimpath,
+# Builds wy the way `make build` / scripts/release/build.sh do (CGO_ENABLED=0, -trimpath,
 # -ldflags '-s -w'), then checks that the strings of the `fakeclock` and `fakeopen` build tags
 # are absent. A positive control builds with `-tags fakeclock,fakeopen` and requires the same
 # strings to be present, so the check cannot pass just because the strings stopped existing.
-# It only builds; it never runs sy.
+# It only builds; it never runs wy.
 set -euo pipefail
 
 GO=${GO:-go}
@@ -14,7 +14,7 @@ cd "$root"
 
 # Strings owned by the test-seam build tags (fakeclock: internal/hub/cli/hooks_fakeclock.go;
 # fakeopen: internal/termctl/fakeopen.go; peerstest: internal/peers/matrix_peerstest.go).
-markers=(SY_FAKE_CLOCK SY_TEST_WEBPUSH_DIAL SY_TEST_OPENER SY_PEERS_TEST_ALLOW)
+markers=(WY_FAKE_CLOCK WY_TEST_WEBPUSH_DIAL WY_TEST_OPENER WY_PEERS_TEST_ALLOW)
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
@@ -32,9 +32,9 @@ fi
 build() { # build <out> [tags]
   local out=$1 tags=${2:-}
   if [ -n "$tags" ]; then
-    CGO_ENABLED=0 "$GO" build -trimpath -tags "$tags" -ldflags '-s -w' -o "$out" ./cmd/sy
+    CGO_ENABLED=0 "$GO" build -trimpath -tags "$tags" -ldflags '-s -w' -o "$out" ./cmd/wy
   else
-    CGO_ENABLED=0 "$GO" build -trimpath -ldflags '-s -w' -o "$out" ./cmd/sy
+    CGO_ENABLED=0 "$GO" build -trimpath -ldflags '-s -w' -o "$out" ./cmd/wy
   fi
 }
 

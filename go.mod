@@ -1,4 +1,4 @@
-module github.com/mraj602/switchyard
+module github.com/mraj602/watchyard
 
 go 1.27
 

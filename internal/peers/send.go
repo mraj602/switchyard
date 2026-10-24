@@ -34,7 +34,7 @@ type SendResult struct {
 	Pending     *Pending
 }
 
-// Line is the one status line `sy peers send` prints on success.
+// Line is the one status line `wy peers send` prints on success.
 func (r SendResult) Line() string {
 	if r.Status == "queued" {
 		why := "not delivered yet"
@@ -53,13 +53,13 @@ func (r SendResult) Line() string {
 	return s
 }
 
-// ReplySocketPath is `$XDG_RUNTIME_DIR/sy/r/<16 hex>.sock`, the first 16 hex of
+// ReplySocketPath is `$XDG_RUNTIME_DIR/wy/r/<16 hex>.sock`, the first 16 hex of
 // SHA-256(sender session id) (peers.md 8.6). Nothing listens there yet (8.6 is not built);
-// a native SendMessage to it finds nobody, and the header's "Reply with: sy peers send"
+// a native SendMessage to it finds nobody, and the header's "Reply with: wy peers send"
 // line is the reply path.
 func ReplySocketPath(runtime, senderSession string) string {
 	sum := sha256.Sum256([]byte(senderSession))
-	return filepath.Join(runtimeDir(runtime), "sy", "r", hex.EncodeToString(sum[:])[:16]+".sock")
+	return filepath.Join(runtimeDir(runtime), "wy", "r", hex.EncodeToString(sum[:])[:16]+".sock")
 }
 
 // Header is the first two lines of the message body (peers.md 8.5). The parts of a remote
@@ -67,7 +67,7 @@ func ReplySocketPath(runtime, senderSession string) string {
 // newline in a handle would add a header line of the sender's choosing.
 func Header(handle, label, machine, thread string) string {
 	handle, label, machine, thread = CleanName(handle), CleanName(label), CleanName(machine), CleanName(thread)
-	return fmt.Sprintf("[Switchyard] from %s · account %s · machine %s · thread %s\nReply with: sy peers send %s \"…\"",
+	return fmt.Sprintf("[Watchyard] from %s · account %s · machine %s · thread %s\nReply with: wy peers send %s \"…\"",
 		handle, label, machine, thread, handle)
 }
 
@@ -98,7 +98,7 @@ func (e Env) Send(c Caller, to, text string) (SendResult, *Refusal) {
 // message), except that a rate token is taken when the rate check passes.
 func (e Env) SendWith(c Caller, to, text string, o SendOpts) (SendResult, *Refusal) {
 	if e.Off() {
-		return SendResult{}, Refuse(CodeOff, "peers are off on this machine (sy peers on turns them back on)")
+		return SendResult{}, Refuse(CodeOff, "peers are off on this machine (wy peers on turns them back on)")
 	}
 	if p, ok := e.matrix().(pauser); ok && p.Paused() {
 		return SendResult{}, &Refusal{Code: CodePaused, Detail: "peers are paused"}
@@ -127,7 +127,7 @@ func (e Env) SendWith(c Caller, to, text string, o SendOpts) (SendResult, *Refus
 		return SendResult{}, Refuse(CodeUnknownTarget, "that is this session")
 	}
 	if target.Remote && target.Device == "" {
-		return SendResult{}, Refuse(CodeUnknownTarget, "%s runs on %s, which has no sy agent (sy agent enable there)", target.Handle, target.MachineName)
+		return SendResult{}, Refuse(CodeUnknownTarget, "%s runs on %s, which has no wy agent (wy agent enable there)", target.Handle, target.MachineName)
 	}
 	clean, rf := CheckText(text)
 	if rf != nil {
@@ -298,7 +298,7 @@ func (e Env) AuditFinal(msg, status, detail string, at time.Time) {
 	e.audit(auditLine{Msg: msg, Status: status, Detail: detail}, at)
 }
 
-// Describe turns a refusal into the one line `sy peers send` prints (peers.md 4.3).
+// Describe turns a refusal into the one line `wy peers send` prints (peers.md 4.3).
 func Describe(r *Refusal) string {
 	switch r.Code {
 	case CodeNotAllowed:

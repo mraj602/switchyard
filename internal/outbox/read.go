@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/atomicfile"
 )
 
 const (
@@ -446,7 +446,7 @@ func (o *Outbox) appendCapped(base string, entry []byte) error {
 	return err
 }
 
-// Stats summarises the outbox for `sy outbox stat` and `sy doctor`.
+// Stats summarises the outbox for `wy outbox stat` and `wy doctor`.
 type Stats struct {
 	DayFiles        int       `json:"day_files"`
 	SpillFiles      int       `json:"spill_files"`

@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // hashFile is the SHA-256 (hex) of a file, opened through the forbidden-file guard.
@@ -27,7 +27,7 @@ func hashFile(fsys identity.FS, path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// readDirSorted lists a folder without the files sy must never open.
+// readDirSorted lists a folder without the files wy must never open.
 func readDirSorted(fsys identity.FS, dir string) ([]fs.DirEntry, error) {
 	ents, err := fsys.ReadDir(dir)
 	if err != nil {

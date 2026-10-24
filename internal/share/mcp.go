@@ -14,9 +14,9 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/jsonedit"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/jsonedit"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // Paths under `<state>/share/`.
@@ -185,7 +185,7 @@ func MCPBasePath(stateDir string) string { return filepath.Join(stateDir, "share
 
 // MCPGuard is <state>/share/mcp-guard.json, written when a sync refused to run because it
 // would have removed every server of the base from the folders that still have them (for
-// `sy doctor`). It is removed by the next sync that runs.
+// `wy doctor`). It is removed by the next sync that runs.
 type MCPGuard struct {
 	Time    string   `json:"time"`
 	Removed []string `json:"removed"` // server names (never values)
@@ -220,7 +220,7 @@ type MCPRemoval struct {
 
 const mcpRemovedName = "mcp-removed.jsonl"
 
-// ReadMCPRemovals reads the removal log (for `sy doctor`).
+// ReadMCPRemovals reads the removal log (for `wy doctor`).
 func ReadMCPRemovals(stateDir string) ([]MCPRemoval, error) {
 	b, err := os.ReadFile(filepath.Join(stateDir, "share", mcpRemovedName))
 	if os.IsNotExist(err) {
@@ -270,7 +270,7 @@ type MCPSyncConflict struct {
 	Winner string `json:"winner"` // folder whose version was kept
 }
 
-// ReadConflicts reads the conflict log (for `sy doctor`).
+// ReadConflicts reads the conflict log (for `wy doctor`).
 func ReadConflicts(stateDir string) ([]MCPSyncConflict, error) {
 	b, err := os.ReadFile(filepath.Join(stateDir, "share", mcpConflictsName))
 	if os.IsNotExist(err) {
@@ -512,7 +512,7 @@ func (s *Sharer) MCPSync(ctx context.Context, req model.MCPSyncRequest) (model.M
 	res.Conflicts = sortedKeys(conflictNames)
 
 	// Guard: a pass that would strip every server of the base from the folders that still
-	// have them is refused and reported (`sy doctor`): a state file reset or restored without
+	// have them is refused and reported (`wy doctor`): a state file reset or restored without
 	// them must not empty every folder. Removing them all is done by hand in each folder.
 	if base != nil && len(base.Servers) > 0 {
 		var lost []string

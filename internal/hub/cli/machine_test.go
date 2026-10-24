@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 func TestMachineShow(t *testing.T) {

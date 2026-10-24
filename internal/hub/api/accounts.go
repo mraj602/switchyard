@@ -6,9 +6,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // PATCH /v1/accounts/{seat} (desktop.md C10, api.yaml patchSeat). The owner scope is

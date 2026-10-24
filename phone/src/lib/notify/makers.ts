@@ -7,13 +7,13 @@ export interface MakerGuide {
 }
 
 const GUIDES: { makers: string[]; text: string }[] = [
-  { makers: ['samsung'], text: 'Settings → Battery → Background usage limits → Never sleeping apps → add Switchyard' },
-  { makers: ['xiaomi', 'redmi', 'poco'], text: 'Settings → Apps → Switchyard → Autostart on; Battery saver → No restrictions' },
-  { makers: ['oneplus', 'oppo', 'realme'], text: "Settings → Battery → Switchyard → Don't optimize; allow background activity" },
-  { makers: ['huawei', 'honor'], text: 'Settings → Battery → App launch → Switchyard → Manage manually, all three on' },
+  { makers: ['samsung'], text: 'Settings → Battery → Background usage limits → Never sleeping apps → add Watchyard' },
+  { makers: ['xiaomi', 'redmi', 'poco'], text: 'Settings → Apps → Watchyard → Autostart on; Battery saver → No restrictions' },
+  { makers: ['oneplus', 'oppo', 'realme'], text: "Settings → Battery → Watchyard → Don't optimize; allow background activity" },
+  { makers: ['huawei', 'honor'], text: 'Settings → Battery → App launch → Watchyard → Manage manually, all three on' },
 ];
 
-export const OTHER_GUIDE = 'Settings → Apps → Switchyard → Battery → Unrestricted';
+export const OTHER_GUIDE = 'Settings → Apps → Watchyard → Battery → Unrestricted';
 
 /** The guide for a manufacturer (Build.MANUFACTURER, any case); the generic one when unknown. */
 export function makerGuide(manufacturer: string | null | undefined): MakerGuide {

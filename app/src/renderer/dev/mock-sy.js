@@ -1,4 +1,4 @@
-// A mock of the preload's `window.sy` with fixtures, so the renderer runs in a plain browser
+// A mock of the preload's `window.wy` with fixtures, so the renderer runs in a plain browser
 // (development, screenshots, the headless smoke). Excluded from the package.
 // Pick a scenario with ?scenario=<name>&view=<hub|settings|<tab id>>:
 //   default | empty | missing | wrong[&shared=1][&unknown=1] | no_sy | needs_pairing | removed | direct_pairing | unreachable | board_blocked | owner | stopped | dark-data | warning
@@ -117,7 +117,7 @@ const folders = [
   },
 ];
 
-const sy = {
+const wy = {
   state: () => later(structuredClone(state), 20),
   selectView: async ({ view }) => { state.view = view; push(); },
   hubRoute: async () => later(undefined),
@@ -173,13 +173,13 @@ const sy = {
   shareAccount: async () => ({ ok: true }),
   setSettings: async (p) => { Object.assign(state.settings, p); push(); return structuredClone(state.settings); },
   on: (event, cb) => {
-    if (!listeners[event]) throw new Error(`sy.on: unknown event ${event}`);
+    if (!listeners[event]) throw new Error(`wy.on: unknown event ${event}`);
     listeners[event].add(cb);
     return () => listeners[event].delete(cb);
   },
 };
 
-globalThis.sy = Object.freeze(sy);
+globalThis.wy = Object.freeze(wy);
 // The dev page also lets a test drive pushes: window.__mock.toast('warn', 'text'), .state(fn).
 globalThis.__mock = {
   toast: (level, text) => emit('toast', { level, text }),

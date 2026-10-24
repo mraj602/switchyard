@@ -25,7 +25,7 @@ export function backoffDelay(failures, opts = {}) {
 
 /**
  * The cadence in force. With no override it is CADENCE and BACKOFF_MS. With
- * SY_APP_TEST_CADENCE_MS (unpackaged only) the period is that many ms, and the floor, the
+ * WY_APP_TEST_CADENCE_MS (unpackaged only) the period is that many ms, and the floor, the
  * manual floor, the jitter, the stagger, the nav minimum age and the backoff table are scaled
  * by the same ratio (period / 300 s), so a 2 s test cadence behaves like production in
  * proportion. The open delay and the navigation debounce are not scaled.

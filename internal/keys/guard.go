@@ -136,7 +136,7 @@ func (g Guard) InClaudeEnv() (string, bool) {
 
 // ClaudeAncestor is step 2: the nearest ancestor that is Claude Code, walking from the parent
 // towards pid 1, at most MaxAncestors steps, stopping at pid 1 or a process that cannot be
-// read. `sy peers send` uses it to find its session's claude process (peers.md 4.1).
+// read. `wy peers send` uses it to find its session's claude process (peers.md 4.1).
 func (g Guard) ClaudeAncestor() (pid int, name string, ok bool) {
 	if g.Procs == nil || g.Getppid == nil {
 		return 0, "", false

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // SessionMaxAge is how long the board's cookie lives (api.yaml /v1/session/login).
@@ -62,7 +62,7 @@ func (a *Authenticator) LoginHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		// Login sets a cookie, so it is a login-CSRF target: JSON only, and a browser's Origin
-		// must be the hub's own (pairing.md 3.2). Callers without an Origin (sy, the desktop
+		// must be the hub's own (pairing.md 3.2). Callers without an Origin (wy, the desktop
 		// app's main process, curl) pass.
 		if mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); err != nil || mt != "application/json" || !a.SameOrigin(r) {
 			WriteError(w, http.StatusForbidden, "forbidden", "login must be same-origin JSON")

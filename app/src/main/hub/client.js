@@ -1,6 +1,6 @@
 // The hub client (C6): Node's fetch in main with `Authorization: Bearer`, a 10 s timeout, no
 // redirects, replies capped at 2 MiB, and plain http: only for loopback hosts or a URL that
-// `sy desktop info` reported. The bearer token is only ever sent to the hub's own origin:
+// `wy desktop info` reported. The bearer token is only ever sent to the hub's own origin:
 // every request URL is built from the base and checked to still have that origin.
 
 import { HUB_TIMEOUT_MS, HUB_REPLY_MAX_BYTES } from '../../shared/constants.js';
@@ -13,7 +13,7 @@ export const isLoopbackHost = (h) => {
 
 /**
  * May the app talk to this hub URL? https always; http for loopback, or when `reportedBySy`
- * (sy itself accepted the URL, e.g. with --insecure-lan).
+ * (wy itself accepted the URL, e.g. with --insecure-lan).
  */
 export function hubUrlAllowed(url, reportedBySy = false) {
   const n = normalizeHubUrl(url);

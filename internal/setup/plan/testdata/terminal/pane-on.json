@@ -1,5 +1,5 @@
 {
-  "plan_id": "p_6c16b456e5aa",
+  "plan_id": "p_bd32f13e9e9d",
   "actions": [
     {
       "id": "a1",
@@ -13,7 +13,7 @@
         "claude",
         "plugin",
         "install",
-        "switchyard-pane@sy-local",
+        "watchyard-pane@wy-local",
         "--json"
       ],
       "env": {
@@ -22,7 +22,7 @@
       "touches": [
         "/home/u/.claude/settings.json",
         "/home/u/.claude/plugins/installed_plugins.json",
-        "/home/u/.local/state/switchyard/term/journal/pane.install"
+        "/home/u/.local/state/watchyard/term/journal/pane.install"
       ],
       "watch": [
         "/home/u/.claude/plugins"
@@ -48,7 +48,7 @@
         "claude",
         "plugin",
         "install",
-        "switchyard-pane@sy-local",
+        "watchyard-pane@wy-local",
         "--json"
       ],
       "env": {
@@ -57,7 +57,7 @@
       "touches": [
         "/home/u/.claude-3/settings.json",
         "/home/u/.claude-3/plugins/installed_plugins.json",
-        "/home/u/.local/state/switchyard/term/journal/pane.install"
+        "/home/u/.local/state/watchyard/term/journal/pane.install"
       ],
       "watch": [
         "/home/u/.claude-3/plugins"

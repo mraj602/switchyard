@@ -5,14 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // slotLoginRec is a slot_info for `slot`: logged in to `acct` (with orgUUID), or logged out when acct is "".
 func slotLoginRec(t *testing.T, machine, slot, acct string, at time.Time) []byte {
 	t.Helper()
 	p := record.SlotInfoPayload{LoggedIn: acct != ""}
-	m := record.Meta{Machine: machine, Slot: slot, Client: "sy/0.6.0", Now: at}
+	m := record.Meta{Machine: machine, Slot: slot, Client: "wy/0.6.0", Now: at}
 	if acct != "" {
 		p.OAuthAccount, _ = json.Marshal(map[string]string{"accountUuid": acct, "organizationUuid": orgUUID})
 		m.Seat = &record.Seat{Account: acct, Org: orgUUID, Src: "oauth_account"}

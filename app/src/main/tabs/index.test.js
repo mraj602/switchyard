@@ -232,7 +232,7 @@ test('tab:remove clears the partition, closes the view, deletes the folder after
 test('tab:remove never deletes a folder outside <userData>/Partitions/tab-<id>', async () => {
   const r = rig({ tabs: [tabRecord(A)] });
   await r.api.start();
-  r.f.electron.session._all.get(`persist:tab-${A}`).getStoragePath = () => '/home/me/.config/switchyard/Partitions/acct-1';
+  r.f.electron.session._all.get(`persist:tab-${A}`).getStoragePath = () => '/home/me/.config/watchyard/Partitions/acct-1';
   await r.ipc.call('tab:remove', { id: A });
   assert.deepEqual(r.rm, []);
 });

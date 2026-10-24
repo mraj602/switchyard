@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/setup/testtree"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/setup/testtree"
 )
 
 // rename.md 2.5: the forward file of the project's name before a rename keeps being used

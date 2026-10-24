@@ -14,13 +14,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
-	hublink "github.com/mraj602/switchyard/internal/hub/link"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/link"
-	"github.com/mraj602/switchyard/internal/link/linktest"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	hubkeys "github.com/mraj602/watchyard/internal/hub/keys"
+	hublink "github.com/mraj602/watchyard/internal/hub/link"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/link"
+	"github.com/mraj602/watchyard/internal/link/linktest"
 )
 
 type syncBuf struct {

@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // A freshly registered target is due at once, so the hub's scheduler starts a pull before
-// `sy machine add` has authorized the key. `pull run --wait` called meanwhile must not take
+// `wy machine add` has authorized the key. `pull run --wait` called meanwhile must not take
 // that stale run's outcome for its own: it waits for a run that started after the call.
 func TestWaitForRunIgnoresRunInFlightBeforeTheCall(t *testing.T) {
 	ctx := context.Background()

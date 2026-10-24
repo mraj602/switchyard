@@ -8,11 +8,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/client"
-	"github.com/mraj602/switchyard/internal/drainproto"
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	"github.com/mraj602/switchyard/internal/hub/pull"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/drainproto"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	"github.com/mraj602/watchyard/internal/hub/pull"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // changeLog collects the ingester's change feed (what the engine and the stream get).

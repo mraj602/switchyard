@@ -5,7 +5,7 @@
 import type { UpdateInfo, UpdateLink } from '../../contract/link';
 import type { Clock, KVStore } from '../../contract/platform';
 
-export const UPDATE_KEY = 'sy.update.v1';
+export const UPDATE_KEY = 'wy.update.v1';
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type UpdatePhase = 'idle' | 'checking' | 'none' | 'available' | 'installing' | 'started' | 'refused' | 'error';

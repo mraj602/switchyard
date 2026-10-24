@@ -1,28 +1,28 @@
 # Architecture
 
-This document explains how Switchyard is put together: its components, how data moves
+This document explains how Watchyard is put together: its components, how data moves
 between them, where it is stored, where the security boundaries are, and how the repository
 is laid out. The exact behaviour of every part is specified in [docs/spec/](docs/spec/README.md);
 when this document and a spec disagree, the spec wins.
 
-Switchyard is unofficial and not affiliated with Anthropic.
+Watchyard is unofficial and not affiliated with Anthropic.
 
 ## Components
 
 | Component | Code | Runs | Job |
 | --- | --- | --- | --- |
-| `sy` | `cmd/sy`, `internal/*` | On every machine that runs Claude Code, started by Claude Code's hooks and status line, and by a one-minute timer | Records events and limits into a local outbox, sends them to the hub, sets up accounts and sharing, shows the board in a terminal, talks to peers |
-| Hub | `internal/hub/*`, `webui/` (same binary: `sy hub serve`) | On one computer: a laptop, a server, or a container | Stores every record, works out session states and usage windows, sends alerts, serves the API, the live stream and the board |
-| `sy agent` | `internal/agent` | Optional user service on each machine | Holds the machine's signed link to the hub, delivers peer messages into sessions |
-| Board | `webui/static` (embedded in `sy`) | In a browser, or installed on a phone as a web app | Reads the hub's API and live stream |
+| `wy` | `cmd/wy`, `internal/*` | On every machine that runs Claude Code, started by Claude Code's hooks and status line, and by a one-minute timer | Records events and limits into a local outbox, sends them to the hub, sets up accounts and sharing, shows the board in a terminal, talks to peers |
+| Hub | `internal/hub/*`, `webui/` (same binary: `wy hub serve`) | On one computer: a laptop, a server, or a container | Stores every record, works out session states and usage windows, sends alerts, serves the API, the live stream and the board |
+| `wy agent` | `internal/agent` | Optional user service on each machine | Holds the machine's signed link to the hub, delivers peer messages into sessions |
+| Board | `webui/static` (embedded in `wy`) | In a browser, or installed on a phone as a web app | Reads the hub's API and live stream |
 | Desktop app | `app/` (Electron) | On a desktop | One claude.ai tab per account, optional web usage reading, the board in a Hub view, OS notifications |
 | Android app | `phone/` (Expo, React Native) | On a phone | The board's screens, native notifications over its own link to the hub, widgets |
-| Claude Code plugin | `plugin/switchyard`, `plugin/switchyard-pane` | Inside Claude Code | Hooks that run `sy hook`; skills; an optional board pane |
+| Claude Code plugin | `plugin/watchyard`, `plugin/watchyard-pane` | Inside Claude Code | Hooks that run `wy hook`; skills; an optional board pane |
 
 Design rules that hold everywhere:
 
 - **Nothing stays running on a machine** except the optional agent. Claude Code starts
-  `sy hook` and `sy statusline`; each appends a record and exits. A timer flushes the outbox.
+  `wy hook` and `wy statusline`; each appends a record and exits. A timer flushes the outbox.
 - **Every connection is outgoing** from machines to the hub, and from the hub to push
   services. Nothing has to reach into a laptop or a server. The only exception is opt-in:
   the hub can pull a locked-down server's outbox over the operator's own SSH.
@@ -30,14 +30,14 @@ Design rules that hold everywhere:
   at 50 MB, oldest token rows dropped first, hook events kept) and are de-duplicated by
   record id when they arrive.
 - **The hub cannot command clients.** Its replies to machines are lists of accepted record
-  ids. `sy` never executes anything it receives. The hub can relay documents (matrix,
+  ids. `wy` never executes anything it receives. The hub can relay documents (matrix,
   revocations) that clients verify against keys they pinned.
-- **Logins are never touched.** `sy` never reads, copies or sends a Claude Code credential or
+- **Logins are never touched.** `wy` never reads, copies or sends a Claude Code credential or
   a claude.ai cookie. Logging in is always Claude Code's own `claude auth login`, and
   claude.ai sign-ins stay inside local browser sessions on the device.
 - **Plan first, undo always.** Every command that changes files on a machine shows a plan,
   journals each change into a backup set, and can be undone byte for byte.
-- **No automatic account switching.** Switchyard may show which account has room; the person
+- **No automatic account switching.** Watchyard may show which account has room; the person
   chooses.
 
 ## Data flow
@@ -46,15 +46,15 @@ Design rules that hold everywhere:
  Claude Code (each session, each config folder)
    │ hook stdin JSON              │ status-line stdin JSON        transcripts, claude agents
    ▼                              ▼                               ▼
- sy hook                       sy statusline                   sy scan / sy agents (timer)
+ wy hook                       wy statusline                   wy scan / wy agents (timer)
    └──────────────┬───────────────┴───────────────┬───────────────┘
                   ▼  one record per fact (record.md)
           outbox: <state>/outbox/YYYY-MM-DD.jsonl  (outbox.md; fsynced, locked append)
                   │
-                  ▼  sy flush (after each hook, debounced; and every minute)
+                  ▼  wy flush (after each hook, debounced; and every minute)
           POST /v1/ingest   bearer machine token (tokens.md)
                   │
-   ┌──────────────▼───────────────────────────────── hub (sy hub serve) ─────┐
+   ┌──────────────▼───────────────────────────────── hub (wy hub serve) ─────┐
    │ ingest ─► record table (raw, every field) ─► typed tables (schema.sql)  │
    │                          │                                              │
    │             state engine (states.md)   usage model (windows, pace)      │
@@ -67,19 +67,19 @@ Design rules that hold everywhere:
    └──────────────────────────────────────┬───────────────────┬──────────────┘
                                           ▼                   ▼ outbound HTTPS
                board (browser, web app), Android app,   push services (browser
-               desktop app, sy board, the pane mod       vendors), ntfy servers
+               desktop app, wy board, the pane mod       vendors), ntfy servers
 ```
 
 **Records.** Every fact is one record: a hook event, a limit sample from the status line, a
 token row from a transcript, a session list, a usage reading from the desktop app, machine
 info. The hub keeps every record exactly as received (`record` table) and builds typed tables
 from it, so a bug in the state engine or the usage model can be fixed and replayed over the
-whole history (`sy hub refold`). Content rules decide what a record may hold
+whole history (`wy hub refold`). Content rules decide what a record may hold
 ([record.md](docs/spec/record.md)): prompts, tool input and output and file contents are
 removed on the machine before anything is written.
 
 **Session states** are a pure fold of hook events ([states.md](docs/spec/states.md)). The same
-fold runs on the hub and in `sy status`, so a machine without a hub shows the same states.
+fold runs on the hub and in `wy status`, so a machine without a hub shows the same states.
 
 **Usage** comes from two sources merged per account: Claude Code's own `rate_limits` in the
 status line, and, optionally, the desktop app's reading of claude.ai's usage page. Windows
@@ -93,21 +93,21 @@ with quiet hours, batching and a flood cap ([push.md](docs/spec/push.md)).
 
 **More machines** reach the hub in one of three ways ([machines.md](docs/spec/machines.md)):
 `direct` (they post to the hub), `forward` (through an SSH port forward from the operator's
-laptop) or `pull` (the hub runs `ssh <server> sy outbox drain --stdio`). A server can also send
+laptop) or `pull` (the hub runs `ssh <server> wy outbox drain --stdio`). A server can also send
 ntfy pushes itself when the hub has not heard from it, and the hub then marks those alerts as
 already sent.
 
 ```
- server (reach pull)                                 hub (sy hub serve)
-   outbox ─► sy outbox drain --stdio ◄── ssh ─── pull scheduler ─► ingest (same as /v1/ingest)
+ server (reach pull)                                 hub (wy hub serve)
+   outbox ─► wy outbox drain --stdio ◄── ssh ─── pull scheduler ─► ingest (same as /v1/ingest)
 ```
 
 **The desktop app** reads usage in each account tab (only after the person accepts a warning
-for that account), hands the readings to `sy outbox append`, and reads the hub back with a
+for that account), hands the readings to `wy outbox append`, and reads the hub back with a
 read-only desktop token ([desktop.md](docs/spec/desktop.md)).
 
 ```
- app/ (Electron main) ── usage read per tab ─► sy outbox append ─► outbox ─► sy flush ─► POST /v1/ingest
+ app/ (Electron main) ── usage read per tab ─► wy outbox append ─► outbox ─► wy flush ─► POST /v1/ingest
         ▲                                                                              │
         └──── GET /v1/accounts, /v1/stream (desktop token) ◄─────────────── hub ◄──────┘
 ```
@@ -124,35 +124,35 @@ service is used ([phone.md](docs/spec/phone.md), [push.md](docs/spec/push.md) 13
                                          app ─► widget snapshot ─► widgets
 ```
 
-**The terminal** (`sy board`, the Claude Code pane mod, Warp tab configs) only reads: from the
+**The terminal** (`wy board`, the Claude Code pane mod, Warp tab configs) only reads: from the
 hub's API and stream with a read-only board token, or from the local outbox when there is no
 hub ([terminal.md](docs/spec/terminal.md)).
 
 **Keys, the link and peers** are a second path next to ingest
 ([keys.md](docs/spec/keys.md), [link.md](docs/spec/link.md), [peers.md](docs/spec/peers.md)).
 Each device holds Ed25519/X25519 keys. The hub's signing key and the owner key (made by the
-person with `sy keys init`, sealed with a passphrase on their own computer) are pinned on every
+person with `wy keys init`, sealed with a passphrase on their own computer) are pinned on every
 device, and a machine certificate needs both signatures. Devices keep one signed connection to
 the hub (`/v1/link`, WebSocket with a long-poll fallback) with a durable per-device queue. Peer
 messages are sealed to the target machine, so the hub relays ciphertext and stores metadata
 only.
 
 ```
- session A ── sy peers send ─► agent.sock ─► sy agent (A's machine) ──┐ same machine: inbox of B
+ session A ── wy peers send ─► agent.sock ─► wy agent (A's machine) ──┐ same machine: inbox of B
                                                  │ seal to B's machine, sign        │
                                                  ▼                                  │
-                                    hub: /v1/link, matrix check, queue ──► sy agent (B's machine) ─► inbox of B
+                                    hub: /v1/link, matrix check, queue ──► wy agent (B's machine) ─► inbox of B
 ```
 
 ## Storage
 
 | Where | What | Notes |
 | --- | --- | --- |
-| Machine, config folder (`~/.config/switchyard`) | `config.toml` | Settings only |
-| Machine, state folder (`~/.local/state/switchyard`) | Machine id, device token (0600), outbox, setup backups and ledger, keys (`owner.sealed` on the owner's machine), agent state, logs | Losing it loses unsent records and makes the machine a new one |
-| Hub, data folder (`~/.local/share/switchyard`, `/data` in Docker) | `hub.db` (SQLite, WAL), backups, exports, the mirrored Android release | The long-term record; back it up |
+| Machine, config folder (`~/.config/watchyard`) | `config.toml` | Settings only |
+| Machine, state folder (`~/.local/state/watchyard`) | Machine id, device token (0600), outbox, setup backups and ledger, keys (`owner.sealed` on the owner's machine), agent state, logs | Losing it loses unsent records and makes the machine a new one |
+| Hub, data folder (`~/.local/share/watchyard`, `/data` in Docker) | `hub.db` (SQLite, WAL), backups, exports, the mirrored Android release | The long-term record; back it up |
 | Hub, state folder | `hub_sign.key`, `pair_pepper`, the pull key | Kept outside the database on purpose |
-| Desktop app (`~/.config/switchyard-desktop` and the OS equivalents) | Tab list, the encrypted hub token, Chromium's per-tab sessions | Never sent anywhere |
+| Desktop app (`~/.config/watchyard-desktop` and the OS equivalents) | Tab list, the encrypted hub token, Chromium's per-tab sessions | Never sent anywhere |
 | Android app | Device token in the Keystore-backed secure store, a last-known cache, widget snapshot | Never holds Claude credentials |
 
 Folders per OS and every file: [paths.md](docs/spec/paths.md). The hub schema migrates itself at
@@ -168,7 +168,7 @@ start after copying the database file ([schema.sql](docs/spec/schema.sql)).
 | Sessions → owner key | Owner-key commands refuse to run inside a Claude Code session (environment, process ancestry and a terminal check), and the passphrase is never stored. This stops accidents and injected instructions; it is not a sandbox ([keys.md](docs/spec/keys.md) 8.1). |
 | Content | Prompts, code, tool input and output are removed before a record is written. The tail of Claude's last message is kept only while `privacy.last_message` is on. Peer message text never reaches the hub in clear. |
 | claude.ai sign-ins | Stay in per-tab browser sessions on the device. The hub never receives cookies or tokens. The desktop app's usage reader runs only after a per-account warning is accepted, and stops on 401, 403 or 429. |
-| Desktop app | Context isolation and the sandbox on every view, a fixed IPC allow-list, a strict CSP, `sy` run from an argv allow-list with secrets on stdin, Electron fuses flipped in packages ([desktop.md](docs/spec/desktop.md) C2-C3). |
+| Desktop app | Context isolation and the sandbox on every view, a fixed IPC allow-list, a strict CSP, `wy` run from an argv allow-list with secrets on stdin, Electron fuses flipped in packages ([desktop.md](docs/spec/desktop.md) C2-C3). |
 | Supply chain | Release archives with SHA-256 sums and GitHub build attestations that the install scripts verify; the Android updater installs only an APK signed with the same key as the installed app. |
 
 The threat model, including what the owner key and the signing guard cannot do, is in
@@ -178,14 +178,14 @@ The threat model, including what the owner key and the signing guard cannot do, 
 
 | Path | What |
 | --- | --- |
-| `cmd/sy/` | The `sy` command: subcommand dispatch only |
+| `cmd/wy/` | The `wy` command: subcommand dispatch only |
 | `cmd/webui-dev/` | A mock hub for developing the board and the Android app |
 | `internal/` | All Go code, one package per job (below) |
-| `webui/` | The board: plain ES modules and CSS, embedded into `sy`; no build step |
+| `webui/` | The board: plain ES modules and CSS, embedded into `wy`; no build step |
 | `app/` | The desktop app (Electron), its own `package.json`; see `app/README.md` |
 | `phone/` | The Android app (Expo, React Native), its own `package.json`; see `phone/README.md`. `phone/android` and `phone/ios` are generated by `expo prebuild` and never committed. iOS code is kept compiling but not released. |
-| `plugin/switchyard/` | The Claude Code plugin: hooks running `sy hook`, skills |
-| `plugin/switchyard-pane/` | The Claude Code pane mod (TypeScript), installed by `sy term setup --pane` |
+| `plugin/watchyard/` | The Claude Code plugin: hooks running `wy hook`, skills |
+| `plugin/watchyard-pane/` | The Claude Code pane mod (TypeScript), installed by `wy term setup --pane` |
 | `.claude-plugin/marketplace.json` | Lets Claude Code add this repository as a plugin marketplace |
 | `deploy/` | Dockerfile, compose files, Caddyfile, systemd unit for the hub |
 | `install/` | `install.sh` and `install.ps1`, published with each release; see `docs/RELEASING.md` |
@@ -213,21 +213,21 @@ Client side (runs on every machine):
 | `internal/identity` | Machine id, slots, seats | paths, record |
 | `internal/clientenv` | Folders, config, machine, slot and cached login for one client call | paths, config, identity, record |
 | `internal/detach` | Detached background processes, debounce stamp files | — |
-| `internal/hook` | `sy hook` | clientenv, detach, record, outbox |
-| `internal/statusline` | `sy statusline` | clientenv, record, outbox |
-| `internal/scan` | `sy scan`, `sy agents` | record, outbox, identity, paths |
-| `internal/status` | `sy status` | outbox, record, identity, hub/state (pure fold) |
-| `internal/client` | `sy connect`, `sy flush`, `sy outbox drain` (the remote end of a pull), `<state>/hub.json` | outbox, record, config, paths, drainproto |
+| `internal/hook` | `wy hook` | clientenv, detach, record, outbox |
+| `internal/statusline` | `wy statusline` | clientenv, record, outbox |
+| `internal/scan` | `wy scan`, `wy agents` | record, outbox, identity, paths |
+| `internal/status` | `wy status` | outbox, record, identity, hub/state (pure fold) |
+| `internal/client` | `wy connect`, `wy flush`, `wy outbox drain` (the remote end of a pull), `<state>/hub.json` | outbox, record, config, paths, drainproto |
 | `internal/drainproto` | The pull wire protocol (hello, batch, ack, refuse), shared by both sides | — (leaf) |
 | `internal/directpush` | Direct ntfy from a machine the hub has not heard from: policy cache, episode scan, the eight conditions, markers | client, config, outbox, record, status, hub/state (pure fold) |
 | `internal/machineinfo` | Builds and queues `machine_info` (reach, dial kind, backlog, held, direct push, timer) on change or every 6 h | client, config, directpush, identity, outbox, record, version |
-| `internal/sshx` | Runs the operator's `ssh` (`SY_SSH_COMMAND`), `ssh -G`, `known_hosts` reads; never disables host key checking | — |
-| `internal/machineadd` | `sy machine add/remove/repoint/rename`: probe, install, connect, forward blocks, pull authorization | sshx, update, client, config, identity, setup/{apply,backup,model}, atomicfile |
-| `internal/update` | `sy update`: release manifest, verified download, replace and rollback, post-update steps, `--machines` | brand |
-| `internal/doctor` | `sy doctor` (reach, held records, frozen hub, direct push, forward port; on the hub also push and pull-target checks, reading `hub.db` read-only with the SQLite driver, no hub package) | paths, config, identity, outbox, client, directpush, setup/ledger, setup/backup, share |
-| `internal/timer` | OS timer running `sy tick --quiet` every minute | brand |
+| `internal/sshx` | Runs the operator's `ssh` (`WY_SSH_COMMAND`), `ssh -G`, `known_hosts` reads; never disables host key checking | — |
+| `internal/machineadd` | `wy machine add/remove/repoint/rename`: probe, install, connect, forward blocks, pull authorization | sshx, update, client, config, identity, setup/{apply,backup,model}, atomicfile |
+| `internal/update` | `wy update`: release manifest, verified download, replace and rollback, post-update steps, `--machines` | brand |
+| `internal/doctor` | `wy doctor` (reach, held records, frozen hub, direct push, forward port; on the hub also push and pull-target checks, reading `hub.db` read-only with the SQLite driver, no hub package) | paths, config, identity, outbox, client, directpush, setup/ledger, setup/backup, share |
+| `internal/timer` | OS timer running `wy tick --quiet` every minute | brand |
 
-Setup side (`sy setup`, `sy account`, `sy uninstall`, `sy tick`):
+Setup side (`wy setup`, `wy account`, `wy uninstall`, `wy tick`):
 
 | Package | Job | Depends on |
 | --- | --- | --- |
@@ -243,31 +243,31 @@ Setup side (`sy setup`, `sy account`, `sy uninstall`, `sy tick`):
 | `internal/setup/render` | Plan as text and JSON | setup/model, identity |
 | `internal/setup/apply` | Runs a plan step by step, journaled, rolls back on failure | setup/model, setup/backup, setup/ledger, atomicfile (the rest through `apply.Deps`) |
 | `internal/setup/backup` | Backup sets, journal, `--undo` and `--undo-list` | setup/model, atomicfile |
-| `internal/setup/ledger` | What sy installed (`setup/ledger.json`) | setup/model, atomicfile |
+| `internal/setup/ledger` | What wy installed (`setup/ledger.json`) | setup/model, atomicfile |
 | `internal/setup/launcher` | Launcher scripts per shell and OS | — |
 | `internal/setup/statuswrap` | Wrap and unwrap a status line command | — |
-| `internal/setup/pluginmkt` | The `sy-local` marketplace folder and plugin install | claudecli, setup/model, `plugin/` (embedded) |
+| `internal/setup/pluginmkt` | The `wy-local` marketplace folder and plugin install | claudecli, setup/model, `plugin/` (embedded) |
 | `internal/setup/tui` | The five setup screens (`golang.org/x/term` raw mode, line prompts otherwise) | setup/model |
 | `internal/setup/testtree` | Test helper: build trees, snapshot and diff them | — |
 
-Terminal side (`sy board`, `sy term`, `sy open`, `sy ssh`, `sy hook --title`):
+Terminal side (`wy board`, `wy term`, `wy open`, `wy ssh`, `wy hook --title`):
 
 | Package | Job | Depends on |
 | --- | --- | --- |
 | `internal/termenv` | The injected environment (`Env`: lookups, GOOS, home, TTY facts) every terminal package reads instead of `os` | — (leaf) |
 | `internal/board` | The board view model (versioned `View`), ordering and text, the local source (outbox fold), the board token, view-v1 golden | termenv, record, identity, status, setup/model, atomicfile, hub/state (pure fold) |
 | `internal/board/hubsrc` | Hub source: read API, `/v1/stream`, offline merge with the outbox, `last-view.json` | board, atomicfile |
-| `internal/board/tui` | `sy board` screen: raw-mode TUI, `--once`, `--ndjson` | board, termenv |
+| `internal/board/tui` | `wy board` screen: raw-mode TUI, `--once`, `--ndjson` | board, termenv |
 | `internal/termctl` | Tab and window titles, the focus allow-list, the OS opener (`xdg-open`, `open`, `start`); `fakeopen` test seam | termenv |
 | `internal/warp` | Warp `tab_configs` per OS, detection, colour mapping, TOML render | termenv, setup/model |
-| `plugin/switchyard-pane` | The Claude Code pane mod (TypeScript; not Go): runs `sy` as argv[0] only | — (embedded in `plugin/`, installed by `setup/pluginmkt`) |
+| `plugin/watchyard-pane` | The Claude Code pane mod (TypeScript; not Go): runs `wy` as argv[0] only | — (embedded in `plugin/`, installed by `setup/pluginmkt`) |
 
-Hub side (same binary, `sy hub …`):
+Hub side (same binary, `wy hub …`):
 
 | Package | Job | Depends on |
 | --- | --- | --- |
 | `internal/hub/store` | SQLite, migrations, backup, prune | — |
-| `internal/hub/auth` | Tokens, scopes, `sy hub token` | hub/store |
+| `internal/hub/auth` | Tokens, scopes, `wy hub token` | hub/store |
 | `internal/hub/state` | Session state fold, question detector, gone | record (+ hub/store for persistence) |
 | `internal/hub/usage` | Windows, resets, pace | record, hub/store |
 | `internal/hub/ingest` | `POST /v1/ingest` | record, hub/store, hub/auth, hub/state, hub/usage |
@@ -284,7 +284,7 @@ Hub side (same binary, `sy hub …`):
 | `internal/hub/push/refresh` | The widget `Refresher` (push.md 13.5): link targets only, sends `refresh` frames through the link sender | hub/store, hub/events, hub/push/{model,link,clock} |
 | `internal/hub/push/webpushtest`, `ntfytest` | Fake Web Push service and ntfy stub for tests | — |
 | `internal/hub/pull` | Pull scheduler: SSH sessions to pull targets (pinned host keys, the hub's key in `<state>/pull`), backoff, `RunNow`; records go through the ingester | hub/store, hub/ingest, drainproto, atomicfile, record, hub/api (the `Puller` and `PullStatus` types only) |
-| `internal/hub/cli` | `sy hub …` and `sy phone pair`; `serve` builds the store, senders (Web Push, ntfy, link), engine, API, pull scheduler and widget refresher, and shuts them down in order (API, HTTP, pull scheduler, refresher, engine, store) | everything above, webui |
+| `internal/hub/cli` | `wy hub …` and `wy phone pair`; `serve` builds the store, senders (Web Push, ntfy, link), engine, API, pull scheduler and widget refresher, and shuts them down in order (API, HTTP, pull scheduler, refresher, engine, store) | everything above, webui |
 | `webui` | Embedded board and phone app (PWA) | — |
 
 Keys, the link and peers (both sides):
@@ -295,8 +295,8 @@ Keys, the link and peers (both sides):
 | `internal/link`, `internal/linkclient` | The `/v1/link` wire format; the machine side of the link (link.md) |
 | `internal/peers` | Matrix evaluation, threads, loop guard, limits, the message wrapper (peers.md) |
 | `internal/peerlink` | The agent's path to sessions on other machines |
-| `internal/agent` | `sy agent`: the per-machine service that holds the link and the control socket |
-| `internal/desktop` | `sy desktop`: the JSON commands the desktop app runs |
+| `internal/agent` | `wy agent`: the per-machine service that holds the link and the control socket |
+| `internal/desktop` | `wy desktop`: the JSON commands the desktop app runs |
 | `internal/localtime` | Local time formatting for command output |
 | `internal/hub/keys`, `hub/link`, `hub/peerrelay` | Hub key store and owner-key confirmation, the per-device link queue, the peer relay |
 | `internal/hub/appmirror` | Mirrors the Android release from GitHub Releases for the in-app updater |
@@ -304,26 +304,26 @@ Keys, the link and peers (both sides):
 
 Rules:
 
-- `cmd/sy` only routes to packages; no logic there.
+- `cmd/wy` only routes to packages; no logic there.
 - Client packages never import `internal/hub/...`, with one exception: the pure state fold
-  in `hub/state`, so `sy status` and the hub can never disagree. That fold imports only
+  in `hub/state`, so `wy status` and the hub can never disagree. That fold imports only
   `record`.
 - `internal/hub/push/...` never imports `hub/api`, `hub/cli`, `hub/pair` or `webui`: the API
   calls the engine (`api.Engine`, `model.AlertService`), never the other way round, and
   alerts reach the stream through the `events.Broker` the engine is handed. `push/model` and
   `push/clock` are leaves, `push/rules` imports only `push/model`. Enforced by
   `internal/hub/push/deps_test.go` (`go list -deps`).
-- `internal/drainproto` is a leaf that both the client (`sy outbox drain`) and `hub/pull`
+- `internal/drainproto` is a leaf that both the client (`wy outbox drain`) and `hub/pull`
   import. `internal/directpush` imports only the pure `hub/state` fold from the hub side.
   `hub/pull` hands records to the ingester (`ingest.IngestWith`, `Contact`), never to the
   HTTP API; it imports `hub/api` only for the `Puller` interface types the API calls it
   through. Enforced by `internal/hub/pull/deps_test.go`.
 - Test seams that must not reach a release build use the `fakeclock` build tag
   (`internal/hub/cli/hooks_fakeclock.go`: fake clock control socket, test push client); the
-  end-to-end test in `test/e2e/push` builds `sy` with it.
+  end-to-end test in `test/e2e/push` builds `wy` with it.
 - The `fakeopen` build tag (`internal/termctl/fakeopen.go`) is the same kind of seam: with
-  `SY_TEST_OPENER=<file>` the OS opener records its argv instead of running; the terminal
-  end-to-end test in `test/e2e/terminal` builds `sy` with it. Release builds contain neither
+  `WY_TEST_OPENER=<file>` the OS opener records its argv instead of running; the terminal
+  end-to-end test in `test/e2e/terminal` builds `wy` with it. Release builds contain neither
   `fakeclock` nor `fakeopen`; `scripts/ci/check-release-seams.sh` (`make release-check`, a CI
   step) builds with and without the tags and fails if the release binary has either seam.
 - `internal/board/**` never imports hub internals beyond the pure `hub/state` fold (and
@@ -346,11 +346,11 @@ Rules:
 ## Building and testing
 
 ```
-make build          # ./dist/sy, a static binary (CGO_ENABLED=0)
+make build          # ./dist/wy, a static binary (CGO_ENABLED=0)
 make check          # gofmt, go vet, go test ./..., spec checks
-make e2e-terminal   # sy board / term / open / ssh end to end (fake opener, temp HOME)
+make e2e-terminal   # wy board / term / open / ssh end to end (fake opener, temp HOME)
 make e2e-machines   # SSH into a container (podman or docker)
-make e2e-setup      # sy setup in Fedora and Ubuntu containers
+make e2e-setup      # wy setup in Fedora and Ubuntu containers
 make pane-check     # the Claude Code pane mod (needs claude on PATH)
 make release-check  # a release build has no test seams
 make app-test       # desktop app: lint and unit tests (no display)

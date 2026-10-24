@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/webui"
+	"github.com/mraj602/watchyard/webui"
 )
 
 // CookieName is the session cookie the board relies on (see POST /v1/session/login).

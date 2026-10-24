@@ -1,12 +1,12 @@
-Switchyard
-Copyright 2026 mraj602 and Switchyard contributors
+Watchyard
+Copyright 2026 mraj602 and Watchyard contributors
 
 This product is licensed under the GNU Affero General Public License, version 3 (see LICENSE).
 
-Switchyard is an independent, unofficial project. It is not affiliated with, endorsed by,
+Watchyard is an independent, unofficial project. It is not affiliated with, endorsed by,
 sponsored by or connected to Anthropic, PBC. "Claude" and "Claude Code" are trademarks of
 Anthropic, PBC, used here only to describe compatibility. The license grants no rights to use the
-"Switchyard" name or logo.
+"Watchyard" name or logo.
 
 -------------------------------------------------------------------------------------------
 Third-party components
@@ -16,7 +16,7 @@ Maintainer check before each release: this list was written by reading go.mod, t
 package.json files of app/ and phone/, and the asset folders. Re-check it when a
 dependency or an asset is added.
 
-1. Linked into the `sy` binary (Go modules, from go.mod)
+1. Linked into the `wy` binary (Go modules, from go.mod)
 
    github.com/pelletier/go-toml/v2        MIT
    golang.org/x/sys                       BSD-3-Clause
@@ -37,7 +37,7 @@ dependency or an asset is added.
 
    Electron and Chromium, under their own licenses (MIT, BSD-3-Clause and others).
    electron-builder writes LICENSE.electron.txt and LICENSES.chromium.html into every
-   package. The packages also contain a copy of `sy` (section 1).
+   package. The packages also contain a copy of `wy` (section 1).
 
 3. Bundled into the Android app (phone/)
 
@@ -45,7 +45,7 @@ dependency or an asset is added.
    react-native-screens, react-native-safe-area-context and
    @react-native-async-storage/async-storage, each under its own license (MIT for all of
    them at the pinned versions in phone/package.json), and the AndroidX and Kotlin
-   libraries they pull in (Apache-2.0). Switchyard's own Android modules (phone/modules) add:
+   libraries they pull in (Apache-2.0). Watchyard's own Android modules (phone/modules) add:
    OkHttp and Tink (Apache-2.0) in sy-link; ShortcutBadger (Apache-2.0, Leo Lin) for the
    launcher badge in sy-notify; and zxing-android-embedded (Apache-2.0, JourneyApps) with
    ZXing core (Apache-2.0, ZXing authors) for the QR scanner in sy-scan. The APK contains no
@@ -54,7 +54,7 @@ dependency or an asset is added.
 
    Build tools and data used while building the Android app (not shipped as code in the
    APK, listed for completeness):
-   node-forge        (BSD-3-Clause OR GPL-2.0); Switchyard uses it under BSD-3-Clause
+   node-forge        (BSD-3-Clause OR GPL-2.0); Watchyard uses it under BSD-3-Clause
    lightningcss      MPL-2.0, used unmodified by the Metro bundler
    caniuse-lite      CC-BY-4.0, browser support data, (c) Alexis Deveria and contributors
 
@@ -71,6 +71,6 @@ dependency or an asset is added.
    @fontsource packages of the same names, with the OFL text.
 
    Every icon and image in this repository (app/assets, app/build, phone/assets,
-   webui/static/icons, scripts/icons) is original Switchyard artwork, drawn from the SVG
+   webui/static/icons, scripts/icons) is original Watchyard artwork, drawn from the SVG
    sources in app/build/icons-src, phone/assets/src and scripts/icons. No Anthropic logo or
    mark is used.

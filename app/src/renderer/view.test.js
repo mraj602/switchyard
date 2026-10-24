@@ -112,7 +112,7 @@ test('hub banners and summaries', () => {
   assert.equal(hubBanner(null), null);
   // an ok hub with an error (a 403): shown, nothing to do about the token
   assert.deepEqual(hubBanner(hub({ error: 'forbidden (403)' })), { level: 'error', title: null, text: 'forbidden (403)', command: null, action: null });
-  // no hub (no sy, or sy not connected): the Connect card, with the TARGET words and no terminal command
+  // no hub (no wy, or wy not connected): the Connect card, with the TARGET words and no terminal command
   for (const status of ['no_sy', 'not_connected']) {
     const b = hubBanner(hub({ status, url: null }));
     assert.equal(b.title, 'Connect to a hub.');
@@ -200,8 +200,8 @@ test('folders and commands', () => {
   assert.deepEqual(foldersOf({ folders: [2] }), [2]);
   assert.deepEqual(foldersOf({ state: { folders: [3] } }), [3]);
   assert.deepEqual(foldersOf(null), []);
-  assert.equal(loginCommand(folder()), 'sy account login work');
-  assert.equal(loginCommand(folder({ label: '' })), 'sy account login ~/.claude-2');
+  assert.equal(loginCommand(folder()), 'wy account login work');
+  assert.equal(loginCommand(folder({ label: '' })), 'wy account login ~/.claude-2');
   assert.equal(SHARE_FOLDER_RE.test('~/.claude-2'), true);
   assert.equal(SHARE_FOLDER_RE.test('~/a b'), false);
 });

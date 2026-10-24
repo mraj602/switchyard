@@ -14,8 +14,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/setup/launcher"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/launcher"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 var (

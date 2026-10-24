@@ -15,9 +15,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // Timing of machines.md 5.4.
@@ -41,7 +41,7 @@ type Options struct {
 	MachineID string
 	Machine   string // machine name, for the text
 	Config    config.Config
-	Client    string // record client, e.g. "sy/0.5.0"
+	Client    string // record client, e.g. "wy/0.5.0"
 	Now       func() time.Time
 	HTTP      *http.Client // ntfy client; nil = HTTPClient()
 	Logf      func(format string, args ...any)
@@ -439,7 +439,7 @@ func NextDue(o Options) (time.Time, bool, error) {
 	return best, !best.IsZero(), nil
 }
 
-// SendTest sends `sy direct-push test`'s message. It needs a topic, not Enabled.
+// SendTest sends `wy direct-push test`'s message. It needs a topic, not Enabled.
 func SendTest(ctx context.Context, o Options) (SendResult, error) {
 	sec, err := LoadSecret(o.StateDir)
 	if err != nil {

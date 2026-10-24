@@ -8,7 +8,7 @@ import (
 )
 
 // E1: the terminal board equals the web board. Three seats on two machines (the gpu-box is
-// a second SY_HOME), a plain-text question, a permission and a rate limit; `sy board
+// a second WY_HOME), a plain-text question, a permission and a rate limit; `wy board
 // --once --json` has the same row ids, order, status and line2 as /v1/sessions and
 // /v1/accounts read with an owner session.
 func TestE1BoardEqualsBoard(t *testing.T) {
@@ -55,14 +55,14 @@ func TestE1BoardEqualsBoard(t *testing.T) {
 
 	// The text frame carries the question and the words too.
 	text := f.l.must("board", "--once", "--cols", "100")
-	for _, w := range []string{"Switchyard", "hub live", "Should I keep the old column?", "perm", "limit"} {
+	for _, w := range []string{"Watchyard", "hub live", "Should I keep the old column?", "perm", "limit"} {
 		if !strings.Contains(text, w) {
 			t.Errorf("text frame lacks %q:\n%s", w, text)
 		}
 	}
 }
 
-// E2: live. `sy board --follow --ndjson` is running; a Stop whose last message ends "Should
+// E2: live. `wy board --follow --ndjson` is running; a Stop whose last message ends "Should
 // I keep the old column?" arrives. Within 2 s a line has that row `asked` with the question,
 // and counts.needs_you is one more.
 func TestE2Live(t *testing.T) {
@@ -173,7 +173,7 @@ func TestE3HubDownAndBack(t *testing.T) {
 	f.waitSame(5*time.Second, func() boardView { return f.l.boardView() })
 }
 
-// E4: no hub. A fresh home with no hub.url: `sy board --once --json` equals `sy status
+// E4: no hub. A fresh home with no hub.url: `wy board --once --json` equals `wy status
 // --json` on ids, states and order, and the text frame says there is no hub (nothing to
 // connect).
 func TestE4NoHub(t *testing.T) {
@@ -185,7 +185,7 @@ func TestE4NoHub(t *testing.T) {
 	l.hookNoFlush(l.slot(3), ids[2], "Stop", map[string]any{"last_assistant_message": "All done."})
 	l.hookNoFlush(l.slot(1), ids[3], "PermissionRequest", map[string]any{"tool_name": "Bash"})
 
-	if got := l.sy("config", "get", "hub.url"); strings.TrimSpace(got.out) != "" {
+	if got := l.wy("config", "get", "hub.url"); strings.TrimSpace(got.out) != "" {
 		t.Fatalf("hub.url is set: %q", got.out)
 	}
 	v := l.boardView()
@@ -202,7 +202,7 @@ func TestE4NoHub(t *testing.T) {
 	}
 	l.mustJSON(&st, "status", "--json")
 	if len(st.Sessions) != len(ids) {
-		t.Fatalf("sy status lists %d sessions, want %d", len(st.Sessions), len(ids))
+		t.Fatalf("wy status lists %d sessions, want %d", len(st.Sessions), len(ids))
 	}
 	var want []string
 	for _, s := range st.Sessions {
@@ -220,7 +220,7 @@ func TestE4NoHub(t *testing.T) {
 		t.Errorf("board has %d rows, status %d", len(v.Rows), len(st.Sessions))
 	}
 	// Order: the board's groups (seats) in order, rows inside in status order, which is the
-	// rank order of sy status: the needs-you list is the same ids in the same order.
+	// rank order of wy status: the needs-you list is the same ids in the same order.
 	var needs []string
 	for _, id := range want {
 		if v.Rows[id].NeedsYou {
@@ -247,11 +247,11 @@ func TestE4NoHub(t *testing.T) {
 	if !strings.Contains(text, "· local") {
 		t.Errorf("text frame does not say the source is local:\n%s", text)
 	}
-	if strings.Contains(text, "sy board connect") {
+	if strings.Contains(text, "wy board connect") {
 		t.Errorf("a machine without a hub is told to connect:\n%s", text)
 	}
 	// --source hub with no hub is exit 4.
-	if r := l.sy("board", "--once", "--json", "--source", "hub"); r.code != 4 {
+	if r := l.wy("board", "--once", "--json", "--source", "hub"); r.code != 4 {
 		t.Errorf("--source hub with no hub: exit %d, want 4", r.code)
 	}
 	var raw map[string]any

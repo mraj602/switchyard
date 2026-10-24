@@ -29,7 +29,7 @@ func TestCheckText(t *testing.T) {
 		{"size counts after cleaning", strings.Repeat("a", MaxTextBytes) + "\x00\x00", ""},
 		{"pem", "x -----BEGIN OPENSSH PRIVATE KEY----- y", CodeSecret},
 		{"pem rsa", "-----BEGIN RSA PRIVATE KEY-----", CodeSecret},
-		{"sy token", "token sy_m_4fQx0Lr2abcdefghijklmnopqrstuvwxyzABCDEF", CodeSecret},
+		{"wy token", "token sy_m_4fQx0Lr2abcdefghijklmnopqrstuvwxyzABCDEF", CodeSecret},
 		{"anthropic key", "sk-ant-api03-abcdEFGH1234", CodeSecret},
 		{"aws", "id AKIAIOSFODNN7EXAMPLE here", CodeSecret},
 		{"github ghp", "ghp_" + strings.Repeat("a", 36), CodeSecret},

@@ -16,11 +16,11 @@ const HUB_VIEW = new Set(['no_sy', 'needs_pairing', 'removed', 'direct_pairing',
 test('S12 renderer dev page at 1440×940 and 720×500', { timeout: 5 * 60_000 }, async (t) => {
   const sb = sandbox('s12');
   const out = outDir(sb.root);
-  // No sy at all: the app shows its no-sy banner; the dev page does not need it.
-  const run = await launch(sb, { env: { SY_BIN: path.join(sb.root, 'no-such-sy') } });
+  // No wy at all: the app shows its no-sy banner; the dev page does not need it.
+  const run = await launch(sb, { env: { WY_BIN: path.join(sb.root, 'no-such-sy') } });
   t.after(async () => {
     await run.close();
-    if (!process.env.SY_SMOKE_KEEP) sb.cleanup();
+    if (!process.env.WY_SMOKE_KEEP) sb.cleanup();
   });
   for (const scenario of SCENARIOS) {
     for (const [width, height] of SIZES) {
@@ -47,7 +47,7 @@ test('S12 renderer dev page at 1440×940 and 720×500', { timeout: 5 * 60_000 },
           missing: /claude-6 and claude-7 have no tab here\. Add tabs/,
         }[scenario];
         if (want) assert.match(text, want, `${scenario}: ${text}`);
-        assert.doesNotMatch(text, /owner-link|run sy hub/i, scenario);
+        assert.doesNotMatch(text, /owner-link|run wy hub/i, scenario);
         if (scenario === 'owner') assert.doesNotMatch(text, /Read-only\. Sign in as owner/);
       }
       await page.screenshot({ path: path.join(out, `s12-${scenario}-${width}x${height}.png`) });

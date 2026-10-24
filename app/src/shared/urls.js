@@ -49,7 +49,7 @@ export function isLoopbackHost(host) {
 }
 
 /**
- * The origin of a test claude.ai stand-in (SY_APP_TEST_CLAUDE_ORIGIN through test-hooks.js),
+ * The origin of a test claude.ai stand-in (WY_APP_TEST_CLAUDE_ORIGIN through test-hooks.js),
  * normalised; null unless it is an http(s) URL on a loopback host.
  * @param {unknown} s
  */

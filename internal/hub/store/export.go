@@ -19,8 +19,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/hub/hublock"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/hub/hublock"
 )
 
 // Moving the hub (docs/spec/machines.md 8): freeze, snapshot, archive, import. The wire
@@ -335,7 +335,7 @@ func (s *Store) Export(ctx context.Context, o ExportOptions) (res ExportResult, 
 		defer func() {
 			if err != nil && fresh {
 				if _, uerr := s.Unfreeze(context.WithoutCancel(ctx)); uerr != nil {
-					err = errors.Join(err, fmt.Errorf("the hub is still frozen and could not be unfrozen (%v): run `sy hub unfreeze`", uerr))
+					err = errors.Join(err, fmt.Errorf("the hub is still frozen and could not be unfrozen (%v): run `wy hub unfreeze`", uerr))
 				}
 			}
 		}()
@@ -632,7 +632,7 @@ func unpack(path, passphrase, dir string) (Manifest, error) {
 	}
 	// An export made before a rename carries the old name (rename.md 2.6).
 	if m.Format != ManifestFormat || (m.Kind != ManifestKind && m.Kind != brand.Legacy(ManifestKind)) || m.Kind == "" {
-		return m, fmt.Errorf("not a hub export this sy reads (format %d, kind %q)", m.Format, m.Kind)
+		return m, fmt.Errorf("not a hub export this wy reads (format %d, kind %q)", m.Format, m.Kind)
 	}
 	listed := map[string]bool{}
 	for _, mf := range m.Files {
@@ -773,7 +773,7 @@ func Import(ctx context.Context, o ImportOptions) (res ImportResult, err error) 
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
 		return res, err
 	}
-	// 1. nothing may be using the data folder: a running `sy hub serve` holds hub.lock, and
+	// 1. nothing may be using the data folder: a running `wy hub serve` holds hub.lock, and
 	// an existing database must not be locked by any other process.
 	if held, herr := hublock.Held(dataDir); herr != nil {
 		return res, herr
@@ -800,7 +800,7 @@ func Import(ctx context.Context, o ImportOptions) (res ImportResult, err error) 
 	}
 	res.Manifest = m
 	if max := LatestVersion(); m.Schema > max {
-		return res, fmt.Errorf("the export has schema v%d, this sy opens up to v%d: update sy here first", m.Schema, max)
+		return res, fmt.Errorf("the export has schema v%d, this wy opens up to v%d: update wy here first", m.Schema, max)
 	}
 	newDB := filepath.Join(work, memberDB)
 	if err := checkIntegrity(ctx, newDB); err != nil {
@@ -810,7 +810,7 @@ func Import(ctx context.Context, o ImportOptions) (res ImportResult, err error) 
 		return res, fmt.Errorf("the exported database is schema v%d, its manifest says v%d", v, m.Schema)
 	}
 	// The archive's database is untrusted input: before anything opens it for writing (a
-	// migration would fire a trigger an attacker put there), refuse anything a Switchyard
+	// migration would fire a trigger an attacker put there), refuse anything a Watchyard
 	// database never contains.
 	if err := refuseCodeInSchema(ctx, newDB); err != nil {
 		return res, err
@@ -908,7 +908,7 @@ func Import(ctx context.Context, o ImportOptions) (res ImportResult, err error) 
 	return res, nil
 }
 
-// prepareImported opens the unpacked database (which migrates it to this sy's schema), clears
+// prepareImported opens the unpacked database (which migrates it to this wy's schema), clears
 // hub.frozen, applies the new public URL and records the import, then closes it so the file
 // is complete without a -wal.
 func prepareImported(ctx context.Context, path string, o ImportOptions, m Manifest, now func() time.Time, logf func(string, ...any), res *ImportResult) (err error) {
@@ -957,7 +957,7 @@ func randBytes(n int) []byte {
 }
 
 // refuseCodeInSchema rejects an archive database that holds a trigger, a view or a virtual
-// table. No Switchyard schema version has any, so one can only have been added to run SQL (or
+// table. No Watchyard schema version has any, so one can only have been added to run SQL (or
 // load a module) when the database is opened or written. It reads sqlite_schema only.
 func refuseCodeInSchema(ctx context.Context, path string) error {
 	db, err := openRO(path)
@@ -979,7 +979,7 @@ func refuseCodeInSchema(ctx context.Context, path string) error {
 		if typ == "table" {
 			typ = "virtual table"
 		}
-		return fmt.Errorf("the exported database holds a %s %q, which a Switchyard database never has; refusing to import it", typ, name)
+		return fmt.Errorf("the exported database holds a %s %q, which a Watchyard database never has; refusing to import it", typ, name)
 	}
 	return rows.Err()
 }
@@ -1007,7 +1007,7 @@ func schemaObjects(ctx context.Context, path string) (map[string]bool, error) {
 	return out, rows.Err()
 }
 
-// checkSchemaObjects compares a migrated import with a freshly made database of this sy: an
+// checkSchemaObjects compares a migrated import with a freshly made database of this wy: an
 // object the fresh one does not have (a table, an index, anything) is refused. The reference
 // is made in dir and removed again.
 func checkSchemaObjects(ctx context.Context, path, dir string) error {
@@ -1043,7 +1043,7 @@ func checkSchemaObjects(ctx context.Context, path, dir string) error {
 	}
 	if len(extra) > 0 {
 		sort.Strings(extra)
-		return fmt.Errorf("the exported database has objects a Switchyard database does not (%s); refusing to import it", strings.Join(extra, ", "))
+		return fmt.Errorf("the exported database has objects a Watchyard database does not (%s); refusing to import it", strings.Join(extra, ", "))
 	}
 	return nil
 }

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 // Names reads only the cached answer: nil before one, then the hub's naming of this machine's

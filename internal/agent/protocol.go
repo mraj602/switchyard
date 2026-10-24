@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 // Ops of the control socket (peers.md 2.3).
@@ -53,7 +53,7 @@ type SessionInfo struct {
 	ConfigDir string `json:"config_dir"`
 }
 
-// State is the reply of `state`, for `sy agent status`.
+// State is the reply of `state`, for `wy agent status`.
 type State struct {
 	PID     int        `json:"pid"`
 	Started string     `json:"started"`
@@ -99,7 +99,7 @@ func MaxSocketPath(goos string) int {
 	return 107
 }
 
-// SocketPath is the control socket (peers.md 2.3): $XDG_RUNTIME_DIR/sy/agent.sock on Linux,
+// SocketPath is the control socket (peers.md 2.3): $XDG_RUNTIME_DIR/wy/agent.sock on Linux,
 // <state>/agent/agent.sock on macOS. When that path is longer than the OS allows (a deep
 // state folder, a long $XDG_RUNTIME_DIR), it falls back to $TMPDIR/sy-<uid>/agent.sock, and
 // to /tmp/sy-<uid>/agent.sock when even that is too long. The fallback folder is 0700 and
@@ -117,7 +117,7 @@ func socketPath(goos, runtime, state, tmp string, uid int) string {
 		if runtime == "" {
 			runtime = fmt.Sprintf("/run/user/%d", uid)
 		}
-		p = filepath.Join(runtime, "sy", "agent.sock")
+		p = filepath.Join(runtime, "wy", "agent.sock")
 	}
 	max := MaxSocketPath(goos)
 	if len(p) <= max {
@@ -132,7 +132,7 @@ func socketPath(goos, runtime, state, tmp string, uid int) string {
 
 // ErrNoAgent means nothing is listening on the control socket: the caller falls back to the
 // direct path (peers.md 8.5, without the agent).
-var ErrNoAgent = errors.New("the sy agent is not running")
+var ErrNoAgent = errors.New("the wy agent is not running")
 
 // ownUID is the uid an agent must run as for Call to talk to it; tests replace it.
 var ownUID = os.Getuid
@@ -171,11 +171,11 @@ func Call(sock string, req Request, timeout time.Duration) (Reply, error) {
 		if werr != nil {
 			return Reply{}, werr
 		}
-		return Reply{}, fmt.Errorf("the sy agent closed the connection: %w", err)
+		return Reply{}, fmt.Errorf("the wy agent closed the connection: %w", err)
 	}
 	var rep Reply
 	if err := json.Unmarshal(line, &rep); err != nil {
-		return Reply{}, fmt.Errorf("bad reply from the sy agent: %w", err)
+		return Reply{}, fmt.Errorf("bad reply from the wy agent: %w", err)
 	}
 	return rep, nil
 }

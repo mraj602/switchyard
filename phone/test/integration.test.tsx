@@ -116,7 +116,7 @@ afterEach(() => {
 // ------------------------------------------------------------------ stateHooks
 
 describe('afterRefresh', () => {
-  it('Android, widgets on: the snapshot goes to sy.widget.v1, both widgets redraw, the badge is set', async () => {
+  it('Android, widgets on: the snapshot goes to wy.widget.v1, both widgets redraw, the badge is set', async () => {
     onPlatform('android');
     const glue = createGlue(systemGluePlatform(app('android'), manualClock(NOW)));
     installStateHooks(glue);
@@ -204,7 +204,7 @@ describe('onCleared', () => {
     await stateHooks.onCleared!();
     expect(widgetsState.activities).toHaveLength(0);
     expect(callsOf('widgets.activity.end')[0]!.args[1]).toBe('immediate');
-    expect(callsOf('widgets.updateTimeline')).toHaveLength(2); // the "Open Switchyard to set up" timeline
+    expect(callsOf('widgets.updateTimeline')).toHaveLength(2); // the "Open Watchyard to set up" timeline
     expect(notificationsState.badge).toBe(0);
   });
 
@@ -336,7 +336,7 @@ describe('Count down on Lock Screen (iOS)', () => {
     await glue.startCountdown(data, 'seat_client');
     const start = callsOf('widgets.activity.start')[0]!;
     expect(start.args[1]).toMatchObject({ seat: 'client', window: 'five_hour', pct: 100 });
-    expect(start.args[2]).toBe('switchyard://accounts?seat=seat_client');
+    expect(start.args[2]).toBe('watchyard://accounts?seat=seat_client');
     await expect(glue.startCountdown(data, 'seat_work')).rejects.toThrow();
     expect(widgetsState.activities).toHaveLength(1);
   });
@@ -351,12 +351,12 @@ describe('auto countdown', () => {
 
   it.each([
     ['limit_95', alert({ trigger: 'limit_95' }), true],
-    ['limit_95, private', alert({ trigger: 'limit_95', private: true, title: 'Switchyard' }), true],
+    ['limit_95, private', alert({ trigger: 'limit_95', private: true, title: 'Watchyard' }), true],
     ['limit_95 as a JSON string', JSON.stringify(alert({ trigger: 'limit_95' })), true],
     ['rate-limit failed (title)', alert({ trigger: 'failed', title: 'client · data-pipeline · rate limited' }), true],
     ['rate-limit failed (body)', alert({ trigger: 'failed', title: 'x', body: 'Resets 17:00 · work has 59% left' }), true],
     ['other failed', alert({ trigger: 'failed', title: 'client · api · login needed', body: 'laptop' }), false],
-    ['private failed', alert({ trigger: 'failed', private: true, title: 'Switchyard', body: 'A session stopped' }), false],
+    ['private failed', alert({ trigger: 'failed', private: true, title: 'Watchyard', body: 'A session stopped' }), false],
     ['limit_80', alert({ trigger: 'limit_80' }), false],
     ['reset', alert({ trigger: 'reset' }), false],
     ['asked', alert({ trigger: 'asked' }), false],
@@ -414,7 +414,7 @@ describe('auto countdown', () => {
     expect((p.syncCountdown as jest.Mock).mock.calls.map((x) => x[2])).toEqual([true]);
   });
 
-  it('the setting is local (sy.local.v1), default on, and never a hub pref', async () => {
+  it('the setting is local (wy.local.v1), default on, and never a hub pref', async () => {
     const kv = memoryKV();
     expect(await loadLocalPrefs(kv)).toEqual({ auto_countdown: true });
     const glue = createGlue(fakePlatform({ local: kv }));

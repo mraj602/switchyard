@@ -1,9 +1,9 @@
-// Direct mode (no `sy`, or `sy` not connected to a hub): the app itself remembers the hub URL
+// Direct mode (no `wy`, or `wy` not connected to a hub): the app itself remembers the hub URL
 // and its own machine id, checks a hub address with GET /health, claims a pairing code with
-// POST /v1/pair/claim (the call `sy desktop token --code-stdin` makes: internal/desktop/desktop.go)
-// and, while there is no sy, uploads usage records with POST /v1/ingest and the desktop token
-// (the batch `sy flush` sends: internal/client/client.go Ingest). Records are completed the way
-// `sy outbox append` completes them (v 1, id as a ULID, ts) and queued in direct-outbox.ndjson
+// POST /v1/pair/claim (the call `wy desktop token --code-stdin` makes: internal/desktop/desktop.go)
+// and, while there is no wy, uploads usage records with POST /v1/ingest and the desktop token
+// (the batch `wy flush` sends: internal/client/client.go Ingest). Records are completed the way
+// `wy outbox append` completes them (v 1, id as a ULID, ts) and queued in direct-outbox.ndjson
 // next to direct.json ({machine, url, pins}; no secret: the token is in the token store).
 // `pins` is the hub config's certificate pins (pin.js, C6): {"https://host:port": {"sha256":
 // "AB:CD:…", "at": "<RFC 3339>"}}, at most PINS_MAX origins.
@@ -24,7 +24,7 @@ const TIMEOUT_MS = 10_000;
 const REPLY_MAX = 1024 * 1024;
 const PINS_MAX = 8;
 
-/** A record id as `sy` makes it: a ULID (48 bits of ms, 80 random bits, Crockford base32). */
+/** A record id as `wy` makes it: a ULID (48 bits of ms, 80 random bits, Crockford base32). */
 export function newRecordId(nowMs = Date.now(), rnd = crypto.randomBytes(10)) {
   let ms = BigInt(nowMs);
   let out = '';
@@ -46,7 +46,7 @@ export function newRecordId(nowMs = Date.now(), rnd = crypto.randomBytes(10)) {
   return out;
 }
 
-/** What `sy outbox append` fills in when a writer left it out: v 1, id, ts (UTC, milliseconds). */
+/** What `wy outbox append` fills in when a writer left it out: v 1, id, ts (UTC, milliseconds). */
 export function completeRecord(r, nowMs = Date.now()) {
   return { ...r, v: r.v || 1, id: r.id || newRecordId(nowMs), ts: r.ts || new Date(nowMs).toISOString() };
 }
@@ -54,7 +54,7 @@ export function completeRecord(r, nowMs = Date.now()) {
 /**
  * Plain http is fine on this computer and to a Tailscale name (`.ts.net`: the tunnel is
  * encrypted). Any other host (a LAN address, `.local`, a single-label name, a Tailscale IP)
- * needs the person's explicit opt-in (`insecureLan`), like `sy connect --insecure-lan`.
+ * needs the person's explicit opt-in (`insecureLan`), like `wy connect --insecure-lan`.
  */
 export function isLocalNetworkHost(h, { insecureLan = false } = {}) {
   const host = String(h).replace(/^\[|\]$/g, '').toLowerCase();
@@ -91,7 +91,7 @@ export function checkAddress(raw, { insecureLan = false } = {}) {
  * @param {{fs: object, path: object, file: string, fetch: typeof fetch, log?: object, clientName: string,
  *          version: string, timers?: object, getAuth: () => ({url: string, token: string}|null),
  *          onUnauthorized?: (status: number) => void, active: () => boolean}} deps
- *   fs: node:fs/promises. active(): the app is in direct mode (no sy hub), so records go here.
+ *   fs: node:fs/promises. active(): the app is in direct mode (no wy hub), so records go here.
  */
 export function createDirect(deps) {
   const { fs, path, file } = deps;
@@ -212,7 +212,7 @@ export function createDirect(deps) {
   }
 
   /**
-   * POST /v1/pair/claim like `sy desktop token --code-stdin`.
+   * POST /v1/pair/claim like `wy desktop token --code-stdin`.
    * @returns {Promise<{ok: true, device: string, token: string}|{ok: false, error: string, status?: number}>}
    */
   async function claim({ url, code, name }) {
@@ -316,7 +316,7 @@ export function createDirect(deps) {
       await load();
       return data.machine;
     },
-    /** Same shape as sy.append: {ok, ids}. */
+    /** Same shape as wy.append: {ok, ids}. */
     async append(records) {
       await load();
       const done = records.map((r) => completeRecord(r));

@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/push/rules"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/hub/usage"
-	"github.com/mraj602/switchyard/internal/scan"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/push/rules"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/usage"
+	"github.com/mraj602/watchyard/internal/scan"
 )
 
 // GET /v1/analytics/{report} (docs/spec/analytics.md, api.yaml analytics): the usage

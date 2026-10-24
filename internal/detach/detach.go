@@ -1,5 +1,5 @@
 // Package detach starts background processes that outlive the caller, and debounces
-// them with a timestamp file. `sy hook` uses it to start `sy flush` and the login refresh
+// them with a timestamp file. `wy hook` uses it to start `wy flush` and the login refresh
 // without ever waiting for them.
 //
 // Depends on: nothing inside the module.

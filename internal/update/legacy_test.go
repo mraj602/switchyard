@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
 // rename.md 2.7: after a rename, an archive attested by the repository under its old name

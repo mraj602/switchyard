@@ -1,4 +1,4 @@
-// Package claudecli wraps the `claude` command line that `sy setup` and `sy account` call:
+// Package claudecli wraps the `claude` command line that `wy setup` and `wy account` call:
 // `claude --version`, `claude auth status|login`, `claude plugin marketplace
 // add|remove|update|list`, `claude plugin install|uninstall|enable|disable|list`, and
 // `claude agents --json`. Callers depend on the Runner interface; Exec is the os/exec
@@ -112,7 +112,7 @@ type AuthStatus struct {
 	Org      string          `json:"orgName,omitempty"`
 	Plan     string          `json:"subscriptionType,omitempty"`
 	Method   string          `json:"authMethod,omitempty"`
-	Raw      json.RawMessage `json:"-"` // the full JSON line, for diagnostics (never printed by sy)
+	Raw      json.RawMessage `json:"-"` // the full JSON line, for diagnostics (never printed by wy)
 }
 
 // Result is the parsed `--json` outcome line of a plugin command.
@@ -145,7 +145,7 @@ func (r Result) OK() bool { return r.Outcome == "ok" || r.AlreadyInGoalState }
 
 // PluginInfo is one row of `claude plugin list --json`.
 type PluginInfo struct {
-	ID          string `json:"id"` // "switchyard@sy-local"
+	ID          string `json:"id"` // "watchyard@wy-local"
 	Version     string `json:"version,omitempty"`
 	Enabled     bool   `json:"enabled"`
 	Scope       string `json:"scope,omitempty"`
@@ -200,7 +200,7 @@ type Runner interface {
 	// settings target only.
 	PluginInstall(ctx context.Context, f Folder, id string) (Result, error)
 	// PluginUpdate updates an installed plugin to its marketplace's current version as f
-	// (`sy update`'s post-update step, setup.md 5.2).
+	// (`wy update`'s post-update step, setup.md 5.2).
 	PluginUpdate(ctx context.Context, f Folder, id string) (Result, error)
 	PluginUninstall(ctx context.Context, f Folder, id string) (Result, error)
 	PluginEnable(ctx context.Context, f Folder, id string) (Result, error)

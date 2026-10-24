@@ -33,8 +33,8 @@
   --seat-2: #9A7400;
   --seat-3: #2F6FDE;
 
-  --sans: 'IBM Plex Sans', 'Switchyard Symbols', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --mono: 'IBM Plex Mono', 'Switchyard Symbols', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --sans: 'IBM Plex Sans', 'Watchyard Symbols', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'IBM Plex Mono', 'Watchyard Symbols', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --radius: 12px;
   color-scheme: light;
 }

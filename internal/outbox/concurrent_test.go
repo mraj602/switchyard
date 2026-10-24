@@ -14,12 +14,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 const (
-	childDirEnv = "SY_OUTBOX_TEST_CHILD_DIR"
-	childIDEnv  = "SY_OUTBOX_TEST_CHILD_ID"
+	childDirEnv = "WY_OUTBOX_TEST_CHILD_DIR"
+	childIDEnv  = "WY_OUTBOX_TEST_CHILD_ID"
 	childCount  = 200
 	procCount   = 50
 )

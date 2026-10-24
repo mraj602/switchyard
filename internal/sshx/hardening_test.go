@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/sshx"
-	"github.com/mraj602/switchyard/internal/sshx/sshxtest"
+	"github.com/mraj602/watchyard/internal/sshx"
+	"github.com/mraj602/watchyard/internal/sshx/sshxtest"
 )
 
 func TestCheckForbiddenVariants(t *testing.T) {

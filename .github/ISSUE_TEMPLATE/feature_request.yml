@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Open questions and ideas you want to discuss first are welcome in Discussions.
-        Switchyard never switches or rotates accounts automatically, never reads or sends Claude credentials or claude.ai cookies, and is for your own accounts only; requests that need those are out of scope.
+        Watchyard never switches or rotates accounts automatically, never reads or sends Claude credentials or claude.ai cookies, and is for your own accounts only; requests that need those are out of scope.
   - type: textarea
     id: problem
     attributes:
@@ -18,7 +18,7 @@ body:
     id: proposal
     attributes:
       label: Proposal
-      description: What should Switchyard do? Which component (sy, hub, board, desktop app, Android app, plugin)?
+      description: What should Watchyard do? Which component (wy, hub, board, desktop app, Android app, plugin)?
     validations:
       required: true
   - type: textarea

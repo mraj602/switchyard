@@ -21,7 +21,7 @@ sy_<k>_<43 base62 characters>
 Example shape: `sy_m_4fQx0Lr2…` (48 characters in total). Base62 has no `-` or `_`, so a
 double click selects the whole token and the kind letter can always be parsed.
 
-The kind letter is a hint for people and for `sy doctor`. The hub never trusts it: scopes
+The kind letter is a hint for people and for `wy doctor`. The hub never trusts it: scopes
 come from the `device` row.
 
 ## 2. Storage
@@ -54,7 +54,7 @@ commands, environment variables of Claude Code, or records.
 | desktop | `sy_d_` | `write`, `read` | Ingest for its own machine id (web usage); every read endpoint and `/v1/stream`. |
 | phone | `sy_p_` | `read`, `push` | Every read endpoint and `/v1/stream`; register push targets; snooze/seen alerts. |
 | browser | `sy_b_` | `read`, `push` | As phone; for the installed web app on a computer. |
-| owner session | `sy_o_` | `owner`, `read`, `push` | Everything, including devices, rules and pairing codes. A `browser` device from `sy hub owner-link`, 30 days, cookie only (pairing.md 4). |
+| owner session | `sy_o_` | `owner`, `read`, `push` | Everything, including devices, rules and pairing codes. A `browser` device from `wy hub owner-link`, 30 days, cookie only (pairing.md 4). |
 
 Scope checks per endpoint are in [api.yaml](api.yaml) (`x-scopes`). A request whose token is
 unknown or revoked gets `401`; a valid token without the scope gets `403`. Both bodies are
@@ -79,17 +79,17 @@ All run on the hub machine, against its database directly (no HTTP), so they wor
 any token exists.
 
 ```
-sy hub token create --kind machine|desktop|phone|browser --name <name> [--machine <machine id>] [--json]
+wy hub token create --kind machine|desktop|phone|browser --name <name> [--machine <machine id>] [--json]
     Creates a device and prints its token once.
     --machine is required for machine and desktop (the machine row is created if missing,
     named after --name).
     --json prints {"device": "dev_…", "token": "sy_m_…", "scopes": [...]}.
 
-sy hub token list [--all] [--json]
+wy hub token list [--all] [--json]
     Devices: id, kind, name, machine, hint, scopes, created, last used, revoked.
     Revoked devices only with --all.
 
-sy hub token revoke <device id | token hint | name> [--yes]
+wy hub token revoke <device id | token hint | name> [--yes]
     Sets revoked_at. Takes effect on the next request (no cache). Asks unless --yes.
     Ambiguous names are refused with the list of matches.
 ```
@@ -97,17 +97,17 @@ sy hub token revoke <device id | token hint | name> [--yes]
 On a client:
 
 ```
-sy connect <hub url> --token <token>     # paste a token made by `sy hub token create`
-sy connect <hub url> --code 482-913      # claim a pairing code instead
-sy connect <hub url> --code-stdin        # code or pairing secret on stdin (machines.md 4.2)
-sy connect <new hub url> --keep-token    # after a hub move, keep the token (machines.md 8.3)
+wy connect <hub url> --token <token>     # paste a token made by `wy hub token create`
+wy connect <hub url> --code 482-913      # claim a pairing code instead
+wy connect <hub url> --code-stdin        # code or pairing secret on stdin (machines.md 4.2)
+wy connect <new hub url> --keep-token    # after a hub move, keep the token (machines.md 8.3)
 ```
 
-`sy connect` checks the URL (HTTPS required unless the host is loopback, or
+`wy connect` checks the URL (HTTPS required unless the host is loopback, or
 `--insecure-lan`), calls `GET /health`, then sends one `slot_info` per slot to prove the
 token works, and writes `<state>/token` and `hub.url` in `config.toml`.
 
-In merged mode `sy setup` creates the local machine's device itself.
+In merged mode `wy setup` creates the local machine's device itself.
 
 ## 5. Pairing codes and owner sessions
 
@@ -115,5 +115,5 @@ Superseded by [pairing.md](pairing.md): codes are 6 digits plus a 128-bit QR sec
 with a pepper kept outside the database, valid 10 minutes, single use, at most 5 live;
 `POST /v1/pair/claim` with per-IP and hub-wide limits on typed codes; the QR is an `https://`
 URL (`<hub>/#/pair?s=…&c=…`), not JSON. Owner sessions (`sy_o_`) are `browser` devices with
-scopes `owner`, `read`, `push`, made from a one-time link (`sy hub owner-link`) and expiring
+scopes `owner`, `read`, `push`, made from a one-time link (`wy hub owner-link`) and expiring
 after 30 days (`device.expires_at`, schema v3).

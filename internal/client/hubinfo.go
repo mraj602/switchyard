@@ -10,13 +10,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/outbox"
 )
 
 // HubFile is <state>/hub.json: the last known hub version and record_v_max (machines.md 7.2;
-// paths.md). It is written by `sy connect`, by every ingest reply that carries `hub` and by a
-// /health check (RefreshHub, run by `sy tick` every 6 hours), and read by the flusher.
+// paths.md). It is written by `wy connect`, by every ingest reply that carries `hub` and by a
+// /health check (RefreshHub, run by `wy tick` every 6 hours), and read by the flusher.
 const HubFile = "hub.json"
 
 // BacklogOldestHeader carries the ts (RFC 3339) of the oldest unanswered record, sent with
@@ -30,19 +30,19 @@ type HubCache struct {
 	RecordVMax int    `json:"record_v_max"`
 	At         string `json:"at"`
 	// Frozen is /health's `frozen` at the last check: the hub moved (machines.md 8.3). A 200
-	// ingest reply clears it (a frozen hub answers 503); `sy tick` re-reads /health every
-	// FrozenRecheck while it is set, so an unfreeze is seen too. `sy doctor` shows it.
+	// ingest reply clears it (a frozen hub answers 503); `wy tick` re-reads /health every
+	// FrozenRecheck while it is set, so an unfreeze is seen too. `wy doctor` shows it.
 	Frozen *HealthFrozen `json:"frozen,omitempty"`
 }
 
-// HubRefreshEvery is how often `sy tick` re-reads /health into hub.json (machines.md 7.2);
+// HubRefreshEvery is how often `wy tick` re-reads /health into hub.json (machines.md 7.2);
 // FrozenRecheck is how often while the hub is (or looks) frozen.
 const (
 	HubRefreshEvery = 6 * time.Hour
 	FrozenRecheck   = 10 * time.Minute
 )
 
-// HubRefreshDue reports whether `sy tick` should call RefreshHub for hub url: no cache for
+// HubRefreshDue reports whether `wy tick` should call RefreshHub for hub url: no cache for
 // it, older than HubRefreshEvery, or older than FrozenRecheck while the cache says frozen or
 // the last flush was refused by a frozen hub.
 func HubRefreshDue(stateDir, url string, now time.Time) bool {
@@ -91,7 +91,7 @@ func WriteHubCache(stateDir string, c HubCache) error {
 }
 
 // RefreshHub asks GET /health what the hub reads and caches it in <stateDir>/hub.json
-// (`sy connect` and the 6-hourly `sy tick` call this). It returns the health body; the
+// (`wy connect` and the 6-hourly `wy tick` call this). It returns the health body; the
 // caller may count a nil error as contact with the hub.
 func RefreshHub(ctx context.Context, c *Client, stateDir string, now time.Time) (Health, error) {
 	h, err := c.Health(ctx)

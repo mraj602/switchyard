@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
 // The allow-list of docs/spec/terminal.md T7. Patterns are matched on the raw string with
@@ -23,8 +23,8 @@ func ValidFocusURL(u string) bool {
 	return len(u) <= maxURL && focusRe.MatchString(u)
 }
 
-// ValidTabConfigURL reports whether u opens a tab config file sy wrote
-// (`warp://tab_config/switchyard-<label>`, or the prefix from before a rename).
+// ValidTabConfigURL reports whether u opens a tab config file wy wrote
+// (`warp://tab_config/watchyard-<label>`, or the prefix from before a rename).
 func ValidTabConfigURL(u string) bool {
 	m := tabConfigRe.FindStringSubmatch(u)
 	if len(u) > maxURL || m == nil {

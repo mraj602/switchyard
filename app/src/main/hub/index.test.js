@@ -54,7 +54,7 @@ async function harness(opts = {}) {
     return res;
   };
   const fake = fakeElectron({ sessionFetch, safeStorageKey: opts.key });
-  const sy = {
+  const wy = {
     state: { info: info(hub.url), token: { ok: true, device: 'dev_1', token: TOKEN, scopes: ['write', 'read'], hub: { url: hub.url } }, owner: { ok: true, url: `${hub.url}/#/owner?s=one-time` } },
     calls: [],
     async info() { this.calls.push(['info']); return this.state.info; },
@@ -79,7 +79,7 @@ async function harness(opts = {}) {
   const slow = { setTimeout: (fn, ms) => setTimeout(fn, ms <= 1000 ? 15 : ms), clearTimeout };
   const links = [];
   const h = create({
-    electron: fake.electron, sy, security, window, bus, ipc: { register: (c, fn) => (handlers[c] = fn) }, fs: opts.fs ?? fsp, path, tokenFile,
+    electron: fake.electron, wy, security, window, bus, ipc: { register: (c, fn) => (handlers[c] = fn) }, fs: opts.fs ?? fsp, path, tokenFile,
     fetch: globalThis.fetch, log: silent, timers: slow, platform: 'linux', clientVersion: opts.clientVersion,
     probeCertificate: opts.probe ?? (async () => ({ ok: false, error: 'no TLS probe in this test' })),
     openSessionLink: (url, seat) => { links.push({ url, seat }); return opts.openResult ?? true; },
@@ -87,14 +87,14 @@ async function harness(opts = {}) {
   const events = { hub: [], needs_you: [], alert: [] };
   for (const k of Object.keys(events)) bus.on(k, (p) => events[k].push(p));
   const close = async () => { await h.stop(); await hub.close(); };
-  return { hub, h, sy, fake, bus, handlers, winCalls, guards, opened, links, events, tokenFile, dir, security, close, sessionFetch, guardedSessions };
+  return { hub, h, wy, fake, bus, handlers, winCalls, guards, opened, links, events, tokenFile, dir, security, close, sessionFetch, guardedSessions };
 }
 
 const lastHub = (t) => t.events.hub.at(-1);
 
-test('no sy: the status says so and nothing else happens', async () => {
+test('no wy: the status says so and nothing else happens', async () => {
   const t = await harness();
-  t.sy.state.info = { ok: false, exit: -1, error: 'sy not found', code: 'no_sy' };
+  t.wy.state.info = { ok: false, exit: -1, error: 'wy not found', code: 'no_sy' };
   await t.h.start();
   assert.equal(lastHub(t).status, 'no_sy');
   assert.equal(lastHub(t).connected, false);
@@ -103,15 +103,15 @@ test('no sy: the status says so and nothing else happens', async () => {
   await t.close();
 });
 
-test('sy not connected to a hub, and forward mode (dial) are refused', async () => {
+test('wy not connected to a hub, and forward mode (dial) are refused', async () => {
   const t = await harness();
-  t.sy.state.info = info(null, { hub: { connected: false, url: null, reachable: false } });
+  t.wy.state.info = info(null, { hub: { connected: false, url: null, reachable: false } });
   await t.h.start();
   assert.equal(lastHub(t).status, 'not_connected');
-  t.sy.state.info = info(t.hub.url, { hub: { dial: 'ssh gpu-box' } });
+  t.wy.state.info = info(t.hub.url, { hub: { dial: 'ssh gpu-box' } });
   await t.h.stop();
   const t2 = await harness();
-  t2.sy.state.info = info(t2.hub.url, { hub: { dial: 'ssh gpu-box' } });
+  t2.wy.state.info = info(t2.hub.url, { hub: { dial: 'ssh gpu-box' } });
   await t2.h.start();
   assert.equal(lastHub(t2).status, 'dial');
   assert.match(lastHub(t2).error, /forward mode is not supported/);
@@ -120,16 +120,16 @@ test('sy not connected to a hub, and forward mode (dial) are refused', async () 
   await t.close();
 });
 
-test('pairing: one click through sy, token stored encrypted, stream and overview start', async () => {
+test('pairing: one click through wy, token stored encrypted, stream and overview start', async () => {
   const t = await harness({ hubData: { overview: { seats: [SEAT], needs_you: [{ id: 'c1', state: 'asked', seat_label: 'work', project: 'api', needs_you: true }], machines: [], counts: { needs_you: 1 } }, accounts: { accounts: [SEAT] } } });
   await t.h.start();
   assert.equal(lastHub(t).status, 'needs_pairing');
   assert.equal(lastHub(t).paired, false);
   const r = await t.handlers['hub:pair']({});
   assert.deepEqual(r, { ok: true });
-  const tokenCall = t.sy.calls.find((c) => c[0] === 'token');
+  const tokenCall = t.wy.calls.find((c) => c[0] === 'token');
   assert.equal(tokenCall[1].code, undefined);
-  assert.equal(tokenCall[1].name, 'Switchyard-desktop-laptop');
+  assert.equal(tokenCall[1].name, 'Watchyard-desktop-laptop');
   assert.match(tokenCall[1].name, /^[A-Za-z0-9._-]{1,40}$/, 'no spaces: it must pass an ssh admin channel');
   await until(() => lastHub(t).status === 'ok' && lastHub(t).needs_you === 1);
   assert.equal(lastHub(t).paired, true);
@@ -144,17 +144,17 @@ test('pairing: one click through sy, token stored encrypted, stream and overview
   await t.close();
 });
 
-test('pairing with a code passes it to sy (which sends it on stdin); a refusal gets a plain message', async () => {
+test('pairing with a code passes it to wy (which sends it on stdin); a refusal gets a plain message', async () => {
   const t = await harness();
   await t.h.start();
-  t.sy.state.token = { ok: false, exit: 3, error: 'code expired' };
+  t.wy.state.token = { ok: false, exit: 3, error: 'code expired' };
   const r = await t.handlers['hub:pair']({ code: '123-456' });
   assert.equal(r.ok, false);
   assert.match(r.error, /refused or has expired/);
-  assert.equal(t.sy.calls.find((c) => c[0] === 'token')[1].code, '123-456');
-  t.sy.state.token = { ok: false, exit: 4, error: 'no admin' };
+  assert.equal(t.wy.calls.find((c) => c[0] === 'token')[1].code, '123-456');
+  t.wy.state.token = { ok: false, exit: 4, error: 'no admin' };
   assert.match((await t.handlers['hub:pair']({})).error, /type a code from the board/i);
-  t.sy.state.token = { ok: false, exit: 5, error: 'x' };
+  t.wy.state.token = { ok: false, exit: 5, error: 'x' };
   assert.match((await t.handlers['hub:pair']({ code: '123456' })).error, /not reachable/);
   assert.equal(lastHub(t).paired, false);
   await t.close();
@@ -172,9 +172,9 @@ test('a stored token is used at start; the same file with another hub URL is dro
   const evs = [];
   bus2.on('hub', (p) => evs.push(p));
   const mk = (url) => {
-    const sy2 = { ...t.sy, info: async () => info(url) };
+    const sy2 = { ...t.wy, info: async () => info(url) };
     return create({
-      electron: t.fake.electron, sy: sy2, security: t.security, window: { addView() {}, removeView() {}, select() {} }, bus: bus2,
+      electron: t.fake.electron, wy: sy2, security: t.security, window: { addView() {}, removeView() {}, select() {} }, bus: bus2,
       ipc: { register() {} }, fs: fsp, path, tokenFile: t.tokenFile, fetch: globalThis.fetch, log: silent, openSessionLink: () => true,
     });
   };
@@ -204,7 +204,7 @@ test('a token file made with another safeStorage key is kept (not read) and pair
   bus2.on('hub', (p) => evs.push(p));
   const otherFake = fakeElectron({ safeStorageKey: 'k2' });
   const h2 = create({
-    electron: otherFake.electron, sy: a.sy, security: a.security, window: { addView() {}, removeView() {}, select() {} }, bus: bus2,
+    electron: otherFake.electron, wy: a.wy, security: a.security, window: { addView() {}, removeView() {}, select() {} }, bus: bus2,
     ipc: { register() {} }, fs: fsp, path, tokenFile: a.tokenFile, fetch: globalThis.fetch, log: silent, openSessionLink: () => true,
   });
   await h2.start();
@@ -349,18 +349,18 @@ async function racePairing(t, arm, armed) {
   await until(() => t.h.state().status === 'ok');
 }
 
-test('after stop, an info refresh (a late poll or hub:service) starts no stream and asks sy nothing', async () => {
+test('after stop, an info refresh (a late poll or hub:service) starts no stream and asks wy nothing', async () => {
   const t = await harness();
   await t.h.start();
   await t.handlers['hub:pair']({});
   await until(() => t.hub.streamCount() === 1);
   await t.h.stop();
   await until(() => t.hub.streamCount() === 0);
-  const infos = t.sy.calls.filter((c) => c[0] === 'info').length;
+  const infos = t.wy.calls.filter((c) => c[0] === 'info').length;
   await t.handlers['hub:service']({ action: 'start' });
   await new Promise((r) => setTimeout(r, 100));
   assert.equal(t.hub.streamCount(), 0, 'the stream stays down');
-  assert.equal(t.sy.calls.filter((c) => c[0] === 'info').length, infos, 'no sy desktop info after stop');
+  assert.equal(t.wy.calls.filter((c) => c[0] === 'info').length, infos, 'no wy desktop info after stop');
   await t.close();
 });
 
@@ -462,11 +462,11 @@ test('owner sign-in loads the one-time link; the owner flag follows /v1/me', asy
 test('owner sign-in: a link for another origin is never opened; failures are explained', async () => {
   const t = await harness();
   await t.h.start();
-  t.sy.state.owner = { ok: true, url: 'https://evil.example/#/owner?s=x' };
+  t.wy.state.owner = { ok: true, url: 'https://evil.example/#/owner?s=x' };
   const r = await t.handlers['hub:owner-sign-in']();
   assert.equal(r.ok, false);
   assert.equal(t.fake.callsOf('webContents.loadURL').length, 0);
-  t.sy.state.owner = { ok: false, exit: 4, error: 'no admin' };
+  t.wy.state.owner = { ok: false, exit: 4, error: 'no admin' };
   assert.match((await t.handlers['hub:owner-sign-in']()).error, /admin channel/);
   await t.close();
 });
@@ -527,7 +527,7 @@ test('a dead token (401 on the stream): the board is hidden, needs_pairing with 
   assert.equal(hiddenNow(t), true, 'the board view is hidden');
   assert.equal(fs.existsSync(t.tokenFile), false);
   t.hub.script.stream401 = false;
-  t.sy.state.token = { ok: true, device: 'dev_2', token: TOKEN, scopes: ['write', 'read'], hub: { url: t.hub.url } }; // pair() blanks the one it was given
+  t.wy.state.token = { ok: true, device: 'dev_2', token: TOKEN, scopes: ['write', 'read'], hub: { url: t.hub.url } }; // pair() blanks the one it was given
   assert.deepEqual(await t.handlers['hub:pair']({}), { ok: true });
   assert.equal(lastHub(t).removed, false);
   assert.equal(hiddenNow(t), false, 'paired again: the board shows');
@@ -656,7 +656,7 @@ test('hub:service, accounts:local and accounts:share', async () => {
   const t = await harness();
   await t.h.start();
   assert.deepEqual(await t.handlers['hub:service']({ action: 'stop' }), { ok: true, service: 'running', health: true });
-  t.sy.state.service = { ok: false, exit: 4, error: 'service not installed' };
+  t.wy.state.service = { ok: false, exit: 4, error: 'service not installed' };
   const bad = await t.handlers['hub:service']({ action: 'start' });
   assert.equal(bad.ok, false);
   assert.equal(bad.service, null);
@@ -677,15 +677,15 @@ test('a URL change at a later info drops the view and the stream', async () => {
   await t.handlers['hub:pair']({});
   await t.handlers['hub:route']({ route: '#/' });
   assert.ok(t.h.view());
-  t.sy.state.info = info('https://other.example.com');
+  t.wy.state.info = info('https://other.example.com');
   await t.handlers['hub:pair']({}).catch(() => {});
   assert.equal(t.h.view(), null);
   assert.ok(t.winCalls.some((c) => c[0] === 'removeView'));
   await t.close();
 });
 
-test('pairError: exit 1 shows sy\'s own message; exit 4 without a code is not called "no admin channel"', () => {
-  assert.equal(pairError({ exit: 1, error: '--hub-admin ssh gpu-box sy: exec: "ssh": not found' }, false), 'Pairing failed: --hub-admin ssh gpu-box sy: exec: "ssh": not found');
+test('pairError: exit 1 shows wy\'s own message; exit 4 without a code is not called "no admin channel"', () => {
+  assert.equal(pairError({ exit: 1, error: '--hub-admin ssh gpu-box wy: exec: "ssh": not found' }, false), 'Pairing failed: --hub-admin ssh gpu-box wy: exec: "ssh": not found');
   assert.equal(pairError({ exit: 1 }, false), 'Pairing failed.');
   assert.match(pairError({ exit: 4 }, false), /machines\.hub_admin/);
   assert.doesNotMatch(pairError({ exit: 4 }, false), /no admin channel/i);
@@ -693,17 +693,17 @@ test('pairError: exit 1 shows sy\'s own message; exit 4 without a code is not ca
   assert.equal(pairError({ exit: 5 }, false), 'The hub is not reachable.');
 });
 
-// ---- direct mode (no sy): the app connects, pairs, uploads and unpairs by itself
+// ---- direct mode (no wy): the app connects, pairs, uploads and unpairs by itself
 
-const NO_SY = { ok: false, code: 'no_sy', error: 'sy was not found' };
+const NO_SY = { ok: false, code: 'no_sy', error: 'wy was not found' };
 const directHarness = async (opts) => {
   const t = await harness(opts);
-  t.sy.state.info = NO_SY;
+  t.wy.state.info = NO_SY;
   return t;
 };
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 
-test('direct: without sy the Hub tab says no hub; Connect checks the address, remembers it and pairs with the code', async () => {
+test('direct: without wy the Hub tab says no hub; Connect checks the address, remembers it and pairs with the code', async () => {
   const t = await directHarness();
   await t.h.start();
   assert.equal(lastHub(t).status, 'no_sy');
@@ -713,20 +713,20 @@ test('direct: without sy the Hub tab says no hub; Connect checks the address, re
   assert.equal(lastHub(t).direct, true);
   assert.equal(lastHub(t).paired, true);
   assert.equal(lastHub(t).url, t.hub.url);
-  // POST /v1/pair/claim: the same body sy sends, with the app's own machine id
+  // POST /v1/pair/claim: the same body wy sends, with the app's own machine id
   const [claim] = t.hub.requestsTo('/v1/pair/claim');
   const body = JSON.parse(claim.body);
   assert.equal(body.code, '123456');
   assert.equal(body.expect_kind, 'desktop');
   assert.match(body.machine, /^[0-9A-Za-z_-]{16,64}$/);
-  assert.match(body.name, /^Switchyard-desktop/);
+  assert.match(body.name, /^Watchyard-desktop/);
   assert.equal(claim.headers.authorization, undefined, 'no token yet');
   // the token is stored like today, the address and the machine id in direct.json
   assert.ok(fs.existsSync(t.tokenFile));
   const saved = readJson(path.join(t.dir, 'direct.json'));
   assert.equal(saved.url, t.hub.url);
   assert.equal(saved.machine, body.machine);
-  assert.equal(t.sy.calls.filter((c) => c[0] === 'token').length, 0, 'sy was not asked');
+  assert.equal(t.wy.calls.filter((c) => c[0] === 'token').length, 0, 'wy was not asked');
   await until(() => t.hub.streamCount() === 1);
   await t.close();
 });
@@ -758,22 +758,22 @@ test('direct: a bad address is refused before anything is saved', async () => {
   await t.close();
 });
 
-test('with sy connected to a hub, Connect is refused and sy keeps doing the pairing', async () => {
+test('with wy connected to a hub, Connect is refused and wy keeps doing the pairing', async () => {
   const t = await harness();
   await t.h.start();
-  assert.match((await t.handlers['hub:connect']({ url: t.hub.url })).error, /sy on this computer is already connected/);
+  assert.match((await t.handlers['hub:connect']({ url: t.hub.url })).error, /wy on this computer is already connected/);
   assert.deepEqual(await t.handlers['hub:pair']({}), { ok: true });
   assert.equal(lastHub(t).direct, false);
   assert.equal(t.hub.requestsTo('/v1/pair/claim').length, 0);
   await t.close();
 });
 
-test('direct: usage records are uploaded to /v1/ingest with the desktop token, completed like sy outbox append', async () => {
+test('direct: usage records are uploaded to /v1/ingest with the desktop token, completed like wy outbox append', async () => {
   const t = await directHarness();
   await t.h.start();
   await t.handlers['hub:connect']({ url: t.hub.url, code: '123456' });
   const machine = await t.h.direct.machineId();
-  const rec = { kind: 'web_usage', ts: '2026-10-16T10:00:00.000Z', machine, seat: { account: 'a', org: 'o', src: 'claude_ai' }, client: 'switchyard-desktop/0.6.0', payload: { tab_id: 't' } };
+  const rec = { kind: 'web_usage', ts: '2026-10-16T10:00:00.000Z', machine, seat: { account: 'a', org: 'o', src: 'claude_ai' }, client: 'watchyard-desktop/0.6.0', payload: { tab_id: 't' } };
   const res = await t.h.direct.append([rec, { ...rec, ts: undefined }]);
   assert.equal(res.ok, true);
   assert.equal(res.ids.length, 2);
@@ -782,7 +782,7 @@ test('direct: usage records are uploaded to /v1/ingest with the desktop token, c
   assert.equal(ing.headers.authorization, `Bearer ${TOKEN}`);
   const b = JSON.parse(ing.body);
   assert.equal(b.v, 1);
-  assert.match(b.client, /^switchyard-desktop\//);
+  assert.match(b.client, /^watchyard-desktop\//);
   assert.equal(b.records.length, 2);
   assert.match(b.records[0].id, /^[0-9A-HJKMNP-TV-Z]{26}$/);
   assert.equal(b.records[0].v, 1);
@@ -859,11 +859,11 @@ test('owner link pasted into the app: only a link to the paired hub is opened', 
   const link = `${t.hub.url}/#/owner?s=pasted`;
   assert.deepEqual(await t.handlers['hub:owner-sign-in']({ link }), { ok: true });
   assert.equal(t.fake.callsOf('webContents.loadURL').at(-1)[1], link);
-  assert.equal(t.sy.calls.filter((c) => c[0] === 'owner').length, 0, 'sy was not asked');
+  assert.equal(t.wy.calls.filter((c) => c[0] === 'owner').length, 0, 'wy was not asked');
   await t.close();
 });
 
-test('owner sign-in without sy asks for a pasted link instead of calling sy', async () => {
+test('owner sign-in without wy asks for a pasted link instead of calling wy', async () => {
   const t = await directHarness();
   await t.h.start();
   await t.handlers['hub:connect']({ url: t.hub.url, code: '123456' });
@@ -893,8 +893,8 @@ test('the hub view announces the app in its user agent', async () => {
   await t.h.start();
   await t.handlers['hub:pair']({});
   await t.handlers['hub:route']({ route: '#/' });
-  const ua = t.fake.callsOf('webContents.setUserAgent').map((c) => c[1]).find((u) => /SwitchyardDesktop/.test(u));
-  assert.match(ua, / SwitchyardDesktop(\/|$)/);
+  const ua = t.fake.callsOf('webContents.setUserAgent').map((c) => c[1]).find((u) => /WatchyardDesktop/.test(u));
+  assert.match(ua, / WatchyardDesktop(\/|$)/);
   await t.close();
 });
 
@@ -905,20 +905,20 @@ test('one failed health check does not flip a reachable hub to Unreachable; two 
   await until(() => lastHub(t).status === 'ok');
   const down = info(t.hub.url, { hub: { reachable: false, version: null } });
   const up = info(t.hub.url);
-  t.sy.state.info = down;
+  t.wy.state.info = down;
   await t.handlers['hub:retry']();
   assert.equal(lastHub(t).status, 'ok', 'first failure: the board stays');
   assert.equal(lastHub(t).reachable, true);
   await t.handlers['hub:retry']();
   assert.equal(lastHub(t).status, 'unreachable', 'second failure in a row');
-  t.sy.state.info = up;
+  t.wy.state.info = up;
   await t.handlers['hub:retry']();
   assert.equal(lastHub(t).status, 'ok');
-  t.sy.state.info = down;
+  t.wy.state.info = down;
   await t.handlers['hub:retry']();
-  t.sy.state.info = up;
+  t.wy.state.info = up;
   await t.handlers['hub:retry']();
-  t.sy.state.info = down;
+  t.wy.state.info = down;
   await t.handlers['hub:retry']();
   assert.equal(lastHub(t).status, 'ok', 'failures that are not consecutive never count');
   await t.close();
@@ -926,7 +926,7 @@ test('one failed health check does not flip a reachable hub to Unreachable; two 
 
 test('a hub never seen reachable is reported unreachable at once', async () => {
   const t = await harness();
-  t.sy.state.info = info(t.hub.url, { hub: { reachable: false, version: null } });
+  t.wy.state.info = info(t.hub.url, { hub: { reachable: false, version: null } });
   await t.h.start();
   await t.handlers['hub:pair']({}).catch(() => {});
   assert.equal(lastHub(t).reachable, false);
@@ -992,29 +992,29 @@ test('direct: a self-signed https hub is pinned once the person confirms its fin
 
 test('plain http to another computer is flagged insecure; loopback and https are not', async () => {
   const t = await harness();
-  t.sy.state.info = info('http://192.168.1.5:8787', { hub: { reachable: false } });
+  t.wy.state.info = info('http://192.168.1.5:8787', { hub: { reachable: false } });
   await t.h.start();
   assert.equal(lastHub(t).insecure, true);
-  t.sy.state.info = info(t.hub.url);
+  t.wy.state.info = info(t.hub.url);
   await t.handlers['hub:retry']();
   assert.equal(lastHub(t).insecure, false, 'loopback');
-  t.sy.state.info = info('https://hub.example.com', { hub: { reachable: false } });
+  t.wy.state.info = info('https://hub.example.com', { hub: { reachable: false } });
   await t.handlers['hub:retry']();
   assert.equal(lastHub(t).insecure, false);
   await t.close();
 });
 
-test('versions: sy’s is reported, and the release link opens the newer version’s page through openExternalSafe', async () => {
+test('versions: wy’s is reported, and the release link opens the newer version’s page through openExternalSafe', async () => {
   const t = await harness({ clientVersion: '0.5.0' });
-  t.sy.state.info = info(t.hub.url, { 'sy': '0.6.1' });
+  t.wy.state.info = info(t.hub.url, { 'sy': '0.6.1' });
   await t.h.start();
   assert.equal(lastHub(t).sy_version, '0.6.1');
   assert.deepEqual(await t.handlers['app:open-release'](), { ok: true });
-  assert.deepEqual(t.opened, ['https://github.com/mraj602/switchyard/releases/tag/v0.6.1']);
+  assert.deepEqual(t.opened, ['https://github.com/mraj602/watchyard/releases/tag/v0.6.1']);
   await t.close();
   const same = await harness({ clientVersion: '0.6.0' });
   await same.h.start();
   await same.handlers['app:open-release']();
-  assert.deepEqual(same.opened, ['https://github.com/mraj602/switchyard/releases']);
+  assert.deepEqual(same.opened, ['https://github.com/mraj602/watchyard/releases']);
   await same.close();
 });

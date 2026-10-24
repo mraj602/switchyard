@@ -1,5 +1,5 @@
 {
-  "plan_id": "p_813aa0b6127f",
+  "plan_id": "p_153d51f9d683",
   "actions": [
     {
       "id": "a1",
@@ -21,13 +21,13 @@
       "id": "a2",
       "step": "terminal",
       "op": "write_file",
-      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-me.toml",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-me.toml",
       "mode": "0644",
-      "content_sha256": "df4b0e9301c36f660e42227e74eaa96d1df8bbc2121107bc69d2243d19f060b6",
+      "content_sha256": "5d57fbbe167ce5671b4b4425b7f3d8483d3e63ce61929e93b8c3e1e9745bc6e5",
       "note": "me · cyan · ~/.local/bin/claude",
       "pre": [
         {
-          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-me.toml",
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-me.toml",
           "state": {
             "type": "absent"
           }
@@ -38,13 +38,13 @@
       "id": "a3",
       "step": "terminal",
       "op": "write_file",
-      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-work.toml",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-work.toml",
       "mode": "0644",
-      "content_sha256": "19fbf0aae224849d9308e3031216b1555d5f85e4b1b17de325d7732fe3c15b97",
+      "content_sha256": "b32ad8f45f3e993ff1f254ee1a728955423cef613cfbe5104ea24f17e55a89d8",
       "note": "work · yellow · ~/.local/bin/claude-2",
       "pre": [
         {
-          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-work.toml",
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-work.toml",
           "state": {
             "type": "absent"
           }
@@ -55,13 +55,13 @@
       "id": "a4",
       "step": "terminal",
       "op": "write_file",
-      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-claude-3.toml",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-claude-3.toml",
       "mode": "0644",
-      "content_sha256": "65f58e55fcbdaf4848065de618317d7d144f491340857d77faf13056256a24a1",
+      "content_sha256": "03a471b17393de4499c2ac087893af0aa10ff96ce3076379ba2a7b071cc396ee",
       "note": "claude-3 · magenta · ~/.local/bin/claude-3",
       "pre": [
         {
-          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-claude-3.toml",
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-claude-3.toml",
           "state": {
             "type": "absent"
           }

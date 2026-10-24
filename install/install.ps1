@@ -1,16 +1,16 @@
-# Switchyard installer for Windows (docs/spec/setup.md 1.3). PowerShell 5.1+.
+# Watchyard installer for Windows (docs/spec/setup.md 1.3). PowerShell 5.1+.
 #
-#   irm https://github.com/mraj602/switchyard/releases/latest/download/install.ps1 | iex
-#   & ([scriptblock]::Create((irm https://github.com/mraj602/switchyard/releases/latest/download/install.ps1))) -Version 0.3.0 -NoSetup
+#   irm https://github.com/mraj602/watchyard/releases/latest/download/install.ps1 | iex
+#   & ([scriptblock]::Create((irm https://github.com/mraj602/watchyard/releases/latest/download/install.ps1))) -Version 0.3.0 -NoSetup
 #
-# Puts a checksum-verified sy.exe in $HOME\.local\bin and nothing else (PATH is not changed).
-# Then runs `sy setup` unless -NoSetup or the host is non-interactive.
+# Puts a checksum-verified wy.exe in $HOME\.local\bin and nothing else (PATH is not changed).
+# Then runs `wy setup` unless -NoSetup or the host is non-interactive.
 # When the gh CLI is installed it also verifies the archive's build attestation (who built it);
 # without gh only the checksum is checked, which shows the download is intact but not its origin.
 #
 # Exit codes: 0 ok, 2 unsupported or usage, 3 verification failed, 4 download failed.
-# Environment: SY_INSTALL_BASE_URL (mirror/tests; https, or http on a loopback host only),
-# SY_VERIFY_ATTESTATION=1 (fail when gh is missing) or =0 (do not check the attestation).
+# Environment: WY_INSTALL_BASE_URL (mirror/tests; https, or http on a loopback host only),
+# WY_VERIFY_ATTESTATION=1 (fail when gh is missing) or =0 (do not check the attestation).
 param(
     [string]$Version = 'latest',
     [string]$BinDir = '',
@@ -23,29 +23,29 @@ function Install-Sy {
 
     $ErrorActionPreference = 'Stop'
     $owner = 'mraj602'
-    $repo = 'switchyard'
+    $repo = 'watchyard'
     # The repository's name before a rename (docs/spec/rename.md 2.7); equal to $repo without one.
     $legacyRepo = 'switchyard' # rename:keep
     # The command's name before a rename (docs/spec/rename.md 2.13): its variables still apply
-    # and its binary becomes a copy of the new one. Equal to sy without one.
+    # and its binary becomes a copy of the new one. Equal to wy without one.
     $legacyCli = 'sy' # rename:keep
-    if ($legacyCli -ne 'sy') {
+    if ($legacyCli -ne 'wy') {
         foreach ($v in @('INSTALL_BASE_URL', 'VERIFY_ATTESTATION')) {
-            $cur = [Environment]::GetEnvironmentVariable("SY_$v")
+            $cur = [Environment]::GetEnvironmentVariable("WY_$v")
             $old = [Environment]::GetEnvironmentVariable($legacyCli.ToUpper() + "_$v")
-            if (-not $cur -and $old) { [Environment]::SetEnvironmentVariable("SY_$v", $old) }
+            if (-not $cur -and $old) { [Environment]::SetEnvironmentVariable("WY_$v", $old) }
         }
     }
-    $base = $env:SY_INSTALL_BASE_URL
+    $base = $env:WY_INSTALL_BASE_URL
     if (-not $base) { $base = "https://github.com/$owner/$repo/releases" }
     $base = $base.TrimEnd('/')
     # https only; plain http just to a loopback host (the tests' local server).
     $baseUri = $null
     if (-not [Uri]::TryCreate($base, [UriKind]::Absolute, [ref]$baseUri) -or $baseUri.UserInfo) {
-        [Console]::Error.WriteLine("install.ps1: SY_INSTALL_BASE_URL must be an https URL without credentials"); return 2
+        [Console]::Error.WriteLine("install.ps1: WY_INSTALL_BASE_URL must be an https URL without credentials"); return 2
     }
     if ($baseUri.Scheme -ne 'https' -and -not ($baseUri.Scheme -eq 'http' -and $baseUri.IsLoopback)) {
-        [Console]::Error.WriteLine("install.ps1: SY_INSTALL_BASE_URL must be https (http is allowed only for a loopback host)"); return 2
+        [Console]::Error.WriteLine("install.ps1: WY_INSTALL_BASE_URL must be https (http is allowed only for a loopback host)"); return 2
     }
 
     if ($Version -ne 'latest') { $Version = $Version.TrimStart('v') }
@@ -95,14 +95,14 @@ function Install-Sy {
                 $fields = $l.Trim() -split '\s+', 2
                 if ($fields.Count -ne 2) { continue }   # malformed line: skip it
                 $n = $fields[1].TrimStart('*')
-                if ($n.StartsWith('sy_') -and $n.EndsWith($suffix)) { $archive = $n; break }
+                if ($n.StartsWith('wy_') -and $n.EndsWith($suffix)) { $archive = $n; break }
             }
             if (-not $archive) {
                 [Console]::Error.WriteLine("install.ps1: SHA256SUMS lists no archive for windows_$arch"); return 3
             }
             $Version = $archive.Substring(3, $archive.Length - 3 - $suffix.Length)
         } else {
-            $archive = "sy_${Version}_windows_$arch.zip"
+            $archive = "wy_${Version}_windows_$arch.zip"
         }
 
         try {
@@ -124,8 +124,8 @@ function Install-Sy {
         # workflow, which a checksum from the same release cannot. Checked whenever gh is installed.
         $proof = 'checksum ok'
         $note = $null
-        if ($env:SY_VERIFY_ATTESTATION -eq '0') {
-            $note = 'build attestation not checked (SY_VERIFY_ATTESTATION=0); the checksum shows the download is intact, not who built it'
+        if ($env:WY_VERIFY_ATTESTATION -eq '0') {
+            $note = 'build attestation not checked (WY_VERIFY_ATTESTATION=0); the checksum shows the download is intact, not who built it'
         } elseif (Get-Command gh -ErrorAction SilentlyContinue) {
             # 5.1 turns native stderr into an error record under Stop; any failure here is exit 3.
             $ok = $false
@@ -137,24 +137,24 @@ function Install-Sy {
                 if ($ok) { break }
             }
             if (-not $ok) {
-                [Console]::Error.WriteLine("install.ps1: attestation verification failed for $archive; nothing installed (gh must be signed in and reach github.com; SY_VERIFY_ATTESTATION=0 skips this check)"); return 3
+                [Console]::Error.WriteLine("install.ps1: attestation verification failed for $archive; nothing installed (gh must be signed in and reach github.com; WY_VERIFY_ATTESTATION=0 skips this check)"); return 3
             }
             $proof = 'checksum ok, build attestation ok'
-        } elseif ($env:SY_VERIFY_ATTESTATION -eq '1') {
-            [Console]::Error.WriteLine("install.ps1: SY_VERIFY_ATTESTATION=1 needs the gh CLI, which is not installed; nothing installed"); return 3
+        } elseif ($env:WY_VERIFY_ATTESTATION -eq '1') {
+            [Console]::Error.WriteLine("install.ps1: WY_VERIFY_ATTESTATION=1 needs the gh CLI, which is not installed; nothing installed"); return 3
         } else {
             $note = 'build attestation not checked because the gh CLI is not installed; the checksum shows the download is intact, not who built it. Install gh (https://cli.github.com) and run the installer again to check it'
         }
 
         Expand-Archive -Path (Join-Path $tmp $archive) -DestinationPath (Join-Path $tmp 'x') -Force
-        $exe = Join-Path $tmp 'x\sy.exe'
+        $exe = Join-Path $tmp 'x\wy.exe'
         if (-not (Test-Path $exe)) {
-            [Console]::Error.WriteLine("install.ps1: $archive does not contain sy.exe"); return 3
+            [Console]::Error.WriteLine("install.ps1: $archive does not contain wy.exe"); return 3
         }
 
         New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
-        $dest = Join-Path $BinDir 'sy.exe'
-        $new = Join-Path $BinDir ('sy.exe.' + [Guid]::NewGuid().ToString('N') + '.new')
+        $dest = Join-Path $BinDir 'wy.exe'
+        $new = Join-Path $BinDir ('wy.exe.' + [Guid]::NewGuid().ToString('N') + '.new')
         [IO.File]::Copy($exe, $new, $false) # fails if the name exists: an exclusive temp file
         $moved = $false
         for ($i = 0; $i -lt 5 -and -not $moved; $i++) {
@@ -166,7 +166,7 @@ function Install-Sy {
             [Console]::Error.WriteLine("install.ps1: cannot replace $dest (in use?)"); return 4
         }
         $legacyExe = Join-Path $BinDir ($legacyCli + '.exe')
-        if ($legacyCli -ne 'sy' -and (Test-Path -PathType Leaf $legacyExe)) {
+        if ($legacyCli -ne 'wy' -and (Test-Path -PathType Leaf $legacyExe)) {
             # Hooks, tasks and launchers written for the old name keep working.
             try { Copy-Item -Force -Path $dest -Destination $legacyExe } catch { Write-Host "note: $legacyExe is in use and stays as it was" }
         }
@@ -174,7 +174,7 @@ function Install-Sy {
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $tmp
     }
 
-    Write-Host "sy $Version downloaded, $proof, installed to $dest"
+    Write-Host "wy $Version downloaded, $proof, installed to $dest"
     if ($note) { Write-Host "note: $note" }
     $onPath = ($env:PATH -split ';') | Where-Object { $_.TrimEnd('\') -eq $BinDir.TrimEnd('\') }
     if (-not $onPath) {
@@ -189,7 +189,7 @@ function Install-Sy {
         $setupCode = $LASTEXITCODE
         return $setupCode
     }
-    Write-Host 'run: sy setup'
+    Write-Host 'run: wy setup'
     return 0
 }
 

@@ -55,7 +55,7 @@ test('the timeout aborts a hub that does not answer', async () => {
 
 test('the token only goes to the hub origin: paths cannot leave it', () => {
   assert.equal(hubUrl('https://hub.example.com', '/v1/overview'), 'https://hub.example.com/v1/overview');
-  assert.equal(hubUrl('https://hub.example.com/sy', '/v1/overview'), 'https://hub.example.com/sy/v1/overview');
+  assert.equal(hubUrl('https://hub.example.com/wy', '/v1/overview'), 'https://hub.example.com/wy/v1/overview');
   assert.equal(hubUrl('https://hub.example.com', '//evil.example/v1/x'), null);
   assert.equal(hubUrl('https://hub.example.com', 'https://evil.example/v1/x'), null);
   assert.equal(hubUrl('https://hub.example.com', '/other'), null);
@@ -63,7 +63,7 @@ test('the token only goes to the hub origin: paths cannot leave it', () => {
   assert.equal(hubUrl('nope', '/v1/a'), null);
 });
 
-test('plain http: loopback, or a URL sy reported', async () => {
+test('plain http: loopback, or a URL wy reported', async () => {
   assert.equal(hubUrlAllowed('http://127.0.0.1:8787'), true);
   assert.equal(hubUrlAllowed('http://localhost:8787'), true);
   assert.equal(hubUrlAllowed('http://[::1]:8787'), true);

@@ -1,4 +1,4 @@
-// Package launcher renders the `claude-N` launchers sy writes for folders that have none
+// Package launcher renders the `claude-N` launchers wy writes for folders that have none
 // (setup.md 8.3), parses their marker, and hashes them so "still ours" can be told later.
 //
 // A Unix launcher is a /bin/sh script, a Windows one a .cmd file. The second line of both is
@@ -90,7 +90,7 @@ func renderUnix(s Spec) []byte {
 	var b strings.Builder
 	b.WriteString("#!/bin/sh\n")
 	b.WriteString("# " + markerLine(s) + "\n")
-	b.WriteString("# Claude Code as " + oneLine(s.Slot) + ". Written by sy setup; sy uninstall removes it.\n")
+	b.WriteString("# Claude Code as " + oneLine(s.Slot) + ". Written by wy setup; wy uninstall removes it.\n")
 	b.WriteString("CLAUDE_CONFIG_DIR=" + shValue(s.Slot) + "\n")
 	b.WriteString("export CLAUDE_CONFIG_DIR\n")
 	b.WriteString("exec claude \"$@\"\n")
@@ -102,7 +102,7 @@ func renderWindows(s Spec) []byte {
 	lines := []string{
 		"@echo off",
 		"rem " + cmdText(markerLine(s)),
-		"rem Claude Code as " + cmdText(oneLine(s.Slot)) + ". Written by sy setup; sy uninstall removes it.",
+		"rem Claude Code as " + cmdText(oneLine(s.Slot)) + ". Written by wy setup; wy uninstall removes it.",
 		`@set "CLAUDE_CONFIG_DIR=` + dir + `"`,
 		"@claude %*",
 	}
@@ -191,14 +191,14 @@ func Hash(content []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// StillOurs reports whether content still has the hash sy recorded: a launcher whose hash
+// StillOurs reports whether content still has the hash wy recorded: a launcher whose hash
 // differs belongs to the person now (uninstall and undo leave it).
 func StillOurs(content []byte, recordedHash string) bool {
 	return recordedHash != "" && Hash(content) == recordedHash
 }
 
 // Name is the launcher name of a folder given as "~/.claude-2": "claude-2". The default
-// folder "~/.claude" is "claude" (never written by sy).
+// folder "~/.claude" is "claude" (never written by wy).
 func Name(slot string) string {
 	return strings.TrimPrefix(path.Base(strings.ReplaceAll(slot, `\`, "/")), ".")
 }

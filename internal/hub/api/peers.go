@@ -8,12 +8,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
-	"github.com/mraj602/switchyard/internal/hub/peerrelay"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	hubkeys "github.com/mraj602/watchyard/internal/hub/keys"
+	"github.com/mraj602/watchyard/internal/hub/peerrelay"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 // Peers endpoints (peers.md 5.4, 6.3, 10, 11; api.yaml tag peers): the matrix, the kill
@@ -25,7 +25,7 @@ func init() {
 		Register(method, path, func(s *Server) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if s.cfg.Keys == nil {
-					auth.WriteError(w, http.StatusServiceUnavailable, "unavailable", "this hub has no signing key; restart `sy hub serve`")
+					auth.WriteError(w, http.StatusServiceUnavailable, "unavailable", "this hub has no signing key; restart `wy hub serve`")
 					return
 				}
 				h(s, w, r)

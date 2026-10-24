@@ -9,19 +9,19 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/setup/apply"
-	"github.com/mraj602/switchyard/internal/setup/backup"
-	"github.com/mraj602/switchyard/internal/setup/backup/fakes"
-	"github.com/mraj602/switchyard/internal/setup/ledger"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/testtree"
+	"github.com/mraj602/watchyard/internal/setup/apply"
+	"github.com/mraj602/watchyard/internal/setup/backup"
+	"github.com/mraj602/watchyard/internal/setup/backup/fakes"
+	"github.com/mraj602/watchyard/internal/setup/ledger"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/testtree"
 )
 
 var ctx = context.Background()
 
 func simple(t *testing.T) (*testtree.Builder, apply.Options, apply.Deps) {
 	b := testtree.New(t, "")
-	o := apply.Options{StateDir: b.Abs("state"), Command: "t", SyVersion: "0.3.0", Machine: "m", SyPath: "/bin/sy"}
+	o := apply.Options{StateDir: b.Abs("state"), Command: "t", SyVersion: "0.3.0", Machine: "m", SyPath: "/bin/wy"}
 	d := apply.Deps{Sharer: &fakes.Sharer{}, Plugins: &fakes.Plugins{}, Contents: contents}
 	return b, o, d
 }
@@ -253,7 +253,7 @@ func TestRunUndoRemovesOnlyOurEntriesAndCreated(t *testing.T) {
 		t.Fatalf("%v %+v", err, ur)
 	}
 	plugins := readJSON(t, reg)["plugins"].(map[string]any)
-	if _, ok := plugins["switchyard@sy-local"]; ok {
+	if _, ok := plugins["watchyard@wy-local"]; ok {
 		t.Fatal("our entry kept")
 	}
 	if plugins["other@x"] == nil || plugins["later@y"] == nil {
@@ -416,14 +416,14 @@ func TestServiceUndoUninstallsAndRestoresUnit(t *testing.T) {
 	d.Service = svc
 	unit := b.Abs("units/hub.service")
 	start := testtree.Take(t, b.Root, testtree.Opts{Ignore: ignoreState})
-	p := plan(model.Action{Op: model.OpService, Name: "switchyard-hub", Unit: unit, Listen: "127.0.0.1:19100", Step: model.StepHub})
+	p := plan(model.Action{Op: model.OpService, Name: "watchyard-hub", Unit: unit, Listen: "127.0.0.1:19100", Step: model.StepHub})
 	if _, err := apply.Run(ctx, p, o, d); err != nil {
 		t.Fatal(err)
 	}
 	if len(svc.Installed()) != 1 {
 		t.Fatal("not installed")
 	}
-	if got := svc.Spec("switchyard-hub").Listen; got != "127.0.0.1:19100" {
+	if got := svc.Spec("watchyard-hub").Listen; got != "127.0.0.1:19100" {
 		t.Errorf("service installed with listen %q, want the plan's 127.0.0.1:19100", got)
 	}
 	ur, err := backup.Undo(ctx, o.StateDir, "", backup.Deps{Sharer: &fakes.Sharer{}, Service: svc}, backup.Options{})
@@ -462,13 +462,13 @@ func TestLoginsReturnedNotRun(t *testing.T) {
 	}
 }
 
-// mergeExec adds the sy-local entry to the registry without dropping others.
+// mergeExec adds the wy-local entry to the registry without dropping others.
 type mergeExec struct{ root, reg string }
 
 func (m mergeExec) Run(ctx context.Context, argv []string, env map[string]*string) ([]byte, error) {
-	if err := os.MkdirAll(filepath.Join(m.root, "cache", "sy-local"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(m.root, "cache", "wy-local"), 0o755); err != nil {
 		return nil, err
 	}
-	_, err := (&fakes.Sharer{}).JSONSet(m.reg, "/plugins/switchyard@sy-local", json.RawMessage(`[{"v":1}]`))
+	_, err := (&fakes.Sharer{}).JSONSet(m.reg, "/plugins/watchyard@wy-local", json.RawMessage(`[{"v":1}]`))
 	return []byte(`{"outcome":"ok"}`), err
 }

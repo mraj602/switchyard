@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Redact raw Switchyard fixtures. Run as:  python3 -I redact.py <raw dir> <out dir>
+"""Redact raw Watchyard fixtures. Run as:  python3 -I redact.py <raw dir> <out dir>
 
 Reads every file under <raw dir>, writes a redacted copy under <out dir> with the same relative
 paths. Nothing is read from outside <raw dir> except the machine hostname.

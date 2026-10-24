@@ -4,9 +4,9 @@
 // the module that holds the autostart, the store's `settings` and the `settings` bus event.
 import { FLAG_AUTOSTART, FLAG_BACKGROUND } from '../shared/constants.js';
 
-export const NOTICE_TITLE = 'Switchyard is still running';
-export const NOTICE_WITH_TRAY = 'Switchyard keeps running in the tray. Quit from the tray menu.';
-export const NOTICE_NO_TRAY = 'There is no tray icon on this desktop, so Switchyard keeps running with no window. Start Switchyard again to show it, or turn off Keep running in Settings so closing the window quits.';
+export const NOTICE_TITLE = 'Watchyard is still running';
+export const NOTICE_WITH_TRAY = 'Watchyard keeps running in the tray. Quit from the tray menu.';
+export const NOTICE_NO_TRAY = 'There is no tray icon on this desktop, so Watchyard keeps running with no window. Start Watchyard again to show it, or turn off Keep running in Settings so closing the window quits.';
 
 /** @param {string[]} argv @returns {{background: boolean, autostart: boolean|null}} */
 export function parseArgv(argv) {

@@ -8,5 +8,5 @@ export function render() {
     h('p', { class: 'calm', role: 'status', 'data-key': 'not-found' },
       'There is no page at this address. The link may be old or mistyped. ',
       h('a', { href: '#/', 'data-key': 'not-found-home' }, 'Go to Now')));
-  return { title: 'Not found · Switchyard', node };
+  return { title: 'Not found · Watchyard', node };
 }

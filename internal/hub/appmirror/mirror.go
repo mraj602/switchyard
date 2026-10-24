@@ -363,7 +363,7 @@ func (m *Mirror) req(ctx context.Context, url string) (*http.Response, error) {
 		return nil, err
 	}
 	rq.Header.Set("Accept", "application/vnd.github+json")
-	rq.Header.Set("User-Agent", "switchyard-hub")
+	rq.Header.Set("User-Agent", "watchyard-hub")
 	res, err := m.c.Client.Do(rq)
 	if err != nil {
 		return nil, fmt.Errorf("appmirror: %w", err)

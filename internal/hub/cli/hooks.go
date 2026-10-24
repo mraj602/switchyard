@@ -3,12 +3,12 @@ package cli
 import (
 	"net/http"
 
-	"github.com/mraj602/switchyard/internal/hub/push/clock"
-	"github.com/mraj602/switchyard/internal/hub/push/engine"
-	"github.com/mraj602/switchyard/internal/hub/push/refresh"
+	"github.com/mraj602/watchyard/internal/hub/push/clock"
+	"github.com/mraj602/watchyard/internal/hub/push/engine"
+	"github.com/mraj602/watchyard/internal/hub/push/refresh"
 )
 
-// serveHooks are the seams `sy hub serve` takes from its build: the real clock and nothing
+// serveHooks are the seams `wy hub serve` takes from its build: the real clock and nothing
 // else in a normal build; a fake clock with a control socket and a test push client in a
 // binary built with `-tags fakeclock` (test/e2e/push only, see hooks_fakeclock.go).
 type serveHooks struct {

@@ -10,13 +10,13 @@ fires an alert, where it goes and how to tune it. The full rules are in
 ```mermaid
 sequenceDiagram
     participant CC as Claude Code session
-    participant SY as sy hook (machine)
+    participant SY as wy hook (machine)
     participant OB as Outbox (machine)
     participant HUB as Hub
     participant PH as Android app / web app
     CC->>SY: Notification hook (permission prompt)
     SY->>OB: append one record
-    OB->>HUB: sy flush (POST /v1/ingest)
+    OB->>HUB: wy flush (POST /v1/ingest)
     HUB->>HUB: session state = needs_permission
     HUB->>HUB: alert due 30 s later (rule delay)
     alt you answer within 30 s
@@ -27,9 +27,9 @@ sequenceDiagram
     end
 ```
 
-1. Claude Code runs the Switchyard plugin's hook on each event. `sy hook` writes one record to
+1. Claude Code runs the Watchyard plugin's hook on each event. `wy hook` writes one record to
    the local outbox and returns at once; it never blocks or answers for you.
-2. `sy flush` sends the outbox to the hub (right after the hook, and every minute from the
+2. `wy flush` sends the outbox to the hub (right after the hook, and every minute from the
    timer).
 3. The hub folds the records into each session's state. When a session enters a state that
    needs you, the hub creates one alert for that episode, due after the rule's delay.
@@ -81,7 +81,7 @@ To get these pushes anyway, set `skip_peers` to `false` in the hub's push settin
 ## Changing the rules
 
 Rules are global and belong to the owner. Open the board signed in as owner
-(`sy hub owner-link` on the hub prints a one-time sign-in link), then **Alerts**:
+(`wy hub owner-link` on the hub prints a one-time sign-in link), then **Alerts**:
 
 1. Each trigger has a switch and a delay. Change them in place.
 2. Add an override to treat one account, project or machine differently (for example: no
@@ -111,7 +111,7 @@ iPhone, since there is no native iOS app.
 
 1. Give the hub an `https://` address (see [install.md](install.md)); browsers allow push
    only in a secure context.
-2. On the hub: `sy phone pair --url https://laptop.example.ts.net`. It prints a QR and a
+2. On the hub: `wy phone pair --url https://laptop.example.ts.net`. It prints a QR and a
    6-digit code.
 3. Scan the QR with the phone's camera.
    - Android (Chrome): the page offers **Install app**.
@@ -168,7 +168,7 @@ no control for it.
 
 ## Private pushes
 
-With private pushes on, the lock screen shows only "Switchyard" and "1 session needs you",
+With private pushes on, the lock screen shows only "Watchyard" and "1 session needs you",
 "An account is near its limit" and similar. No project, account or session name appears in
 the text or the link; the details load when you open the app. Turn it on per device in
 Settings, or as the hub default (owner).
@@ -184,11 +184,11 @@ reachable over SSH) can send ntfy pushes itself when a session needs you and the
 heard from it.
 
 ```sh
-sy direct-push on --server https://ntfy.sh --after 2m --secret-stdin
+wy direct-push on --server https://ntfy.sh --after 2m --secret-stdin
 # stdin: {"topic": "sy-...", "token": "tk_..."}   (token optional)
-sy direct-push test        # sends a test message
-sy direct-push status
-sy direct-push off
+wy direct-push test        # sends a test message
+wy direct-push status
+wy direct-push off
 ```
 
 Use the same topic as a hub ntfy target so your phone already listens. The topic is read from
@@ -200,7 +200,7 @@ the hub. Details: [machines.md, section 5](../spec/machines.md#5-direct-ntfy-fro
 ## Checking delivery
 
 - The board's **Alerts** page lists recent pushes and their outcome per target.
-- `sy doctor` on the hub checks the public URL, the Web Push keys, that at least one device
+- `wy doctor` on the hub checks the public URL, the Web Push keys, that at least one device
   can receive pushes, and the last delivery error.
 - On Android, Settings, Notifications shows the link state; see [android.md](android.md).
 - More in [troubleshooting.md](troubleshooting.md).

@@ -13,7 +13,7 @@ const MaxBoundAccounts = 64
 
 // AccountsBody is the body of a machine_accounts document (keys.md 4.3): the accounts whose
 // sessions one machine's device may speak for in peer envelopes. The owner signs it with
-// `sy keys certify`; it names the certificate's device, machine and sign key, so new keys
+// `wy keys certify`; it names the certificate's device, machine and sign key, so new keys
 // need a new document.
 type AccountsBody struct {
 	V        int      `json:"v"`

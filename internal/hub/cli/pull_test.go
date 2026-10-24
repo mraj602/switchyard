@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/hub/pull"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/pull"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 func cliKey(seed byte) string {
@@ -36,7 +36,7 @@ func newPullFixture(t *testing.T) *pullFixture {
 	t.Helper()
 	root := t.TempDir()
 	t.Setenv("HOME", root)
-	t.Setenv("SY_HOME", root)
+	t.Setenv("WY_HOME", root)
 	t.Setenv("CLAUDE_CONFIG_DIR", "")
 	db := filepath.Join(root, "hub.db")
 	st, err := store.Open(context.Background(), db, store.Options{NoBackupBeforeMigrate: true})
@@ -51,7 +51,7 @@ func newPullFixture(t *testing.T) *pullFixture {
 			for i, a := range args {
 				if a == "-f" {
 					_ = os.WriteFile(args[i+1], []byte("PRIVATE"), 0o600)
-					_ = os.WriteFile(args[i+1]+".pub", []byte("ssh-ed25519 AAAAFAKEPUB switchyard-pull@hub\n"), 0o644)
+					_ = os.WriteFile(args[i+1]+".pub", []byte("ssh-ed25519 AAAAFAKEPUB watchyard-pull@hub\n"), 0o644)
 				}
 			}
 			return nil, nil

@@ -56,7 +56,7 @@ function certInfo(url, p, pinned) {
   };
 }
 
-/** The messages the shell shows for a failed `sy desktop token`, by exit code (C4). */
+/** The messages the shell shows for a failed `wy desktop token`, by exit code (C4). */
 export function pairError(r, hadCode) {
   switch (r.exit) {
     case 2:
@@ -64,12 +64,12 @@ export function pairError(r, hadCode) {
       return 'That code was refused or has expired. Make a new one and try again.';
     case 4:
       return hadCode
-        ? 'Pairing is not possible here. Run sy setup first.'
-        : 'Pairing without a code needs the hub on this computer or a working admin channel (machines.hub_admin). Type a code from the board (More, Devices, Add desktop app) or from sy hub pair --kind desktop.';
+        ? 'Pairing is not possible here. Run wy setup first.'
+        : 'Pairing without a code needs the hub on this computer or a working admin channel (machines.hub_admin). Type a code from the board (More, Devices, Add desktop app) or from wy hub pair --kind desktop.';
     case 5:
       return 'The hub is not reachable.';
     default:
-      // 1: the admin channel exists but its command failed; sy's message says why.
+      // 1: the admin channel exists but its command failed; wy's message says why.
       return r.error ? `Pairing failed: ${r.error}` : 'Pairing failed.';
   }
 }
@@ -80,13 +80,13 @@ const sameLink = (a, b) => {
 };
 
 /**
- * @param {{electron: object, sy: object, security: object, window: object, bus: object, ipc: object,
+ * @param {{electron: object, wy: object, security: object, window: object, bus: object, ipc: object,
  *          fs: object, path: object, tokenFile: string, fetch: typeof fetch, log: object,
  *          openSessionLink: (url: string, seat: object|null) => boolean, timers?: object,
  *          platform?: string, streamOptions?: object}} deps
  *   openSessionLink: tabs.openLink, late-bound by index.js (tabs start after hub)
  * @returns {{
- *   start(): Promise<void>,           // sy desktop info, token, stream
+ *   start(): Promise<void>,           // wy desktop info, token, stream
  *   route(route: string): Promise<void>,  // load <hub>/<route> in the hub view (hub:route, notifications, tray)
  *   view(): object|null,              // the hub WebContentsView once created
  *   ensureView(): Promise<object|null>, // create and load the hub view; window.select('hub') must call it
@@ -98,7 +98,7 @@ const sameLink = (a, b) => {
  */
 export function create(deps) {
   const log = deps.log ?? console;
-  const { bus, sy } = deps;
+  const { bus, wy } = deps;
   const timers = deps.timers ?? { setTimeout, clearTimeout };
   const tokens = createTokenStore({
     safeStorage: deps.electron.safeStorage, fs: deps.fs, path: deps.path, file: deps.tokenFile, log, platform: deps.platform,
@@ -147,8 +147,8 @@ export function create(deps) {
     if (changed) emitHub();
   };
 
-  // The app dials the hub itself (direct) when there is no sy or sy has no hub: the address was
-  // checked by direct.check (https, or a local network), so plain http is allowed like for sy.
+  // The app dials the hub itself (direct) when there is no wy or wy has no hub: the address was
+  // checked by direct.check (https, or a local network), so plain http is allowed like for wy.
   const allowHttp = () => reportedBySy || state.direct;
   // Every request of the app's own to the hub: a pinned https origin accepts exactly its pinned
   // certificate (pin.js), any other URL is the normal fetch with normal validation.
@@ -175,7 +175,7 @@ export function create(deps) {
     onOwner: (owner, until) => set({ owner, owner_until: owner ? until ?? null : null }),
     onLoginRefused: (status) => handleUnauthorized(status),
     onBlocked: () => set({ board_blocked: true }),
-    userAgentSuffix: deps.clientVersion ? `SwitchyardDesktop/${deps.clientVersion}` : 'SwitchyardDesktop',
+    userAgentSuffix: deps.clientVersion ? `WatchyardDesktop/${deps.clientVersion}` : 'WatchyardDesktop',
   });
   // The hub view's partition takes exactly the pinned certificate of a pinned hub host (C6).
   // Only this partition: claude.ai tabs and the shell keep Chromium's own validation.
@@ -231,7 +231,7 @@ export function create(deps) {
 
   // ---- status
 
-  let mode = 'no_sy'; // 'no_sy' | 'dial' | null: what sy reported before any hub logic applies
+  let mode = 'no_sy'; // 'no_sy' | 'dial' | null: what wy reported before any hub logic applies
   let unreachableStreak = 0;
 
   /**
@@ -262,10 +262,10 @@ export function create(deps) {
 
   async function refreshInfo() {
     if (stopped) return;
-    const info = await sy.info();
+    const info = await wy.info();
     if (stopped) return;
     await direct.load();
-    // sy (when there is one) wins; without sy, or with a sy that has no hub, the app uses the
+    // wy (when there is one) wins; without wy, or with a wy that has no hub, the app uses the
     // hub address it remembers itself.
     const syHasHub = info.ok && typeof info.hub?.url === 'string' && info.hub.url !== '' && !!info.hub.connected;
     if (!syHasHub && direct.url()) return refreshDirect(info);
@@ -275,7 +275,7 @@ export function create(deps) {
       dropHub();
       set({
         url: null, connected: false, reachable: false, paired: false, local: false, service: null, admin: null, version: null,
-        error: mode === 'no_sy' ? 'sy was not found' : info.error ?? 'sy desktop info failed',
+        error: mode === 'no_sy' ? 'wy was not found' : info.error ?? 'wy desktop info failed',
       });
       set({ status: statusFor() });
       return;
@@ -574,10 +574,10 @@ export function create(deps) {
       if (!r.ok) return { ok: false, error: r.error };
       return finishPair(r.device, r.token);
     }
-    if (state.status === 'no_sy') return { ok: false, error: 'sy was not found. Install it, then run sy setup.' };
+    if (state.status === 'no_sy') return { ok: false, error: 'wy was not found. Install it, then run wy setup.' };
     if (state.status === 'dial') return { ok: false, error: state.error };
-    if (!ready()) return { ok: false, error: 'sy is not connected to a hub. Run sy setup.' };
-    const r = await sy.token({ code, name: tokenName() });
+    if (!ready()) return { ok: false, error: 'wy is not connected to a hub. Run wy setup.' };
+    const r = await wy.token({ code, name: tokenName() });
     if (!r.ok) return { ok: false, error: pairError(r, code !== undefined) };
     if (typeof r.token !== 'string' || !r.token || typeof r.device !== 'string') return { ok: false, error: 'The hub answered without a token.' };
     const device = r.device;
@@ -589,7 +589,7 @@ export function create(deps) {
   // No spaces (TOKEN_NAME_RE): through an ssh admin channel the name is a remote word.
   function tokenName() {
     const safeName = machineName.replace(/[^A-Za-z0-9._-]/g, '').slice(0, 20);
-    return safeName ? `Switchyard-desktop-${safeName}` : 'Switchyard-desktop';
+    return safeName ? `Watchyard-desktop-${safeName}` : 'Watchyard-desktop';
   }
 
   async function finishPair(device, token) {
@@ -629,13 +629,13 @@ export function create(deps) {
     if (typeof args?.link === 'string' && args.link.trim() !== '') return ownerFromLink(args.link.trim());
     if (!state.url) await refreshInfo();
     if (state.direct) return { ok: false, error: 'Paste an owner link: on an owner device open More, Devices, Make another device owner.' };
-    if (!ready()) return { ok: false, error: 'sy is not connected to a hub. Run sy setup.' };
-    const r = await sy.ownerLink();
+    if (!ready()) return { ok: false, error: 'wy is not connected to a hub. Run wy setup.' };
+    const r = await wy.ownerLink();
     if (!r.ok) {
       return {
         ok: false,
         error: r.exit === 4
-          ? 'Owner sign-in needs the hub on this computer or an admin channel (machines.hub_admin). Run sy setup.'
+          ? 'Owner sign-in needs the hub on this computer or an admin channel (machines.hub_admin). Run wy setup.'
           : r.exit === 5 ? 'The hub is not reachable.' : r.error ? `Owner sign-in failed: ${r.error}` : 'Owner sign-in failed.',
       };
     }
@@ -650,10 +650,10 @@ export function create(deps) {
     return { ok: true };
   }
 
-  /** Check a hub address, remember it (no sy needed) and pair with a code when one is given. */
+  /** Check a hub address, remember it (no wy needed) and pair with a code when one is given. */
   async function connect({ url, code, insecureLan } = {}) {
     await refreshInfo();
-    if (state.connected && !state.direct) return { ok: false, error: `sy on this computer is already connected to ${state.url}. Use Pair this computer.` };
+    if (state.connected && !state.direct) return { ok: false, error: `wy on this computer is already connected to ${state.url}. Use Pair this computer.` };
     // An https address whose certificate fails normal validation (or is not its pinned one)
     // stops here: the shell shows the fingerprint and asks the person to trust it (hub:trust-cert).
     const opts = { insecureLan: insecureLan === true };
@@ -703,7 +703,7 @@ export function create(deps) {
 
   /** Open the release page of the update notice (or the release list) in the system browser. */
   async function openRelease() {
-    const n = updateNotice({ app: deps.clientVersion, hub: state.version, sy: state.sy_version });
+    const n = updateNotice({ app: deps.clientVersion, hub: state.version, wy: state.sy_version });
     const ok = await deps.security.openExternalSafe(n?.kind === 'update' ? n.url : releaseUrl(null));
     return { ok };
   }
@@ -744,7 +744,7 @@ export function create(deps) {
   }
 
   async function hubService({ action }) {
-    const r = await sy.service(action);
+    const r = await wy.service(action);
     if (!r.ok) return { ok: false, error: r.error, service: null, health: false };
     set({ service: r.service ?? null });
     if (action !== 'status') refreshInfo().catch(() => {});
@@ -769,11 +769,11 @@ export function create(deps) {
   }
 
   async function localAccounts() {
-    return sy.accountsList();
+    return wy.accountsList();
   }
 
   async function shareAccount({ folder, share }) {
-    const r = await sy.share(folder, share);
+    const r = await wy.share(folder, share);
     return r.ok ? { ok: true } : { ok: false, error: r.error };
   }
 
@@ -804,7 +804,7 @@ export function create(deps) {
         await refreshInfo();
       } catch (err) {
         log.warn?.(`hub: start: ${err?.message ?? err}`);
-        set({ status: 'not_connected', error: 'sy desktop info failed' });
+        set({ status: 'not_connected', error: 'wy desktop info failed' });
       }
       schedulePoll();
     },

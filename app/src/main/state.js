@@ -15,7 +15,7 @@
 //   autostart false.
 // - banners: setBanner(key, banner|null), for notices main wants to keep on screen.
 // - about: deps.about (app, Electron and Chromium versions, platform), when boot gives it.
-// - update: shared/version.js updateNotice of the app's version against the hub's and sy's.
+// - update: shared/version.js updateNotice of the app's version against the hub's and wy's.
 
 import { WARNING_VERSION, READING_ON, READING_OFF, READING_NEVER_ASKED, STATE_PUSH_DEBOUNCE_MS, TAB_ID_RE } from '../shared/constants.js';
 import { TOAST_LEVELS, SEAT_ID_PATTERN } from '../shared/ipc.js';
@@ -188,7 +188,7 @@ function hubState(h, needsYou) {
 
 /** UpdateNotice (shared/ipc.js) without the URL, which main alone opens (app:open-release). */
 function updateState(app, h) {
-  const n = updateNotice({ app, hub: h?.version, sy: h?.sy_version });
+  const n = updateNotice({ app, hub: h?.version, wy: h?.sy_version });
   return n ? { kind: n.kind, app: n.app, version: n.version, from: n.from } : null;
 }
 

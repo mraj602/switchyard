@@ -1,6 +1,6 @@
 # Records
 
-Status: spec v1. Applies to `sy` (every client command), the desktop app and the hub.
+Status: spec v1. Applies to `wy` (every client command), the desktop app and the hub.
 Change this file before changing any code that writes or reads records ("spec first").
 
 A **record** is one fact a client saw: a hook event, a status-line limit reading, a claude.ai
@@ -23,7 +23,7 @@ is fixed by replaying the `record` table.
    the content fields in section 4 (prompts, tool input and output, full assistant
    messages). That list is closed: everything else is kept as Claude Code wrote it.
 4. **No secrets.** No record ever holds a Claude token, cookie, API key or password. As a
-   second line of defence, `sy` deletes any object key, at any depth, whose name matches
+   second line of defence, `wy` deletes any object key, at any depth, whose name matches
    `(?i)(token|secret|password|credential|cookie|api[_-]?key|session[_-]?key)` from
    payloads it did not build itself. The deletion is listed in `redacted` (path relative to
    the payload, `.` between keys, `[]` for arrays). Two exceptions: (a) token **counters**
@@ -57,7 +57,7 @@ One `POST /v1/ingest` request body. Sent as `application/json`, optionally with
 ```json
 {
   "v": 1,
-  "client": "sy/0.1.0",
+  "client": "wy/0.1.0",
   "records": [ <record>, <record>, ... ]
 }
 ```
@@ -93,7 +93,7 @@ request failed (network error, 5xx, 429).
     "src": "claude_json"
   },
   "term": {"app": "warp", "id": "6c1d…", "focus_url": "warp://focus/6c1d…"},
-  "client": "sy/0.1.0",
+  "client": "wy/0.1.0",
   "redacted": ["prompt"],
   "payload": { ... }
 }
@@ -109,7 +109,7 @@ request failed (network error, 5xx, 429).
 | `slot` | string | depends | The config folder the fact came from, written with `~` for the home folder and `/` as separator (`~/.claude`, `~/.claude-2`, `~/work/.claude-x`). Required for `hook_event`, `limit_sample`, `session_list`, `slot_info`; optional for `token_rows` and `history_import` (omitted when the transcripts folder is shared by several slots); absent for `web_usage`. |
 | `seat` | object | no | The login the slot had at `ts`. See 3.2. Absent when the folder is not logged in or the login could not be read. |
 | `term` | object | no | Terminal the event came from. See 3.3. Only on `hook_event`. |
-| `client` | string | no | `name/semver` of the program that wrote this record (`sy/0.1.0`, `switchyard-desktop/0.6.0`). |
+| `client` | string | no | `name/semver` of the program that wrote this record (`wy/0.1.0`, `watchyard-desktop/0.6.0`). |
 | `redacted` | array of string | no | JSON paths (dot notation, `[]` for arrays) of fields the client removed or shortened, e.g. `["prompt", "tool_input"]`. Lets the hub tell "absent" from "removed". |
 | `derived` | object | no | Values the client computed from content it then removed. Defined per kind below. Never contains content beyond what section 4 allows. |
 | `payload` | object | yes | The fact itself. Per kind below. Always a JSON object. |
@@ -122,7 +122,7 @@ request failed (network error, 5xx, 429).
 - The hub accepts any string matching `^[0-9A-Za-z_-]{16,64}$`, so the desktop app may use
   `crypto.randomUUID()` (36 characters, lower case with dashes).
 - The id is made when the record is first written to the outbox and never changes, even
-  across retries, hub moves or `sy hub import`.
+  across retries, hub moves or `wy hub import`.
 - The hub's duplicate key is the id alone. If a second upload carries an id that is already
   stored **from the same device**, it is accepted (duplicate). If it is stored from a
   **different** device, it is rejected with reason `id_conflict` and not stored again.
@@ -152,7 +152,7 @@ stored; its session is attributed later or shows as Unattributed.
 | `app` | string | yes | Terminal program, lower case: `warp`, `ghostty`, `iterm`, `wezterm`, `kitty`, `vscode`, `windows-terminal`, `tmux`, `unknown`. From `TERM_PROGRAM`, `WARP_*`, `TMUX` and similar. |
 | `id` | string | no | The terminal's own pane or session id. Warp: `WARP_TERMINAL_SESSION_UUID`. |
 | `focus_url` | string | no | URL that brings this pane forward. Warp: `WARP_FOCUS_URL`. Over SSH: `LC_SY_FOCUS` passed from the laptop. |
-| `host` | string | no | Machine id of the machine whose terminal shows this pane, when it differs from `machine` (an SSH session shown in a laptop tab). Set by `sy hook` from `LC_SY_HOST`, which `sy ssh` sends (terminal.md T9). |
+| `host` | string | no | Machine id of the machine whose terminal shows this pane, when it differs from `machine` (an SSH session shown in a laptop tab). Set by `wy hook` from `LC_SY_HOST`, which `wy ssh` sends (terminal.md T9). |
 
 The hub serves `focus_url` only to readers on the machine named by `host` (or `machine` when
 `host` is absent). Phones never receive it.
@@ -161,7 +161,7 @@ The hub serves `focus_url` only to readers on the machine named by `host` (or `m
 
 ### 4.1 `hook_event`
 
-Written by `sy hook` for each Claude Code hook event (see [states.md](states.md) for which
+Written by `wy hook` for each Claude Code hook event (see [states.md](states.md) for which
 events are installed).
 
 - `payload` is the JSON object Claude Code wrote to the hook's stdin, with every field
@@ -173,7 +173,7 @@ Each is removed on **every** event, whether or not it is listed against that eve
 (a content field on an event nobody has captured yet is still content); the Events column
 says where Claude Code is known to send it. The one exception is `error` on StopFailure.
 
-| Field in hook input | Events | What `sy` does |
+| Field in hook input | Events | What `wy` does |
 | --- | --- | --- |
 | `prompt` | UserPromptSubmit | Removed. `derived.prompt_chars` = its length in Unicode code points. |
 | `tool_input` | PreToolUse, PostToolUse, PostToolUseFailure, PermissionRequest, PermissionDenied | Removed. `tool_name` and `tool_use_id` are kept. For `AskUserQuestion`, `derived.question` = the first question's text, cut to 300 characters, only if last messages are allowed. |
@@ -204,10 +204,10 @@ question line, cut to 120 characters.
 | `error_chars` | integer | Length of a PostToolUseFailure error. |
 | `permission_suggestions` | integer | Number of permission suggestions. |
 | `session_crons`, `background_tasks` | integer | Number of items in the Stop/SubagentStop list of that name. |
-| `remote_url` | string | Remote Control session URL, if `sy` found one in the transcript tail. The hub keeps it only when it starts with `https://claude.ai/` (the board renders it as a link) and drops anything else. |
+| `remote_url` | string | Remote Control session URL, if `wy` found one in the transcript tail. The hub keeps it only when it starts with `https://claude.ai/` (the board renders it as a link) and drops anything else. |
 | `peer_prompt` | boolean | UserPromptSubmit only, present only when `true`: a peer message started this turn. The prompt starts with `<cross-session-message`, or it came within 10 s of a delivery into the session ([peers.md](peers.md) 2.4). Only the prefix is compared; nothing of the prompt is kept. Set whether or not peers are enabled (Claude Code's own `/peers` uses the same wrapper). |
 | `peer_wait` | boolean | Stop only, present only when `true` and `[peers] enabled`: the session waits on another session's reply ([peers.md](peers.md) 6.4). |
-| `hook_ms` | integer | How long `sy hook` took until the outbox write returned. For the 20 ms budget. |
+| `hook_ms` | integer | How long `wy hook` took until the outbox write returned. For the 20 ms budget. |
 
 Example (Stop, last messages allowed):
 
@@ -218,7 +218,7 @@ Example (Stop, last messages allowed):
   "slot": "~/.claude-2",
   "seat": {"account": "3f1c6a2e-…", "org": "9b20d4f1-…", "email": "a@example.com", "src": "claude_json"},
   "term": {"app": "ghostty"},
-  "client": "sy/0.1.0",
+  "client": "wy/0.1.0",
   "redacted": ["last_assistant_message"],
   "derived": {"last_message": "Should I also update the migration?", "last_message_chars": 1874, "hook_ms": 6},
   "payload": {
@@ -231,7 +231,7 @@ Example (Stop, last messages allowed):
 
 ### 4.2 `limit_sample`
 
-Written by `sy statusline` when the 5-hour or 7-day value changes, at most once a minute per
+Written by `wy statusline` when the 5-hour or 7-day value changes, at most once a minute per
 session, and always on the first status-line run of a session. A value that reaches 80, 95 or
 100 percent from below the last written one is written at once, inside the minute too, so
 the hub's limit alerts (push.md) do not wait for the session's next status line.
@@ -260,7 +260,7 @@ the hub's limit alerts (push.md) do not wait for the session's next status line.
 | `session_name` | string | Session name, if set. |
 | `cost.total_cost_usd` | number | Claude Code's own cost estimate. Stored, not used for analytics. |
 
-`derived` for `limit_sample` (computed by `sy` so the outbox can be read locally):
+`derived` for `limit_sample` (computed by `wy` so the outbox can be read locally):
 
 | Field | Type |
 | --- | --- |
@@ -275,7 +275,7 @@ Example:
   "v": 1, "id": "01JA2XRB3T0M2N4P6Q8R0S2T4V", "kind": "limit_sample",
   "ts": "2026-10-11T14:03:30.002Z", "machine": "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K",
   "slot": "~/.claude-2", "seat": {"account": "3f1c…", "org": "9b20…"},
-  "client": "sy/0.1.0",
+  "client": "wy/0.1.0",
   "derived": {"five_hour_pct": 42, "five_hour_resets_at": "2026-10-11T17:00:00.000Z", "seven_day_pct": 18, "seven_day_resets_at": "2026-10-15T18:00:00.000Z", "context_pct": 37},
   "payload": {"session_id": "c41e…", "model": {"id": "claude-opus-5", "display_name": "Opus"},
               "rate_limits": {"five_hour": {"used_percentage": 42, "resets_at": 1760202000}, "seven_day": {"used_percentage": 18, "resets_at": 1760551200}},
@@ -291,10 +291,10 @@ The app leaves out a free organisation when the account has a paid one (desktop.
 orgs"), because every account has a personal free organisation and it is not a seat of its own.
 
 - No `slot`. `seat` is required (`src: "claude_ai"`).
-- `client` is `switchyard-desktop/<app version>` (desktop.md C1). The app does not post to
-  `/v1/ingest` itself: it pipes the records to `sy outbox append`, which sets `id` and `v`,
-  and `sy flush` uploads them with the machine's own token (desktop.md C5). `machine` is the
-  id from `sy machine show --json`, and `ts` is the start time of the read.
+- `client` is `watchyard-desktop/<app version>` (desktop.md C1). The app does not post to
+  `/v1/ingest` itself: it pipes the records to `wy outbox append`, which sets `id` and `v`,
+  and `wy flush` uploads them with the machine's own token (desktop.md C5). `machine` is the
+  id from `wy machine show --json`, and `ts` is the start time of the read.
 - `payload.usage` is the raw `GET /api/organizations/{uuid}/usage` response, **kept whole**.
   Today it holds `five_hour`, `seven_day`, `seven_day_oauth_apps`, `seven_day_opus`,
   `seven_day_sonnet`, `seven_day_cowork`, `seven_day_omelette`, `tangelo`,
@@ -349,7 +349,7 @@ Example:
   "v": 1, "id": "1b4e28ba-2fa1-11d2-883f-0016d3cca427", "kind": "web_usage",
   "ts": "2026-10-11T14:05:00.120Z", "machine": "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K",
   "seat": {"account": "3f1c…", "org": "9b20…", "email": "a@example.com", "src": "claude_ai"},
-  "client": "switchyard-desktop/0.6.0",
+  "client": "watchyard-desktop/0.6.0",
   "payload": {
     "tab_id": "t_9c1e5f0a7b2d4e68", "active": true,
     "org": {"uuid": "9b20…", "name": "a@example.com's Organization", "capabilities": ["chat", "claude_max"], "rate_limit_tier": "default_claude_max_20x", "billing_type": "stripe_subscription", "raven_type": null},
@@ -371,7 +371,7 @@ every key.)
 
 ### 4.4 `token_rows`
 
-Written by `sy scan` after each Stop for that session (debounced) and on the timer. One API
+Written by `wy scan` after each Stop for that session (debounced) and on the timer. One API
 response per row, keyed by the API message id, one row per message id.
 A response can appear in several records with growing counts (streaming snapshots); the hub
 merges rows by keeping the largest value of each counter (a token upsert).
@@ -411,7 +411,7 @@ Example:
 {
   "v": 1, "id": "01JA2XT0Q1R2S3T4V5W6X7Y8Z9", "kind": "token_rows",
   "ts": "2026-10-11T14:03:25.000Z", "machine": "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K",
-  "client": "sy/0.1.0",
+  "client": "wy/0.1.0",
   "payload": {
     "rows": [{"key": "msg_01ABC…", "ts": "2026-10-11T14:03:20.551Z", "session_id": "c41e…", "cwd": "/home/me/api",
               "model": "claude-opus-5", "input": 12, "output": 811, "cache_5m": 0, "cache_1h": 4210, "cache_read": 88123, "thinking": 120, "sidechain": false}],
@@ -424,7 +424,7 @@ Example:
 
 ### 4.5 `session_list`
 
-Written by `sy agents` on the timer (every 5 minutes, see [states.md](states.md) section 5),
+Written by `wy agents` on the timer (every 5 minutes, see [states.md](states.md) section 5),
 once per slot. It is the input for `gone` detection.
 
 | Field | Type | Required | Meaning |
@@ -441,12 +441,12 @@ Items from `claude agents --json` (Claude Code 2.1.296) have `cwd`, `kind`
 in `testdata/agents/`.
 
 `complete` is true only when `claude agents --json` exited 0 and printed a JSON array for
-every run `sy` made for the slot. `~/.claude` is run twice, with `CLAUDE_CONFIG_DIR` unset
+every run `wy` made for the slot. `~/.claude` is run twice, with `CLAUDE_CONFIG_DIR` unset
 and set to `~/.claude`, because the two views differ (a background session started with
 the variable set appears only in the second); the lists are merged by `sessionId`. The
 `sessions_dir` fallback is never complete: it has no background sessions and can hold files
 of processes that died without cleaning up. Items from `sessions/*.json` additionally carry `bridgeSessionId`,
-`entrypoint`, `statusUpdatedAt`, `version` and more; `sy` drops `messagingSocketPath`
+`entrypoint`, `statusUpdatedAt`, `version` and more; `wy` drops `messagingSocketPath`
 and never reads the `*.key` files next to them.
 
 Example:
@@ -455,7 +455,7 @@ Example:
 {
   "v": 1, "id": "01JA2XV9…", "kind": "session_list", "ts": "2026-10-11T14:05:00.000Z",
   "machine": "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K", "slot": "~/.claude-2", "seat": {"account": "3f1c…", "org": "9b20…"},
-  "client": "sy/0.1.0",
+  "client": "wy/0.1.0",
   "payload": {"complete": true, "source": "claude_agents",
     "sessions": [{"pid": 3861972, "cwd": "/home/me/api", "kind": "interactive", "startedAt": 1760190000000, "sessionId": "c41e…", "name": "api", "status": "idle"}]}
 }
@@ -463,7 +463,7 @@ Example:
 
 ### 4.6 `history_import`
 
-Written once per slot by the first `sy scan`, so the hub has totals from before Switchyard.
+Written once per slot by the first `wy scan`, so the hub has totals from before Watchyard.
 
 | Field | Type | Required | Meaning |
 | --- | --- | --- | --- |
@@ -476,7 +476,7 @@ The hub turns `dailyModelTokens` into `history_day` rows for that slot's seat (a
 
 ### 4.7 `slot_info`
 
-Written by `sy` on `sy connect`, on SessionStart when the login it reads differs from the
+Written by `wy` on `wy connect`, on SessionStart when the login it reads differs from the
 last one it sent for that slot, and once a day per slot.
 
 | Field | Type | Required | Meaning |
@@ -490,13 +490,13 @@ last one it sent for that slot, and once a day per slot.
 | `auth_status` | object | no | Output of `claude auth status --json`, kept whole after the rule 4 filter (keys today: `loggedIn`, `authMethod`, `apiProvider`, `analyticsDisabled`, `projectsDirectory`, `configDirectory`, `email`, `orgId`, `orgName`, `subscriptionType`). |
 | `claude_version` | string | no | `claude --version`. |
 | `sharing` | object | no | Which parts are symlinked to which target, for the Accounts screen: `{"settings.json": "~/.claude/settings.json", ...}`. |
-| `label` | string | no | Local label for this folder's login (`slots.labels`, set by `sy setup` / `sy account label`). The hub applies it to the seat only while the seat has no label set in the UI (setup.md 8.4). |
+| `label` | string | no | Local label for this folder's login (`slots.labels`, set by `wy setup` / `wy account label`). The hub applies it to the seat only while the seat has no label set in the UI (setup.md 8.4). |
 | `colour` | string | no | `#rrggbb`, same rule as `label`. |
 
 ### 4.8 `machine_info`
 
-Written by `sy tick` when the content changed (counters and times excluded) and otherwise
-every 6 hours, and by `sy connect`, `sy setup`, `sy update` and `sy machine rename`
+Written by `wy tick` when the content changed (counters and times excluded) and otherwise
+every 6 hours, and by `wy connect`, `wy setup`, `wy update` and `wy machine rename`
 (machines.md 6.3). No `slot`, no `seat`. The hub copies it into the `machine` row (`os`,
 `arch`, `reach`, `record_v`, `held`, `backlog_oldest`, `info`, `info_at`) when it is newer than
 the stored `info_at`. It also sets `machine.name` to `name` when `name` is a valid machine
@@ -506,26 +506,26 @@ the name alone, so a rename on the board is kept until the machine is renamed ag
 
 `name` was added later without a new `v`: it is optional, so `v` stays `1` (a new
 `v` is only for a change an older hub would read wrongly, 3). A hub that does not know the
-field keeps it in `info` only (payloads keep unknown fields, 6), and an older `sy` that
+field keeps it in `info` only (payloads keep unknown fields, 6), and an older `wy` that
 leaves it out never renames the machine.
 
 | Field | Type | Required | Meaning |
 | --- | --- | --- | --- |
 | `os`, `arch` | string | yes | `runtime.GOOS`, `runtime.GOARCH`. |
-| `sy` | string | yes | `sy` version. |
-| `record_v` | integer | yes | Highest record `v` this `sy` writes. |
+| `wy` | string | yes | `wy` version. |
+| `record_v` | integer | yes | Highest record `v` this `wy` writes. |
 | `reach` | string | yes | `direct`, `forward` or `pull` (`hub.reach`); `none` without a hub. |
 | `dial` | string | no | `tcp` or `unix` when `hub.dial` is set (never the address itself). |
 | `outbox` | object | yes | `{backlog, unflushed_bytes, oldest_unflushed, held, rejected_total, corrupt_total, cap_dropped_total}`; `oldest_unflushed` RFC 3339 or null. |
 | `direct_push` | object | yes | `{enabled, server_host, private, policy_at}`; never the topic or token. |
-| `timer` | object | no | `{active, linger}` as `sy doctor` sees them (`linger` Linux only). |
+| `timer` | object | no | `{active, linger}` as `wy doctor` sees them (`linger` Linux only). |
 | `claude_version` | string | no | `claude --version` on the login PATH. |
-| `update` | object | no | `{last_check, latest}` from `sy update --check`, when it ran. |
-| `name` | string | no | The machine's own name (`<state>/machine.json`, identity.md 2; `sy machine rename`). |
+| `update` | object | no | `{last_check, latest}` from `wy update --check`, when it ran. |
+| `name` | string | no | The machine's own name (`<state>/machine.json`, identity.md 2; `wy machine rename`). |
 
 ### 4.9 `direct_push`
 
-Written by `sy` right after it sent a session push itself (machines.md 5.4, 5.5). No `seat`;
+Written by `wy` right after it sent a session push itself (machines.md 5.4, 5.5). No `seat`;
 `slot` is the session's slot when known.
 
 | Field | Type | Required | Meaning |

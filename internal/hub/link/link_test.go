@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/link"
-	"github.com/mraj602/switchyard/internal/link/linktest"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/link"
+	"github.com/mraj602/watchyard/internal/link/linktest"
 )
 
 func TestQueueSeqCollapseAndAck(t *testing.T) {

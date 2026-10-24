@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // record.md 5.1: one machine's token cannot change another machine's sessions.
@@ -21,7 +21,7 @@ const (
 
 func xmHook(t *testing.T, machine, payload string, at time.Time) *record.Record {
 	t.Helper()
-	r, err := record.NewHookEvent(record.Meta{Machine: machine, Slot: "~/.claude", Client: "sy/0.5.0", Now: at}, []byte(payload), record.HookOptions{})
+	r, err := record.NewHookEvent(record.Meta{Machine: machine, Slot: "~/.claude", Client: "wy/0.5.0", Now: at}, []byte(payload), record.HookOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestForeignSessionListAndTokenRowsAreSkipped(t *testing.T) {
 	f := newFixture(t)
 	b := xmStart(t, f)
 	at := t0.Add(time.Second)
-	m := record.Meta{Machine: xmB, Slot: "~/.claude", Client: "sy/0.5.0", Now: at}
+	m := record.Meta{Machine: xmB, Slot: "~/.claude", Client: "wy/0.5.0", Now: at}
 	item, _ := json.Marshal(map[string]any{"sessionId": xmSID, "cwd": "/evil", "name": "PWNED", "status": "idle"})
 	sl, err := record.NewSessionList(m, record.SessionListPayload{Complete: true, Source: "test", Sessions: []json.RawMessage{item}})
 	if err != nil {

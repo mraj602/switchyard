@@ -1,5 +1,5 @@
-// Package hublock is the lock `sy hub serve` holds on its data folder for as long as it
-// runs (machines.md 8.2 step 1): `sy hub import` refuses while it is held, whatever address
+// Package hublock is the lock `wy hub serve` holds on its data folder for as long as it
+// runs (machines.md 8.2 step 1): `wy hub import` refuses while it is held, whatever address
 // or database file the hub uses. The lock is an OS file lock on <data>/hub.lock, so a hub
 // that dies releases it by dying; there is no stale pidfile to clean up.
 //

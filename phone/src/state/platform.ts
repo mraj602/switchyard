@@ -23,7 +23,7 @@ export function getAppInfo(): AppInfo {
     build: typeof code === 'number' ? String(code) : '0',
     model: Device.modelName ?? 'Phone',
     platform: Platform.OS === 'ios' ? 'ios' : 'android',
-    // __DEV__, or a build made with SY_APP_VARIANT=development (extra.cleartext): the builds that
+    // __DEV__, or a build made with WY_APP_VARIANT=development (extra.cleartext): the builds that
     // may talk to an http:// loopback / LAN hub (phone.md P2).
     dev: __DEV__ || extra?.cleartext === true,
     ...(Device.manufacturer ? { maker: Device.manufacturer } : {}),

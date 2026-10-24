@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/pair"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/pair"
 )
 
 // boardLogin posts token to /v1/session/login and returns the cookie's session token.
@@ -39,7 +39,7 @@ func (h *pairHub) liveNamed(prefix string) int {
 func TestDesktopBoardSessionIsReplacedAndSaysVia(t *testing.T) {
 	h := newPairHub(t)
 	ctx := context.Background()
-	dk, err := auth.Create(ctx, h.st, auth.CreateRequest{Kind: "desktop", Name: "Switchyard-desktop-box", Machine: "m_box"})
+	dk, err := auth.Create(ctx, h.st, auth.CreateRequest{Kind: "desktop", Name: "Watchyard-desktop-box", Machine: "m_box"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestDesktopBoardSessionIsReplacedAndSaysVia(t *testing.T) {
 	for range 3 {
 		cookies = append(cookies, h.boardLogin(dk.Token))
 	}
-	if n := h.liveNamed("board via Switchyard-desktop-box"); n != 1 {
+	if n := h.liveNamed("board via Watchyard-desktop-box"); n != 1 {
 		t.Errorf("%d live board sessions of the desktop device, want 1", n)
 	}
 	for i, c := range cookies[:2] {
@@ -57,7 +57,7 @@ func TestDesktopBoardSessionIsReplacedAndSaysVia(t *testing.T) {
 	}
 	me := h.call("GET", "/v1/me", nil, opts{cookie: cookies[2]}).json(t)
 	via, _ := me["via"].(map[string]any)
-	if via["kind"] != "desktop" || via["id"] != dk.Device.ID || via["name"] != "Switchyard-desktop-box" {
+	if via["kind"] != "desktop" || via["id"] != dk.Device.ID || via["name"] != "Watchyard-desktop-box" {
 		t.Errorf("via %v", me["via"])
 	}
 	if dev := me["device"].(map[string]any); dev["kind"] != "browser" || fmt20(dev["scopes"]) != "[read]" {
@@ -85,7 +85,7 @@ func TestDesktopBoardSessionIsReplacedAndSaysVia(t *testing.T) {
 	if me["owner"] != true || via["kind"] != "desktop" || via["id"] != dk.Device.ID {
 		t.Errorf("owner me %v", me)
 	}
-	if dev["name"] != "Owner session in Switchyard-desktop-box" || dev["created_by"] != "owner-link:"+l.ID+"@"+dk.Device.ID {
+	if dev["name"] != "Owner session in Watchyard-desktop-box" || dev["created_by"] != "owner-link:"+l.ID+"@"+dk.Device.ID {
 		t.Errorf("owner device %v", dev)
 	}
 	if r := h.call("GET", "/v1/me", nil, opts{cookie: cookies[2]}); r.code != 401 {

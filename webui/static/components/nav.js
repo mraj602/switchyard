@@ -83,7 +83,7 @@ export function renderNav(navEl, { page, store, onLogout }) {
   const app = inApp();
   const lit = (it) => it.id === page || (it.id === 'more' && TAB_OF[page] === 'more');
   navEl.replaceChildren(h('div', { class: 'nav-inner' },
-    app ? null : h('div', { class: 'brand' }, logo(), h('span', {}, 'Switchyard')),
+    app ? null : h('div', { class: 'brand' }, logo(), h('span', {}, 'Watchyard')),
     h('ul', { class: 'nav-list' }, ITEMS.filter((it) => !it.owner || owner).map((it) => h('li', { class: `nav-${it.where}` },
       h('a', { href: it.href, 'data-key': `nav-${it.id}`, 'aria-current': lit(it) ? 'page' : undefined },
         icon(it.icon),

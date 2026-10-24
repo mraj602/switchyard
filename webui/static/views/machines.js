@@ -68,7 +68,7 @@ function actions(m, pl) {
   return h('div', { class: 'machine-actions' },
     pl ? h('button', {
       type: 'button', class: 'btn btn-sm', 'data-key': `pull-${m.id}`, disabled: !pl.canRun || !!busy,
-      title: pl.canRun ? 'Pull this machine now' : 'Fix the pull target first (sy hub pull)', onclick: () => pullNow(m),
+      title: pl.canRun ? 'Pull this machine now' : 'Fix the pull target first (wy hub pull)', onclick: () => pullNow(m),
     }, busy === 'pull' ? 'Pulling…' : 'Pull now') : null,
     h('button', { type: 'button', class: 'linkish', 'data-key': `rename-${m.id}`, disabled: !!busy, onclick: () => rename(m) }, 'Rename'),
     h('button', { type: 'button', class: 'linkish danger', 'data-key': `remove-${m.id}`, disabled: !!busy, onclick: () => remove(m) }, 'Remove'));
@@ -100,7 +100,7 @@ function card(m, ctx, idx) {
       row('Open sessions', live),
       row('Last update', agoLabel(m.last_record, now) || '–'),
       backlog ? row('Waiting to send', backlog, 'strong') : null,
-      ver.cls ? row('Switchyard version', ver.version) : null),
+      ver.cls ? row('Watchyard version', ver.version) : null),
     // The warning on its own line, plain text (R10).
     ver.cls && ver.note ? h('p', { class: `ver-note small status-${ver.cls === 'bad' ? 'warn strong' : 'warn'}`, 'data-key': `ver-${m.id}` }, `${ver.note.charAt(0).toUpperCase()}${ver.note.slice(1)}.`) : null,
     pl ? h('p', { class: `pull-line small status-${pl.cls}`, 'data-key': `pull-state-${m.id}` }, `Collecting · ${pl.text.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase())}`) : null,
@@ -113,7 +113,7 @@ function card(m, ctx, idx) {
     details({ text: 'Details', key: `machine-details-${m.id}` },
       h('dl', { class: 'kv' },
         row('System', [m.os, m.arch].filter(Boolean).join(' · ') || '–'),
-        ver.cls ? null : row('Switchyard version', ver.text),
+        ver.cls ? null : row('Watchyard version', ver.text),
         row('Last seen', agoLabel(m.last_seen, now) || '–'),
         row('Updates waiting', m.backlog == null ? 'not reported' : num(m.backlog)),
         row('Notifies on its own', m.direct_push ? 'on' : 'off'))),
@@ -137,14 +137,14 @@ export function render({ store, route, now }) {
         owner ? h('a', { class: 'btn', href: '#/more/devices?add=machine', 'data-key': 'add-machine' }, 'Add machine') : null,
         h('button', { type: 'button', class: 'chip-btn', 'aria-pressed': String(ui.showRemoved), 'data-key': 'show-removed', onclick: toggleRemoved }, 'Show removed'))),
     live.length === 0 ? h('p', { class: 'calm' }, owner
-      ? 'No machines have connected yet. Run sy machine add user@host on your laptop, or use Add machine.'
-      : 'No machines have connected yet. Run sy connect on one to add it.') :
+      ? 'No machines have connected yet. Run wy machine add user@host on your laptop, or use Add machine.'
+      : 'No machines have connected yet. Run wy connect on one to add it.') :
       h('div', { class: 'grid grid-machines' }, live.map((m) => card(m, ctx, idx))),
     ui.showRemoved ? h('section', { class: 'removed-machines', 'aria-label': 'Removed machines' },
       h('h2', { class: 'section-title' }, 'Removed'),
       removed.length === 0 ? h('p', { class: 'muted small' }, 'No machines were removed.')
         : h('div', { class: 'grid grid-machines' }, removed.map((m) => card(m, ctx, idx)))) : null);
-  return { title: 'Machines · Switchyard', node };
+  return { title: 'Machines · Watchyard', node };
 }
 
 // A deep link (?machine=<id>) scrolls to its card once per visit.

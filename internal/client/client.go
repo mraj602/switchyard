@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/version"
+	"github.com/mraj602/watchyard/internal/version"
 )
 
 // Limits of one batch (outbox.md section 5; the hub allows 1000 records and 8 MiB).
@@ -163,7 +163,7 @@ func (c *Client) Health(ctx context.Context) (Health, error) {
 		return h, statusError(resp, body)
 	}
 	if err := json.Unmarshal(body, &h); err != nil {
-		return h, fmt.Errorf("not a Switchyard hub (bad /health body): %w", err)
+		return h, fmt.Errorf("not a Watchyard hub (bad /health body): %w", err)
 	}
 	if !h.OK {
 		return h, errors.New("hub reports it is not ok")
@@ -177,7 +177,7 @@ func (c *Client) Health(ctx context.Context) (Health, error) {
 func (c *Client) Ingest(ctx context.Context, records [][]byte, backlog int) (*IngestReply, error) {
 	var buf bytes.Buffer
 	buf.WriteString(`{"v":1,"client":`)
-	cl, _ := json.Marshal("sy/" + version.Version)
+	cl, _ := json.Marshal("wy/" + version.Version)
 	buf.Write(cl)
 	buf.WriteString(`,"records":[`)
 	for i, r := range records {
@@ -202,7 +202,7 @@ func (c *Client) Ingest(ctx context.Context, records [][]byte, backlog int) (*In
 	}
 	req.Header.Set("Authorization", "Bearer "+c.Token)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "sy/"+version.Version)
+	req.Header.Set("User-Agent", "wy/"+version.Version)
 	if encoding != "" {
 		req.Header.Set("Content-Encoding", encoding)
 	}
@@ -259,7 +259,7 @@ func ReadToken(stateDir string) (string, error) {
 	return t, nil
 }
 
-// CheckURL validates a hub URL for `sy connect` and returns it normalised (scheme and
+// CheckURL validates a hub URL for `wy connect` and returns it normalised (scheme and
 // host only). Plain http is accepted for loopback and Tailscale (*.ts.net names, 100.64.0.0/10
 // addresses), which WireGuard already encrypts; a single-label name is not (it could be any LAN
 // name), so use the full MagicDNS name; any

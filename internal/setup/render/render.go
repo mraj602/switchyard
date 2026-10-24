@@ -15,8 +15,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // Redacted replaces secret-bearing JSON values in output.
@@ -33,7 +33,7 @@ type Input struct {
 	Applied []string
 	Hub     *model.HubResult
 	Doctor  json.RawMessage
-	// Uninstall: the steps of `sy uninstall` outside the plan (JSON only; the command prints
+	// Uninstall: the steps of `wy uninstall` outside the plan (JSON only; the command prints
 	// their text).
 	Uninstall *model.UninstallSteps
 }
@@ -165,18 +165,18 @@ func Text(in Input) string {
 	if in.State != nil {
 		w.home = in.State.Home
 	}
-	title := "sy setup — plan"
+	title := "wy setup — plan"
 	if in.Mode == model.ModeDryRun {
 		title += " (dry run: nothing changed)"
 	}
 	if in.Mode == model.ModeApplied {
-		title = "sy setup — applied"
+		title = "wy setup — applied"
 	}
 	if in.Mode == model.ModePartial {
-		title = "sy setup — partly applied (hub step failed)"
+		title = "wy setup — partly applied (hub step failed)"
 	}
 	if in.Mode == model.ModeRolledBack {
-		title = "sy setup — rolled back"
+		title = "wy setup — rolled back"
 	}
 	w.line("%s", pad(title, 76-runes(p.PlanID))+p.PlanID)
 
@@ -233,7 +233,7 @@ func launcherKind(k string, ours bool, plural bool) string {
 		s = k
 	}
 	if ours {
-		s = "sy launcher"
+		s = "wy launcher"
 	}
 	if plural {
 		s += "s"
@@ -764,7 +764,7 @@ func (w *writer) hub(p model.Plan) {
 			continue
 		}
 		if k.Note == "later" {
-			w.line("  · later   (sy connect <url> --token-stdin, or sy setup --hub join:<url>)")
+			w.line("  · later   (wy connect <url> --token-stdin, or wy setup --hub join:<url>)")
 		} else {
 			w.line("  = %s", k.Note)
 		}

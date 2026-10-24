@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/push/ntfytest"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/ntfytest"
 )
 
 // A phone token must not make the hub call internal services.

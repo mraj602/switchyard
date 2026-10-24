@@ -1,6 +1,6 @@
 {
   "platforms": ["android"],
   "android": {
-    "modules": ["dev.switchyard.tabs.SyTabsModule"]
+    "modules": ["dev.watchyard.tabs.SyTabsModule"]
   }
 }

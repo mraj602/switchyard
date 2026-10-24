@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 // Frame is a hub→device frame after login (link.md 4.1). Body and Sig are b64u: Body is the

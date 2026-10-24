@@ -73,7 +73,7 @@ function nextBlock(k, owner) {
   if (step === 'init' && !owner) {
     // Only an owner sees a proposal, so this may be "none yet" or "waiting for you".
     body = [h('p', { class: 'strong' }, 'No owner key is active yet'),
-      h('p', {}, 'The owner makes one with sy keys init on their main machine, then confirms it here with an owner sign-in.'),
+      h('p', {}, 'The owner makes one with wy keys init on their main machine, then confirms it here with an owner sign-in.'),
       h('p', { class: 'muted small', 'data-key': 'keys-read-only' }, READ_ONLY_NOTE)];
   } else if (step === 'init') {
     body = [h('p', { class: 'strong' }, 'Step 1: make the owner key'),
@@ -140,7 +140,7 @@ export function render() {
   const k = st.info;
   const head = h('header', { class: 'page-head col' }, h('h1', {}, inApp() ? 'Hub settings' : 'Settings'), moreTabs('keys', { owner }));
   if (!k) {
-    return { title: 'Keys · Switchyard', node: h('div', { class: 'page' }, head, h('p', { class: 'muted', role: 'status' }, st.error || 'Loading…')) };
+    return { title: 'Keys · Watchyard', node: h('div', { class: 'page' }, head, h('p', { class: 'muted', role: 'status' }, st.error || 'Loading…')) };
   }
   const node = h('div', { class: 'page', 'data-key': 'keys-page' }, head,
     st.error ? h('p', { class: 'form-error', role: 'alert' }, st.error) : null,
@@ -149,5 +149,5 @@ export function render() {
     devicesBlock(k),
     hubBlock(k),
     owner ? null : ownerHintNode({ app: inApp(), lead: 'Confirming an owner key needs an owner sign-in.', key: 'keys-owner-hint' }));
-  return { title: 'Keys · Switchyard', node };
+  return { title: 'Keys · Watchyard', node };
 }

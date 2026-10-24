@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/statuswrap"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/statuswrap"
 )
 
 const pluginCacheEnv = "CLAUDE_CODE_PLUGIN_CACHE_DIR"
@@ -49,9 +49,9 @@ func (x *detector) detectPlugins() {
 			x.parseSettings(t)
 		}
 		t.Folders = append(t.Folders, f.Folder)
-		if x.hasSkillsDirPlugin(f.Dir, brand.Slug) && !contains(t.SwitchyardPlugins, brand.Slug+"@skills-dir") {
-			t.SwitchyardPlugins = append(t.SwitchyardPlugins, brand.Slug+"@skills-dir")
-			sort.Strings(t.SwitchyardPlugins)
+		if x.hasSkillsDirPlugin(f.Dir, brand.Slug) && !contains(t.WatchyardPlugins, brand.Slug+"@skills-dir") {
+			t.WatchyardPlugins = append(t.WatchyardPlugins, brand.Slug+"@skills-dir")
+			sort.Strings(t.WatchyardPlugins)
 		}
 		if brand.Renamed() && x.hasSkillsDirPlugin(f.Dir, brand.OldSlug()) && !contains(t.LegacyPlugins, brand.OldSlug()+"@skills-dir") {
 			t.LegacyPlugins = append(t.LegacyPlugins, brand.OldSlug()+"@skills-dir")
@@ -179,13 +179,13 @@ func (x *detector) parseSettings(t *model.SettingsTarget) {
 		on, _ := v.(bool)
 		t.EnabledPlugins[id] = on
 		if on && strings.HasPrefix(id, brand.Slug+"@") {
-			t.SwitchyardPlugins = append(t.SwitchyardPlugins, id)
+			t.WatchyardPlugins = append(t.WatchyardPlugins, id)
 		}
 		if on && isLegacyPlugin(id) {
 			t.LegacyPlugins = append(t.LegacyPlugins, id)
 		}
 	}
-	sort.Strings(t.SwitchyardPlugins)
+	sort.Strings(t.WatchyardPlugins)
 	sort.Strings(t.LegacyPlugins)
 	for n := range doc.ExtraMarkets {
 		t.ExtraMarketplaces = append(t.ExtraMarketplaces, n)

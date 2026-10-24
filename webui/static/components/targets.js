@@ -20,6 +20,6 @@ export const targetKindText = (t) => KIND[t && t.kind] || String((t && t.kind) |
 // The Android app counts as paired when some live device has a link target (or reports a
 // link connection).
 // The Android app: a phone with its own link to the hub, or a link target. A machine paired by
-// code also keeps a link (its `sy` connection), but it is not the app.
+// code also keeps a link (its `wy` connection), but it is not the app.
 export const isApp = (d) => !!d && !d.revoked_at && ((d.kind === 'phone' && !!d.link) || (d.targets || []).some((t) => t.kind === 'link'));
 export const appPaired = (devices) => (devices || []).some(isApp);

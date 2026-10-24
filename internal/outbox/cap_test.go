@@ -72,7 +72,7 @@ func TestEnforceCap(t *testing.T) {
 			t.Fatal("today's file was compacted")
 		}
 	}
-	// token_rows are never dropped (sy scan will not re-read them): all three days' rows stay
+	// token_rows are never dropped (wy scan will not re-read them): all three days' rows stay
 	// (the first day's was flushed before the cursor, so only count what is still unflushed).
 	rows := 0
 	for _, it := range after.Items {

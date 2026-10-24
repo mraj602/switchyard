@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/outbox"
 )
 
 // A 403 machine_mismatch (the token is for another machine) must keep the outbox and the

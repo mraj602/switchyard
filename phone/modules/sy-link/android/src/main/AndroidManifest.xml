@@ -14,25 +14,25 @@
 
   <application>
     <service
-      android:name="dev.switchyard.link.SyLinkService"
+      android:name="dev.watchyard.link.SyLinkService"
       android:exported="false"
       android:foregroundServiceType="specialUse">
       <property
         android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
         android:value="Keeps an encrypted connection to the user's own self-hosted server to receive its notifications; no push service is used."/>
     </service>
-    <receiver android:name="dev.switchyard.link.BootReceiver" android:exported="true">
+    <receiver android:name="dev.watchyard.link.BootReceiver" android:exported="true">
       <intent-filter>
         <action android:name="android.intent.action.BOOT_COMPLETED"/>
         <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
       </intent-filter>
     </receiver>
     <!-- The installer's answer for an in-app update (phone.md P16.3): opens Android's confirmation. -->
-    <receiver android:name="dev.switchyard.link.InstallResultReceiver" android:exported="false"/>
-    <receiver android:name="dev.switchyard.link.ActionReceiver" android:exported="false"/>
+    <receiver android:name="dev.watchyard.link.InstallResultReceiver" android:exported="false"/>
+    <receiver android:name="dev.watchyard.link.ActionReceiver" android:exported="false"/>
     <!-- The exact alarms of 14.4 (task removed, long reconnect timers): an explicit, private receiver. -->
-    <receiver android:name="dev.switchyard.link.AlarmReceiver" android:exported="false"/>
+    <receiver android:name="dev.watchyard.link.AlarmReceiver" android:exported="false"/>
     <!-- The widgets' reset alarm (phone.md P11): an explicit, private receiver. -->
-    <receiver android:name="dev.switchyard.link.WidgetTickReceiver" android:exported="false"/>
+    <receiver android:name="dev.watchyard.link.WidgetTickReceiver" android:exported="false"/>
   </application>
 </manifest>

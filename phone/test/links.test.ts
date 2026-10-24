@@ -60,39 +60,39 @@ describe('hashToRoute (push payload url)', () => {
   });
 });
 
-describe('incomingToRoute (switchyard:// allow-list)', () => {
+describe('incomingToRoute (watchyard:// allow-list)', () => {
   const secret = 'abcdefghijklmnopqrstuv';
   const table: [string, AppRoute][] = [
-    ['switchyard://now', NOW],
-    ['switchyard://', NOW],
-    ['SWITCHYARD://Now', NOW],
-    ['switchyard://sessions/s1', { name: 'session', id: 's1' }],
-    ['switchyard://sessions/s1?alert=al_1', { name: 'session', id: 's1', alert: 'al_1' }],
-    ['switchyard://sessions', { name: 'sessions' }],
-    ['switchyard://accounts?seat=abc', { name: 'accounts', seat: 'abc' }],
-    ['switchyard://accounts/', { name: 'accounts' }],
-    ['switchyard://machines?machine=mac1', { name: 'machines', machine: 'mac1' }],
-    ['switchyard://alerts/al_77', { name: 'alert', id: 'al_77' }],
+    ['watchyard://now', NOW],
+    ['watchyard://', NOW],
+    ['WATCHYARD://Now', NOW],
+    ['watchyard://sessions/s1', { name: 'session', id: 's1' }],
+    ['watchyard://sessions/s1?alert=al_1', { name: 'session', id: 's1', alert: 'al_1' }],
+    ['watchyard://sessions', { name: 'sessions' }],
+    ['watchyard://accounts?seat=abc', { name: 'accounts', seat: 'abc' }],
+    ['watchyard://accounts/', { name: 'accounts' }],
+    ['watchyard://machines?machine=mac1', { name: 'machines', machine: 'mac1' }],
+    ['watchyard://alerts/al_77', { name: 'alert', id: 'al_77' }],
     [
-      `switchyard://pair?u=${encodeURIComponent('https://hub.ts.net')}&s=${secret}&c=482913`,
+      `watchyard://pair?u=${encodeURIComponent('https://hub.ts.net')}&s=${secret}&c=482913`,
       { name: 'pair', origin: 'https://hub.ts.net', secret, code: '482913' },
     ],
-    ['switchyard://pair', { name: 'pair' }],
-    ['switchyard://settings/notifications', { name: 'notify-settings' }],
-    ['switchyard://settings/notifications?x=1', { name: 'notify-settings' }],
+    ['watchyard://pair', { name: 'pair' }],
+    ['watchyard://settings/notifications', { name: 'notify-settings' }],
+    ['watchyard://settings/notifications?x=1', { name: 'notify-settings' }],
     // not on the list: everything opens Now
-    ['switchyard://settings', NOW],
-    ['switchyard://settings/other', NOW],
-    ['switchyard://more', NOW],
-    ['switchyard://evil', NOW],
-    ['switchyard:///sessions/s1', NOW],
-    ['switchyard://sessions/a/b', NOW],
-    ['switchyard://sessions/..', NOW],
-    ['switchyard://sessions/a%2Fb', NOW],
-    ['switchyard://alerts/s1', NOW],
-    ['switchyard://alerts/al_1/../x', NOW],
-    ['switchyard://sessions/s\\1', NOW],
-    ['switchyard://sessions/s 1', NOW],
+    ['watchyard://settings', NOW],
+    ['watchyard://settings/other', NOW],
+    ['watchyard://more', NOW],
+    ['watchyard://evil', NOW],
+    ['watchyard:///sessions/s1', NOW],
+    ['watchyard://sessions/a/b', NOW],
+    ['watchyard://sessions/..', NOW],
+    ['watchyard://sessions/a%2Fb', NOW],
+    ['watchyard://alerts/s1', NOW],
+    ['watchyard://alerts/al_1/../x', NOW],
+    ['watchyard://sessions/s\\1', NOW],
+    ['watchyard://sessions/s 1', NOW],
     ['https://hub.example/#/sessions/s1', NOW],
     ['javascript:alert(1)', NOW],
     ['//evil', NOW],
@@ -105,7 +105,7 @@ describe('incomingToRoute (switchyard:// allow-list)', () => {
 
   it('keeps only a plain http(s) origin from a pair link, and well-formed secret and code', () => {
     const q = (u: string, s = secret, c = '123456') =>
-      `switchyard://pair?u=${encodeURIComponent(u)}&s=${s}&c=${c}`;
+      `watchyard://pair?u=${encodeURIComponent(u)}&s=${s}&c=${c}`;
     // http reaches the pair screen; parsePairInput refuses it there unless the build is a development one
     expect(incomingToRoute(q('http://10.0.2.2:18787'))).toEqual({ name: 'pair', origin: 'http://10.0.2.2:18787', secret, code: '123456' });
     expect(incomingToRoute(q('ftp://hub.ts.net'))).toEqual({ name: 'pair', secret, code: '123456' });
@@ -121,14 +121,14 @@ describe('pair link keys (keys.md 7)', () => {
   const h = 'a2b3c4d5e6f7g2h3i4j5k6l7';
   const k = 'AbCdEfGhIjKlMnOpQrStUv';
   it('carries the QR hub fingerprint and seal key to the Pair screen', () => {
-    const url = `switchyard://pair?u=${encodeURIComponent('http://10.0.2.2:18787')}&s=${secret}&c=482913&h=${h}&k=${k}`;
+    const url = `watchyard://pair?u=${encodeURIComponent('http://10.0.2.2:18787')}&s=${secret}&c=482913&h=${h}&k=${k}`;
     expect(incomingToRoute(url)).toEqual({ name: 'pair', origin: 'http://10.0.2.2:18787', secret, code: '482913', hubFp: h, sealKey: k });
     expect(nativeIntentToHref(url)).toBe(
       `/pair?origin=${encodeURIComponent('http://10.0.2.2:18787')}&secret=${secret}&code=482913&hub=${h}&key=${k}`,
     );
   });
   it('drops a malformed h or k', () => {
-    const url = `switchyard://pair?u=${encodeURIComponent('https://h.ts.net')}&s=${secret}&h=SHORT&k=x`;
+    const url = `watchyard://pair?u=${encodeURIComponent('https://h.ts.net')}&s=${secret}&h=SHORT&k=x`;
     expect(incomingToRoute(url)).toEqual({ name: 'pair', origin: 'https://h.ts.net', secret });
   });
 });
@@ -155,7 +155,7 @@ describe('routeToHref', () => {
 
 describe('nativeIntentToHref (+native-intent)', () => {
   it.each<[string, string]>([
-    ['switchyard://sessions/s1', '/sessions/s1'],
+    ['watchyard://sessions/s1', '/sessions/s1'],
     ['/', '/'],
     ['/sessions/s1?alert=al_2', '/sessions/s1?alert=al_2'],
     ['/accounts?seat=a', '/accounts?seat=a'],
@@ -173,7 +173,7 @@ describe('nativeIntentToHref (+native-intent)', () => {
   });
 
   it('a pair link opens the Pair screen pre-filled, nothing more', () => {
-    const href = nativeIntentToHref('switchyard://pair?u=https%3A%2F%2Fh.ts.net&c=123456');
+    const href = nativeIntentToHref('watchyard://pair?u=https%3A%2F%2Fh.ts.net&c=123456');
     // The query names are the ones app/pair.tsx reads (origin, secret, code), not the link's.
     expect(href).toBe('/pair?origin=https%3A%2F%2Fh.ts.net&code=123456');
   });
@@ -181,21 +181,21 @@ describe('nativeIntentToHref (+native-intent)', () => {
 
 describe('links the native sy-link notifications carry (Payloads.appLink / CONNECTION_TAP)', () => {
   it.each<[string, string]>([
-    ['switchyard://now', '/'],
+    ['watchyard://now', '/'],
     ['/now', '/'],
-    ['switchyard://sessions/c41e?alert=al_01', '/sessions/c41e?alert=al_01'],
-    ['switchyard://alerts/al_01', '/alerts/al_01'],
-    ['switchyard://accounts?seat=claude-2', '/accounts?seat=claude-2'],
-    ['switchyard://sessions?filter=needs_you', '/sessions?filter=needs_you'],
+    ['watchyard://sessions/c41e?alert=al_01', '/sessions/c41e?alert=al_01'],
+    ['watchyard://alerts/al_01', '/alerts/al_01'],
+    ['watchyard://accounts?seat=claude-2', '/accounts?seat=claude-2'],
+    ['watchyard://sessions?filter=needs_you', '/sessions?filter=needs_you'],
   ])('%s opens %s', (path, href) => {
     expect(nativeIntentToHref(path)).toBe(href);
   });
 
   it('opens a settings page only for the explicit Settings button link', () => {
-    for (const p of ['switchyard://bogus', 'switchyard://settings', 'switchyard://']) {
+    for (const p of ['watchyard://bogus', 'watchyard://settings', 'watchyard://']) {
       expect(nativeIntentToHref(p)).toBe('/');
     }
-    expect(nativeIntentToHref('switchyard://settings/notifications')).toBe('/more/settings/notifications');
+    expect(nativeIntentToHref('watchyard://settings/notifications')).toBe('/more/settings/notifications');
     expect(nativeIntentToHref('/settings/notifications')).toBe('/more/settings/notifications');
   });
 });

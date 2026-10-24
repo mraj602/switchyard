@@ -1,6 +1,6 @@
 {
   "id": "a2", "step": "plugin", "op": "run",
-  "argv": ["claude", "plugin", "install", "switchyard@sy-local", "--json"],
+  "argv": ["claude", "plugin", "install", "watchyard@wy-local", "--json"],
   "env": {"CLAUDE_CONFIG_DIR": null, "CLAUDE_CODE_PLUGIN_CACHE_DIR": "/home/u/.claude/plugins"},
   "touches": ["/home/u/.claude/settings.json", "/home/u/.claude/plugins/installed_plugins.json"],
   "watch": ["/home/u/.claude/plugins"],

@@ -8,7 +8,7 @@ export const NEEDS = '#FF9F0A';
 export const OFFLINE = '#F0877D';
 export const ONLINE = '#4FC38A';
 export const TRACK = '#2A2E32';
-export const EMPTY_TEXT = 'Open Switchyard once to load';
+export const EMPTY_TEXT = 'Open Watchyard once to load';
 
 export type Hex = `#${string}`;
 

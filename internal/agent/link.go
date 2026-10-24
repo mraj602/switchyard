@@ -8,7 +8,7 @@ import "context"
 type LinkClient interface {
 	// Run blocks until ctx is done. An error is logged; the agent keeps serving local sends.
 	Run(ctx context.Context) error
-	// Status is shown by `sy agent status`.
+	// Status is shown by `wy agent status`.
 	Status() LinkStatus
 }
 

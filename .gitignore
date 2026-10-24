@@ -11,7 +11,7 @@ dist/
 *.out
 coverage.*
 .claude/
-/sy
+/wy
 
 # Phone app (phase 8): generated native projects, never committed (phone/.gitignore too)
 /phone/android/

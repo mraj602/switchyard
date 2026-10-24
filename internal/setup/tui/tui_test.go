@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/setup/detect/detecttest"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/testtree"
+	"github.com/mraj602/watchyard/internal/setup/detect/detecttest"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/testtree"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden files")

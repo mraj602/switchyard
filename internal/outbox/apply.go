@@ -33,7 +33,7 @@ type Applied struct {
 }
 
 // Apply is the one place an answer from the hub is applied (outbox.md 5 step 3, 8), for
-// `sy flush` over HTTP and `sy outbox drain` over a pipe alike: rejected records go to
+// `wy flush` over HTTP and `wy outbox drain` over a pipe alike: rejected records go to
 // rejected.jsonl first (so a crash here only repeats a log line), answered spill files are
 // deleted, and *cur is moved past the longest prefix of day-file records the hub answered
 // (and past corrupt or blank lines read with them) when the whole batch was answered, or

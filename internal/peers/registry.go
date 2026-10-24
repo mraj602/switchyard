@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/mraj602/switchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/identity"
 )
 
 // RegistryEntry is one slot's `<config>/sessions/<pid>.json`, the file Claude Code's own

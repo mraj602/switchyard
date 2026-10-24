@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // push.md 11.1 rows 39-45: sessions coordinating through peers (peers.md 6.4). A turn a peer
@@ -14,7 +14,7 @@ import (
 // plain-text question; the board still shows the session as asked. Permission prompts,
 // AskUserQuestion and turns a person started still push.
 
-// derivedTrue sets derived.<key> = true, as `sy hook` does for peer_prompt and peer_wait.
+// derivedTrue sets derived.<key> = true, as `wy hook` does for peer_prompt and peer_wait.
 func derivedTrue(key string) hookOpt {
 	return func(r *record.Record, _ map[string]any) {
 		if r == nil {

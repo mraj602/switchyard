@@ -7,7 +7,7 @@ documents: [keys.md](keys.md). What travels on it: alerts (push.md 13), peer mes
 Unofficial; not affiliated with Anthropic.
 
 The link is the one path from the hub **to** a device that is not a browser: the Android app's
-`SyLinkService` and `sy agent` on each machine. `/v1/stream` stays the viewers' SSE
+`SyLinkService` and `wy agent` on each machine. `/v1/stream` stays the viewers' SSE
 (api.md); nothing here changes it. Devices still call the HTTP API with their bearer for
 everything else.
 
@@ -48,8 +48,8 @@ cannot, and tags are limited to `[A-Za-z0-9_:.-]{0,64}` (5.3).
 - **URL.** `wss://<hub host>[:port]/v1/link`, the hub's own listener (TLS from `tailscale serve`
   or the hub's certificate, as for the rest of the API). A device gets the list of URLs in the
   claim reply (`link.urls`, keys.md 7.3) and in `welcome`; it tries them in order. A machine
-  (`sy agent run`) instead uses its configured `hub.url` (`http`→`ws`, `https`→`wss`, plus
-  `/v1/link`) through `hub.dial` like every other `sy` call, and ignores `urls`.
+  (`wy agent run`) instead uses its configured `hub.url` (`http`→`ws`, `https`→`wss`, plus
+  `/v1/link`) through `hub.dial` like every other `wy` call, and ignores `urls`.
 - **Subprotocol** `sy-link.1` (`Sec-WebSocket-Protocol`). The hub refuses others with HTTP 426.
 - **Messages** are WebSocket text messages, one JSON object each, at most 1 MiB (the library's
   read limit; larger → close 4413). Binary messages → close 4400.
@@ -96,7 +96,7 @@ frames go over plain HTTPS: `POST /v1/link/poll`, JSON in and out, no bearer.
 
 On a hub reachable through Tailscale Funnel, Funnel forwards **only**
 the `/v1/link` prefix (`/v1/link` and `/v1/link/poll`) to the hub; the board and the rest of the
-API stay on the tailnet. `sy doctor` on the hub checks this from the outside (`/v1/health` must
+API stay on the tailnet. `wy doctor` on the hub checks this from the outside (`/v1/health` must
 not answer on the Funnel name). The hub itself does not distinguish the two paths: the
 challenge login is what protects the link.
 
@@ -140,7 +140,7 @@ valid signature has used it.
   login to this hub's key, this device, this single-use nonce and its expiry; it carries no
   reusable secret.
 - `last`: the highest `seq` the device has processed (its own durable copy, 6.1).
-- `client.kind`: `android` or `agent`; `sy` sends `{"kind":"agent","sy":"0.9.0","os":"linux"}`. `client.ping_s` (optional): the device's own ping interval (2).
+- `client.kind`: `android` or `agent`; `wy` sends `{"kind":"agent","sy":"0.9.0","os":"linux"}`. `client.ping_s` (optional): the device's own ping interval (2).
 - `known`: the newest matrix and revocation versions the device holds (machines only).
 
 The hub, in order:
@@ -192,7 +192,7 @@ judge `exp` with the hub's clock: it keeps `offset = server_time − its clock` 
 only when its clock + `offset` is past `exp`. `owner` is the active owner key document with the
 owner's self-signature and the hub's confirmation signature (keys.md 3.3), or null; a machine
 checks both and pins it on first sight (keys.md 3.5), and compares it afterwards (a difference
-is logged and shown by `sy agent status`, never acted on: only `sy keys trust-owner` at a
+is logged and shown by `wy agent status`, never acted on: only `wy keys trust-owner` at a
 terminal changes the pin). Then the hub replays: every row with `seq > acked_seq`, in order,
 within the in-flight window (5.6). When `known` is behind, the hub queues the current `matrix` and
 `revocations` documents for that device (if not already queued).
@@ -271,7 +271,7 @@ sig = Ed25519(hub key,
   4. `exp` (with the welcome's clock offset; `welcome` itself uses the offset it carries) → past:
      ack and drop;
   5. open the body (4.2) and parse it → else reject.
-- **Reject** means: drop, log, count it (`sy agent status` / the app's Settings → Notifications
+- **Reject** means: drop, log, count it (`wy agent status` / the app's Settings → Notifications
   show "rejected frames: n") and, for a queued frame, send `{"t":"reject","seq":N}` (6.2). The
   device never acks a frame whose signature failed, because its `seq` is not trustworthy: an
   inserted row with seq 10^9 must not move `last`. The hub deletes that one row and sends on,
@@ -418,9 +418,9 @@ signature but the frame's (the hub alone makes it).
 
 - `DELETE /v1/devices/{id}` (or an owner-signed revocation) deletes the device's queue and
   `link_state`, closes its link at once with **4403**, and queues `revoke` to every machine.
-  `sy hub token revoke` runs in its own process and only writes the database: the running hub
+  `wy hub token revoke` runs in its own process and only writes the database: the running hub
   closes that link at its next sweep (within a minute, so still inside one ping). The phone, on 4403, stops the service and shows "This phone was removed from
-  the hub" (push.md 14.4). An agent on 4403 stops and `sy agent status` says why.
+  the hub" (push.md 14.4). An agent on 4403 stops and `wy agent status` says why.
 - A connected machine receives new `matrix` and `revoke` frames immediately; one that is
   reconnecting receives them when it logs in, and `known` (3.2) catches anything missed.
   "Within one ping" is the upper bound for a live connection that dropped
@@ -440,7 +440,7 @@ signature but the frame's (the hub alone makes it).
 | 4408 | idle | Nothing from the device for `2 × ping_s + 30` s. | Reconnect. |
 | 4409 | superseded | Another connection of the same device logged in. | Do not reconnect from this connection. |
 | 4413 | too_big | A message over 1 MiB. | Reconnect with backoff. |
-| 4426 | upgrade | The hub needs a newer client (`hello.v` or `client` too old). | Stop; show "Update the app" / "Update sy". |
+| 4426 | upgrade | The hub needs a newer client (`hello.v` or `client` too old). | Stop; show "Update the app" / "Update wy". |
 | 4429 | rate_limited | Too many logins. | Wait at least 60 s. |
 | 4500 | internal | Hub error. | Reconnect with backoff. |
 | 4503 | frozen | The hub is frozen (`hub.frozen`, machines.md 8). | Reconnect after 60 s. |
@@ -456,7 +456,7 @@ after a connection that lasted 60 s. A network change resets it to zero (push.md
 - Connection state for the board: `GET /v1/devices` gains `link: {connected, transport,
   connected_at, last_seen_at, queued, acked_seq, last_close}` per device.
 - Logs one line per login and close (device, transport, code), never frame bodies.
-- `sy hub doctor`: a device disconnected for more than 1 h with queued alerts (warning); a
+- `wy hub doctor`: a device disconnected for more than 1 h with queued alerts (warning); a
   queue at more than 80 % of its cap; `hub_sign.key` missing or not 0600.
 
 ## 10. Tests

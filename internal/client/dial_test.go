@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/config"
 )
 
 // TLS stays end to end through a forward: the connection goes to hub.dial, but the server

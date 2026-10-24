@@ -10,10 +10,10 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
-// Two `sy peers send` processes (no agent running) must not read limits.json and
+// Two `wy peers send` processes (no agent running) must not read limits.json and
 // threads.json at the same time: each would start from the same budget and the same turn
 // count, so parallel sends would pass the rate limits and the loop guard. Another process's
 // lock is stood for by a second open file description, which flock treats the same way.

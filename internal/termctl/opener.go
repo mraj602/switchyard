@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/termenv"
+	"github.com/mraj602/watchyard/internal/termenv"
 )
 
 // OpenTimeout is how long the OS opener may run.
@@ -39,7 +39,7 @@ type ExecOpener struct {
 	GOOS string
 	// Run defaults to running the program with os/exec.
 	Run Runner
-	// Stderr receives the opener's stderr (sy points it at <state>/logs/sy.log). May be nil.
+	// Stderr receives the opener's stderr (wy points it at <state>/logs/wy.log). May be nil.
 	Stderr io.Writer
 }
 
@@ -76,7 +76,7 @@ func execRun(ctx context.Context, argv []string) ([]byte, error) {
 }
 
 // NewOpener returns the opener of this machine. Builds with the fakeopen tag return a
-// recording opener instead when SY_TEST_OPENER is set (see fakeopen.go); release builds do
+// recording opener instead when WY_TEST_OPENER is set (see fakeopen.go); release builds do
 // not contain that code.
 func NewOpener(env termenv.Env, stderr io.Writer) Opener {
 	if f := fakeOpener(env); f != nil {

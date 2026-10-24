@@ -437,7 +437,7 @@ func (s *Server) makePairCode(w http.ResponseWriter, r *http.Request, c *caller)
 	out := M{"id": "pc_dev1", "kind": b.Kind, "name": nilIfEmpty(b.Name), "code": "482-913", "secret": PairSecret, "url": url,
 		"expires_at": ts(s.pair.expiresAt), "command": nil, "qr": fakeQR(url)}
 	if b.Kind == "machine" {
-		out["command"] = "sy connect " + origin(r) + " --code 482-913"
+		out["command"] = "wy connect " + origin(r) + " --code 482-913"
 	}
 	writeJSON(w, 201, out)
 }

@@ -1,0 +1,12 @@
+{
+  "name": "watchyard",
+  "version": "0.1.0",
+  "description": "Watchyard for Claude Code: records session events and limits through the wy command, and adds /watchyard:status. Unofficial; not affiliated with Anthropic.",
+  "author": {"name": "mraj602"},
+  "keywords": [
+    "watchyard",
+    "sessions",
+    "usage",
+    "accounts"
+  ]
+}

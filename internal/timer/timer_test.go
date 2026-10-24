@@ -35,28 +35,28 @@ func golden(t *testing.T, name, got string) {
 func env(goos string) Env {
 	return Env{
 		GOOS: goos, Home: "/home/alice", UID: 1000, User: "alice",
-		SyPath: "/home/alice/.local/bin/sy", StateDir: "/home/alice/.local/state/switchyard",
+		SyPath: "/home/alice/.local/bin/wy", StateDir: "/home/alice/.local/state/watchyard",
 		Getenv: func(string) string { return "" },
 	}
 }
 
 func TestGoldenUnits(t *testing.T) {
-	golden(t, "switchyard-flush.service.golden", SystemdService(env("linux")))
-	golden(t, "switchyard-flush.timer.golden", SystemdTimer())
-	golden(t, "com.switchyard.flush.plist.golden", LaunchdPlist(env("darwin")))
+	golden(t, "watchyard-flush.service.golden", SystemdService(env("linux")))
+	golden(t, "watchyard-flush.timer.golden", SystemdTimer())
+	golden(t, "com.watchyard.flush.plist.golden", LaunchdPlist(env("darwin")))
 	w := env("windows")
-	w.SyPath = `C:\Users\alice\AppData\Local\Programs\sy\sy.exe`
-	golden(t, "switchyard-flush.task.xml.golden", WindowsTaskXML(w))
+	w.SyPath = `C:\Users\alice\AppData\Local\Programs\wy\wy.exe`
+	golden(t, "watchyard-flush.task.xml.golden", WindowsTaskXML(w))
 }
 
 func TestGoldenWithFolderOverrides(t *testing.T) {
 	e := env("linux")
-	e.SyPath = "/opt/my tools/sy"
-	vars := map[string]string{"SY_HOME": "/srv/sy home", "SY_STATE_DIR": "/srv/state"}
+	e.SyPath = "/opt/my tools/wy"
+	vars := map[string]string{"WY_HOME": "/srv/wy home", "WY_STATE_DIR": "/srv/state"}
 	e.Getenv = func(k string) string { return vars[k] }
-	golden(t, "switchyard-flush.service.overrides.golden", SystemdService(e))
+	golden(t, "watchyard-flush.service.overrides.golden", SystemdService(e))
 	e.GOOS = "darwin"
-	golden(t, "com.switchyard.flush.overrides.plist.golden", LaunchdPlist(e))
+	golden(t, "com.watchyard.flush.overrides.plist.golden", LaunchdPlist(e))
 }
 
 type fakeRunner struct {
@@ -94,7 +94,7 @@ func TestInstallLinuxUsesInjectedRunnerOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	dir := filepath.Join(e.Home, ".config", "systemd", "user")
-	for _, n := range []string{"switchyard-flush.service", "switchyard-flush.timer"} {
+	for _, n := range []string{"watchyard-flush.service", "watchyard-flush.timer"} {
 		if _, err := os.Stat(filepath.Join(dir, n)); err != nil {
 			t.Errorf("missing %s: %v", n, err)
 		}
@@ -104,7 +104,7 @@ func TestInstallLinuxUsesInjectedRunnerOnly(t *testing.T) {
 	}
 	want := []string{
 		"systemctl --user daemon-reload",
-		"systemctl --user enable --now switchyard-flush.timer",
+		"systemctl --user enable --now watchyard-flush.timer",
 		"loginctl show-user alice --property=Linger",
 	}
 	if strings.Join(r.calls, "|") != strings.Join(want, "|") {
@@ -143,7 +143,7 @@ func TestInstallLinuxHonoursXDGConfigHome(t *testing.T) {
 	if _, err := Install(e); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(x, "systemd", "user", "switchyard-flush.timer")); err != nil {
+	if _, err := os.Stat(filepath.Join(x, "systemd", "user", "watchyard-flush.timer")); err != nil {
 		t.Error(err)
 	}
 }
@@ -155,7 +155,7 @@ func TestInstallLinuxSystemctlFailureKeepsFilesAndExplains(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "cron") {
 		t.Fatalf("err = %v", err)
 	}
-	if _, serr := os.Stat(filepath.Join(e.Home, ".config", "systemd", "user", "switchyard-flush.timer")); serr != nil {
+	if _, serr := os.Stat(filepath.Join(e.Home, ".config", "systemd", "user", "watchyard-flush.timer")); serr != nil {
 		t.Error("unit files should stay for manual completion")
 	}
 }
@@ -170,7 +170,7 @@ func TestUninstallLinux(t *testing.T) {
 	if err != nil || len(removed) != 2 {
 		t.Fatalf("removed %v, %v", removed, err)
 	}
-	if got := strings.Join(r.calls, "|"); got != "systemctl --user disable --now switchyard-flush.timer|systemctl --user daemon-reload" {
+	if got := strings.Join(r.calls, "|"); got != "systemctl --user disable --now watchyard-flush.timer|systemctl --user daemon-reload" {
 		t.Errorf("calls %q", got)
 	}
 	if _, err := Uninstall(e); err != nil { // second time: nothing to remove, no error
@@ -210,7 +210,7 @@ func TestInstallAndUninstallMac(t *testing.T) {
 	if _, err := Install(e); err != nil {
 		t.Fatal(err)
 	}
-	p := filepath.Join(e.Home, "Library", "LaunchAgents", "com.switchyard.flush.plist")
+	p := filepath.Join(e.Home, "Library", "LaunchAgents", "com.watchyard.flush.plist")
 	if _, err := os.Stat(p); err != nil {
 		t.Fatal(err)
 	}
@@ -251,8 +251,8 @@ func TestUnsupportedOS(t *testing.T) {
 
 func TestSystemdQuote(t *testing.T) {
 	for in, want := range map[string]string{
-		"/usr/bin/sy":      "/usr/bin/sy",
-		"/opt/my tools/sy": `"/opt/my tools/sy"`,
+		"/usr/bin/wy":      "/usr/bin/wy",
+		"/opt/my tools/wy": `"/opt/my tools/wy"`,
 		`a"b`:              `"a\"b"`,
 		"50%":              `"50%%"`,
 		// Regression: a newline must not end the directive and start a new one.
@@ -265,7 +265,7 @@ func TestSystemdQuote(t *testing.T) {
 		}
 	}
 	// Environment= does no "$" expansion: a "$" there stays single (systemd.exec(5)).
-	if got := systemdEnvQuote(`SY_STATE_DIR=/d/$x`); got != `"SY_STATE_DIR=/d/$x"` {
+	if got := systemdEnvQuote(`WY_STATE_DIR=/d/$x`); got != `"WY_STATE_DIR=/d/$x"` {
 		t.Errorf("systemdEnvQuote = %q", got)
 	}
 }

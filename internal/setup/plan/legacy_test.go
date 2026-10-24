@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/setup/detect/detecttest"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/plan"
-	"github.com/mraj602/switchyard/internal/warp"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/setup/detect/detecttest"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/plan"
+	"github.com/mraj602/watchyard/internal/warp"
 )
 
 // rename.md 2.4: a folder whose only plugin is the one of the old name gets it disabled and
@@ -17,10 +17,10 @@ func TestLegacyPluginIsReplaced(t *testing.T) {
 	defer brand.SetLegacyForTest("oldname", "Oldname")()
 	h := detecttest.Laptop(t)
 	st := h.State()
-	st.SettingsTargets[0].EnabledPlugins["oldname@sy-local"] = true
-	st.SettingsTargets[0].EnabledPlugins["oldname-pane@sy-local"] = true
-	st.SettingsTargets[0].LegacyPlugins = []string{"oldname-pane@sy-local", "oldname@skills-dir", "oldname@sy-local"}
-	st.PluginRoots[0].Markets = append(st.PluginRoots[0].Markets, "sy-local")
+	st.SettingsTargets[0].EnabledPlugins["oldname@wy-local"] = true
+	st.SettingsTargets[0].EnabledPlugins["oldname-pane@wy-local"] = true
+	st.SettingsTargets[0].LegacyPlugins = []string{"oldname-pane@wy-local", "oldname@skills-dir", "oldname@wy-local"}
+	st.PluginRoots[0].Markets = append(st.PluginRoots[0].Markets, "wy-local")
 	p := mustPlan(t, st, model.Choices{NoStatusLine: true, Share: []string{"defaults"}})
 	var runs []string
 	for _, a := range p.Actions {
@@ -30,7 +30,7 @@ func TestLegacyPluginIsReplaced(t *testing.T) {
 	}
 	got := strings.Join(runs, "\n")
 	for _, want := range []string{
-		"claude plugin disable oldname-pane@sy-local --json\nclaude plugin disable oldname@sy-local --json\n",
+		"claude plugin disable oldname-pane@wy-local --json\nclaude plugin disable oldname@wy-local --json\n",
 		"claude plugin install " + plan.PluginID + " --json",
 	} {
 		if !strings.Contains(got, want) {
@@ -41,7 +41,7 @@ func TestLegacyPluginIsReplaced(t *testing.T) {
 		t.Error("a skills-dir plugin cannot be disabled")
 	}
 	w := strings.Join(p.Warnings, "\n")
-	if !strings.Contains(w, "oldname@skills-dir") || !strings.Contains(w, "oldname@sy-local from before the rename") {
+	if !strings.Contains(w, "oldname@skills-dir") || !strings.Contains(w, "oldname@wy-local from before the rename") {
 		t.Errorf("warnings:\n%s", w)
 	}
 	// --no-plugin leaves them alone.
@@ -53,7 +53,7 @@ func TestLegacyPluginIsReplaced(t *testing.T) {
 	}
 }
 
-// rename.md 2.8: a tab config sy wrote under the old prefix moves away once the current one
+// rename.md 2.8: a tab config wy wrote under the old prefix moves away once the current one
 // is written; one edited since is the person's and stays.
 func TestLegacyTabsMoveAway(t *testing.T) {
 	defer brand.SetLegacyForTest("oldname", "Oldname")()

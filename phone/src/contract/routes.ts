@@ -1,7 +1,7 @@
 // App routes (docs/spec/phone.md P4, P7). The push `url` (a PWA hash route) and incoming
-// switchyard:// URLs both map onto AppRoute through src/lib/links.
+// watchyard:// URLs both map onto AppRoute through src/lib/links.
 
-export const SCHEME = 'switchyard';
+export const SCHEME = 'watchyard';
 
 /** Ids in routes and deep links (P7). */
 export const ROUTE_ID = /^[A-Za-z0-9_.:-]{1,80}$/;
@@ -60,5 +60,5 @@ export const HASH_ROUTES = {
   pair: '#/pair',
 } as const satisfies Record<AppRoute['name'], string>;
 
-/** Hosts of switchyard:// URLs the app accepts (P7 allow-list); everything else opens Now. */
+/** Hosts of watchyard:// URLs the app accepts (P7 allow-list); everything else opens Now. */
 export const INCOMING_HOSTS = ['now', 'sessions', 'accounts', 'machines', 'alerts', 'pair', 'settings'] as const;

@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/client"
-	"github.com/mraj602/switchyard/internal/sshx/sshxtest"
+	"github.com/mraj602/watchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/sshx/sshxtest"
 )
 
 // Regression tests for the machine add / ssh side.
@@ -92,7 +92,7 @@ func TestAddPullTargetByMachine(t *testing.T) {
 func TestRepointForwardMachine(t *testing.T) {
 	w := newWorld(t)
 	os.MkdirAll(filepath.Join(w.remote, ".local/bin"), 0o755)
-	os.WriteFile(filepath.Join(w.remote, ".local/bin/sy"), []byte(fakeSy), 0o755)
+	os.WriteFile(filepath.Join(w.remote, ".local/bin/wy"), []byte(fakeSy), 0o755)
 	f := Forward{Host: HostPattern(testHost), Machine: testMID, Name: "gpu-box", Port: 47830, Target: "old.example:443"}
 	res, err := WriteForward(w.home, w.state, f, "test", w.now)
 	if err != nil {
@@ -187,7 +187,7 @@ func TestOwnBlockIsNotAdopted(t *testing.T) {
 	if _, err := Add(context.Background(), Options{Host: testHost, Reach: ReachForward, Binary: w.bin}, e); err != nil {
 		t.Fatalf("first add: %v", err)
 	}
-	// ssh -G now shows sy's own block (the Include is in effect).
+	// ssh -G now shows wy's own block (the Include is in effect).
 	w.fake.SetG(testHost, "hostname gpu-box\nuser me\nport 22\nremoteforward [127.0.0.1]:47830 hub.example:8443\n")
 	w.probe(ProbeReport{V: 1, Machine: testMID, Name: "gpu-box", Free: []int{47830, 47831}, Restrict: true})
 	sum, err := Add(context.Background(), Options{Host: testHost, Reach: ReachForward, Binary: w.bin, Port: 47831}, e)
@@ -195,11 +195,11 @@ func TestOwnBlockIsNotAdopted(t *testing.T) {
 		t.Fatalf("second add: %v", err)
 	}
 	if sum.Port != 47831 {
-		t.Fatalf("--port ignored because sy's own forward looked adopted: port %d", sum.Port)
+		t.Fatalf("--port ignored because wy's own forward looked adopted: port %d", sum.Port)
 	}
 	ent, _ := mustReg(t, w.state).Find("gpu-box")
 	if ent.ForwardAdopted {
-		t.Fatalf("sy's own block marked adopted: %+v", ent)
+		t.Fatalf("wy's own block marked adopted: %+v", ent)
 	}
 	conf, _ := os.ReadFile(filepath.Join(w.home, ".ssh", ForwardConf))
 	if !strings.Contains(string(conf), "127.0.0.1:47831") || strings.Contains(string(conf), "127.0.0.1:47830") {
@@ -266,13 +266,13 @@ func TestForwardPortHolderChecked(t *testing.T) {
 
 func TestPullKeyLineRejectsShellMetacharacters(t *testing.T) {
 	pub := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHub"
-	for _, sy := range []string{"/home/me/$(touch x)/sy", "/home/me/`id`/sy", "/home/me/a;b/sy", "/home/me/a&b/sy", "/home/me/a|b/sy",
-		"/home/me/a b/sy", "/home/me/a'b/sy", "/home/me/a*/sy", "/home/me/~/sy", "/home/me/a<b/sy", "/home/me/a(b)/sy", "/home/me/a\nb/sy", "/home/me/a#b/sy"} {
-		if _, _, err := PullKeyLine(pub, sy, "pt_01ABC", "", true); err == nil {
-			t.Errorf("sy path %q accepted", sy)
+	for _, wy := range []string{"/home/me/$(touch x)/wy", "/home/me/`id`/wy", "/home/me/a;b/wy", "/home/me/a&b/wy", "/home/me/a|b/wy",
+		"/home/me/a b/wy", "/home/me/a'b/wy", "/home/me/a*/wy", "/home/me/~/wy", "/home/me/a<b/wy", "/home/me/a(b)/wy", "/home/me/a\nb/wy", "/home/me/a#b/wy"} {
+		if _, _, err := PullKeyLine(pub, wy, "pt_01ABC", "", true); err == nil {
+			t.Errorf("wy path %q accepted", wy)
 		}
 	}
-	if _, _, err := PullKeyLine(pub, "/home/me/.local/bin/sy", "pt_01ABC", "", true); err != nil {
+	if _, _, err := PullKeyLine(pub, "/home/me/.local/bin/wy", "pt_01ABC", "", true); err != nil {
 		t.Fatalf("plain path refused: %v", err)
 	}
 }
@@ -328,7 +328,7 @@ func TestSymlinkedSSHFilesStaySymlinks(t *testing.T) {
 	if _, err := WriteForward(home, state, f, "test", time.Now()); err != nil {
 		t.Fatal(err)
 	}
-	line, key, err := PullKeyLine("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHub", "/home/me/.local/bin/sy", "pt_01ABC", "", true)
+	line, key, err := PullKeyLine("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHub", "/home/me/.local/bin/wy", "pt_01ABC", "", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -373,21 +373,21 @@ func TestPickPortIgnoresOtherMachines(t *testing.T) {
 func TestHasIncludeVariants(t *testing.T) {
 	home := "/home/me"
 	for cfg, want := range map[string]bool{
-		"Include switchyard.conf\nHost a\n":       true,
-		"Include \"switchyard.conf\"\n":           true,
-		"include ~/.ssh/switchyard.conf\n":        true,
-		"Include /home/me/.ssh/switchyard.conf\n": true,
-		"Include ~/.ssh/*.conf\n":                 true,
-		"Include config.d/* switchyard.conf\n":    true,
-		"Include *\n":                             true,
-		"Include other.conf\n":                    false,
-		"Include config.d/*\n":                    false,
-		"Host a\nInclude switchyard.conf\n":       false,
-		"# Include switchyard.conf\n":             false,
-		"Include \"~/.ssh/my switchyard.conf\"\n": false,
-		"": false,
-		"Include /home/other/.ssh/switchyard.conf\n":      false,
-		"Include switchyard.conf # added by sy earlier\n": true,
+		"Include watchyard.conf\nHost a\n":               true,
+		"Include \"watchyard.conf\"\n":                   true,
+		"include ~/.ssh/watchyard.conf\n":                true,
+		"Include /home/me/.ssh/watchyard.conf\n":         true,
+		"Include ~/.ssh/*.conf\n":                        true,
+		"Include config.d/* watchyard.conf\n":            true,
+		"Include *\n":                                    true,
+		"Include other.conf\n":                           false,
+		"Include config.d/*\n":                           false,
+		"Host a\nInclude watchyard.conf\n":               false,
+		"# Include watchyard.conf\n":                     false,
+		"Include \"~/.ssh/my watchyard.conf\"\n":         false,
+		"":                                               false,
+		"Include /home/other/.ssh/watchyard.conf\n":      false,
+		"Include watchyard.conf # added by wy earlier\n": true,
 	} {
 		if got := hasInclude([]byte(cfg), home, ForwardConf); got != want {
 			t.Errorf("hasInclude(%q) = %v, want %v", cfg, got, want)
@@ -408,9 +408,9 @@ func TestHasIncludeVariants(t *testing.T) {
 
 func TestLoginCommandQuoting(t *testing.T) {
 	for _, tc := range []struct{ folder, want string }{
-		{"~/.claude-2", `ssh -t me@box .local/bin/sy account login '~/.claude-2'`},
-		{".claude", `ssh -t me@box .local/bin/sy account login .claude`},
-		{"my folder; rm -rf x", `ssh -t me@box ''\''.local/bin/sy'\'' '\''account'\'' '\''login'\'' '\''my folder; rm -rf x'\'''`},
+		{"~/.claude-2", `ssh -t me@box .local/bin/wy account login '~/.claude-2'`},
+		{".claude", `ssh -t me@box .local/bin/wy account login .claude`},
+		{"my folder; rm -rf x", `ssh -t me@box ''\''.local/bin/wy'\'' '\''account'\'' '\''login'\'' '\''my folder; rm -rf x'\'''`},
 	} {
 		got := LoginCommand("me@box", tc.folder)
 		if got != tc.want {

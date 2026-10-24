@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 const testDevice = "dev_01JA4TESTDEVICE"
@@ -25,7 +25,7 @@ var (
 	testOwnerPub  = testOwnerPriv.Public().(ed25519.PublicKey)
 )
 
-// deviceReport writes what the fake remote's `sy keys device --json` prints: fresh keys.
+// deviceReport writes what the fake remote's `wy keys device --json` prints: fresh keys.
 func (w *world) deviceReport(device string) keys.DeviceKeysNew {
 	w.t.Helper()
 	dk, err := keys.NewDeviceKeys(time.Now(), nil)
@@ -42,7 +42,7 @@ func (w *world) deviceReport(device string) keys.DeviceKeysNew {
 	return pub
 }
 
-// fakeRegister is the hub host's `sy hub keys register`: a real hub-signed certificate (reg
+// fakeRegister is the hub host's `wy hub keys register`: a real hub-signed certificate (reg
 // ssh) of the keys on stdin, and the confirmed owner key.
 func fakeRegister(args []string, stdin []byte) ([]byte, error) {
 	var k keys.DeviceKeysNew
@@ -133,7 +133,7 @@ func TestAddKeysNoCertifyLeavesNextStep(t *testing.T) {
 	if sum.Keys == nil || sum.Keys.OwnerSigned || w.admin.called("keys certify") != nil {
 		t.Fatalf("keys %+v", sum.Keys)
 	}
-	if !strings.Contains(strings.Join(sum.Warnings, "\n"), "sy keys certify "+testDevice) {
+	if !strings.Contains(strings.Join(sum.Warnings, "\n"), "wy keys certify "+testDevice) {
 		t.Fatalf("no next step in %q", sum.Warnings)
 	}
 }

@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/setup/ledger"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/ledger"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // goldenPlan reads a terminal plan golden of the planner (internal/setup/plan/testdata).
@@ -55,12 +55,12 @@ func manifestOf(p model.Plan, phase string) model.Manifest {
 }
 
 func baseLedger() model.Ledger {
-	return model.Ledger{V: 1, Plugin: &model.LedgerPlugin{ID: "switchyard@sy-local", Marketplace: "/home/u/.local/state/switchyard/plugin/marketplace",
+	return model.Ledger{V: 1, Plugin: &model.LedgerPlugin{ID: "watchyard@wy-local", Marketplace: "/home/u/.local/state/watchyard/plugin/marketplace",
 		Roots: []string{"/home/u/.claude/plugins", "/home/u/.claude-3/plugins"}, Targets: []string{"/home/u/.claude/settings.json", "/home/u/.claude-3/settings.json"}}}
 }
 
 // Every piece on records the terminal block; the undo of that run takes it all away and
-// leaves the switchyard plugin's record alone.
+// leaves the watchyard plugin's record alone.
 func TestTerminalUpdateAndRevert(t *testing.T) {
 	p := goldenPlan(t, "all-on")
 	m := manifestOf(p, model.PhaseDone)
@@ -126,7 +126,7 @@ func TestJournalMark(t *testing.T) {
 		t.Fatal(got)
 	}
 	p := model.Plan{Actions: []model.Action{{ID: "a1", Op: model.OpRun, Step: model.StepPlugin,
-		Argv:    []string{"claude", "plugin", "install", "switchyard@sy-local"},
+		Argv:    []string{"claude", "plugin", "install", "watchyard@wy-local"},
 		Touches: []string{"/h/.claude/settings.json", "/h/.claude/plugins/installed_plugins.json"}}}}
 	m := manifestOf(p, model.PhaseDone)
 	l := ledger.Update(model.Ledger{}, p, m)
@@ -135,17 +135,17 @@ func TestJournalMark(t *testing.T) {
 	}
 }
 
-// The switchyard plugin's refresh (`sy term titles on` with a stale sy-local) changes no
-// piece, and its undo leaves the switchyard plugin's record alone.
+// The watchyard plugin's refresh (`wy term titles on` with a stale wy-local) changes no
+// piece, and its undo leaves the watchyard plugin's record alone.
 func TestHooksRefreshRecordsNothing(t *testing.T) {
 	root := "/home/u/.claude/plugins"
 	p := model.Plan{Actions: []model.Action{
-		{ID: "a1", Op: model.OpRun, Step: model.StepTerminal, Argv: []string{"claude", "plugin", "marketplace", "update", "sy-local", "--json"},
+		{ID: "a1", Op: model.OpRun, Step: model.StepTerminal, Argv: []string{"claude", "plugin", "marketplace", "update", "wy-local", "--json"},
 			Touches: []string{"/home/u/.claude/settings.json", root + "/known_marketplaces.json",
-				ledger.JournalMark("/home/u/.local/state/switchyard", ledger.PieceHooks, ledger.VerbMarketplaceUpdate)}, Watch: []string{root}},
-		{ID: "a2", Op: model.OpRun, Step: model.StepTerminal, Argv: []string{"claude", "plugin", "update", "switchyard@sy-local", "--json"},
+				ledger.JournalMark("/home/u/.local/state/watchyard", ledger.PieceHooks, ledger.VerbMarketplaceUpdate)}, Watch: []string{root}},
+		{ID: "a2", Op: model.OpRun, Step: model.StepTerminal, Argv: []string{"claude", "plugin", "update", "watchyard@wy-local", "--json"},
 			Touches: []string{"/home/u/.claude/settings.json", root + "/installed_plugins.json",
-				ledger.JournalMark("/home/u/.local/state/switchyard", ledger.PieceHooks, ledger.VerbUpdate)}, Watch: []string{root}},
+				ledger.JournalMark("/home/u/.local/state/watchyard", ledger.PieceHooks, ledger.VerbUpdate)}, Watch: []string{root}},
 	}}
 	m := manifestOf(p, model.PhaseDone)
 	prev := baseLedger()

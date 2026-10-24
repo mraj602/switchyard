@@ -9,7 +9,7 @@ import type { TabEventAt } from './index';
 
 /** Settings → Claude tabs: what the account check does, and does not. */
 export const TAB_PRIVACY_NOTE =
-  'Switchyard asks claude.ai only "which account is this?" inside the tab. It never reads your chats or sends the page anywhere.';
+  'Watchyard asks claude.ai only "which account is this?" inside the tab. It never reads your chats or sends the page anywhere.';
 
 /** claude.ai paths where a tab is not signed in (desktop NOT_READABLE_PATHS). */
 export const SIGNED_OUT_PATHS = ['/login', '/logout'] as const;

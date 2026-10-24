@@ -95,7 +95,7 @@ const good = {
   'accounts:share': [{ folder: '~/.claude-2', share: 'all' }, { folder: '/home/me/.claude', share: 'projects,todos=off' }],
   'settings:set': [{}, { keep_running: true, notifications: false, autostart: true, start_hidden: false }],
   'app:open-release': [undefined],
-  toast: [{ level: 'warn', text: 'sy not found' }],
+  toast: [{ level: 'warn', text: 'wy not found' }],
 };
 
 const bad = {

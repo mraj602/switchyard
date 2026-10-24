@@ -147,7 +147,7 @@ test('setSettings: stores booleans, drives autostart, emits settings, ignores ju
 
 test('the close notice is the one sentence of the target, and only once', async () => {
   const { fake, bg, win, store } = setup();
-  assert.equal(NOTICE_WITH_TRAY, 'Switchyard keeps running in the tray. Quit from the tray menu.');
+  assert.equal(NOTICE_WITH_TRAY, 'Watchyard keeps running in the tray. Quit from the tray menu.');
   bg.claim();
   bg.start();
   win.emit('close', { preventDefault() {} });

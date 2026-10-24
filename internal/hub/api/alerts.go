@@ -11,10 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/push/rules"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/rules"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // Alert log and actions (push.md 4, 8; api.yaml tag alerts). Snooze, seen and action

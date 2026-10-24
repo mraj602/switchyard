@@ -13,10 +13,10 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/api"
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/api"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // The clamp keeps a record from a wrong clock from taking over ordering: the stored ts and
@@ -58,7 +58,7 @@ func TestRemoteURLOnlyKeptForClaudeAI(t *testing.T) {
 	desktop := h.token("desktop")
 	send := func(sid, url string, at time.Time) {
 		p, _ := json.Marshal(map[string]any{"session_id": sid, "hook_event_name": "SessionStart", "cwd": "/home/u/proj"})
-		r, err := record.NewHookEvent(record.Meta{Machine: h.machine, Slot: "~/.claude", Client: "sy/0.0.0-test", Now: at},
+		r, err := record.NewHookEvent(record.Meta{Machine: h.machine, Slot: "~/.claude", Client: "wy/0.0.0-test", Now: at},
 			p, record.HookOptions{})
 		if err != nil {
 			t.Fatal(err)

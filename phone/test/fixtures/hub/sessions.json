@@ -158,7 +158,7 @@
     {
       "alert": null,
       "context_pct": 88,
-      "cwd": "/home/me/switchyard",
+      "cwd": "/home/me/watchyard",
       "detail": null,
       "ended_at": null,
       "focus_url": null,
@@ -172,7 +172,7 @@
       "model": "claude-opus-4-7",
       "name": null,
       "needs_you": false,
-      "project": "switchyard",
+      "project": "watchyard",
       "question": null,
       "remote_url": null,
       "resume": "claude --resume c41e0000-0000-4000-8000-000000000009",

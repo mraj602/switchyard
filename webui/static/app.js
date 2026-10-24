@@ -1,4 +1,4 @@
-// Switchyard web app: hash router, shell and render loop. The same single-page app is the
+// Watchyard web app: hash router, shell and render loop. The same single-page app is the
 // desktop board (sidebar) and the installable phone app (bottom tabs); CSS chooses.
 //
 // Routes: see route.js. Start-up asks GET /v1/me: a 401 opens the pair screen (installed

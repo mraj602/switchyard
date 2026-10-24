@@ -24,7 +24,7 @@ func TestC4ShapesRoundTrip(t *testing.T) {
 		"token": {new(Token), `{"device": "dev_01JA", "token": "sy_d_abc", "scopes": ["write", "read"],
 			"hub": {"url": "https://hub.example.ts.net"}}`},
 		"owner-link": {new(OwnerLink), `{"url": "https://hub.example.ts.net/#/owner?s=abc", "expires_at": "2026-10-13T10:00:00.000Z"}`},
-		"hub":        {new(HubService), `{"service": "missing", "unit": "switchyard-hub.service", "health": false}`},
+		"hub":        {new(HubService), `{"service": "missing", "unit": "watchyard-hub.service", "health": false}`},
 	} {
 		dec := json.NewDecoder(bytes.NewReader([]byte(c.doc)))
 		dec.DisallowUnknownFields()

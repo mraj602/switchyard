@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // NewID makes a hub id: prefix + ULID ("seat_01J…", "dev_01J…").
@@ -30,7 +30,7 @@ type Heartbeat struct {
 	LastSeen   int64  // hub receive time
 	LastRecord int64  // newest client ts in the batch, 0 = none
 	Backlog    *int64 // X-Sy-Backlog, nil = not sent
-	SyVersion  string // from the batch's client "sy/x.y.z", "" = unknown
+	SyVersion  string // from the batch's client "wy/x.y.z", "" = unknown
 
 	// machines.md 3.4, 6.1.
 	Reach         string // "direct", "forward", "pull"; "" = not said, keeps the stored value

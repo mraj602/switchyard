@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/service"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/service"
 )
 
 // ErrNoURL is returned when no hub address could be found (pairing.md 2.3, step 4).
@@ -59,7 +59,7 @@ func RequestOrigin(r *http.Request) string {
 // trailing slash). Phone and browser codes need https (a secure context); insecure allows
 // http anyway, and the caller should warn that the app then cannot install or receive
 // pushes. Owner links also accept http on a loopback address (a browser treats it as a
-// secure context). machine and desktop codes accept either scheme: sy connect applies its
+// secure context). machine and desktop codes accept either scheme: wy connect applies its
 // own rule (tokens.md 4).
 func NormalizeURL(raw, kind string, insecure bool) (origin string, plainHTTP bool, err error) {
 	u, err := url.Parse(strings.TrimSpace(raw))

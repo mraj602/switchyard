@@ -6,7 +6,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/mraj602/switchyard/webui"
+	"github.com/mraj602/watchyard/webui"
 )
 
 // /health carries the build hash of the served web app (pwa.md 4), the same one

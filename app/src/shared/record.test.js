@@ -16,8 +16,8 @@ const org = (uuid, extra = {}) => ({ uuid, name: 'n', capabilities: ['chat'], ra
 const account = { uuid: ACCT, email_address: 'a@example.com', full_name: 'A', display_name: 'a' };
 const base = { machine: 'm_01JA2W5N0G8H3Q7S2V6X9Y1Z4K', client: clientOf('0.6.0'), ts: '2026-10-11T14:05:00.120Z', tabId: 't_9c1e5f0a7b2d4e68' };
 
-test('client is switchyard-desktop/<version>', () => {
-  assert.equal(clientOf('0.6.0'), 'switchyard-desktop/0.6.0');
+test('client is watchyard-desktop/<version>', () => {
+  assert.equal(clientOf('0.6.0'), 'watchyard-desktop/0.6.0');
 });
 
 for (const f of files) {

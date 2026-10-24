@@ -15,7 +15,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/atomicfile"
 )
 
 // MaxRowsPerBatch is the most rows one token_rows record may carry (record.md 4.4).
@@ -60,7 +60,7 @@ type Options struct {
 	Slots []Slot
 	// AllSlots is every slot of the machine, a superset of Slots. Which projects folders are
 	// shared is decided over AllSlots, then only the folders of Slots are scanned, so
-	// `sy scan --slot X` does not stamp X on rows of a folder that X shares with other
+	// `wy scan --slot X` does not stamp X on rows of a folder that X shares with other
 	// slots. Empty means Slots.
 	AllSlots []Slot
 	// OffsetsPath is the JSON file holding per-file byte offsets (<state>/scan/offsets.json).

@@ -1,4 +1,4 @@
-// Package peers is the local half of Switchyard's cross-session messaging (docs/spec/peers.md):
+// Package peers is the local half of Watchyard's cross-session messaging (docs/spec/peers.md):
 // the inbox writer and its wrapper builder (8.1, 8.5), the session directory (3), who is
 // sending (4.1), content and rate limits (9), threads and the loop guard (6), the send
 // pipeline (4.2), the evaluation of the signed matrix (5.3) and the envelopes of messages to

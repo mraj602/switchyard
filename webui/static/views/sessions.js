@@ -72,7 +72,7 @@ export function render({ store, route, now }) {
   const foot = h('p', { class: 'muted small foot-note' },
     `Showing sessions active in the last ${DAYS_LOADED} days. “Asked” means Claude stopped with a question for you; “Done” means it finished its turn.`);
 
-  if (!all) { node.append(h('p', { class: 'muted pad' }, store.error || 'Loading sessions…')); return { title: 'Sessions · Switchyard', node }; }
+  if (!all) { node.append(h('p', { class: 'muted pad' }, store.error || 'Loading sessions…')); return { title: 'Sessions · Watchyard', node }; }
 
   const f = FILTERS.find((x) => x.id === filterId);
   const matching = all.filter((s) => f.test(s, now) && (!machineFilter || s.machine === machineFilter));
@@ -80,7 +80,7 @@ export function render({ store, route, now }) {
   const rows = matching.filter((s) => !isHistory(s));
   if (!matching.length) {
     node.append(h('p', { class: 'calm', 'data-key': 'sessions-empty' }, f.empty), foot);
-    return { title: 'Sessions · Switchyard', node };
+    return { title: 'Sessions · Watchyard', node };
   }
 
   if (rows.length) node.append(h('div', { class: 'table-wrap' }, table(groupRows(rows, group, idx), now, idx)));
@@ -95,7 +95,7 @@ export function render({ store, route, now }) {
       ui.history ? h('div', { class: 'table-wrap' }, table(groupRows(history, group, idx), now, idx)) : null));
   }
   node.append(foot);
-  return { title: 'Sessions · Switchyard', node };
+  return { title: 'Sessions · Watchyard', node };
 }
 
 // Groups in a stable order: those with something that needs you first, then accounts in the

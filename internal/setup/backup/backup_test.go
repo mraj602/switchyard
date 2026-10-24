@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/setup/backup"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/testtree"
+	"github.com/mraj602/watchyard/internal/setup/backup"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/testtree"
 )
 
 func TestCreateIDsClashAndMode(t *testing.T) {

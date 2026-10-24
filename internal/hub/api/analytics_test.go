@@ -12,8 +12,8 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/api"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/api"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // anaNow is the hub clock of these tests: 2026-10-15 17:30 in Asia/Kolkata (UTC+5:30, a zone

@@ -4,15 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // MergeTerminal folds a terminal plan (Terminal, made from the same State) into a setup
-// plan, for `sy setup --terminal …`: one plan, one backup set, one `sy setup --undo`.
+// plan, for `wy setup --terminal …`: one plan, one backup set, one `wy setup --undo`.
 // Actions are put in StepOrder (the setup plan's first within a step), and an action the
 // setup plan already does is not done twice: the marketplace write_tree, and a
 // `claude plugin` run with the same argv, folder and plugin root (the pane's
-// `marketplace add sy-local` when setup adds sy-local itself). Keep lines, warnings and
+// `marketplace add wy-local` when setup adds wy-local itself). Keep lines, warnings and
 // needs are joined; the summary and plan_id are computed again.
 func MergeTerminal(base, term model.Plan) model.Plan {
 	out := base
@@ -69,7 +69,7 @@ func MergeTerminal(base, term model.Plan) model.Plan {
 	return out
 }
 
-// WritesMarketplace reports whether p writes sy's marketplace at dir (the plugin step of a
+// WritesMarketplace reports whether p writes wy's marketplace at dir (the plugin step of a
 // setup plan): a terminal plan merged into it may then count on the marketplace being
 // there and current.
 func WritesMarketplace(p model.Plan, dir string) bool {

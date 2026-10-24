@@ -1,4 +1,4 @@
-// Package doctor implements `sy doctor`: checks that Claude Code, slots, hooks, the
+// Package doctor implements `wy doctor`: checks that Claude Code, slots, hooks, the
 // status line, the timer, the outbox, the hub connection and token, push and the terminal are
 // in order, printing one line of fix for each failure.
 //

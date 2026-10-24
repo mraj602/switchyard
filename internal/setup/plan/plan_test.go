@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/setup/detect/detecttest"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/plan"
+	"github.com/mraj602/watchyard/internal/setup/detect/detecttest"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/plan"
 )
 
 var opt = plan.Options{Version: "0.3.0"}
@@ -63,7 +63,7 @@ func TestLaptopDefaults(t *testing.T) {
 		t.Errorf("summary %+v", p.Summary)
 	}
 	a := p.Actions
-	if a[0].Path != h.Abs(".local/state/switchyard/plugin/marketplace") || a[0].Note != "switchyard 0.3.0 (sy-local)" {
+	if a[0].Path != h.Abs(".local/state/watchyard/plugin/marketplace") || a[0].Note != "watchyard 0.3.0 (wy-local)" {
 		t.Errorf("tree: %+v", a[0])
 	}
 	if a[1].Env["CLAUDE_CONFIG_DIR"] != nil || len(a[1].Touches) != 2 {
@@ -78,11 +78,11 @@ func TestLaptopDefaults(t *testing.T) {
 	}
 	var now string
 	_ = json.Unmarshal(sl.Value, &now)
-	sy := h.Abs(".local/bin/sy")
-	if strings.Contains(sy, `\`) { // a Windows path with backslashes is single-quoted for the shell
-		sy = "'" + sy + "'"
+	wy := h.Abs(".local/bin/wy")
+	if strings.Contains(wy, `\`) { // a Windows path with backslashes is single-quoted for the shell
+		wy = "'" + wy + "'"
 	}
-	wantNow := fmt.Sprintf("%s statusline --wrap 'bash %s'", sy, h.Abs(".claude/statusline-command.sh"))
+	wantNow := fmt.Sprintf("%s statusline --wrap 'bash %s'", wy, h.Abs(".claude/statusline-command.sh"))
 	if now != wantNow {
 		t.Errorf("statusline value %q", now)
 	}
@@ -116,9 +116,9 @@ func TestLaptopDefaults(t *testing.T) {
 // afterApply edits a laptop state the way a successful apply of the default plan would.
 func afterApply(st model.State, p model.Plan) model.State {
 	t := &st.SettingsTargets[0]
-	t.EnabledPlugins["switchyard@sy-local"] = true
-	t.SwitchyardPlugins = []string{"switchyard@sy-local"}
-	t.ExtraMarketplaces = append(t.ExtraMarketplaces, "sy-local")
+	t.EnabledPlugins["watchyard@wy-local"] = true
+	t.WatchyardPlugins = []string{"watchyard@wy-local"}
+	t.ExtraMarketplaces = append(t.ExtraMarketplaces, "wy-local")
 	for _, a := range p.Actions {
 		if a.Op == model.OpJSONSet && a.Pointer == "/statusLine/command" {
 			var v string
@@ -127,8 +127,8 @@ func afterApply(st model.State, p model.Plan) model.State {
 		}
 	}
 	r := &st.PluginRoots[0]
-	r.Plugins = append(r.Plugins, "switchyard@sy-local")
-	r.Markets = append(r.Markets, "sy-local")
+	r.Plugins = append(r.Plugins, "watchyard@wy-local")
+	r.Markets = append(r.Markets, "wy-local")
 	st.Share = model.ShareConfig{Primary: "~/.claude", MCP: "external"}
 	st.ConfigPresent = true
 	for i := range st.Folders {
@@ -254,15 +254,15 @@ func TestSettingsForcesPlugins(t *testing.T) {
 	}
 }
 
-// (6) A second enabled switchyard@* gives the disable action.
-func TestSecondSwitchyardPlugin(t *testing.T) {
+// (6) A second enabled watchyard@* gives the disable action.
+func TestSecondWatchyardPlugin(t *testing.T) {
 	h := detecttest.Laptop(t)
 	st := h.State()
-	st.SettingsTargets[0].EnabledPlugins["switchyard@sy-local"] = true
-	st.SettingsTargets[0].EnabledPlugins["switchyard@github"] = true
-	st.SettingsTargets[0].SwitchyardPlugins = []string{"switchyard@github", "switchyard@sy-local"}
-	st.PluginRoots[0].Plugins = append(st.PluginRoots[0].Plugins, "switchyard@sy-local")
-	st.PluginRoots[0].Markets = append(st.PluginRoots[0].Markets, "sy-local")
+	st.SettingsTargets[0].EnabledPlugins["watchyard@wy-local"] = true
+	st.SettingsTargets[0].EnabledPlugins["watchyard@github"] = true
+	st.SettingsTargets[0].WatchyardPlugins = []string{"watchyard@github", "watchyard@wy-local"}
+	st.PluginRoots[0].Plugins = append(st.PluginRoots[0].Plugins, "watchyard@wy-local")
+	st.PluginRoots[0].Markets = append(st.PluginRoots[0].Markets, "wy-local")
 	p := mustPlan(t, st, model.Choices{NoStatusLine: true, Share: []string{"defaults"}})
 	var dis []model.Action
 	for _, a := range p.Actions {
@@ -270,14 +270,14 @@ func TestSecondSwitchyardPlugin(t *testing.T) {
 			dis = append(dis, a)
 		}
 	}
-	if len(dis) != 1 || strings.Join(dis[0].Argv, " ") != "claude plugin disable switchyard@github --json" {
+	if len(dis) != 1 || strings.Join(dis[0].Argv, " ") != "claude plugin disable watchyard@github --json" {
 		t.Fatalf("runs: %+v\n%s", dis, dump(p))
 	}
-	if len(p.Warnings) == 0 || !strings.Contains(p.Warnings[0], "switchyard@github") {
+	if len(p.Warnings) == 0 || !strings.Contains(p.Warnings[0], "watchyard@github") {
 		t.Errorf("warnings: %v", p.Warnings)
 	}
-	// An adopted plugin from another marketplace: no sy-local install.
-	st.SettingsTargets[0].SwitchyardPlugins = []string{"switchyard@github"}
+	// An adopted plugin from another marketplace: no wy-local install.
+	st.SettingsTargets[0].WatchyardPlugins = []string{"watchyard@github"}
 	st.PluginRoots[0].Plugins = st.PluginRoots[0].Plugins[:3]
 	p = mustPlan(t, st, model.Choices{NoStatusLine: true})
 	for _, a := range p.Actions {
@@ -311,7 +311,7 @@ func TestPlanID(t *testing.T) {
 	}
 	// One precondition changes: the marketplace tree already exists.
 	st2 := h.State()
-	st2.Ledger = &model.Ledger{V: 1, Plugin: &model.LedgerPlugin{ID: "switchyard@sy-local", Marketplace: "/x"}}
+	st2.Ledger = &model.Ledger{V: 1, Plugin: &model.LedgerPlugin{ID: "watchyard@wy-local", Marketplace: "/x"}}
 	if mustPlan(t, st2, model.Choices{}).PlanID == id {
 		t.Error("changed precondition, same id")
 	}

@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/jsonedit"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/jsonedit"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // Sharer implements model.Sharer on the real file system.
@@ -153,9 +153,9 @@ func renameOver(tmp, path string, junctionKind bool) error {
 }
 
 // Unshare replaces the link at path with an independent copy of what it resolves to
-// (`sy account remove --unshare`). The copy is built at a temp name next to path first. Unlike
+// (`wy account remove --unshare`). The copy is built at a temp name next to path first. Unlike
 // Link with LinkCopy it never registers a synced copy: the copy is the folder's own from now
-// on and `sy tick` never syncs it (5.7).
+// on and `wy tick` never syncs it (5.7).
 func (s *Sharer) Unshare(path string) error {
 	if err := guard(path); err != nil {
 		return err
@@ -183,7 +183,7 @@ func (s *Sharer) Unshare(path string) error {
 }
 
 // ForgetCopy removes path from the synced-copy groups (undo of a LinkCopy): from now on it is
-// an independent file that `sy tick` leaves alone. A no-op when it is not registered.
+// an independent file that `wy tick` leaves alone. A no-op when it is not registered.
 func (s *Sharer) ForgetCopy(path string) error {
 	if s.StateDir == "" {
 		return nil

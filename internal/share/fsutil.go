@@ -13,7 +13,7 @@ import (
 	"runtime"
 	"sort"
 
-	"github.com/mraj602/switchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/identity"
 )
 
 // ErrForbidden is returned for a path through a credentials file (identity.Forbidden).
@@ -37,9 +37,9 @@ func randHex() string {
 	return hex.EncodeToString(b[:])
 }
 
-// tempName is a transient sibling name for path: ".<base>.sy.<rand>.tmp".
+// tempName is a transient sibling name for path: ".<base>.wy.<rand>.tmp".
 func tempName(path string) string {
-	return filepath.Join(filepath.Dir(path), "."+filepath.Base(path)+".sy."+randHex()+".tmp")
+	return filepath.Join(filepath.Dir(path), "."+filepath.Base(path)+".wy."+randHex()+".tmp")
 }
 
 func exists(path string) bool {

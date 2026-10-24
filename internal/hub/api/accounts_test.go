@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 const (
@@ -21,7 +21,7 @@ func webUsageRec(t *testing.T, machine, tab string, at time.Time, usage json.Raw
 	p := record.WebUsagePayload{TabID: tab, Usage: usage, Error: errPayload,
 		Org:     json.RawMessage(`{"name":"Work Inc","capabilities":["chat"],"rate_limit_tier":"default_claude_max_5x"}`),
 		Account: json.RawMessage(`{"email_address":"a@example.com","display_name":"A"}`)}
-	r, err := record.NewWebUsage(record.Meta{Machine: machine, Client: "switchyard-desktop/0.6.0", Now: at,
+	r, err := record.NewWebUsage(record.Meta{Machine: machine, Client: "watchyard-desktop/0.6.0", Now: at,
 		Seat: &record.Seat{Account: acctUUID, Org: orgUUID, Email: "a@example.com", Src: "claude_ai"}}, p)
 	if err != nil {
 		t.Fatal(err)
@@ -40,7 +40,7 @@ func slotInfoRec(t *testing.T, machine string, at time.Time, label, colour strin
 		extra["colour"], _ = json.Marshal(colour)
 	}
 	oa, _ := json.Marshal(map[string]string{"accountUuid": acctUUID, "emailAddress": "a@example.com", "organizationUuid": orgUUID})
-	r, err := record.NewSlotInfo(record.Meta{Machine: machine, Slot: "~/.claude", Client: "sy/0.6.0", Now: at},
+	r, err := record.NewSlotInfo(record.Meta{Machine: machine, Slot: "~/.claude", Client: "wy/0.6.0", Now: at},
 		record.SlotInfoPayload{LoggedIn: true, OAuthAccount: oa, Extra: extra})
 	if err != nil {
 		t.Fatal(err)

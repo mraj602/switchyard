@@ -2,14 +2,14 @@
 
 Claude Code keeps each login in a config folder: `~/.claude` by default, and any other
 folder you point it at with `CLAUDE_CONFIG_DIR` (`~/.claude-2`, `~/.claude-3`, ...).
-Switchyard calls each folder an **account** on this machine. It gives each one a label and a
+Watchyard calls each folder an **account** on this machine. It gives each one a label and a
 colour, writes a launcher for it, and can make the folders share settings, skills, plugins and
 more, so you set things up once.
 
-Use only your own accounts, each used within the terms of its plan. Switchyard never
+Use only your own accounts, each used within the terms of its plan. Watchyard never
 switches or rotates accounts for you, and it never shares a login between folders.
 
-## What Switchyard never touches
+## What Watchyard never touches
 
 - Logins: `.credentials.json`, the macOS Keychain item, `oauthAccount` and every other key of
   `.claude.json` except `mcpServers`. Logging in is always Claude Code's own
@@ -20,14 +20,14 @@ switches or rotates accounts for you, and it never shares a login between folder
 
 ## Labels, colours and launchers
 
-`sy setup` (step 2) and `sy account` set them:
+`wy setup` (step 2) and `wy account` set them:
 
 ```sh
-sy account list                              # one row per folder: label, login, plan, what is shared
-sy account label ~/.claude-2 work --colour teal
-sy account add research                      # a new folder (the next free ~/.claude-N), shared like the others
-sy account login research                    # runs `claude auth login` for that folder, in this terminal
-sy account remove research                   # stop managing it; the folder and its login stay
+wy account list                              # one row per folder: label, login, plan, what is shared
+wy account label ~/.claude-2 work --colour teal
+wy account add research                      # a new folder (the next free ~/.claude-N), shared like the others
+wy account login research                    # runs `claude auth login` for that folder, in this terminal
+wy account remove research                   # stop managing it; the folder and its login stay
 ```
 
 Labels are lower case letters, digits and `-`, up to 24 characters. The colour palette is
@@ -61,7 +61,7 @@ Notes:
 
 - With `history` on, two accounts that resume the same session write into one transcript.
 - On Linux and macOS a shared item is a symlink. On Windows directories are junctions and
-  files are symlinks when allowed, otherwise copies that `sy tick` keeps in sync.
+  files are symlinks when allowed, otherwise copies that `wy tick` keeps in sync.
 - An item is linked only when the primary has it. Nothing is created just to be shared,
   except an empty `settings.json` when `settings` is on.
 
@@ -75,9 +75,9 @@ possible. In scripts, `--conflicts keep|primary|merge` applies one answer to eve
 ### Change sharing later
 
 ```sh
-sy account share --dry-run                       # what would change for every folder
-sy account share work --share defaults,-history  # all defaults except history, for one folder
-sy account remove work --unshare                 # turn links into independent copies
+wy account share --dry-run                       # what would change for every folder
+wy account share work --share defaults,-history  # all defaults except history, for one folder
+wy account remove work --unshare                 # turn links into independent copies
 ```
 
 Turning a switch off for an item that is already linked turns the link into an independent
@@ -85,48 +85,48 @@ copy of the shared file or folder.
 
 ## Plans, backups and undo
 
-Every command that changes your folders (`sy setup`, `sy account add|label|share|remove`,
-`sy uninstall`, `sy term setup`) works the same way:
+Every command that changes your folders (`wy setup`, `wy account add|label|share|remove`,
+`wy uninstall`, `wy term setup`) works the same way:
 
 1. It reads the machine and computes a plan.
 2. It shows the plan and asks. `--dry-run` stops here; `--yes` applies without asking.
 3. Before each change it saves what it replaces in a backup set under the state folder
-   (`sy paths` shows where).
+   (`wy paths` shows where).
 4. If a step fails, the run is rolled back.
 
 ```sh
-sy setup --undo-list          # every run that changed something, newest first
-sy setup --undo --dry-run     # what undoing the last run would do
-sy setup --undo               # undo the last run, byte for byte
-sy setup --undo <backup id>   # undo a specific run
+wy setup --undo-list          # every run that changed something, newest first
+wy setup --undo --dry-run     # what undoing the last run would do
+wy setup --undo               # undo the last run, byte for byte
+wy setup --undo <backup id>   # undo a specific run
 ```
 
-A second `sy setup` with the same answers changes nothing ("0 changes").
+A second `wy setup` with the same answers changes nothing ("0 changes").
 
 ## Scripted setup
 
-Every screen of `sy setup` has a flag, so Claude or a script can drive it:
+Every screen of `wy setup` has a flag, so Claude or a script can drive it:
 
 ```sh
-sy setup --labels '~/.claude=personal,~/.claude-2=work:amber' --share defaults --hub here --dry-run --json
-sy setup --labels '~/.claude=personal,~/.claude-2=work:amber' --share defaults --hub here --yes
+wy setup --labels '~/.claude=personal,~/.claude-2=work:amber' --share defaults --hub here --dry-run --json
+wy setup --labels '~/.claude=personal,~/.claude-2=work:amber' --share defaults --hub here --yes
 ```
 
 `--json` prints the plan and a plan id; `--expect-plan <id>` applies only if the plan is
-still the same. The `/switchyard:setup` skill uses this to show you the plan, ask, and apply
+still the same. The `/watchyard:setup` skill uses this to show you the plan, ask, and apply
 exactly what you saw. Every flag: [docs/spec/setup.md](../spec/setup.md).
 
 ## What the plugin and status line do
 
 Setup installs two things into Claude Code:
 
-- **The Switchyard plugin** (from a local marketplace named `sy-local`). Its hooks run
-  `sy hook <event>` on session start, prompt, permission request, notification, stop,
+- **The Watchyard plugin** (from a local marketplace named `wy-local`). Its hooks run
+  `wy hook <event>` on session start, prompt, permission request, notification, stop,
   failure and end. Each hook appends one record to the local outbox and exits at once; it
   never blocks Claude Code and never approves or denies anything. The plugin also adds the
-  skills `/switchyard:status`, `/switchyard:setup`, `/switchyard:add-account` and the
+  skills `/watchyard:status`, `/watchyard:setup`, `/watchyard:add-account` and the
   `peers` skill.
-- **A status line wrapper.** `sy statusline` records Claude Code's own limit percentages
+- **A status line wrapper.** `wy statusline` records Claude Code's own limit percentages
   (the `rate_limits` field) once a minute per session and then runs your previous status
   line command unchanged.
 

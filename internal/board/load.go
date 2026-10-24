@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // loadRecords is status.Load with the JSON decoding spread over the CPUs: the same files

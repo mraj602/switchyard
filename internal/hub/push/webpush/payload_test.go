@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
 )
 
 // A summary of many alerts must still fit, not fail with ErrTooLarge.

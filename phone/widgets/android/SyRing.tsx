@@ -3,7 +3,7 @@
 // widget) with the %, and when it resets. react-native-android-widget has no Chronometer or
 // other ticking view, so the reset reads as a clock time ("resets 15:48") and an alarm redraws
 // it at the reset (sy-link scheduleWidgetRefresh, WidgetTick.kt). An idle window is "0 %" "not
-// started". Header: the Switchyard mark and name, then the account and the toggle.
+// started". Header: the Watchyard mark and name, then the account and the toggle.
 import { FlexWidget, OverlapWidget, SvgWidget, TextWidget } from 'react-native-android-widget';
 
 import type { AndroidWidgetProps } from '../../src/lib/widget';
@@ -16,8 +16,8 @@ export function SyRing({ snapshot, now, tz, seat, win }: AndroidWidgetProps) {
   const selected = win ?? '5 h';
   if (!snapshot) {
     return (
-      <FlexWidget style={ROOT} {...open('switchyard://now')}>
-        <Brand title="Switchyard" />
+      <FlexWidget style={ROOT} {...open('watchyard://now')}>
+        <Brand title="Watchyard" />
         <TextWidget text={EMPTY_TEXT} style={{ fontSize: 12, color: DIM, marginTop: 4 }} />
       </FlexWidget>
     );
@@ -25,17 +25,17 @@ export function SyRing({ snapshot, now, tz, seat, win }: AndroidWidgetProps) {
   const m = ringModel(snapshot, seat, now, tz, selected);
   if (!m) {
     return (
-      <FlexWidget style={ROOT} {...open('switchyard://accounts')}>
-        <Brand title="Switchyard" />
+      <FlexWidget style={ROOT} {...open('watchyard://accounts')}>
+        <Brand title="Watchyard" />
         <TextWidget text="Account not found. Hold the widget and choose Reconfigure." style={{ fontSize: 12, color: DIM, marginTop: 4 }} />
       </FlexWidget>
     );
   }
-  const href = seat ? `switchyard://accounts?seat=${encodeURIComponent(seat)}` : 'switchyard://accounts';
+  const href = seat ? `watchyard://accounts?seat=${encodeURIComponent(seat)}` : 'watchyard://accounts';
   return (
     <FlexWidget style={{ ...ROOT, padding: 8, alignItems: 'center' }} {...open(href)}>
       <FlexWidget style={{ width: 'match_parent' }}>
-        <Brand title="Switchyard" />
+        <Brand title="Watchyard" />
       </FlexWidget>
       <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', alignItems: 'center', justifyContent: 'space-between', marginTop: 3 }}>
         <TextWidget text={m.label} maxLines={1} truncate="END" style={{ fontSize: 11, fontWeight: 'bold', color: m.colour as Hex }} />

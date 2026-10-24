@@ -1,5 +1,5 @@
 // Android widget task handler and app-side adapter (phone.md P11). The handler reads the last
-// WidgetSnapshot from AsyncStorage key sy.widget.v1 (never a secret) and renders it; it never
+// WidgetSnapshot from AsyncStorage key wy.widget.v1 (never a secret) and renders it; it never
 // reads the keychain or calls the hub. The handler is registered in phone/index.js (the app's
 // entry), not in a screen: Android starts the widget's headless task with no UI mounted, and a
 // handler registered inside app/_layout.tsx would not exist then. The app calls
@@ -161,7 +161,7 @@ export async function updateAndroidWidgets(snapshot: WidgetSnapshot, deps: Parti
   await refresh(snapshot, d);
 }
 
-/** Unpair: drop the snapshot and show "Open Switchyard once to load". */
+/** Unpair: drop the snapshot and show "Open Watchyard once to load". */
 export async function clearAndroidWidgets(deps: Partial<HandlerDeps> = {}): Promise<void> {
   if (Platform.OS !== 'android') return;
   const d = { ...defaults(), ...deps };

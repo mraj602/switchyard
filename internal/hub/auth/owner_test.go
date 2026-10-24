@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 var t0 = time.Date(2026, 10, 12, 9, 0, 0, 0, time.UTC)
@@ -99,7 +99,7 @@ func TestOwnerSessionShapeScopesAndExpiry(t *testing.T) {
 	}
 	for _, k := range Kinds() {
 		if k == "owner" {
-			t.Error("sy hub token create must not offer --kind owner")
+			t.Error("wy hub token create must not offer --kind owner")
 		}
 	}
 	if _, err := Create(ctx, st, CreateRequest{Kind: "owner", Name: "x"}); err == nil {
@@ -108,7 +108,7 @@ func TestOwnerSessionShapeScopesAndExpiry(t *testing.T) {
 }
 
 // Sign out revokes the device behind the cookie: an owner session, and a phone or browser
-// paired in cookie mode (pairing.md 6). A token made with `sy hub token create` (pasted, used
+// paired in cookie mode (pairing.md 6). A token made with `wy hub token create` (pasted, used
 // as a bearer elsewhere) is not revoked by a cookie that happens to hold it, and no other
 // device is touched: the owner signing out of one browser leaves the phone it paired alone.
 func TestLogoutRevokesTheCookiesDeviceOnly(t *testing.T) {

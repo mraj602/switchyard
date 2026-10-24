@@ -1,11 +1,11 @@
 # Desktop app
 
-Status: spec v1. Implemented in `app/` (Electron) and `sy desktop` (`cmd/sy/desktop.go`,
+Status: spec v1. Implemented in `app/` (Electron) and `wy desktop` (`cmd/wy/desktop.go`,
 `internal/desktop`). Unofficial; not affiliated with Anthropic.
 
 The desktop app is the Electron app in `app/`. It holds one tab per claude.ai account, reads web usage into
-`web_usage` records (record.md 4.3) through `sy`, and shows the hub board. Everything else is
-done by `sy` and the hub.
+`web_usage` records (record.md 4.3) through `wy`, and shows the hub board. Everything else is
+done by `wy` and the hub.
 
 Related: record.md 4.3 (`web_usage`), paths.md 2 (folders), api.yaml (`PATCH /v1/accounts/{seat}`,
 `Seat.places[].stopped_reason`), schema.sql v5 (`seat.look_src`), tokens.md (desktop tokens),
@@ -13,11 +13,11 @@ pairing.md (desktop codes, owner links), machines.md 4.4 (admin channel).
 
 ## C1. Folders and identity
 
-- User data: `<app.getPath('appData')>/switchyard-desktop`, i.e. `~/.config/switchyard-desktop`,
-  `~/Library/Application Support/switchyard-desktop` or `%APPDATA%\switchyard-desktop`.
-  It is overridden by `SY_APP_USER_DATA` (an absolute path) only when `!app.isPackaged`.
+- User data: `<app.getPath('appData')>/watchyard-desktop`, i.e. `~/.config/watchyard-desktop`,
+  `~/Library/Application Support/watchyard-desktop` or `%APPDATA%\watchyard-desktop`.
+  It is overridden by `WY_APP_USER_DATA` (an absolute path) only when `!app.isPackaged`.
 - Files the app owns there: `app-state.json`, `hub-token.bin`, `direct.json` (the hub address
-  remembered without sy, this app's machine id and the certificate pins of C6),
+  remembered without wy, this app's machine id and the certificate pins of C6),
   `direct-outbox.ndjson` and Chromium's own folders (`Partitions/…`). `app-state.json` is written to a temp file, fsynced and renamed, mode 0600:
 
   ```json
@@ -39,11 +39,11 @@ pairing.md (desktop codes, owner links), machines.md 4.4 (admin channel).
 - Tab id: `t_` + 16 lowercase hex characters from `crypto.randomBytes(8)`. Tab ids of the
   earlier 8-hex form (tab ids from earlier versions) are still accepted. Pattern:
   `^(t_[0-9a-f]{16}|[0-9a-f]{8})$`. Partition: `persist:tab-<tab id>`.
-- `client` in records: `switchyard-desktop/<app version>`.
+- `client` in records: `watchyard-desktop/<app version>`.
 - Single-instance lock (per user-data folder). `--background` starts hidden. A second launch
   shows the window, or applies `--autostart=on|off` and exits.
-- Run at login: on Linux, `~/.config/autostart/switchyard-desktop.desktop` and
-  `~/.local/share/applications/switchyard-desktop.desktop`. On macOS and Windows,
+- Run at login: on Linux, `~/.config/autostart/watchyard-desktop.desktop` and
+  `~/.local/share/applications/watchyard-desktop.desktop`. On macOS and Windows,
   `app.setLoginItemSettings` with `--background`.
 
 ## C2. Security baseline
@@ -64,7 +64,7 @@ both enforce it.
   | --- | --- | --- |
   | Shell (`app://shell/`) | nothing (any navigation is prevented) | denied |
   | Account tab | `https://claude.ai`, `https://*.claude.ai`, sign-in hops (`anthropic.com`, `claude.com`, `challenges.cloudflare.com` and their subdomains), `https:` only | Allowed hosts load in the same tab. `https:` and `mailto:` go to `shell.openExternal`. Anything else is dropped. |
-  | Hub view | The hub origin only (scheme + host + port from `sy desktop info`) | `https://claude.ai/code/session_…` opens in the account tab of the session's account (see C7), else in a new tab for that account; with no known seat, the first signed-in tab, else the system browser. Other `https:` links go to the system browser. |
+  | Hub view | The hub origin only (scheme + host + port from `wy desktop info`) | `https://claude.ai/code/session_…` opens in the account tab of the session's account (see C7), else in a new tab for that account; with no known seat, the first signed-in tab, else the system browser. Other `https:` links go to the system browser. |
 
 - Subframes (`will-frame-navigate` with `isMainFrame` false, and `will-redirect` of a subframe):
   an iframe may load, navigate or be redirected only to its view's frame allow-list
@@ -74,7 +74,7 @@ both enforce it.
 
   | View | Frames may load |
   | --- | --- |
-  | Account tab | `https:` only, no credentials in the URL, on `TAB_FRAME_HOSTS` or a subdomain: `claude.ai`, `anthropic.com`, `claude.com` (and `claudeusercontent.com`, where claude.ai renders artifacts), `challenges.cloudflare.com` (Turnstile), `js.stripe.com`, `hooks.stripe.com`, `m.stripe.network` (Stripe checkout and its 3-D Secure wrapper), `accounts.google.com` (Google sign-in), `hcaptcha.com` (the sign-in page's invisible hCaptcha check). In an unpackaged test run, also `SY_APP_TEST_CLAUDE_ORIGIN`. |
+  | Account tab | `https:` only, no credentials in the URL, on `TAB_FRAME_HOSTS` or a subdomain: `claude.ai`, `anthropic.com`, `claude.com` (and `claudeusercontent.com`, where claude.ai renders artifacts), `challenges.cloudflare.com` (Turnstile), `js.stripe.com`, `hooks.stripe.com`, `m.stripe.network` (Stripe checkout and its 3-D Secure wrapper), `accounts.google.com` (Google sign-in), `hcaptcha.com` (the sign-in page's invisible hCaptcha check). In an unpackaged test run, also `WY_APP_TEST_CLAUDE_ORIGIN`. |
   | Hub view | The hub origin only |
   | Shell | nothing |
 
@@ -136,17 +136,17 @@ both enforce it.
 - Remote debugging (`main/cdp.js`): a packaged app started with `--remote-debugging-port`,
   `--remote-debugging-pipe` or `--remote-debugging-address` (in argv or on Chromium's command
   line) exits with code 1 before `ready`, unless its asar's `package.json` has
-  `switchyard.allowCdp: true`. Only the e2e build sets that, with electron-builder
-  `-c.extraMetadata.switchyard.allowCdp=true` (`scripts/dist-e2e.sh`, output `dist/e2e/`);
+  `watchyard.allowCdp: true`. Only the e2e build sets that, with electron-builder
+  `-c.extraMetadata.watchyard.allowCdp=true` (`scripts/dist-e2e.sh`, output `dist/e2e/`);
   release builds (`npm run dist`, CI's package job) never do. Unpackaged runs are not checked.
-- Test-only overrides (`SY_APP_USER_DATA`, `SY_APP_TEST_CLAUDE_ORIGIN`, `SY_APP_TEST_CADENCE_MS`,
-  `SY_BIN`) live in `main/test-hooks.js`. It is imported only when `!app.isPackaged`, and
+- Test-only overrides (`WY_APP_USER_DATA`, `WY_APP_TEST_CLAUDE_ORIGIN`, `WY_APP_TEST_CADENCE_MS`,
+  `WY_BIN`) live in `main/test-hooks.js`. It is imported only when `!app.isPackaged`, and
   `electron-builder.yml` excludes it from the asar (a packaging test checks that it is absent).
 
 ## C3. IPC allow-list
 
 `src/shared/ipc.js` is the one table: a channel, its argument schema (types, string lengths,
-enums, patterns) and its direction. `src/preload/shell.cjs` exposes `window.sy` with exactly
+enums, patterns) and its direction. `src/preload/shell.cjs` exposes `window.wy` with exactly
 one function per invoke channel and one `on(event, cb)` for the push channels. It never
 exposes `ipcRenderer`, event objects or `require`. A unit test loads the preload in a `vm` with
 a fake `electron` and checks that its channel list equals the table.
@@ -182,13 +182,13 @@ not used). Before calling a handler it checks the following.
 | `hub:pair` | `{code: "^\d{3}-?\d{3}$"}` or `{}` (local or admin channel) | `{ok, error?}` | C |
 | `hub:owner-sign-in` | `{}` (local hub or admin channel) or `{link}` (a pasted owner link to the paired hub's own origin) | `{ok, error?}` | C |
 | `hub:owner-sign-out` | — | `{ok}` | C |
-| `hub:connect` | `{url, code?}` (checks `/health`, remembers the address without sy, pairs with the code; an https hub whose certificate fails normal validation, or is not its pinned one, returns `cert` instead, see C6) | `{ok, error?, cert?}` | C |
+| `hub:connect` | `{url, code?}` (checks `/health`, remembers the address without wy, pairs with the code; an https hub whose certificate fails normal validation, or is not its pinned one, returns `cert` instead, see C6) | `{ok, error?, cert?}` | C |
 | `hub:trust-cert` | `{url, fingerprint}` (C6: the hub must still present the certificate with this SHA-256 fingerprint; it is pinned with the hub config, or unpinned when it passes normal validation) | `{ok, pinned?, error?, cert?}` | C |
 | `hub:unpair` | `{forget?: bool}` (`DELETE /v1/devices/self`, then the token and the board session are dropped) | `{ok, revoked, warning?}` | C |
 | `hub:retry` | — | `{ok}` | C |
 | `hub:service` | `{action: "status" \| "start" \| "stop"}` | `{service, health}` | C |
 | `seat:update` | `{seat, label?, colour?}` (owner; `PATCH /v1/accounts/{seat}`) | `{ok, error?}` | C |
-| `accounts:local` | — | `sy account list --json` result | C |
+| `accounts:local` | — | `wy account list --json` result | C |
 | `accounts:share` | `{folder, share: string}` | `{ok, error?}` | C |
 | `settings:set` | `{keep_running?, notifications?, autostart?, start_hidden?}` | `Settings` | E |
 | `app:open-release` | — (opens the release page of the update notice, C8, through `openExternalSafe`) | `{ok}` | C |
@@ -203,7 +203,7 @@ tokens or secrets. The field-level shapes (`ShellState`, `TabState`, `HubState`,
 
 Details fixed by `src/shared/ipc.js`:
 
-- `window.sy` function names, in table order: `state`, `selectView`, `hubRoute`, `addTab`,
+- `window.wy` function names, in table order: `state`, `selectView`, `hubRoute`, `addTab`,
   `updateTab`, `removeTab`, `reorderTabs`, `reloadTab`, `homeTab`, `openTabExternal`, `adoptTab`, `logoutTab`,
   `acceptWarning`, `setReading`, `setSend`, `resumeReading`, `refreshUsage`, `pair`,
   `ownerSignIn`, `ownerSignOut`, `hubConnect`, `trustCert`, `hubUnpair`, `hubRetry`, `hubService`, `updateSeat`, `localAccounts`, `shareAccount`, `setSettings`, `openRelease`;
@@ -225,28 +225,28 @@ another tab (a bar marks the insertion side); focus a tab and press Alt+Left or 
 Main stores the order in `app-state.json` (the order of `tabs`), which is also the order of the
 Ctrl+1..9 shortcuts and of the strip, so it survives restarts.
 
-## C4. `sy desktop`
+## C4. `wy desktop`
 
 Every subcommand prints one JSON object on stdout with `--json`. Secrets travel only on stdout
 and stdin, never in argv. Exit codes: 0 ok, 2 usage, 3 refused by the hub (expired code,
-revoked), 4 not possible here (no local hub, no admin channel, sy not connected), 5 hub
+revoked), 4 not possible here (no local hub, no admin channel, wy not connected), 5 hub
 unreachable. Any other failure (an admin command that cannot start, an argument the admin
 channel refuses) is 1 with its own message.
 
 ```
-sy desktop info --json
+wy desktop info --json
 {"v": 1, "sy": "0.6.0", "machine": {"id": "m_…", "name": "laptop"},
  "hub": {"url": "http://127.0.0.1:8787", "connected": true, "reachable": true, "version": "0.6.0",
          "local": true, "dial": null, "service": "running"},
  "admin": "local", "admin_error": null, "outbox": {"pending": 3, "last_error": null}}
 
-sy desktop token [--code-stdin] [--name N] --json
+wy desktop token [--code-stdin] [--name N] --json
 {"device": "dev_…", "token": "sy_d_…", "scopes": ["write", "read"], "hub": {"url": "…"}}
 
-sy desktop owner-link --json
+wy desktop owner-link --json
 {"url": "https://hub…/#/owner?s=…", "expires_at": "…"}
 
-sy desktop hub status|start|stop --json
+wy desktop hub status|start|stop --json
 {"service": "running" | "stopped" | "missing", "unit": "…", "health": true}
 ```
 
@@ -264,13 +264,13 @@ sy desktop hub status|start|stop --json
   (`hub token create --kind desktop --machine <id> --name <N> --json`). With `--code-stdin`, it
   claims a desktop pairing code or secret read from stdin, with `expect_kind: desktop` and this
   machine's id (pairing.md 3, through `internal/client`'s claim). The token is printed once and
-  never stored by `sy`.
+  never stored by `wy`.
 - `owner-link`: the admin channel's `hub owner-link --json`. A command-prefix channel runs ssh
   with `-o BatchMode=yes`, so it never waits on a prompt hidden from the person.
 - `hub start|stop`: the hub user service from setup.md 3 (`internal/service`, new `Start` and
   `Stop` next to `Status`). The exit code is 4 when the service is not installed; the app then
-  shows `sy setup --hub here`.
-- `sy desktop` refuses `hub.dial` setups for the app (`info` reports `dial`). The app shows
+  shows `wy setup --hub here`.
+- `wy desktop` refuses `hub.dial` setups for the app (`info` reports `dial`). The app shows
   "forward mode is not supported in the desktop app".
 
 ## C5. Web usage reading
@@ -305,7 +305,7 @@ full_name, display_name} | {__status}, active_org, fetch_ms}`.
 | Manual | `usage:refresh` (still ≥ 10 s since the last read of that tab) |
 | Floor | Never more than one read in flight per tab, never more than one per 60 s except manual |
 
-`SY_APP_TEST_CADENCE_MS` (unpackaged only) replaces 300 s, 60 s and 10 s for the smoke test.
+`WY_APP_TEST_CADENCE_MS` (unpackaged only) replaces 300 s, 60 s and 10 s for the smoke test.
 
 **Errors.**
 
@@ -334,27 +334,27 @@ really used in Claude Code gets its seat from the slot's own records, not from t
 4.3:
 `seat = {account, org, email, src: "claude_ai"}`, `payload = {tab_id, org: <six keys>, account:
 <four keys>, active, usage: <raw, whole>, fetch_ms}`. `client`, `machine` (cached from
-`sy machine show --json` at start) and `ts` (the read's start time) are set; `id` and `v` are
-left to `sy outbox append`. A tab with `send_to_hub: false` updates its local strip only and
+`wy machine show --json` at start) and `ts` (the read's start time) are set; `id` and `v` are
+left to `wy outbox append`. A tab with `send_to_hub: false` updates its local strip only and
 appends nothing.
 
-**Publish.** Records are written as JSON lines to the stdin of `sy outbox append`, one process
+**Publish.** Records are written as JSON lines to the stdin of `wy outbox append`, one process
 per read. The returned ids are checked: their count must equal the number of records, else the
 read is logged as a failure and not retried, because the outbox may hold some of them. Then
-`sy flush --quiet` runs, debounced to 2 s and coalesced across tabs.
+`wy flush --quiet` runs, debounced to 2 s and coalesced across tabs.
 
 **Warning (versioned, `WARNING_VERSION = 1`).** It is shown as a dialog in the shell the first
 time a tab could read (after sign-in), and again whenever the version is raised. The text is
 final unless the maintainers change it:
 
 > **Read usage for this account?**
-> Every 5 minutes, Switchyard runs a small script inside this tab that reads the same numbers
+> Every 5 minutes, Watchyard runs a small script inside this tab that reads the same numbers
 > claude.ai shows under Settings → Usage. It reads numbers only: no chats, no cookies. They go
 > to your own hub.
 > This uses claude.ai’s own undocumented usage endpoint, not an official API, and nothing is
 > requested until you allow it. It may stop working, and
 > automated access may not be allowed by Anthropic's consumer terms, so it could get this
-> account flagged. Switchyard is unofficial and not affiliated with Anthropic. Whether to turn this on is your choice.
+> account flagged. Watchyard is unofficial and not affiliated with Anthropic. Whether to turn this on is your choice.
 > You can turn reading off for this account at any time in its usage bar or in Settings.
 > **[Read usage for this account]  [Not now]**
 
@@ -363,22 +363,22 @@ account in a hidden or background start until the window is shown.
 
 ## C6. Hub connection
 
-- At start, run `sy desktop info --json`. With no `sy` (C11 resolution fails), or with `sy`
-  not connected, the shell shows a banner with the exact command (`sy setup`), and the tabs
-  still work. Reads still append to the outbox if `sy` exists, so they flush later.
+- At start, run `wy desktop info --json`. With no `wy` (C11 resolution fails), or with `wy`
+  not connected, the shell shows a banner with the exact command (`wy setup`), and the tabs
+  still work. Reads still append to the outbox if `wy` exists, so they flush later.
 - Desktop token: `hub-token.bin` = `safeStorage.encryptString(JSON.stringify({url, device, token}))`.
   If the URL in the file differs from `hub.url`, or the file decrypts to something that is not
   such a record, the token is dropped and pairing starts again. A file that cannot be decrypted
   (the keyring locked or not up yet) is kept and tried again later; pairing replaces it.
   Pairing (`hub:pair`): with `admin` set, it is one click. Otherwise the person types the code
   from the board (More → Devices → Add desktop app) or from
-  `sy hub pair --kind desktop`.
+  `wy hub pair --kind desktop`.
 - Requests use Node's `fetch` in main with `Authorization: Bearer`, a 10 s timeout and no
-  redirects. Plain `http:` is allowed only for loopback hosts, or when `sy desktop info`
-  reports a URL that sy itself accepted (`--insecure-lan`). Replies are capped at 2 MiB.
+  redirects. Plain `http:` is allowed only for loopback hosts, or when `wy desktop info`
+  reports a URL that wy itself accepted (`--insecure-lan`). Replies are capped at 2 MiB.
 - A typed hub address (direct mode, `main/hub/direct.js`) may use `http:` only for loopback
   hosts and `.ts.net` names. A private-network address, `.local` or a single-label name needs
-  the explicit `insecureLan` choice (the "Allow plain http" box, like `sy connect
+  the explicit `insecureLan` choice (the "Allow plain http" box, like `wy connect
   --insecure-lan`), which is stored with the address. A public host is refused even with it. A
   remembered address that fails this rule is dropped when the app starts.
 - Plain `http:` to a host that is not loopback: `HubState.insecure` is true, and the shell
@@ -413,11 +413,11 @@ account in a hidden or background start until the window is shown.
   - A different certificate later is "certificate changed": `cert.changed` true, an error
     banner, nothing sent; the person compares the new fingerprint and re-pins with the same
     `hub:trust-cert`. Unpairing with "forget" drops the pin.
-  - Neither `sy` nor the hub can print this fingerprint: the hub serves plain http and TLS is
+  - Neither `wy` nor the hub can print this fingerprint: the hub serves plain http and TLS is
     ended by whatever serves https for it (Caddy, nginx, `tailscale serve`), whose
-    certificate the hub never sees. Printing it from sy would need a command run on the hub
+    certificate the hub never sees. Printing it from wy would need a command run on the hub
     machine that dials the public https address and prints the presented leaf's SHA-256
-    (for example `sy hub tls-fingerprint`); until then the openssl line above is the way.
+    (for example `wy hub tls-fingerprint`); until then the openssl line above is the way.
 - Stream: `GET /v1/stream` with `Last-Event-ID`. It is parsed by `shared/sse.js` and reconnects
   after 1, 2, 4 … 60 s. On `reset` it refetches `/v1/overview`. If the hub sends no `ping` for
   60 s, it reconnects. A `401` stops the stream and asks to pair again. Only a `401` (here or on
@@ -435,7 +435,7 @@ account in a hidden or background start until the window is shown.
   'POST', body: {token}, headers: {'content-type': 'application/json'}})`. The cookie is then
   set in that partition, the token never enters the page, and the cookie is read-only
   (api.yaml).
-- Owner sign-in: `sy desktop owner-link --json` → `loadURL(<link>)`. The board's `#/owner`
+- Owner sign-in: `wy desktop owner-link --json` → `loadURL(<link>)`. The board's `#/owner`
   route does the rest. When the 30-day owner session expires, the board drops back to its
   read cookie on the next login, and Settings shows "Sign in as owner".
 - Keys: Settings → Keys (keys.md 3.3, pwa.md 3.2) is the board's `#/more/keys` page, shown in this view (Hub settings); the app has no keys screen of its own. Confirming a pending owner key needs the owner sign-in above; until then the page is read-only and says so.
@@ -500,25 +500,25 @@ account in a hidden or background start until the window is shown.
 - Settings (native, `DeskAccounts`):
   - **Account tabs:** name, seat label and colour (editable with an owner session, through
     `seat:update`), reading switch, send-to-hub switch, warning status, Remove.
-  - **This computer's Claude Code folders:** `sy account list` with the sharing switches
-    (`sy account share … --yes --json`). Add and Log in show the `sy account add` and
-    `sy account login` commands to copy, because they need a terminal.
+  - **This computer's Claude Code folders:** `wy account list` with the sharing switches
+    (`wy account share … --yes --json`). Add and Log in show the `wy account add` and
+    `wy account login` commands to copy, because they need a terminal.
   - **Hub:** URL, connected, version, owner yes/no ("Sign in as owner"), pairing, and for a
     local hub the service state with Start and Stop.
   - **Notifications** and **Background:** run at login, start hidden, keep running when
     closed, tray.
   - **Hub settings** links: Machines, Alerts and rules, Devices, Phone pairing, the hub's own
     Settings. Each opens the Hub view at its route (pwa.md 3).
-  - **About:** this app's version, sy's (`sy desktop info` → `sy`), the hub's, Electron,
+  - **About:** this app's version, wy's (`wy desktop info` → `wy`), the hub's, Electron,
     Chromium and the platform.
 - Update notice (`shared/version.js`): the app asks no update server and calls no third party.
-  It compares its own version with sy's and the hub's (both already known from `sy desktop
+  It compares its own version with wy's and the hub's (both already known from `wy desktop
   info` and `/v1/overview`; versions such as `dev` are ignored). `ShellState.update` is
-  `{kind, app, version, from}` or null: `update` when the hub or sy runs a newer release ("Update
-  available: Your hub runs Switchyard 0.7.0, this app is 0.6.0."), `older` when this app is newer
-  ("… older than this app. Update it with sy update."). It is shown at the top of Settings and
+  `{kind, app, version, from}` or null: `update` when the hub or wy runs a newer release ("Update
+  available: Your hub runs Watchyard 0.7.0, this app is 0.6.0."), `older` when this app is newer
+  ("… older than this app. Update it with wy update."). It is shown at the top of Settings and
   in About, with **Open the release page** (`app:open-release`), which opens
-  `https://github.com/mraj602/switchyard/releases/tag/v<version>` (or the release list) through
+  `https://github.com/mraj602/watchyard/releases/tag/v<version>` (or the release list) through
   `openExternalSafe`. The URL is built in main, never taken from the renderer.
 
 ## C9. Notifications and tray
@@ -536,12 +536,12 @@ account in a hidden or background start until the window is shown.
 - Tray: a monochrome chevron glyph (no tile) from committed PNGs under `assets/tray/{dark,light}/`
   (16, 22, 24, 32 px with `@2x`; the dark ink for light bars, the light ink for dark bars. Linux
   always uses the light ink: GNOME, KDE and most panels are dark even under a light system theme
-  (black on black was invisible), and `SWITCHYARD_TRAY_ICON=dark|light` overrides it for an odd
+  (black on black was invisible), and `WATCHYARD_TRAY_ICON=dark|light` overrides it for an odd
   panel. Windows follows `nativeTheme.shouldUseDarkColors` and swaps on theme change; macOS uses
   the `trayTemplate` template images). "Needs you" is a small dot at the top-right of the glyph; the
   count is in the tooltip ("2 sessions need you") and the first menu line. macOS also sets
   `app.dock.setBadge`; Windows uses `win.setOverlayIcon` (a dot); Linux uses `app.setBadgeCount`
-  where supported. Icons are rendered by `scripts/gen-icons.sh` from `build/icons-src/`. Menu: Open Switchyard;
+  where supported. Icons are rendered by `scripts/gen-icons.sh` from `build/icons-src/`. Menu: Open Watchyard;
   up to 5 needs-you sessions ("work · api · asked"), each opening its route; Refresh usage;
   Pause all reading (sets every tab off, with a confirm); Quit. With no tray (GNOME without
   AppIndicator), closing the window quits unless `keep_running` is set, and the close notice
@@ -549,7 +549,7 @@ account in a hidden or background start until the window is shown.
 
 ## C9b. App menu
 
-Switchyard menu: Hub, Account 1…9, Refresh usage, Run at login, Keep running, Quit.
+Watchyard menu: Hub, Account 1…9, Refresh usage, Run at login, Keep running, Quit.
 `editMenu`. `toggleDevTools` appears only when unpackaged.
 
 ## C10. API and schema changes
@@ -569,18 +569,18 @@ Switchyard menu: Hub, Account 1…9, Refresh usage, Run at login, Keep running, 
 - No change to `/v1/ingest`, to record kinds or to `v`. `web_usage` from a machine device is
   already valid (tokens.md 3: write for its own machine id).
 
-## C11. Running `sy`
+## C11. Running `wy`
 
-- Resolution: `SY_BIN` (unpackaged only), else `sy` on `PATH` and then `~/.local/bin/sy`
-  (`%USERPROFILE%\.local\bin\sy.exe`), if `sy --version` is ≥ the app's `minSy` (package.json
-  `switchyard.minSy`, `0.6.0`). Otherwise the bundled copy at
-  `process.resourcesPath/sy/sy[.exe]`. The bundled copy is never installed onto `PATH`.
+- Resolution: `WY_BIN` (unpackaged only), else `wy` on `PATH` and then `~/.local/bin/wy`
+  (`%USERPROFILE%\.local\bin\wy.exe`), if `wy --version` is ≥ the app's `minSy` (package.json
+  `watchyard.minSy`, `0.6.0`). Otherwise the bundled copy at
+  `process.resourcesPath/wy/wy[.exe]`. The bundled copy is never installed onto `PATH`.
 - `child_process.execFile` (never a shell), with these environment changes: drop
-  `ELECTRON_*`, `NODE_OPTIONS`, `NODE_*` and `SY_APP_*`; keep `HOME`, `PATH`, `SY_*` and the
+  `ELECTRON_*`, `NODE_OPTIONS`, `NODE_*` and `WY_APP_*`; keep `HOME`, `PATH`, `WY_*` and the
   XDG and Windows profile variables. Timeouts: 15 s, except 60 s for `flush`, `desktop token`
   and `desktop owner-link`. stdout is capped at 1 MiB and stderr at 64 KiB. A non-zero exit
   becomes `{ok: false, exit, error: <first stderr line>}`.
-- **Argv allow-list** (`main/sy/commands.js`, the only builder; any other argv throws):
+- **Argv allow-list** (`main/wy/commands.js`, the only builder; any other argv throws):
 
   | Purpose | argv | stdin |
   | --- | --- | --- |
@@ -598,11 +598,11 @@ Switchyard menu: Hub, Account 1…9, Refresh usage, Run at login, Keep running, 
 ## C12. Module interfaces
 
 Every main-process module exports `create(deps)` and takes Electron and Node as arguments;
-only `main/index.js` imports `electron`, and only `main/sy/` imports `child_process` (a unit
+only `main/index.js` imports `electron`, and only `main/wy/` imports `child_process` (a unit
 test in `main/boot.test.js` checks both). `main/boot.js` creates the modules in this order
 (`START_ORDER`, as built):
 `paths` → `security` → `protocol` → `ipc` → `store` → `autostart` → `background` →
-`sy` → `hub` → `window` → `state` → `tabs` → `usage` → `tray` → `notify`
+`wy` → `hub` → `window` → `state` → `tabs` → `usage` → `tray` → `notify`
 → `menu`. Before `ready`: `paths`, `security.applyGlobal()`, `protocol.registerSchemes()`,
 `ipc` (right after the bus), `store`, `autostart` and `background`, whose `claim()` (the
 single-instance lock) ends a second launch there. `background` reaches the window and tray
@@ -611,7 +611,7 @@ loads, `ipc.start()` precedes the window,
 `hub.start()` follows it, `tabs.start()` then `usage.start()` run once the window exists,
 and the hub view is made when the Hub view is selected and the hub status is `ok`. Quit runs
 `SHUTDOWN_ORDER`: `usage.stop` → `tabs.stop` (cookies flushed) → `hub.stop` (the stream) →
-`sy.flushNow` (at most 5 s; the outbox keeps the records) → `store.flush`, each step in its
+`wy.flushNow` (at most 5 s; the outbox keeps the records) → `store.flush`, each step in its
 own `try`, once. The JSDoc of each module fixes what its `create()` returns; the parts other
 modules call are:
 
@@ -622,7 +622,7 @@ modules call are:
 | `security.js` (A) | `webPreferences(kind, extra)`, `guardView(webContents, kind, opts)`, `guardSession(session, kind)`, `openExternalSafe(url)`; kinds `shell`, `tab`, `hub`. |
 | `store.js` (A) | `get()` (a copy), `update(mutate) → Promise<state>` (serialised, atomic), `flush()`. B owns `tabs[]`, E owns `settings`. |
 | `window.js` (A) | `addView(id, view, kind)`, `removeView(id)`, `select(id)`, `selected()`, `showWindow()`, `isShowing(id)`, `shell`. |
-| `sy/index.js` (C) | `info()`, `append(records)`, `flushSoon()`, `token({code?, name})`, `ownerLink()`, `service(action)`, `accountsList()`, `share(folder, share)`, `machineId()`, `run(purpose, params, stdin)`. |
+| `wy/index.js` (C) | `info()`, `append(records)`, `flushSoon()`, `token({code?, name})`, `ownerLink()`, `service(action)`, `accountsList()`, `share(folder, share)`, `machineId()`, `run(purpose, params, stdin)`. |
 | `hub/index.js` (C) | `route(route)`, `alert(id)`, `session(id)`, `seats()`, `view()`. |
 | `tabs/index.js` (B) | `list()`, `view(id)`, `openLink(url, seat)`, `flushCookies()`. |
 | `usage/index.js` (B) | `refresh(id?)`, `pauseAll()`, `stop()`. |
@@ -635,20 +635,20 @@ the fakes of `app/test/fakes/electron.js`.
 ## C13. Packaging and release
 
 - Targets (`app/electron-builder.yml`): Linux AppImage, deb and rpm; macOS dmg; Windows NSIS
-  installer. File names are `Switchyard-<version>-<os>-<arch>.<ext>`. Nothing is signed or
+  installer. File names are `Watchyard-<version>-<os>-<arch>.<ext>`. Nothing is signed or
   notarized (no paid certificates), and the app has no updater.
-- The bundled `sy` is built, not downloaded: `scripts/fetch-sy.mjs <os> <arch>` runs
-  `go build ./cmd/sy` on the checkout with `CGO_ENABLED=0`, `-trimpath` and the ldflags of
-  `scripts/release/build.sh` (`Version` from `SY_VERSION`, else `app/package.json`; `Commit` is
-  `git rev-parse --short HEAD`). It is placed in `resources/sy/<os>-<arch>/`.
+- The bundled `wy` is built, not downloaded: `scripts/fetch-sy.mjs <os> <arch>` runs
+  `go build ./cmd/wy` on the checkout with `CGO_ENABLED=0`, `-trimpath` and the ldflags of
+  `scripts/release/build.sh` (`Version` from `WY_VERSION`, else `app/package.json`; `Commit` is
+  `git rev-parse --short HEAD`). It is placed in `resources/wy/<os>-<arch>/`.
 - A tag `v<semver>` (`.github/workflows/release.yml`) runs a `desktop` matrix job (ubuntu,
   macos, windows) after `check`. Each job fails unless `app/package.json`'s version equals the
-  tag without `v`, bundles `sy` with `SY_VERSION=<tag>` and checks that `sy --version` reports
+  tag without `v`, bundles `wy` with `WY_VERSION=<tag>` and checks that `wy --version` reports
   that version, runs `npm run dist`, checks it produced exactly the expected package types for
   that OS, and uploads them as an artifact. `phone/package.json` is not checked: the Android
   app is released by `phone-v*` tags.
 - The `release` job needs `check` and every `desktop` job, so one failed build publishes
   nothing. It downloads the packages, writes `SHA256SUMS-desktop` (`sha256sum` format, one line
-  per package), attests build provenance for the `sy` archives and every package, and runs one
-  `gh release create` with all files. `SHA256SUMS` stays the `sy` archives' file only, because
+  per package), attests build provenance for the `wy` archives and every package, and runs one
+  `gh release create` with all files. `SHA256SUMS` stays the `wy` archives' file only, because
   the install scripts read it.

@@ -84,12 +84,12 @@ func TimeString(t time.Time) string { return t.UTC().Format("2006-01-02T15:04:05
 // A clash within the same second appends "-2", "-3" (done by the backup package).
 func BackupID(t time.Time) string { return t.UTC().Format("20060102T150405Z") }
 
-// Ledger is `<state>/setup/ledger.json`: what sy currently has installed (setup.md 9.3).
+// Ledger is `<state>/setup/ledger.json`: what wy currently has installed (setup.md 9.3).
 type Ledger struct {
 	V          int                        `json:"v"` // 1
 	Plugin     *LedgerPlugin              `json:"plugin,omitempty"`
 	StatusLine map[string]LedgerStatus    `json:"statusline,omitempty"` // per settings target
-	EnvKeys    []string                   `json:"env_keys,omitempty"`   // targets where sy set CLAUDE_CODE_PLUGIN_CACHE_DIR
+	EnvKeys    []string                   `json:"env_keys,omitempty"`   // targets where wy set CLAUDE_CODE_PLUGIN_CACHE_DIR
 	Launchers  []LedgerLauncher           `json:"launchers,omitempty"`
 	MCPSync    []string                   `json:"mcp_sync,omitempty"` // state files in the sync set
 	Copies     []string                   `json:"copies,omitempty"`   // Windows synced copies
@@ -102,7 +102,7 @@ type Ledger struct {
 // LedgerPlugin records the plugin install.
 type LedgerPlugin struct {
 	Marketplace string   `json:"marketplace,omitempty"` // path of <state>/plugin/marketplace
-	ID          string   `json:"id"`                    // "switchyard@sy-local"
+	ID          string   `json:"id"`                    // "watchyard@wy-local"
 	Roots       []string `json:"roots,omitempty"`
 	Targets     []string `json:"targets,omitempty"` // settings targets it was enabled in
 	Adopted     bool     `json:"adopted,omitempty"` // an existing install from another marketplace; not ours to remove
@@ -111,10 +111,10 @@ type LedgerPlugin struct {
 // LedgerStatus is one settings target's status line record: the original command, or Created.
 type LedgerStatus struct {
 	Original string `json:"original,omitempty"`
-	Created  bool   `json:"created,omitempty"` // sy created statusLine (there was none)
+	Created  bool   `json:"created,omitempty"` // wy created statusLine (there was none)
 }
 
-// LedgerLauncher is a launcher sy wrote and the hash it had, to tell if it is still ours.
+// LedgerLauncher is a launcher wy wrote and the hash it had, to tell if it is still ours.
 type LedgerLauncher struct {
 	Path   string `json:"path"`
 	SHA256 string `json:"sha256"`

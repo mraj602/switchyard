@@ -340,7 +340,7 @@ func TestImportRefusesNewerSchema(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "future.syx")
 	os.WriteFile(p, buf.Bytes(), 0o600)
 	_, err = Import(ctx, ImportOptions{File: p, DBPath: filepath.Join(t.TempDir(), "hub.db"), StateDir: t.TempDir()})
-	if err == nil || !bytes.Contains([]byte(err.Error()), []byte("update sy here first")) {
+	if err == nil || !bytes.Contains([]byte(err.Error()), []byte("update wy here first")) {
 		t.Fatalf("got %v", err)
 	}
 }

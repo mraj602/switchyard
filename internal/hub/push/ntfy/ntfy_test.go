@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/push/ntfy"
-	"github.com/mraj602/switchyard/internal/hub/push/ntfytest"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/ntfy"
+	"github.com/mraj602/watchyard/internal/hub/push/ntfytest"
 )
 
 const hub = "https://hub.example.ts.net"

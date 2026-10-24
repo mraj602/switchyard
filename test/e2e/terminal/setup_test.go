@@ -11,14 +11,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/setup/ledger"
-	"github.com/mraj602/switchyard/internal/setup/testtree"
-	"github.com/mraj602/switchyard/internal/warp"
+	"github.com/mraj602/watchyard/internal/setup/ledger"
+	"github.com/mraj602/watchyard/internal/setup/testtree"
+	"github.com/mraj602/watchyard/internal/warp"
 )
 
 // labelled gives the laptop's accounts the names the scenarios use: ~/.claude-2 is "work"
 // and ~/.claude-3 "personal", each with a launcher on PATH (stubs: the tab configs run them
-// by path and sy open lists them), and makes Warp's data folder exist (Linux layout, ~/.warp on macOS).
+// by path and wy open lists them), and makes Warp's data folder exist (Linux layout, ~/.warp on macOS).
 func (l *laptop) labelled() {
 	l.t.Helper()
 	l.must("config", "set", "slots.labels.~/.claude-2", "work")
@@ -78,9 +78,9 @@ func filesWith(dir, text string) []string {
 
 const titleKey = "CLAUDE_CODE_DISABLE_TERMINAL_TITLE"
 
-// E8: titles. `sy term titles on --yes` puts the env key in the shared settings target (and
+// E8: titles. `wy term titles on --yes` puts the env key in the shared settings target (and
 // so through the links of -2 and -3, which stay links) and refreshes the hooks plugin;
-// `sy hook --title Stop` with a question prints the terminalSequence JSON; `sy setup
+// `wy hook --title Stop` with a question prints the terminalSequence JSON; `wy setup
 // --undo` gives the home back byte for byte.
 func TestE8Titles(t *testing.T) {
 	l := newLaptop(t)
@@ -92,9 +92,9 @@ func TestE8Titles(t *testing.T) {
 		t.Fatal("the laptop fixture should share settings by links")
 	}
 	market := filepath.Join(l.stateDir(), "plugin", "marketplace")
-	// A sy-local written by an older sy: no title entries in the hooks plugin. `titles on`
+	// A wy-local written by an older wy: no title entries in the hooks plugin. `titles on`
 	// rewrites the marketplace and updates the plugin so the title hooks run.
-	hp := filepath.Join(market, "plugins", "switchyard", "hooks", "hooks.json")
+	hp := filepath.Join(market, "plugins", "watchyard", "hooks", "hooks.json")
 	old := readFile(hp)
 	if !strings.Contains(old, "hook --title ") {
 		t.Fatalf("the hooks plugin has no title entries to strip:\n%s", old)
@@ -135,7 +135,7 @@ func TestE8Titles(t *testing.T) {
 	if got := symlinks(l.home); len(got) != len(links0) {
 		t.Errorf("links changed: %d before, %d after", len(links0), len(got))
 	}
-	// The hooks plugin in sy-local carries the title entry of every event of T6.
+	// The hooks plugin in wy-local carries the title entry of every event of T6.
 	hooksJSON := readFile(hp)
 	if _, err := os.Stat(filepath.Join(market, "stale.txt")); err == nil {
 		t.Error("the marketplace was not rewritten (stale file left)")
@@ -146,7 +146,7 @@ func TestE8Titles(t *testing.T) {
 		}
 	}
 	runs := strings.Join(l.wrapRuns(), "\n")
-	if !strings.Contains(runs, "plugin marketplace update sy-local") || !strings.Contains(runs, "plugin update switchyard@sy-local") {
+	if !strings.Contains(runs, "plugin marketplace update wy-local") || !strings.Contains(runs, "plugin update watchyard@wy-local") {
 		t.Errorf("the hooks plugin was not refreshed through claude:\n%s", runs)
 	}
 	if lt := l.ledgerTerminal(); lt["titles"] == nil {
@@ -157,7 +157,7 @@ func TestE8Titles(t *testing.T) {
 	const want = `{"terminalSequence":"\u001b]2;work · api · asked\u0007"}`
 	r := l.run(question, l.slot(2), "hook", "--title", "Stop")
 	if r.code != 0 || strings.TrimSpace(r.out) != want {
-		t.Fatalf("sy hook --title Stop: exit %d\n got %q\nwant %q\nstderr %s", r.code, r.out, want, r.err)
+		t.Fatalf("wy hook --title Stop: exit %d\n got %q\nwant %q\nstderr %s", r.code, r.out, want, r.err)
 	}
 	if r := l.run(question, l.slot(2), "hook", "--title", "Stop"); r.out != "" {
 		t.Errorf("an unchanged title was printed again: %q", r.out)
@@ -191,19 +191,19 @@ func TestE8Titles(t *testing.T) {
 
 var colourLine = regexp.MustCompile(`(?m)^color = "([a-z]+)"$`)
 
-// E9: Warp tabs. With a Warp data folder (Linux layout, ~/.warp on macOS) `sy term warp on --yes` writes three
-// tab configs with the account colours and launchers; a second run changes nothing; `sy
-// open work` hands the opener warp://tab_config/switchyard-work; `off` removes what sy
+// E9: Warp tabs. With a Warp data folder (Linux layout, ~/.warp on macOS) `wy term warp on --yes` writes three
+// tab configs with the account colours and launchers; a second run changes nothing; `wy
+// open work` hands the opener warp://tab_config/watchyard-work; `off` removes what wy
 // wrote except a file edited by hand.
 func TestE9WarpTabs(t *testing.T) {
 	l := newLaptop(t)
 	l.setup()
 	l.labelled()
-	// Without Warp's folder sy refuses (the folder is made here, in labelled).
+	// Without Warp's folder wy refuses (the folder is made here, in labelled).
 	if err := os.RemoveAll(l.h.Abs(warpDataRel())); err != nil {
 		t.Fatal(err)
 	}
-	if r := l.sy("term", "warp", "on", "--yes"); r.code != 4 || !strings.Contains(r.err, "Warp not found") {
+	if r := l.wy("term", "warp", "on", "--yes"); r.code != 4 || !strings.Contains(r.err, "Warp not found") {
 		t.Fatalf("no Warp: exit %d %s", r.code, r.err)
 	}
 	mkdirs(t, l.h.Abs(warpDataRel()))
@@ -224,7 +224,7 @@ func TestE9WarpTabs(t *testing.T) {
 		t.Errorf("the amber of ~/.claude-2 maps to %q, want yellow (terminal.md T8)", tabs[1].colour)
 	}
 	for _, tb := range tabs {
-		path := filepath.Join(l.tabsDir(), "switchyard-"+tb.label+".toml")
+		path := filepath.Join(l.tabsDir(), "watchyard-"+tb.label+".toml")
 		b := readFile(path)
 		if !strings.HasPrefix(b, "# sy-warp-tab v1 slot="+tb.slot+" label="+tb.label+" (") {
 			t.Errorf("%s header:\n%s", path, b)
@@ -248,13 +248,13 @@ func TestE9WarpTabs(t *testing.T) {
 		t.Errorf("second run:\n%s", again)
 	}
 
-	// sy open, in Warp: the tab config URI goes to the opener.
+	// wy open, in Warp: the tab config URI goes to the opener.
 	inWarp := []string{"TERM_PROGRAM=WarpTerminal"}
 	if r := l.run("", inWarp, "open", "work"); r.code != 0 {
-		t.Fatalf("sy open work: exit %d %s%s", r.code, r.out, r.err)
+		t.Fatalf("wy open work: exit %d %s%s", r.code, r.out, r.err)
 	}
-	if got := l.openerRecords(); !sameArgv(got, openerArgv("warp://tab_config/switchyard-work")) {
-		t.Errorf("sy open work: opener got %v", got)
+	if got := l.openerRecords(); !sameArgv(got, openerArgv("warp://tab_config/watchyard-work")) {
+		t.Errorf("wy open work: opener got %v", got)
 	}
 
 	// Undo of the `on` gives the home back (no tab_configs folder, no files); on again.
@@ -269,26 +269,26 @@ func TestE9WarpTabs(t *testing.T) {
 	}
 
 	// Edit one by hand; off removes the others and says so.
-	personal := filepath.Join(l.tabsDir(), "switchyard-personal.toml")
+	personal := filepath.Join(l.tabsDir(), "watchyard-personal.toml")
 	edited := "# sy-warp-tab v1 slot=~/.claude-3 label=personal (mine now)\nname = \"mine\"\n"
 	writeFile(t, personal, edited, 0o644)
 	off := l.must("term", "warp", "off", "--yes")
-	if !strings.Contains(off, "switchyard-personal.toml was edited") {
+	if !strings.Contains(off, "watchyard-personal.toml was edited") {
 		t.Errorf("off did not report the edited file:\n%s", off)
 	}
 	if readFile(personal) != edited {
 		t.Errorf("the edited tab config changed:\n%s", readFile(personal))
 	}
 	left, _ := os.ReadDir(l.tabsDir())
-	if len(left) != 1 || left[0].Name() != "switchyard-personal.toml" {
+	if len(left) != 1 || left[0].Name() != "watchyard-personal.toml" {
 		t.Errorf("after off: %v", left)
 	}
-	if r := l.run("", inWarp, "open", "work"); r.code != 4 || !strings.Contains(r.err, "sy term warp on") {
+	if r := l.run("", inWarp, "open", "work"); r.code != 4 || !strings.Contains(r.err, "wy term warp on") {
 		t.Errorf("open without a tab config: exit %d %s", r.code, r.err)
 	}
 }
 
-// E10: uninstall. After titles, Warp tabs, the pane and Warp's plugin, `sy uninstall --yes`
+// E10: uninstall. After titles, Warp tabs, the pane and Warp's plugin, `wy uninstall --yes`
 // leaves no terminal piece and no ledger terminal block; the argv log of the fake claude
 // shows the uninstalls, the pane's before the marketplace goes.
 func TestE10Uninstall(t *testing.T) {
@@ -316,15 +316,15 @@ func TestE10Uninstall(t *testing.T) {
 	joined := strings.Join(runs, "\n")
 	pane, mkt := -1, -1
 	for i, r := range runs {
-		if strings.Contains(r, "plugin uninstall switchyard-pane@sy-local") {
+		if strings.Contains(r, "plugin uninstall watchyard-pane@wy-local") {
 			pane = i
 		}
-		if strings.Contains(r, "plugin marketplace remove sy-local") {
+		if strings.Contains(r, "plugin marketplace remove wy-local") {
 			mkt = i
 		}
 	}
 	if pane < 0 || mkt < 0 || pane > mkt {
-		t.Errorf("the pane must be uninstalled before sy-local goes (pane %d, marketplace %d):\n%s\n%s", pane, mkt, joined, out)
+		t.Errorf("the pane must be uninstalled before wy-local goes (pane %d, marketplace %d):\n%s\n%s", pane, mkt, joined, out)
 	}
 	for _, w := range []string{"plugin uninstall warp@claude-code-warp", "plugin marketplace remove claude-code-warp"} {
 		if !strings.Contains(joined, w) {
@@ -333,7 +333,7 @@ func TestE10Uninstall(t *testing.T) {
 	}
 	// The fake claude's own log agrees.
 	fl := readFile(claudeLog)
-	for _, w := range []string{`"uninstall"`, "switchyard-pane@sy-local", "warp@claude-code-warp"} {
+	for _, w := range []string{`"uninstall"`, "watchyard-pane@wy-local", "warp@claude-code-warp"} {
 		if !strings.Contains(fl, w) {
 			t.Errorf("fakeclaude log lacks %s:\n%s", w, fl)
 		}
@@ -350,7 +350,7 @@ func TestE10Uninstall(t *testing.T) {
 	if ents, _ := os.ReadDir(l.tabsDir()); len(ents) != 0 {
 		t.Errorf("tab configs left: %v", ents)
 	}
-	if got := strings.TrimSpace(l.sy("config", "get", "terminal.titles").out); got == "true" {
+	if got := strings.TrimSpace(l.wy("config", "get", "terminal.titles").out); got == "true" {
 		t.Errorf("terminal.titles is still on")
 	}
 	for _, p := range []string{"term", "board"} {

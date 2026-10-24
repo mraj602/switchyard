@@ -41,7 +41,7 @@ func ServeHintFor(hubURL string) string {
 // (a listen address or its http URL). `tailscale serve` is one way, not the only one: it
 // needs a tailnet with HTTPS certificates, which a headscale tailnet does not have.
 func HTTPSFix(addr string) string {
-	return "give the hub an https address: restart it with `sy hub serve --public-url https://<hub address>` " +
+	return "give the hub an https address: restart it with `wy hub serve --public-url https://<hub address>` " +
 		"(the hub.public_url setting); if your tailnet supports HTTPS certificates, `" + ServeHint(addr) + "` on the hub provides one"
 }
 
@@ -78,7 +78,7 @@ func splitAddr(addr string) (host, port string) {
 	return h, p
 }
 
-// ListenOf is the --listen (or --addr) value of `sy hub serve` arguments, "" when absent.
+// ListenOf is the --listen (or --addr) value of `wy hub serve` arguments, "" when absent.
 func ListenOf(args []string) string {
 	for i, a := range args {
 		for _, f := range []string{"--listen", "-listen", "--addr", "-addr"} {

@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 const (
@@ -87,7 +87,7 @@ func (o *Outbox) Append(r *record.Record) (Result, error) {
 }
 
 // AppendLine writes one already encoded line, which must be a single compact JSON record
-// ending in exactly one "\n". Used by `sy outbox append`.
+// ending in exactly one "\n". Used by `wy outbox append`.
 func (o *Outbox) AppendLine(line []byte) (Result, error) {
 	if len(line) > MaxLine {
 		return Result{}, ErrTooLarge

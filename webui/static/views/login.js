@@ -1,7 +1,7 @@
 // Signed out (#/login): "Sign in to this hub" (flows TARGET, Browser board). Three ways in: open
 // an owner link (pasted here, or opened from an owner device: More, Devices, Make another
 // device owner), pair this browser with a code (read-only; the code comes from an owner device),
-// or, as a fold-out, `sy hub owner-link` on the hub's computer. A read-only access token stays
+// or, as a fold-out, `wy hub owner-link` on the hub's computer. A read-only access token stays
 // as a last fold-out. After a 401 a reason line says why. Inside the desktop app no CLI wording
 // is shown: the app's Hub tab pairs and signs in.
 
@@ -43,7 +43,7 @@ function tokenForm(onLoggedIn) {
     h('label', { for: 'token' }, 'Access token'),
     input,
     h('p', { id: 'token-help', class: 'muted small' }, 'A token only lets this browser read the board. Make one on the hub with ',
-      h('code', {}, 'sy hub token create --kind browser'), '.'),
+      h('code', {}, 'wy hub token create --kind browser'), '.'),
     err, submit);
 }
 
@@ -87,7 +87,7 @@ export function render({ onLoggedIn }) {
       h('h1', {}, 'Sign in to this hub'),
       reasonLine(),
       h('p', {}, 'The desktop app signs this board in. On the Hub tab, pair this computer again, or use Sign in as owner.'));
-    return { title: 'Sign in · Switchyard', node: h('div', { class: 'login-wrap' }, h('div', { class: 'login-col' }, brandRow(), card)) };
+    return { title: 'Sign in · Watchyard', node: h('div', { class: 'login-wrap' }, h('div', { class: 'login-col' }, brandRow(), card)) };
   }
   const card = h('div', { class: 'login-card card' },
     h('h1', {}, 'Sign in to this hub'),
@@ -105,5 +105,5 @@ export function render({ onLoggedIn }) {
       h('p', {}, 'and open the link it prints in this browser. That signs you in as the owner, with every setting.')),
     h('details', { class: 'login-more', 'data-key': 'token-login' }, h('summary', {}, 'Use an access token instead'), tokenForm(onLoggedIn)));
 
-  return { title: 'Sign in · Switchyard', node: h('div', { class: 'login-wrap' }, h('div', { class: 'login-col' }, brandRow(), card)) };
+  return { title: 'Sign in · Watchyard', node: h('div', { class: 'login-wrap' }, h('div', { class: 'login-col' }, brandRow(), card)) };
 }

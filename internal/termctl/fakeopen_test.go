@@ -7,14 +7,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/termenv"
+	"github.com/mraj602/watchyard/internal/termenv"
 )
 
-// With `-tags fakeopen` SY_TEST_OPENER records the argv and runs nothing; in a release
+// With `-tags fakeopen` WY_TEST_OPENER records the argv and runs nothing; in a release
 // build the variable has no effect (the seam is not compiled in).
 func TestFakeOpenSeam(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "opened")
-	env := termenv.Fake(t.TempDir(), "linux", map[string]string{"SY_TEST_OPENER": file})
+	env := termenv.Fake(t.TempDir(), "linux", map[string]string{"WY_TEST_OPENER": file})
 	u := "warp://session/" + strings.Repeat("0", 32)
 	o := NewOpener(env, nil)
 	_, isExec := o.(ExecOpener)

@@ -275,12 +275,12 @@ describe('snapshot storage', () => {
     return { m, getItem: async (k) => m.get(k) ?? null, setItem: async (k, v) => void m.set(k, v), removeItem: async (k) => void m.delete(k) };
   }
 
-  it('round-trips through sy.widget.v1 and clears', async () => {
+  it('round-trips through wy.widget.v1 and clears', async () => {
     const store = memory();
     const snap = buildSnapshot(overview, accounts, NOW, { private: false, origin: 'https://h' });
     expect(await readSnapshot(store)).toBeNull();
     await writeSnapshot(store, snap);
-    expect([...store.m.keys()]).toEqual(['sy.widget.v1']);
+    expect([...store.m.keys()]).toEqual(['wy.widget.v1']);
     expect(await readSnapshot(store)).toEqual(snap);
     await clearSnapshot(store);
     expect(await readSnapshot(store)).toBeNull();
@@ -288,9 +288,9 @@ describe('snapshot storage', () => {
 
   it('treats garbage as no snapshot', async () => {
     const store = memory();
-    store.m.set('sy.widget.v1', '{"v":2}');
+    store.m.set('wy.widget.v1', '{"v":2}');
     expect(await readSnapshot(store)).toBeNull();
-    store.m.set('sy.widget.v1', 'not json');
+    store.m.set('wy.widget.v1', 'not json');
     expect(await readSnapshot(store)).toBeNull();
   });
 });

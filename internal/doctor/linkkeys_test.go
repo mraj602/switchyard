@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/paths"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/paths"
 )
 
 func TestCheckLinkKeys(t *testing.T) {
@@ -35,7 +35,7 @@ func TestCheckLinkKeys(t *testing.T) {
 		t.Fatalf("pull machine: %+v", rep.Checks)
 	}
 	// No device.json.
-	if c := check(); len(c) != 1 || !strings.Contains(c[0].Detail, "no link keys") || c[0].Fix != "sy agent enable" {
+	if c := check(); len(c) != 1 || !strings.Contains(c[0].Detail, "no link keys") || c[0].Fix != "wy agent enable" {
 		t.Fatalf("no keys: %+v", c)
 	}
 	dk, _, err := keys.LoadOrCreateDeviceKeys(tmp, time.Now())
@@ -47,7 +47,7 @@ func TestCheckLinkKeys(t *testing.T) {
 	fp := keys.Fingerprint(sp)
 
 	probe = func(context.Context) (CertInfo, error) { return CertInfo{}, ErrNoCert }
-	if c := check(); len(c) != 1 || c[0].Level != Warn || c[0].Fix != "sy agent enable" {
+	if c := check(); len(c) != 1 || c[0].Level != Warn || c[0].Fix != "wy agent enable" {
 		t.Fatalf("none at the hub: %+v", c)
 	}
 	probe = func(context.Context) (CertInfo, error) { return CertInfo{}, errors.New("connection refused") }
@@ -55,15 +55,15 @@ func TestCheckLinkKeys(t *testing.T) {
 		t.Fatalf("hub down: %+v", c)
 	}
 	probe = func(context.Context) (CertInfo, error) { return CertInfo{Device: "dev_1", Reg: "ssh", SignFP: fp}, nil }
-	// No owner key pinned here (the owner never ran sy keys init): the fix starts there.
-	if c := check(); len(c) != 1 || !strings.Contains(c[0].Detail, "no owner key pinned") || !strings.Contains(c[0].Fix, "sy keys init") ||
-		!strings.Contains(c[0].Fix, "sy keys certify --all") || !strings.Contains(c[0].Fix, "sy agent enable") {
+	// No owner key pinned here (the owner never ran wy keys init): the fix starts there.
+	if c := check(); len(c) != 1 || !strings.Contains(c[0].Detail, "no owner key pinned") || !strings.Contains(c[0].Fix, "wy keys init") ||
+		!strings.Contains(c[0].Fix, "wy keys certify --all") || !strings.Contains(c[0].Fix, "wy agent enable") {
 		t.Fatalf("uncertified, no owner pin: %+v", c)
 	}
 	probe = func(context.Context) (CertInfo, error) {
 		return CertInfo{Device: "dev_1", Reg: "ssh", SignFP: fp, OwnerSigned: true}, nil
 	}
-	if c := check(); len(c) != 1 || c[0].Level != Warn || !strings.Contains(c[0].Detail, "no owner key pinned") || !strings.HasPrefix(c[0].Fix, "sy agent enable") {
+	if c := check(); len(c) != 1 || c[0].Level != Warn || !strings.Contains(c[0].Detail, "no owner key pinned") || !strings.HasPrefix(c[0].Fix, "wy agent enable") {
 		t.Fatalf("certified, no owner pin: %+v", c)
 	}
 	opub, _, _ := ed25519.GenerateKey(nil)
@@ -71,7 +71,7 @@ func TestCheckLinkKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 	probe = func(context.Context) (CertInfo, error) { return CertInfo{Device: "dev_1", Reg: "ssh", SignFP: fp}, nil }
-	if c := check(); len(c) != 1 || !strings.Contains(c[0].Detail, "not owner-certified") || c[0].Fix != "on the owner machine: sy keys certify dev_1" {
+	if c := check(); len(c) != 1 || !strings.Contains(c[0].Detail, "not owner-certified") || c[0].Fix != "on the owner machine: wy keys certify dev_1" {
 		t.Fatalf("uncertified: %+v", c)
 	}
 	probe = func(context.Context) (CertInfo, error) {
@@ -91,7 +91,7 @@ func TestCheckLinkKeys(t *testing.T) {
 		return CertInfo{Device: "dev_1", Reg: "ssh", SignFP: fp, OwnerSigned: true, BoundKnown: true}, nil
 	}
 	if c := check(); len(c) != 1 || c[0].Level != Warn || !strings.Contains(c[0].Detail, "no accounts are bound") ||
-		c[0].Fix != "on the owner machine, in a terminal: sy keys certify dev_1" {
+		c[0].Fix != "on the owner machine, in a terminal: wy keys certify dev_1" {
 		t.Fatalf("no accounts bound: %+v", c)
 	}
 	probe = func(context.Context) (CertInfo, error) {

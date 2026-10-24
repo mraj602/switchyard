@@ -7,14 +7,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/timer"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/timer"
 )
 
 // rename.md 2.2: a hub or agent service installed under the name before a rename keeps
-// working (Status, Start, Stop find it) and is moved to the current name by Refresh (`sy
-// update`) or Install (`sy setup`), with its arguments and environment.
+// working (Status, Start, Stop find it) and is moved to the current name by Refresh (`wy
+// update`) or Install (`wy setup`), with its arguments and environment.
 
 func TestLegacyNames(t *testing.T) {
 	defer brand.SetLegacyForTest("oldname", "Oldname")()
@@ -43,7 +43,7 @@ func TestRefreshMigratesLegacyLinuxUnit(t *testing.T) {
 	r := &rec{}
 	e := envFor("linux", home, r)
 	old := e
-	old.Pairs, old.PairsSet = [][2]string{{"SY_HOME", "/srv/sy home"}}, true
+	old.Pairs, old.PairsSet = [][2]string{{"WY_HOME", "/srv/wy home"}}, true
 	oldSpec := model.ServiceSpec{Name: "oldname-hub", Args: []string{"hub", "serve", "--listen", "127.0.0.1:9999"}}
 	oldPath := SystemdUnitPath(e, "oldname-hub")
 	if err := writeFile(oldPath, []byte(SystemdUnit(old, oldSpec)), 0o644); err != nil {
@@ -74,7 +74,7 @@ func TestRefreshMigratesLegacyLinuxUnit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"ExecStart=/home/alice/.local/bin/sy hub serve --listen 127.0.0.1:9999\n", `Environment="SY_HOME=/srv/sy home"`} {
+	for _, want := range []string{"ExecStart=/home/alice/.local/bin/wy hub serve --listen 127.0.0.1:9999\n", `Environment="WY_HOME=/srv/wy home"`} {
 		if !strings.Contains(string(b), want) {
 			t.Errorf("new unit lacks %q:\n%s", want, b)
 		}
@@ -100,7 +100,7 @@ func TestRefreshMigratesLegacyDarwinPlist(t *testing.T) {
 	home := t.TempDir()
 	r := &rec{}
 	e := envFor("darwin", home, r)
-	// Before the rename `sy setup --hub here` wrote dev.<slug>.hub.plist.
+	// Before the rename `wy setup --hub here` wrote dev.<slug>.hub.plist.
 	oldPath := filepath.Join(home, "Library", "LaunchAgents", "dev.oldname.hub.plist")
 	if err := writeFile(oldPath, []byte(LaunchdPlist(e, model.ServiceSpec{Name: "oldname-hub", Args: []string{"hub", "serve", "--listen", "127.0.0.1:8790"}})), 0o644); err != nil {
 		t.Fatal(err)
@@ -169,7 +169,7 @@ func TestInstallRemovesLegacyFirstAndUninstallRemovesBoth(t *testing.T) {
 	if _, err := os.Stat(oldPath); !os.IsNotExist(err) {
 		t.Error("old agent unit left behind")
 	}
-	// An old unit that reappears (an older sy reinstalled it) goes too on uninstall.
+	// An old unit that reappears (an older wy reinstalled it) goes too on uninstall.
 	_ = writeFile(oldPath, []byte("x"), 0o644)
 	if err := s.Uninstall(context.Background(), AgentName); err != nil {
 		t.Fatal(err)

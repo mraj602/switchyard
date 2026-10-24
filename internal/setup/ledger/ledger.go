@@ -1,6 +1,6 @@
-// Package ledger reads and writes `<state>/setup/ledger.json`, the record of what sy has
+// Package ledger reads and writes `<state>/setup/ledger.json`, the record of what wy has
 // installed now (setup.md 9.3), and updates it from a finished backup manifest: Update
-// after an apply, Revert after an undo. `sy uninstall` and `sy doctor` plan from it.
+// after an apply, Revert after an undo. `wy uninstall` and `wy doctor` plan from it.
 //
 // Depends on: internal/atomicfile, internal/setup/model.
 package ledger
@@ -14,9 +14,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // Path returns <state>/setup/ledger.json.

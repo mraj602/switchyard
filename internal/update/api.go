@@ -1,10 +1,10 @@
-// Package update implements `sy update` and the release download shared with
-// `sy machine add`: install.sh in Go (docs/spec/machines.md 7.3). No GitHub API: releases are
+// Package update implements `wy update` and the release download shared with
+// `wy machine add`: install.sh in Go (docs/spec/machines.md 7.3). No GitHub API: releases are
 // found through SHA256SUMS, every archive is verified against it, and nothing downloaded is
 // run before verification.
 //
-// This file holds the types and the Fetcher seam that `sy machine add` (which needs the
-// archive for the remote's os/arch) and `sy update` share. Resolve, Fetch and Extract are in
+// This file holds the types and the Fetcher seam that `wy machine add` (which needs the
+// archive for the remote's os/arch) and `wy update` share. Resolve, Fetch and Extract are in
 // fetch.go; tests fake them through Fetcher.
 package update
 
@@ -12,19 +12,19 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
-// DefaultBaseURL is the release source when neither SY_INSTALL_BASE_URL nor update.base_url
+// DefaultBaseURL is the release source when neither WY_INSTALL_BASE_URL nor update.base_url
 // is set (machines.md 7.3 step 1).
-const DefaultBaseURL = "https://github.com/mraj602/switchyard/releases"
+const DefaultBaseURL = "https://github.com/mraj602/watchyard/releases"
 
 // Latest is the version argument that means the newest release.
 const Latest = "latest"
 
 // Source says where releases come from.
 type Source struct {
-	// BaseURL: SY_INSTALL_BASE_URL, else update.base_url, else DefaultBaseURL. https only
+	// BaseURL: WY_INSTALL_BASE_URL, else update.base_url, else DefaultBaseURL. https only
 	// (http for a loopback host, tests).
 	BaseURL string
 	// HTTP is the client to use; nil means one with sane timeouts that follows redirects
@@ -35,7 +35,7 @@ type Source struct {
 // SumLine is one line of SHA256SUMS: the SHA-256 (lower-case hex) of a release file.
 type SumLine struct {
 	SHA256 string
-	Name   string // e.g. sy_0.5.0_linux_arm64.tar.gz
+	Name   string // e.g. wy_0.5.0_linux_arm64.tar.gz
 }
 
 // Release is a resolved release: a version and its parsed SHA256SUMS.
@@ -45,14 +45,14 @@ type Release struct {
 	// SumsURL is where SHA256SUMS was fetched from; archives are next to it.
 	SumsURL string
 	// Sums is SHA256SUMS in file order. SumsRaw is the file as downloaded, so it can be
-	// pushed to a remote that has no internet (`sy update --sums-file`, machines.md 7.4).
+	// pushed to a remote that has no internet (`wy update --sums-file`, machines.md 7.4).
 	Sums    []SumLine
 	SumsRaw []byte
 
 	http *http.Client // the client Resolve used, so Fetch follows the same redirect rules
 }
 
-// ArchiveName is the release archive name for a platform: sy_<v>_<os>_<arch>.tar.gz, .zip on
+// ArchiveName is the release archive name for a platform: wy_<v>_<os>_<arch>.tar.gz, .zip on
 // Windows (machines.md 7.3 step 2).
 func (r Release) ArchiveName(goos, goarch string) string {
 	ext := ".tar.gz"

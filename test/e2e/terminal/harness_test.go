@@ -1,15 +1,15 @@
 // Package terminal is the end-to-end suite for the terminal features (scenarios E1..E11;
-// docs/spec/terminal.md T2, T3, T6, T7, T10, T11): the real `sy` binary,
+// docs/spec/terminal.md T2, T3, T6, T7, T10, T11): the real `wy` binary,
 // built once with `-tags fakeopen`, against a temp home laid out like the laptop of
-// setup.md 11 (detecttest.Laptop), a real `sy hub serve` on a free loopback port, a second
-// machine ("gpu-box", its own HOME and SY_HOME), the fakeclaude of the setup suite on PATH
-// and a file-recording opener (SY_TEST_OPENER).
+// setup.md 11 (detecttest.Laptop), a real `wy hub serve` on a free loopback port, a second
+// machine ("gpu-box", its own HOME and WY_HOME), the fakeclaude of the setup suite on PATH
+// and a file-recording opener (WY_TEST_OPENER).
 //
 //	make e2e-terminal       (go test -count=1 -v -timeout 15m ./test/e2e/terminal)
 //
-// Every subprocess gets an environment built from scratch (envFor): a temp HOME and SY_HOME,
+// Every subprocess gets an environment built from scratch (envFor): a temp HOME and WY_HOME,
 // PATH = temp bin dirs + /usr/bin:/bin, and nothing from the parent. Nothing here reads or
-// writes the real ~/.claude*, Warp's folders, ~/.config/switchyard or any service. Skipped
+// writes the real ~/.claude*, Warp's folders, ~/.config/watchyard or any service. Skipped
 // with -short and on Windows.
 package terminal
 
@@ -32,9 +32,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
-	"github.com/mraj602/switchyard/internal/setup/detect/detecttest"
-	"github.com/mraj602/switchyard/internal/setup/testtree"
+	"github.com/mraj602/watchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/setup/detect/detecttest"
+	"github.com/mraj602/watchyard/internal/setup/testtree"
 )
 
 // publicURL is the address the hub believes its browsers open (owner sessions check the
@@ -47,7 +47,7 @@ var (
 	buildOnce sync.Once
 	buildErr  error
 	buildRoot string // temp folder holding the binaries
-	syBin     string // sy built with -tags fakeopen
+	syBin     string // wy built with -tags fakeopen
 	fakeDir   string // folder holding fakeclaude as "claude"
 )
 
@@ -59,13 +59,13 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// goEnv is the environment of the `go build` runs only (sy is never run with it): the
-// parent's, without anything that points at a real Claude or sy folder.
+// goEnv is the environment of the `go build` runs only (wy is never run with it): the
+// parent's, without anything that points at a real Claude or wy folder.
 func goEnv() []string {
 	var env []string
 	for _, kv := range os.Environ() {
 		k, _, _ := strings.Cut(kv, "=")
-		if strings.HasPrefix(k, "CLAUDE") || strings.HasPrefix(k, "SY_") || strings.HasPrefix(k, "XDG_") {
+		if strings.HasPrefix(k, "CLAUDE") || strings.HasPrefix(k, "WY_") || strings.HasPrefix(k, "XDG_") {
 			continue
 		}
 		env = append(env, kv)
@@ -77,7 +77,7 @@ func goEnv() []string {
 func need(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("end-to-end: builds and runs sy")
+		t.Skip("end-to-end: builds and runs wy")
 	}
 	if runtime.GOOS == "windows" {
 		t.Skip("end-to-end: unix only")
@@ -103,9 +103,9 @@ func need(t *testing.T) {
 			}
 			return nil
 		}
-		syBin = filepath.Join(buildRoot, "sy")
+		syBin = filepath.Join(buildRoot, "wy")
 		fakeDir = filepath.Join(buildRoot, "fake")
-		if buildErr = build(syBin, "-tags", "fakeopen", "./cmd/sy"); buildErr != nil {
+		if buildErr = build(syBin, "-tags", "fakeopen", "./cmd/wy"); buildErr != nil {
 			return
 		}
 		buildErr = build(filepath.Join(fakeDir, "claude"), "./test/e2e/setup/fakeclaude")
@@ -115,7 +115,7 @@ func need(t *testing.T) {
 	}
 }
 
-// ---- running sy ----
+// ---- running wy ----
 
 type syncBuf struct {
 	mu sync.Mutex
@@ -134,7 +134,7 @@ func (s *syncBuf) String() string {
 	return s.b.String()
 }
 
-// machine is one `sy` identity: a HOME, an SY_HOME and the environment built from them.
+// machine is one `wy` identity: a HOME, an WY_HOME and the environment built from them.
 type machine struct {
 	t      *testing.T
 	name   string
@@ -151,8 +151,8 @@ func (m *machine) envFor(extra ...string) []string {
 	env := []string{
 		"PATH=" + strings.Join(append(append([]string{}, m.pathDirs...), "/usr/bin", "/bin"), ":"),
 		"HOME=" + m.home,
-		"SY_HOME=" + m.syHome,
-		"SY_NO_SPAWN=1",
+		"WY_HOME=" + m.syHome,
+		"WY_NO_SPAWN=1",
 		"SHELL=/bin/sh",
 		"TERM=dumb",
 		"TZ=UTC",
@@ -187,7 +187,7 @@ type result struct {
 	code     int
 }
 
-// run runs sy with stdin and extra environment.
+// run runs wy with stdin and extra environment.
 func (m *machine) run(stdin string, extra []string, args ...string) result {
 	m.t.Helper()
 	cmd := exec.Command(syBin, args...)
@@ -200,7 +200,7 @@ func (m *machine) run(stdin string, extra []string, args ...string) result {
 	if err := cmd.Run(); err != nil {
 		var ee *exec.ExitError
 		if !errors.As(err, &ee) {
-			m.t.Fatalf("sy %v: %v", args, err)
+			m.t.Fatalf("wy %v: %v", args, err)
 		}
 		r.code = ee.ExitCode()
 	}
@@ -208,25 +208,25 @@ func (m *machine) run(stdin string, extra []string, args ...string) result {
 	return r
 }
 
-// sy runs sy and returns the result, whatever its exit code.
-func (m *machine) sy(args ...string) result { m.t.Helper(); return m.run("", nil, args...) }
+// wy runs wy and returns the result, whatever its exit code.
+func (m *machine) wy(args ...string) result { m.t.Helper(); return m.run("", nil, args...) }
 
-// must runs sy and fails unless it exits 0; it returns stdout.
+// must runs wy and fails unless it exits 0; it returns stdout.
 func (m *machine) must(args ...string) string {
 	m.t.Helper()
 	r := m.run("", nil, args...)
 	if r.code != 0 {
-		m.t.Fatalf("[%s] sy %s: exit %d\nstdout:\n%s\nstderr:\n%s", m.name, strings.Join(args, " "), r.code, r.out, r.err)
+		m.t.Fatalf("[%s] wy %s: exit %d\nstdout:\n%s\nstderr:\n%s", m.name, strings.Join(args, " "), r.code, r.out, r.err)
 	}
 	return r.out
 }
 
-// mustJSON runs sy and decodes its stdout into v.
+// mustJSON runs wy and decodes its stdout into v.
 func (m *machine) mustJSON(v any, args ...string) {
 	m.t.Helper()
 	out := m.must(args...)
 	if err := json.Unmarshal([]byte(out), v); err != nil {
-		m.t.Fatalf("[%s] sy %s: %v\n%s", m.name, strings.Join(args, " "), err, out)
+		m.t.Fatalf("[%s] wy %s: %v\n%s", m.name, strings.Join(args, " "), err, out)
 	}
 }
 
@@ -261,7 +261,7 @@ type laptop struct {
 	*machine
 	h       *detecttest.Home
 	wrapLog string // argv log of the wrapper claude: "<CLAUDE_CONFIG_DIR or <unset>>|<args>"
-	openLog string // SY_TEST_OPENER file
+	openLog string // WY_TEST_OPENER file
 }
 
 func newLaptop(t *testing.T) *laptop {
@@ -288,11 +288,11 @@ fi
 exec "`+fake+`" "$@"
 `, 0o755)
 	l.pathDirs = []string{h.Abs(".local/bin"), fakeDir}
-	l.extra = []string{"FAKE_CLAUDE_LOG=" + filepath.Join(syHome, "claude.log"), "SY_TEST_OPENER=" + l.openLog}
+	l.extra = []string{"FAKE_CLAUDE_LOG=" + filepath.Join(syHome, "claude.log"), "WY_TEST_OPENER=" + l.openLog}
 	return l
 }
 
-// setup runs `sy setup --yes --hub later --named-launchers`, as the term tests do.
+// setup runs `wy setup --yes --hub later --named-launchers`, as the term tests do.
 func (l *laptop) setup() {
 	l.t.Helper()
 	l.must("setup", "--yes", "--hub", "later", "--named-launchers")
@@ -330,7 +330,7 @@ var snapOpts = testtree.Opts{Ignore: func(rel string) bool {
 	return filepath.Base(rel) == ".claude.json"
 }}
 
-// newBox is a second machine with its own plain HOME and SY_HOME (the "gpu-box").
+// newBox is a second machine with its own plain HOME and WY_HOME (the "gpu-box").
 func newBox(t *testing.T, name string) *machine {
 	t.Helper()
 	need(t)
@@ -338,14 +338,14 @@ func newBox(t *testing.T, name string) *machine {
 	writeFile(t, filepath.Join(home, ".claude", "settings.json"), "{}\n", 0o644)
 	writeFile(t, filepath.Join(home, ".claude", ".claude.json"), `{"oauthAccount":{"emailAddress":"box@example.com"}}`, 0o600)
 	m := &machine{t: t, name: name, home: home, syHome: t.TempDir(), pathDirs: []string{fakeDir}}
-	m.extra = []string{"SY_TEST_OPENER=" + filepath.Join(m.syHome, "open.log")}
+	m.extra = []string{"WY_TEST_OPENER=" + filepath.Join(m.syHome, "open.log")}
 	return m
 }
 
-// stateDir is <SY_HOME>/state.
+// stateDir is <WY_HOME>/state.
 func (m *machine) stateDir() string { return filepath.Join(m.syHome, "state") }
 
-// machineID asks `sy desktop info` for this machine's id.
+// machineID asks `wy desktop info` for this machine's id.
 func (m *machine) machineID() string {
 	m.t.Helper()
 	if m.id == "" {
@@ -365,7 +365,7 @@ func (m *machine) machineID() string {
 
 type hubProc struct {
 	t      *testing.T
-	m      *machine // whose SY_HOME the hub runs in
+	m      *machine // whose WY_HOME the hub runs in
 	addr   string
 	base   string
 	cmd    *exec.Cmd
@@ -385,7 +385,7 @@ func freeAddr(t *testing.T) string {
 	return ln.Addr().String()
 }
 
-// startHub runs `sy hub serve` in m's SY_HOME on a free loopback port and registers its
+// startHub runs `wy hub serve` in m's WY_HOME on a free loopback port and registers its
 // stop for the end of the test.
 func startHub(t *testing.T, m *machine) *hubProc {
 	t.Helper()
@@ -468,7 +468,7 @@ func (h *hubProc) get(token, path string, v any) {
 }
 
 // connect makes m a machine of the hub: hub.url, a machine token in <state>/token (what
-// `sy flush` pushes with). The hub's own SY_HOME is registered through the same command.
+// `wy flush` pushes with). The hub's own WY_HOME is registered through the same command.
 func (h *hubProc) connect(m *machine) {
 	h.t.Helper()
 	id := m.machineID()
@@ -509,7 +509,7 @@ var (
 	seatTeam     = seatDef{"acc-team", "org-team", "team@example.com"}
 )
 
-// hookRecord is one hook_event record as `sy hook` would write it, with an explicit seat.
+// hookRecord is one hook_event record as `wy hook` would write it, with an explicit seat.
 func hookRecord(t *testing.T, machineID, slot string, seat seatDef, term *record.Term, sid, event string, fields map[string]any) *record.Record {
 	t.Helper()
 	p := map[string]any{"session_id": sid, "hook_event_name": event, "cwd": "/home/u/api",
@@ -518,7 +518,7 @@ func hookRecord(t *testing.T, machineID, slot string, seat seatDef, term *record
 		p[k] = v
 	}
 	raw, _ := json.Marshal(p)
-	rec, err := record.NewHookEvent(record.Meta{Machine: machineID, Slot: slot, Seat: seat.rec(), Term: term, Client: "sy/e2e", Now: time.Now()},
+	rec, err := record.NewHookEvent(record.Meta{Machine: machineID, Slot: slot, Seat: seat.rec(), Term: term, Client: "wy/e2e", Now: time.Now()},
 		raw, record.HookOptions{LastMessages: true})
 	if err != nil {
 		t.Fatal(err)
@@ -526,7 +526,7 @@ func hookRecord(t *testing.T, machineID, slot string, seat seatDef, term *record
 	return rec
 }
 
-// viaOutbox is how a machine's records travel: sy outbox append, then sy flush.
+// viaOutbox is how a machine's records travel: wy outbox append, then wy flush.
 func (m *machine) viaOutbox(recs ...*record.Record) {
 	m.t.Helper()
 	var in bytes.Buffer
@@ -544,7 +544,7 @@ func (m *machine) viaOutbox(recs ...*record.Record) {
 	m.must("flush")
 }
 
-// hook runs the real `sy hook <event>` with a payload and extra environment, then flushes.
+// hook runs the real `wy hook <event>` with a payload and extra environment, then flushes.
 func (m *machine) hook(extra []string, sid, event string, fields map[string]any) {
 	m.t.Helper()
 	m.hookNoFlush(extra, sid, event, fields)
@@ -560,7 +560,7 @@ func (m *machine) hookNoFlush(extra []string, sid, event string, fields map[stri
 	}
 	raw, _ := json.Marshal(p)
 	if r := m.run(string(raw), extra, "hook", event); r.code != 0 {
-		m.t.Fatalf("[%s] sy hook %s: exit %d %s%s", m.name, event, r.code, r.out, r.err)
+		m.t.Fatalf("[%s] wy hook %s: exit %d %s%s", m.name, event, r.code, r.out, r.err)
 	}
 }
 
@@ -569,7 +569,7 @@ func (m *machine) flush() { m.run("", nil, "flush") }
 
 // ---- board ----
 
-// boardView runs `sy board --once --json` and decodes the View.
+// boardView runs `wy board --once --json` and decodes the View.
 func (m *machine) boardView(extra ...string) boardView {
 	m.t.Helper()
 	var v boardView
@@ -630,7 +630,7 @@ func (h *hubProc) connectBoard(m *machine) {
 	m.must("board", "connect")
 }
 
-// follower is `sy board --follow --ndjson` running in the background.
+// follower is `wy board --follow --ndjson` running in the background.
 type follower struct {
 	t     *testing.T
 	cmd   *exec.Cmd

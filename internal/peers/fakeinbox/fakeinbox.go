@@ -17,11 +17,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 // SeamMarker is a string only this package contains; the release check looks for it.
-const SeamMarker = "SY_FAKE_INBOX_SEAM"
+const SeamMarker = "WY_FAKE_INBOX_SEAM"
 
 var _ = SeamMarker
 

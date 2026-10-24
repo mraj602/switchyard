@@ -123,7 +123,7 @@ export function useTabProfiles(supported: boolean | null): string[] | null {
 
 // ---- the sign-in hint the owner dismissed (per seat; local, a flag only)
 
-export const TAB_HINT_KEY = 'sy.tabs.hint.v1';
+export const TAB_HINT_KEY = 'wy.tabs.hint.v1';
 
 export async function readHintDismissed(): Promise<Record<string, true>> {
   try {

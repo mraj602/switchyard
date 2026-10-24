@@ -23,7 +23,7 @@ const PLATFORM_TOKEN = {
  * A plain Chrome user agent that names the real platform. claude.ai's bot protection
  * (Cloudflare) rejects Electron's default user agent, which carries an `Electron/x` token, so
  * account tabs send the ordinary Chrome one instead. Policy note: the tab therefore identifies
- * itself as Chrome, not as Switchyard.
+ * itself as Chrome, not as Watchyard.
  *
  * The version is reduced to the major (`Chrome/152.0.0.0`), as Chrome itself has sent since
  * Chrome 110: a full build number is a string no real Chrome sends, and it changed with every

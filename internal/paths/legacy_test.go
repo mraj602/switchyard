@@ -3,7 +3,7 @@ package paths
 import (
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
 // rename.md 2.1: after a rename, a default folder that does not exist falls back to the
@@ -26,23 +26,23 @@ func TestLegacyFolders(t *testing.T) {
 		legacy [3]bool
 	}{
 		{"fresh install: new names", env("linux", "/home/u", nil), have(),
-			want{"/home/u/.config/switchyard", "/home/u/.local/state/switchyard", "/home/u/.local/share/switchyard"}, [3]bool{}},
+			want{"/home/u/.config/watchyard", "/home/u/.local/state/watchyard", "/home/u/.local/share/watchyard"}, [3]bool{}},
 		{"old install: old folders", env("linux", "/home/u", nil),
 			have("/home/u/.config/oldname/config.toml", "/home/u/.config/oldname", "/home/u/.local/state/oldname", "/home/u/.local/share/oldname"),
 			want{"/home/u/.config/oldname", "/home/u/.local/state/oldname", "/home/u/.local/share/oldname"}, [3]bool{true, true, true}},
 		{"old config folder without config.toml is not ours", env("linux", "/home/u", nil),
 			have("/home/u/.config/oldname", "/home/u/.local/state/oldname"),
-			want{"/home/u/.config/switchyard", "/home/u/.local/state/oldname", "/home/u/.local/share/switchyard"}, [3]bool{false, true, false}},
+			want{"/home/u/.config/watchyard", "/home/u/.local/state/oldname", "/home/u/.local/share/watchyard"}, [3]bool{false, true, false}},
 		{"new folder wins when both exist", env("linux", "/home/u", nil),
-			have("/home/u/.local/state/switchyard", "/home/u/.local/state/oldname"),
-			want{"/home/u/.config/switchyard", "/home/u/.local/state/switchyard", "/home/u/.local/share/switchyard"}, [3]bool{}},
+			have("/home/u/.local/state/watchyard", "/home/u/.local/state/oldname"),
+			want{"/home/u/.config/watchyard", "/home/u/.local/state/watchyard", "/home/u/.local/share/watchyard"}, [3]bool{}},
 		{"xdg", env("linux", "/home/u", map[string]string{"XDG_STATE_HOME": "/x/s"}), have("/x/s/oldname"),
-			want{"/home/u/.config/switchyard", "/x/s/oldname", "/home/u/.local/share/switchyard"}, [3]bool{false, true, false}},
-		{"overrides never fall back", env("linux", "/home/u", map[string]string{"SY_STATE_DIR": "/s", "SY_HOME": "/h"}), have("/home/u/.local/state/oldname", "/h/data"),
+			want{"/home/u/.config/watchyard", "/x/s/oldname", "/home/u/.local/share/watchyard"}, [3]bool{false, true, false}},
+		{"overrides never fall back", env("linux", "/home/u", map[string]string{"WY_STATE_DIR": "/s", "WY_HOME": "/h"}), have("/home/u/.local/state/oldname", "/h/data"),
 			want{"/h/config", "/s", "/h/data"}, [3]bool{}},
 		{"windows", env("windows", `C:\Users\u`, map[string]string{"LOCALAPPDATA": `C:\Users\u\AppData\Local`}),
 			have(`C:\Users\u\AppData\Local\Oldname\data`),
-			want{`C:\Users\u\AppData\Local\Switchyard\config`, `C:\Users\u\AppData\Local\Switchyard\state`, `C:\Users\u\AppData\Local\Oldname\data`}, [3]bool{false, false, true}},
+			want{`C:\Users\u\AppData\Local\Watchyard\config`, `C:\Users\u\AppData\Local\Watchyard\state`, `C:\Users\u\AppData\Local\Oldname\data`}, [3]bool{false, false, true}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

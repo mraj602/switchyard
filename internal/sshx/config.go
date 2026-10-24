@@ -84,13 +84,13 @@ func normHostPort(s string) string {
 }
 
 // HostKeyCheckingOff reports whether the person's config turns host key checking off for
-// the host (sy warns; it never overrides the person's config, machines.md 10.1).
+// the host (wy warns; it never overrides the person's config, machines.md 10.1).
 func (c Config) HostKeyCheckingOff() bool {
 	return forbidden("stricthostkeychecking", c.Get("stricthostkeychecking")) ||
 		forbidden("userknownhostsfile", c.Get("userknownhostsfile"))
 }
 
-// DefaultOptions are the options sy adds unless the person's config sets them (4.3).
+// DefaultOptions are the options wy adds unless the person's config sets them (4.3).
 var DefaultOptions = map[string]string{"connecttimeout": "ConnectTimeout=15", "serveraliveinterval": "ServerAliveInterval=15"}
 
 // ApplyDefaults sets r.Defaults from c: ConnectTimeout=15 when ssh -G says "none",

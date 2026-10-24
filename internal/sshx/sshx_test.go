@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/sshx"
-	"github.com/mraj602/switchyard/internal/sshx/sshxtest"
+	"github.com/mraj602/watchyard/internal/sshx"
+	"github.com/mraj602/watchyard/internal/sshx/sshxtest"
 )
 
 func TestMain(m *testing.M) {
@@ -44,7 +44,7 @@ func TestForbiddenOptionsRefused(t *testing.T) {
 	} {
 		env := func(string) string { return cmd }
 		if _, err := sshx.FromEnv(env); !errors.Is(err, sshx.ErrForbidden) {
-			t.Errorf("SY_SSH_COMMAND=%q: %v, want ErrForbidden", cmd, err)
+			t.Errorf("WY_SSH_COMMAND=%q: %v, want ErrForbidden", cmd, err)
 		}
 	}
 	r, err := sshx.FromEnv(func(string) string { return "ssh -F /tmp/cfg -o StrictHostKeyChecking=yes" })
@@ -60,11 +60,11 @@ func TestArgvShape(t *testing.T) {
 	r, _ := sshx.New(nil, "Port=2222")
 	r.Batch = true
 	r.ApplyDefaults(sshx.ParseConfig([]byte("connecttimeout none\nserveraliveinterval 0\n")))
-	argv, err := r.Argv(sshx.Call{Host: "me@gpu-box", Remote: []string{".local/bin/sy", "version", "--short"}})
+	argv, err := r.Argv(sshx.Call{Host: "me@gpu-box", Remote: []string{".local/bin/wy", "version", "--short"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "ssh -o Port=2222 -o ConnectTimeout=15 -o ServerAliveInterval=15 -o BatchMode=yes -T me@gpu-box -- '.local/bin/sy' 'version' '--short'"
+	want := "ssh -o Port=2222 -o ConnectTimeout=15 -o ServerAliveInterval=15 -o BatchMode=yes -T me@gpu-box -- '.local/bin/wy' 'version' '--short'"
 	if got := strings.Join(argv, " "); got != want {
 		t.Fatalf("argv\n got %s\nwant %s", got, want)
 	}
@@ -72,7 +72,7 @@ func TestArgvShape(t *testing.T) {
 	if len(r.Defaults) != 0 {
 		t.Fatalf("defaults over the person's config: %v", r.Defaults)
 	}
-	tty, _ := r.Argv(sshx.Call{Host: "gpu-box", Remote: []string{".local/bin/sy", "account", "login", "~/.claude-2"}, TTY: true})
+	tty, _ := r.Argv(sshx.Call{Host: "gpu-box", Remote: []string{".local/bin/wy", "account", "login", "~/.claude-2"}, TTY: true})
 	if !contains(tty, "-t") || contains(tty, "BatchMode=yes") {
 		t.Fatalf("tty argv %q", tty)
 	}
@@ -113,7 +113,7 @@ func TestScriptLint(t *testing.T) {
 }
 
 // The quoted command line must reach the program as the same words through every login
-// shell sy supports (machines.md 4.3). Shells that are not installed are skipped.
+// shell wy supports (machines.md 4.3). Shells that are not installed are skipped.
 func TestQuotingSurvivesShells(t *testing.T) {
 	script, err := sshx.Script(`for a in "$0" "$@"; do printf "[%s]" "$a"; done; d=$HOME; test -n "$d" && printf "|"`, "--hub-url", "https://hub.ts.net:443/x", "a=b,c", "~/.claude-2", "50%", "m_01ABC@x+y")
 	if err != nil {

@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/setup/apply"
-	"github.com/mraj602/switchyard/internal/setup/backup"
-	"github.com/mraj602/switchyard/internal/setup/backup/fakes"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/share"
+	"github.com/mraj602/watchyard/internal/setup/apply"
+	"github.com/mraj602/watchyard/internal/setup/backup"
+	"github.com/mraj602/watchyard/internal/setup/backup/fakes"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/share"
 )
 
 func undoAll(t *testing.T, state string, sh model.Sharer) backup.Result {
@@ -83,7 +83,7 @@ func TestUndoRemovesFolderHoldingOnlyFirstRunState(t *testing.T) {
 type createRegExec struct{ reg string }
 
 func (c createRegExec) Run(context.Context, []string, map[string]*string) ([]byte, error) {
-	return []byte(`{"outcome":"ok"}`), os.WriteFile(c.reg, []byte(`{"plugins":{"switchyard@sy-local":[1]}}`), 0o644)
+	return []byte(`{"outcome":"ok"}`), os.WriteFile(c.reg, []byte(`{"plugins":{"watchyard@wy-local":[1]}}`), 0o644)
 }
 
 // A registry the run created is reverted entry by entry when someone registered
@@ -101,7 +101,7 @@ func TestUndoKeepsCreatedRegistryWithLaterEntries(t *testing.T) {
 	_, _ = (&fakes.Sharer{}).JSONSet(reg, "/plugins/later@y", json.RawMessage(`[2]`))
 	undoAll(t, o.StateDir, &fakes.Sharer{})
 	plugins := readJSON(t, reg)["plugins"].(map[string]any)
-	if plugins["later@y"] == nil || plugins["switchyard@sy-local"] != nil {
+	if plugins["later@y"] == nil || plugins["watchyard@wy-local"] != nil {
 		t.Fatalf("%v", plugins)
 	}
 }
@@ -118,9 +118,9 @@ func TestUndoSkipsCreatedFileChangedSince(t *testing.T) {
 	if _, err := apply.Run(ctx, p, o, d); err != nil {
 		t.Fatal(err)
 	}
-	b.File("plug/cache/sy-local/notes.txt", "mine", 0o644) // a file sy did not create
+	b.File("plug/cache/wy-local/notes.txt", "mine", 0o644) // a file wy did not create
 	ur := undoAll(t, o.StateDir, &fakes.Sharer{})
-	if _, err := os.Stat(b.Abs("plug/cache/sy-local/notes.txt")); err != nil {
+	if _, err := os.Stat(b.Abs("plug/cache/wy-local/notes.txt")); err != nil {
 		t.Fatalf("later file removed: %+v", ur)
 	}
 }
@@ -180,26 +180,26 @@ func TestRecoveryKeepsAFileRewrittenAfterTheCrash(t *testing.T) {
 	}
 }
 
-// An interrupted plugin command removes only what it may have made for sy's
+// An interrupted plugin command removes only what it may have made for wy's
 // marketplace, not what appeared under the root since.
 func TestRecoveryOfRunRemovesOnlyExpectedPaths(t *testing.T) {
 	b, o, _ := simple(t)
 	root := b.Abs("plug")
 	b.Dir("plug", 0o755)
 	s, _ := backup.Create(o.StateDir, backup.Header{Command: "t"}, time.Now())
-	if _, err := s.Begin("a1", model.OpRun, backup.Spec{Watch: []string{root}, Expect: []string{"sy-local"}}); err != nil {
+	if _, err := s.Begin("a1", model.OpRun, backup.Spec{Watch: []string{root}, Expect: []string{"wy-local"}}); err != nil {
 		t.Fatal(err)
 	}
-	b.File("plug/cache/sy-local/switchyard/plugin.json", "{}", 0o644) // the interrupted install
-	b.File("plug/cache/other-mkt/thing/plugin.json", "{}", 0o644)     // installed by the person later
+	b.File("plug/cache/wy-local/watchyard/plugin.json", "{}", 0o644) // the interrupted install
+	b.File("plug/cache/other-mkt/thing/plugin.json", "{}", 0o644)    // installed by the person later
 	if _, err := backup.UndoSet(ctx, s, backup.Deps{Sharer: &fakes.Sharer{}}, backup.Options{}, true); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(b.Abs("plug/cache/other-mkt/thing/plugin.json")); err != nil {
 		t.Fatal("a plugin installed later was removed")
 	}
-	if _, err := os.Stat(b.Abs("plug/cache/sy-local")); err == nil {
-		t.Fatal("sy's half-installed plugin kept")
+	if _, err := os.Stat(b.Abs("plug/cache/wy-local")); err == nil {
+		t.Fatal("wy's half-installed plugin kept")
 	}
 }
 
@@ -271,7 +271,7 @@ func TestUndoOfCopiedTreeKeepsNewFiles(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlinks")
 	}
-	// the unshare of `sy account remove --unshare`: a link turned into a copied tree, journaled
+	// the unshare of `wy account remove --unshare`: a link turned into a copied tree, journaled
 	for _, edit := range []bool{false, true} {
 		b, o, _ := simple(t)
 		b.File("p/skills/a/SKILL.md", "x", 0o644)

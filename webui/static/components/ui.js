@@ -75,12 +75,12 @@ export function pillNav(items, current) {
   return nav;
 }
 
-// The Switchyard mark and name, for the screens without the sidebar (sign-in, pairing).
+// The Watchyard mark and name, for the screens without the sidebar (sign-in, pairing).
 export const brandRow = () => h('div', { class: 'brand-row' },
   svg('svg', { viewBox: '0 0 22 22', width: 26, height: 26, 'aria-hidden': 'true' },
     svg('path', { d: 'M3 18 L11 4 L19 18', fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }),
     svg('path', { d: 'M7 18 L11 11 L15 18', fill: 'none', stroke: '#E8B04B', 'stroke-width': 2 })),
-  h('span', { class: 'brand-name' }, 'Switchyard'));
+  h('span', { class: 'brand-name' }, 'Watchyard'));
 
 // Technical details behind a disclosure: versions, ids, limits.
 // `summary` may be a string or {text, key}; a key keeps it open across redraws (app.js).

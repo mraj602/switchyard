@@ -9,10 +9,10 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/agent"
-	"github.com/mraj602/switchyard/internal/client"
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/agent"
+	"github.com/mraj602/watchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 // checkAgent reports the peers agent (peers.md 2) when peers are enabled. A machine with
@@ -34,8 +34,8 @@ func checkAgent(rep *Report, o Options, cfg config.Config) {
 	case err == nil:
 		rep.add(Check{Name: "agent", Level: Warn, Detail: "answers on its socket but gave no state"})
 	default:
-		rep.add(Check{Name: "agent", Level: Warn, Detail: "peers are enabled but the sy agent is not running (same-machine sends write the inbox directly)",
-			Fix: "sy agent enable"})
+		rep.add(Check{Name: "agent", Level: Warn, Detail: "peers are enabled but the wy agent is not running (same-machine sends write the inbox directly)",
+			Fix: "wy agent enable"})
 	}
 	checkLinkKeys(rep, o, cfg)
 }
@@ -64,12 +64,12 @@ func checkLinkKeys(rep *Report, o Options, cfg config.Config) {
 	dk, err := keys.ReadDeviceKeys(o.Dirs.State.Path)
 	if err != nil {
 		rep.add(Check{Name: "link keys", Level: Warn, Detail: "this machine has no link keys: it cannot hold a link, so peers on other machines cannot reach it",
-			Fix: "sy agent enable"})
+			Fix: "wy agent enable"})
 		return
 	}
 	pub, err := dk.Public()
 	if err != nil {
-		rep.add(Check{Name: "link keys", Level: Warn, Detail: err.Error(), Fix: "sy agent enable"})
+		rep.add(Check{Name: "link keys", Level: Warn, Detail: err.Error(), Fix: "wy agent enable"})
 		return
 	}
 	probe := o.CertProbe
@@ -85,25 +85,25 @@ func checkLinkKeys(rep *Report, o Options, cfg config.Config) {
 	ownerPinned := perr == nil
 	switch {
 	case errors.Is(err, ErrNoCert):
-		rep.add(Check{Name: "link keys", Level: Warn, Detail: "this machine has link keys, but the hub has none registered for it", Fix: "sy agent enable"})
+		rep.add(Check{Name: "link keys", Level: Warn, Detail: "this machine has link keys, but the hub has none registered for it", Fix: "wy agent enable"})
 	case err != nil:
 		return
 	case ci.SignFP != signFP:
 		rep.add(Check{Name: "link keys", Level: Warn, Detail: fmt.Sprintf("the hub holds other link keys for this machine (sign %s, here %s)", keys.GroupFP(ci.SignFP), keys.GroupFP(signFP)),
-			Fix: "sy agent enable (or sy machine add again from the owner machine)"})
+			Fix: "wy agent enable (or wy machine add again from the owner machine)"})
 	case !ci.OwnerSigned && !ownerPinned:
 		// No owner key pinned here: most likely none was ever made, so certify alone would fail.
 		rep.add(Check{Name: "link keys", Level: Warn, Detail: fmt.Sprintf("not owner-certified (reg %s, sign %s) and no owner key pinned here: peers on other machines refuse this machine, and it cannot check theirs", ci.Reg, keys.GroupFP(signFP)),
-			Fix: "on the owner machine, in a terminal: sy keys init (once, if sy keys status there shows no owner key), confirm it, then sy keys certify --all; then sy agent enable on each other machine"})
+			Fix: "on the owner machine, in a terminal: wy keys init (once, if wy keys status there shows no owner key), confirm it, then wy keys certify --all; then wy agent enable on each other machine"})
 	case !ci.OwnerSigned:
 		rep.add(Check{Name: "link keys", Level: Warn, Detail: fmt.Sprintf("not owner-certified (reg %s, sign %s): peers on other machines refuse this machine", ci.Reg, keys.GroupFP(signFP)),
-			Fix: "on the owner machine: sy keys certify " + ci.Device})
+			Fix: "on the owner machine: wy keys certify " + ci.Device})
 	case !ownerPinned:
 		rep.add(Check{Name: "link keys", Level: Warn, Detail: fmt.Sprintf("owner-certified (reg %s, sign %s), but no owner key pinned here: this machine cannot check other machines' certificates, so its messages to them are refused", ci.Reg, keys.GroupFP(signFP)),
-			Fix: "sy agent enable (pins the hub's confirmed owner key)"})
+			Fix: "wy agent enable (pins the hub's confirmed owner key)"})
 	case ci.BoundKnown && len(ci.Bound) == 0:
 		rep.add(Check{Name: "link keys", Level: Warn, Detail: fmt.Sprintf("owner-certified (reg %s, sign %s), but no accounts are bound to this machine: peers on other machines refuse its messages (unbound_account)", ci.Reg, keys.GroupFP(signFP)),
-			Fix: "on the owner machine, in a terminal: sy keys certify " + ci.Device})
+			Fix: "on the owner machine, in a terminal: wy keys certify " + ci.Device})
 	default:
 		detail := fmt.Sprintf("owner-certified (reg %s, sign %s)", ci.Reg, keys.GroupFP(signFP))
 		if ci.BoundKnown {

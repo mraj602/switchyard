@@ -1,8 +1,8 @@
 // The DevTools-protocol guard (C2): a packaged app refuses to start with a remote debugging
 // switch, since anyone who can start it with one could drive the signed-in claude.ai tabs and
-// the hub board. The only exception is a build that baked `switchyard.allowCdp: true` into
+// the hub board. The only exception is a build that baked `watchyard.allowCdp: true` into
 // its package.json (the asar copy): the e2e build sets it with electron-builder
-// `-c.extraMetadata.switchyard.allowCdp=true` (scripts/dist-e2e.sh); release builds never do.
+// `-c.extraMetadata.watchyard.allowCdp=true` (scripts/dist-e2e.sh); release builds never do.
 // Unpackaged runs (npm start, the smoke) are not affected.
 //
 // Pure: main/index.js passes Electron's app, process.argv and the read package.json.
@@ -18,9 +18,9 @@ function inArgv(argv, name) {
   });
 }
 
-/** The build-time allowance: package.json `switchyard.allowCdp` set to true. */
+/** The build-time allowance: package.json `watchyard.allowCdp` set to true. */
 export function cdpAllowed(pkg) {
-  const v = pkg?.switchyard?.allowCdp;
+  const v = pkg?.watchyard?.allowCdp;
   return v === true || v === 'true';
 }
 

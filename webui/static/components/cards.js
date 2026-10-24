@@ -117,7 +117,7 @@ export function seatCard(seat, colour, machinesText, now) {
 
 // Why a card has no meters, and what makes them appear (N3).
 export const noUsage = () => h('p', { class: 'muted small no-usage' }, 'No usage yet. It appears after Claude Code runs in a profile set up with ',
-  h('code', {}, 'sy setup'), ' (it adds the status line that reports limits).');
+  h('code', {}, 'wy setup'), ' (it adds the status line that reports limits).');
 
 function windowRowLabel(w) {
   return w.key === 'seven_day' ? '7-day' : (w.label || humanKey(w.key));

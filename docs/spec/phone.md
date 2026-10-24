@@ -35,7 +35,7 @@ Code map: `phone/src/contract/` is the TypeScript side of this spec:
 | `snapshot.ts` | `WidgetSnapshot` v1 (P11), `TimelineEntry`, `SNAPSHOT_MAX_SEATS` 8 (`SNAPSHOT_IOS_SEATS` 4), `SNAPSHOT_LABEL_MAX` 12, `TIMELINE_MAX` 8 |
 | `live.ts` | `LiveCountdownProps` (P12), `LIVE_MAX_H` 8, `LIVE_MIN_PCT` 80, `LIVE_END_AFTER_MS`, `LIVE_ACTIVITY_NAME` |
 | `routes.ts` | `SCHEME`, `AppRoute`, route paths, the hash routes and incoming hosts of P7 |
-| `constants.ts` | Storage keys (`sy.hub.v1`, `sy.cache.v1`, `sy.widget.v1`, `sy.local.v1`), category and action ids, channels (P6.1), timeouts, the `ACTION_TOKEN` pattern |
+| `constants.ts` | Storage keys (`wy.hub.v1`, `wy.cache.v1`, `wy.widget.v1`, `wy.local.v1`), category and action ids, channels (P6.1), timeouts, the `ACTION_TOKEN` pattern |
 | `platform.ts` | The service interfaces `src/lib` takes as arguments (`FetchLike`, `Clock`, `KVStore`, `SecureStoreLike`, `AppStateSource`, `AppInfo`) |
 | `validate.ts` | Runtime validators for all of the above (empty list = valid), used by the contract test and by the app on data it did not make |
 
@@ -140,9 +140,9 @@ optional React 19.3 peers); they are expected and do not fail the install.
 - **`parsePairInput(text)`** (pure) accepts:
   - `https://<host>[:port]/#/pair?s=<22 base64url>&c=<6 digits>[&h=<24 base32>&k=<22 base64url>]`,
     the QR of pairing.md 2.2 with keys.md 7's hub fingerprint and registration seal;
-  - `switchyard://pair?u=<https origin>&s=…&c=…[&h=…&k=…]`, the "Open in app" link the web pair
+  - `watchyard://pair?u=<https origin>&s=…&c=…[&h=…&k=…]`, the "Open in app" link the web pair
     page offers. On Android the page emits it as a Chrome intent URL pinned to the release
-    package (`intent://pair?…#Intent;scheme=switchyard;package=io.github.mraj602.switchyard;end`),
+    package (`intent://pair?…#Intent;scheme=watchyard;package=io.github.mraj602.watchyard;end`),
     because any app can register the plain scheme and this link carries the secret and seal key.
     The page emits nothing off Android, and a development build (`.dev` package) is paired with
     the QR or typed code. When the app is already paired with another hub, the link card names
@@ -152,7 +152,7 @@ optional React 19.3 peers); they are expected and do not fail the install.
 
   It returns `{origin, secret?, code?}` or a reason. The origin must be `https://`, with no
   user info, path, query or fragment kept. Only `__DEV__` builds, and bundled builds made with
-  `SY_APP_VARIANT=development` (`extra.cleartext`, the same switch as cleartext traffic in the
+  `WY_APP_VARIANT=development` (`extra.cleartext`, the same switch as cleartext traffic in the
   manifest), accept `http://` for loopback, RFC 1918 and Tailscale (100.64.0.0/10) addresses (pairing.md 2.3's
   `--insecure` hubs, for local testing, `test/e2e/android`).
   It refuses a `javascript:` URL, an origin with a backslash and a host over 253 characters.
@@ -184,7 +184,7 @@ optional React 19.3 peers); they are expected and do not fail the install.
 
 ## P3. Token storage and the hub client
 
-- SecureStore key `sy.hub.v1` holds JSON `{origin, token, device, name, paired_at}`, with
+- SecureStore key `wy.hub.v1` holds JSON `{origin, token, device, name, paired_at}`, with
   `keychainAccessible: AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`. That way the background
   notification task and widget refresh can read it while the phone is locked after its first
   unlock, and it is never restored onto another device. Android: Keystore-backed, and the app
@@ -209,7 +209,7 @@ optional React 19.3 peers); they are expected and do not fail the install.
   can see a bearer request before the app refuses the answer. That is the native limit,
   accepted for a hub the person runs on their own tailnet.
 - Unpair (Settings): stop polling, record `{origin, token}` in SecureStore key
-  `sy.revoke.v1` (a short list), do the same local clearing (which also dismisses the old
+  `wy.revoke.v1` (a short list), do the same local clearing (which also dismisses the old
   hub's delivered notifications), then `DELETE /v1/devices/self`. An unpairing the hub has
   not confirmed is retried on every start and foreground until it answers 2xx, 401 or 404;
   pairing again with the same hub confirms it first, so its old link target is gone before the
@@ -266,7 +266,7 @@ on a shared table.
 - Foreground (`AppState` `active`): poll every 15 s, plus at once on foreground, on a
   received push and after a Seen or Snooze. Background: no polling; the `sy-link` module's `refresh` frames
   (P6.5) update the widgets.
-- The last good replies go to AsyncStorage key `sy.cache.v1` (no token, no secret). When the
+- The last good replies go to AsyncStorage key `wy.cache.v1` (no token, no secret). When the
   hub cannot be reached, the screens show them under "Offline · showing 14:02", and Seen,
   Snooze and test push are disabled, as in the PWA.
 - After every refresh the app rebuilds the widget snapshot (P11) and updates a running Live
@@ -302,7 +302,7 @@ only to bring its name up to date (Android applies just the name and description
 rename of `sy_connection` from "Connection" to "Connection (always on)" reaches existing installs.
 
 **P6.1a Notification icons** (the `sy-link` module's own notes; direction A, "the mark with a
-corner badge"). Every small icon is the Switchyard double chevron with a kind badge in the
+corner badge"). Every small icon is the Watchyard double chevron with a kind badge in the
 top-right corner, one white filled path as a 24 dp vector (`sy_notify_<kind>.xml` in the
 module's `res/drawable`, so it ships through autolinking and survives `expo prebuild`). The
 alert colour behind it is the brand gold `#E8B04B`; the always-on connection note is grey
@@ -358,19 +358,19 @@ today, so the app drops (and dismisses) an act on a notification the OS delivere
 current pairing was made (`notification.date` against `paired_at`, both on the phone's
 clock); when a payload names an `origin`, an act whose origin is not the paired one is
 dropped too. Each notification's Snooze or Seen runs once: the `sy-link` module's action handling and
-the response listener share the AsyncStorage key `sy.acted.v1` (`"<id>|<action>"`, the last
+the response listener share the AsyncStorage key `wy.acted.v1` (`"<id>|<action>"`, the last
 50, never a token).
 
 **Lock screen.** Every notification the module posts is `VISIBILITY_PRIVATE` with a public
-version that reads "Switchyard" and "Open Switchyard to see this", so a locked phone shows no
+version that reads "Watchyard" and "Open Watchyard to see this", so a locked phone shows no
 project, account or machine name (the persistent connection note and the "stopped" note too).
 
 **Native taps.** The notifications the `sy-link` module posts itself carry their own content
-intent: an `ACTION_VIEW` of `Payloads.appLink(url)` (the payload's route as `switchyard://…`, Now
+intent: an `ACTION_VIEW` of `Payloads.appLink(url)` (the payload's route as `watchyard://…`, Now
 when it has none or it is refused) aimed at the app's launcher activity by component name, or
 the Claude link when `tap` says so. The persistent connection notification and the "stopped"
-note open `switchyard://now`; only the connection notification's **Settings** button opens
-`switchyard://settings/notifications`. No notification is posted without a content intent
+note open `watchyard://now`; only the connection notification's **Settings** button opens
+`watchyard://settings/notifications`. No notification is posted without a content intent
 (Android 14 on Samsung answers a tap on one by opening the app's notification settings), and
 no tap leads to a settings page except that button. `test/links.test.ts` checks that each of
 these links resolves to the item or Now; the JUnit `FramesTest` checks the native side's link.
@@ -411,11 +411,11 @@ Maker guides (text in `src/lib/notify/makers.ts`, matched on lower-case manufact
 
 | Maker | Guide |
 | --- | --- |
-| samsung | Settings → Battery → Background usage limits → Never sleeping apps → add Switchyard |
-| xiaomi, redmi, poco | Settings → Apps → Switchyard → Autostart on; Battery saver → No restrictions |
-| oneplus, oppo, realme | Settings → Battery → Switchyard → Don't optimize; allow background activity |
-| huawei, honor | Settings → Battery → App launch → Switchyard → Manage manually, all three on |
-| others | Settings → Apps → Switchyard → Battery → Unrestricted |
+| samsung | Settings → Battery → Background usage limits → Never sleeping apps → add Watchyard |
+| xiaomi, redmi, poco | Settings → Apps → Watchyard → Autostart on; Battery saver → No restrictions |
+| oneplus, oppo, realme | Settings → Battery → Watchyard → Don't optimize; allow background activity |
+| huawei, honor | Settings → Battery → App launch → Watchyard → Manage manually, all three on |
+| others | Settings → Apps → Watchyard → Battery → Unrestricted |
 
 Doctor rows come from the same state: connection age, battery exemption and
 verification.
@@ -430,17 +430,17 @@ then gets the 401 that shows Pair, P3).
 
 ## P7. Deep links
 
-- Scheme `switchyard`. Accepted incoming URLs (an allow-list in `src/lib/links`; everything
+- Scheme `watchyard`. Accepted incoming URLs (an allow-list in `src/lib/links`; everything
   else opens Now):
-  - `switchyard://now`
-  - `switchyard://sessions/<id>[?alert=<al_…>]`
-  - `switchyard://accounts[?seat=<id>]`
-  - `switchyard://machines[?machine=<id>]`
-  - `switchyard://alerts/<al_…>`
-  - `switchyard://pair?u=…&s=…&c=…[&h=…&k=…]`
-  - `switchyard://settings/notifications` (the **Settings** button of the link's persistent
-    notification, push.md 14.4; the notification's own tap opens `switchyard://now`;
-    `switchyard://settings` alone stays off the list)
+  - `watchyard://now`
+  - `watchyard://sessions/<id>[?alert=<al_…>]`
+  - `watchyard://accounts[?seat=<id>]`
+  - `watchyard://machines[?machine=<id>]`
+  - `watchyard://alerts/<al_…>`
+  - `watchyard://pair?u=…&s=…&c=…[&h=…&k=…]`
+  - `watchyard://settings/notifications` (the **Settings** button of the link's persistent
+    notification, push.md 14.4; the notification's own tap opens `watchyard://now`;
+    `watchyard://settings` alone stays off the list)
 
   Ids must match `^[A-Za-z0-9_.:-]{1,80}$`.
 - `hashToRoute(url)` maps a payload `url` (push.md 5.8: `/#/sessions/<id>?alert=…`,
@@ -453,9 +453,9 @@ then gets the 401 that shows Pair, P3).
   `origin`, `secret`, `code` (`/pair?origin=…&secret=…&code=…`), which the Pair screen reads;
   it shows a confirm card for them and claims only on that tap (and, when already paired,
   asks "Unpair from \<host>?" after it).
-- Widgets link to `switchyard://now`, `switchyard://sessions[?filter=working|done]` and
-  `switchyard://accounts?seat=<id>`. The Live
-  Activity links to `switchyard://accounts?seat=<id>`.
+- Widgets link to `watchyard://now`, `watchyard://sessions[?filter=working|done]` and
+  `watchyard://accounts?seat=<id>`. The Live
+  Activity links to `watchyard://accounts?seat=<id>`.
 
 ## P11. Widgets
 
@@ -498,8 +498,8 @@ then gets the 401 that shows Pair, P3).
     colour, the tighter of 5 h and 7 d (`tighterWindow`, a tie shows 7 d) as a bar and %, and
     that window's reset as a clock time ("5 h · 17:00"). An account with no reading, or a
     window whose reset has passed, reads 0% ("idle" / "reset"). It draws as many rows as the
-    height allows (`rowsThatFit`, about 30 dp a row). A row opens `switchyard://accounts?seat=<id>`,
-    the rest `switchyard://accounts`.
+    height allows (`rowsThatFit`, about 30 dp a row). A row opens `watchyard://accounts?seat=<id>`,
+    the rest `watchyard://accounts`.
   - `SySessions` (target 3×2): **Running** (`counts.working`), **Needs input**
     (`counts.needs_you`: needs_permission, asked, failed) and **Done** (`counts.done`), as the
     Sessions screen's filters count them, and, when something needs you, a highlight line
@@ -510,13 +510,13 @@ then gets the 401 that shows Pair, P3).
     - `SyNeeds` (4×2, resizable): header "Needs you · N waiting" (N = `counts.needs_you`), then the
       top 3 waiting sessions oldest first from `needs_list`: account colour dot, "account ·
       project · state" (asked, needs permission, failed) and its age ("4 min"). A row opens
-      `switchyard://sessions/<id>`; the rest opens Now. Nothing waiting: "Nothing needs you".
-      Private mode: `needs_list` is empty, so it shows the count and "Open Switchyard to see
+      `watchyard://sessions/<id>`; the rest opens Now. Nothing waiting: "Nothing needs you".
+      Private mode: `needs_list` is empty, so it shows the count and "Open Watchyard to see
       which".
     - `SyRing` (2×2, `widgetFeatures: 'reconfigurable'`): one account, picked on the widget's
       configuration screen (`RingConfig`, registered with `registerWidgetConfigurationScreen`;
       Android opens it on placement and from Reconfigure). The pick is stored per widget id
-      under `sy.widget.ring.v1` ({widgetId: seatId}, never a secret; dropped on
+      under `wy.widget.ring.v1` ({widgetId: seatId}, never a secret; dropped on
       `WIDGET_DELETED` and on unpair). It draws a ring (`SvgWidget`) of the tighter of 5 h and
       7 d with the %, the window and the reset words from `resetWords` (format/windows):
       "resets 15:48", "reset at 10:10" or, for an idle account, "0 %" and "not started". Tap:
@@ -546,15 +546,15 @@ then gets the 401 that shows Pair, P3).
       shows "not started" instead of skipping it.
   - **Brand header and the window toggle (all six).** Every widget's header row starts with the
     gold double-chevron mark (`assets/src/mark.svg`, inline in `widgets/android/Brand.tsx`,
-    drawn with `SvgWidget`) and "Switchyard", or "Switchyard · Limits" / "· Sessions" / "·
-    Needs you" where there is room; the 2×1 and 2×2 widgets show the mark and "Switchyard"
+    drawn with `SvgWidget`) and "Watchyard", or "Watchyard · Limits" / "· Sessions" / "·
+    Needs you" where there is room; the 2×1 and 2×2 widgets show the mark and "Watchyard"
     only. `SyLimits` and `SyRing` have a tappable **5 h | 7 d** segmented toggle in the header
     (default 5 h): the widget then shows that window's % and reset words for every account (the
     ring: for its account), "resets 15:48" or, when idle, "0% · not started" (`windowRows`,
     from `windows.ts` `shownUse` and `resetWords`; an account without that window reads
-    "not started"). The choice is per widget id, key `sy.widget.window.v1`
+    "not started"). The choice is per widget id, key `wy.widget.window.v1`
     ({widgetId: "5 h"|"7 d"}, dropped on `WIDGET_DELETED`). A segment's `clickAction` is
-    `SY_TOGGLE_WINDOW` with `{window}`: the task handler gets `WIDGET_CLICK`, stores it and calls
+    `WY_TOGGLE_WINDOW` with `{window}`: the task handler gets `WIDGET_CLICK`, stores it and calls
     `renderWidget` with no app start; any other tap is an `OPEN_URI`, opened by an explicit intent (P13).
   - **Previews.** `app.config.ts` gives each widget `previewImage` (`assets/widget-previews/
     sy-*.png`, 2× PNG, under 40 KB each). They are rendered from an HTML replica of each
@@ -562,9 +562,9 @@ then gets the 401 that shows Pair, P3).
     (`scripts/gen-widget-previews.py`: headless Chrome, no sandbox, transparent corners); keep
     the replica in step with the widgets by hand. The library has no `previewLayout`.
   - Both older widgets show "updated 3 min ago" (`agoWords(as_of, now)`) and, only when no snapshot has been
-    written yet (a fresh install, or after unpair), "Open Switchyard once to load"; a tap then
+    written yet (a fresh install, or after unpair), "Open Watchyard once to load"; a tap then
     opens Now.
-  - The snapshot (`sy.widget.v1`, no secrets) is written locally after **every** refresh,
+  - The snapshot (`wy.widget.v1`, no secrets) is written locally after **every** refresh,
     whatever `prefs.widgets` says: that pref only asks the hub for `refresh` frames over the
     link and gates the iOS timelines. (Writing it only when the pref was true left a widget
     with nothing to show.) Before `GET /v1/me` has answered, the snapshot is written as private.
@@ -598,10 +598,10 @@ then gets the 401 that shows Pair, P3).
   Settings "Auto countdown" is on (default on). At most one runs at a time (`getInstances()`
   at start).
 - "Auto countdown" (iOS only, Settings: "Count down on the Lock Screen when a limit push is
-  opened") is a local app setting, not a hub pref: AsyncStorage key `sy.local.v1`
+  opened") is a local app setting, not a hub pref: AsyncStorage key `wy.local.v1`
   (`LOCAL_PREFS_KEY`) holds `{auto_countdown: boolean}`, never a secret, and survives an unpair.
   Settings → Appearance picks the theme: Device default (the default), Light or Dark. It is kept
-  under `sy.theme.v1` on this phone only and applied app-wide with `Appearance.setColorScheme`.
+  under `wy.theme.v1` on this phone only and applied app-wide with `Appearance.setColorScheme`.
   Only a tap or **Open** counts (not Snooze or Seen). The payload carries no failure detail, so
   `isLimitPush` (`src/lib/integrate`) takes a `failed` push as a rate limit when its title ends
   in "rate limited" or its body is the "Resets 17:00 · …" line (push.md 5.5, 5.7); a private
@@ -617,11 +617,11 @@ then gets the 401 that shows Pair, P3).
 ## P13. Build configuration
 
 - `app.config.ts` reads only non-secret environment values:
-  - `SY_APP_ID`: bundle id and package name, default `io.github.mraj602.switchyard` (the
-    published app; never change it) or `io.github.mraj602.switchyard.dev` for a development build;
-  - `SY_APP_VARIANT`: `development` allows cleartext traffic (P2's loopback hubs); any
+  - `WY_APP_ID`: bundle id and package name, default `io.github.mraj602.watchyard` (the
+    published app; never change it) or `io.github.mraj602.watchyard.dev` for a development build;
+  - `WY_APP_VARIANT`: `development` allows cleartext traffic (P2's loopback hubs); any
     other value, or none, is a release config.
-- `scheme: "switchyard"`; iOS `ios.deploymentTarget` 16.4 (the app config field: the
+- `scheme: "watchyard"`; iOS `ios.deploymentTarget` 16.4 (the app config field: the
   `expo-build-properties` iOS option is deprecated since SDK 56, and `expo-widgets` reads
   the same field for its extension), Android `minSdkVersion` 24 (through
   `expo-build-properties`; 31 in the Android build below).
@@ -629,8 +629,8 @@ then gets the 401 that shows Pair, P3).
   [RECORD_AUDIO, SYSTEM_ALERT_WINDOW, READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE]`.
   Both are listed so the prebuilt manifest shows them (`sy-notify` and `sy-scan` also declare
   them, merged only at Gradle time).
-- Plugins: `expo-router`; `expo-secure-store`; `expo-widgets` (`groupIdentifier: group.<SY_APP_ID>`, `bundleIdentifier:
-  <SY_APP_ID>.widgets` for the extension, the two widgets, `enablePushNotifications: false`,
+- Plugins: `expo-router`; `expo-secure-store`; `expo-widgets` (`groupIdentifier: group.<WY_APP_ID>`, `bundleIdentifier:
+  <WY_APP_ID>.widgets` for the extension, the two widgets, `enablePushNotifications: false`,
   `enableAndroid: false`); `react-native-android-widget` (the two widgets);
   `./plugins/with-sy-native.js`.
 - `with-sy-native.js` (ours) sets:
@@ -639,8 +639,8 @@ then gets the 401 that shows Pair, P3).
     (`res/xml/sy_data_extraction_rules.xml`, `sy_backup_rules.xml`) that exclude every backup
     domain from cloud backup and from device-to-device transfer;
   - the widget providers that `react-native-android-widget` writes get an `onReceive` that hands
-    an `OPEN_URI` tap to `dev.switchyard.link.WidgetOpen` first, which starts the app's own
-    launcher activity by component name, for `switchyard://` links only (the library's own
+    an `OPEN_URI` tap to `dev.watchyard.link.WidgetOpen` first, which starts the app's own
+    launcher activity by component name, for `watchyard://` links only (the library's own
     tap is an implicit `ACTION_VIEW` any app with that scheme could answer). This plugin is
     listed before the widget plugin in `app.config.ts` so it runs last on those files;
   - removes `RECORD_AUDIO` and `SYSTEM_ALERT_WINDOW` if a library adds them;
@@ -686,15 +686,15 @@ profiles, no `extra.eas.projectId`, no `googleServicesFile` and no push credenti
 - There is no background notification task: there are no silent pushes.
 - The glue uses the `sy-link` module only on Android, when the module is present (`systemLink`).
 - **Build:** `make phone-apk-release` (run it by hand): `expo prebuild --platform
-  android --clean` with `SY_APP_VARIANT=production`, then `./gradlew
-  assembleRelease` in `phone/android`. Output `phone/dist/switchyard-<version>.apk`, its
+  android --clean` with `WY_APP_VARIANT=production`, then `./gradlew
+  assembleRelease` in `phone/android`. Output `phone/dist/watchyard-<version>.apk`, its
   `SHA256SUMS` (the APK's line) and `manifest.json` (P16.1). A development build for a manual check is
   `expo prebuild` + `./gradlew assembleDebug`.
 - **Signing:** your own release keystore, outside the repo. The make target refuses to start
-  without it: `SY_ANDROID_KEYSTORE` (path), `SY_ANDROID_KEY_ALIAS` and
-  `SY_ANDROID_KEYSTORE_PASSWORD` (and `SY_ANDROID_KEY_PASSWORD` when it differs), or the same
+  without it: `WY_ANDROID_KEYSTORE` (path), `WY_ANDROID_KEY_ALIAS` and
+  `WY_ANDROID_KEYSTORE_PASSWORD` (and `WY_ANDROID_KEY_PASSWORD` when it differs), or the same
   four values as `storeFile`, `keyAlias`, `storePassword`, `keyPassword` in a properties file
-  named by `SY_ANDROID_SIGNING_PROPERTIES` (also outside the repo; an environment variable
+  named by `WY_ANDROID_SIGNING_PROPERTIES` (also outside the repo; an environment variable
   wins). The passwords reach Gradle (`scripts/sy-release-signing.init.gradle`, an init script,
   because `expo prebuild --clean` regenerates `android/`) and keytool only through the
   environment, are never printed and never written into `phone/`. `check-no-secrets.mjs`
@@ -705,7 +705,7 @@ profiles, no `extra.eas.projectId`, no `googleServicesFile` and no push credenti
   `phone/README.md` documents the `keytool` command.
 - **Release gate:** after the build, `phone-apk-release` runs `aapt2 dump xmltree` on the APK and
   `scripts/check-apk-manifest.mjs`, and stops when the package id is not
-  `io.github.mraj602.switchyard` (or `SY_APP_ID`), cleartext traffic is allowed, the APK is
+  `io.github.mraj602.watchyard` (or `WY_APP_ID`), cleartext traffic is allowed, the APK is
   debuggable, or `allowBackup` is not `false`. It also stops when `aapt2` is missing.
 - **Version:** `app.config.ts` sets Android's `versionCode` (the manifest's `build`) to
   `MAJOR*10000 + MINOR*100 + PATCH` of `version`, so it only rises with the version.
@@ -750,8 +750,8 @@ profiles, no `extra.eas.projectId`, no `googleServicesFile` and no push credenti
   or service-account JSON in a tracked `phone/` file. `.env.example` / `.env.sample` are allowed.
 - `scripts/prebuild-check.mjs android|ios` copies `phone/` to a temp directory (with
   `node_modules` symlinked), runs `expo prebuild --platform <p> --no-install --clean` there
-  with `SY_APP_VARIANT=production`, asserts the generated native config (P13) and deletes
-  the copy (`SY_KEEP_PREBUILD=1` keeps it for a look).
+  with `WY_APP_VARIANT=production`, asserts the generated native config (P13) and deletes
+  the copy (`WY_KEEP_PREBUILD=1` keeps it for a look).
 
 ## P15. Facts checked about the toolchain
 
@@ -760,7 +760,7 @@ pins of P1:
 
 | # | Fact | Result |
 | --- | --- | --- |
-| 1 | `expo prebuild --platform android --no-install --clean` succeeds with every P13 plugin; the manifest has `POST_NOTIFICATIONS`, the `switchyard` intent filter, two `AppWidgetProvider` receivers (`.widget.SySessions`, `.widget.SyLimits`) and `allowBackup="false"` | **Checked.** Needed one change: POST_NOTIFICATIONS is only merged from expo-notifications' library manifest at Gradle time, so P13 now lists it in `android.permissions`. Two `appwidget-provider` XML files are generated; react-native-android-widget's plugin writes to the right path (no doubled `android/android`). Cleartext is off in release. |
+| 1 | `expo prebuild --platform android --no-install --clean` succeeds with every P13 plugin; the manifest has `POST_NOTIFICATIONS`, the `watchyard` intent filter, two `AppWidgetProvider` receivers (`.widget.SySessions`, `.widget.SyLimits`) and `allowBackup="false"` | **Checked.** Needed one change: POST_NOTIFICATIONS is only merged from expo-notifications' library manifest at Gradle time, so P13 now lists it in `android.permissions`. Two `appwidget-provider` XML files are generated; react-native-android-widget's plugin writes to the right path (no doubled `android/android`). Cleartext is off in release. |
 | 2 | `expo prebuild --platform ios --no-install --clean` succeeds on Linux, with `Info.plist`, entitlements and the widget extension target | **Checked.** `ios/ExpoWidgetsTarget/` holds `NeedsYouSmall.swift`, `AccountsMedium.swift`, `index.swift` (the bundle, which includes `WidgetLiveActivity()`), `Info.plist` and its entitlements. The App Group is on the app and the extension, `aps-environment` on the app, the app-extension target is in `project.pbxproj`, and every target is iOS 16.4. Pods are not installed (`--no-install`), so this proves config, not compilation (the native compile is not covered). The iOS prebuild check stays in `make phone-check` and CI's `check` job. |
 | 3 | `expo-widgets@57.0.22` and `react-native-android-widget@0.22.1` coexist | **Checked.** Both plugins run in the same config without duplicate keys; each platform's prebuild generates its own widget set and the other plugin leaves it alone (`expo-widgets` has `enableAndroid: false`). No fallback needed. |
 | 4 | `jest-expo` renders `@expo/ui/swift-ui` widget trees through the mock | **Checked**, with `test/render-widget.ts` rather than RNTL's `render` (P14). `test/widget-mock.test.tsx` renders a `VStack` with a timer `Text` and an Android `FlexWidget`. |
@@ -783,13 +783,13 @@ The app is sideloaded (no store), so it updates itself, with your confirmation e
 `manifest.json`, published with each `phone-vX.Y.Z` release and mirrored by the hub:
 
 ```json
-{"v":1,"version":"0.9.0","build":14,"min_sdk":31,"apk":"switchyard-0.9.0.apk","size":48213004,
+{"v":1,"version":"0.9.0","build":14,"min_sdk":31,"apk":"watchyard-0.9.0.apk","size":48213004,
  "sha256":"<64 hex>","cert_sha256":"<64 hex, signing certificate>","notes":"…","published_at":"…"}
 ```
 
 ### P16.2 Hub mirror
 
-- Once a day (and at `sy hub serve` start), the hub asks GitHub for the project's releases
+- Once a day (and at `wy hub serve` start), the hub asks GitHub for the project's releases
   (`GET https://api.github.com/repos/<owner>/<repo>/releases?per_page=20`, no token,
   `netguard` client), takes the newest non-draft, non-prerelease release whose tag matches
   `^phone-v\d+\.\d+\.\d+$`, downloads `manifest.json`, `SHA256SUMS` and the APK, checks the
@@ -802,7 +802,7 @@ The app is sideloaded (no store), so it updates itself, with your confirmation e
   certificate from the file; it does not verify the signature, which Android and the phone
   do. The repository comes from the build (`version.Repo`); setting
   `app.android_mirror = false` turns the mirror off.
-- The off switch and the repository also exist as `sy hub serve` flags (`--no-app-mirror`,
+- The off switch and the repository also exist as `wy hub serve` flags (`--no-app-mirror`,
   `--app-repo owner/name`) and as the settings `app.android_mirror` (JSON bool) and
   `app.android_repo`; a flag wins. Downloads follow at most 5 https redirects (GitHub's assets
   redirect to a CDN) and still refuse non-public addresses (`netguard`). A release that does
@@ -843,13 +843,13 @@ The app is sideloaded (no store), so it updates itself, with your confirmation e
 
 Android only (`minSdkVersion` 31). One claude.ai web tab per seat, each its
 own WebView profile, so every account stays signed in at once. **Open in Claude** opens a
-session's Remote Control link in its seat's tab. Switchyard asks claude.ai only for the
+session's Remote Control link in its seat's tab. Watchyard asks claude.ai only for the
 account id in the tab, as the desktop does (desktop.md C5, P17.7); it never reads the tabs'
 chats, page content, cookies, storage or usage, and sends nothing from them to the hub.
 
 ### P17.1 The `sy-tabs` module
 
-A local Expo module, `phone/modules/sy-tabs` (Kotlin, `dev.switchyard.tabs`), with one
+A local Expo module, `phone/modules/sy-tabs` (Kotlin, `dev.watchyard.tabs`), with one
 dependency, `androidx.webkit:webkit` (the profile API).
 
 | JS | Native |
@@ -904,7 +904,7 @@ opens in B's tab. **Open claude.ai** on an Accounts card opens the seat's tab at
   using the P17.7 rule over this visit's events. Once the tab is signed in it stays hidden across
   navigation; `/magic-link` and `/oauth` pages show it only while the tab is not known to be
   signed in. Nothing loaded yet shows nothing. **×** hides it for that account for good (AsyncStorage
-  `sy.tabs.hint.v1`, seat ids only); Settings → Sign out (clear this tab) brings it back.
+  `wy.tabs.hint.v1`, seat ids only); Settings → Sign out (clear this tab) brings it back.
 - Accounts (P17.8): a compact list; a row opens in place and shows where its login is signed in
   and offers **Open claude.ai**, **Sign in on this phone** or **Fix this tab** (P17.7).
 - Settings → **Claude tabs**: one row per profile (seat name, or "Removed account" for a seat
@@ -931,7 +931,7 @@ claude.ai URL through `Linking.openURL`). It does not switch on its own, so a sl
   page, cookies or storage. JavaScript and DOM storage are on (claude.ai needs them); file and
   content access, geolocation and mixed content are off; Safe Browsing stays on;
   `setSupportMultipleWindows(false)`.
-- Switchyard never calls the profile's `CookieManager.getCookie` or `WebStorage` reads; the
+- Watchyard never calls the profile's `CookieManager.getCookie` or `WebStorage` reads; the
   module only flushes, deletes and reassigns (P17.7) profiles.
 - **URL allow-list** (main frame, `shouldOverrideUrlLoading` and the first `loadUrl`):
   `https:` only, host `claude.ai`, `anthropic.com`, `claude.com`,
@@ -972,7 +972,7 @@ never by email.
    event. Nothing from it is sent to the hub (the desktop's account read sends nothing either;
    its usage records are a separate feature the phone does not have).
 3. **Memo.** The tab screen keeps, per seat, `{signed_in, account, at}` from those events in
-   AsyncStorage `sy.tabs.v1` (local, never sent; no cookie, email or page content). An
+   AsyncStorage `wy.tabs.v1` (local, never sent; no cookie, email or page content). An
    `account` answer wins; 401 means signed out; other statuses change nothing. The Accounts
    screen reads the memo, so it says the state of every tab without opening one. Chosen over a
    hidden WebView check when Accounts opens: that would load claude.ai in every profile on each
@@ -1003,7 +1003,7 @@ never by email.
    - **Use this tab for \<other> instead**, only when the other seat has no tab on this phone:
      `moveProfile(seat, other)` and the memo moves with it. Not offered for an account no seat
      has.
-   - The note: 'Switchyard asks claude.ai only "which account is this?" inside the tab. It never
+   - The note: 'Watchyard asks claude.ai only "which account is this?" inside the tab. It never
      reads your chats or sends the page anywhere.' (also in Settings → Claude tabs).
 7. **Never** typed into a login page, never a cookie read into JS or Kotlin, never page content
    stored or sent.

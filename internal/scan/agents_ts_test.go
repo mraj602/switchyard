@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // A session_list describes the sessions as they were when `claude agents` ran, so the
@@ -28,7 +28,7 @@ func TestAgentsRecordIsStampedWithRunStart(t *testing.T) {
 	}
 	ob := outbox.New(filepath.Join(t.TempDir(), "outbox"))
 	if _, err := Agents(context.Background(), AgentsOptions{Slots: slots[1:2], Run: slow, Outbox: ob,
-		Machine: "m_x", Client: "sy/test", Now: now}); err != nil {
+		Machine: "m_x", Client: "wy/test", Now: now}); err != nil {
 		t.Fatal(err)
 	}
 	recs := readAll(t, ob)

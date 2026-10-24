@@ -74,14 +74,14 @@ test('limit hit sentence', () => {
 
 test('projects: subagent folders fold into one row, top 10 then the rest', () => {
   const rows = [
-    { name: 'switchyard', sessions: 3, api_usd: 40, input: 1 },
+    { name: 'watchyard', sessions: 3, api_usd: 40, input: 1 },
     { name: '/home/u/x/agent-a3f9c1d2', sessions: 1, api_usd: 10, input: 5 },
     { name: 'agent-0011223344', sessions: 2, api_usd: 12, input: 7 },
     ...Array.from({ length: 12 }, (_, i) => ({ name: `p${i}`, sessions: 1, api_usd: i })),
   ];
   const g = A.groupProjects(rows, 10);
   assert.equal(g.shown.length, 10);
-  assert.equal(g.shown[0].name, 'switchyard');
+  assert.equal(g.shown[0].name, 'watchyard');
   assert.equal(g.shown[1].name, 'Subagent folders');
   assert.equal(g.shown[1].folders, 2);
   assert.equal(g.shown[1].sessions, 3);

@@ -2,7 +2,7 @@
 // test/e2e/android/screens.sh): three accounts with limits near 30, 85 and 97 %, sessions in
 // every state on two machines, token rows for a week of analytics, and machine info. It posts
 // records as the machines (hook_event, limit_sample, token_rows, machine_info) exactly as
-// `sy hook` / `sy statusline` would, with no Claude Code involved. It only talks HTTP to the hub
+// `wy hook` / `wy statusline` would, with no Claude Code involved. It only talks HTTP to the hub
 // it is given; never point it at a real hub.
 //
 //	seed -hub http://127.0.0.1:18787 -m m_A=sy_m_... -m m_B=sy_m_... [-only sessions|limits|tokens|info]
@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 type machineFlag []string
@@ -52,7 +52,7 @@ func post(m mach, recs ...*record.Record) {
 		}
 		raws = append(raws, b)
 	}
-	body, _ := json.Marshal(map[string]any{"v": 1, "client": "sy/seed", "records": raws})
+	body, _ := json.Marshal(map[string]any{"v": 1, "client": "wy/seed", "records": raws})
 	req, _ := http.NewRequest("POST", hub+"/v1/ingest", bytes.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+m.token)
 	req.Header.Set("Content-Type", "application/json")
@@ -73,7 +73,7 @@ func fail(err error) {
 }
 
 func meta(m mach, seat *record.Seat, at time.Time) record.Meta {
-	return record.Meta{Machine: m.id, Slot: "~/.claude", Seat: seat, Client: "sy/seed", Now: at}
+	return record.Meta{Machine: m.id, Slot: "~/.claude", Seat: seat, Client: "wy/seed", Now: at}
 }
 
 // hook is one hook event of session s at time at.
@@ -129,7 +129,7 @@ func sessions(now time.Time) []*sess {
 	}
 
 	// working: a tool is running
-	start(add(&sess{n: 1, m: 0, seat: 0, cwd: "/home/me/code/switchyard", name: "phone-ui-polish", model: "claude-opus-4-7", ctx: 41, started: 52 * min})).
+	start(add(&sess{n: 1, m: 0, seat: 0, cwd: "/home/me/code/watchyard", name: "phone-ui-polish", model: "claude-opus-4-7", ctx: 41, started: 52 * min})).
 		at(50*min, ev("UserPromptSubmit", "prompt", "polish the phone app")).
 		at(1*min, ev("PreToolUse", "tool_name", "Bash", "tool_input", map[string]any{"command": "npx jest"}))
 	// needs permission
@@ -149,7 +149,7 @@ func sessions(now time.Time) []*sess {
 		at(400*min, ev("UserPromptSubmit", "prompt", "fix the etl")).
 		at(35*min, ev("StopFailure", "error", "rate_limit", "last_assistant_message", "Usage limit reached for this account."))
 	// done (idle)
-	start(add(&sess{n: 6, m: 0, seat: 0, cwd: "/home/me/code/switchyard", name: "release-notes", model: "claude-sonnet-5", ctx: 35, started: 2 * time.Hour})).
+	start(add(&sess{n: 6, m: 0, seat: 0, cwd: "/home/me/code/watchyard", name: "release-notes", model: "claude-sonnet-5", ctx: 35, started: 2 * time.Hour})).
 		at(110*min, ev("UserPromptSubmit", "prompt", "write release notes")).
 		at(25*min, ev("Stop", "last_assistant_message", "Release notes for 0.8.0 are in CHANGELOG.md. The phone and hub sections are split out."))
 	// done, a second one on the other machine

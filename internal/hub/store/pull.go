@@ -140,7 +140,7 @@ func (tx *Tx) NewPullDevice(targetID, machineID, name string) (string, error) {
 
 // AddPullTarget inserts a target. With t.MachineID set it also makes the pull device now;
 // otherwise the target binds on its first hello (BindPullTarget). ID, CreatedAt and the
-// defaults (port 22, interval 60, remote_sy .local/bin/sy) are filled in. ErrPullExists
+// defaults (port 22, interval 60, remote_sy .local/bin/wy) are filled in. ErrPullExists
 // when the name or machine is already used.
 func (s *Store) AddPullTarget(ctx context.Context, t PullTarget) (PullTarget, error) {
 	var out PullTarget
@@ -154,7 +154,7 @@ func (s *Store) AddPullTarget(ctx context.Context, t PullTarget) (PullTarget, er
 			t.IntervalS = 60
 		}
 		if t.RemoteSy == "" {
-			t.RemoteSy = ".local/bin/sy"
+			t.RemoteSy = ".local/bin/wy"
 		}
 		t.State, t.Enabled, t.NextAt = PullStateNew, true, tx.NowMS()
 		if t.HostKeys == nil {
@@ -273,7 +273,7 @@ func (s *Store) RecordPullRun(ctx context.Context, id string, r PullResult) erro
 	})
 }
 
-// SchedulePullNow sets a target's next run to now (`sy hub pull run`, POST .../pull).
+// SchedulePullNow sets a target's next run to now (`wy hub pull run`, POST .../pull).
 func (s *Store) SchedulePullNow(ctx context.Context, id string) error {
 	_, err := s.SchedulePullAt(ctx, id)
 	return err
@@ -320,7 +320,7 @@ func (s *Store) SetPullEnabled(ctx context.Context, id string, enabled bool) err
 	})
 }
 
-// TrustPullKeys re-pins a target's host keys (`sy hub pull trust`): state back to new, no
+// TrustPullKeys re-pins a target's host keys (`wy hub pull trust`): state back to new, no
 // failures, a run due now.
 func (s *Store) TrustPullKeys(ctx context.Context, id string, keys []string) error {
 	return s.Write(ctx, func(tx *Tx) error {

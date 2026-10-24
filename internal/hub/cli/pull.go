@@ -16,15 +16,15 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/api"
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	"github.com/mraj602/switchyard/internal/hub/pull"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/localtime"
-	"github.com/mraj602/switchyard/internal/version"
+	"github.com/mraj602/watchyard/internal/hub/api"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	"github.com/mraj602/watchyard/internal/hub/pull"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/localtime"
+	"github.com/mraj602/watchyard/internal/version"
 )
 
-// ErrNotImplemented is mapped by cmd/sy to exit status 3 (a subcommand this build lacks).
+// ErrNotImplemented is mapped by cmd/wy to exit status 3 (a subcommand this build lacks).
 var ErrNotImplemented = errors.New("not implemented in this build")
 
 // Test seams: the helper-program runner (ssh-keygen, ssh-keyscan) and the ssh starter.
@@ -33,8 +33,8 @@ var (
 	pullStarter pull.Starter
 )
 
-// PullUsage is the help of `sy hub pull`.
-const PullUsage = `Usage: sy hub pull <command> [flags]
+// PullUsage is the help of `wy hub pull`.
+const PullUsage = `Usage: wy hub pull <command> [flags]
 
   add <name> --ssh [user@]host [--port 22] [--machine <m_...>] [--interval 60s]
              (--host-keys-stdin | --fingerprint SHA256:...) [--yes] [--json]
@@ -48,8 +48,8 @@ const PullUsage = `Usage: sy hub pull <command> [flags]
 Every command takes --db <file> and --dir <pull folder> (default <state>/pull).
 `
 
-// Pull is `sy hub pull add|list|run|trust|enable|disable|remove|key` (machines.md 3.4). Like
-// `sy hub pair` it works on the database directly, so it runs on the hub host or through the
+// Pull is `wy hub pull add|list|run|trust|enable|disable|remove|key` (machines.md 3.4). Like
+// `wy hub pair` it works on the database directly, so it runs on the hub host or through the
 // admin channel.
 func Pull(args []string, stdout, stderr io.Writer) error {
 	return PullIn(os.Stdin, args, stdout, stderr)
@@ -80,7 +80,7 @@ func PullIn(stdin io.Reader, args []string, stdout, stderr io.Writer) error {
 	case "key":
 		return pullKey(rest, stdout, stderr)
 	}
-	fmt.Fprintf(stderr, "sy hub pull: unknown command %q\n\n%s", sub, PullUsage)
+	fmt.Fprintf(stderr, "wy hub pull: unknown command %q\n\n%s", sub, PullUsage)
 	return ErrUsage
 }
 
@@ -143,7 +143,7 @@ func pinKeys(ctx context.Context, stdin io.Reader, stdout, stderr io.Writer, fro
 		return pull.PinByFingerprint(scanned, fp)
 	}
 	if yes || !isTerminal(stdin) {
-		return nil, errors.New("host keys are not pinned: pass --host-keys-stdin or --fingerprint SHA256:... (sy never learns a host key without being told)")
+		return nil, errors.New("host keys are not pinned: pass --host-keys-stdin or --fingerprint SHA256:... (wy never learns a host key without being told)")
 	}
 	fmt.Fprintf(stdout, "The server %s:%d presents these host keys:\n", host, port)
 	for _, k := range scanned {
@@ -202,7 +202,7 @@ func pullAdd(stdin io.Reader, args []string, stdout, stderr io.Writer) error {
 	t := store.PullTarget{Name: name, MachineID: *machine, Host: host, Port: *port, User: user,
 		IntervalS: int(*interval / time.Second)}
 	if t.RemoteSy == "" {
-		t.RemoteSy = ".local/bin/sy"
+		t.RemoteSy = ".local/bin/wy"
 	}
 	if err := pull.ValidateTarget(t); err != nil {
 		return err
@@ -234,8 +234,8 @@ func pullAdd(stdin io.Reader, args []string, stdout, stderr io.Writer) error {
 	if *asJSON {
 		return json.NewEncoder(stdout).Encode(map[string]any{"target": added.ID, "name": added.Name, "public_key": pub})
 	}
-	fmt.Fprintf(stdout, "Added pull target %s (%s).\nAdd this line to ~/.ssh/authorized_keys on the server (sy machine add does it for you):\n\n"+
-		"  restrict,command=\"<path to sy> outbox drain --stdio\" %s sy-pull:%s\n", added.Name, added.ID, pub, added.ID)
+	fmt.Fprintf(stdout, "Added pull target %s (%s).\nAdd this line to ~/.ssh/authorized_keys on the server (wy machine add does it for you):\n\n"+
+		"  restrict,command=\"<path to wy> outbox drain --stdio\" %s sy-pull:%s\n", added.Name, added.ID, pub, added.ID)
 	return nil
 }
 
@@ -299,7 +299,7 @@ func printRows(stdout io.Writer, rows []pullRow, asJSON bool) error {
 		return json.NewEncoder(stdout).Encode(rows)
 	}
 	if len(rows) == 0 {
-		fmt.Fprintln(stdout, "No pull targets. Add one with `sy hub pull add`.")
+		fmt.Fprintln(stdout, "No pull targets. Add one with `wy hub pull add`.")
 		return nil
 	}
 	tw := tabwriter.NewWriter(stdout, 0, 4, 2, ' ', 0)
@@ -339,7 +339,7 @@ func pullRun(args []string, stdout, stderr io.Writer) error {
 	if len(pos) == 1 {
 		t, err := st.PullTargetByName(ctx, pos[0])
 		if err != nil {
-			return fmt.Errorf("no pull target %q (sy hub pull list)", pos[0])
+			return fmt.Errorf("no pull target %q (wy hub pull list)", pos[0])
 		}
 		targets = []store.PullTarget{t}
 	}
@@ -362,7 +362,7 @@ func pullRun(args []string, stdout, stderr io.Writer) error {
 		scheduled := map[string]int64{}
 		for _, t := range list {
 			if len(pos) == 1 && (t.State == store.PullStateHostKey || t.State == store.PullStateRefused) {
-				return fmt.Errorf("target %s is %s; fix it first (sy hub pull trust / remove)", t.Name, t.State)
+				return fmt.Errorf("target %s is %s; fix it first (wy hub pull trust / remove)", t.Name, t.State)
 			}
 			at, err := st.SchedulePullAt(ctx, t.ID)
 			if err != nil {
@@ -409,7 +409,7 @@ func pullRun(args []string, stdout, stderr io.Writer) error {
 
 // waitForRun waits until a run that started after SchedulePullAt returned `scheduled` has
 // been recorded. A run already in flight then (a freshly registered target is due at once, so
-// the hub starts it before `sy machine add` has authorized the key) also records last_try_at
+// the hub starts it before `wy machine add` has authorized the key) also records last_try_at
 // afterwards, but leaves next_at alone because it was due before the schedule; only a run
 // started after the call moves next_at off `scheduled`. A state that stops the schedule
 // (host key, refused, disabled) ends the wait too, once something was recorded.
@@ -455,7 +455,7 @@ func pullTrust(stdin io.Reader, args []string, stdout, stderr io.Writer) error {
 	defer st.Close()
 	t, err := st.PullTargetByName(ctx, pos[0])
 	if err != nil {
-		return fmt.Errorf("no pull target %q (sy hub pull list)", pos[0])
+		return fmt.Errorf("no pull target %q (wy hub pull list)", pos[0])
 	}
 	keys, err := pinKeys(ctx, stdin, stdout, stderr, *hostKeys, *fp, *yes, t.Host, t.Port)
 	if err != nil {
@@ -486,7 +486,7 @@ func pullToggle(enable bool, args []string, stdout, stderr io.Writer) error {
 	defer st.Close()
 	t, err := st.PullTargetByName(ctx, pos[0])
 	if err != nil {
-		return fmt.Errorf("no pull target %q (sy hub pull list)", pos[0])
+		return fmt.Errorf("no pull target %q (wy hub pull list)", pos[0])
 	}
 	if err := st.SetPullEnabled(ctx, t.ID, enable); err != nil {
 		return err
@@ -510,7 +510,7 @@ func pullRemove(args []string, stdout, stderr io.Writer) error {
 	defer st.Close()
 	t, err := st.PullTargetByName(ctx, pos[0])
 	if err != nil {
-		return fmt.Errorf("no pull target %q (sy hub pull list)", pos[0])
+		return fmt.Errorf("no pull target %q (wy hub pull list)", pos[0])
 	}
 	if err := st.RemovePullTarget(ctx, t.ID, *revoke); err != nil {
 		return err
@@ -531,7 +531,7 @@ func pullKey(args []string, stdout, stderr io.Writer) error {
 	}
 	pub, err := pull.PublicKey(dir)
 	if err != nil {
-		return errors.New("the hub has no pull key yet: it is made by the first `sy hub pull add`")
+		return errors.New("the hub has no pull key yet: it is made by the first `wy hub pull add`")
 	}
 	if *asJSON {
 		return json.NewEncoder(stdout).Encode(map[string]string{"public_key": pub})

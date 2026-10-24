@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Switchyard",
-  "short_name": "Switchyard",
+  "name": "Watchyard",
+  "short_name": "Watchyard",
   "description": "Your Claude sessions and limits. Unofficial; not affiliated with Anthropic.",
   "start_url": "/#/",
   "scope": "/",

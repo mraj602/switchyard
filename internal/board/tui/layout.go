@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/board"
+	"github.com/mraj602/watchyard/internal/board"
 )
 
 const (
@@ -179,7 +179,7 @@ func asciiFold(s string) string {
 
 func (m *model) headerLine() line {
 	v := m.v
-	l := line{{text: "Switchyard", sty: sty{bold: true}}}
+	l := line{{text: "Watchyard", sty: sty{bold: true}}}
 	if !m.have {
 		return l
 	}
@@ -212,7 +212,7 @@ func (m *model) hintLine() line {
 	}
 	switch m.v.Hub.State {
 	case board.HubUnpaired:
-		return line{{text: "run `sy board connect` to see other machines", sty: sty{dim: true}}}
+		return line{{text: "run `wy board connect` to see other machines", sty: sty{dim: true}}}
 	case board.HubOffline:
 		return line{{text: "other machines are greyed: their rows are from the last hub view", sty: sty{dim: true}}}
 	}

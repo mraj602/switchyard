@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/claudecli"
+	"github.com/mraj602/watchyard/internal/claudecli"
 )
 
 func mustJSON(t *testing.T, v any) string {

@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // direct_push records, the catch-up hold, the frozen pause, removed machines and the pull
@@ -29,7 +29,7 @@ func (h *harness) hookRec(sid, event string, ts time.Duration, fields map[string
 	}
 	seat, slot := h.seatMeta("")
 	raw, _ := json.Marshal(p)
-	r, err := record.NewHookEvent(record.Meta{Machine: h.machine, Slot: slot, Seat: seat, Client: "sy/0.0.0-test", Now: at(ts)},
+	r, err := record.NewHookEvent(record.Meta{Machine: h.machine, Slot: slot, Seat: seat, Client: "wy/0.0.0-test", Now: at(ts)},
 		raw, record.HookOptions{LastMessages: true})
 	if err != nil {
 		h.t.Fatal(err)
@@ -61,7 +61,7 @@ func (h *harness) directRec(machine, sid, trigger string, since, sent time.Durat
 	if !ok {
 		p.Status = 503
 	}
-	r, err := record.NewDirectPush(record.Meta{Machine: machine, Slot: slot, Client: "sy/0.0.0-test", Now: at(sent)}, p)
+	r, err := record.NewDirectPush(record.Meta{Machine: machine, Slot: slot, Client: "wy/0.0.0-test", Now: at(sent)}, p)
 	if err != nil {
 		h.t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func (h *harness) batchFrom(dev store.Device, opt ingest.Options, recs ...*recor
 		}
 		raws = append(raws, b)
 	}
-	body, _ := json.Marshal(map[string]any{"v": 1, "client": "sy/0.0.0-test", "records": raws})
+	body, _ := json.Marshal(map[string]any{"v": 1, "client": "wy/0.0.0-test", "records": raws})
 	rep, err := h.ing.IngestWith(h.ctx, dev, body, opt)
 	if err != nil {
 		h.t.Fatal(err)

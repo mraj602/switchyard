@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/api"
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/api"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 type fakePuller struct {
@@ -62,7 +62,7 @@ func ownerToken(t *testing.T, h *hub) string {
 
 func machineInfoRec(t *testing.T, machine string) []byte {
 	t.Helper()
-	r, err := record.NewMachineInfo(record.Meta{Machine: machine, Client: "sy/0.5.0", Now: time.Now()}, record.MachineInfoPayload{
+	r, err := record.NewMachineInfo(record.Meta{Machine: machine, Client: "wy/0.5.0", Now: time.Now()}, record.MachineInfoPayload{
 		OS: "linux", Arch: "arm64", Sy: "0.5.0", RecordV: 1, Reach: record.ReachForward,
 		DirectPush: record.DirectPushState{Enabled: true, Private: true},
 	})

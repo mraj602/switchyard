@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/link"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/link"
 )
 
 // conn is one device's WebSocket after login.

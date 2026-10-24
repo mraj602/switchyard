@@ -1,5 +1,5 @@
 // Small stand-ins for the other modules, so the tabs/ and usage/ tests run on
-// plain Node: an in-memory store with store.js's interface, a recording `sy`, an `ipc` that
+// plain Node: an in-memory store with store.js's interface, a recording `wy`, an `ipc` that
 // keeps its handlers, and a `security` / `window` that record what tabs/ asks of them.
 
 import { createBus } from '../../../src/main/bus.js';
@@ -34,28 +34,28 @@ export const tabRecord = (id, over = {}) => ({
   ...over,
 });
 
-/** sy: append(records) records every batch, returns ids unless `appendResult` says otherwise. */
+/** wy: append(records) records every batch, returns ids unless `appendResult` says otherwise. */
 export function fakeSy(opts = {}) {
-  const sy = {
+  const wy = {
     appended: [],
     batches: [],
     flushes: 0,
     machine: opts.machine ?? 'm_01JA2W5N0G8H3Q7S2V6X9Y1Z4K',
     appendResult: null,
     async append(records) {
-      sy.batches.push(records);
-      sy.appended.push(...records);
-      if (sy.appendResult) return sy.appendResult(records);
-      return { ok: true, ids: records.map((_, i) => `id${sy.appended.length}-${i}`) };
+      wy.batches.push(records);
+      wy.appended.push(...records);
+      if (wy.appendResult) return wy.appendResult(records);
+      return { ok: true, ids: records.map((_, i) => `id${wy.appended.length}-${i}`) };
     },
     flushSoon() {
-      sy.flushes += 1;
+      wy.flushes += 1;
     },
     async machineId() {
-      return sy.machine;
+      return wy.machine;
     },
   };
-  return sy;
+  return wy;
 }
 
 export function fakeIpc() {

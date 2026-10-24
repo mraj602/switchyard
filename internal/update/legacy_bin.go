@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
 // LegacyBinaryName is the executable's file name on goos under the command's name before a
@@ -21,7 +21,7 @@ func LegacyBinaryName(goos string) string {
 // MoveLegacyBinary runs after an update when the command was renamed: the binary in exe's
 // folder gets the current name, and the old name stays as a link to it (a copy on Windows),
 // so hooks, units, launchers and authorized_keys lines written for the old name keep working
-// until `sy setup` rewrites them (docs/spec/rename.md 2.13). exe is the running binary. It
+// until `wy setup` rewrites them (docs/spec/rename.md 2.13). exe is the running binary. It
 // returns what it did ("" when there was nothing to do).
 func MoveLegacyBinary(exe, goos string) (string, error) {
 	if !brand.CLIRenamed() || exe == "" {
@@ -32,7 +32,7 @@ func MoveLegacyBinary(exe, goos string) (string, error) {
 	old := filepath.Join(dir, LegacyBinaryName(goos))
 	did := ""
 	if filepath.Base(exe) == filepath.Base(old) {
-		// Running under the old name (an older sy updated itself): take the current name.
+		// Running under the old name (an older wy updated itself): take the current name.
 		if err := os.Rename(exe, cur); err != nil {
 			return "", fmt.Errorf("rename %s to %s: %w", exe, cur, err)
 		}

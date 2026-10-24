@@ -20,12 +20,12 @@ import (
 	"sync"
 	"time"
 
-	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
-	hublink "github.com/mraj602/switchyard/internal/hub/link"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/link"
-	"github.com/mraj602/switchyard/internal/peers"
+	hubkeys "github.com/mraj602/watchyard/internal/hub/keys"
+	hublink "github.com/mraj602/watchyard/internal/hub/link"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/link"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 // Limits of the hub (peers.md 9.2).

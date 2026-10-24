@@ -20,15 +20,15 @@ func TestPeersSkill(t *testing.T) {
 	}
 	for _, want := range []string{
 		"name: peers\n",
-		"description: Message Claude Code sessions in other accounts or on other machines through Switchyard (`sy peers list`, `sy peers send`).",
+		"description: Message Claude Code sessions in other accounts or on other machines through Watchyard (`wy peers list`, `wy peers send`).",
 		"Also use it on your own when your work would go better by coordinating with other agents or sessions",
-		"allowed-tools: Bash(sy peers list:*), Bash(sy peers send:*), Bash(sy peers status:*), Bash(sy peers matrix:*)",
+		"allowed-tools: Bash(wy peers list:*), Bash(wy peers send:*), Bash(wy peers status:*), Bash(wy peers matrix:*)",
 	} {
 		if !strings.Contains(head+"\n", want) {
 			t.Errorf("front matter lacks %q", want)
 		}
 	}
-	for _, bad := range []string{"sy peers pause", "sy peers deny", "--yes", "sy peers allow", "sy peers resume", "sy peers off"} {
+	for _, bad := range []string{"wy peers pause", "wy peers deny", "--yes", "wy peers allow", "wy peers resume", "wy peers off"} {
 		if strings.Contains(head, bad) {
 			t.Errorf("allowed-tools must not grant %q", bad)
 		}

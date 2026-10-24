@@ -12,7 +12,7 @@ const DIM = '#9AA1A8';
 const NEEDS = '#FF9F0A';
 const WORKING = '#4FC38A';
 
-export const EMPTY_TEXT = 'Open Switchyard once to load';
+export const EMPTY_TEXT = 'Open Watchyard once to load';
 
 function Cell({ n, label, colour, uri }: { n: number; label: string; colour: `#${string}`; uri: string }) {
   return (
@@ -27,8 +27,8 @@ export function SySessions({ snapshot, now, height }: AndroidWidgetProps) {
   const root = { height: 'match_parent', width: 'match_parent', backgroundColor: BG, borderRadius: 16, padding: 12 } as const;
   if (!snapshot) {
     return (
-      <FlexWidget style={root} clickAction="OPEN_URI" clickActionData={{ uri: 'switchyard://now' }}>
-        <Brand title="Switchyard · Sessions" />
+      <FlexWidget style={root} clickAction="OPEN_URI" clickActionData={{ uri: 'watchyard://now' }}>
+        <Brand title="Watchyard · Sessions" />
         <TextWidget text={EMPTY_TEXT} style={{ fontSize: 12, color: DIM, marginTop: 4 }} />
       </FlexWidget>
     );
@@ -37,18 +37,18 @@ export function SySessions({ snapshot, now, height }: AndroidWidgetProps) {
   const top = snapshot.top;
   const roomy = !height || height >= 110;
   return (
-    <FlexWidget style={root} clickAction="OPEN_URI" clickActionData={{ uri: 'switchyard://sessions' }}>
+    <FlexWidget style={root} clickAction="OPEN_URI" clickActionData={{ uri: 'watchyard://sessions' }}>
       <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', justifyContent: 'space-between' }}>
-        <Brand title="Switchyard · Sessions" />
+        <Brand title="Watchyard · Sessions" />
         <TextWidget text={`updated ${agoWords(snapshot.as_of, now)}`} maxLines={1} style={{ fontSize: 10, color: DIM }} />
       </FlexWidget>
       <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', marginTop: 6 }}>
-        <Cell n={t.running} label="Running" colour={WORKING} uri="switchyard://sessions?filter=working" />
-        <Cell n={t.needsInput} label="Needs input" colour={NEEDS} uri="switchyard://now" />
-        <Cell n={t.done} label="Done" colour={FG} uri="switchyard://sessions?filter=done" />
+        <Cell n={t.running} label="Running" colour={WORKING} uri="watchyard://sessions?filter=working" />
+        <Cell n={t.needsInput} label="Needs input" colour={NEEDS} uri="watchyard://now" />
+        <Cell n={t.done} label="Done" colour={FG} uri="watchyard://sessions?filter=done" />
       </FlexWidget>
       {roomy && t.needsInput > 0 ? (
-        <FlexWidget style={{ width: 'match_parent', marginTop: 8, padding: 6, borderRadius: 8, backgroundColor: '#3A2A0E' }} clickAction="OPEN_URI" clickActionData={{ uri: 'switchyard://now' }}>
+        <FlexWidget style={{ width: 'match_parent', marginTop: 8, padding: 6, borderRadius: 8, backgroundColor: '#3A2A0E' }} clickAction="OPEN_URI" clickActionData={{ uri: 'watchyard://now' }}>
           <TextWidget
             text={top ? `Needs you: ${top.project} · ${top.what}` : `Needs you: ${t.needsInput} waiting`}
             maxLines={1}

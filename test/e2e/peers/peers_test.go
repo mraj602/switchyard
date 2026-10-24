@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
-	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/link"
-	"github.com/mraj602/switchyard/internal/peers"
-	"github.com/mraj602/switchyard/internal/peers/fakeinbox"
+	hubkeys "github.com/mraj602/watchyard/internal/hub/keys"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/link"
+	"github.com/mraj602/watchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/peers/fakeinbox"
 )
 
 const (
@@ -69,7 +69,7 @@ func noMore(t *testing.T, in *fakeinbox.Server, n int) {
 	}
 }
 
-// A worker added with sy machine add (keys registered over SSH through the admin channel,
+// A worker added with wy machine add (keys registered over SSH through the admin channel,
 // reg ssh, then owner-certified) holds a link and exchanges a message with a QR-paired laptop.
 func TestSSHAddedMachineExchanges(t *testing.T) {
 	h := newHub(t, 30)
@@ -116,7 +116,7 @@ func TestDeliverAndReply(t *testing.T) {
 	}
 	body := got[0].Wrapper.Body
 	for _, want := range []string{"from api@work.laptop", "account work", "machine laptop", "thread " + rep.Thread,
-		`Reply with: sy peers send api@work.laptop "…"`, hello} {
+		`Reply with: wy peers send api@work.laptop "…"`, hello} {
 		if !strings.Contains(body, want) {
 			t.Errorf("message body lacks %q:\n%s", want, body)
 		}
@@ -318,7 +318,7 @@ func TestOfflineThenExpiry(t *testing.T) {
 }
 
 // Pause stops everything at once (queued messages are dropped as expired/paused, new ones
-// refused by the senders and by the hub); sy peers off stops one machine.
+// refused by the senders and by the hub); wy peers off stops one machine.
 func TestKillSwitches(t *testing.T) {
 	w := newWorld(t, 30)
 	in := w.worker.session("builder").inbox
@@ -351,7 +351,7 @@ func TestKillSwitches(t *testing.T) {
 	noMore(t, in, 0)
 
 	// A resume the hub signs widens, so machines refuse it (hub_may_widen = false); the
-	// owner's signed resume is taken. Then `sy peers off` on the worker.
+	// owner's signed resume is taken. Then `wy peers off` on the worker.
 	w.laptop.setMatrix(nil)
 	resume := false
 	rec, err := w.h.ks.EditMatrix(context.Background(), hubkeys.MatrixEdit{Paused: &resume}, "test", true)

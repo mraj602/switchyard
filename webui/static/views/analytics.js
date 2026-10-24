@@ -176,5 +176,5 @@ export function render({ store }) {
       section('When you work', heatmap(d.heatmap)),
       section('Limit hits', hits(d.hits, idx)),
       h('p', { class: 'muted small' }, 'Cost is the API list price of the same tokens: a yardstick, not a bill.')));
-  return { title: 'Analytics · Switchyard', node };
+  return { title: 'Analytics · Watchyard', node };
 }

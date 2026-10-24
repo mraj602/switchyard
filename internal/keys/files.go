@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/atomicfile"
 )
 
 // Files under <state>/keys (keys.md 10, paths.md 3).
@@ -166,7 +166,7 @@ const (
 	PinTOFU  = "tofu"
 	PinSSH   = "ssh"
 	PinLocal = "local"
-	PinHand  = "hand" // sy keys trust-owner / sy agent enable --repin-hub
+	PinHand  = "hand" // wy keys trust-owner / wy agent enable --repin-hub
 )
 
 // Pin is <state>/keys/hub.pub or owner.pub.
@@ -178,7 +178,7 @@ type Pin struct {
 }
 
 // ErrPinned means a pin is already there: nothing received replaces it (keys.md 3.5).
-var ErrPinned = errors.New("a different key is already pinned; only sy keys trust-owner / sy agent enable --repin-hub at a terminal change it")
+var ErrPinned = errors.New("a different key is already pinned; only wy keys trust-owner / wy agent enable --repin-hub at a terminal change it")
 
 // Key is the pinned key, checked against its fingerprint.
 func (p Pin) Key() (ed25519.PublicKey, error) {
@@ -231,7 +231,7 @@ func SetPin(path string, p Pin) error {
 }
 
 // ReplacePin overwrites a pin. Only for commands typed at a terminal that showed the old and
-// the new fingerprint and asked (sy keys trust-owner, sy agent enable --repin-hub), after the
+// the new fingerprint and asked (wy keys trust-owner, wy agent enable --repin-hub), after the
 // signing guard.
 func ReplacePin(path string, p Pin) error { return writePin(path, p) }
 

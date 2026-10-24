@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/link"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/link"
 )
 
 // TTLs of a remote message (peers.md 9.3).

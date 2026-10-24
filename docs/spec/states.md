@@ -1,7 +1,7 @@
 # Session states
 
 Status: spec v1. Implemented by the hub's state engine (`internal/hub/state`)
-and, for the local view, by `sy status` reading the outbox (same code, same rules).
+and, for the local view, by `wy status` reading the outbox (same code, same rules).
 
 The engine folds a session's records, in `ts` order, into one current state. It is a pure
 function of the records: replaying the `record` table must give the same `session_state`
@@ -41,12 +41,12 @@ SessionStart enters `done` with `detail = started` (shown as "new" in the UI), e
 ## 2. Hook events installed by the plugin
 
 The default keeps PreToolUse / PostToolUse off by default (one process per tool call). The
-plugin (`plugin/switchyard/hooks/hooks.json`) installs these command hooks, all
-`async: true` except SessionEnd, all running `sy hook`. SessionEnd is synchronous with
+plugin (`plugin/watchyard/hooks/hooks.json`) installs these command hooks, all
+`async: true` except SessionEnd, all running `wy hook`. SessionEnd is synchronous with
 `timeout: 2` (it costs about 5 ms): an async hook can be killed when Claude Code exits, and
 the session would then show as `gone` instead of `ended`. Beside these, synchronous entries
-that record nothing: `sy hook --title <Event>` (terminal.md T6) and, on SessionStart only,
-`sy hook --peers-context SessionStart` (peers.md 2.5).
+that record nothing: `wy hook --title <Event>` (terminal.md T6) and, on SessionStart only,
+`wy hook --peers-context SessionStart` (peers.md 2.5).
 
 | Event | Matcher | Why |
 | --- | --- | --- |
@@ -55,14 +55,14 @@ that record nothing: `sy hook --title <Event>` (terminal.md T6) and, on SessionS
 | PermissionRequest | (all) | `needs_permission`. |
 | Notification | (all) | Permission prompts, idle prompts, elicitation dialogs. |
 | PreToolUse | `AskUserQuestion\|ExitPlanMode` only | `asked`. One process only when these tools run, so it does not break that default. |
-| Stop | — | `done` or `asked`. Also triggers `sy scan` for the session. |
+| Stop | — | `done` or `asked`. Also triggers `wy scan` for the session. |
 | StopFailure | — | `failed`. |
 | SubagentStop | — | Recorded only (and triggers a scan). |
 | SessionEnd | — | `ended`. |
 | PreCompact | — | Recorded only. |
 | PermissionDenied | — | Leaves `needs_permission` after a "no". |
 
-`sy hook` accepts **any** event name (Claude Code adds events over time) and records it; the
+`wy hook` accepts **any** event name (Claude Code adds events over time) and records it; the
 engine ignores events it has no row for below. A user can opt in to PreToolUse /
 PostToolUse for all tools (`config.toml: hooks.tool_events = true`), which makes
 `needs_permission` clear at the next tool event instead of at the next prompt or Stop.
@@ -141,12 +141,12 @@ Notes on the table:
   life at or before the list's `ts`: the newest of its newest transcript row (`token_row`),
   the `startedAt` the list item reports, its `last_event_at` and its current `since`;
   the list's `ts` only when none is known. So an idle process from last week, first listed
-  when `sy` is set up (or listed on a slot without hooks), reads "done for 7 days", never
+  when `wy` is set up (or listed on a slot without hooks), reads "done for 7 days", never
   "done since the list (or the import) ran". A session that ended or went `gone` and is
   listed again comes back at the list's `ts`; `busy` repairs use the list's `ts`. When a
   transcript row that is newer than `since` but not newer than that list arrives later
   (the first list on a machine usually beats the import of its transcripts), the engine
-  refolds the session, so arrival order does not change the result. `sy hub refold`
+  refolds the session, so arrival order does not change the result. `wy hub refold`
   applies the rule to sessions folded before it.
 - **SessionEnd then SessionStart with the same id** (`claude --resume`): the session comes
   back (`·` column). **Uncertain** whether resume keeps the id in 2.1.296; both cases work.
@@ -179,8 +179,8 @@ the alert rules read it ([push.md](push.md) 3.5).
 
 So a turn a peer message started stays `message` to its end, a turn a person started becomes
 `wait` only when it ends waiting on a reply, and the next prompt a person types clears it. The
-`derived` flags come from `sy hook` ([record.md](record.md) 4.1); the same fold runs in
-`sy status` and the machine's direct push.
+`derived` flags come from `wy hook` ([record.md](record.md) 4.1); the same fold runs in
+`wy status` and the machine's direct push.
 
 ## 4. "Reads as a question" (detector `q2`)
 
@@ -231,7 +231,7 @@ The detector version (`q2`; `q1` treated any `:` lead-in in 4b as a question) is
 A session can only become `gone` through complete session lists, never through silence
 alone, because a quiet session (a long build, a person reading) is normal.
 
-- `sy agents` runs on the machine's timer every **5 minutes** and sends one `session_list`
+- `wy agents` runs on the machine's timer every **5 minutes** and sends one `session_list`
   per slot. With `complete = true` it lists every live session of that slot. The record's
   `ts` is the time that slot's `claude agents` run **started** (not when collection ended),
   because the list describes the sessions as they were then.
@@ -244,7 +244,7 @@ alone, because a quiet session (a long build, a person reading) is normal.
   = `gone`, `ended_at` = `ts` of the second missing list.
 - Any later event or list entry for it brings it back (`·` column).
 - **Never listed sessions.** A session seen only through hooks, on a slot that has never
-  sent a complete list (an old `sy`, or `claude agents` failing), is never marked `gone`.
+  sent a complete list (an old `wy`, or `claude agents` failing), is never marked `gone`.
   If its last event is older than **12 hours** and it is `working`, the read API reports it
   with `stale = true` (computed at read time, not stored, so it is not a state).
 - **Silent machine.** If a machine sends nothing for **15 minutes** while it has sessions in
@@ -271,7 +271,7 @@ defaults.
 
 ### 5.1 Sessions from transcript history
 
-`sy scan` reads whole transcript folders, so the first scan on a machine sends `token_rows` for every past session. Its per-session
+`wy scan` reads whole transcript folders, so the first scan on a machine sends `token_rows` for every past session. Its per-session
 facts (`sessions`, record.md 4.4) make a `session` row for a session the hub has never
 seen. Such a session has **no live signal**: no hook event and no `session_list` entry
 ever said it runs. The rules:
@@ -295,7 +295,7 @@ ever said it runs. The rules:
   none (the transcript `cwd` is written with `~`, so `cwd` itself is left to hook events).
 - **Not live.** History sessions are never in `counts.live` and need no one.
 
-**Replay (`sy hub refold [--dry-run]`).** The raw records are kept, so the fold can be
+**Replay (`wy hub refold [--dry-run]`).** The raw records are kept, so the fold can be
 rebuilt with the current engine over the whole history: every session with a hook event
 or a list entry is refolded from those records (section 3, "Ordering"), and every other
 session is rebuilt as history from all its `token_rows` records; `started_at` becomes the
@@ -307,7 +307,7 @@ before these rules (all imported sessions `done`, `started_at` = the scan time, 
 
 ## 6. Mapping to other views
 
-| Switchyard | Warp cli-agent (section 14) | `claude agents` status |
+| Watchyard | Warp cli-agent (section 14) | `claude agents` status |
 | --- | --- | --- |
 | working | in progress | busy |
 | needs_permission | blocked (permission) | waiting (**uncertain**) |

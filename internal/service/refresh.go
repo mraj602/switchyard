@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // RefreshResult is what Refresh did.
@@ -24,7 +24,7 @@ type RefreshResult struct {
 	Migrated string
 }
 
-// Refresh is `sy update`'s hub service step (machines.md 7.3 step 7): when the service is
+// Refresh is `wy update`'s hub service step (machines.md 7.3 step 7): when the service is
 // installed here, rewrite its unit if this binary renders it differently (keeping the
 // arguments it was installed with), then restart it so the new binary serves. Nothing is
 // installed where there is no unit. On Windows the task is only restarted.
@@ -129,7 +129,7 @@ func (s *Service) migrate(ctx context.Context, spec model.ServiceSpec, old strin
 	return res, nil
 }
 
-// currentEnvNames renames the variables of the command's old name (SY_HOME, ...) in a legacy
+// currentEnvNames renames the variables of the command's old name (WY_HOME, ...) in a legacy
 // unit's environment to the current prefix (rename.md 2.13).
 func currentEnvNames(env [][2]string) [][2]string {
 	op := brand.OldEnvPrefix()
@@ -295,7 +295,7 @@ func launchdProgramArgs(plist string) ([]string, bool) {
 
 // SystemdEnv returns the NAME=value pairs of every Environment= line of a unit, in order
 // (what the service or timer was installed with; the install may have been made from a
-// shell with other folder overrides than the process that now runs `sy update`).
+// shell with other folder overrides than the process that now runs `wy update`).
 func SystemdEnv(unit string) [][2]string {
 	var out [][2]string
 	for _, ln := range strings.Split(unit, "\n") {
@@ -334,8 +334,8 @@ func LaunchdEnv(plist string) [][2]string {
 
 // InstalledUnit reads the installed hub service's unit (not the Windows task) and returns the
 // arguments after the program and the environment it was installed with. ok is false when
-// there is no readable unit. `sy update` uses it to find the database the hub really opens:
-// the unit may carry SY_DATA_DIR or --db that the updating shell does not.
+// there is no readable unit. `wy update` uses it to find the database the hub really opens:
+// the unit may carry WY_DATA_DIR or --db that the updating shell does not.
 func InstalledUnit(e Env, name string) (args []string, env [][2]string, ok bool) {
 	spec, err := normalize(model.ServiceSpec{Name: name})
 	if err != nil {

@@ -1,7 +1,7 @@
 // Renders a recorded terminal session (raw pty bytes) to a PNG with xterm.js in headless Chrome.
 //   node scripts/demo/term-shot.cjs <raw file> <out.png> [cols rows]
 // NODE_PATH must hold @xterm/xterm and puppeteer-core. Used for docs/media/terminal-board.png:
-// `sy board` run in a pty (100x28) against the mock hub's sample data.
+// `wy board` run in a pty (100x28) against the mock hub's sample data.
 const puppeteer = require('puppeteer-core');
 const fs = require('fs');
 const path = require('path');

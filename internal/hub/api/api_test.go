@@ -19,11 +19,11 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/api"
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/api"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 const repo = "../../.."
@@ -115,7 +115,7 @@ func batch(recs ...[]byte) []byte {
 	for i, r := range recs {
 		raws[i] = r
 	}
-	b, _ := json.Marshal(map[string]any{"v": 1, "client": "sy/0.0.0-test", "records": raws})
+	b, _ := json.Marshal(map[string]any{"v": 1, "client": "wy/0.0.0-test", "records": raws})
 	return b
 }
 
@@ -157,7 +157,7 @@ func (h *hub) count(q string, args ...any) int {
 // hookRecord makes a hook_event record from a raw hook payload.
 func hookRecord(t *testing.T, machine string, at time.Time, payload []byte) []byte {
 	t.Helper()
-	r, err := record.NewHookEvent(record.Meta{Machine: machine, Slot: "~/.claude", Client: "sy/0.0.0-test", Now: at},
+	r, err := record.NewHookEvent(record.Meta{Machine: machine, Slot: "~/.claude", Client: "wy/0.0.0-test", Now: at},
 		payload, record.HookOptions{LastMessages: true})
 	if err != nil {
 		t.Fatal(err)
@@ -335,7 +335,7 @@ func TestScopes(t *testing.T) {
 		{"no token", "GET", "/v1/overview", "", nil, 401},
 		{"bad token", "POST", "/v1/ingest", "sy_m_" + strings.Repeat("0", 43), batch(rec), 401},
 		{"garbage token", "GET", "/v1/machines", "hello", nil, 401},
-		// sy connect checks a token with an empty batch: 400 means the token is good.
+		// wy connect checks a token with an empty batch: 400 means the token is good.
 		{"empty batch", "POST", "/v1/ingest", machine, batch(), 400},
 	}
 	for _, c := range cases {
@@ -613,7 +613,7 @@ func TestConcurrentIngesters(t *testing.T) {
 					}
 					recs = append(recs, simpleHook(t, d.machine, sid, ev, t0.Add(time.Duration(b*per+k)*time.Second)))
 				}
-				body, _ := json.Marshal(map[string]any{"v": 1, "client": "sy/0.0.0-test", "records": recs})
+				body, _ := json.Marshal(map[string]any{"v": 1, "client": "wy/0.0.0-test", "records": recs})
 				req, _ := http.NewRequest("POST", h.http.URL+"/v1/ingest", bytes.NewReader(body))
 				req.Header.Set("Authorization", "Bearer "+d.token)
 				resp, err := http.DefaultClient.Do(req)

@@ -34,15 +34,15 @@ const (
 
 func specWrapper(t *testing.T) Wrapper {
 	t.Helper()
-	from, err := UDSAddress("/run/user/1000/sy/r/4f1a9c0d2b3e5a67.sock")
+	from, err := UDSAddress("/run/user/1000/wy/r/4f1a9c0d2b3e5a67.sock")
 	if err != nil {
 		t.Fatal(err)
 	}
 	return Wrapper{
 		From: from, FromSession: "c41e0000-1111-2222-3333-444455556666", Hop: []string{hopA, hopB},
 		FromName: "api@work.laptop", FromMode: ModeBypass,
-		Body: "[Switchyard] from api@work.laptop · account work · machine laptop · thread t_3a9e\n" +
-			"Reply with: sy peers send api@work.laptop \"…\"\n\nrun the tests",
+		Body: "[Watchyard] from api@work.laptop · account work · machine laptop · thread t_3a9e\n" +
+			"Reply with: wy peers send api@work.laptop \"…\"\n\nrun the tests",
 	}
 }
 
@@ -73,11 +73,11 @@ func TestFrameGolden(t *testing.T) {
 }
 
 func TestUDSAddressEncoding(t *testing.T) {
-	got, err := UDSAddress("/run/user/1000/sy/r/a b%é.sock")
+	got, err := UDSAddress("/run/user/1000/wy/r/a b%é.sock")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := "uds:/run/user/1000/sy/r/a%20b%25%C3%A9.sock"; got != want {
+	if want := "uds:/run/user/1000/wy/r/a%20b%25%C3%A9.sock"; got != want {
 		t.Errorf("got %q want %q", got, want)
 	}
 	if _, err := UDSAddress("/" + strings.Repeat("a", 300)); err == nil {

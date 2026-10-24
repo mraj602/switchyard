@@ -1,27 +1,27 @@
-# Switchyard
+# Watchyard
 
-> An unofficial, self-hosted board for many Claude Code accounts on many machines: every session's state, every account's usage limits, and alerts when a session needs you. One Go binary (`sy`) per machine, a hub with a web board, a desktop app and an Android app. Not affiliated with Anthropic. Licensed under AGPL-3.0.
+> An unofficial, self-hosted board for many Claude Code accounts on many machines: every session's state, every account's usage limits, and alerts when a session needs you. One Go binary (`wy`) per machine, a hub with a web board, a desktop app and an Android app. Not affiliated with Anthropic. Licensed under AGPL-3.0.
 
-AI agents helping someone set Switchyard up: start with the agent guide. It links the setup procedure and lists what must stay with the person (logins, tokens, the owner key, their network).
+AI agents helping someone set Watchyard up: start with the agent guide. It links the setup procedure and lists what must stay with the person (logins, tokens, the owner key, their network).
 
 ## Setup
 
-- [Setting up Switchyard with an AI agent](https://raw.githubusercontent.com/mraj602/switchyard/main/docs/guide/agents.md): where each step is, and what the agent must not do
-- [Setup procedure for agents](https://raw.githubusercontent.com/mraj602/switchyard/main/plugin/switchyard/skills/setup/SKILL.md): install `sy`, detect, dry-run, apply
-- [Install guide](https://raw.githubusercontent.com/mraj602/switchyard/main/docs/guide/install.md): requirements, the hub on a laptop or a server, HTTPS, more machines
+- [Setting up Watchyard with an AI agent](https://raw.githubusercontent.com/mraj602/watchyard/main/docs/guide/agents.md): where each step is, and what the agent must not do
+- [Setup procedure for agents](https://raw.githubusercontent.com/mraj602/watchyard/main/plugin/watchyard/skills/setup/SKILL.md): install `wy`, detect, dry-run, apply
+- [Install guide](https://raw.githubusercontent.com/mraj602/watchyard/main/docs/guide/install.md): requirements, the hub on a laptop or a server, HTTPS, more machines
 
 ## Guides
 
-- [User guide index](https://raw.githubusercontent.com/mraj602/switchyard/main/docs/guide/README.md)
-- [Accounts and sharing](https://raw.githubusercontent.com/mraj602/switchyard/main/docs/guide/accounts.md)
-- [Desktop app](https://raw.githubusercontent.com/mraj602/switchyard/main/docs/guide/desktop.md)
-- [Android app](https://raw.githubusercontent.com/mraj602/switchyard/main/docs/guide/android.md)
-- [Peers and the owner key](https://raw.githubusercontent.com/mraj602/switchyard/main/docs/guide/peers.md)
-- [Troubleshooting](https://raw.githubusercontent.com/mraj602/switchyard/main/docs/guide/troubleshooting.md)
-- [Security and privacy](https://raw.githubusercontent.com/mraj602/switchyard/main/docs/guide/security.md)
+- [User guide index](https://raw.githubusercontent.com/mraj602/watchyard/main/docs/guide/README.md)
+- [Accounts and sharing](https://raw.githubusercontent.com/mraj602/watchyard/main/docs/guide/accounts.md)
+- [Desktop app](https://raw.githubusercontent.com/mraj602/watchyard/main/docs/guide/desktop.md)
+- [Android app](https://raw.githubusercontent.com/mraj602/watchyard/main/docs/guide/android.md)
+- [Peers and the owner key](https://raw.githubusercontent.com/mraj602/watchyard/main/docs/guide/peers.md)
+- [Troubleshooting](https://raw.githubusercontent.com/mraj602/watchyard/main/docs/guide/troubleshooting.md)
+- [Security and privacy](https://raw.githubusercontent.com/mraj602/watchyard/main/docs/guide/security.md)
 
 ## Optional
 
-- [README](https://raw.githubusercontent.com/mraj602/switchyard/main/README.md)
-- [Behaviour specs](https://raw.githubusercontent.com/mraj602/switchyard/main/docs/spec/README.md)
-- [Contributing](https://raw.githubusercontent.com/mraj602/switchyard/main/CONTRIBUTING.md)
+- [README](https://raw.githubusercontent.com/mraj602/watchyard/main/README.md)
+- [Behaviour specs](https://raw.githubusercontent.com/mraj602/watchyard/main/docs/spec/README.md)
+- [Contributing](https://raw.githubusercontent.com/mraj602/watchyard/main/CONTRIBUTING.md)

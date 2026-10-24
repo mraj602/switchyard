@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
 )
 
 // This file is the store side of push channels and targets (push.md 7.1, 9): the channel

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/outbox"
 )
 
 func outboxAt(t *testing.T, name string) *outbox.Outbox {

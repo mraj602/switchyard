@@ -8,11 +8,11 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/state"
-	"github.com/mraj602/switchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/hub/state"
+	"github.com/mraj602/watchyard/internal/identity"
 )
 
-// Window is how much of the outbox `sy status` reads (the last 7 days).
+// Window is how much of the outbox `wy status` reads (the last 7 days).
 const Window = 7 * 24 * time.Hour
 
 // Options configures Collect.
@@ -171,7 +171,7 @@ func Age(d time.Duration) string {
 // Render writes the table. now is the clock used for the "since" column.
 func Render(w io.Writer, rows []Row, now time.Time) error {
 	if len(rows) == 0 {
-		_, err := fmt.Fprintln(w, "No sessions in the last 7 days. Is the switchyard plugin installed? Run `sy doctor`.")
+		_, err := fmt.Fprintln(w, "No sessions in the last 7 days. Is the watchyard plugin installed? Run `wy doctor`.")
 		return err
 	}
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)

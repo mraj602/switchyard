@@ -19,7 +19,7 @@ for e in evs:
 json.dump({"hooks": h}, open(sys.argv[1], "w"), indent=1)
 PY
 cd "$W/proj1"
-run() { n=$1; shift; export SY_CAPTURE_FILE="$W/cap$n.jsonl"; rm -f "$SY_CAPTURE_FILE"
+run() { n=$1; shift; export WY_CAPTURE_FILE="$W/cap$n.jsonl"; rm -f "$WY_CAPTURE_FILE"
   timeout 300 "$CLAUDE" -p "$@" --settings "$W/settings.json" --setting-sources local </dev/null >/dev/null 2>&1; }
 run 1 "Create a file hello.txt containing hi, then run 'cat hello.txt' with Bash, then reply DONE" --permission-mode acceptEdits --allowedTools "Write,Bash(cat:*)" --max-turns 6
 run 2 "Run 'echo hi > out.txt' using the Bash tool, then reply DONE" --max-turns 4          # not allowed -> PermissionRequest, auto-denied in -p

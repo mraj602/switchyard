@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/hub/api"
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/pair"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/api"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/pair"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // testPepperPath points the server's pairing pepper at a temp file for this test (never
@@ -23,7 +23,7 @@ func testPepperPath(t *testing.T) string {
 	return api.PairPepperPath
 }
 
-// ownerSessionToken makes an owner session as `sy hub owner-link` does: a sy_o_ token whose
+// ownerSessionToken makes an owner session as `wy hub owner-link` does: a sy_o_ token whose
 // hash is keyed with the pairing pepper.
 func ownerSessionToken(t *testing.T, st *store.Store) auth.Created {
 	t.Helper()

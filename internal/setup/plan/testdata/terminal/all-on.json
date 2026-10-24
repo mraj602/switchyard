@@ -1,5 +1,5 @@
 {
-  "plan_id": "p_9e1f35c1dfe8",
+  "plan_id": "p_bcf83e293e15",
   "actions": [
     {
       "id": "a1",
@@ -13,7 +13,7 @@
         "claude",
         "plugin",
         "install",
-        "switchyard-pane@sy-local",
+        "watchyard-pane@wy-local",
         "--json"
       ],
       "env": {
@@ -22,7 +22,7 @@
       "touches": [
         "/home/u/.claude/settings.json",
         "/home/u/.claude/plugins/installed_plugins.json",
-        "/home/u/.local/state/switchyard/term/journal/pane.install"
+        "/home/u/.local/state/watchyard/term/journal/pane.install"
       ],
       "watch": [
         "/home/u/.claude/plugins"
@@ -48,7 +48,7 @@
         "claude",
         "plugin",
         "install",
-        "switchyard-pane@sy-local",
+        "watchyard-pane@wy-local",
         "--json"
       ],
       "env": {
@@ -57,7 +57,7 @@
       "touches": [
         "/home/u/.claude-3/settings.json",
         "/home/u/.claude-3/plugins/installed_plugins.json",
-        "/home/u/.local/state/switchyard/term/journal/pane.install"
+        "/home/u/.local/state/watchyard/term/journal/pane.install"
       ],
       "watch": [
         "/home/u/.claude-3/plugins"
@@ -93,7 +93,7 @@
       "touches": [
         "/home/u/.claude/settings.json",
         "/home/u/.claude/plugins/known_marketplaces.json",
-        "/home/u/.local/state/switchyard/term/journal/warp-plugin.marketplace-add"
+        "/home/u/.local/state/watchyard/term/journal/warp-plugin.marketplace-add"
       ],
       "watch": [
         "/home/u/.claude/plugins"
@@ -120,7 +120,7 @@
       "touches": [
         "/home/u/.claude/settings.json",
         "/home/u/.claude/plugins/installed_plugins.json",
-        "/home/u/.local/state/switchyard/term/journal/warp-plugin.install"
+        "/home/u/.local/state/watchyard/term/journal/warp-plugin.install"
       ],
       "watch": [
         "/home/u/.claude/plugins"
@@ -148,7 +148,7 @@
       "touches": [
         "/home/u/.claude-3/settings.json",
         "/home/u/.claude-3/plugins/known_marketplaces.json",
-        "/home/u/.local/state/switchyard/term/journal/warp-plugin.marketplace-add"
+        "/home/u/.local/state/watchyard/term/journal/warp-plugin.marketplace-add"
       ],
       "watch": [
         "/home/u/.claude-3/plugins"
@@ -174,7 +174,7 @@
       "touches": [
         "/home/u/.claude-3/settings.json",
         "/home/u/.claude-3/plugins/installed_plugins.json",
-        "/home/u/.local/state/switchyard/term/journal/warp-plugin.install"
+        "/home/u/.local/state/watchyard/term/journal/warp-plugin.install"
       ],
       "watch": [
         "/home/u/.claude-3/plugins"
@@ -228,13 +228,13 @@
       "id": "a10",
       "step": "terminal",
       "op": "write_file",
-      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-me.toml",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-me.toml",
       "mode": "0644",
-      "content_sha256": "df4b0e9301c36f660e42227e74eaa96d1df8bbc2121107bc69d2243d19f060b6",
+      "content_sha256": "5d57fbbe167ce5671b4b4425b7f3d8483d3e63ce61929e93b8c3e1e9745bc6e5",
       "note": "me · cyan · ~/.local/bin/claude",
       "pre": [
         {
-          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-me.toml",
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-me.toml",
           "state": {
             "type": "absent"
           }
@@ -245,13 +245,13 @@
       "id": "a11",
       "step": "terminal",
       "op": "write_file",
-      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-work.toml",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-work.toml",
       "mode": "0644",
-      "content_sha256": "19fbf0aae224849d9308e3031216b1555d5f85e4b1b17de325d7732fe3c15b97",
+      "content_sha256": "b32ad8f45f3e993ff1f254ee1a728955423cef613cfbe5104ea24f17e55a89d8",
       "note": "work · yellow · ~/.local/bin/claude-2",
       "pre": [
         {
-          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-work.toml",
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-work.toml",
           "state": {
             "type": "absent"
           }
@@ -262,13 +262,13 @@
       "id": "a12",
       "step": "terminal",
       "op": "write_file",
-      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-claude-3.toml",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-claude-3.toml",
       "mode": "0644",
-      "content_sha256": "65f58e55fcbdaf4848065de618317d7d144f491340857d77faf13056256a24a1",
+      "content_sha256": "03a471b17393de4499c2ac087893af0aa10ff96ce3076379ba2a7b071cc396ee",
       "note": "claude-3 · magenta · ~/.local/bin/claude-3",
       "pre": [
         {
-          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-claude-3.toml",
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-claude-3.toml",
           "state": {
             "type": "absent"
           }
@@ -279,12 +279,12 @@
       "id": "a13",
       "step": "config",
       "op": "config_set",
-      "path": "/home/u/.config/switchyard/config.toml",
+      "path": "/home/u/.config/watchyard/config.toml",
       "value": true,
       "key": "terminal.titles",
       "pre": [
         {
-          "path": "/home/u/.config/switchyard/config.toml",
+          "path": "/home/u/.config/watchyard/config.toml",
           "state": {
             "type": "file"
           }
@@ -302,7 +302,7 @@
     "logins_touched": 0
   },
   "warnings": [
-    "Warp's plugin comes from github.com/warpdotdev/claude-code-warp at branch main (a commit cannot be pinned); sy records the commit it got and sy doctor warns when it moves",
+    "Warp's plugin comes from github.com/warpdotdev/claude-code-warp at branch main (a commit cannot be pinned); wy records the commit it got and wy doctor warns when it moves",
     "Claude Code's own tab title goes off (CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1); this also skips its background session-title request (/resume shows no generated title) and its OSC 7501 status reports to the terminal"
   ]
 }

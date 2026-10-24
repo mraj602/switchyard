@@ -187,7 +187,7 @@ export async function widgetSteps(
   // The Android widgets read the snapshot this app writes locally: it is written on every
   // refresh, whatever `prefs.widgets` says (that pref only asks the hub for refresh frames over
   // the link). Writing it only when the pref was true left a widget with no snapshot, so it only
-  // ever said "Open Switchyard".
+  // ever said "Open Watchyard".
   if (ctx.me?.device.prefs?.widgets === true) await quietly(() => p.updateTimelines(s, now));
   if (!live()) return;
   await quietly(() => p.updateAndroidWidgets(s));

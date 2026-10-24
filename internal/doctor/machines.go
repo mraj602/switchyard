@@ -13,15 +13,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/client"
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/directpush"
+	"github.com/mraj602/watchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/directpush"
 )
 
 // Machine checks: how records reach the hub, held records, a frozen hub,
 // direct push, the forward port, and on the hub its pull targets and pull key.
 
-// policyStale is how old the cached direct-push policy may get before doctor warns (sy tick
+// policyStale is how old the cached direct-push policy may get before doctor warns (wy tick
 // fetches it hourly).
 const policyStale = 24 * time.Hour
 
@@ -78,7 +78,7 @@ func checkReach(rep *Report, o Options, cfg config.Config, reach, dir string, st
 		if st.PullRefused != "" {
 			c.Level = Warn
 			c.Detail += "; the last pull was refused: " + st.PullRefused
-			c.Fix = "update sy on the hub or on this machine so both speak the same drain protocol: sy update"
+			c.Fix = "update wy on the hub or on this machine so both speak the same drain protocol: wy update"
 		}
 		rep.add(c)
 	case config.ReachForward:
@@ -107,7 +107,7 @@ func checkHeld(rep *Report, st client.Status) {
 		d = fmt.Sprintf("%s reads records up to v%d, this machine writes v%d: %d record(s) held back", hub, h.RecordVMax, h.Needs, st.Held)
 	}
 	rep.add(Check{Name: "held records", Level: Warn, Detail: d,
-		Fix: "update the hub (sy update on it, or sy update --machines hub); nothing is lost meanwhile"})
+		Fix: "update the hub (wy update on it, or wy update --machines hub); nothing is lost meanwhile"})
 }
 
 // checkFrozen: the hub was frozen for a move (machines.md 8.3). The client never follows
@@ -121,16 +121,16 @@ func checkFrozen(rep *Report, o Options, cfg config.Config) {
 	if c.Frozen.Since != "" {
 		d += " since " + c.Frozen.Since
 	}
-	fix := "the hub moved without a new address; ask its owner where it went, then run: sy connect <new hub url> --keep-token"
+	fix := "the hub moved without a new address; ask its owner where it went, then run: wy connect <new hub url> --keep-token"
 	if m := c.Frozen.MovedTo; m != nil && *m != "" {
 		d += "; it moved to " + *m
-		fix = "sy connect " + *m + " --keep-token"
+		fix = "wy connect " + *m + " --keep-token"
 	}
 	rep.add(Check{Name: "hub frozen", Level: Fail, Detail: d + "; records queue here until this machine points at the new hub", Fix: fix})
 }
 
 // checkDirectPush: direct ntfy from this machine (machines.md 5): the topic, and the age of
-// the policy cache sy tick fetches hourly.
+// the policy cache wy tick fetches hourly.
 func checkDirectPush(rep *Report, o Options, cfg config.Config) {
 	if !cfg.Push.Direct.Enabled {
 		return
@@ -138,7 +138,7 @@ func checkDirectPush(rep *Report, o Options, cfg config.Config) {
 	state := o.Dirs.State.Path
 	if _, err := directpush.LoadSecret(state); err != nil {
 		rep.add(Check{Name: "direct push", Level: Warn, Detail: "on, but without a topic: " + err.Error(),
-			Fix: "set the topic: sy direct-push on --secret-stdin"})
+			Fix: "set the topic: wy direct-push on --secret-stdin"})
 		return
 	}
 	server := directpush.ServerHost(cfg.Push.Direct.Server)
@@ -147,13 +147,13 @@ func checkDirectPush(rep *Report, o Options, cfg config.Config) {
 	switch {
 	case !ok:
 		rep.add(Check{Name: "direct push", Level: Warn, Detail: "on (" + server + "), but no policy from the hub yet: nothing is sent",
-			Fix: "sy direct-push policy --fetch (sy tick fetches it hourly once the hub is reachable)"})
+			Fix: "wy direct-push policy --fetch (wy tick fetches it hourly once the hub is reachable)"})
 	case err != nil:
 		rep.add(Check{Name: "direct push", Level: OK, Detail: "on (" + server + "), policy installed by hand"})
 	case o.now().Sub(at) > policyStale:
 		rep.add(Check{Name: "direct push", Level: Warn,
 			Detail: fmt.Sprintf("on (%s), policy %s old (fetched hourly while the hub is reachable)", server, age(o.now().Sub(at))),
-			Fix:    "check the hub is reachable, then: sy direct-push policy --fetch"})
+			Fix:    "check the hub is reachable, then: wy direct-push policy --fetch"})
 	default:
 		rep.add(Check{Name: "direct push", Level: OK,
 			Detail: fmt.Sprintf("on (%s), policy %s old", server, age(o.now().Sub(at)))})
@@ -194,7 +194,7 @@ func checkForwardPort(ctx context.Context, rep *Report, cfg config.Config) {
 	network, addr := forwardAddr(cfg)
 	if network == "" {
 		rep.add(Check{Name: "forward port", Level: Warn, Detail: "forward mode, but neither hub.dial nor a loopback hub.url says where the forward lands",
-			Fix: "run sy machine add <this host> --reach forward again from the laptop"})
+			Fix: "run wy machine add <this host> --reach forward again from the laptop"})
 		return
 	}
 	conn, err := net.DialTimeout(network, addr, 500*time.Millisecond)
@@ -216,7 +216,7 @@ func checkForwardPort(ctx context.Context, rep *Report, cfg config.Config) {
 	}
 	if err != nil {
 		rep.add(Check{Name: "forward port", Level: Warn, Detail: addr + " is taken, but the hub does not answer through it: " + err.Error(),
-			Fix: "if another program holds " + addr + ", stop it, or pick another port: sy machine add <this host> --reach forward --port <n> from the laptop"})
+			Fix: "if another program holds " + addr + ", stop it, or pick another port: wy machine add <this host> --reach forward --port <n> from the laptop"})
 		return
 	}
 	rep.add(Check{Name: "forward port", Level: OK, Detail: "forward open on " + addr + ": the hub answers"})
@@ -253,7 +253,7 @@ func pullChecks(ctx context.Context, rep *Report, db *sql.DB, o Options) error {
 	key := filepath.Join(o.Dirs.State.Path, "pull", pullKeyFile)
 	if fi, err := os.Stat(key); err != nil || fi.IsDir() {
 		rep.add(Check{Name: "pull key", Level: Fail, Detail: fmt.Sprintf("%d pull target(s) but no pull key at %s", n, key),
-			Fix: "restore " + key + " from the state volume or a backup; or restart sy hub serve (it makes a new key) and run sy machine add <host> --reach pull again for each target"})
+			Fix: "restore " + key + " from the state volume or a backup; or restart wy hub serve (it makes a new key) and run wy machine add <host> --reach pull again for each target"})
 		return nil
 	}
 	rep.add(Check{Name: "pull key", Level: OK, Detail: key})
@@ -278,19 +278,19 @@ func pullTargetCheck(o Options, name string, enabled bool, state string, lastOK 
 		c.Detail = "waiting for the first pull"
 	case state == pullStateHostKey:
 		c.Level, c.Detail = Fail, "the host key changed; no more pulls until it is trusted again ("+last+")"
-		c.Fix = "check the server really changed its key, then: sy hub pull trust " + name
+		c.Fix = "check the server really changed its key, then: wy hub pull trust " + name
 	case state == pullStateAuth:
 		c.Level, c.Detail = Warn, "the server refuses the pull key ("+last+")"
-		c.Fix = "authorize the key again from the laptop: sy machine add <host> --reach pull --name " + name
+		c.Fix = "authorize the key again from the laptop: wy machine add <host> --reach pull --name " + name
 	case state == pullStateRefused:
-		c.Level, c.Detail = Warn, "the server's sy refused the pull ("+last+")"
-		c.Fix = "update sy there: sy update --machines " + name
+		c.Level, c.Detail = Warn, "the server's wy refused the pull ("+last+")"
+		c.Fix = "update wy there: wy update --machines " + name
 	case state == pullStateFailing:
 		c.Level, c.Detail = Warn, "failing ("+last+")"
-		c.Fix = "check the server is up and reachable from the hub, then: sy hub pull run " + name + " --wait"
+		c.Fix = "check the server is up and reachable from the hub, then: wy hub pull run " + name + " --wait"
 	default:
 		c.Level, c.Detail = Warn, state+" ("+last+")"
-		c.Fix = "sy hub pull list"
+		c.Fix = "wy hub pull list"
 	}
 	return c
 }

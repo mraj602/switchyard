@@ -1,4 +1,4 @@
-# Go side (sy and the hub), the Claude Code pane mod and the end-to-end suites.
+# Go side (wy and the hub), the Claude Code pane mod and the end-to-end suites.
 name: ci
 
 on:
@@ -53,7 +53,7 @@ jobs:
       - name: spec check (schema load, OpenAPI validation)
         run: make spec-check PYTHON=python
 
-      # A release build has neither the fakeclock nor the fakeopen test seam (builds sy twice,
+      # A release build has neither the fakeclock nor the fakeopen test seam (builds wy twice,
       # once with the tags as a positive control; never runs it).
       - name: release build has no test seams
         run: scripts/ci/check-release-seams.sh
@@ -83,7 +83,7 @@ jobs:
       - name: board, termctl, warp, termenv, setup plan and hook tests
         run: go test -race ./internal/board/... ./internal/termctl/... ./internal/warp/... ./internal/termenv/... ./internal/setup/plan/... ./internal/hook/...
 
-  # The Claude Code pane mod (plugin/switchyard-pane): `claude plugin validate` and
+  # The Claude Code pane mod (plugin/watchyard-pane): `claude plugin validate` and
   # `claude plugin test` against the pinned Claude Code, the allowed-surface check and tsc.
   # No login and no network beyond npm: scripts/pane-check.sh runs claude in a temp HOME.
   pane-check:
@@ -109,7 +109,7 @@ jobs:
         run: scripts/pane-check.sh --self-test
 
   # The web board (webui/): the node unit tests, the Go tests of the embedded app and mock hub,
-  # and the headless browser smoke test (webui/smoke, SY_WEBUI_BROWSER=1) in the runner's
+  # and the headless browser smoke test (webui/smoke, WY_WEBUI_BROWSER=1) in the runner's
   # Google Chrome with a pinned puppeteer-core, on a private D-Bus session so Chrome shows no
   # real notifications. The smoke serves the board with the hub's CSP, so a CSP violation fails it.
   webui-browser:
@@ -141,11 +141,11 @@ jobs:
 
       - name: browser smoke (390 and 1440 px, Chrome)
         env:
-          SY_WEBUI_BROWSER: "1"
+          WY_WEBUI_BROWSER: "1"
           CHROME: /usr/bin/google-chrome
         run: |
           google-chrome --version
-          export SY_PUPPETEER_MODULES="$RUNNER_TEMP/pp/node_modules" SY_WEBUI_SHOTS="$RUNNER_TEMP/shots"
+          export WY_PUPPETEER_MODULES="$RUNNER_TEMP/pp/node_modules" WY_WEBUI_SHOTS="$RUNNER_TEMP/shots"
           dbus-run-session -- go test -count=1 -v ./webui/smoke
 
       - name: screenshots
@@ -157,7 +157,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  # Terminal end to end (test/e2e/terminal): sy board / term / open / ssh against a fake
+  # Terminal end to end (test/e2e/terminal): wy board / term / open / ssh against a fake
   # opener (-tags fakeopen), a temp HOME and no real terminal.
   terminal-e2e:
     name: terminal e2e
@@ -177,7 +177,7 @@ jobs:
         run: make e2e-terminal
 
   # Setup end-to-end (test/e2e/setup): the scenarios S1-S8 of test/e2e/setup against
-  # `sy` built from this commit and a fake `claude`, as a non-root user in a fresh Fedora and
+  # `wy` built from this commit and a fake `claude`, as a non-root user in a fresh Fedora and
   # Ubuntu container. Docker has no `--systemd=always`, so the `--hub here` scenario (s6b) is
   # reported as skipped here; it runs with podman on a developer machine.
   setup-e2e:
@@ -201,8 +201,8 @@ jobs:
       - name: scenarios in the ${{ matrix.distro }} container
         run: make e2e-setup-${{ matrix.distro }} E2E_ENGINE=docker
 
-  # Machines end-to-end (test/e2e/machines): `sy machine add --reach pull` against a real
-  # sshd container, the hub pulling its records over SSH, then `sy machine remove`. The host
+  # Machines end-to-end (test/e2e/machines): `wy machine add --reach pull` against a real
+  # sshd container, the hub pulling its records over SSH, then `wy machine remove`. The host
   # keys are checked strictly; the container has no systemd, and the operator side runs with a
   # temp HOME.
   e2e-machines:
@@ -219,9 +219,9 @@ jobs:
           go-version: "1.27.x"
           cache: true
 
-      - name: sy machine add / pull / remove over SSH
+      - name: wy machine add / pull / remove over SSH
         env:
-          SY_E2E_RUNTIME: docker
+          WY_E2E_RUNTIME: docker
         run: make e2e-machines
 
   # The same scenarios on a macOS runner without containers: a temp HOME, the fake claude,
@@ -275,7 +275,7 @@ jobs:
       - name: build the release archive and the fake claude
         run: |
           out="$PWD/dist/e2e"
-          SY_RELEASE_DIR="$out/release" SY_RELEASE_TARGETS=windows_amd64 scripts/release/build.sh 0.0.0-e2e
+          WY_RELEASE_DIR="$out/release" WY_RELEASE_TARGETS=windows_amd64 scripts/release/build.sh 0.0.0-e2e
           mkdir -p "$out/bin" "$out/srv/latest/download"
           go build -o "$out/bin/claude.exe" ./test/e2e/setup/fakeclaude
           cp "$out"/release/* "$out/srv/latest/download/"
@@ -288,29 +288,29 @@ jobs:
           $port = 18765
           $server = Start-Process -PassThru -WindowStyle Hidden python -ArgumentList '-m', 'http.server', $port, '--bind', '127.0.0.1', '--directory', $srv
           Start-Sleep -Seconds 2
-          $env:SY_INSTALL_BASE_URL = "http://127.0.0.1:$port"
-          # a locally built archive has no GitHub attestation (as SY_VERIFY_ATTESTATION in test/e2e/setup/lib/common.sh)
-          $env:SY_VERIFY_ATTESTATION = '0'
+          $env:WY_INSTALL_BASE_URL = "http://127.0.0.1:$port"
+          # a locally built archive has no GitHub attestation (as WY_VERIFY_ATTESTATION in test/e2e/setup/lib/common.sh)
+          $env:WY_VERIFY_ATTESTATION = '0'
           $home1 = Join-Path $env:RUNNER_TEMP 'home-install'
           New-Item -ItemType Directory -Force -Path $home1 | Out-Null
           $env:USERPROFILE = $home1
           & pwsh -NoProfile -File (Join-Path $srv 'install.ps1') -NoSetup
           if ($LASTEXITCODE -ne 0) { throw "install.ps1 exited $LASTEXITCODE" }
-          & (Join-Path $home1 '.local\bin\sy.exe') --version
-          if ($LASTEXITCODE -ne 0) { throw "sy --version exited $LASTEXITCODE" }
+          & (Join-Path $home1 '.local\bin\wy.exe') --version
+          if ($LASTEXITCODE -ne 0) { throw "wy --version exited $LASTEXITCODE" }
           # a tampered archive must fail with exit 3 and install nothing
           $bad = Join-Path $env:RUNNER_TEMP 'srv-bad'
           Copy-Item -Recurse $srv $bad
-          Get-ChildItem (Join-Path $bad 'latest/download') -Filter 'sy_*.zip' | ForEach-Object { Add-Content -Path $_.FullName -Value 'x' }
+          Get-ChildItem (Join-Path $bad 'latest/download') -Filter 'wy_*.zip' | ForEach-Object { Add-Content -Path $_.FullName -Value 'x' }
           $server2 = Start-Process -PassThru -WindowStyle Hidden python -ArgumentList '-m', 'http.server', ($port + 1), '--bind', '127.0.0.1', '--directory', $bad
           Start-Sleep -Seconds 2
-          $env:SY_INSTALL_BASE_URL = "http://127.0.0.1:$($port + 1)"
+          $env:WY_INSTALL_BASE_URL = "http://127.0.0.1:$($port + 1)"
           $home2 = Join-Path $env:RUNNER_TEMP 'home-bad'
           New-Item -ItemType Directory -Force -Path $home2 | Out-Null
           $env:USERPROFILE = $home2
           & pwsh -NoProfile -File (Join-Path $bad 'install.ps1') -NoSetup
           if ($LASTEXITCODE -ne 3) { throw "tampered archive: want exit 3, got $LASTEXITCODE" }
-          if (Test-Path (Join-Path $home2 '.local\bin\sy.exe')) { throw 'sy.exe installed from a tampered archive' }
+          if (Test-Path (Join-Path $home2 '.local\bin\wy.exe')) { throw 'wy.exe installed from a tampered archive' }
           Stop-Process -Id $server.Id, $server2.Id -Force
           # the step's exit code is the last native command's (3 from the tampered run): all checks passed
           exit 0
@@ -324,10 +324,10 @@ jobs:
           export USERPROFILE="$(cygpath -w "$home")" HOME="$home"
           export PATH="$out/bin:$PATH"
           mkdir -p "$home/.local/bin"
-          unzip -o -q "$out"/release/sy_*_windows_amd64.zip sy.exe -d "$home/.local/bin"
-          "$home/.local/bin/sy.exe" setup --yes --json --add work:amber,client --hub later --no-timer > "$RUNNER_TEMP/s1.json"
+          unzip -o -q "$out"/release/wy_*_windows_amd64.zip wy.exe -d "$home/.local/bin"
+          "$home/.local/bin/wy.exe" setup --yes --json --add work:amber,client --hub later --no-timer > "$RUNNER_TEMP/s1.json"
           test -f "$home/.local/bin/claude-2.cmd"
           test -f "$home/.local/bin/claude-3.cmd"
           grep -q 'CLAUDE_CONFIG_DIR=%USERPROFILE%\\.claude-2' "$home/.local/bin/claude-2.cmd"
-          "$home/.local/bin/sy.exe" setup --undo --yes
+          "$home/.local/bin/wy.exe" setup --undo --yes
           test ! -e "$home/.local/bin/claude-2.cmd"

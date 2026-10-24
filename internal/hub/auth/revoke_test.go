@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // A device that is already revoked still gets its targets deleted

@@ -58,7 +58,7 @@ func TestOSExecExit1GoalHoldsAndDir(t *testing.T) {
 }
 
 // TestOSExecClaudeUsesLocatedPath: a plan's argv[0] "claude" runs the located binary, so setup
-// works over SSH where ~/.local/bin is not on PATH (sy machine add).
+// works over SSH where ~/.local/bin is not on PATH (wy machine add).
 func TestOSExecClaudeUsesLocatedPath(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("sh script")

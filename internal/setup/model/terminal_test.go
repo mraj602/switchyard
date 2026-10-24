@@ -16,7 +16,7 @@ func TestLedgerTerminalRoundTrip(t *testing.T) {
 			Targets: []string{"/home/u/.claude/settings.json"}, Ref: "main",
 			Commit: "53ab8d63ef74d7653002444762812d2fb5639eee"},
 		Titles: &LedgerTermTargets{Targets: []string{"/home/u/.claude/settings.json"}},
-		Tabs: []LedgerTab{{Path: "/home/u/.local/share/warp-terminal/tab_configs/switchyard-work.toml",
+		Tabs: []LedgerTab{{Path: "/home/u/.local/share/warp-terminal/tab_configs/watchyard-work.toml",
 			SHA256: "eeee", Label: "work"}},
 		Warp: &LedgerWarp{Channel: WarpStable, Folder: "/home/u/.local/share/warp-terminal/tab_configs"},
 	}}

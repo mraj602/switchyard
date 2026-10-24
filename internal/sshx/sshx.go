@@ -1,5 +1,5 @@
 // Package sshx runs the person's own `ssh` safely (machines.md 4.1, 4.3, 10): the program
-// comes from SY_SSH_COMMAND (words, no shell; default `ssh`) plus `-o` options, never one
+// comes from WY_SSH_COMMAND (words, no shell; default `ssh`) plus `-o` options, never one
 // that turns host key checking off; remote commands are fixed text plus plain words, each
 // single-quoted for the remote login shell; secrets travel on stdin only, never in argv.
 //
@@ -30,11 +30,11 @@ import (
 const waitDelay = 5 * time.Second
 
 // EnvCommand is the environment variable that replaces the ssh program (like GIT_SSH_COMMAND).
-const EnvCommand = "SY_SSH_COMMAND"
+const EnvCommand = "WY_SSH_COMMAND"
 
 // Runner builds and runs ssh calls. The zero value is not usable; use New or FromEnv.
 type Runner struct {
-	// Program is the ssh program and its fixed words (SY_SSH_COMMAND, else ["ssh"]).
+	// Program is the ssh program and its fixed words (WY_SSH_COMMAND, else ["ssh"]).
 	Program []string
 	// Options are extra `-o K=V` options (--ssh-option), already checked.
 	Options []string
@@ -79,7 +79,7 @@ func New(program []string, options ...string) (*Runner, error) {
 	return r, nil
 }
 
-// FromEnv is New with the program from SY_SSH_COMMAND (split into words; no shell, no
+// FromEnv is New with the program from WY_SSH_COMMAND (split into words; no shell, no
 // quotes) and the --ssh-option values.
 func FromEnv(getenv func(string) string, options ...string) (*Runner, error) {
 	if getenv == nil {
@@ -88,13 +88,13 @@ func FromEnv(getenv func(string) string, options ...string) (*Runner, error) {
 	return New(SplitWords(getenv(EnvCommand)), options...)
 }
 
-// SplitWords splits a command such as SY_SSH_COMMAND or a --hub-admin prefix into words at
+// SplitWords splits a command such as WY_SSH_COMMAND or a --hub-admin prefix into words at
 // white space. There is no shell: quotes are not interpreted.
 func SplitWords(s string) []string { return strings.Fields(s) }
 
 // ErrForbidden is returned for an option that would turn host key checking off. The command
 // layer exits 2 with its message.
-var ErrForbidden = errors.New("sy never turns host key checking off; check the key by hand")
+var ErrForbidden = errors.New("wy never turns host key checking off; check the key by hand")
 
 var optKeyRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9]*$`)
 
@@ -152,7 +152,7 @@ func ParseOption(o string) (string, error) {
 // `-vo Key=V` the rest of the group (or the next word) is that argument.
 const shortArgFlags = "BbcDEeFIiJLlmOopQRSWw"
 
-// CheckForbidden checks the words of SY_SSH_COMMAND after the program: any `-o` option
+// CheckForbidden checks the words of WY_SSH_COMMAND after the program: any `-o` option
 // (`-o K=V`, `-oK=V`, `-o 'K V'`, and inside a combined group such as `-vo K=V`) that turns
 // host key checking off is refused.
 func CheckForbidden(words []string) error {

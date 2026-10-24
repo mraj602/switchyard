@@ -49,7 +49,7 @@ func (tx *Tx) PutDeviceAccounts(r DeviceAccountsRow) error {
 }
 
 // MachineAccounts lists the accounts (uuids) the hub sees logged in now on the slots of a
-// machine that are not removed, sorted: what `sy keys certify` offers the owner to bind
+// machine that are not removed, sorted: what `wy keys certify` offers the owner to bind
 // (keys.md 4.3). These come from the machine's own records, so the owner checks them.
 func (s *Store) MachineAccounts(ctx context.Context, machineID string) ([]string, error) {
 	rows, err := s.r.QueryContext(ctx, `SELECT DISTINCT se.account_uuid FROM slot sl

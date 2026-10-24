@@ -3,7 +3,7 @@ package plan
 import (
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 func TestMergeTerminal(t *testing.T) {

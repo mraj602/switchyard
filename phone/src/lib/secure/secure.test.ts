@@ -31,7 +31,7 @@ function recording(inner: SecureStoreLike) {
 }
 
 describe('SecureHub', () => {
-  it('round-trips the entry under sy.hub.v1', async () => {
+  it('round-trips the entry under wy.hub.v1', async () => {
     const mem = createMemorySecureStore();
     const sh = createSecureHub(mem, secureOptions(KEYCHAIN_ACCESSIBLE));
     expect(await sh.load()).toBeNull();

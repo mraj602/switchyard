@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 func enablePeers(t *testing.T, sb *sandbox) {
 	t.Helper()
-	cfg := filepath.Join(sb.home, "sy", "config")
+	cfg := filepath.Join(sb.home, "wy", "config")
 	if err := os.MkdirAll(cfg, 0o700); err != nil {
 		t.Fatal(err)
 	}

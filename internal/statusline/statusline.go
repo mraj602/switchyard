@@ -1,4 +1,4 @@
-// Package statusline implements `sy statusline --wrap <cmd>`: print the account label,
+// Package statusline implements `wy statusline --wrap <cmd>`: print the account label,
 // 5-hour and 7-day use and context %, run and print the wrapped command, and write a
 // limit_sample record at most once a minute per session when a value changes.
 //
@@ -23,10 +23,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/clientenv"
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/clientenv"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 const (
@@ -43,7 +43,7 @@ const (
 	reset = "\x1b[0m"
 )
 
-// Run is `sy statusline [--wrap <cmd>]`. It reads the status-line JSON from stdin and
+// Run is `wy statusline [--wrap <cmd>]`. It reads the status-line JSON from stdin and
 // prints one line to stdout. Whatever goes wrong inside, the line is still printed.
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(string) string) error {
 	fs := flag.NewFlagSet("statusline", flag.ContinueOnError)
@@ -63,7 +63,7 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(s
 		go func() { ch <- runWrapped(*wrap, in, getenv) }()
 	}
 
-	part, show := switchyardPart(in, getenv)
+	part, show := watchyardPart(in, getenv)
 
 	var out []byte
 	if wrapped != nil {
@@ -239,7 +239,7 @@ func ParseValues(in []byte) Values {
 		SevenDay: p.RateLimits.SevenDay.Used, Context: p.ContextWindow.Used}
 }
 
-// Format renders the Switchyard part: "label · 5h 24% · 7d 41% · ctx 9%". Values that are
+// Format renders the Watchyard part: "label · 5h 24% · 7d 41% · ctx 9%". Values that are
 // absent are left out.
 func Format(label string, v Values) string {
 	parts := []string{label}
@@ -254,9 +254,9 @@ func Format(label string, v Values) string {
 	return strings.Join(parts, " · ")
 }
 
-// switchyardPart computes the text and whether to show it (statusline.show) and, as a side
+// watchyardPart computes the text and whether to show it (statusline.show) and, as a side
 // effect, records a limit_sample when the rules say so.
-func switchyardPart(in []byte, getenv func(string) string) (string, bool) {
+func watchyardPart(in []byte, getenv func(string) string) (string, bool) {
 	v := ParseValues(in)
 	env, err := clientenv.Load(getenv)
 	if err != nil {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# pane-check.sh: the gate for the Switchyard pane mod (docs/spec/terminal.md T5).
+# pane-check.sh: the gate for the Watchyard pane mod (docs/spec/terminal.md T5).
 #
-#   scripts/pane-check.sh [mod-dir]     default: plugin/switchyard-pane
+#   scripts/pane-check.sh [mod-dir]     default: plugin/watchyard-pane
 #   scripts/pane-check.sh --self-test   run the checks on scripts/pane-check.d/forbidden and
 #                                       succeed only if they FAIL there
 #
@@ -13,11 +13,11 @@
 #   4. claude plugin test.
 #
 # Claude Code is never run against your real config: the script makes a temp HOME and
-# CLAUDE_CONFIG_DIR, clears XDG_* and SY_*, and runs from an empty folder.
+# CLAUDE_CONFIG_DIR, clears XDG_* and WY_*, and runs from an empty folder.
 #
 # Environment:
 #   CLAUDE_BIN                  the claude binary (default: claude)
-#   SY_PANE_TYPES               a claude-code.d.ts to type-check against. Default: the mod's own
+#   WY_PANE_TYPES               a claude-code.d.ts to type-check against. Default: the mod's own
 #                               .claude-plugin/types/claude-code/index.d.ts, which Claude Code lays
 #                               when it loads the mod. With neither, tsc is skipped, unless...
 #   PANE_CHECK_REQUIRE_TSC=1    ...a missing types file or missing tsc is a failure
@@ -27,7 +27,7 @@ set -u
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 root=$(cd "$here/.." && pwd)
 claude_bin=${CLAUDE_BIN:-claude}
-types_env=${SY_PANE_TYPES:-}   # read before SY_* is cleared below
+types_env=${WY_PANE_TYPES:-}   # read before WY_* is cleared below
 
 if [ "${1:-}" = "--self-test" ]; then
   # Each fixture must fail with its own message: a non-zero exit alone could be a missing
@@ -57,17 +57,17 @@ if [ "${1:-}" = "--self-test" ]; then
   exit $st
 fi
 
-dir=${1:-$root/plugin/switchyard-pane}
+dir=${1:-$root/plugin/watchyard-pane}
 dir=$(cd "$dir" && pwd) || { echo "pane-check: no such folder: ${1:-}" >&2; exit 2; }
 
 # Everything claude runs in a temp home, from an empty folder.
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/home" "$tmp/cwd"
-for v in $(env | sed -n 's/^\(XDG_[A-Za-z_]*\)=.*/\1/p; s/^\(SY_[A-Za-z_]*\)=.*/\1/p'); do unset "$v"; done
+for v in $(env | sed -n 's/^\(XDG_[A-Za-z_]*\)=.*/\1/p; s/^\(WY_[A-Za-z_]*\)=.*/\1/p'); do unset "$v"; done
 for v in $(env | sed -n 's/^\(SY_[A-Za-z0-9_]*\)=.*/\1/p' | grep -v _E2E_); do unset "$v"; done # rename:keep: the old prefix, which the command still reads (rename.md 2.13)
 unset CLAUDE_CONFIG_DIR
-export HOME="$tmp/home" CLAUDE_CONFIG_DIR="$tmp/home/.claude" SY_HOME="$tmp/sy"
+export HOME="$tmp/home" CLAUDE_CONFIG_DIR="$tmp/home/.claude" WY_HOME="$tmp/wy"
 
 claude_run() { (cd "$tmp/cwd" && "$claude_bin" "$@"); }
 
@@ -202,9 +202,9 @@ elif command -v npx >/dev/null 2>&1; then
 fi
 if [ -z "$types" ] || [ ${#tsc_cmd[@]} -eq 0 ]; then
   if [ "${PANE_CHECK_REQUIRE_TSC:-}" = 1 ]; then
-    bad "tsc needs the claude-code types (SY_PANE_TYPES or .claude-plugin/types/) and tsc"
+    bad "tsc needs the claude-code types (WY_PANE_TYPES or .claude-plugin/types/) and tsc"
   else
-    echo "pane-check: tsc skipped (no claude-code types or no tsc); set SY_PANE_TYPES to check" >&2
+    echo "pane-check: tsc skipped (no claude-code types or no tsc); set WY_PANE_TYPES to check" >&2
   fi
 else
   echo "pane-check: tsc -p"

@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/mraj602/switchyard/internal/hub/state"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/state"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // RefoldReport is what Refold changed (or, dry, would change).
@@ -26,7 +26,7 @@ type RefoldReport struct {
 var errDryRun = errors.New("dry run")
 
 // Refold rebuilds every session's fold and its times from the stored records, with the
-// current engine (states.md 5.1, `sy hub refold`): sessions with a hook event or a
+// current engine (states.md 5.1, `wy hub refold`): sessions with a hook event or a
 // session_list that listed them are refolded from those records; the rest are history,
 // ended at their newest transcript activity. started_at becomes the earliest of the first
 // hook event, the first transcript row and (for listed sessions) the stored start; for a

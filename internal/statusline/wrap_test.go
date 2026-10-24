@@ -71,7 +71,7 @@ func TestShowOffPrintsOnlyTheWrappedLineAndStillSamples(t *testing.T) {
 		t.Skip("uses sh")
 	}
 	sb := newSandbox(t)
-	cfg := filepath.Join(sb.home, "sy", "config", "config.toml")
+	cfg := filepath.Join(sb.home, "wy", "config", "config.toml")
 	if err := os.MkdirAll(filepath.Dir(cfg), 0o755); err != nil {
 		t.Fatal(err)
 	}

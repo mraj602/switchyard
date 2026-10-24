@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/hub/hublock"
-	"github.com/mraj602/switchyard/internal/hub/pull"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/hublock"
+	"github.com/mraj602/watchyard/internal/hub/pull"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
-// `sy hub pull run` with no name leaves the runs to a live hub (it only
+// `wy hub pull run` with no name leaves the runs to a live hub (it only
 // schedules them) and runs in-process when no hub is alive.
 func TestPullRunWithoutNameAsksALiveHub(t *testing.T) {
 	f := newPullFixture(t)
@@ -49,10 +49,10 @@ func TestPullRunWithoutNameAsksALiveHub(t *testing.T) {
 	}
 }
 
-// A `sy hub serve` on the data folder (hub.lock) stops a second serve and
+// A `wy hub serve` on the data folder (hub.lock) stops a second serve and
 // an import, whatever address it listens on.
 func TestHubLockStopsSecondServeAndImport(t *testing.T) {
-	t.Setenv("SY_STATE_DIR", t.TempDir())
+	t.Setenv("WY_STATE_DIR", t.TempDir())
 	data := t.TempDir()
 	db := filepath.Join(data, "hub.db")
 	l, err := hublock.Acquire(data)

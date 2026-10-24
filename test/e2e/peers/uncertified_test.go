@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/agent"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/agent"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
-// list is `sy peers list --json` from the session `from` through this machine's agent.
+// list is `wy peers list --json` from the session `from` through this machine's agent.
 func (m *machine) list(from string) []peers.ListEntry {
 	m.t.Helper()
 	s := m.session(from)
@@ -50,7 +50,7 @@ func entryFor(t *testing.T, es []peers.ListEntry, handle string) peers.ListEntry
 	return peers.ListEntry{}
 }
 
-// The owner never ran `sy keys init`, so no machine is owner-certified (what `sy doctor`
+// The owner never ran `wy keys init`, so no machine is owner-certified (what `wy doctor`
 // warns about as "not owner-certified"). Then:
 //   - same-machine messages across accounts work (they need no link keys);
 //   - other machines' sessions are listed with `can` from the matrix, but marked blocked
@@ -76,7 +76,7 @@ func TestUncertifiedMachines(t *testing.T) {
 	rf := w.laptop.send("api", toWorker, "across machines", 0, 0).Refusal()
 	refusedWith(t, rf, peers.CodeRejected)
 	line := peers.Describe(rf)
-	for _, want := range []string{toWorker, peers.BlockedNoOwnerPin, "sy keys init", "sy keys certify --all", "sy agent enable", "Do not retry"} {
+	for _, want := range []string{toWorker, peers.BlockedNoOwnerPin, "wy keys init", "wy keys certify --all", "wy agent enable", "Do not retry"} {
 		if !strings.Contains(line, want) {
 			t.Errorf("refusal line lacks %q:\n%s", want, line)
 		}
@@ -88,7 +88,7 @@ func TestUncertifiedMachines(t *testing.T) {
 		t.Errorf("hub rows %d, want 1 (nothing relayed)", n)
 	}
 
-	// The owner key is made on the laptop (sy keys init pins it there) and confirmed; the
+	// The owner key is made on the laptop (wy keys init pins it there) and confirmed; the
 	// laptop alone is certified. The laptop now sees the worker's keys as the blocker, the
 	// worker (no owner pin yet) its own pin.
 	h.confirmOwner()
@@ -104,13 +104,13 @@ func TestUncertifiedMachines(t *testing.T) {
 	}
 
 	// The worker is certified and picks the owner key up when its link logs in again (the
-	// welcome carries it; sy agent enable does the same).
+	// welcome carries it; wy agent enable does the same).
 	h.certify(w.worker)
 	// Before it has the owner key the worker cannot check the laptop's certificate, so it
 	// refuses the message; the laptop's line says why and what to do.
 	rf = w.laptop.send("api", toWorker, "worker not pinned yet", 0, 0).Refusal()
 	refusedWith(t, rf, peers.CodeRejected)
-	if !strings.Contains(rf.Detail, "uncertified") || !strings.Contains(rf.Detail, "sy agent enable") {
+	if !strings.Contains(rf.Detail, "uncertified") || !strings.Contains(rf.Detail, "wy agent enable") {
 		t.Errorf("receiver's refusal: %q", rf.Detail)
 	}
 	w.worker.disconnect()
@@ -145,7 +145,7 @@ func TestSenderNotCertified(t *testing.T) {
 	}
 	rf := w.laptop.send("api", toWorker, "from an uncertified laptop", 0, 0).Refusal()
 	refusedWith(t, rf, peers.CodeRejected)
-	if !strings.Contains(rf.Detail, peers.BlockedSelfUncert) || !strings.Contains(rf.Detail, "sy keys certify --all") {
+	if !strings.Contains(rf.Detail, peers.BlockedSelfUncert) || !strings.Contains(rf.Detail, "wy keys certify --all") {
 		t.Errorf("detail %q", rf.Detail)
 	}
 	// The worker (certified) sees the laptop as the blocker.

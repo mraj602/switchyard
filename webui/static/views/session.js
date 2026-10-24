@@ -41,7 +41,7 @@ export function render({ store, route, now }) {
   const s = store.detail && store.detail.id === route.id ? store.detail : null;
   if (!s) {
     const gone = store.errorStatus === 404;
-    return { title: 'Session · Switchyard', node: h('div', { class: 'page' }, back,
+    return { title: 'Session · Watchyard', node: h('div', { class: 'page' }, back,
       gone ? h('p', { class: 'calm', role: 'status', 'data-key': 'session-missing' }, 'This session no longer exists, or was never on this hub. ', h('a', { href: '#/sessions' }, 'Back to Sessions'))
         : h('p', { class: store.error ? 'calm' : 'muted pad' }, store.error || 'Loading session…')) };
   }
@@ -61,7 +61,7 @@ export function render({ store, route, now }) {
   // An imported session cannot be reopened in the Claude app (D3).
   const remote = imported ? null : httpsUrl(s.remote_url);
   // Open but never sent a hook event: Claude Code loads hooks when a session starts, so a
-  // session that was already running when Switchyard was set up only shows up in listings.
+  // session that was already running when Watchyard was set up only shows up in listings.
   const noHooks = !imported && !isEnded(s) && tl.length === 0 && !s.last_event_at;
 
   const facts = [
@@ -114,7 +114,7 @@ export function render({ store, route, now }) {
             onclick: () => { showAll = !showAll; window.dispatchEvent(new Event('sy-rerender')); } },
             showAll ? 'State changes only' : `Show all ${tl.length} events`) : null),
         events.length === 0 ? h('p', { class: 'muted', 'data-key': noHooks ? 'no-hooks' : null }, noHooks
-          ? 'This session started before Switchyard was set up, so the hub only sees that it is running: no messages or events. Start a new session, or resume this one (claude --resume), to see its timeline and last message.'
+          ? 'This session started before Watchyard was set up, so the hub only sees that it is running: no messages or events. Start a new session, or resume this one (claude --resume), to see its timeline and last message.'
           : imported ? 'No events: the hub only has this session\'s history (times, tokens), not what happened in it.' : 'No events yet.')
           : h('ol', { class: 'timeline' }, [...events].reverse().map((e) => h('li', { class: 'tl-item' },
             h('time', { datetime: e.ts, class: 'tl-time mono small', title: dateTime(e.ts) }, `${day(e.ts, now)} ${timeOfDay(e.ts)}`),
@@ -124,5 +124,5 @@ export function render({ store, route, now }) {
             e.state_after ? h('span', { class: 'muted small' }, `· now ${stateInfo({ state: e.state_after }).label}`) : null,
             e.last_message ? h('div', { class: 'tl-msg muted small' }, e.last_message) : null))))));
 
-  return { title: `${name} · Switchyard`, node };
+  return { title: `${name} · Watchyard`, node };
 }

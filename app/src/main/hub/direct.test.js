@@ -23,7 +23,7 @@ test('checkAddress: https always, http only on this computer or a local network'
   assert.equal(checkAddress('ftp://hub.example.com').ok, false);
   assert.equal(checkAddress('https://user:pw@hub.example.com').ok, false);
   assert.equal(isLocalNetworkHost('[::1]'), true);
-  // the explicit opt-in (like sy --insecure-lan) allows a private network, never a public host
+  // the explicit opt-in (like wy --insecure-lan) allows a private network, never a public host
   for (const ok of ['http://192.168.1.20:8787', 'http://10.0.0.5', 'http://172.20.1.1', 'http://100.101.102.103', 'http://nas.local:8787', 'http://nas']) {
     assert.equal(checkAddress(ok, { insecureLan: true }).ok, true, ok);
   }
@@ -52,7 +52,7 @@ function setup({ fetch, auth = { url: 'https://hub.example.com', token: 'sy_d_x'
     return new Response(JSON.stringify({ accepted: [], duplicates: [], rejected: [] }), { status: 200 });
   });
   const d = createDirect({
-    fs: fsp, path, file: path.join(dir, 'direct.json'), fetch: f, log: silent, clientName: 'switchyard-desktop', version: '9.9.9',
+    fs: fsp, path, file: path.join(dir, 'direct.json'), fetch: f, log: silent, clientName: 'watchyard-desktop', version: '9.9.9',
     timers: { setTimeout: () => ({ unref() {} }), clearTimeout() {} }, getAuth: () => auth, active: () => active, onUnauthorized,
   });
   return { d, dir, calls };
@@ -69,7 +69,7 @@ test('the machine id and the hub address survive a restart; the id is made once'
   if (process.platform !== 'win32') assert.equal((fs.statSync(path.join(dir, 'direct.json')).mode & 0o777), 0o600);
 });
 
-test('claim posts what sy desktop token posts, and maps the failures to words', async () => {
+test('claim posts what wy desktop token posts, and maps the failures to words', async () => {
   let reply = { status: 200, body: { device: 'dev_1', token: 'sy_d_new', kind: 'desktop', scopes: ['read', 'write'] } };
   const seen = [];
   const { d } = setup({
@@ -78,13 +78,13 @@ test('claim posts what sy desktop token posts, and maps the failures to words', 
       return new Response(JSON.stringify(reply.body), { status: reply.status });
     },
   });
-  const ok = await d.claim({ url: 'https://hub.example.com', code: '123-456', name: 'Switchyard-desktop-box' });
+  const ok = await d.claim({ url: 'https://hub.example.com', code: '123-456', name: 'Watchyard-desktop-box' });
   assert.deepEqual(ok, { ok: true, device: 'dev_1', token: 'sy_d_new' });
   assert.equal(seen[0][0], 'https://hub.example.com/v1/pair/claim');
   assert.equal(seen[0][1].method, 'POST');
   assert.equal(seen[0][1].headers.authorization, undefined);
   const b = JSON.parse(seen[0][1].body);
-  assert.deepEqual({ ...b, machine: 'x' }, { code: '123456', name: 'Switchyard-desktop-box', machine: 'x', expect_kind: 'desktop', client: 'switchyard-desktop/9.9.9' });
+  assert.deepEqual({ ...b, machine: 'x' }, { code: '123456', name: 'Watchyard-desktop-box', machine: 'x', expect_kind: 'desktop', client: 'watchyard-desktop/9.9.9' });
   // a long secret (not digits) goes as `secret`
   await d.claim({ url: 'https://hub.example.com', code: 'abcdefghijkl', name: 'n' });
   assert.equal(JSON.parse(seen[1][1].body).secret, 'abcdefghijkl');
@@ -109,7 +109,7 @@ test('the outbox: records are queued on disk, sent as one batch with the token, 
   assert.equal(calls[0][1].headers.authorization, 'Bearer sy_d_x');
   const body = JSON.parse(calls[0][1].body);
   assert.equal(body.v, 1);
-  assert.equal(body.client, 'switchyard-desktop/9.9.9');
+  assert.equal(body.client, 'watchyard-desktop/9.9.9');
   assert.equal(body.records[0].v, 1);
   assert.equal(d.queued(), 0);
   assert.equal(fs.existsSync(path.join(dir, 'direct-outbox.ndjson')), false);
@@ -130,7 +130,7 @@ test('the outbox: kept on a network failure or a 503, dropped for a batch the hu
   const idle = setup({ active: false });
   await idle.d.append([{ kind: 'k', machine: 'm', payload: {} }]);
   await idle.d.flushNow();
-  assert.equal(idle.calls.length, 0, 'sy mode: the direct outbox sends nothing');
+  assert.equal(idle.calls.length, 0, 'wy mode: the direct outbox sends nothing');
   assert.equal(idle.d.queued(), 1);
 });
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=Watchyard: flush every minute and at boot
+
+[Timer]
+OnBootSec=30s
+OnUnitInactiveSec=60s
+AccuracySec=1s
+Unit=watchyard-flush.service
+
+[Install]
+WantedBy=timers.target

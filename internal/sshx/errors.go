@@ -32,7 +32,7 @@ func (e *Error) Error() string {
 	case ClassUnknownHostKey:
 		return fmt.Sprintf("the host key of %s is not known: ssh %s once by hand to check and accept its host key", e.Host, e.Host)
 	case ClassChangedHostKey:
-		return fmt.Sprintf("the host key of %s CHANGED since you last connected: check the server before you trust it; sy changes nothing until ssh %s works again", e.Host, e.Host)
+		return fmt.Sprintf("the host key of %s CHANGED since you last connected: check the server before you trust it; wy changes nothing until ssh %s works again", e.Host, e.Host)
 	case ClassAuth:
 		return fmt.Sprintf("ssh could not log in to %s (%s): check that ssh %s works without a password prompt", e.Host, e.Detail, e.Host)
 	case ClassConnect:

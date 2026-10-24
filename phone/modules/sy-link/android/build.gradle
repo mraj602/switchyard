@@ -7,7 +7,7 @@ plugins {
   id 'expo-module-gradle-plugin'
 }
 
-group = 'dev.switchyard'
+group = 'dev.watchyard'
 version = '0.1.0'
 
 // The Go side's shared goldens (link.md 10). The JVM tests read every *.json there when the
@@ -17,15 +17,15 @@ def linkVectors = new File(repoRoot, 'internal/link/testdata')
 def webpushVectors = new File(repoRoot, 'internal/hub/push/webpush/testdata')
 
 android {
-  namespace 'dev.switchyard.link'
+  namespace 'dev.watchyard.link'
   defaultConfig {
     versionCode 1
     versionName '0.1.0'
   }
   testOptions {
     unitTests.all {
-      systemProperty 'sy.linkVectors', linkVectors.absolutePath
-      systemProperty 'sy.webpushVectors', webpushVectors.absolutePath
+      systemProperty 'wy.linkVectors', linkVectors.absolutePath
+      systemProperty 'wy.webpushVectors', webpushVectors.absolutePath
     }
   }
 }

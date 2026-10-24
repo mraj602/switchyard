@@ -8,10 +8,10 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	hubkeys "github.com/mraj602/watchyard/internal/hub/keys"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 // Key endpoints (keys.md 3.3, 4.2, 6; api.yaml tag keys). Every handler answers 503 when
@@ -23,7 +23,7 @@ func init() {
 			pairWire(s)
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if s.cfg.Keys == nil {
-					auth.WriteError(w, http.StatusServiceUnavailable, "unavailable", "this hub has no signing key; restart `sy hub serve`")
+					auth.WriteError(w, http.StatusServiceUnavailable, "unavailable", "this hub has no signing key; restart `wy hub serve`")
 					return
 				}
 				h(s, w, r)
@@ -127,7 +127,7 @@ func (s *Server) keysGet(w http.ResponseWriter, r *http.Request) {
 		rv = rl.Body.Version
 	}
 	out["revocations_version"] = rv
-	// For `sy keys certify` on the owner machine (a write token): the live devices with keys
+	// For `wy keys certify` on the owner machine (a write token): the live devices with keys
 	// and whether the owner signed them. Viewer tokens do not get it.
 	if caller.HasScope("owner") || caller.HasScope("write") {
 		list, err := s.keysDevices(r.Context())

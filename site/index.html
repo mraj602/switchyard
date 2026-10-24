@@ -4,27 +4,27 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <title>Switchyard: one board for every Claude Code account</title>
-  <meta name="description" content="Switchyard is an open-source, self-hosted board for Claude Code across many accounts and machines: session states, usage limits and alerts when a session needs you. More coding agents are coming.">
+  <title>Watchyard: one board for every Claude Code account</title>
+  <meta name="description" content="Watchyard is an open-source, self-hosted board for Claude Code across many accounts and machines: session states, usage limits and alerts when a session needs you. More coding agents are coming.">
   <meta name="color-scheme" content="light dark">
-  <link rel="canonical" href="https://mraj602.github.io/switchyard/">
+  <link rel="canonical" href="https://mraj602.github.io/watchyard/">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="apple-touch-icon-180.png">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Switchyard">
-  <meta property="og:title" content="Switchyard: one board for every Claude Code account">
+  <meta property="og:site_name" content="Watchyard">
+  <meta property="og:title" content="Watchyard: one board for every Claude Code account">
   <meta property="og:description" content="Open source and self-hosted. Every Claude Code session's state, every account's limits, and an alert when a session needs you.">
-  <meta property="og:url" content="https://mraj602.github.io/switchyard/">
-  <meta property="og:image" content="https://mraj602.github.io/switchyard/img/social-card.png">
+  <meta property="og:url" content="https://mraj602.github.io/watchyard/">
+  <meta property="og:image" content="https://mraj602.github.io/watchyard/img/social-card.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Switchyard logo and the line: one board for every Claude Code account and machine.">
+  <meta property="og:image:alt" content="Watchyard logo and the line: one board for every Claude Code account and machine.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Switchyard: one board for every Claude Code account">
+  <meta name="twitter:title" content="Watchyard: one board for every Claude Code account">
   <meta name="twitter:description" content="Open source and self-hosted. Every Claude Code session's state, every account's limits, and an alert when a session needs you.">
-  <meta name="twitter:image" content="https://mraj602.github.io/switchyard/img/social-card.png">
-  <meta name="twitter:image:alt" content="Switchyard logo and the line: one board for every Claude Code account and machine.">
+  <meta name="twitter:image" content="https://mraj602.github.io/watchyard/img/social-card.png">
+  <meta name="twitter:image:alt" content="Watchyard logo and the line: one board for every Claude Code account and machine.">
   <link rel="preload" href="fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
   <script src="site.js" defer></script>
@@ -34,16 +34,16 @@
 
   <header class="top">
     <div class="wrap bar">
-      <a class="brand" href="#top" aria-label="Switchyard, top of page">
+      <a class="brand" href="#top" aria-label="Watchyard, top of page">
         <img src="favicon.svg" alt="" width="28" height="28">
-        <span>Switchyard</span>
+        <span>Watchyard</span>
       </a>
       <nav aria-label="Page">
         <a href="#features">Features</a>
         <a href="#install">Install</a>
         <a href="#apps">Apps</a>
         <a href="#privacy">Privacy</a>
-        <a href="https://github.com/mraj602/switchyard">GitHub</a>
+        <a href="https://github.com/mraj602/watchyard">GitHub</a>
       </nav>
     </div>
   </header>
@@ -56,7 +56,7 @@
         <p class="lead">See every session's state, every account's limits, and get a notification when a session needs you. It runs on your own hub, with no cloud service in the middle. Built for Claude Code, and agent-neutral: Codex CLI, Gemini CLI and more are next.</p>
         <p class="cta">
           <a class="btn primary" href="#install">Install</a>
-          <a class="btn" href="https://github.com/mraj602/switchyard">View on GitHub</a>
+          <a class="btn" href="https://github.com/mraj602/watchyard">View on GitHub</a>
         </p>
         <p class="note">For Linux and macOS (Windows with gaps) and Android 12+. Get it from the latest release, or build from source.</p>
       </div>
@@ -99,7 +99,7 @@
         <h2 id="demo-h">See it</h2>
         <figure class="demo">
           <!-- Recorded from the mock hub with sample data: scripts/demo/record.cjs. -->
-          <video id="demo-media" src="media/demo.mp4" poster="media/demo-poster.jpg" width="1280" height="800" controls autoplay muted loop playsinline aria-label="Demo of the Switchyard board and Android alerts" aria-describedby="demo-transcript"></video>
+          <video id="demo-media" src="media/demo.mp4" poster="media/demo-poster.jpg" width="1280" height="800" controls autoplay muted loop playsinline aria-label="Demo of the Watchyard board and Android alerts" aria-describedby="demo-transcript"></video>
           <div class="demo-bar">
             <button type="button" id="demo-toggle" class="vbtn" hidden aria-controls="demo-media">Pause</button>
             <figcaption id="demo-cap">Sample data from the mock hub: sessions that need you, every session, account limits, peers, and an alert on Android. About 25 seconds, no sound, loops.</figcaption>
@@ -137,33 +137,33 @@
     <section id="install" aria-labelledby="install-h">
       <div class="wrap">
         <h2 id="install-h">Install</h2>
-        <p class="sub">Needs Claude Code, on Linux or macOS. This runs the hub on the same computer. On Windows, see the <a href="https://github.com/mraj602/switchyard#releases">Releases section of the README</a>.</p>
+        <p class="sub">Needs Claude Code, on Linux or macOS. This runs the hub on the same computer. On Windows, see the <a href="https://github.com/mraj602/watchyard#releases">Releases section of the README</a>.</p>
 
         <ol class="steps">
           <li>
-            <h3>Install <code>sy</code></h3>
+            <h3>Install <code>wy</code></h3>
             <div class="code">
-              <pre><code id="cmd-install">curl -fsSL https://github.com/mraj602/switchyard/releases/latest/download/install.sh | sh</code></pre>
+              <pre><code id="cmd-install">curl -fsSL https://github.com/mraj602/watchyard/releases/latest/download/install.sh | sh</code></pre>
               <button type="button" class="copy" data-copy="cmd-install" aria-label="Copy install command">Copy</button>
             </div>
-            <p class="small">It installs a checksum-checked <code>sy</code> in <code>~/.local/bin</code> and changes nothing else. Prefer to build it? Needs Go 1.27+, <code>make</code> and <code>git</code>:</p>
+            <p class="small">It installs a checksum-checked <code>wy</code> in <code>~/.local/bin</code> and changes nothing else. Prefer to build it? Needs Go 1.27+, <code>make</code> and <code>git</code>:</p>
             <div class="code">
-              <pre><code id="cmd-build">git clone https://github.com/mraj602/switchyard.git &amp;&amp; cd switchyard
-make build &amp;&amp; install -D -m 0755 dist/sy ~/.local/bin/sy</code></pre>
+              <pre><code id="cmd-build">git clone https://github.com/mraj602/watchyard.git &amp;&amp; cd watchyard
+make build &amp;&amp; install -D -m 0755 dist/wy ~/.local/bin/wy</code></pre>
               <button type="button" class="copy" data-copy="cmd-build" aria-label="Copy build and install commands">Copy</button>
             </div>
           </li>
           <li>
             <h3>Set up and open the board</h3>
             <div class="code">
-              <pre><code id="cmd-setup">sy setup            # shows a plan first; choose "Just this computer" for the hub
-sy hub owner-link   # open the printed link: the board, signed in as the owner</code></pre>
+              <pre><code id="cmd-setup">wy setup            # shows a plan first; choose "Just this computer" for the hub
+wy hub owner-link   # open the printed link: the board, signed in as the owner</code></pre>
               <button type="button" class="copy" data-copy="cmd-setup" aria-label="Copy setup commands">Copy</button>
             </div>
           </li>
         </ol>
-        <p>Restart your open Claude Code sessions afterwards so they load the plugin. Everything <code>sy setup</code> changes is backed up, and <code>sy setup --undo</code> reverses it. Want to look first? <code>sy setup --dry-run</code> prints the plan and changes nothing.</p>
-        <p>A hub on a server, more machines and the phone: see the <a href="https://github.com/mraj602/switchyard/blob/main/docs/guide/install.md">install guide</a>.</p>
+        <p>Restart your open Claude Code sessions afterwards so they load the plugin. Everything <code>wy setup</code> changes is backed up, and <code>wy setup --undo</code> reverses it. Want to look first? <code>wy setup --dry-run</code> prints the plan and changes nothing.</p>
+        <p>A hub on a server, more machines and the phone: see the <a href="https://github.com/mraj602/watchyard/blob/main/docs/guide/install.md">install guide</a>.</p>
       </div>
     </section>
 
@@ -174,16 +174,16 @@ sy hub owner-link   # open the printed link: the board, signed in as the owner</
           <article class="panel">
             <h3>Desktop app</h3>
             <p>One tab per claude.ai account, each with its own sign-in, a usage strip per account, and the board in a Hub view. Linux (AppImage, deb, rpm), macOS (dmg) and Windows (installer).</p>
-            <p class="small"><strong>Unsigned builds.</strong> Packages are not code-signed, so macOS and Windows warn on first start. Download one from the <a href="https://github.com/mraj602/switchyard/releases/latest">latest release</a> and check it against <code>SHA256SUMS-desktop</code>, or build it with <code>make app-dist</code>.</p>
-            <p><a href="https://github.com/mraj602/switchyard/blob/main/docs/guide/desktop.md">Desktop guide</a></p>
-            <img class="shot" src="media/desktop.png" width="1280" height="800" loading="lazy" alt="The Switchyard desktop app with a tab per claude.ai account, Hub, alex, platform-team and contractor, and a usage strip under the active tab showing its 5-hour and 7-day limits.">
+            <p class="small"><strong>Unsigned builds.</strong> Packages are not code-signed, so macOS and Windows warn on first start. Download one from the <a href="https://github.com/mraj602/watchyard/releases/latest">latest release</a> and check it against <code>SHA256SUMS-desktop</code>, or build it with <code>make app-dist</code>.</p>
+            <p><a href="https://github.com/mraj602/watchyard/blob/main/docs/guide/desktop.md">Desktop guide</a></p>
+            <img class="shot" src="media/desktop.png" width="1280" height="800" loading="lazy" alt="The Watchyard desktop app with a tab per claude.ai account, Hub, alex, platform-team and contractor, and a usage strip under the active tab showing its 5-hour and 7-day limits.">
             <img class="shot" src="media/desktop-hub.png" width="1280" height="800" loading="lazy" alt="The desktop app's Hub view: the board's Now screen with four sessions that need you (a rate limit, two questions and a permission request) and the three accounts in the sidebar.">
           </article>
           <article class="panel">
             <h3>Android app</h3>
             <p>The board's screens, native notifications with Open, Snooze and Seen, and six widgets. Android 12 or later, and a hub with an <code>https://</code> address. It keeps its own encrypted link to your hub: no Google push, no Firebase.</p>
             <p class="small"><strong>Install:</strong> download the APK from the <code>phone-v*</code> release on GitHub and check its signing certificate against the fingerprint in the release note. Obtainium can follow the releases. IzzyOnDroid is planned. Or build it from source.</p>
-            <p><a href="https://github.com/mraj602/switchyard/blob/main/docs/guide/android.md">Android guide</a></p>
+            <p><a href="https://github.com/mraj602/watchyard/blob/main/docs/guide/android.md">Android guide</a></p>
             <div class="phones">
               <img class="shot" src="media/android-needs-you.png" width="720" height="1600" loading="lazy" alt="The Android app's Now screen: three account limit rings and a Needs you list with a rate-limited session, a question from Claude and a permission request.">
               <img class="shot" src="media/android-accounts.png" width="720" height="1600" loading="lazy" alt="The Android app's Accounts screen: each account's 5-hour and 7-day limits with reset times and pace forecasts.">
@@ -192,7 +192,7 @@ sy hub owner-link   # open the printed link: the board, signed in as the owner</
         </div>
         <article class="panel term">
           <h3>Terminal board</h3>
-          <p>The same sessions without a browser: <code>sy board</code> is a full-screen board of what needs you, grouped by account, and <code>sy board --once</code> prints one frame.</p>
+          <p>The same sessions without a browser: <code>wy board</code> is a full-screen board of what needs you, grouped by account, and <code>wy board --once</code> prints one frame.</p>
           <img class="shot" src="media/terminal-board.png" width="1000" height="396" loading="lazy" alt="The terminal board in a dark terminal: a Needs you group with a rate-limited session and two questions, then each account's sessions with state, context used and time in state.">
         </article>
       </div>
@@ -203,12 +203,12 @@ sy hub owner-link   # open the printed link: the board, signed in as the owner</
         <h2 id="privacy-h">Privacy and risks</h2>
         <ul class="plain">
           <li><strong>The hub never sees cookies, tokens, prompts, code or tool output</strong>, and never contacts Anthropic. By default it gets the tail of Claude's last message in a turn, for question detection; one setting turns that off.</li>
-          <li><strong>claude.ai sign-ins stay on the device.</strong> The desktop and Android tabs load claude.ai's own pages, one local session per account. Switchyard never reads, exports or sends cookies or tokens.</li>
+          <li><strong>claude.ai sign-ins stay on the device.</strong> The desktop and Android tabs load claude.ai's own pages, one local session per account. Watchyard never reads, exports or sends cookies or tokens.</li>
           <li><strong>The desktop tabs present a plain Chrome user agent</strong>, because claude.ai's bot protection rejects Electron's default. It is documented, and you can skip account tabs entirely.</li>
           <li><strong>Usage reading from claude.ai is off by default</strong>, per account. It uses an internal, undocumented endpoint that can change, and automated access may go against Anthropic's consumer terms. It is your choice, and you do not need it for Claude Code.</li>
           <li><strong>Your own accounts only.</strong> Use it within your plan's terms. It never switches or rotates accounts.</li>
         </ul>
-        <p><a href="https://github.com/mraj602/switchyard/blob/main/docs/guide/claude-ai.md">Read the full privacy and risks page</a></p>
+        <p><a href="https://github.com/mraj602/watchyard/blob/main/docs/guide/claude-ai.md">Read the full privacy and risks page</a></p>
       </div>
     </section>
   </main>
@@ -217,10 +217,10 @@ sy hub owner-link   # open the printed link: the board, signed in as the owner</
     <div class="wrap">
       <p class="disclaimer"><strong>Unofficial.</strong> Not affiliated with, endorsed by or sponsored by Anthropic. Claude and Claude Code are trademarks of Anthropic.</p>
       <ul class="links">
-        <li><a href="https://github.com/mraj602/switchyard/tree/main/docs/guide">Docs</a></li>
-        <li><a href="https://github.com/mraj602/switchyard/blob/main/CONTRIBUTING.md">Contributing</a></li>
-        <li><a href="https://github.com/mraj602/switchyard/blob/main/SECURITY.md">Security</a></li>
-        <li><a href="https://github.com/mraj602/switchyard/blob/main/LICENSE">AGPL-3.0</a></li>
+        <li><a href="https://github.com/mraj602/watchyard/tree/main/docs/guide">Docs</a></li>
+        <li><a href="https://github.com/mraj602/watchyard/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        <li><a href="https://github.com/mraj602/watchyard/blob/main/SECURITY.md">Security</a></li>
+        <li><a href="https://github.com/mraj602/watchyard/blob/main/LICENSE">AGPL-3.0</a></li>
       </ul>
       <p class="small">Contact: GitHub <a href="https://github.com/mraj602">@mraj602</a>, <a href="mailto:mraj602@gmail.com">mraj602@gmail.com</a>. Fonts: IBM Plex, SIL OFL 1.1 (<a href="fonts/OFL.txt">licence</a>). This page sets no cookies and uses no trackers.</p>
     </div>

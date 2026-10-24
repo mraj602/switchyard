@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // Term builds the record's term object from the environment (record.md 3.3): the app from

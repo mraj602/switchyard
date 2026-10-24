@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/config"
 )
 
 // Message is ntfy's JSON publish body (push.md 7.2).
@@ -157,7 +157,7 @@ func Build(e Episode, o MessageOptions) Message {
 		deep = o.PublicURL + "/#/sessions/" + url.PathEscape(e.Session)
 	}
 	if o.Private {
-		m.Title, m.Message = "Switchyard", "1 session needs you"
+		m.Title, m.Message = "Watchyard", "1 session needs you"
 		if o.PublicURL != "" {
 			m.Click = o.PublicURL + "/"
 			m.Actions = []Action{{Action: "view", Label: "Open", URL: m.Click, Clear: true}}
@@ -183,9 +183,9 @@ func Build(e Episode, o MessageOptions) Message {
 	return m
 }
 
-// TestMessage is `sy direct-push test`'s message (machines.md 5.2).
+// TestMessage is `wy direct-push test`'s message (machines.md 5.2).
 func TestMessage(topic, machine string) Message {
-	return Message{Topic: topic, Title: "Switchyard", Message: "Switchyard direct push test from " + machine, Priority: 3, Tags: []string{"bell"}}
+	return Message{Topic: topic, Title: "Watchyard", Message: "Watchyard direct push test from " + machine, Priority: 3, Tags: []string{"bell"}}
 }
 
 // SendResult is one ntfy POST's outcome. Error is short and never the reply body (push.md 7.3).
@@ -262,6 +262,6 @@ func ServerHost(server string) string {
 }
 
 // CheckServer validates a push.direct.server value: https, or http only for loopback,
-// private and tailnet addresses (the `sy connect` rule, push.md 7.1). The rule lives in
-// config so `sy config set` and a hand-edited file are held to it as well.
+// private and tailnet addresses (the `wy connect` rule, push.md 7.1). The rule lives in
+// config so `wy config set` and a hand-edited file are held to it as well.
 func CheckServer(server string) error { return config.CheckDirectServer(server) }

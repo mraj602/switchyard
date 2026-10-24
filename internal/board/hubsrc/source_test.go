@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/board"
+	"github.com/mraj602/watchyard/internal/board"
 )
 
 func waitStreams(t *testing.T, h *fakeHub, n int) {

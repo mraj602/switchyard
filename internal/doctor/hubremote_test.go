@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/client"
-	"github.com/mraj602/switchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/config"
 )
 
 func remoteCfg(url string) config.Config {
@@ -26,7 +26,7 @@ func TestHubIsLocal(t *testing.T) {
 		{"http://localhost:8787", "", true},
 		{"http://[::1]:8787", "", true},
 		{"http://box.lan:8787", "box.lan:8787", true},
-		{"https://sy.example.com", "127.0.0.1:8787", false},
+		{"https://wy.example.com", "127.0.0.1:8787", false},
 		{"https://hub.example.com", "", false},
 		{"http://203.0.113.9:8787", "127.0.0.1:8787", false},
 	} {
@@ -43,13 +43,13 @@ func TestPushRemoteHubSkipsStaleDB(t *testing.T) {
 	hubDB(t, e) // an empty, stale local database
 	o := e.opts(nil)
 	o.HealthProbe = func(_ context.Context, hub, _ string) (client.Health, error) {
-		if hub != "https://sy.example.com" {
+		if hub != "https://wy.example.com" {
 			t.Errorf("probed %q", hub)
 		}
 		return client.Health{OK: true, Version: "1.2.3"}, nil
 	}
 	var rep Report
-	checkPush(context.Background(), &rep, o, remoteCfg("https://sy.example.com/"))
+	checkPush(context.Background(), &rep, o, remoteCfg("https://wy.example.com/"))
 	for _, c := range rep.Checks {
 		if strings.HasPrefix(c.Name, "push") || c.Name == "pull" {
 			t.Errorf("hub-database check on a remote hub: %+v", c)
@@ -67,14 +67,14 @@ func TestRemoteHubUnreachableAndPlainHTTP(t *testing.T) {
 		return client.Health{}, errors.New("connection refused")
 	}
 	var rep Report
-	checkPush(context.Background(), &rep, o, remoteCfg("https://sy.example.com"))
+	checkPush(context.Background(), &rep, o, remoteCfg("https://wy.example.com"))
 	if c := pcheck(t, rep, "hub health"); c.Level != Warn || !strings.Contains(c.Detail, "connection refused") || c.Fix == "" {
 		t.Errorf("%+v", c)
 	}
 
 	o.HealthProbe = func(context.Context, string, string) (client.Health, error) { return client.Health{OK: true}, nil }
 	rep = Report{}
-	checkPush(context.Background(), &rep, o, remoteCfg("http://sy.example.com"))
+	checkPush(context.Background(), &rep, o, remoteCfg("http://wy.example.com"))
 	if c := pcheck(t, rep, "hub health"); c.Level != Warn || !strings.Contains(c.Detail, "not https") {
 		t.Errorf("%+v", c)
 	}
@@ -101,7 +101,7 @@ func TestPushURLFixWording(t *testing.T) {
 	e := newFakeHome(t, `{}`)
 	hubDB(t, e)
 	c := pcheck(t, runPush(t, e), "push url")
-	for _, want := range []string{"sy hub serve --public-url https://<hub address>", "if your tailnet supports HTTPS certificates, `tailscale serve --bg 8787`"} {
+	for _, want := range []string{"wy hub serve --public-url https://<hub address>", "if your tailnet supports HTTPS certificates, `tailscale serve --bg 8787`"} {
 		if !strings.Contains(c.Fix, want) {
 			t.Errorf("fix lacks %q: %s", want, c.Fix)
 		}

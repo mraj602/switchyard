@@ -2,7 +2,7 @@
 
     mcpspan.py outside <file>          print the file with the top-level "mcpServers" value cut out
                                        (and the volatile numStartups counter zeroed): everything
-                                       sy must leave byte-identical
+                                       wy must leave byte-identical
     mcpspan.py servers <file>          print the mcpServers object, canonical JSON
     mcpspan.py set <file> <name> <json>   add or replace one server (re-serialises the file with
                                        2-space indent, as the fake claude does)

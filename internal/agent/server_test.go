@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 // noProc is a process tree with nobody in it: every caller is "not a session".
@@ -49,7 +49,7 @@ func start(t *testing.T, mod func(*Config)) *running {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.RemoveAll(base) })
-	r := &running{sock: filepath.Join(base, "run", "sy", "agent.sock"), state: filepath.Join(base, "state"), done: make(chan error, 1)}
+	r := &running{sock: filepath.Join(base, "run", "wy", "agent.sock"), state: filepath.Join(base, "state"), done: make(chan error, 1)}
 	cfg := Config{
 		Socket: r.sock,
 		Load: func() (peers.Env, bool, error) {
@@ -268,7 +268,7 @@ func TestRotatingLog(t *testing.T) {
 }
 
 func TestSocketPath(t *testing.T) {
-	if got := SocketPath("linux", "/run/user/7", "/s"); got != "/run/user/7/sy/agent.sock" {
+	if got := SocketPath("linux", "/run/user/7", "/s"); got != "/run/user/7/wy/agent.sock" {
 		t.Error(got)
 	}
 	if got := SocketPath("darwin", "", "/s"); got != "/s/agent/agent.sock" {
@@ -305,7 +305,7 @@ func TestSocketPathLengthRule(t *testing.T) {
 // "Hooks never wait on it": nothing in the hook path may import the agent.
 func TestHookDoesNotImportAgent(t *testing.T) {
 	var files []string
-	for _, pat := range []string{"../hook/*.go", "../statusline/*.go", "../../cmd/sy/cmd_hook.go", "../../cmd/sy/tick.go"} {
+	for _, pat := range []string{"../hook/*.go", "../statusline/*.go", "../../cmd/wy/cmd_hook.go", "../../cmd/wy/tick.go"} {
 		m, _ := filepath.Glob(pat)
 		files = append(files, m...)
 	}
@@ -318,7 +318,7 @@ func TestHookDoesNotImportAgent(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, im := range af.Imports {
-			if strings.Contains(im.Path.Value, "switchyard/internal/agent") {
+			if strings.Contains(im.Path.Value, "watchyard/internal/agent") {
 				t.Errorf("%s imports the agent", f)
 			}
 		}
@@ -383,7 +383,7 @@ func TestAcceptErrorEndsRun(t *testing.T) {
 	t.Cleanup(func() { os.RemoveAll(base) })
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(context.Background(), Config{Socket: filepath.Join(base, "sy", "agent.sock"), Tick: time.Hour,
+		done <- Run(context.Background(), Config{Socket: filepath.Join(base, "wy", "agent.sock"), Tick: time.Hour,
 			Load: func() (peers.Env, bool, error) { return peers.Env{State: base}, true, nil }})
 	}()
 	select {

@@ -1,9 +1,9 @@
-"""Normalise a `sy setup --dry-run --json` plan for comparison with a golden file.
+"""Normalise a `wy setup --dry-run --json` plan for comparison with a golden file.
 
     python3 -I normplan.py <home folder> <plan.json>
 
 Prints canonical JSON: the fixture home replaced by $HOME everywhere, hashes of generated
-content and the plan id dropped (they follow the sy version and the home's path), and only the
+content and the plan id dropped (they follow the wy version and the home's path), and only the
 keys a golden should pin (mode, primary, keep, actions, conflicts, needs, summary).
 """
 import json
@@ -23,8 +23,8 @@ def norm(v):
         for k, x in v.items():
             if k in ("content_sha256", "plan_id"):
                 out[k] = "<hash>"
-            elif k == "note" and isinstance(x, str) and x.startswith("switchyard "):
-                out[k] = "switchyard <version> (sy-local)"
+            elif k == "note" and isinstance(x, str) and x.startswith("watchyard "):
+                out[k] = "watchyard <version> (wy-local)"
             else:
                 out[k] = norm(x)
         return out

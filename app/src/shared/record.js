@@ -1,5 +1,5 @@
 // Builds `web_usage` records (docs/spec/record.md 4.3) from a checked reader result
-// (main/usage/reader.js). `id` and `v` are left to `sy outbox append`. Pure: no clock, no I/O.
+// (main/usage/reader.js). `id` and `v` are left to `wy outbox append`. Pure: no clock, no I/O.
 
 import { CLIENT_NAME } from './constants.js';
 

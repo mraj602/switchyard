@@ -145,7 +145,7 @@ test('format: untilShort style countdown helpers stay stable', async () => {
 test('platform: app pair link is an Android intent URL pinned to the app package', async () => {
   const p = await mod('platform.js');
   const ua = 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36';
-  const tail = '#Intent;scheme=switchyard;package=io.github.mraj602.switchyard;end';
+  const tail = '#Intent;scheme=watchyard;package=io.github.mraj602.watchyard;end';
   assert.equal(p.appPairLink('https://hub.example.ts.net', 'sec/ret+1', '482-913', '', '', ua),
     'intent://pair?u=https%3A%2F%2Fhub.example.ts.net&s=sec%2Fret%2B1&c=482913' + tail);
   assert.equal(p.appPairLink('http://192.0.2.7:7777', 'abc', '', '', '', ua), 'intent://pair?u=http%3A%2F%2F192.0.2.7%3A7777&s=abc' + tail);
@@ -157,7 +157,7 @@ test('platform: app pair link is an Android intent URL pinned to the app package
   assert.equal(p.appPairLink('https://h', 'abc', '482913', '', '', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)'), '');
   assert.equal(p.appPairLink('https://h', 'abc', '482913'), '');
   assert.equal(p.appPairLink('https://h', 'abc', '', '', '', ua, 'x;end'), '');
-  assert.ok(!p.appPairLink('https://h', 'abc', '', '', '', ua).startsWith('switchyard://'));
+  assert.ok(!p.appPairLink('https://h', 'abc', '', '', '', ua).startsWith('watchyard://'));
 });
 
 test('format: one style for numbers and dates', async () => {
@@ -177,7 +177,7 @@ test('format: one style for numbers and dates', async () => {
   assert.equal(f.timeOfDay(new Date(2026, 9, 15, 19, 51, 54).toISOString()), '19:51:54');
   assert.equal(f.agoLabel(new Date(now - 5 * 36e5).toISOString(), now), '5 h ago');
   assert.equal(f.until(new Date(now + 2 * 36e5 + 10 * 6e4).toISOString(), now), 'in 2 h 10 min');
-  assert.equal(f.projectOf({ cwd: '/home/u/switchyard/' }), 'switchyard');
+  assert.equal(f.projectOf({ cwd: '/home/u/watchyard/' }), 'watchyard');
   assert.equal(f.projectOf({}), '(no project)');
 });
 

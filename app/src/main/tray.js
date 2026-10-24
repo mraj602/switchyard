@@ -50,14 +50,14 @@ export function create(deps) {
   const dark = () => !!electron.nativeTheme?.shouldUseDarkColors;
 
   // Folder of the glyph ink: 'light' (white) for dark bars. Linux panels (GNOME, KDE, most others) are
-  // dark even under a light system theme, so Linux is always light unless SWITCHYARD_TRAY_ICON=dark|light
+  // dark even under a light system theme, so Linux is always light unless WATCHYARD_TRAY_ICON=dark|light
   // says otherwise; Windows follows the theme.
   function inkFolder() {
     if (platform === 'linux') {
       const env = deps.env ?? process.env;
       // The variable's name from before a rename still works (docs/spec/rename.md 2.9).
       const legacy = env.SWITCHYARD_TRAY_ICON; // rename:keep
-      const o = String(env.SWITCHYARD_TRAY_ICON ?? legacy ?? '').trim().toLowerCase();
+      const o = String(env.WATCHYARD_TRAY_ICON ?? legacy ?? '').trim().toLowerCase();
       if (o === 'dark' || o === 'light') return o;
       return 'light';
     }
@@ -88,7 +88,7 @@ export function create(deps) {
   }
 
   function buildMenu() {
-    const items = [{ label: 'Open Switchyard', click: show }, { type: 'separator' }];
+    const items = [{ label: 'Open Watchyard', click: show }, { type: 'separator' }];
     if (count > 0) items.push({ label: needsYouText(count), enabled: false });
     if (sessions.length === 0 && count === 0) items.push({ label: 'Nothing needs you', enabled: false });
     for (const s of sessions.slice(0, TRAY_SESSIONS_MAX)) items.push({ label: String(s.title), click: () => openRoute(s.route) });
@@ -114,7 +114,7 @@ export function create(deps) {
   function applyBadge() {
     if (!tray) return;
     tray.setImage(image(count > 0));
-    tray.setToolTip(count > 0 ? needsYouText(count) : 'Switchyard');
+    tray.setToolTip(count > 0 ? needsYouText(count) : 'Watchyard');
     tray.setContextMenu(buildMenu());
     const { app } = electron;
     if (platform === 'darwin') {

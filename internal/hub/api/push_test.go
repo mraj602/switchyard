@@ -13,14 +13,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/api"
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/push/ntfy"
-	"github.com/mraj602/switchyard/internal/hub/push/ntfytest"
-	"github.com/mraj602/switchyard/internal/hub/push/webpush"
-	"github.com/mraj602/switchyard/internal/hub/push/webpushtest"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/api"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/ntfy"
+	"github.com/mraj602/watchyard/internal/hub/push/ntfytest"
+	"github.com/mraj602/watchyard/internal/hub/push/webpush"
+	"github.com/mraj602/watchyard/internal/hub/push/webpushtest"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // A hub with both real senders pointed at the fakes, and a clock the test moves.

@@ -79,11 +79,11 @@ describe('backup rules', () => {
 });
 
 describe('widget providers open links with an explicit intent', () => {
-  const generated = 'package io.github.mraj602.switchyard.widget;\n\nimport com.reactnativeandroidwidget.RNWidgetProvider;\n\npublic class SyNeeds extends RNWidgetProvider {\n}\n';
+  const generated = 'package io.github.mraj602.watchyard.widget;\n\nimport com.reactnativeandroidwidget.RNWidgetProvider;\n\npublic class SyNeeds extends RNWidgetProvider {\n}\n';
 
   it('hands the tap to WidgetOpen before the library sees it', () => {
     const out: string = plugin.patchWidgetProvider(generated);
-    expect(out).toContain('import dev.switchyard.link.WidgetOpen;');
+    expect(out).toContain('import dev.watchyard.link.WidgetOpen;');
     expect(out).toContain('public class SyNeeds extends RNWidgetProvider {');
     expect(out.indexOf('WidgetOpen.handle(context, intent)')).toBeLessThan(out.indexOf('super.onReceive(context, intent)'));
   });

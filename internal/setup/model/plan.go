@@ -216,7 +216,7 @@ type Plan struct {
 	Conflicts []Conflict `json:"conflicts"`
 	Needs     []Need     `json:"needs"`
 	Summary   Summary    `json:"summary"`
-	// Warnings are `!` lines that are not conflicts (a second switchyard plugin disabled, ...).
+	// Warnings are `!` lines that are not conflicts (a second watchyard plugin disabled, ...).
 	Warnings []string `json:"warnings,omitempty"`
 }
 
@@ -244,17 +244,17 @@ type Report struct {
 	Backup  string          `json:"backup,omitempty"`
 	Applied []string        `json:"applied,omitempty"` // action ids
 	Hub     *HubResult      `json:"hub,omitempty"`
-	Doctor  json.RawMessage `json:"doctor,omitempty"` // `sy doctor --json`
-	// Uninstall is the part of a `sy uninstall` report outside the journaled plan.
+	Doctor  json.RawMessage `json:"doctor,omitempty"` // `wy doctor --json`
+	// Uninstall is the part of a `wy uninstall` report outside the journaled plan.
 	Uninstall *UninstallSteps `json:"uninstall,omitempty"`
 }
 
-// UninstallSteps are the `sy uninstall` steps that are not plan actions (setup.md 9.5 step
+// UninstallSteps are the `wy uninstall` steps that are not plan actions (setup.md 9.5 step
 // 3): listed in the plan shown before the confirmation, done after the plan applied.
 type UninstallSteps struct {
-	Timer      bool   `json:"timer,omitempty"`       // the OS timer that runs sy tick is removed
+	Timer      bool   `json:"timer,omitempty"`       // the OS timer that runs wy tick is removed
 	HubService string `json:"hub_service,omitempty"` // the hub service of this name is removed
-	// AgentService is set when the peers agent's unit (`sy agent enable`) exists here; it is
+	// AgentService is set when the peers agent's unit (`wy agent enable`) exists here; it is
 	// found by its file, not the ledger, and removed with the hub service.
 	AgentService string   `json:"agent_service,omitempty"`
 	Copies       []string `json:"copies,omitempty"` // synced copies that stop being synced (they stay)

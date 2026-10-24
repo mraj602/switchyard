@@ -9,13 +9,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/board"
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/setup/ledger"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/plan"
-	"github.com/mraj602/switchyard/internal/warp"
+	"github.com/mraj602/watchyard/internal/board"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/setup/ledger"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/plan"
+	"github.com/mraj602/watchyard/internal/warp"
 )
 
 const (
@@ -192,8 +192,8 @@ func TestTitles(t *testing.T) {
 
 	// An installed plugin without the entries warns.
 	mkt := filepath.Join(e.dirs.State.Path, "plugin", "marketplace")
-	write(t, filepath.Join(mkt, "plugins", "switchyard", "hooks", "hooks.json"), `{"hooks":{}}`)
-	setLedger(t, e, model.Ledger{V: 1, Plugin: &model.LedgerPlugin{Marketplace: mkt, ID: "switchyard@sy-local"},
+	write(t, filepath.Join(mkt, "plugins", "watchyard", "hooks", "hooks.json"), `{"hooks":{}}`)
+	setLedger(t, e, model.Ledger{V: 1, Plugin: &model.LedgerPlugin{Marketplace: mkt, ID: "watchyard@wy-local"},
 		Terminal: &model.LedgerTerminal{Titles: &model.LedgerTermTargets{Targets: []string{target}}}})
 	if c := lvl(t, termRun(t, e, o, cfg, ""), "title hooks"); c.Level != Warn {
 		t.Errorf("hooks without entries: %+v", c)

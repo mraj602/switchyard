@@ -1,5 +1,5 @@
-// Package cli implements `sy hub …`: serve, pair, owner-link, token create|list|revoke,
-// backup and prune, and `sy phone pair`. cmd/sy only routes here.
+// Package cli implements `wy hub …`: serve, pair, owner-link, token create|list|revoke,
+// backup and prune, and `wy phone pair`. cmd/wy only routes here.
 //
 // Depends on: paths, hub/store, hub/auth, hub/api, hub/ingest, hub/pair, hub/pull,
 // hub/push/{clock,engine,model,webpush,ntfy,link,refresh}, webui.
@@ -28,37 +28,37 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/api"
-	"github.com/mraj602/switchyard/internal/hub/appmirror"
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/hublock"
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
-	hublink "github.com/mraj602/switchyard/internal/hub/link"
-	"github.com/mraj602/switchyard/internal/hub/pair"
-	"github.com/mraj602/switchyard/internal/hub/peerrelay"
-	"github.com/mraj602/switchyard/internal/hub/pull"
-	"github.com/mraj602/switchyard/internal/hub/push/clock"
-	"github.com/mraj602/switchyard/internal/hub/push/engine"
-	pushlink "github.com/mraj602/switchyard/internal/hub/push/link"
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/push/ntfy"
-	"github.com/mraj602/switchyard/internal/hub/push/refresh"
-	"github.com/mraj602/switchyard/internal/hub/push/rules"
-	"github.com/mraj602/switchyard/internal/hub/push/webpush"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/localtime"
-	"github.com/mraj602/switchyard/internal/paths"
-	"github.com/mraj602/switchyard/internal/service"
-	"github.com/mraj602/switchyard/internal/version"
-	"github.com/mraj602/switchyard/webui"
+	"github.com/mraj602/watchyard/internal/hub/api"
+	"github.com/mraj602/watchyard/internal/hub/appmirror"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/hublock"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	hubkeys "github.com/mraj602/watchyard/internal/hub/keys"
+	hublink "github.com/mraj602/watchyard/internal/hub/link"
+	"github.com/mraj602/watchyard/internal/hub/pair"
+	"github.com/mraj602/watchyard/internal/hub/peerrelay"
+	"github.com/mraj602/watchyard/internal/hub/pull"
+	"github.com/mraj602/watchyard/internal/hub/push/clock"
+	"github.com/mraj602/watchyard/internal/hub/push/engine"
+	pushlink "github.com/mraj602/watchyard/internal/hub/push/link"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/ntfy"
+	"github.com/mraj602/watchyard/internal/hub/push/refresh"
+	"github.com/mraj602/watchyard/internal/hub/push/rules"
+	"github.com/mraj602/watchyard/internal/hub/push/webpush"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/localtime"
+	"github.com/mraj602/watchyard/internal/paths"
+	"github.com/mraj602/watchyard/internal/service"
+	"github.com/mraj602/watchyard/internal/version"
+	"github.com/mraj602/watchyard/webui"
 )
 
 // ErrUsage means the arguments were wrong and usage was printed.
 var ErrUsage = errors.New("usage")
 
-const usage = `Usage: sy hub <command> [flags]
+const usage = `Usage: wy hub <command> [flags]
 
 Commands:
   serve              Run the hub (HTTP API, live stream, web board, alerts, pushes and pulls)
@@ -74,16 +74,16 @@ Commands:
   pull               Pull servers over SSH: add|list|run|trust|enable|disable|remove|key
   export / import    Move the hub: freeze and pack it / unpack it into an empty hub
   unfreeze           Call off a move: the hub accepts records again
-  machine show ID    One machine's hub-side state, for sy machine add
+  machine show ID    One machine's hub-side state, for wy machine add
   keys show          The hub key, the owner key and pending proposals
   keys confirm-owner FP  Activate a pending owner key proposal
-  keys register / certify  A machine's link keys over SSH, for sy machine add
+  keys register / certify  A machine's link keys over SSH, for wy machine add
 
-Every command takes --db <file> (default <data>/hub.db, see sy paths).
-sy hub pair --help and sy hub owner-link --help show their flags.
+Every command takes --db <file> (default <data>/hub.db, see wy paths).
+wy hub pair --help and wy hub owner-link --help show their flags.
 `
 
-// Run is `sy hub <args>`.
+// Run is `wy hub <args>`.
 func Run(args []string, stdout, stderr io.Writer) error {
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" || args[0] == "help" {
 		fmt.Fprint(stdout, usage)
@@ -131,7 +131,7 @@ func Run(args []string, stdout, stderr io.Writer) error {
 	case "keys":
 		return Keys(args[1:], stdout, stderr)
 	}
-	fmt.Fprintf(stderr, "sy hub: unknown command %q\n\n%s", strings.Join(args, " "), usage)
+	fmt.Fprintf(stderr, "wy hub: unknown command %q\n\n%s", strings.Join(args, " "), usage)
 	return ErrUsage
 }
 
@@ -145,7 +145,7 @@ func DefaultDB() (string, error) {
 }
 
 func newFlags(name string, stderr io.Writer) (*flag.FlagSet, *string) {
-	fs := flag.NewFlagSet("sy hub "+name, flag.ContinueOnError)
+	fs := flag.NewFlagSet("wy hub "+name, flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	db := fs.String("db", "", "database file (default <data>/hub.db)")
 	return fs, db
@@ -194,17 +194,17 @@ func serve(args []string, stdout, stderr io.Writer) error {
 	listen := fs.String("listen", "127.0.0.1:8787", "address to listen on")
 	fs.StringVar(listen, "addr", "127.0.0.1:8787", "alias of --listen")
 	insecure := fs.Bool("insecure-lan", false, "allow a non-loopback address without TLS in front (a proxy or tailscale serve must provide it)")
-	trustedProxy := fs.String("trusted-proxy", os.Getenv("SY_TRUSTED_PROXY"), "comma-separated CIDRs whose X-Forwarded-For/-Proto headers are trusted, besides loopback (also: SY_TRUSTED_PROXY); for a hub in Docker, the bridge network")
+	trustedProxy := fs.String("trusted-proxy", os.Getenv("WY_TRUSTED_PROXY"), "comma-separated CIDRs whose X-Forwarded-For/-Proto headers are trusted, besides loopback (also: WY_TRUSTED_PROXY); for a hub in Docker, the bridge network")
 	quiet := fs.Bool("quiet", false, "do not log each request")
 	publicURL := fs.String("public-url", "", "the hub's https address phones open, e.g. https://hub.tail1234.ts.net (stored as hub.public_url)")
 	noPush := fs.Bool("no-push", false, "run without the alert engine and push channels")
-	noPull := fs.Bool("no-pull", false, "do not pull servers over SSH (sy hub pull targets wait)")
+	noPull := fs.Bool("no-pull", false, "do not pull servers over SSH (wy hub pull targets wait)")
 	noAppMirror := fs.Bool("no-app-mirror", false, "do not mirror the Android app release from GitHub (also: setting app.android_mirror=false)")
 	appRepo := fs.String("app-repo", "", "GitHub owner/name the Android app mirror reads (default the build's repository)")
 	pullDirFlag := fs.String("pull-dir", "", "the pull key and generated ssh files (default <state>/pull)")
 	if pos, err := parse(fs, args); err != nil || len(pos) > 0 {
 		if err == nil {
-			fmt.Fprintf(stderr, "sy hub serve: unexpected argument %q\n", pos[0])
+			fmt.Fprintf(stderr, "wy hub serve: unexpected argument %q\n", pos[0])
 		}
 		return ErrUsage
 	}
@@ -224,7 +224,7 @@ func serve(args []string, stdout, stderr io.Writer) error {
 		}
 		pub = origin
 		if strings.HasPrefix(pub, "http://") {
-			fmt.Fprintf(stderr, "sy hub serve: warning: %s is plain http; phones can pair but cannot install the app or get pushes\n", pub)
+			fmt.Fprintf(stderr, "wy hub serve: warning: %s is plain http; phones can pair but cannot install the app or get pushes\n", pub)
 		}
 	}
 	logger := log.New(stderr, "hub: ", log.LstdFlags|log.LUTC)
@@ -246,7 +246,7 @@ func serve(args []string, stdout, stderr io.Writer) error {
 			return err
 		}
 	}
-	// One hub per data folder: the lock is what `sy hub import` checks (machines.md 8.2).
+	// One hub per data folder: the lock is what `wy hub import` checks (machines.md 8.2).
 	hl, err := hublock.Acquire(filepath.Dir(path))
 	if err != nil {
 		if errors.Is(err, hublock.ErrHeld) {
@@ -396,7 +396,7 @@ func serve(args []string, stdout, stderr io.Writer) error {
 	linkFile := filepath.Join(filepath.Dir(path), FirstOwnerLinkFile)
 	if block, err := FirstOwnerLink(ctx, st, pair.NewService(st, api.PairPepperPath), serveURL(ctx, st, pub, ln.Addr()), "serve",
 		writerIsTerminal(stderr)); err != nil {
-		logger.Printf("could not make a first owner link (%v): run sy hub owner-link", err)
+		logger.Printf("could not make a first owner link (%v): run wy hub owner-link", err)
 	} else if block != "" {
 		deliverFirstOwnerLink(logger.Printf, stderr, writerIsTerminal(stderr), linkFile, block)
 	} else {
@@ -407,7 +407,7 @@ func serve(args []string, stdout, stderr io.Writer) error {
 		if fr.MovedTo != nil && *fr.MovedTo != "" {
 			movedTo = *fr.MovedTo
 		}
-		logger.Printf("this hub is FROZEN for a move since %s (moved to %s): ingest answers 503, pulls and pushes are paused; call the move off with `sy hub unfreeze`",
+		logger.Printf("this hub is FROZEN for a move since %s (moved to %s): ingest answers 503, pulls and pushes are paused; call the move off with `wy hub unfreeze`",
 			time.UnixMilli(fr.Since).UTC().Format(time.RFC3339), movedTo)
 	}
 	if sched != nil {
@@ -596,7 +596,7 @@ func tokenCreate(args []string, stdout, stderr io.Writer) error {
 	kind := fs.String("kind", "", "device kind: machine, desktop, phone, browser")
 	fs.StringVar(kind, "scope", "", "alias of --kind")
 	name := fs.String("name", "", "device name")
-	machine := fs.String("machine", "", "machine id (machine and desktop; sy machine prints it)")
+	machine := fs.String("machine", "", "machine id (machine and desktop; wy machine prints it)")
 	asJSON := fs.Bool("json", false, "print JSON")
 	if pos, err := parse(fs, args); err != nil || len(pos) > 0 {
 		return ErrUsage
@@ -673,7 +673,7 @@ func tokenRevoke(args []string, stdin io.Reader, stdout, stderr io.Writer) error
 	yes := fs.Bool("yes", false, "do not ask")
 	pos, err := parse(fs, args)
 	if err != nil || len(pos) != 1 {
-		fmt.Fprintln(stderr, "usage: sy hub token revoke <device id | token hint | name> [--yes]")
+		fmt.Fprintln(stderr, "usage: wy hub token revoke <device id | token hint | name> [--yes]")
 		return ErrUsage
 	}
 	ctx := context.Background()
@@ -688,7 +688,7 @@ func tokenRevoke(args []string, stdin io.Reader, stdout, stderr io.Writer) error
 	}
 	switch {
 	case len(ds) == 0:
-		return fmt.Errorf("no device matches %q (sy hub token list)", pos[0])
+		return fmt.Errorf("no device matches %q (wy hub token list)", pos[0])
 	case len(ds) > 1:
 		var ids []string
 		for _, d := range ds {
@@ -768,14 +768,14 @@ func ParseAge(s string) (time.Duration, error) {
 	return d, nil
 }
 
-// refold is `sy hub refold` (states.md 5.1): the replay path for the session fold. Raw
+// refold is `wy hub refold` (states.md 5.1): the replay path for the session fold. Raw
 // records are kept, so a fix to the state engine or to how sessions are made applies to
 // the whole history. Safe while the hub runs (one write transaction).
 func refold(args []string, stdout, stderr io.Writer) error {
 	fs, db := newFlags("refold", stderr)
 	dry := fs.Bool("dry-run", false, "only report what would change")
 	if pos, err := parse(fs, args); err != nil || len(pos) > 0 {
-		fmt.Fprintln(stderr, "usage: sy hub refold [--dry-run] [--db hub.db]")
+		fmt.Fprintln(stderr, "usage: wy hub refold [--dry-run] [--db hub.db]")
 		return ErrUsage
 	}
 	ctx := context.Background()
@@ -835,7 +835,7 @@ func prune(args []string, stdout, stderr io.Writer) error {
 		}
 		cut = t
 	default:
-		fmt.Fprintln(stderr, "usage: sy hub prune --older-than 90d | --before 2026-01-01 [--dry-run]")
+		fmt.Fprintln(stderr, "usage: wy hub prune --older-than 90d | --before 2026-01-01 [--dry-run]")
 		return ErrUsage
 	}
 	ctx := context.Background()

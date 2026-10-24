@@ -22,7 +22,7 @@ func TestPackageIsALeaf(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, imp := range af.Imports {
-			if p := strings.Trim(imp.Path.Value, `"`); strings.Contains(p, "switchyard") || strings.Contains(p, "/internal/") {
+			if p := strings.Trim(imp.Path.Value, `"`); strings.Contains(p, "watchyard") || strings.Contains(p, "/internal/") {
 				t.Errorf("%s imports %s", f, p)
 			}
 		}

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Switchyard notification small icon "limit" (direction A, the mark with a corner badge): a single
+<!-- Watchyard notification small icon "limit" (direction A, the mark with a corner badge): a single
      white filled path on transparent; Android tints it. Generated from the approved glyph SVGs. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
   android:width="24dp"

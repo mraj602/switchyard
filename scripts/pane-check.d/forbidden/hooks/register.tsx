@@ -1,9 +1,9 @@
 // Fixture for scripts/pane-check.sh --self-test. This mod is valid for Claude Code but uses
-// surfaces the Switchyard pane must never touch (docs/spec/terminal.md T5): an HTTP call, a
-// tool call hook and a program other than sy. pane-check.sh must fail on it.
+// surfaces the Watchyard pane must never touch (docs/spec/terminal.md T5): an HTTP call, a
+// tool call hook and a program other than wy. pane-check.sh must fail on it.
 import type { Register } from 'claude-code'
 
-const SY = "/usr/local/bin/sy"
+const SY = "/usr/local/bin/wy"
 
 export const register: Register = on => {
   on('tool.call', async ($, e, next) => {

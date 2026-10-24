@@ -24,7 +24,7 @@ func TestMCPRecreatedStateFileWithoutKeyDeletesNothing(t *testing.T) {
 }
 
 // A pass that would strip every server of the base from the folders
-// still holding them is refused and recorded for sy doctor; a later normal pass clears it.
+// still holding them is refused and recorded for wy doctor; a later normal pass clears it.
 func TestMCPGuardRefusesRemovingEveryServer(t *testing.T) {
 	e := newMCPEnv(t, `{"gh":`+srv("gh")+`,"fs":`+srv("fs")+`}`, `{}`)
 	e.sync()

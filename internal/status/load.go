@@ -13,7 +13,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 var (
@@ -31,7 +31,7 @@ var wantedKinds = [][]byte{
 
 // Load reads the outbox in dir (flushed or not) and returns the hook_event, session_list and
 // limit_sample records whose ts is at or after since, in no particular order. It never
-// writes: unparsable lines are skipped silently (sy flush owns corrupt.jsonl), and bytes
+// writes: unparsable lines are skipped silently (wy flush owns corrupt.jsonl), and bytes
 // after the last newline of a file (a write in progress) are ignored, as in outbox.md
 // section 4. A missing folder is an empty outbox.
 func Load(dir string, since time.Time) ([]*record.Record, error) {

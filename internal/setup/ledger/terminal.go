@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/warp"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/warp"
 )
 
 // The ledger's `terminal` block (docs/spec/terminal.md T10, model.LedgerTerminal): what the
@@ -17,7 +17,7 @@ import (
 // has no plan, from the manifest entries alone.
 //
 // The `claude plugin …` runs of the pane and of Warp's plugin cannot be told from the
-// switchyard plugin's own runs by their paths (all touch settings.json and the plugin
+// watchyard plugin's own runs by their paths (all touch settings.json and the plugin
 // registries). So plan.Terminal adds one more path to every such run's touches, a journal
 // mark `<state>/term/journal/<piece>.<verb>` ("pane.install", "warp-plugin.uninstall", …).
 // The run never creates it: it is recorded absent before and after, and undo has nothing to
@@ -25,7 +25,7 @@ import (
 
 // Terminal constants shared with plan.Terminal.
 const (
-	// TitleEnvKey is the variable `sy term titles on` sets to "1" in every settings target.
+	// TitleEnvKey is the variable `wy term titles on` sets to "1" in every settings target.
 	TitleEnvKey = "CLAUDE_CODE_DISABLE_TERMINAL_TITLE"
 	// TitleEnvPointer is its pointer in a settings file.
 	TitleEnvPointer = "/env/" + TitleEnvKey
@@ -35,7 +35,7 @@ const (
 	// PiecePane and PieceWarpPlugin name the pieces in journal marks.
 	PiecePane       = "pane"
 	PieceWarpPlugin = "warp-plugin"
-	// PieceHooks marks the switchyard plugin's refresh (marketplace update, plugin update)
+	// PieceHooks marks the watchyard plugin's refresh (marketplace update, plugin update)
 	// that makes new hooks active; it changes no ledger piece.
 	PieceHooks = "hooks"
 
@@ -161,8 +161,8 @@ func runEffect(l *model.Ledger, piece, verb string, targets []string, root strin
 		}
 		switch {
 		case market:
-			// sy-local added to a root that lacked it, for the pane: `sy term off` and
-			// `sy uninstall` remove it there again.
+			// wy-local added to a root that lacked it, for the pane: `wy term off` and
+			// `wy uninstall` remove it there again.
 			set(&t.Pane.Markets, roots)
 		case install:
 			set(&t.Pane.Installed, roots)
@@ -236,7 +236,7 @@ func updateTerminal(l model.Ledger, a model.Action, e model.Entry) model.Ledger 
 		if a.Pointer != TitleEnvPointer {
 			return l
 		}
-		// "1" is sy's value; any other json_set is `titles off` putting the person's
+		// "1" is wy's value; any other json_set is `titles off` putting the person's
 		// earlier value back (TitlePrior).
 		on := a.Op == model.OpJSONSet && compact(a.Value) == titleOn
 		setTitles(&l, a.File, on)
@@ -285,8 +285,8 @@ func updateTerminal(l model.Ledger, a model.Action, e model.Entry) model.Ledger 
 // revertTerminal is called by Revert for every reverted entry, before the generic code. It
 // returns l with the entry's effect undone and true when the entry was a terminal one; the
 // generic code is then skipped for it, because a `claude plugin install
-// switchyard-pane@sy-local` run creates paths under sy-local and touches
-// installed_plugins.json, which the generic code reads as the switchyard plugin going away.
+// watchyard-pane@wy-local` run creates paths under wy-local and touches
+// installed_plugins.json, which the generic code reads as the watchyard plugin going away.
 // An undo has no plan, so it decides from the manifest entry alone (op, paths, keys,
 // created paths).
 func revertTerminal(l model.Ledger, e model.Entry) (model.Ledger, bool) {
@@ -344,7 +344,7 @@ func revertTerminal(l model.Ledger, e model.Entry) (model.Ledger, bool) {
 		}
 	case model.OpWriteTree:
 		// A refresh of a marketplace that existed before (the hooks refresh of
-		// `sy term titles on`, the pane's refresh): its undo puts the older tree back, and
+		// `wy term titles on`, the pane's refresh): its undo puts the older tree back, and
 		// the marketplace stays recorded.
 		for _, pe := range e.Paths {
 			if pe.After != nil && pe.Before.Type == model.TypeDir && pe.Path != "" && pe.Intended != nil {
@@ -390,7 +390,7 @@ const (
 // TermPiece names the terminal piece an action of a terminal plan belongs to: PiecePane or
 // PieceWarpPlugin for a marked `claude plugin` run, PieceTitles for the env key and the
 // terminal.titles config key, PieceTabs for a tab config; "" for anything else (the
-// switchyard plugin's hooks refresh included). `sy uninstall` keeps the ledger record of a
+// watchyard plugin's hooks refresh included). `wy uninstall` keeps the ledger record of a
 // piece whose actions did not all run.
 func TermPiece(a model.Action) string {
 	switch a.Op {

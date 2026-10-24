@@ -12,10 +12,10 @@ package termctl
 import "context"
 
 // Opener opens one URL that has already passed the T7 allow-list (a Warp focus URL, or a
-// `warp://tab_config/switchyard-<label>` URI for a file sy wrote). Implementations run the
+// `warp://tab_config/watchyard-<label>` URI for a file wy wrote). Implementations run the
 // OS opener with an argv and a 5 s timeout: xdg-open on Linux, open on macOS,
 // rundll32.exe url.dll,FileProtocolHandler on Windows. Tests use a fake that records the
-// URL; release builds never contain the SY_TEST_OPENER file seam.
+// URL; release builds never contain the WY_TEST_OPENER file seam.
 type Opener interface {
 	Open(ctx context.Context, url string) error
 }

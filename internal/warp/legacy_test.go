@@ -3,7 +3,7 @@ package warp
 import (
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
 // rename.md 2.8: tab configs with the prefix from before a rename are still recognised and

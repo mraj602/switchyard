@@ -1,7 +1,7 @@
 package peers
 
 import (
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 // DocMatrix evaluates an accepted matrix document body (peers.md 5.3). It is the Matrix of a
@@ -58,7 +58,7 @@ func (m DocMatrix) Allowed(from, to Party, th *Thread) Decision {
 	return no
 }
 
-// LocalMatrix is the matrix this machine's agent and `sy peers send` use: the newest accepted
+// LocalMatrix is the matrix this machine's agent and `wy peers send` use: the newest accepted
 // document in <state>/keys/matrix.json, else NoMatrix. A file that no longer verifies is
 // treated as none (everything denied).
 func LocalMatrix(state string) Matrix {

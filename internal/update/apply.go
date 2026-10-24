@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
 // DefaultOwner and SignerWorkflow pin who built a release: attestations are checked against
@@ -27,27 +27,27 @@ const (
 // Attestation says whether and how to check a release archive's build provenance with the
 // gh CLI (machines.md 7.3 step 3).
 type Attestation struct {
-	// Auto is the default of `sy update`: verify when the gh CLI is installed, and say so when
+	// Auto is the default of `wy update`: verify when the gh CLI is installed, and say so when
 	// it is not (the archive is then checked against SHA256SUMS only, which proves it was not
 	// damaged but not who built it). A failed verification is exit 3. Off by default here so
-	// that code using the package without gh is unchanged; cmd/sy turns it on unless
-	// SY_VERIFY_ATTESTATION=0, update.verify_attestation = false or --no-attestation.
+	// that code using the package without gh is unchanged; cmd/wy turns it on unless
+	// WY_VERIFY_ATTESTATION=0, update.verify_attestation = false or --no-attestation.
 	Auto bool
-	// Required: SY_VERIFY_ATTESTATION=1. When set and gh is missing the update fails closed
+	// Required: WY_VERIFY_ATTESTATION=1. When set and gh is missing the update fails closed
 	// (exit 3), exactly as install.sh does.
 	Required bool
 	// GH is the gh executable ("" = look up "gh" on PATH).
 	GH string
-	// Owner defaults to DefaultOwner. The repository is <owner>/switchyard and the signer
-	// workflow <owner>/switchyard/.github/workflows/release.yml (after a rename, the old
+	// Owner defaults to DefaultOwner. The repository is <owner>/watchyard and the signer
+	// workflow <owner>/watchyard/.github/workflows/release.yml (after a rename, the old
 	// repository name is accepted too).
 	Owner string
 	// Run runs the command (tests); nil runs it for real.
 	Run func(ctx context.Context, name string, args ...string) error
 }
 
-// VerifyAttestation runs `gh attestation verify <archive> --repo <o>/switchyard
-// --signer-workflow <o>/switchyard/.github/workflows/release.yml`. It is a no-op unless
+// VerifyAttestation runs `gh attestation verify <archive> --repo <o>/watchyard
+// --signer-workflow <o>/watchyard/.github/workflows/release.yml`. It is a no-op unless
 // a.Required or a.Auto. verified says the attestation was checked and held. With only Auto and
 // no gh it returns (false, nil); with Required a missing gh, and in both modes a failed
 // verification, is exit 3.
@@ -83,7 +83,7 @@ func VerifyAttestation(ctx context.Context, a Attestation, archive string) (veri
 		}
 	}
 	// A release built before a rename was attested by the repository under its old name
-	// (`sy update --version` to an older release); it is checked against that name too
+	// (`wy update --version` to an older release); it is checked against that name too
 	// (rename.md 2.7).
 	repos := []string{owner + "/" + brand.Slug}
 	if brand.Renamed() {
@@ -212,7 +212,7 @@ func PackageManager(path string) (hint string, owned bool) {
 		}
 	}
 	if strings.Contains(p, "/scoop/apps/") || strings.Contains(p, "/scoop/shims/") {
-		return "update with scoop update sy (" + path + " is managed by it)", true
+		return "update with scoop update wy (" + path + " is managed by it)", true
 	}
 	if strings.Contains(p, "/winget/packages/") || strings.Contains(p, "/winget/links/") {
 		return "update with winget (" + path + " is managed by it)", true
@@ -336,13 +336,13 @@ type Result struct {
 	Archive  string `json:"archive,omitempty"`
 	SHA256   string `json:"sha256,omitempty"`
 	Newer    bool   `json:"newer,omitempty"`
-	OldKept  string `json:"old_kept,omitempty"` // the sy.old path to roll back to
+	OldKept  string `json:"old_kept,omitempty"` // the wy.old path to roll back to
 	Attested bool   `json:"attested,omitempty"` // the build attestation was checked with gh; false: checksum only
 }
 
 func (o Options) check() error {
 	if o.Exe == "" {
-		return fail(ExitFailed, "cannot tell which sy binary is running")
+		return fail(ExitFailed, "cannot tell which wy binary is running")
 	}
 	if (o.FromFile == "") != (o.SumsFile == "") {
 		return fail(ExitUsage, "--from-file and --sums-file go together")
@@ -368,7 +368,7 @@ func (o Options) release(ctx context.Context) (Release, error) {
 	return o.Fetcher.Resolve(ctx, o.Source, o.Version)
 }
 
-// Check is `sy update --check`: steps 1-2 only. Nothing is downloaded or changed. Result.To is
+// Check is `wy update --check`: steps 1-2 only. Nothing is downloaded or changed. Result.To is
 // the release version, Result.Newer whether it is above Current.
 func Check(ctx context.Context, o Options) (Result, error) {
 	o.defaults()
@@ -392,7 +392,7 @@ func Check(ctx context.Context, o Options) (Result, error) {
 	return r, nil
 }
 
-// Apply is `sy update` for one machine (machines.md 7.3 steps 1-6). It does not run the
+// Apply is `wy update` for one machine (machines.md 7.3 steps 1-6). It does not run the
 // post-update steps: the caller starts the new binary for those (RunPostUpdate).
 func Apply(ctx context.Context, o Options) (Result, error) {
 	o.defaults()
@@ -484,12 +484,12 @@ func cleanup(updateDir string, a Archive, fromFile bool) {
 	_ = os.RemoveAll(a.Path + ".x")
 }
 
-// Rollback is `sy update --rollback`: swap <exe>.old back in. The binary that was running
+// Rollback is `wy update --rollback`: swap <exe>.old back in. The binary that was running
 // becomes the new <exe>.old, so a second rollback undoes the first.
 func Rollback(ctx context.Context, o Options) (Result, error) {
 	o.defaults()
 	if o.Exe == "" {
-		return Result{}, fail(ExitFailed, "cannot tell which sy binary is running")
+		return Result{}, fail(ExitFailed, "cannot tell which wy binary is running")
 	}
 	if err := o.refuseManaged(); err != nil {
 		return Result{}, err
@@ -547,7 +547,7 @@ func copyFileSync(dst, src string, perm os.FileMode) error {
 }
 
 func tmpName(exe string) string {
-	return filepath.Join(filepath.Dir(exe), fmt.Sprintf(".sy.%d.tmp", os.Getpid()))
+	return filepath.Join(filepath.Dir(exe), fmt.Sprintf(".wy.%d.tmp", os.Getpid()))
 }
 
 // Replace puts newBin in place of exe (machines.md 7.3 step 6) and keeps the old binary as
@@ -568,37 +568,37 @@ func Replace(exe, newBin, goos string) error {
 	if goos == "windows" {
 		return replaceWindows(exe, old, newBin, tmp)
 	}
-	// The kept copy is written through a temp name so sy.old is always a complete binary.
+	// The kept copy is written through a temp name so wy.old is always a complete binary.
 	oldTmp := tmp + ".old"
 	defer os.Remove(oldTmp)
 	if err := copyFileSync(oldTmp, exe, st.Mode().Perm()|0o100); err != nil {
-		return fail(ExitFailed, "cannot keep %s: %v; sy is unchanged (sy.old not written)", old, err)
+		return fail(ExitFailed, "cannot keep %s: %v; wy is unchanged (wy.old not written)", old, err)
 	}
 	if err := copyFileSync(tmp, newBin, 0o755); err != nil {
-		return fail(ExitFailed, "cannot write the new binary next to %s: %v; sy is unchanged", exe, err)
+		return fail(ExitFailed, "cannot write the new binary next to %s: %v; wy is unchanged", exe, err)
 	}
 	if err := os.Rename(oldTmp, old); err != nil {
-		return fail(ExitFailed, "cannot write %s: %v; sy is unchanged", old, err)
+		return fail(ExitFailed, "cannot write %s: %v; wy is unchanged", old, err)
 	}
 	if err := os.Rename(tmp, exe); err != nil {
-		return fail(ExitFailed, "cannot replace %s: %v; sy is unchanged (%s is a copy of it)", exe, err, old)
+		return fail(ExitFailed, "cannot replace %s: %v; wy is unchanged (%s is a copy of it)", exe, err, old)
 	}
 	return nil
 }
 
 func replaceWindows(exe, old, newBin, tmp string) error {
 	if err := copyFileSync(tmp, newBin, 0o755); err != nil {
-		return fail(ExitFailed, "cannot write the new binary next to %s: %v; sy is unchanged", exe, err)
+		return fail(ExitFailed, "cannot write the new binary next to %s: %v; wy is unchanged", exe, err)
 	}
 	_ = os.Remove(old) // an older .old that is not running any more
 	if err := os.Rename(exe, old); err != nil {
-		return fail(ExitFailed, "cannot move %s aside: %v; sy is unchanged", exe, err)
+		return fail(ExitFailed, "cannot move %s aside: %v; wy is unchanged", exe, err)
 	}
 	if err := os.Rename(tmp, exe); err != nil {
 		if rerr := os.Rename(old, exe); rerr != nil {
 			return fail(ExitFailed, "cannot move the new binary in (%v) and cannot restore %s (%v): copy %s back by hand", err, exe, rerr, old)
 		}
-		return fail(ExitFailed, "cannot move the new binary in: %v; the old sy was restored", err)
+		return fail(ExitFailed, "cannot move the new binary in: %v; the old wy was restored", err)
 	}
 	return nil
 }
@@ -612,7 +612,7 @@ func swapOld(exe, old, goos string) error {
 		}
 		if err := os.Rename(old, exe); err != nil {
 			_ = os.Rename(hold, exe)
-			return fail(ExitFailed, "cannot restore %s: %v; the current sy was kept", old, err)
+			return fail(ExitFailed, "cannot restore %s: %v; the current wy was kept", old, err)
 		}
 		if err := os.Rename(hold, old); err != nil {
 			return fail(ExitFailed, "rolled back, but cannot keep the replaced binary as %s: %v", old, err)
@@ -620,7 +620,7 @@ func swapOld(exe, old, goos string) error {
 		return nil
 	}
 	// Unix: copy the kept binary to a temp name and rename it over exe; the replaced one
-	// becomes sy.old.
+	// becomes wy.old.
 	tmp := tmpName(exe)
 	defer os.Remove(tmp)
 	if err := copyFileSync(tmp, old, 0o755); err != nil {
@@ -652,7 +652,7 @@ func CleanupOld(exe, goos string) {
 
 // PostStep is one thing the new binary does after an update (machines.md 7.3 step 7): refresh
 // the plugin marketplace, rewrite the timer and hub service units, restart the hub service,
-// send machine_info. cmd/sy registers the real ones with RegisterPostUpdate; this
+// send machine_info. cmd/wy registers the real ones with RegisterPostUpdate; this
 // package never imports them.
 type PostStep struct {
 	Name string
@@ -718,7 +718,7 @@ func PostUpdateFailed(rs []StepResult) bool {
 
 // PostUpdateError wraps a failed post-update run: the binary was replaced and stays so.
 func PostUpdateError(err error) error {
-	return &Error{Code: ExitFailed, Err: fmt.Errorf("updated, but the post-update steps failed: %v (sy.old is kept: sy update --rollback undoes the update)", err)}
+	return &Error{Code: ExitFailed, Err: fmt.Errorf("updated, but the post-update steps failed: %v (wy.old is kept: wy update --rollback undoes the update)", err)}
 }
 
 // postUpdateTimeout bounds the whole post-update process.
@@ -744,7 +744,7 @@ func StartPostUpdate(ctx context.Context, exe, oldVersion string, stdout, stderr
 // updateLockStale is how old a lock file must be before it is taken over (a crashed update).
 const updateLockStale = 15 * time.Minute
 
-// lockUpdate takes <StateDir>/update.lock so two `sy update` runs cannot race on sy.old. It
+// lockUpdate takes <StateDir>/update.lock so two `wy update` runs cannot race on wy.old. It
 // is a create-exclusive file (works on every OS); one older than updateLockStale is stale.
 // An empty stateDir takes no lock.
 func lockUpdate(stateDir string) (unlock func(), err error) {
@@ -767,7 +767,7 @@ func lockUpdate(stateDir string) (unlock func(), err error) {
 		}
 		st, serr := os.Stat(p)
 		if serr == nil && time.Since(st.ModTime()) < updateLockStale {
-			return nil, fail(ExitFailed, "another sy update is running (%s); wait for it or remove the file if it crashed", p)
+			return nil, fail(ExitFailed, "another wy update is running (%s); wait for it or remove the file if it crashed", p)
 		}
 		_ = os.Remove(p)
 	}

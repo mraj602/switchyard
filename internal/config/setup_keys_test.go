@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// The keys `sy setup` writes (setup.md 6.1 config_set): share.*, slots.colours, folder
+// The keys `wy setup` writes (setup.md 6.1 config_set): share.*, slots.colours, folder
 // names with dots, and SetJSON/Delete.
 func TestSetupKeysRoundTrip(t *testing.T) {
 	dir := t.TempDir()

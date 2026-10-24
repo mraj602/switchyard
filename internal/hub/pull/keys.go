@@ -54,7 +54,7 @@ const (
 )
 
 // EnsureKey makes the hub's pull key pair in dir (0700) if missing, with
-// `ssh-keygen -t ed25519 -N ” -C 'switchyard-pull@<hubName>'`, and returns the public key
+// `ssh-keygen -t ed25519 -N ” -C 'watchyard-pull@<hubName>'`, and returns the public key
 // line. An existing key is never replaced. The key is used for nothing else.
 func EnsureKey(ctx context.Context, dir, hubName string, run Runner) (string, error) {
 	if run == nil {
@@ -69,7 +69,7 @@ func EnsureKey(ctx context.Context, dir, hubName string, run Runner) (string, er
 			return "", err
 		}
 		_ = os.Remove(priv + ".pub")
-		if _, err := run(ctx, "ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "switchyard-pull@"+hubName, "-f", priv); err != nil {
+		if _, err := run(ctx, "ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "watchyard-pull@"+hubName, "-f", priv); err != nil {
 			return "", fmt.Errorf("could not make the pull key (the ssh client is required on the hub host): %w", err)
 		}
 	}
@@ -83,7 +83,7 @@ func EnsureKey(ctx context.Context, dir, hubName string, run Runner) (string, er
 	if err != nil {
 		return "", err
 	}
-	pub := strings.TrimSpace(string(out)) + " switchyard-pull@" + hubName
+	pub := strings.TrimSpace(string(out)) + " watchyard-pull@" + hubName
 	if err := os.WriteFile(priv+".pub", []byte(pub+"\n"), 0o644); err != nil {
 		return "", err
 	}

@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/hub/usage"
-	"github.com/mraj602/switchyard/internal/scan"
-	"github.com/mraj602/switchyard/internal/version"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/usage"
+	"github.com/mraj602/watchyard/internal/scan"
+	"github.com/mraj602/watchyard/internal/version"
 )
 
 // Window is api.yaml Window.

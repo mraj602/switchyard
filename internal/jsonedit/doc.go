@@ -1,6 +1,6 @@
 // Package jsonedit edits a JSON document by byte-span splice: only the bytes of the edited
 // value (or the inserted/removed member and its separator) change, so key order, number
-// spelling, indentation and every other value stay exactly as they were. It is how sy edits
+// spelling, indentation and every other value stay exactly as they were. It is how wy edits
 // settings.json (setup.md 5.5) and the mcpServers key of a .claude.json (5.4), which holds
 // a login that must never be rewritten as a whole.
 //

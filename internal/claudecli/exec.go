@@ -22,7 +22,7 @@ type Exec struct {
 	Path    string        // the claude binary
 	Environ []string      // base environment; nil means os.Environ()
 	Timeout time.Duration // per call; 0 means DefaultTimeout
-	// Dir is the working directory of every call; "" inherits sy's. Claude Code reads
+	// Dir is the working directory of every call; "" inherits wy's. Claude Code reads
 	// <cwd>/.claude/settings.json as project settings, so with cwd = HOME the user's own
 	// ~/.claude/settings.json is also the project file and `plugin enable` in another folder
 	// answers "already enabled". Setup sets this to a neutral folder (the state dir).

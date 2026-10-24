@@ -1,4 +1,4 @@
-// Package timer installs the OS timer that runs `sy flush` every minute and at boot:
+// Package timer installs the OS timer that runs `wy flush` every minute and at boot:
 // a systemd user timer on Linux, a LaunchAgent on macOS, and instructions plus a Task
 // Scheduler XML file on Windows (docs/spec/setup.md).
 //
@@ -15,10 +15,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
-// Command is what the timer runs (arguments after the sy binary): `sy tick` (share sync,
+// Command is what the timer runs (arguments after the wy binary): `wy tick` (share sync,
 // scan, agents every 5 minutes, flush).
 var Command = []string{"tick", "--quiet"}
 
@@ -48,7 +48,7 @@ type Env struct {
 	Home     string
 	UID      int
 	User     string
-	SyPath   string // absolute path of the sy binary the timer runs
+	SyPath   string // absolute path of the wy binary the timer runs
 	StateDir string // for logs and the Windows XML
 	Getenv   func(string) string
 	Runner   Runner
@@ -56,8 +56,8 @@ type Env struct {
 }
 
 // passEnv are the folder overrides copied into the unit, so a timer started by the service
-// manager sees the same folders as the shell that ran `sy connect`.
-var passEnv = []string{"SY_HOME", "SY_CONFIG_DIR", "SY_STATE_DIR", "SY_DATA_DIR"}
+// manager sees the same folders as the shell that ran `wy connect`.
+var passEnv = []string{"WY_HOME", "WY_CONFIG_DIR", "WY_STATE_DIR", "WY_DATA_DIR"}
 
 func (e Env) envPairs() [][2]string {
 	if e.Getenv == nil {
@@ -142,12 +142,12 @@ func hasControl(s string) bool {
 	return false
 }
 
-// SystemdService renders switchyard-flush.service.
+// SystemdService renders watchyard-flush.service.
 func SystemdService(e Env) string {
 	var b strings.Builder
 	b.WriteString("[Unit]\n")
-	b.WriteString("Description=Switchyard: send queued records to the hub\n")
-	b.WriteString("Documentation=https://github.com/mraj602/switchyard\n\n")
+	b.WriteString("Description=Watchyard: send queued records to the hub\n")
+	b.WriteString("Documentation=https://github.com/mraj602/watchyard\n\n")
 	b.WriteString("[Service]\nType=oneshot\n")
 	for _, kv := range e.envPairs() {
 		fmt.Fprintf(&b, "Environment=%s\n", systemdEnvQuote(kv[0]+"="+kv[1]))
@@ -161,11 +161,11 @@ func SystemdService(e Env) string {
 	return b.String()
 }
 
-// SystemdTimer renders switchyard-flush.timer: 60 s after the previous run finished, and
+// SystemdTimer renders watchyard-flush.timer: 60 s after the previous run finished, and
 // 30 s after boot.
 func SystemdTimer() string {
 	return "[Unit]\n" +
-		"Description=Switchyard: flush every minute and at boot\n\n" +
+		"Description=Watchyard: flush every minute and at boot\n\n" +
 		"[Timer]\n" +
 		"OnBootSec=30s\n" +
 		"OnUnitInactiveSec=60s\n" +
@@ -228,7 +228,7 @@ func WindowsTaskXML(e Env) string {
 	return `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
-    <Description>Switchyard: send queued records to the hub</Description>
+    <Description>Watchyard: send queued records to the hub</Description>
   </RegistrationInfo>
   <Triggers>
     <LogonTrigger>
@@ -291,7 +291,7 @@ func Install(e Env) (Result, error) {
 	case "windows":
 		return res, installWindows(e, &res)
 	}
-	return res, fmt.Errorf("no timer support for %s; run `sy tick --quiet` every minute from cron", e.GOOS)
+	return res, fmt.Errorf("no timer support for %s; run `wy tick --quiet` every minute from cron", e.GOOS)
 }
 
 // Uninstall disables the timer and removes its files. Missing pieces are not errors.
@@ -412,7 +412,7 @@ func installSystemd(e Env, res *Result) error {
 		{"--user", "enable", "--now", SystemdName + ".timer"},
 	} {
 		if out, err := e.Runner.Run("systemctl", args...); err != nil {
-			return fmt.Errorf("systemctl %s: %v: %s\nThe unit files are in %s; start the timer later with:\n  systemctl --user enable --now %s.timer\nOr, without systemd, run `sy tick --quiet` every minute from cron.",
+			return fmt.Errorf("systemctl %s: %v: %s\nThe unit files are in %s; start the timer later with:\n  systemctl --user enable --now %s.timer\nOr, without systemd, run `wy tick --quiet` every minute from cron.",
 				strings.Join(args, " "), err, strings.TrimSpace(string(out)), dir, SystemdName)
 		}
 	}
@@ -472,7 +472,7 @@ func installWindows(e Env, res *Result) error {
 		return err
 	}
 	res.Files = append(res.Files, p)
-	note := fmt.Sprintf("Windows: create the scheduled task by running, in a normal (not admin) prompt:\n  schtasks /Create /TN \"%s\" /XML \"%s\"\nIt runs `sy tick --quiet` at logon and every minute.", WindowsTask, p)
+	note := fmt.Sprintf("Windows: create the scheduled task by running, in a normal (not admin) prompt:\n  schtasks /Create /TN \"%s\" /XML \"%s\"\nIt runs `wy tick --quiet` at logon and every minute.", WindowsTask, p)
 	res.Notes = append(res.Notes, note)
 	e.printf("%s\n", note)
 	return nil

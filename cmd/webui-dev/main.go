@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/mraj602/switchyard/webui"
-	"github.com/mraj602/switchyard/webui/devserver"
+	"github.com/mraj602/watchyard/webui"
+	"github.com/mraj602/watchyard/webui/devserver"
 )
 
 func main() {

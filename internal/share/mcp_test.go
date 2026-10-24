@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/testtree"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/testtree"
 )
 
 type mcpEnv struct {

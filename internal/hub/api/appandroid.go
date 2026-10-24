@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/appmirror"
-	"github.com/mraj602/switchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/appmirror"
+	"github.com/mraj602/watchyard/internal/hub/auth"
 )
 
 // AppMirror is the hub's mirror of the newest Android release (internal/hub/appmirror, phone.md

@@ -1,4 +1,4 @@
-// Package keys holds the key formats and checks shared by sy, the agent and the hub: base64url
+// Package keys holds the key formats and checks shared by wy, the agent and the hub: base64url
 // and fingerprints, signed documents (owner_key, device_cert, matrix, revocations,
 // peer_envelope) and who may sign them, the passphrase-sealed owner key and its recovery
 // code, this device's keys, the pins in <state>/keys, the QR registration seal, and the

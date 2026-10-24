@@ -12,15 +12,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/sshx"
+	"github.com/mraj602/watchyard/internal/sshx"
 )
 
-// Admin is the admin channel (machines.md 4.4): how the operator runs `sy hub …` on the hub
-// host. Hub runs `sy hub <args>` with stdin there and returns its stdout. A nonzero exit is
+// Admin is the admin channel (machines.md 4.4): how the operator runs `wy hub …` on the hub
+// host. Hub runs `wy hub <args>` with stdin there and returns its stdout. A nonzero exit is
 // an *AdminError.
 type Admin interface {
 	Hub(ctx context.Context, args []string, stdin []byte) ([]byte, error)
-	// Describe is the channel as the person gave it ("local", "ssh hub-host sy").
+	// Describe is the channel as the person gave it ("local", "ssh hub-host wy").
 	Describe() string
 }
 
@@ -36,16 +36,16 @@ func (e *AdminError) Error() string {
 	if msg == "" {
 		msg = fmt.Sprintf("exit %d", e.Exit)
 	}
-	return fmt.Sprintf("sy hub %s (admin channel): %s", strings.Join(e.Args[:min(len(e.Args), 2)], " "), msg)
+	return fmt.Sprintf("wy hub %s (admin channel): %s", strings.Join(e.Args[:min(len(e.Args), 2)], " "), msg)
 }
 
-// NotImplemented reports whether the hub's sy is too old for the command (an old stub
+// NotImplemented reports whether the hub's wy is too old for the command (an old stub
 // answers exit 3 "not implemented").
 func (e *AdminError) NotImplemented() bool {
 	return e.Exit == 3 && strings.Contains(e.Stderr, "not implemented")
 }
 
-// LocalAdmin runs `sy hub …` in this process against <data>/hub.db (a merged hub). The
+// LocalAdmin runs `wy hub …` in this process against <data>/hub.db (a merged hub). The
 // command layer supplies Run (internal/hub/cli), which this package does not import.
 type LocalAdmin struct {
 	Run func(ctx context.Context, args []string, stdin []byte) (stdout, stderr []byte, exit int)
@@ -63,9 +63,9 @@ func (l LocalAdmin) Hub(ctx context.Context, args []string, stdin []byte) ([]byt
 // Describe implements Admin.
 func (LocalAdmin) Describe() string { return "local" }
 
-// PrefixAdmin runs a command prefix followed by `hub …` (`ssh hub-host sy`, `ssh hub-host docker
-// compose -f /srv/sy/compose.yml exec -T hub sy`). The prefix is split into words, no
-// shell; sy never interprets it beyond appending arguments. When the prefix starts with ssh
+// PrefixAdmin runs a command prefix followed by `hub …` (`ssh hub-host wy`, `ssh hub-host docker
+// compose -f /srv/wy/compose.yml exec -T hub wy`). The prefix is split into words, no
+// shell; wy never interprets it beyond appending arguments. When the prefix starts with ssh
 // the appended words are single-quoted for the remote shell and the prefix is checked for
 // options that turn host key checking off.
 type PrefixAdmin struct {
@@ -144,7 +144,7 @@ func AdminSSHHost(prefix string) string {
 	return ""
 }
 
-// PairCode is the part of `sy hub pair --json` (api.yaml PairCode) machine add uses. Secret
+// PairCode is the part of `wy hub pair --json` (api.yaml PairCode) machine add uses. Secret
 // is the 128-bit secret; it is never printed or logged.
 type PairCode struct {
 	ID      string `json:"id"`
@@ -180,14 +180,14 @@ func MintMachineCode(ctx context.Context, a Admin, name, machine, hubURL string)
 	return c, nil
 }
 
-// PullAdded is `sy hub pull add --json`.
+// PullAdded is `wy hub pull add --json`.
 type PullAdded struct {
 	Target    string `json:"target"`
 	Name      string `json:"name"`
 	PublicKey string `json:"public_key"`
 }
 
-// PullRow is one row of `sy hub pull list|run --json`.
+// PullRow is one row of `wy hub pull list|run --json`.
 type PullRow struct {
 	ID        string  `json:"id"`
 	Name      string  `json:"name"`
@@ -274,7 +274,7 @@ func uniquePullName(rows []PullRow, name, machine string) string {
 	}
 }
 
-// PullList is `sy hub pull list --json`.
+// PullList is `wy hub pull list --json`.
 func PullList(ctx context.Context, a Admin) ([]PullRow, error) {
 	out, err := a.Hub(ctx, []string{"pull", "list", "--json"}, nil)
 	if err != nil {
@@ -300,7 +300,7 @@ func pullNameFor(ctx context.Context, a Admin, id, fallback string) string {
 	return fallback
 }
 
-// PullKey is `sy hub pull key --json`.
+// PullKey is `wy hub pull key --json`.
 func PullKey(ctx context.Context, a Admin) (string, error) {
 	out, err := a.Hub(ctx, []string{"pull", "key", "--json"}, nil)
 	if err != nil {
@@ -315,7 +315,7 @@ func PullKey(ctx context.Context, a Admin) (string, error) {
 	return r.PublicKey, nil
 }
 
-// PullRunWait is `sy hub pull run <name> --wait --json`: the row after one run.
+// PullRunWait is `wy hub pull run <name> --wait --json`: the row after one run.
 func PullRunWait(ctx context.Context, a Admin, name string) (PullRow, error) {
 	out, err := a.Hub(ctx, []string{"pull", "run", name, "--wait", "--json"}, nil)
 	var rows []PullRow
@@ -332,7 +332,7 @@ func PullRunWait(ctx context.Context, a Admin, name string) (PullRow, error) {
 	return PullRow{}, fmt.Errorf("the hub did not report pull target %s", name)
 }
 
-// HubMachine is the part of `sy hub machine show <id> --json` (the Machine read model,
+// HubMachine is the part of `wy hub machine show <id> --json` (the Machine read model,
 // machines.md 6.1) machine add and list use.
 type HubMachine struct {
 	ID          string  `json:"id"`
@@ -354,7 +354,7 @@ func (m HubMachine) SeenWithin(now time.Time, d time.Duration) bool {
 	return err == nil && now.Sub(t) <= d
 }
 
-// MachineShow is `sy hub machine show <id> --json`.
+// MachineShow is `wy hub machine show <id> --json`.
 func MachineShow(ctx context.Context, a Admin, id string) (HubMachine, error) {
 	out, err := a.Hub(ctx, []string{"machine", "show", id, "--json"}, nil)
 	if err != nil {
@@ -367,7 +367,7 @@ func MachineShow(ctx context.Context, a Admin, id string) (HubMachine, error) {
 			Machine HubMachine `json:"machine"`
 		}
 		if json.Unmarshal(firstJSON(out), &w) != nil {
-			return HubMachine{}, fmt.Errorf("unreadable answer from sy hub machine show: %w", err)
+			return HubMachine{}, fmt.Errorf("unreadable answer from wy hub machine show: %w", err)
 		}
 		m = w.Machine
 	}
@@ -375,7 +375,7 @@ func MachineShow(ctx context.Context, a Admin, id string) (HubMachine, error) {
 }
 
 // firstJSON returns the first line of out that starts a JSON value (commands may print a
-// second line, as `sy hub pair --wait` does).
+// second line, as `wy hub pair --wait` does).
 func firstJSON(out []byte) []byte {
 	for _, l := range bytes.Split(out, []byte("\n")) {
 		l = bytes.TrimSpace(l)

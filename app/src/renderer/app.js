@@ -1,5 +1,5 @@
 // The shell renderer (docs/spec/desktop.md C8). Plain ES modules and DOM APIs, no framework,
-// no network (CSP connect-src 'none'): everything goes through window.sy (the preload,
+// no network (CSP connect-src 'none'): everything goes through window.wy (the preload,
 // shared/ipc.js names). Never innerHTML: elements are made with createElement and textContent.
 // Decisions live in view.js (pure, unit-tested); this file only draws and wires.
 //
@@ -68,11 +68,11 @@ const logo = () => {
 const errText = (e) => String((e && e.message) || e || 'Something went wrong').replace(/^Error invoking remote method '[^']*': /, '').replace(/^(Error: )+/, '');
 
 /**
- * Renders the shell into root from window.sy.state() and keeps it current with
- * window.sy.on('state', …).
- * @param {{sy: object, root: HTMLElement}} deps
+ * Renders the shell into root from window.wy.state() and keeps it current with
+ * window.wy.on('state', …).
+ * @param {{wy: object, root: HTMLElement}} deps
  */
-export function start({ sy, root }) {
+export function start({ wy, root }) {
   let state = emptyState();
   const ui = {
     v: 0, overlayFor: null, returnView: null, dialog: null, drafts: {}, errors: {}, busy: new Set(),
@@ -148,7 +148,7 @@ export function start({ sy, root }) {
     ui.overlayFor = null;
     render();
     try {
-      await sy.selectView({ view: id });
+      await wy.selectView({ view: id });
     } catch (e) {
       toast('error', errText(e));
     }
@@ -236,7 +236,7 @@ export function start({ sy, root }) {
     const tt = ui.toast ? h('div', { class: `toast ${ui.toast.level === 'error' ? 'error' : ui.toast.level === 'warn' ? 'warn' : ''}${ui.toast.action ? ' has-action' : ''}`.trim(), role: 'status', 'aria-live': 'polite', title: ui.toast.text }, h('span', { class: 'toast-text', text: ui.toast.text }), ui.toast.action ? h('button', { class: 'linkish', fk: 'toast-action', text: ui.toast.action.label, onclick: ui.toast.action.run }) : null) : null;
 
     return [
-      h('div', { class: 'brand' }, logo(), h('span', { class: 'brand-name', text: 'Switchyard' })),
+      h('div', { class: 'brand' }, logo(), h('span', { class: 'brand-name', text: 'Watchyard' })),
       list,
       more,
       h('button', { class: 'icon-btn', fk: 'add-tab', 'aria-label': 'Add account tab', title: 'Add account tab', onclick: () => openAddTab() }, h('span', { text: '+', 'aria-hidden': 'true' })),
@@ -338,13 +338,13 @@ export function start({ sy, root }) {
     if (!id) return;
     const next = droppedIds(state.tabs.map((t) => t.id), id, overId, after);
     if (!next) return;
-    await act('reorder', () => sy.reorderTabs({ ids: next }));
+    await act('reorder', () => wy.reorderTabs({ ids: next }));
   }
 
   async function moveTab(id, delta) {
     const next = movedIds(state.tabs.map((t) => t.id), id, delta);
     if (!next) return;
-    await act('reorder', () => sy.reorderTabs({ ids: next }));
+    await act('reorder', () => wy.reorderTabs({ ids: next }));
     const n = root.querySelector(`[data-fk="${CSS.escape(`tab-${id}`)}"]`) || root.querySelector(`[data-fk="${CSS.escape(`move-${id}`)}"]`);
     if (n) n.focus();
   }
@@ -384,27 +384,27 @@ export function start({ sy, root }) {
         h('span', { class: 'dot', style: { background: colour } }), h('span', { text: tabTitle(t) })),
       wrong ? h('span', { class: 'strip-notice', role: 'status', fk: 'strip-mismatch', title: wrong, text: wrong }) : null,
       wrong ? h('button', { class: 'btn btn-primary', fk: 'strip-adopt', text: adoptLabel(t), disabled: busy(`adopt:${t.id}`), onclick: () => adoptClick(t) }) : null,
-      wrong ? h('button', { class: 'linkish', fk: 'strip-signout', text: signOutLabel(t), onclick: () => act(`logout:${t.id}`, () => sy.logoutTab({ id: t.id })) }) : null,
+      wrong ? h('button', { class: 'linkish', fk: 'strip-signout', text: signOutLabel(t), onclick: () => act(`logout:${t.id}`, () => wy.logoutTab({ id: t.id })) }) : null,
       wrong ? null : h('span', { class: 'strip-wins' }, wins, t.windows_source === 'local' && rows.length ? h('span', { class: 'tag', text: 'local', title: 'Numbers read in this tab; the hub has none for this account yet' }) : null),
       wrong && !st.action ? null : h('span', { class: `status ${st.kind === 'stopped' ? 'stopped' : st.kind === 'retrying' ? 'retrying' : ''}`.trim(), role: 'status', 'aria-live': 'polite', title: lastReadTitle(t), text: st.text }),
-      st.action === 'resume' ? h('button', { class: 'btn btn-primary', fk: 'strip-resume', text: 'Resume', disabled: busy(`resume:${t.id}`), onclick: () => act(`resume:${t.id}`, () => sy.resumeReading({ id: t.id })) }) : null,
+      st.action === 'resume' ? h('button', { class: 'btn btn-primary', fk: 'strip-resume', text: 'Resume', disabled: busy(`resume:${t.id}`), onclick: () => act(`resume:${t.id}`, () => wy.resumeReading({ id: t.id })) }) : null,
       st.action === 'review' ? h('button', { class: 'btn btn-primary', fk: 'strip-review', text: st.actionLabel, onclick: () => openWarning(t, true) }) : null,
       h('span', { class: 'strip-actions' },
         h('button', {
           class: 'switch', role: 'switch', fk: 'strip-reading', 'aria-checked': String(on), 'aria-label': `Read usage for ${tabTitle(t)}`, title: 'Read usage for this account',
           onclick: () => toggleReading(t, !on),
         }, h('span', { class: 'track', 'aria-hidden': 'true' }), h('span', { class: 'lbl', text: 'Read usage' })),
-        iconBtn('refresh', '↻', 'Refresh', () => act(`refresh:${t.id}`, () => sy.refreshUsage({ id: t.id })), { disabled: !on || busy(`refresh:${t.id}`) }),
-        iconBtn('reload', '⟳', 'Reload tab', () => act(`reload:${t.id}`, () => sy.reloadTab({ id: t.id }))),
-        iconBtn('home', '⌂', 'Home', () => act(`home:${t.id}`, () => sy.homeTab({ id: t.id }))),
-        iconBtn('external', '↗', 'Open in browser', () => act(`ext:${t.id}`, () => sy.openTabExternal({ id: t.id }))),
+        iconBtn('refresh', '↻', 'Refresh', () => act(`refresh:${t.id}`, () => wy.refreshUsage({ id: t.id })), { disabled: !on || busy(`refresh:${t.id}`) }),
+        iconBtn('reload', '⟳', 'Reload tab', () => act(`reload:${t.id}`, () => wy.reloadTab({ id: t.id }))),
+        iconBtn('home', '⌂', 'Home', () => act(`home:${t.id}`, () => wy.homeTab({ id: t.id }))),
+        iconBtn('external', '↗', 'Open in browser', () => act(`ext:${t.id}`, () => wy.openTabExternal({ id: t.id }))),
       ));
   }
 
   // "Use this tab for claude-7": one click, or a confirm when another tab is already that account's.
   function adoptClick(t) {
     const run = () => act(`adopt:${t.id}`, async () => {
-      const r = await sy.adoptTab({ id: t.id });
+      const r = await wy.adoptTab({ id: t.id });
       const msg = adoptToast(r);
       const a = msg.action;
       toast('info', msg.text, a ? { label: a.label, run: () => { ui.toast = null; ui.v++; render(); void addForAccount({ seat: a.seat, label: a.name }); } } : null);
@@ -422,10 +422,10 @@ export function start({ sy, root }) {
     });
   }
 
-  /** The existing add-for-account flow (sy.addTab with the seat): a fresh tab made for the account, shown, ready to sign in. */
+  /** The existing add-for-account flow (wy.addTab with the seat): a fresh tab made for the account, shown, ready to sign in. */
   async function addForAccount(m) {
     try {
-      const r = await sy.addTab({ name: m.label, seat: m.seat });
+      const r = await wy.addTab({ name: m.label, seat: m.seat });
       if (r && r.id) await select(r.id);
     } catch (err) {
       toast('error', errText(err));
@@ -437,7 +437,7 @@ export function start({ sy, root }) {
       openWarning(t, true);
       return;
     }
-    act(`reading:${t.id}`, () => sy.setReading({ id: t.id, on }));
+    act(`reading:${t.id}`, () => wy.setReading({ id: t.id, on }));
   }
 
   // ---- content
@@ -472,7 +472,7 @@ export function start({ sy, root }) {
     if (hub.insecure) inner.append(h('div', { class: 'banner warn', role: 'status', fk: 'insecure-hub', text: INSECURE_TEXT }));
     for (const b of state.banners || []) inner.append(h('div', { class: `banner ${b.level === 'warn' ? 'warn' : b.level === 'error' ? 'error' : ''}`.trim(), role: 'status', text: b.text }));
     if (hub.direct && hub.status === 'needs_pairing') {
-      inner.append(h('p', { class: 'hint' }, `Hub: ${hub.url}. `, h('button', { class: 'linkish', fk: 'hub-other', text: 'Use another hub', onclick: () => act('unpair', () => sy.hubUnpair({ forget: true })) })));
+      inner.append(h('p', { class: 'hint' }, `Hub: ${hub.url}. `, h('button', { class: 'linkish', fk: 'hub-other', text: 'Use another hub', onclick: () => act('unpair', () => wy.hubUnpair({ forget: true })) })));
     }
     inner.append(h('p', { class: 'hint' }, 'Account tabs work without a hub. ', h('button', { class: 'linkish', fk: 'hub-open-settings', text: 'Open App settings', onclick: () => openSettings('computer') })));
     return h('div', { class: 'hub-panel', role: 'tabpanel', 'aria-labelledby': 'tab-hub' }, inner);
@@ -488,7 +488,7 @@ export function start({ sy, root }) {
       const c = state.hub.cert;
       actions.append(h('div', { class: 'cert-fp', fk: `cert-fp-${where}`, 'aria-label': 'SHA-256 fingerprint' }, fingerprintGroups(c.fingerprint).map((g) => h('code', { text: g }))));
       actions.append(h('button', { class: `btn ${c.changed ? 'btn-danger' : 'btn-primary'}`, fk: `cert-review-${where}`, text: c.changed ? 'Review the new certificate' : 'Compare and trust', onclick: () => openCert(c) }));
-      actions.append(h('button', { class: 'btn', fk: `cert-retry-${where}`, text: 'Check again', disabled: busy('retry'), onclick: () => act('retry', () => sy.hubRetry()) }));
+      actions.append(h('button', { class: 'btn', fk: `cert-retry-${where}`, text: 'Check again', disabled: busy('retry'), onclick: () => act('retry', () => wy.hubRetry()) }));
     }
     if (hb.action === 'pair' || (hb.action === 'pair-click' && ui.useCode)) actions.append(pairForm(where));
     if (hb.action === 'pair-click' && ui.useCode) actions.append(h('button', { class: 'linkish', fk: `pair-no-code-${where}`, text: 'Pair without a code', onclick: () => { ui.useCode = false; ui.pairError = ''; ui.v++; render(); } }));
@@ -501,9 +501,9 @@ export function start({ sy, root }) {
       if (ui.pairError && ui.useCode === false) actions.append(h('span', { class: 'err', text: ui.pairError }));
     }
     if (hb.action === 'retry' || hb.action === 'retry-service') {
-      actions.append(h('button', { class: 'btn btn-primary', fk: `retry-${where}`, text: 'Try again', disabled: busy('retry'), onclick: () => act('retry', () => sy.hubRetry()) }));
+      actions.append(h('button', { class: 'btn btn-primary', fk: `retry-${where}`, text: 'Try again', disabled: busy('retry'), onclick: () => act('retry', () => wy.hubRetry()) }));
       if (hb.action === 'retry-service' && state.hub.service && state.hub.service !== 'missing' && state.hub.service !== 'running') {
-        actions.append(h('button', { class: 'btn', fk: `start-hub-${where}`, text: 'Start hub', disabled: busy('service'), onclick: () => act('service', () => sy.hubService({ action: 'start' })) }));
+        actions.append(h('button', { class: 'btn', fk: `start-hub-${where}`, text: 'Start hub', disabled: busy('service'), onclick: () => act('service', () => wy.hubService({ action: 'start' })) }));
       }
     }
     if (actions.childNodes.length) el.append(actions);
@@ -541,7 +541,7 @@ export function start({ sy, root }) {
     if (code && !PAIR_CODE_RE.test(code)) return connectFail('The code is 6 digits, like 123-456.');
     if (!code) return connectFail('Type the pairing code. Get one on any owner device: More, Devices, Add desktop app.');
     ui.connectError = '';
-    const r = await act('connect', () => sy.hubConnect({ url, code, ...(ui.connectInsecure && insecureAddress(url) ? { insecureLan: true } : {}) }));
+    const r = await act('connect', () => wy.hubConnect({ url, code, ...(ui.connectInsecure && insecureAddress(url) ? { insecureLan: true } : {}) }));
     if (r && r.ok) {
       ui.connectCode = '';
       toast('info', 'Paired with the hub.');
@@ -587,7 +587,7 @@ export function start({ sy, root }) {
       return;
     }
     ui.pairError = '';
-    const r = await act('pair', () => sy.pair(c ? { code: c } : {}));
+    const r = await act('pair', () => wy.pair(c ? { code: c } : {}));
     if (r && r.ok) {
       ui.pairCode = '';
       ui.useCode = false;
@@ -606,10 +606,10 @@ export function start({ sy, root }) {
     return h('div', { class: 'row-actions' },
       h('span', { class: 'muted', text: `Hub service: ${hub.service || 'unknown'}` }),
       hub.service === 'missing'
-        ? h('span', { class: 'muted' }, 'Not installed. Run ', h('code', { text: 'sy setup --hub here' }))
+        ? h('span', { class: 'muted' }, 'Not installed. Run ', h('code', { text: 'wy setup --hub here' }))
         : h('button', {
           class: 'btn', fk: 'svc-toggle', text: running ? 'Stop' : 'Start', disabled: busy('service'),
-          onclick: () => act('service', () => sy.hubService({ action: running ? 'stop' : 'start' })),
+          onclick: () => act('service', () => wy.hubService({ action: running ? 'stop' : 'start' })),
         }));
   }
 
@@ -726,11 +726,11 @@ export function start({ sy, root }) {
       err ? h('div', { class: 'err', role: 'alert', text: err }) : null,
       h('div', { class: 'switches' },
         sw(`reading-${t.id}`, 'Read usage', t.reading === 'on' && !t.needs_warning, (on) => toggleReading(t, on)),
-        sw(`send-${t.id}`, 'Send to hub', t.send_to_hub, (on) => act(`send-${t.id}`, () => sy.setSend({ id: t.id, on }))),
+        sw(`send-${t.id}`, 'Send to hub', t.send_to_hub, (on) => act(`send-${t.id}`, () => wy.setSend({ id: t.id, on }))),
         h('span', { class: 'muted' }, 'Warning: ',
           t.needs_warning || t.reading === 'never_asked' ? 'not accepted yet. ' : t.reading === 'off' ? 'reading is off. ' : 'accepted. ',
           h('button', { class: 'linkish', fk: `warn-${t.id}`, text: 'Review', onclick: () => openWarning(t, true) })),
-        st.action === 'resume' ? h('button', { class: 'btn', fk: `resume-${t.id}`, text: 'Resume reading', onclick: () => act(`resume:${t.id}`, () => sy.resumeReading({ id: t.id })) }) : null,
+        st.action === 'resume' ? h('button', { class: 'btn', fk: `resume-${t.id}`, text: 'Resume reading', onclick: () => act(`resume:${t.id}`, () => wy.resumeReading({ id: t.id })) }) : null,
       ),
     );
   }
@@ -744,7 +744,7 @@ export function start({ sy, root }) {
     if (e) { ui.v++; render(); return; }
     if (name === t.name) { delete ui.drafts[`name:${t.id}`]; ui.v++; render(); return; }
     await act(`rename:${t.id}`, async () => {
-      await sy.updateTab({ id: t.id, name });
+      await wy.updateTab({ id: t.id, name });
       delete ui.drafts[`name:${t.id}`];
     });
   }
@@ -763,7 +763,7 @@ export function start({ sy, root }) {
     }
     if (Object.keys(payload).length === 1) { ui.errors[t.id] = 'Nothing to save.'; ui.v++; render(); return; }
     ui.errors[t.id] = '';
-    const r = await act(`seat:${t.id}`, () => sy.updateSeat(payload));
+    const r = await act(`seat:${t.id}`, () => wy.updateSeat(payload));
     if (r && r.ok) {
       delete ui.drafts[`label:${t.id}`];
       delete ui.drafts[`colour:${t.id}`];
@@ -777,7 +777,7 @@ export function start({ sy, root }) {
 
   async function clearSeat(t) {
     ui.errors[t.id] = '';
-    const r = await act(`seat:${t.id}`, () => sy.updateSeat({ seat: t.seat, label: null, colour: null }));
+    const r = await act(`seat:${t.id}`, () => wy.updateSeat({ seat: t.seat, label: null, colour: null }));
     if (r && r.ok) {
       delete ui.drafts[`label:${t.id}`];
       delete ui.drafts[`colour:${t.id}`];
@@ -794,10 +794,10 @@ export function start({ sy, root }) {
     if (ui.foldersLoading) return;
     ui.foldersLoading = true;
     try {
-      const r = await sy.localAccounts();
+      const r = await wy.localAccounts();
       if (r && r.ok === false) {
         ui.folders = [];
-        ui.foldersError = r.error || 'sy could not list the folders.';
+        ui.foldersError = r.error || 'wy could not list the folders.';
       } else {
         ui.folders = foldersOf(r);
         ui.foldersError = '';
@@ -816,7 +816,7 @@ export function start({ sy, root }) {
     const body = [];
     if (ui.foldersError) body.push(h('div', { class: 'banner warn', role: 'status', text: ui.foldersError }));
     if (ui.folders === null) body.push(h('p', { class: 'hint', text: 'Loading…' }));
-    else if (!folders.length && !ui.foldersError) body.push(h('p', { class: 'hint', text: 'No Claude Code folders found. Run "sy setup" to add them.' }));
+    else if (!folders.length && !ui.foldersError) body.push(h('p', { class: 'hint', text: 'No Claude Code folders found. Run "wy setup" to add them.' }));
     if (folders.length) {
       const head = h('tr', {}, h('th', { scope: 'col', text: 'Part' }), folders.map((f) => h('th', { scope: 'col' },
         h('div', { text: `${f.label || ''} ${f.folder}`.trim() }),
@@ -824,7 +824,7 @@ export function start({ sy, root }) {
       const rows = SHARE_SWITCHES.map((s) => h('tr', {}, h('td', { text: s.label }), folders.map((f) => {
         const st = switchState(f, s);
         if (st === 'source') return h('td', { class: 'muted', text: 'source' });
-        if (st === 'elsewhere') return h('td', { class: 'muted', text: 'elsewhere', title: 'Linked to another folder; change it with sy account share' });
+        if (st === 'elsewhere') return h('td', { class: 'muted', text: 'elsewhere', title: 'Linked to another folder; change it with wy account share' });
         if (st === 'unknown') return h('td', { class: 'muted', text: '–' });
         const key = `share:${f.folder}:${s.id}`;
         return h('td', {}, h('input', {
@@ -844,13 +844,13 @@ export function start({ sy, root }) {
       'Shared parts point at the primary folder (~/.claude). Changes apply at once; open sessions see them after a restart.',
       ...body,
       h('div', { class: 'row-actions' }, h('button', { class: 'btn', fk: 'folders-refresh', text: 'Refresh', disabled: ui.foldersLoading, onclick: loadFolders })),
-      h('div', {}, h('div', { class: 'hint', text: 'Add a Claude Code account, then log in. Both need a terminal:' }), cmdRow('sy account add', 'cmd-account-add')));
+      h('div', {}, h('div', { class: 'hint', text: 'Add a Claude Code account, then log in. Both need a terminal:' }), cmdRow('wy account add', 'cmd-account-add')));
   }
 
   async function changeShare(f, s, on, key) {
     const spec = shareSpec(f, s.id, on);
-    const r = await act(key, () => sy.shareAccount({ folder: f.folder, share: spec }));
-    if (r && r.ok === false) toast('error', r.error || 'sy could not change the sharing.');
+    const r = await act(key, () => wy.shareAccount({ folder: f.folder, share: spec }));
+    if (r && r.ok === false) toast('error', r.error || 'wy could not change the sharing.');
     await loadFolders();
   }
 
@@ -864,14 +864,14 @@ export function start({ sy, root }) {
     const dl = h('dl', { class: 'kv' },
       h('dt', { text: 'Name' }), h('dd', { text: hub.machine || '–' }),
       h('dt', { text: 'Hub' }), h('dd', { text: hub.url ? `${hub.url} · ${hubSummary(hub)}` : 'none' }),
-      h('dt', { text: 'Pairing' }), h('dd', { text: paired ? `paired${hub.direct ? '' : ' through sy'}` : hub.removed ? 'removed from the hub' : 'not paired' }),
+      h('dt', { text: 'Pairing' }), h('dd', { text: paired ? `paired${hub.direct ? '' : ' through wy'}` : hub.removed ? 'removed from the hub' : 'not paired' }),
       h('dt', { text: 'Access' }), h('dd', {},
         h('span', { text: pill ? pill.text : hub.owner ? 'Owner' : 'Read-only' }),
         hub.owner
-          ? h('button', { class: 'btn', fk: 'owner-sign-out', text: 'Sign out of owner', disabled: busy('owner-out'), onclick: () => act('owner-out', async () => { await sy.ownerSignOut(); toast('info', 'Signed out of owner. This computer can view, not change.'); }) })
+          ? h('button', { class: 'btn', fk: 'owner-sign-out', text: 'Sign out of owner', disabled: busy('owner-out'), onclick: () => act('owner-out', async () => { await wy.ownerSignOut(); toast('info', 'Signed out of owner. This computer can view, not change.'); }) })
           : [h('button', { class: 'btn', fk: 'owner-sign-in-settings', text: busy('owner') ? 'Signing in…' : 'Sign in as owner', disabled: !hubUsable(hub) || busy('owner'), onclick: ownerSignInClick }), busy('owner') ? progress('owner') : null]),
       hub.local ? [h('dt', { text: 'Hub service' }), h('dd', {}, h('span', { text: hub.service || 'unknown' }), hub.service !== 'missing' ? serviceButtons() : null,
-        hub.service === 'missing' ? h('span', { class: 'muted' }, 'Not installed: run ', h('code', { text: 'sy setup --hub here' })) : null)] : null,
+        hub.service === 'missing' ? h('span', { class: 'muted' }, 'Not installed: run ', h('code', { text: 'wy setup --hub here' })) : null)] : null,
       hub.admin ? [h('dt', { text: 'Admin channel' }), h('dd', { text: hub.admin })] : null,
       hub.url && /^https:/i.test(hub.url) ? [h('dt', { text: 'Certificate' }), h('dd', { fk: 'cert-row', text: hub.cert ? (hub.cert.changed ? 'Changed: not trusted' : 'Not trusted yet') : hub.pinned ? 'Pinned (trusted on first use)' : 'Verified' })] : null,
       hub.url && hub.insecure ? [h('dt', { text: 'Encryption' }), h('dd', { fk: 'encryption-row', text: 'None (plain http)' })] : null,
@@ -894,12 +894,12 @@ export function start({ sy, root }) {
     const running = state.hub.service === 'running';
     return h('button', {
       class: 'btn', fk: 'svc-toggle-settings', text: running ? 'Stop' : 'Start', disabled: busy('service'),
-      onclick: () => act('service', () => sy.hubService({ action: running ? 'stop' : 'start' })),
+      onclick: () => act('service', () => wy.hubService({ action: running ? 'stop' : 'start' })),
     });
   }
 
   async function ownerSignIn() {
-    const r = await act('owner', () => sy.ownerSignIn({}));
+    const r = await act('owner', () => wy.ownerSignIn({}));
     if (r && r.ok === false) toast('error', r.error || 'Owner sign-in did not work.');
     else if (r) await select('hub');
   }
@@ -908,7 +908,7 @@ export function start({ sy, root }) {
 
   function settingSwitch(key) {
     return (on) => act(`set-${key}`, async () => {
-      const r = await sy.setSettings({ [key]: on });
+      const r = await wy.setSettings({ [key]: on });
       if (r && typeof r === 'object') state = { ...state, settings: { ...state.settings, ...r } };
     });
   }
@@ -929,7 +929,7 @@ export function start({ sy, root }) {
     return section('login', 'Start at login', null,
       h('div', { class: 'card card-pad' },
         h('div', { class: 'switches' },
-          sw('set-autostart', 'Start Switchyard when I log in', s.autostart, settingSwitch('autostart'), { hint: 'Off by default. A login start goes to the tray; any other start shows the window.' }))));
+          sw('set-autostart', 'Start Watchyard when I log in', s.autostart, settingSwitch('autostart'), { hint: 'Off by default. A login start goes to the tray; any other start shows the window.' }))));
   }
 
   // -- about
@@ -939,21 +939,21 @@ export function start({ sy, root }) {
     if (!a) return null;
     return section('about', 'About', null,
       h('div', { class: 'card card-pad' }, h('dl', { class: 'kv', fk: 'about' },
-        h('dt', { text: 'Switchyard Desktop' }), h('dd', { text: a.app || '–' }),
-        h('dt', { text: 'sy' }), h('dd', { text: state.hub?.sy_version || '–' }),
+        h('dt', { text: 'Watchyard Desktop' }), h('dd', { text: a.app || '–' }),
+        h('dt', { text: 'wy' }), h('dd', { text: state.hub?.sy_version || '–' }),
         h('dt', { text: 'Hub' }), h('dd', { text: state.hub?.version || '–' }),
         h('dt', { text: 'Electron' }), h('dd', { text: a.electron || '–' }),
         h('dt', { text: 'Chromium' }), h('dd', { text: a.chrome || '–' }),
         h('dt', { text: 'Platform' }), h('dd', { text: a.platform || '–' }))));
   }
 
-  /** The update notice: versions differ between this app and the hub or sy (C8). */
+  /** The update notice: versions differ between this app and the hub or wy (C8). */
   function updateBanner(where) {
     const n = state.update;
     return h('div', { class: `banner ${n.kind === 'update' ? '' : 'warn'}`.trim(), role: 'status', fk: `update-${where}` },
       h('div', { text: updateText(n) }),
       h('div', { class: 'banner-actions' },
-        h('button', { class: 'btn', fk: `update-open-${where}`, text: 'Open the release page', onclick: () => act('release', () => sy.openRelease()) })));
+        h('button', { class: 'btn', fk: `update-open-${where}`, text: 'Open the release page', onclick: () => act('release', () => wy.openRelease()) })));
   }
 
   // ---- dialogs
@@ -987,7 +987,7 @@ export function start({ sy, root }) {
     if (overlay && state.view !== 'settings') {
       ui.overlayFor = state.view;
       ui.returnView = state.view;
-      sy.selectView({ view: 'settings' }).catch(() => {});
+      wy.selectView({ view: 'settings' }).catch(() => {});
       state = { ...state, view: 'settings' };
     }
     root.append(dlg);
@@ -1029,7 +1029,7 @@ export function start({ sy, root }) {
         h('button', {
           class: `btn btn-lg ${c.changed ? 'btn-danger' : 'btn-primary'}`, fk: 'cert-trust', text: 'The fingerprints match: trust it',
           onclick: async () => {
-            const r = await act('trust-cert', () => sy.trustCert({ url: c.url, fingerprint: c.fingerprint }));
+            const r = await act('trust-cert', () => wy.trustCert({ url: c.url, fingerprint: c.fingerprint }));
             if (r && r.ok) {
               d.close('trusted');
               toast('info', r.pinned ? 'Certificate trusted for this hub.' : 'The certificate now passes the normal checks; no pin is needed.');
@@ -1053,7 +1053,7 @@ export function start({ sy, root }) {
           class: 'btn btn-danger btn-lg', fk: 'unpair-confirm', text: 'Unpair this computer',
           onclick: async () => {
             d.close('removed');
-            const r = await act('unpair', () => sy.hubUnpair({}));
+            const r = await act('unpair', () => wy.hubUnpair({}));
             if (r && r.warning) toast('warn', r.warning);
             else if (r && r.ok) toast('info', 'This computer is unpaired.');
             await select('hub');
@@ -1071,7 +1071,7 @@ export function start({ sy, root }) {
       const link = input.value.trim();
       if (!link) { msg.textContent = 'Paste the owner link first.'; input.focus(); return; }
       msg.textContent = '';
-      const r = await act('owner', () => sy.ownerSignIn({ link }));
+      const r = await act('owner', () => wy.ownerSignIn({ link }));
       if (r && r.ok) { d.close('selected'); ui.overlayFor = null; await select('hub'); } else if (r) msg.textContent = r.error || 'That link did not work.';
     };
     openDialog({
@@ -1080,7 +1080,7 @@ export function start({ sy, root }) {
         h('label', { for: 'owner-link', text: 'Paste owner link' }),
         (input = h('input', { type: 'text', id: 'owner-link', autocomplete: 'off', spellcheck: 'false', placeholder: `${state.hub.url || 'https://hub.example.com'}/#/owner?s=…`, onkeydown: (e) => { if (e.key === 'Enter') submit(ui.dialog); } })),
         (msg = h('div', { class: 'err', role: 'alert' })),
-        h('p', { class: 'fine', text: 'Get one on an owner device: More, Devices, Make another device owner. Or on the hub\u2019s computer: sy hub owner-link.' })),
+        h('p', { class: 'fine', text: 'Get one on an owner device: More, Devices, Make another device owner. Or on the hub\u2019s computer: wy hub owner-link.' })),
       actions: (d) => [
         h('button', { class: 'btn btn-lg', text: 'Cancel', onclick: () => d.close('cancel') }),
         h('button', { class: 'btn btn-primary btn-lg', fk: 'owner-link-go', text: 'Sign in as owner', onclick: () => submit(d) }),
@@ -1095,15 +1095,15 @@ export function start({ sy, root }) {
     openDialog({
       title: 'Read usage for this account?',
       body: h('div', { class: 'dlg', style: { padding: '0' } },
-        text('Every 5 minutes, Switchyard runs a small script inside this tab that reads the same numbers claude.ai shows under Settings → Usage. It reads numbers only: no chats, no cookies. They go to your own hub.'),
-        text('This uses claude.ai’s own undocumented usage endpoint, not an official API, and nothing is requested until you allow it. It may stop working, and automated access may not be allowed by Anthropic’s consumer terms, so it could get this account flagged. Switchyard is unofficial and not affiliated with Anthropic. Whether to turn this on is your choice.'),
+        text('Every 5 minutes, Watchyard runs a small script inside this tab that reads the same numbers claude.ai shows under Settings → Usage. It reads numbers only: no chats, no cookies. They go to your own hub.'),
+        text('This uses claude.ai’s own undocumented usage endpoint, not an official API, and nothing is requested until you allow it. It may stop working, and automated access may not be allowed by Anthropic’s consumer terms, so it could get this account flagged. Watchyard is unofficial and not affiliated with Anthropic. Whether to turn this on is your choice.'),
         h('p', { class: 'fine', text: 'You can turn reading off for this account at any time in its usage bar or in Settings.' })),
       actions: (d) => [
         h('button', {
           class: 'btn btn-lg', fk: 'warn-not-now', text: 'Not now',
           onclick: async () => {
             d.close('not-now');
-            await act(`reading:${t.id}`, () => sy.setReading({ id: t.id, on: false }));
+            await act(`reading:${t.id}`, () => wy.setReading({ id: t.id, on: false }));
           },
         }),
         h('button', {
@@ -1111,8 +1111,8 @@ export function start({ sy, root }) {
           onclick: async () => {
             d.close('accepted');
             await act(`reading:${t.id}`, async () => {
-              await sy.acceptWarning({ id: t.id, version: WARNING_VERSION });
-              if (tabById(t.id)?.reading !== 'on') await sy.setReading({ id: t.id, on: true });
+              await wy.acceptWarning({ id: t.id, version: WARNING_VERSION });
+              if (tabById(t.id)?.reading !== 'on') await wy.setReading({ id: t.id, on: true });
             });
           },
         }),
@@ -1136,7 +1136,7 @@ export function start({ sy, root }) {
       const e = nameError(name);
       if (e) { msg.textContent = e; input.focus(); return; }
       try {
-        const r = await sy.addTab({ name });
+        const r = await wy.addTab({ name });
         d.close('selected');
         ui.overlayFor = null;
         if (r && r.id) await select(r.id);
@@ -1146,7 +1146,7 @@ export function start({ sy, root }) {
     };
     const add = async (d, m) => {
       try {
-        const r = await sy.addTab({ name: m.label, seat: m.seat });
+        const r = await wy.addTab({ name: m.label, seat: m.seat });
         d.close('selected');
         ui.overlayFor = null;
         if (r && r.id) await select(r.id);
@@ -1183,7 +1183,7 @@ export function start({ sy, root }) {
           class: 'btn btn-danger btn-lg', text: 'Remove tab',
           onclick: async () => {
             d.close('removed');
-            await act(`remove:${t.id}`, () => sy.removeTab({ id: t.id }));
+            await act(`remove:${t.id}`, () => wy.removeTab({ id: t.id }));
           },
         }),
       ],
@@ -1211,17 +1211,17 @@ export function start({ sy, root }) {
 
   // ---- go
 
-  sy.on('state', apply);
-  sy.on('toast', (t) => { if (t && t.text) toast(t.level || 'info', t.text); });
+  wy.on('state', apply);
+  wy.on('toast', (t) => { if (t && t.text) toast(t.level || 'info', t.text); });
   setInterval(render, TICK_MS);
   render();
-  sy.state().then(apply).catch((e) => toast('error', errText(e)));
+  wy.state().then(apply).catch((e) => toast('error', errText(e)));
   return { get state() { return state; } };
 }
 
-// The shell page starts itself (the dev page loads mock-sy.js first, which defines window.sy).
-if (typeof document !== 'undefined' && typeof window !== 'undefined' && window.sy) {
-  const mount = () => start({ sy: window.sy, root: document.getElementById('app') });
+// The shell page starts itself (the dev page loads mock-sy.js first, which defines window.wy).
+if (typeof document !== 'undefined' && typeof window !== 'undefined' && window.wy) {
+  const mount = () => start({ wy: window.wy, root: document.getElementById('app') });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
   else mount();
 }

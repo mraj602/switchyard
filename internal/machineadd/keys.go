@@ -8,16 +8,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
-// Link keys over SSH (keys.md 3.5, 4.2 reg ssh): `sy machine add` reads the machine's
+// Link keys over SSH (keys.md 3.5, 4.2 reg ssh): `wy machine add` reads the machine's
 // public keys over the person's SSH session, the hub host registers them through the admin
 // channel, and the machine pins the hub key (and the operator's owner key) the add got from
 // the hub host and from this machine, never from the network the machine sits on. Then the
 // operator, the owner machine, may sign the certificate in the same run.
 
-// DeviceReport is `sy keys device --json` on the remote: its device id (as its token says),
+// DeviceReport is `wy keys device --json` on the remote: its device id (as its token says),
 // machine id and public link keys, made at first use.
 type DeviceReport struct {
 	Device  string             `json:"device"`
@@ -28,7 +28,7 @@ type DeviceReport struct {
 	Created bool               `json:"created"`
 }
 
-// Registered is `sy hub keys register --json` on the hub host.
+// Registered is `wy hub keys register --json` on the hub host.
 type Registered struct {
 	Device      string    `json:"device"`
 	Reg         string    `json:"reg"`
@@ -54,7 +54,7 @@ func (p PubKey) Key() (ed25519.PublicKey, error) {
 	return b, nil
 }
 
-// Handoff is what `sy keys pin-ssh` reads on the remote's stdin: the hub key and the
+// Handoff is what `wy keys pin-ssh` reads on the remote's stdin: the hub key and the
 // hub-signed certificate from the hub host, and the owner key this operator pins.
 type Handoff struct {
 	HubKey PubKey   `json:"hub_key"`
@@ -62,7 +62,7 @@ type Handoff struct {
 	Cert   keys.Doc `json:"cert"`
 }
 
-// PinReport is `sy keys pin-ssh`'s answer.
+// PinReport is `wy keys pin-ssh`'s answer.
 type PinReport struct {
 	Hub   string `json:"hub"`   // how the hub pin was set (ssh, or what an earlier pin says)
 	Owner string `json:"owner"` // how the owner pin was set; "" when none
@@ -81,7 +81,7 @@ type KeysSummary struct {
 	OwnerPinned string `json:"owner_pin,omitempty"`
 }
 
-// RegisterKeysSSH is `sy hub keys register <device> --machine <id> --keys-stdin --json`.
+// RegisterKeysSSH is `wy hub keys register <device> --machine <id> --keys-stdin --json`.
 func RegisterKeysSSH(ctx context.Context, a Admin, device, machine string, k keys.DeviceKeysNew) (Registered, error) {
 	in, err := json.Marshal(k)
 	if err != nil {
@@ -93,7 +93,7 @@ func RegisterKeysSSH(ctx context.Context, a Admin, device, machine string, k key
 	}
 	var r Registered
 	if err := json.Unmarshal(firstJSON(out), &r); err != nil || r.Device == "" {
-		return Registered{}, errors.New("unreadable answer from sy hub keys register")
+		return Registered{}, errors.New("unreadable answer from wy hub keys register")
 	}
 	return r, nil
 }
@@ -106,7 +106,7 @@ func checkRegistered(r Registered, dev DeviceReport, machine string) (ed25519.Pu
 	if err != nil {
 		return nil, keys.Cert{}, fmt.Errorf("the hub's key: %v", err)
 	}
-	// The hub's part: an owner signature is the owner key's business (sy keys certify).
+	// The hub's part: an owner signature is the owner key's business (wy keys certify).
 	c, err := keys.VerifyCert(r.Cert.Only(keys.ByHub), keys.Trust{Hub: hub}, false)
 	if err != nil {
 		return nil, keys.Cert{}, fmt.Errorf("the certificate does not verify with the hub's key: %v", err)
@@ -126,7 +126,7 @@ func (a *adder) linkKeys(ctx context.Context) error {
 		return nil
 	}
 	if a.e.Admin == nil {
-		a.warn("keys", fmt.Sprintf("no admin channel, so the link keys were not registered over SSH: run `sy agent enable` on %s (registers them, reg tofu), then `sy keys certify` here", a.o.Host))
+		a.warn("keys", fmt.Sprintf("no admin channel, so the link keys were not registered over SSH: run `wy agent enable` on %s (registers them, reg tofu), then `wy keys certify` here", a.o.Host))
 		return nil
 	}
 	dev, err := a.remoteDevice(ctx, false)
@@ -173,14 +173,14 @@ func (a *adder) linkKeys(ctx context.Context) error {
 		HubPinned: pins.Hub, OwnerPinned: pins.Owner}
 	a.sum.Keys = ks
 	if pins.OwnerKept != "" {
-		a.warn("keys", fmt.Sprintf("%s keeps its owner pin %s (not this machine's); check it with `sy keys status` there", a.sum.Name, keys.GroupFP(pins.OwnerKept)))
+		a.warn("keys", fmt.Sprintf("%s keeps its owner pin %s (not this machine's); check it with `wy keys status` there", a.sum.Name, keys.GroupFP(pins.OwnerKept)))
 	}
 	a.e.emit("keys", "ok", fmt.Sprintf("registered the link keys of %s over SSH (reg ssh; sign %s); it pins hub key %s", a.sum.Name,
 		keys.GroupFP(dev.SignFP), keys.GroupFP(reg.HubKey.FP)), map[string]any{"device": dev.Device, "sign_fp": dev.SignFP, "box_fp": dev.BoxFP})
 	if reg.OwnerSigned {
 		return nil
 	}
-	next := fmt.Sprintf("run `sy keys certify %s` on the owner machine: peers across machines need the owner signature", dev.Device)
+	next := fmt.Sprintf("run `wy keys certify %s` on the owner machine: peers across machines need the owner signature", dev.Device)
 	if a.e.Certify == nil {
 		a.warn("keys", next)
 		return nil
@@ -198,7 +198,7 @@ func (a *adder) linkKeys(ctx context.Context) error {
 	return nil
 }
 
-// remoteDevice runs `sy keys device --json [--renew]` on the remote (through the forward, so
+// remoteDevice runs `wy keys device --json [--renew]` on the remote (through the forward, so
 // it can ask the hub for its device id).
 func (a *adder) remoteDevice(ctx context.Context, renew bool) (DeviceReport, error) {
 	words := []string{RemoteSy, "keys", "device", "--json"}
@@ -211,18 +211,18 @@ func (a *adder) remoteDevice(ctx context.Context, renew bool) (DeviceReport, err
 	}
 	var d DeviceReport
 	if res.Exit != 0 || json.Unmarshal(firstJSON(res.Stdout), &d) != nil {
-		return DeviceReport{}, exitf(ExitFailed, "`sy keys device` failed on %s (exit %d): %s", a.o.Host, res.Exit, firstLine(res.Stderr))
+		return DeviceReport{}, exitf(ExitFailed, "`wy keys device` failed on %s (exit %d): %s", a.o.Host, res.Exit, firstLine(res.Stderr))
 	}
 	if d.Machine != a.sum.Machine {
 		return DeviceReport{}, exitf(ExitFailed, "%s reports machine %s, not %s", a.o.Host, d.Machine, a.sum.Machine)
 	}
 	if d.Device == "" {
-		return DeviceReport{}, exitf(ExitFailed, "%s does not know its device id (no hub token?): run `sy doctor` there", a.o.Host)
+		return DeviceReport{}, exitf(ExitFailed, "%s does not know its device id (no hub token?): run `wy doctor` there", a.o.Host)
 	}
 	return d, nil
 }
 
-// pinRemote runs `sy keys pin-ssh` on the remote with the handoff on stdin.
+// pinRemote runs `wy keys pin-ssh` on the remote with the handoff on stdin.
 func (a *adder) pinRemote(ctx context.Context, h Handoff) (PinReport, error) {
 	in, err := json.Marshal(h)
 	if err != nil {

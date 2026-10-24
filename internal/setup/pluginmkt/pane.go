@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// panePlaceholder is the string literal register.tsx holds where the absolute path of sy goes.
+// panePlaceholder is the string literal register.tsx holds where the absolute path of wy goes.
 const panePlaceholder = `"__SY_PATH__"`
 
 // paneFile returns one file of the pane mod as it is written into the marketplace (path in
@@ -35,14 +35,14 @@ func paneFile(p string, data []byte, syPath string) ([]byte, error) {
 
 func paneLiteral(syPath string) (string, error) {
 	if syPath == "" {
-		return "", fmt.Errorf("pluginmkt: pane: empty sy path")
+		return "", fmt.Errorf("pluginmkt: pane: empty wy path")
 	}
 	p := syPath
 	if runtime.GOOS == "windows" {
 		p = filepath.ToSlash(p)
 	}
 	if strings.ContainsAny(p, "\"\\\r\n") {
-		return "", fmt.Errorf("pluginmkt: pane: the sy path %q holds a quote, a backslash or a line break", syPath)
+		return "", fmt.Errorf("pluginmkt: pane: the wy path %q holds a quote, a backslash or a line break", syPath)
 	}
 	return `"` + p + `"`, nil
 }

@@ -1,0 +1,11 @@
+[Unit]
+Description=Watchyard: send queued records to the hub
+Documentation=https://github.com/mraj602/watchyard
+
+[Service]
+Type=oneshot
+Environment="WY_HOME=/srv/wy home"
+Environment=WY_STATE_DIR=/srv/state
+ExecStart="/opt/my tools/wy" tick --quiet
+Nice=10
+TimeoutStartSec=60

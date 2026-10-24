@@ -93,13 +93,13 @@ export function ntfyLink(server, topic) {
   try { return `ntfy://${new URL(server).host}/${encodeURIComponent(topic)}`; } catch (_) { return ''; }
 }
 
-// ---- installing the board, and the Switchyard phone app -----------------------------------
+// ---- installing the board, and the Watchyard phone app -----------------------------------
 
 // How to install the board as an app in this browser, or '' when the page itself can
 // offer the install prompt. `ios` and `standalone` come from the page.
 export function installHint(ua = '', { ios = false, standalone = false } = {}) {
   if (standalone) return 'Installed: you are running the app.';
-  if (ios) return 'Tap Share, then Add to Home Screen. Open Switchyard from your Home Screen.';
+  if (ios) return 'Tap Share, then Add to Home Screen. Open Watchyard from your Home Screen.';
   if (isAndroid(ua)) return 'Open the browser menu and choose Install app (or Add to Home screen).';
   if (/(Firefox|FxiOS)\//.test(ua)) return 'Optional: Firefox does not install web apps on a computer. The board works the same in a tab.';
   if (/Edg\//.test(ua)) return 'Optional: open the browser menu, then Apps, then Install this site as an app.';
@@ -109,18 +109,18 @@ export function installHint(ua = '', { ios = false, standalone = false } = {}) {
 }
 
 // The link that opens the installed Android app on its pairing screen. It is a Chrome intent URL
-// pinned to the release package, so only Switchyard can receive it: any app can register the plain
-// switchyard:// scheme, and this link carries the pairing secret and the seal key (phone.md P2).
-//   intent://pair?u=&s=&c=&h=&k=#Intent;scheme=switchyard;package=<app id>;end
+// pinned to the release package, so only Watchyard can receive it: any app can register the plain
+// watchyard:// scheme, and this link carries the pairing secret and the seal key (phone.md P2).
+//   intent://pair?u=&s=&c=&h=&k=#Intent;scheme=watchyard;package=<app id>;end
 // `c`, `h` and `k` are left out when absent. `h` (the hub key's fingerprint) and `k` (the
 // registration seal key) are the QR's keys.md 7 pins. There is no browser fallback URL, since it
 // would put the secret in another address. Empty off Android (no other app exists). Never log the
 // result: it carries the secret.
-export const APP_ID = 'io.github.mraj602.switchyard';
+export const APP_ID = 'io.github.mraj602.watchyard';
 export function appPairLink(origin, secret, code, hubFp, sealKey, ua = '', appId = APP_ID) {
   if (!origin || !secret || !isAndroid(ua) || !/^[A-Za-z][\w]*(\.[A-Za-z][\w]*)+$/.test(appId)) return '';
   const digits = codeDigits(code);
   return `intent://pair?u=${encodeURIComponent(origin)}&s=${encodeURIComponent(secret)}${digits ? `&c=${encodeURIComponent(digits)}` : ''}` +
     `${hubFp ? `&h=${encodeURIComponent(hubFp)}` : ''}${sealKey ? `&k=${encodeURIComponent(sealKey)}` : ''}` +
-    `#Intent;scheme=switchyard;package=${appId};end`;
+    `#Intent;scheme=watchyard;package=${appId};end`;
 }

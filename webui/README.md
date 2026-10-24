@@ -1,6 +1,6 @@
 # webui
 
-The hub's web app, embedded into `sy` with `embed.FS` (`webui.FS()`) and served by
+The hub's web app, embedded into `wy` with `embed.FS` (`webui.FS()`) and served by
 `webui.Handler`. One SPA: the desktop board (sidebar) and the installable phone app (PWA,
 tab bar Now / Sessions / Accounts / More) at the same URL. Plain ES modules and CSS, no
 build step. See `doc.go` for the file layout.
@@ -47,4 +47,4 @@ hash (update banner), `POST /_dev/reset`, `POST /_dev/promote`.
 - Browser smoke at 390 and 1440 px (needs Chrome and puppeteer-core in a temp dir; the `web board (browser smoke)` job of `.github/workflows/ci.yml` runs it):
 
       mkdir -p $TMP/pp && (cd $TMP/pp && npm init -y && npm i puppeteer-core)
-      SY_WEBUI_BROWSER=1 SY_PUPPETEER_MODULES=$TMP/pp/node_modules SY_WEBUI_SHOTS=$TMP/shots go test ./webui/smoke
+      WY_WEBUI_BROWSER=1 WY_PUPPETEER_MODULES=$TMP/pp/node_modules WY_WEBUI_SHOTS=$TMP/shots go test ./webui/smoke

@@ -10,18 +10,18 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
-// world: claude (500) -> bash (501, CLAUDECODE set) -> sy (502). The walk starts at 501.
+// world: claude (500) -> bash (501, CLAUDECODE set) -> wy (502). The walk starts at 501.
 func whoamiWorld(t *testing.T) (*fx, string) {
 	f := newFx(t)
 	slot := f.slot(".claude-2", "acc-work")
 	f.claudeProc(500, 100, slot, 4242)
 	f.proc(100, 1, "systemd", "/usr/lib/systemd/systemd", "systemd --user", 1)
 	f.proc(501, 500, "bash", "/usr/bin/bash", "bash -c eval", 4300, "CLAUDECODE=1", "CLAUDE_CONFIG_DIR=/wrong/never-used")
-	f.proc(502, 501, "sy", "/usr/local/bin/sy", "sy peers send", 4301)
+	f.proc(502, 501, "wy", "/usr/local/bin/wy", "wy peers send", 4301)
 	f.registry(slot, 500, "sess-a", "api", filepath.Join(f.home, "src/api"), filepath.Join(f.runtime, "cc-socks", "500.sock"), 4242)
 	return f, slot
 }
@@ -69,7 +69,7 @@ func TestWhoamiRefusals(t *testing.T) {
 	t.Run("no claude above", func(t *testing.T) {
 		f := newFx(t)
 		f.proc(10, 1, "bash", "/usr/bin/bash", "bash", 1, "CLAUDECODE=1") // CLAUDECODE alone is not claude
-		f.proc(11, 10, "sy", "/usr/bin/sy", "sy", 2)
+		f.proc(11, 10, "wy", "/usr/bin/wy", "wy", 2)
 		e := f.env()
 		e.StartPID = 10
 		if _, rf := e.Whoami(); rf == nil || rf.Code != peers.CodeNotASession || peers.ExitCode(rf.Code) != 4 {
@@ -78,7 +78,7 @@ func TestWhoamiRefusals(t *testing.T) {
 	})
 	t.Run("reparented child has no claude ancestor", func(t *testing.T) {
 		f, _ := whoamiWorld(t)
-		f.proc(900, 1, "sy", "/usr/bin/sy", "sy peers send", 5) // setsid -f: parent is pid 1
+		f.proc(900, 1, "wy", "/usr/bin/wy", "wy peers send", 5) // setsid -f: parent is pid 1
 		e := f.env()
 		e.StartPID = 900
 		if _, rf := e.Whoami(); rf == nil || rf.Code != peers.CodeNotASession {
@@ -93,7 +93,7 @@ func TestWhoamiRefusals(t *testing.T) {
 		f.proc(501, 500, "sh", "/bin/sh", "sh", 2)
 		e := f.env()
 		e.StartPID = 501
-		if _, rf := e.Whoami(); rf == nil || !strings.Contains(rf.Detail, "not one Switchyard manages") {
+		if _, rf := e.Whoami(); rf == nil || !strings.Contains(rf.Detail, "not one Watchyard manages") {
 			t.Fatalf("%v", rf)
 		}
 	})

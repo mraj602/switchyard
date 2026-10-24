@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/pull"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/pull"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // localSSHD starts a real sshd on a free loopback port with a temp host key. It skips the
@@ -100,7 +100,7 @@ func TestRealSSHDForcedCommandAndRestrict(t *testing.T) {
 	if err != nil {
 		t.Skipf("no ssh-keygen: %v", err)
 	}
-	// The forced command stands in for `sy outbox drain --stdio`: it prints what it was asked.
+	// The forced command stands in for `wy outbox drain --stdio`: it prints what it was asked.
 	drain := filepath.Join(t.TempDir(), "drain.sh")
 	if err := os.WriteFile(drain, []byte("#!/bin/sh\necho \"FORCED[$SSH_ORIGINAL_COMMAND]\"\nsleep 2\n"), 0o755); err != nil {
 		t.Fatal(err)
@@ -130,7 +130,7 @@ func TestRealSSHDForcedCommandAndRestrict(t *testing.T) {
 	}
 
 	// The documented invocation reaches the forced command.
-	out, errs, err := run(10*time.Second, append([]string{"-T", alias}, ".local/bin/sy", "outbox", "drain", "--stdio")...)
+	out, errs, err := run(10*time.Second, append([]string{"-T", alias}, ".local/bin/wy", "outbox", "drain", "--stdio")...)
 	if err != nil {
 		t.Skipf("ssh to the local sshd failed (environment): %v %s", err, errs)
 	}

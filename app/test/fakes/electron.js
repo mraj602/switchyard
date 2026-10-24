@@ -381,17 +381,17 @@ export function fakeElectron(opts = {}) {
     appData: opts.appData ?? '/fake/appData',
     home: '/fake/home',
     temp: '/fake/tmp',
-    exe: '/fake/app/switchyard-desktop',
+    exe: '/fake/app/watchyard-desktop',
     logs: '/fake/logs',
     ...(opts.paths ?? {}),
   };
-  appPaths.userData ??= `${appPaths.appData}/Switchyard`; // Electron's default from productName
+  appPaths.userData ??= `${appPaths.appData}/Watchyard`; // Electron's default from productName
 
   class FakeApp extends EventEmitter {
     constructor() {
       super();
       this.isPackaged = opts.isPackaged ?? false;
-      this.name = 'Switchyard';
+      this.name = 'Watchyard';
       this.readyFired = false;
       this.loginItem = { openAtLogin: false, openAsHidden: false, args: [] };
       this.badgeCount = 0;

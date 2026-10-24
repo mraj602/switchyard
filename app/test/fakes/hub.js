@@ -1,4 +1,4 @@
-// A scripted hub and a fake `sy` for unit tests. Plain Node, no Electron.
+// A scripted hub and a fake `wy` for unit tests. Plain Node, no Electron.
 //
 //   const hub = await startFakeHub();            // listens on 127.0.0.1:<port>
 //   hub.url                                       // 'http://127.0.0.1:<port>'
@@ -10,9 +10,9 @@
 //   hub.script.<name>                             // status overrides: stream401, stream403, login (status), overview (status)
 //   await hub.close()
 //
-//   const sy = await writeFakeSy(dir, {'desktop info --json': {stdout: '{...}'}})
-//   sy.bin ; sy.calls() → [{argv, stdin, env}] ; sy.script(map)
-// The fake sy is a Node script run through its shebang; its answers come from script.json next
+//   const wy = await writeFakeSy(dir, {'desktop info --json': {stdout: '{...}'}})
+//   wy.bin ; wy.calls() → [{argv, stdin, env}] ; wy.script(map)
+// The fake wy is a Node script run through its shebang; its answers come from script.json next
 // to it, keyed by the argv joined with spaces ({stdout, stderr, exit}), and every call is
 // appended to calls.jsonl with the argv, the stdin text and the environment it saw.
 
@@ -141,9 +141,9 @@ export async function startFakeHub(initial = {}) {
   };
 }
 
-/** Write a fake `sy` into dir; returns {bin, calls(), script(map)}. */
+/** Write a fake `wy` into dir; returns {bin, calls(), script(map)}. */
 /**
- * The execFile to give create() when it runs a fake sy. Windows cannot run a script through its
+ * The execFile to give create() when it runs a fake wy. Windows cannot run a script through its
  * shebang (and refuses to exec a .cmd without a shell), so there the fake is run as
  * `node <fake> args`; elsewhere undefined, so the real execFile executes the shebang script.
  */
@@ -151,9 +151,9 @@ export const syExecFile = process.platform === 'win32'
   ? (file, args, opts, cb) => childProcess.execFile(process.execPath, [file, ...args], opts, cb)
   : undefined;
 
-export function writeFakeSy(dir, map = {}, name = 'sy') {
+export function writeFakeSy(dir, map = {}, name = 'wy') {
   fs.mkdirSync(dir, { recursive: true });
-  // A real sy is sy.exe on Windows, and resolution looks for that name.
+  // A real wy is wy.exe on Windows, and resolution looks for that name.
   const bin = path.join(dir, process.platform === 'win32' ? `${name}.exe` : name);
   const scriptFile = path.join(dir, `${name}.script.json`);
   const callsFile = path.join(dir, `${name}.calls.jsonl`);
@@ -167,7 +167,7 @@ let stdin = '';
 try { stdin = fs.readFileSync(0, 'utf8'); } catch {}
 fs.appendFileSync(${JSON.stringify(callsFile)}, JSON.stringify({ argv, stdin, env: process.env }) + '\\n');
 const map = JSON.parse(fs.readFileSync(${JSON.stringify(scriptFile)}, 'utf8'));
-const r = map[argv.join(' ')] ?? map['*'] ?? { stdout: '', stderr: 'fake sy: no script for ' + argv.join(' '), exit: 1 };
+const r = map[argv.join(' ')] ?? map['*'] ?? { stdout: '', stderr: 'fake wy: no script for ' + argv.join(' '), exit: 1 };
 if (r.stdout) process.stdout.write(r.stdout);
 if (r.stderr) process.stderr.write(r.stderr);
 process.exit(r.exit ?? 0);

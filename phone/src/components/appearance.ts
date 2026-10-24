@@ -7,7 +7,7 @@ import type { KVStore } from '../contract/platform';
 export type ThemeChoice = 'system' | 'light' | 'dark';
 
 /** AsyncStorage key of the choice. Never a token or secret. */
-export const THEME_KEY = 'sy.theme.v1';
+export const THEME_KEY = 'wy.theme.v1';
 
 export const THEME_CHOICES: readonly { value: ThemeChoice; label: string }[] = [
   { value: 'system', label: 'Device default' },

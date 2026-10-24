@@ -13,7 +13,7 @@
   "actions":   [{"id": "a3", "step": "statusline", "op": "json_set", "file": "~/.claude/settings.json",
                  "via": ["~/.claude-2/settings.json"], "pointer": "/statusLine/command",
                  "before": "bash ~/.claude/statusline-command.sh",
-                 "value": "/home/u/.local/bin/sy statusline --wrap 'bash ~/.claude/statusline-command.sh'",
+                 "value": "/home/u/.local/bin/wy statusline --wrap 'bash ~/.claude/statusline-command.sh'",
                  "covers": ["~/.claude", "~/.claude-2"]}],
   "conflicts": [{"folder": "~/.claude-3", "item": "CLAUDE.md", "resolution": "keep",
                  "choices": ["keep", "primary", "folder"]}],

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Switchyard are recorded here. The format follows
+All notable changes to Watchyard are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -12,17 +12,17 @@ The first public version. Everything below is new.
 
 ### Added
 
-- `sy`, one static Go binary for Linux, macOS and Windows (Windows without peers and the owner
-  key): hooks and status line recording into a local outbox, `sy status`, `sy doctor`,
-  `sy update`.
-- `sy setup`: detects Claude Code config folders, labels and colours accounts, makes them share
+- `wy`, one static Go binary for Linux, macOS and Windows (Windows without peers and the owner
+  key): hooks and status line recording into a local outbox, `wy status`, `wy doctor`,
+  `wy update`.
+- `wy setup`: detects Claude Code config folders, labels and colours accounts, makes them share
   settings, instructions, add-ons, plugins, MCP servers, history and prompts, adds launchers,
   and installs the Claude Code plugin. Shows a plan first, backs up every change, and
-  `sy setup --undo` reverses a run.
-- The hub (`sy hub serve`): SQLite storage of every record, session states, usage windows per
+  `wy setup --undo` reverses a run.
+- The hub (`wy hub serve`): SQLite storage of every record, session states, usage windows per
   account, analytics, a read API and a live stream, pairing and per-device tokens, backups,
   export and import. Runs as a user service, with Docker or with systemd.
-- The board: a web UI served by the hub that installs on a phone as a web app, `sy board` in a
+- The board: a web UI served by the hub that installs on a phone as a web app, `wy board` in a
   terminal, and a pane inside Claude Code.
 - Alerts for sessions that need you, failures, limit thresholds and silent machines, through
   Web Push, ntfy and the Android app, with quiet hours, private notifications, snooze and
@@ -36,10 +36,10 @@ The first public version. Everything below is new.
   hub, and end-to-end encrypted messages between your own Claude Code sessions, gated by a
   peers matrix.
 - The Android app has no proprietary Google code (no Firebase, Play services or ML Kit); CI
-  checks the built APK. Package name `io.github.mraj602.switchyard`.
+  checks the built APK. Package name `io.github.mraj602.watchyard`.
 - The desktop app pins a self-signed hub certificate on first use, warns when a hub on another
   machine is plain http, limits the frames inside account tabs to an allow-list, and shows when
-  `sy` or the hub is newer. Release packages are unsigned but carry build-provenance
+  `wy` or the hub is newer. Release packages are unsigned but carry build-provenance
   attestations.
 - Sessions that coordinate with each other through peers don't send "asked" alerts; permission
   prompts and real questions still do (`skip_peers`, on by default).
@@ -61,7 +61,7 @@ The first public version. Everything below is new.
   never brings the window or the browser to the front. Usage read from the page's own
   context is used only for a known account, and usage data is size- and shape-checked first.
 - Desktop: sites that ask for a client certificate get none.
-- The web board's "Open in app" link is now an Android intent pinned to the Switchyard package,
+- The web board's "Open in app" link is now an Android intent pinned to the Watchyard package,
   so no other app can receive the pairing secret.
 
 ### Fixed during the release candidate
@@ -74,5 +74,5 @@ The first public version. Everything below is new.
   itself does, instead of the full build number. claude.ai's Claude Code section kept asking to
   verify the device again, because the string was unusual and changed with every Electron update.
 
-[Unreleased]: https://github.com/mraj602/switchyard/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/mraj602/switchyard/releases/tag/v1.0.0
+[Unreleased]: https://github.com/mraj602/watchyard/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/mraj602/watchyard/releases/tag/v1.0.0

@@ -10,11 +10,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/setup/detect"
-	"github.com/mraj602/switchyard/internal/setup/detect/detecttest"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/setup/detect"
+	"github.com/mraj602/watchyard/internal/setup/detect/detecttest"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // recFS records every path handed to the guarded file system.
@@ -110,7 +110,7 @@ func TestLaptop(t *testing.T) {
 	if tg.StatusLine == nil || tg.StatusLine.Ours || !strings.HasSuffix(tg.StatusLine.Command, "statusline-command.sh") {
 		t.Errorf("statusline: %+v", tg.StatusLine)
 	}
-	if len(tg.EnabledPlugins) != 3 || len(tg.SwitchyardPlugins) != 0 || len(tg.ExtraMarketplaces) != 1 {
+	if len(tg.EnabledPlugins) != 3 || len(tg.WatchyardPlugins) != 0 || len(tg.ExtraMarketplaces) != 1 {
 		t.Errorf("plugins: %+v", tg)
 	}
 	if len(st.PluginRoots) != 1 {
@@ -136,7 +136,7 @@ func TestLaptop(t *testing.T) {
 		t.Errorf("claude: %+v", st.Claude)
 	}
 	if st.Tailscale == nil || !st.Tailscale.Up || st.Hub.URL != nil || st.ConfigPresent {
-		t.Errorf("switchyard facts: %+v %+v", st.Tailscale, st.Hub)
+		t.Errorf("watchyard facts: %+v %+v", st.Tailscale, st.Hub)
 	}
 	found := false
 	for _, n := range st.HomeNames {
@@ -230,17 +230,17 @@ func TestConflictsAndElsewhere(t *testing.T) {
 func TestDuplicatesAndRoots(t *testing.T) {
 	h := detecttest.Fresh(t)
 	b := h.B
-	b.File(".claude/settings.json", `{"enabledPlugins":{"switchyard@sy-local":true,"switchyard@github":true,"other@x":true,"switchyard@off":false},
+	b.File(".claude/settings.json", `{"enabledPlugins":{"watchyard@wy-local":true,"watchyard@github":true,"other@x":true,"watchyard@off":false},
  "env":{"CLAUDE_CODE_PLUGIN_CACHE_DIR":"`+h.Abs("shared-plugins")+`","SECRET":"hunter2"},
- "statusLine":{"type":"command","command":"/x/sy statusline --wrap 'a'"}}`, 0o644)
-	b.File(".claude/skills/switchyard/.claude-plugin/plugin.json", `{"name":"switchyard"}`, 0o644)
+ "statusLine":{"type":"command","command":"/x/wy statusline --wrap 'a'"}}`, 0o644)
+	b.File(".claude/skills/watchyard/.claude-plugin/plugin.json", `{"name":"watchyard"}`, 0o644)
 	b.File(".claude-2/.claude.json", `{}`, 0o600)
 	b.File(".claude-2/plugins/installed_plugins.json", `{"version":2,"plugins":{"z@m":[{}]}}`, 0o644)
 	st := h.State()
 	tg := st.SettingsTargets[0]
-	want := "switchyard@github,switchyard@skills-dir,switchyard@sy-local"
-	if strings.Join(tg.SwitchyardPlugins, ",") != want {
-		t.Errorf("switchyard plugins: %v", tg.SwitchyardPlugins)
+	want := "watchyard@github,watchyard@skills-dir,watchyard@wy-local"
+	if strings.Join(tg.WatchyardPlugins, ",") != want {
+		t.Errorf("watchyard plugins: %v", tg.WatchyardPlugins)
 	}
 	if !tg.StatusLine.Ours || len(tg.EnvKeys) != 2 || tg.PluginCacheDir != h.Abs("shared-plugins") {
 		t.Errorf("target: %+v", tg)
@@ -302,7 +302,7 @@ func TestLauncherFilesAndOurs(t *testing.T) {
 func TestShellProbeAndConfig(t *testing.T) {
 	h := detecttest.Fresh(t)
 	h.B.File(".claude-2/.claude.json", `{}`, 0o600)
-	h.B.File(".config/switchyard/config.toml", "version = 1\n[share]\nprimary = \"~/.claude\"\nmcp = \"external\"\n[slots.labels]\n\"~/.claude-2\" = \"work\"\n[hub]\nurl = \"https://hub.example\"\n", 0o600)
+	h.B.File(".config/watchyard/config.toml", "version = 1\n[share]\nprimary = \"~/.claude\"\nmcp = \"external\"\n[slots.labels]\n\"~/.claude-2\" = \"work\"\n[hub]\nurl = \"https://hub.example\"\n", 0o600)
 	d := h.Deps()
 	d.ShellProbe = func(_ context.Context, names []string) (string, error) {
 		return "claude is a function\nclaude-2 is aliased to `x'\nbash: type: claude-3: not found\nclaude-9 is a function\n", nil
@@ -333,7 +333,7 @@ func TestInvalidConfigLabelIgnored(t *testing.T) {
 	h := detecttest.Fresh(t)
 	h.B.File(".claude-2/.claude.json", `{}`, 0o600)
 	h.B.File(".claude-3/.claude.json", `{}`, 0o600)
-	h.B.File(".config/switchyard/config.toml", "version = 1\n[slots.labels]\n\"~/.claude-2\" = \"x/../../evil\\ntouch /tmp/pwned\"\n\"~/.claude-3\" = \"client\"\n", 0o600)
+	h.B.File(".config/watchyard/config.toml", "version = 1\n[slots.labels]\n\"~/.claude-2\" = \"x/../../evil\\ntouch /tmp/pwned\"\n\"~/.claude-3\" = \"client\"\n", 0o600)
 	st, err := detect.Detect(context.Background(), h.Deps())
 	if err != nil {
 		t.Fatal(err)
@@ -371,13 +371,13 @@ func TestNoClaude(t *testing.T) {
 func TestLegacyPluginsDetected(t *testing.T) {
 	defer brand.SetLegacyForTest("oldname", "Oldname")()
 	h := detecttest.Fresh(t)
-	h.B.File(".claude/settings.json", `{"enabledPlugins":{"oldname@sy-local":true,"oldname-pane@sy-local":true,"oldname@off":false,"switchyard@sy-local":true}}`, 0o644)
+	h.B.File(".claude/settings.json", `{"enabledPlugins":{"oldname@wy-local":true,"oldname-pane@wy-local":true,"oldname@off":false,"watchyard@wy-local":true}}`, 0o644)
 	h.B.File(".claude/skills/old/.claude-plugin/plugin.json", `{"name":"oldname"}`, 0o644)
 	tg := h.State().SettingsTargets[0]
-	if got := strings.Join(tg.LegacyPlugins, ","); got != "oldname-pane@sy-local,oldname@skills-dir,oldname@sy-local" {
+	if got := strings.Join(tg.LegacyPlugins, ","); got != "oldname-pane@wy-local,oldname@skills-dir,oldname@wy-local" {
 		t.Errorf("legacy: %s", got)
 	}
-	if got := strings.Join(tg.SwitchyardPlugins, ","); got != "switchyard@sy-local" {
+	if got := strings.Join(tg.WatchyardPlugins, ","); got != "watchyard@wy-local" {
 		t.Errorf("current: %s", got)
 	}
 }

@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/outbox"
 )
 
 // vHub is a fake hub that reads record v up to vmax, stores what it accepts and says what

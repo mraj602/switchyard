@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/atomicfile"
 )
 
 // Rates of peers.md 9.2, as enforced by the sender's side. (The per-hub daily limit is the
@@ -17,7 +17,7 @@ const (
 	PairPerHour      = 60
 )
 
-// RateState is what the rate checks remember between `sy peers send` runs.
+// RateState is what the rate checks remember between `wy peers send` runs.
 type RateState struct {
 	V        int                    `json:"v"`
 	Sessions map[string]SessionRate `json:"sessions"`

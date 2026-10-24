@@ -4,7 +4,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
 )
 
 // DirectSeat is a seat as a machine knows it: the login's account and org uuids, not the

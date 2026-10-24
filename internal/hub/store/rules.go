@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
 )
 
 // Rules, hub settings and hub secrets for the alert engine (push.md 2, 3.4, 3.7, 8).

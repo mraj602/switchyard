@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // BenchmarkAppend measures one Append with fsync on and a typical Stop-event sized record
@@ -18,7 +18,7 @@ import (
 //	TMPDIR=$HOME/.cache go test -run '^$' -bench Append ./internal/outbox
 func BenchmarkAppend(b *testing.B) {
 	o := New(b.TempDir())
-	r := record.New("hook_event", record.Meta{Machine: "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K", Slot: "~/.claude-2", Client: "sy/0.1.0"})
+	r := record.New("hook_event", record.Meta{Machine: "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K", Slot: "~/.claude-2", Client: "wy/0.1.0"})
 	r.Payload = json.RawMessage(`{"hook_event_name":"Stop","pad":"` + strings.Repeat("x", 1400) + `"}`)
 	lat := make([]time.Duration, 0, b.N)
 	b.ResetTimer()

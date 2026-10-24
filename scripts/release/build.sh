@@ -6,8 +6,8 @@
 #   scripts/release/build.sh <version>        version with or without a leading v
 #
 # Environment:
-#   SY_RELEASE_DIR      output folder (default <repo>/dist/release)
-#   SY_RELEASE_TARGETS  space-separated os_arch list to build instead of all six
+#   WY_RELEASE_DIR      output folder (default <repo>/dist/release)
+#   WY_RELEASE_TARGETS  space-separated os_arch list to build instead of all six
 #                       (used by the E2E harness, e.g. "linux_amd64")
 #   GO                  go command (default go)
 set -eu
@@ -21,12 +21,12 @@ case $ver in
 esac
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
-out=${SY_RELEASE_DIR:-$root/dist/release}
+out=${WY_RELEASE_DIR:-$root/dist/release}
 GO=${GO:-go}
-targets=${SY_RELEASE_TARGETS:-"linux_amd64 linux_arm64 darwin_amd64 darwin_arm64 windows_amd64 windows_arm64"}
+targets=${WY_RELEASE_TARGETS:-"linux_amd64 linux_arm64 darwin_amd64 darwin_arm64 windows_amd64 windows_arm64"}
 
 commit=$(cd "$root" && git rev-parse --short HEAD 2>/dev/null || echo unknown)
-pkg=github.com/mraj602/switchyard/internal/version
+pkg=github.com/mraj602/watchyard/internal/version
 ldflags="-s -w -X $pkg.Version=$ver -X $pkg.Commit=$commit"
 
 sha256_of() {
@@ -70,22 +70,22 @@ trap 'rm -rf "$work"' EXIT INT TERM
 for t in $targets; do
 	os=${t%_*}
 	arch=${t#*_}
-	bin=sy
+	bin=wy
 	ext=tar.gz
-	if [ "$os" = windows ]; then bin=sy.exe; ext=zip; fi
+	if [ "$os" = windows ]; then bin=wy.exe; ext=zip; fi
 	stage=$work/$t
 	mkdir -p "$stage"
 	echo "build $t"
 	(cd "$root" && CGO_ENABLED=0 GOOS=$os GOARCH=$arch \
-		$GO build -trimpath -ldflags "$ldflags" -o "$stage/$bin" ./cmd/sy)
+		$GO build -trimpath -ldflags "$ldflags" -o "$stage/$bin" ./cmd/wy)
 	set -- "$bin"
 	for f in LICENSE README.md; do
 		if [ -f "$root/$f" ]; then cp "$root/$f" "$stage/$f"; set -- "$@" "$f"
 		else echo "warning: $f missing from the repo, not added to the $t archive" >&2
 		fi
 	done
-	pack "sy_${ver}_$t.$ext" "$stage" "$@"
-	if [ "$LEGACY_CLI" != sy ]; then
+	pack "wy_${ver}_$t.$ext" "$stage" "$@"
+	if [ "$LEGACY_CLI" != wy ]; then
 		lstage=$work/legacy-$t
 		mkdir -p "$lstage"
 		lbin=$LEGACY_CLI

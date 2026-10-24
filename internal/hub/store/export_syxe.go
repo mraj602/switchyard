@@ -164,10 +164,10 @@ func newSyxeReader(r io.Reader, pass string) (*syxeReader, error) {
 		return nil, errors.New("not an encrypted export")
 	}
 	if hdr[4] != syxeVersion {
-		return nil, fmt.Errorf("encrypted export version %d is not supported by this sy", hdr[4])
+		return nil, fmt.Errorf("encrypted export version %d is not supported by this wy", hdr[4])
 	}
 	if hdr[5] != syxeKDFPBKDF2 {
-		return nil, fmt.Errorf("key derivation %d is not supported by this sy", hdr[5])
+		return nil, fmt.Errorf("key derivation %d is not supported by this wy", hdr[5])
 	}
 	iter := int(binary.BigEndian.Uint32(hdr[6:10]))
 	if iter < syxeMinIter || iter > syxeMaxIter {

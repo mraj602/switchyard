@@ -1,8 +1,8 @@
 // Package machineinfo builds and queues this machine's `machine_info` record (record.md 4.8,
 // machines.md 6.3): its name, os/arch, version, reach and dial type, outbox health, direct-push state
-// and the timer. `sy tick` sends it when its content (counters and times excluded) changed
-// since the last one sent, and otherwise every 6 hours; `sy connect`, `sy update` and
-// `sy machine rename` send it at once. The last one sent is <state>/machine-info.json.
+// and the timer. `wy tick` sends it when its content (counters and times excluded) changed
+// since the last one sent, and otherwise every 6 hours; `wy connect`, `wy update` and
+// `wy machine rename` send it at once. The last one sent is <state>/machine-info.json.
 //
 // Depends on: record, outbox, config, client (flush status),
 // directpush (policy cache), identity, atomicfile.
@@ -21,20 +21,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/client"
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/directpush"
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/record"
-	"github.com/mraj602/switchyard/internal/version"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/directpush"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/version"
 )
 
 // File is <state>/machine-info.json: when the last machine_info was sent and what it said.
 const File = "machine-info.json"
 
-// Every is the longest time between two machine_info records from `sy tick`.
+// Every is the longest time between two machine_info records from `wy tick`.
 const Every = 6 * time.Hour
 
 // Above countUpTo unflushed bytes the backlog is estimated at estBytesPerRecord.
@@ -43,7 +43,7 @@ const (
 	estBytesPerRecord = 600
 )
 
-// Timer is the timer state as `sy doctor` sees it (unit files, no service manager asked).
+// Timer is the timer state as `wy doctor` sees it (unit files, no service manager asked).
 type Timer struct {
 	Active bool
 	Linger *bool // Linux only
@@ -199,7 +199,7 @@ type last struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-// Due reports whether `sy tick` should send p: no record sent yet, its content changed, or
+// Due reports whether `wy tick` should send p: no record sent yet, its content changed, or
 // the last one is Every old.
 func Due(stateDir string, p record.MachineInfoPayload, now time.Time) bool {
 	b, err := os.ReadFile(filepath.Join(stateDir, File))
@@ -234,7 +234,7 @@ func Send(o Options, force bool) (sent bool, err error) {
 	if !force && !Due(o.StateDir, p, now) {
 		return false, nil
 	}
-	r, err := record.NewMachineInfo(record.Meta{Machine: m.ID, Client: "sy/" + version.Version, Now: now}, p)
+	r, err := record.NewMachineInfo(record.Meta{Machine: m.ID, Client: "wy/" + version.Version, Now: now}, p)
 	if err != nil {
 		return false, err
 	}

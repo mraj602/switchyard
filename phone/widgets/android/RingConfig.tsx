@@ -1,7 +1,7 @@
 // Configuration screen of the Account ring widget (phone.md P11), opened by Android when the
 // widget is placed and from "Reconfigure" (widgetFeatures "reconfigurable"). It lists the
 // accounts of the last snapshot (no network, no keychain), stores the pick per widget id
-// (sy.widget.ring.v1: a seat id) and draws the widget once before closing.
+// (wy.widget.ring.v1: a seat id) and draws the widget once before closing.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -38,7 +38,7 @@ export function RingConfig({ widgetInfo, renderWidget, setResult }: WidgetConfig
       <Text style={{ color: t.text, fontSize: 20, fontWeight: '700' }}>Which account?</Text>
       <Text style={{ color: t.muted, fontSize: 13, marginTop: 4, marginBottom: 16 }}>The ring shows the tighter of its 5 h and 7 d limits.</Text>
       {snap === undefined ? null : snap === null || snap.seats.length === 0 ? (
-        <Text style={{ color: t.muted, fontSize: 14 }}>Open Switchyard once to load your accounts, then add the widget again.</Text>
+        <Text style={{ color: t.muted, fontSize: 14 }}>Open Watchyard once to load your accounts, then add the widget again.</Text>
       ) : (
         snap.seats.map((s) => (
           <Pressable

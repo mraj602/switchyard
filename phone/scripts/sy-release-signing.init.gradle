@@ -2,10 +2,10 @@
 // build with YOUR keystore, which lives outside this repository: expo prebuild regenerates
 // android/ every time, so the signing config cannot live there. Everything comes from the
 // environment (release-apk.sh exports it, from your shell or from your properties file):
-//   SY_ANDROID_KEYSTORE            absolute path of the keystore
-//   SY_ANDROID_KEY_ALIAS           the key's alias
-//   SY_ANDROID_KEYSTORE_PASSWORD   the keystore password
-//   SY_ANDROID_KEY_PASSWORD        the key password (the keystore password when unset)
+//   WY_ANDROID_KEYSTORE            absolute path of the keystore
+//   WY_ANDROID_KEY_ALIAS           the key's alias
+//   WY_ANDROID_KEYSTORE_PASSWORD   the keystore password
+//   WY_ANDROID_KEY_PASSWORD        the key password (the keystore password when unset)
 // A missing value fails the build; no value is ever printed or written to a file.
 //
 // Ordering matters: this afterEvaluate is registered when the project is created, so it runs
@@ -19,11 +19,11 @@ allprojects { p ->
       if (v == null || v.isEmpty()) throw new GradleException("release signing: ${name} is not set (see phone/README.md)")
       v
     }
-    def store = need('SY_ANDROID_KEYSTORE')
-    def alias = need('SY_ANDROID_KEY_ALIAS')
-    def storePw = need('SY_ANDROID_KEYSTORE_PASSWORD')
-    def keyPw = System.getenv('SY_ANDROID_KEY_PASSWORD') ?: storePw
-    if (!new File(store).isFile()) throw new GradleException('release signing: SY_ANDROID_KEYSTORE is not a file')
+    def store = need('WY_ANDROID_KEYSTORE')
+    def alias = need('WY_ANDROID_KEY_ALIAS')
+    def storePw = need('WY_ANDROID_KEYSTORE_PASSWORD')
+    def keyPw = System.getenv('WY_ANDROID_KEY_PASSWORD') ?: storePw
+    if (!new File(store).isFile()) throw new GradleException('release signing: WY_ANDROID_KEYSTORE is not a file')
     p.android {
       signingConfigs {
         syRelease {

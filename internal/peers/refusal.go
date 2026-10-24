@@ -24,7 +24,7 @@ const (
 	CodeHubUnreachable = "hub_unreachable"
 )
 
-// Exit codes of `sy peers` (peers.md 7.2).
+// Exit codes of `wy peers` (peers.md 7.2).
 const (
 	ExitOK          = 0
 	ExitInternal    = 1

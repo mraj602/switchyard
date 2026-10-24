@@ -51,7 +51,7 @@ async function savePrefs(patch) {
 const MESSAGES = {
   unsupported: 'Off: this browser cannot show notifications. The Android app, or ntfy under Advanced, can.',
   'ios-old': 'Off: needs iOS 16.4 or newer. ntfy under Advanced works on older versions.',
-  'install-first': 'Off: install first. Tap Share, then Add to Home Screen, and open Switchyard from your Home Screen. Notifications work only in the installed app.',
+  'install-first': 'Off: install first. Tap Share, then Add to Home Screen, and open Watchyard from your Home Screen. Notifications work only in the installed app.',
   blocked: 'Off: blocked. Allow notifications for this site in the browser or system settings, then come back.',
   off: 'Off. Turn them on to get a notification when a session needs you.',
 };
@@ -234,7 +234,7 @@ function hubBlock(s) {
       row('Version', h('span', { 'data-key': 'version-line' }, `${v ? `Hub ${v}` : 'Hub version unknown'} · ${boardState()}`)),
       row('Status', liveBadge(s)),
       // AGPL-3.0 section 13: the people who use the board over the network can get its source.
-      row('Source code', h('a', { href: 'https://github.com/mraj602/switchyard', target: '_blank', rel: 'noopener noreferrer', 'data-key': 'source-link' }, 'AGPL-3.0, on GitHub')),
+      row('Source code', h('a', { href: 'https://github.com/mraj602/watchyard', target: '_blank', rel: 'noopener noreferrer', 'data-key': 'source-link' }, 'AGPL-3.0, on GitHub')),
       s.offline ? row('Last update', clock(new Date(s.offline.since).toISOString())) : null,
       inApp() ? null : h('div', { class: 'actions' },
         h('button', {
@@ -300,5 +300,5 @@ export function render({ store: s }) {
     advanced(),
     h('p', { class: 'muted small' }, h('a', { href: '#/more/peers', 'data-key': 'peers-link' }, 'Peers: which accounts may message each other'),
       owner ? [' · ', h('a', { href: '#/more/devices' }, 'Manage paired devices')] : null));
-  return { title: 'Settings · Switchyard', node };
+  return { title: 'Settings · Watchyard', node };
 }

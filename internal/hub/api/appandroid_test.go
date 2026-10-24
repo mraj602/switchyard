@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/api"
-	"github.com/mraj602/switchyard/internal/hub/appmirror"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/api"
+	"github.com/mraj602/watchyard/internal/hub/appmirror"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 type fakeMirror struct {
@@ -68,11 +68,11 @@ func TestAndroidMirrorRoutes(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	apk := filepath.Join(dir, "switchyard-0.9.0.apk")
+	apk := filepath.Join(dir, "watchyard-0.9.0.apk")
 	if err := os.WriteFile(apk, []byte("APKBYTES"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	raw := `{"v":1,"version":"0.9.0","build":14,"min_sdk":31,"apk":"switchyard-0.9.0.apk","size":8,` +
+	raw := `{"v":1,"version":"0.9.0","build":14,"min_sdk":31,"apk":"watchyard-0.9.0.apk","size":8,` +
 		`"sha256":"` + strings.Repeat("a", 64) + `","cert_sha256":"` + strings.Repeat("b", 64) + `","notes":"n"}`
 	mf, err := appmirror.ParseManifest([]byte(raw))
 	if err != nil {

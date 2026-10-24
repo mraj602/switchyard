@@ -14,13 +14,13 @@ import "strings"
 const (
 	// Name is the display name; Slug the lower-case name used in folder, unit, package and
 	// plugin names.
-	Name = "Switchyard"
-	Slug = "switchyard"
+	Name = "Watchyard"
+	Slug = "watchyard"
 
 	// CLI is the command's name: the binary (CLI, CLI.exe), the release archives
 	// (CLI_<version>_<os>_<arch>), the plugin marketplace (CLI-local) and, upper-cased, the
-	// prefix of the environment variables (SY_HOME, ...).
-	CLI = "sy"
+	// prefix of the environment variables (WY_HOME, ...).
+	CLI = "wy"
 
 	// LegacyName, LegacySlug and LegacyCLI are the names of the last release before the
 	// rename.
@@ -29,8 +29,8 @@ const (
 	LegacyCLI  = "sy"         // rename:keep
 )
 
-// EnvPrefix is the prefix of the environment variables `sy` reads ("SY_"), and Marketplace
-// the name of the local Claude Code plugin marketplace `sy` writes ("sy-local").
+// EnvPrefix is the prefix of the environment variables `wy` reads ("WY_"), and Marketplace
+// the name of the local Claude Code plugin marketplace `wy` writes ("wy-local").
 const (
 	EnvPrefix   = CLI + "_"
 	Marketplace = CLI + "-local"
@@ -88,7 +88,7 @@ func SetLegacyCLIForTest(cli string) (restore func()) {
 	return func() { oldCLI = p }
 }
 
-// MigrateEnv copies every variable with the old prefix (SY_HOME, ...) to the current name
+// MigrateEnv copies every variable with the old prefix (WY_HOME, ...) to the current name
 // when that is not set, so units, launchers and shells written for the old command keep their
 // settings (docs/spec/rename.md 2.13). environ is os.Environ(); setenv is os.Setenv. It
 // returns the names it set.

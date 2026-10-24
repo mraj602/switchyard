@@ -73,5 +73,5 @@ export function render({ store, now }) {
       o.machines.length ? h('div', { class: 'grid grid-mini' }, o.machines.map((m) => machineSummary(m, now, counts ? counts.machine.get(m.id) || 0 : null)))
         : h('p', { class: 'muted' }, 'No machines have connected yet.')));
 
-  return { title: needs.length ? `(${needs.length}) Now · Switchyard` : 'Now · Switchyard', node };
+  return { title: needs.length ? `(${needs.length}) Now · Watchyard` : 'Now · Watchyard', node };
 }

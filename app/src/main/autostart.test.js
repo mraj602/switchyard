@@ -16,33 +16,33 @@ async function setup(over = {}) {
   const fake = fakeElectron({ platform: over.platform ?? 'linux', isPackaged: over.isPackaged ?? true });
   const a = create({
     electron: fake.electron, fs: fsp, path, platform: over.platform ?? 'linux', home,
-    execPath: '/opt/Switchyard/switchyard-desktop', ...over,
+    execPath: '/opt/Watchyard/watchyard-desktop', ...over,
   });
   return { home, fake, a };
 }
 
 const GOLDEN_BACKGROUND = `[Desktop Entry]
 Type=Application
-Name=Switchyard Desktop
+Name=Watchyard Desktop
 Comment=Usage, limits and alerts for several Claude accounts (unofficial)
-Exec="/opt/Switchyard/switchyard-desktop" --background
-Icon=switchyard-desktop
+Exec="/opt/Watchyard/watchyard-desktop" --background
+Icon=watchyard-desktop
 Terminal=false
 Categories=Utility;Development;
-StartupWMClass=switchyard-desktop
+StartupWMClass=watchyard-desktop
 X-GNOME-Autostart-enabled=true
 X-GNOME-Autostart-Delay=10
 `;
 
 const GOLDEN_PLAIN = `[Desktop Entry]
 Type=Application
-Name=Switchyard Desktop
+Name=Watchyard Desktop
 Comment=Usage, limits and alerts for several Claude accounts (unofficial)
-Exec="/opt/Switchyard/switchyard-desktop"
-Icon=switchyard-desktop
+Exec="/opt/Watchyard/watchyard-desktop"
+Icon=watchyard-desktop
 Terminal=false
 Categories=Utility;Development;
-StartupWMClass=switchyard-desktop
+StartupWMClass=watchyard-desktop
 `;
 
 test('golden: the desktop entry, background and not', async () => {
@@ -57,18 +57,18 @@ test('quoting: spaces, quotes, dollar, backtick, backslash and percent are escap
 });
 
 test('an AppImage uses $APPIMAGE, and a development run names the app path and the user-data override', async () => {
-  const img = await setup({ appImage: '/home/u/Switchyard.AppImage' });
-  assert.match(img.a.desktopEntry(true), /^Exec="\/home\/u\/Switchyard\.AppImage" --background$/m);
-  const dev = await setup({ isPackaged: false, execPath: '/n/electron', appPath: '/src/app', env: { SY_APP_USER_DATA: '/tmp/x' } });
+  const img = await setup({ appImage: '/home/u/Watchyard.AppImage' });
+  assert.match(img.a.desktopEntry(true), /^Exec="\/home\/u\/Watchyard\.AppImage" --background$/m);
+  const dev = await setup({ isPackaged: false, execPath: '/n/electron', appPath: '/src/app', env: { WY_APP_USER_DATA: '/tmp/x' } });
   // The override is path.resolve()d (drive letter and backslashes on Windows), then quoted
   // as in desktopEntry: backslashes and quotes are escaped.
   const userData = path.resolve('/tmp/x').replace(/(["\\`$])/g, '\\$1');
   assert.equal(
     dev.a.desktopEntry(true).split('\n').find((l) => l.startsWith('Exec=')),
-    `Exec=env SY_APP_USER_DATA="${userData}" "/n/electron" "/src/app" --background`,
+    `Exec=env WY_APP_USER_DATA="${userData}" "/n/electron" "/src/app" --background`,
   );
-  const packaged = await setup({ env: { SY_APP_USER_DATA: '/tmp/x' } });
-  assert.doesNotMatch(packaged.a.desktopEntry(true), /SY_APP_USER_DATA/);
+  const packaged = await setup({ env: { WY_APP_USER_DATA: '/tmp/x' } });
+  assert.doesNotMatch(packaged.a.desktopEntry(true), /WY_APP_USER_DATA/);
 });
 
 test('linux: set(true) writes both entries, get() reads, set(false) removes only the autostart one', async () => {
@@ -77,8 +77,8 @@ test('linux: set(true) writes both entries, get() reads, set(false) removes only
   await a.set(true);
   assert.equal(await a.get(), true);
   const f = a.files();
-  assert.equal(f.autostart, path.join(home, '.config/autostart/switchyard-desktop.desktop'));
-  assert.equal(f.launcher, path.join(home, '.local/share/applications/switchyard-desktop.desktop'));
+  assert.equal(f.autostart, path.join(home, '.config/autostart/watchyard-desktop.desktop'));
+  assert.equal(f.launcher, path.join(home, '.local/share/applications/watchyard-desktop.desktop'));
   assert.equal(await fsp.readFile(f.autostart, 'utf8'), GOLDEN_BACKGROUND);
   assert.equal(await fsp.readFile(f.launcher, 'utf8'), GOLDEN_PLAIN);
   await a.set(false);

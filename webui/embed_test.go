@@ -361,7 +361,7 @@ func TestNoInlineStyleAndStrictStyleSrc(t *testing.T) {
 
 // Every character above U+00FF that the board's code writes (arrows, shapes, dashes, quotes)
 // must be inside a unicode-range of styles/fonts.css, or it falls back to whatever system
-// font the platform has (the Plex subsets are latin only; fonts.css adds 'Switchyard Symbols').
+// font the platform has (the Plex subsets are latin only; fonts.css adds 'Watchyard Symbols').
 // Comment-only lines are skipped.
 func TestNonLatinGlyphsAreInAFontRange(t *testing.T) {
 	css, err := fs.ReadFile(FS(), "styles/fonts.css")

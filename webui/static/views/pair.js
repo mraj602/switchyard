@@ -116,11 +116,11 @@ async function startScan(video) {
 // What a paired device may do: read, and manage its own notifications; never type.
 const note = () => h('p', { class: 'pair-note' }, `This ${mobile() ? 'phone' : 'browser'} gets its own key. It can see sessions and usage and manage its own notifications (Seen, Snooze, mute, quiet hours); it can’t type into a session or see your Claude logins. Remove it any time from Devices.`);
 
-// "Have the Switchyard app? Open in app": the link carries the one-time secret, so it is only put in the page.
+// "Have the Watchyard app? Open in app": the link carries the one-time secret, so it is only put in the page.
 function appLink() {
   const href = appPairLink(location.origin, st.secret, st.code, st.hubFp, st.sealKey, navigator.userAgent);
   if (!href) return null;
-  return h('p', { class: 'small', 'data-key': 'open-in-app' }, 'Using the Switchyard Android app? ',
+  return h('p', { class: 'small', 'data-key': 'open-in-app' }, 'Using the Watchyard Android app? ',
     h('a', { href, class: 'strong', 'data-key': 'open-in-app-link' }, 'Open in app'));
 }
 
@@ -130,7 +130,7 @@ function installSteps() {
     h('h1', {}, 'Install, then pair'),
     h('ol', { class: 'steps' },
       h('li', {}, 'Tap Share, then Add to Home Screen.'),
-      h('li', {}, 'Open Switchyard from your Home Screen.'),
+      h('li', {}, 'Open Watchyard from your Home Screen.'),
       h('li', {}, 'Enter this code:')),
     h('p', { class: 'pair-digits big mono', 'data-key': 'pair-digits' }, digits),
     h('p', { class: 'muted small' }, 'The code works once, for 10 minutes after it was made.'),
@@ -143,7 +143,7 @@ function done() {
     h('h1', {}, 'Paired'),
     h('p', { class: 'strong', 'data-key': 'paired-as' }, `Paired as ${st.name}`),
     nameForm(),
-    mobile() ? h('p', { class: 'muted small', 'data-key': 'app-hint' }, 'On Android, the Switchyard app gets notifications over its own connection to your hub. Pair the app from an owner device: More, Devices, Add phone. In this browser, you can turn on notifications here.') : null,
+    mobile() ? h('p', { class: 'muted small', 'data-key': 'app-hint' }, 'On Android, the Watchyard app gets notifications over its own connection to your hub. Pair the app from an owner device: More, Devices, Add phone. In this browser, you can turn on notifications here.') : null,
     canInstall() ? h('button', { type: 'button', class: 'btn btn-primary', 'data-key': 'install-app', onclick: promptInstall }, 'Install app') : null,
     h('button', {
       type: 'button', class: 'btn', 'data-key': 'turn-on-notifications', disabled: st.notif === WAITING,
@@ -250,7 +250,7 @@ export function render() {
         : h('a', { href: '#/login', 'data-key': 'to-login' }, 'Sign in as the owner instead')));
   }
   return {
-    title: 'Pair · Switchyard',
+    title: 'Pair · Watchyard',
     node: h('div', { class: 'pair-screen' }, h('div', { class: 'pair-inner' }, brandRow(), body)),
   };
 }

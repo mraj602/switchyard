@@ -10,8 +10,8 @@ joined by the login they carry at a point in time.
 
 | Term | Key | Made by |
 | --- | --- | --- |
-| Machine | `m_` + ULID | `sy`, on first run, on that machine. |
-| Slot | (machine id, folder) | `sy`. The folder is written with `~` (`~/.claude-2`). |
+| Machine | `m_` + ULID | `wy`, on first run, on that machine. |
+| Slot | (machine id, folder) | `wy`. The folder is written with `~` (`~/.claude-2`). |
 | Account | account uuid | Claude (`oauthAccount.accountUuid`). |
 | Org | org uuid | Claude (`oauthAccount.organizationUuid`). |
 | Seat | (account uuid, org uuid) → hub id `seat_…` | Hub, on first record naming that pair. |
@@ -21,7 +21,7 @@ joined by the login they carry at a point in time.
 
 ## 2. Machine id
 
-- On first run of any `sy` command that needs it, `sy` creates `<state>/machine.json`
+- On first run of any `wy` command that needs it, `wy` creates `<state>/machine.json`
   ([paths.md](paths.md)):
 
   ```json
@@ -33,13 +33,13 @@ joined by the login they carry at a point in time.
   `<state>/machine.lock` so two hook processes on a fresh machine cannot make two ids.
 - The id is never derived from hardware (`/etc/machine-id`, MAC addresses): those are shared
   by cloned VMs and containers, and are personal data. A random id moves with the state
-  folder, which is what we want (`sy hub export` / reinstall keep it; a fresh state folder is
+  folder, which is what we want (`wy hub export` / reinstall keep it; a fresh state folder is
   a new machine).
 - WSL has its own state folder, so it is its own machine.
-- `sy machine rename <name>` changes `name` and sends a `slot_info` and a `machine_info`
+- `wy machine rename <name>` changes `name` and sends a `slot_info` and a `machine_info`
   carrying the new `name` (record.md 4.8), so the hub follows with the next flush.
 - The hub creates the `machine` row on the first accepted record (or at
-  `sy hub token create --machine`).
+  `wy hub token create --machine`).
 
 ## 3. Slots (config folders)
 
@@ -54,9 +54,9 @@ symlinks (the folder the user chose is the identity; `real_path` is sent separat
 `/` separators on every OS. Otherwise it is written absolute. This keeps slots readable and
 stable when the home folder differs between machines.
 
-**Finding all folders** (for `sy agents`, `sy scan`, `sy doctor`): `~/.claude` and every
+**Finding all folders** (for `wy agents`, `wy scan`, `wy doctor`): `~/.claude` and every
 directory directly in the home folder whose name matches `^\.claude([-_].+)?$` (the
-rule `sy` uses everywhere), plus folders listed in `config.toml` (`slots.extra`). A folder counts
+rule `wy` uses everywhere), plus folders listed in `config.toml` (`slots.extra`). A folder counts
 only if it is a directory and contains `settings.json`, `.claude.json`, `projects/` or
 `sessions/`.
 
@@ -72,18 +72,18 @@ So `~/.claude` has two views that can hold different logins: the **default view*
 set to it, state `~/.claude/.claude.json`, `Slot.Explicit`). Both are sent as slot
 `~/.claude` (same folder, same sessions and transcripts), but the login cache keeps one
 entry per view (`<slot hash>` is taken over `~/.claude#explicit` for the explicit view),
-`claude auth status` for the explicit view keeps the variable set, and `sy agents` runs
+`claude auth status` for the explicit view keeps the variable set, and `wy agents` runs
 `claude agents` in both views for `~/.claude` and merges by session id.
 
 ## 4. Reading the login, never a token
 
-`sy` reads exactly two things, and only these keys are used to build `seat`:
+`wy` reads exactly two things, and only these keys are used to build `seat`:
 
 1. **`oauthAccount` in the state file** (fast path, used by every hook):
    - Read the file, decode JSON, take the `oauthAccount` object.
    - `seat.account` = `accountUuid`, `seat.org` = `organizationUuid`,
      `seat.email` = `emailAddress`, `seat.src` = `claude_json`.
-   - The state file is large (per-project data, MCP servers). `sy hook` must stay under 20 ms,
+   - The state file is large (per-project data, MCP servers). `wy hook` must stay under 20 ms,
      so the identity package caches the parsed `oauthAccount` in
      `<state>/identity/<slot hash>.json` together with the state file's size and mtime,
      and rereads the state file only when either changes. `<slot hash>` = first 16 hex
@@ -97,7 +97,7 @@ entry per view (`<slot hash>` is taken over `~/.claude#explicit` for the explici
    stdin closed. Used:
    - at SessionStart, in the background after the hook record is written (never inside the
      20 ms budget), refreshing the cache;
-   - by `sy doctor`, `sy connect` and `slot_info`;
+   - by `wy doctor`, `wy connect` and `slot_info`;
    - on macOS whenever `oauthAccount` is missing from the state file (the login itself
      lives in the Keychain).
    Fields used: `loggedIn`, `email`, `orgId`, `orgName`, `subscriptionType`. **Uncertain:**
@@ -112,11 +112,11 @@ entry per view (`<slot hash>` is taken over `~/.claude#explicit` for the explici
 `internal/identity` enforces this in its file-system layer (`OSFS` returns `ErrForbidden`
 for those names) and a test records every open to prove it.
 
-`sy` never opens `.credentials.json`, the macOS Keychain, `sessions/*.key`, or any file
+`wy` never opens `.credentials.json`, the macOS Keychain, `sessions/*.key`, or any file
 under `daemon/`, and never runs `claude` with arguments other than `auth status --json`,
 `agents --json` and `--version`.
 
-Peers adds one allowance: `sy agent` and `sy peers` read each slot's session registry
+Peers adds one allowance: `wy agent` and `wy peers` read each slot's session registry
 files `<config>/sessions/<digits>.json` (pid, session id, cwd, socket path, name, status;
 [peers.md](peers.md) 3.1). The file-system layer allows exactly that name pattern in
 `sessions/` and still returns `ErrForbidden` for `sessions/*.key` and anything else there.
@@ -150,9 +150,9 @@ files `<config>/sessions/<digits>.json` (pid, session id, cwd, socket path, name
 5. **Web seat.** A `web_usage` record joins `(machine, tab_id)` to its seat. That is how web
    usage and Claude Code tokens land on the same card.
 6. **Labels and colours** belong to the seat (`seat.label`, `seat.colour`), set in the UI or
-   by `sy account label`. Folder names stay a secondary tag ("laptop · claude-2").
+   by `wy account label`. Folder names stay a secondary tag ("laptop · claude-2").
 
-## 6. What `sy` remembers locally
+## 6. What `wy` remembers locally
 
 | File | Holds | Rewritten |
 | --- | --- | --- |

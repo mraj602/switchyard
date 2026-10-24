@@ -1,4 +1,4 @@
-// Package backup is the journal of `sy setup` (docs/spec/setup.md section 7): a backup set
+// Package backup is the journal of `wy setup` (docs/spec/setup.md section 7): a backup set
 // per run under <state>/backup/<id>/ holding a manifest rewritten atomically after every
 // entry, the saved bytes of every file touched, the saved trees, the removed or replaced
 // JSON values, and Undo, which reverses a set (7.3, 7.4, 7.6).
@@ -27,8 +27,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 const manifestName = "manifest.json"
@@ -178,7 +178,7 @@ func (s *Set) Abs(rel string) string {
 	return filepath.Join(s.Dir, filepath.Clean(sep+filepath.FromSlash(rel)))
 }
 
-// Info is one line of `sy setup --undo-list`.
+// Info is one line of `wy setup --undo-list`.
 type Info struct {
 	ID        string `json:"id"`
 	Command   string `json:"command"`

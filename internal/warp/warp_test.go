@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/termenv"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/termenv"
 )
 
 // T8's folder table, for each OS layout and channel, through termenv.Env.
@@ -144,8 +144,8 @@ func TestRenderGolden(t *testing.T) {
 	if err := Check(s); err != nil {
 		t.Fatal(err)
 	}
-	want := `# sy-warp-tab v1 slot=~/.claude-2 label=work (written by sy term warp on; sy term warp off removes it)
-name = "Switchyard · work"
+	want := `# sy-warp-tab v1 slot=~/.claude-2 label=work (written by wy term warp on; wy term warp off removes it)
+name = "Watchyard · work"
 title = "work"
 color = "yellow"
 
@@ -207,31 +207,31 @@ func TestCheckAndMarker(t *testing.T) {
 }
 
 func TestNamesAndURIs(t *testing.T) {
-	if FileName("work") != "switchyard-work.toml" || Stem("work") != "switchyard-work" {
+	if FileName("work") != "watchyard-work.toml" || Stem("work") != "watchyard-work" {
 		t.Fatal("names")
 	}
 	for p, want := range map[string]string{
-		"/x/tab_configs/switchyard-work.toml": "work", `C:\x\tab_configs\switchyard-a-1.toml`: "a-1",
-		"/x/switchyard-.toml": "", "/x/switchyard-Work.toml": "", "/x/other.toml": "", "switchyard-x.json": "",
+		"/x/tab_configs/watchyard-work.toml": "work", `C:\x\tab_configs\watchyard-a-1.toml`: "a-1",
+		"/x/watchyard-.toml": "", "/x/watchyard-Work.toml": "", "/x/other.toml": "", "watchyard-x.json": "",
 	} {
 		if got := LabelOf(p); got != want {
 			t.Errorf("LabelOf(%s) = %q", p, got)
 		}
 	}
-	if !IsTabPath("/x/tab_configs/switchyard-work.toml") || !IsTabPath(`C:\a\tab_configs\switchyard-w.toml`) || IsTabPath("/x/other/switchyard-work.toml") {
+	if !IsTabPath("/x/tab_configs/watchyard-work.toml") || !IsTabPath(`C:\a\tab_configs\watchyard-w.toml`) || IsTabPath("/x/other/watchyard-work.toml") {
 		t.Error("IsTabPath")
 	}
-	if TabPath(`C:\a\tab_configs`, "w") != `C:\a\tab_configs\switchyard-w.toml` || TabPath("/a/tab_configs", "w") != "/a/tab_configs/switchyard-w.toml" {
+	if TabPath(`C:\a\tab_configs`, "w") != `C:\a\tab_configs\watchyard-w.toml` || TabPath("/a/tab_configs", "w") != "/a/tab_configs/watchyard-w.toml" {
 		t.Error("TabPath")
 	}
-	if u := TabURI(Stable, "work"); u != "warp://tab_config/switchyard-work" || !ValidTabURI(u) {
+	if u := TabURI(Stable, "work"); u != "warp://tab_config/watchyard-work" || !ValidTabURI(u) {
 		t.Errorf("stable uri %s", u)
 	}
-	if u := TabURI(Preview, "work"); u != "warppreview://tab_config/switchyard-work" || !ValidTabURI(u) {
+	if u := TabURI(Preview, "work"); u != "warppreview://tab_config/watchyard-work" || !ValidTabURI(u) {
 		t.Errorf("preview uri %s", u)
 	}
-	for _, u := range []string{"warp://tab_config/other", "warp://tab_config/switchyard-work ", "https://tab_config/switchyard-w",
-		"warp://tab_config/switchyard-../x", "warp://session/0123"} {
+	for _, u := range []string{"warp://tab_config/other", "warp://tab_config/watchyard-work ", "https://tab_config/watchyard-w",
+		"warp://tab_config/watchyard-../x", "warp://session/0123"} {
 		if ValidTabURI(u) {
 			t.Errorf("ValidTabURI(%q)", u)
 		}
@@ -250,8 +250,8 @@ func TestScan(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	must(os.WriteFile(filepath.Join(dir, "switchyard-me.toml"), ours, 0o644))
-	must(os.WriteFile(filepath.Join(dir, "switchyard-x.toml"), []byte("name = \"mine\"\n"), 0o644))
+	must(os.WriteFile(filepath.Join(dir, "watchyard-me.toml"), ours, 0o644))
+	must(os.WriteFile(filepath.Join(dir, "watchyard-x.toml"), []byte("name = \"mine\"\n"), 0o644))
 	must(os.WriteFile(filepath.Join(dir, "work.toml"), []byte("x"), 0o644))
 	got, err := Scan(dir)
 	must(err)
@@ -260,7 +260,7 @@ func TestScan(t *testing.T) {
 		t.Fatalf("scan: %+v", got)
 	}
 	if runtime.GOOS != "windows" {
-		must(os.Symlink(filepath.Join(dir, "switchyard-me.toml"), filepath.Join(dir, "switchyard-ln.toml")))
+		must(os.Symlink(filepath.Join(dir, "watchyard-me.toml"), filepath.Join(dir, "watchyard-ln.toml")))
 		got, _ = Scan(dir)
 		for _, f := range got {
 			if f.Label == "ln" && (f.Marker || f.SHA256 != "") {

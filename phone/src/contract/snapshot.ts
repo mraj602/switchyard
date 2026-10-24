@@ -1,5 +1,5 @@
 // WidgetSnapshot v1 (docs/spec/phone.md P11): what the app writes for the widgets and the Live
-// Activity (App Group on iOS, AsyncStorage key sy.widget.v1 on Android). Never a secret: no
+// Activity (App Group on iOS, AsyncStorage key wy.widget.v1 on Android). Never a secret: no
 // token, no hub reply bodies beyond these fields. Golden: test/fixtures/widget-snapshot.v1.json.
 
 export const SNAPSHOT_VERSION = 1;
@@ -45,7 +45,7 @@ export interface SnapshotTop {
 
 /** One waiting session of the Needs-you list widget (no message text: only what `top` already holds, plus the route id). */
 export interface SnapshotNeed {
-  /** The session id, for the tap target `switchyard://sessions/<id>`. */
+  /** The session id, for the tap target `watchyard://sessions/<id>`. */
   id: string;
   seat: string;
   colour: string;

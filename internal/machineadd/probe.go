@@ -16,10 +16,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/client"
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/version"
+	"github.com/mraj602/watchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/version"
 )
 
 // Forward ports (machines.md 3.3): fixed per machine, the first free one in this range.
@@ -28,15 +28,15 @@ const (
 	LastForwardPort  = 47849
 )
 
-// preProbeScript is the read-only probe before sy is installed (4.2 step 2): home, login
-// shell, ssh version, claude on the login PATH, an existing sy and its SHA-256, Rosetta, and
+// preProbeScript is the read-only probe before wy is installed (4.2 step 2): home, login
+// shell, ssh version, claude on the login PATH, an existing wy and its SHA-256, Rosetta, and
 // the public host keys. $1 is the folder of the host keys (/etc/ssh). Nothing is secret.
 const preProbeScript = `echo "home=$HOME"; s=${SHELL:-sh}; echo "shell=$s"; echo "sshv=$(ssh -V 2>&1 | head -n 1)"; ` +
 	`c=$("$s" -lc "command -v claude" 2>/dev/null | tail -n 1); echo "claude=$c"; ` +
 	`if [ -n "$c" ]; then echo "claudev=$("$c" --version 2>/dev/null | head -n 1)"; fi; ` +
-	`if [ -x .local/bin/sy ]; then echo "sy=$(.local/bin/sy version --short 2>/dev/null)"; ` +
-	`if command -v sha256sum >/dev/null 2>&1; then echo "sysha=$(sha256sum < .local/bin/sy)"; ` +
-	`elif command -v shasum >/dev/null 2>&1; then echo "sysha=$(shasum -a 256 < .local/bin/sy)"; fi; fi; ` +
+	`if [ -x .local/bin/wy ]; then echo "wy=$(.local/bin/wy version --short 2>/dev/null)"; ` +
+	`if command -v sha256sum >/dev/null 2>&1; then echo "sysha=$(sha256sum < .local/bin/wy)"; ` +
+	`elif command -v shasum >/dev/null 2>&1; then echo "sysha=$(shasum -a 256 < .local/bin/wy)"; fi; fi; ` +
 	`if [ "$(uname -s)" = Darwin ]; then echo "rosetta=$(sysctl -n sysctl.proc_translated 2>/dev/null)"; fi; ` +
 	`for f in "$1"/ssh_host_*_key.pub; do if [ -r "$f" ]; then echo "hostkey=$(cat "$f")"; fi; done; echo end=1`
 
@@ -47,7 +47,7 @@ type PreProbe struct {
 	SSHVersion    string   `json:"ssh_version"`
 	Claude        string   `json:"claude,omitempty"`
 	ClaudeVersion string   `json:"claude_version,omitempty"`
-	Sy            string   `json:"sy,omitempty"` // installed sy version, "" when none
+	Sy            string   `json:"sy,omitempty"` // installed wy version, "" when none
 	SySHA256      string   `json:"sy_sha256,omitempty"`
 	Rosetta       bool     `json:"rosetta,omitempty"`
 	HostKeys      []string `json:"host_keys,omitempty"`
@@ -59,7 +59,7 @@ func parsePreProbe(out []byte) (PreProbe, error) {
 		return PreProbe{}, errors.New("the remote probe did not finish (is the login shell POSIX-like enough to run sh?)")
 	}
 	p := PreProbe{Home: kv["home"], Shell: kv["shell"], SSHVersion: kv["sshv"], Claude: kv["claude"],
-		ClaudeVersion: kv["claudev"], Sy: kv["sy"], SySHA256: strings.ToLower(firstField(kv["sysha"])), Rosetta: kv["rosetta"] == "1"}
+		ClaudeVersion: kv["claudev"], Sy: kv["wy"], SySHA256: strings.ToLower(firstField(kv["sysha"])), Rosetta: kv["rosetta"] == "1"}
 	for _, k := range parseKVAll(out, "hostkey") {
 		if f := strings.Fields(k); len(f) >= 2 {
 			p.HostKeys = append(p.HostKeys, f[0]+" "+f[1])
@@ -68,7 +68,7 @@ func parsePreProbe(out []byte) (PreProbe, error) {
 	return p, nil
 }
 
-// ProbeReport is `sy machine probe --json` (4.5), run on the remote with the new sy. Read
+// ProbeReport is `wy machine probe --json` (4.5), run on the remote with the new wy. Read
 // only except that it creates machine.json. Nothing in it is secret.
 type ProbeReport struct {
 	V        int           `json:"v"`
@@ -97,7 +97,7 @@ type ProbeClaude struct {
 	Version string `json:"version,omitempty"`
 }
 
-// ProbeFolder is one Claude config folder and who is logged in (from sy's cached login).
+// ProbeFolder is one Claude config folder and who is logged in (from wy's cached login).
 type ProbeFolder struct {
 	Folder   string `json:"folder"`
 	LoggedIn bool   `json:"logged_in"`
@@ -122,7 +122,7 @@ type ProbeConnected struct {
 	Token bool   `json:"token"`
 }
 
-// ProbeOptions configures Probe (the remote side of `sy machine probe`).
+// ProbeOptions configures Probe (the remote side of `wy machine probe`).
 type ProbeOptions struct {
 	StateDir   string
 	ConfigPath string
@@ -172,7 +172,7 @@ func ParsePorts(s string) ([2]int, error) {
 	return [2]int{lo, hi}, nil
 }
 
-// Probe answers `sy machine probe --json` on the remote.
+// Probe answers `wy machine probe --json` on the remote.
 func Probe(ctx context.Context, o ProbeOptions) (ProbeReport, error) {
 	if o.Getenv == nil {
 		o.Getenv = os.Getenv

@@ -1,7 +1,7 @@
 package doctor
 
 // The setup checks of docs/spec/setup.md 9.4 (the full doctor). They run only on a machine
-// where `sy setup` has run (a ledger or a backup folder exists), so a machine that never ran it sees
+// where `wy setup` has run (a ledger or a backup folder exists), so a machine that never ran it sees
 // no setup lines.
 
 import (
@@ -12,18 +12,18 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/setup/apply"
-	"github.com/mraj602/switchyard/internal/setup/backup"
-	"github.com/mraj602/switchyard/internal/setup/ledger"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/share"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/setup/apply"
+	"github.com/mraj602/watchyard/internal/setup/backup"
+	"github.com/mraj602/watchyard/internal/setup/ledger"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/share"
 )
 
-// syPathRe finds the absolute sy path baked into a generated hook command:
-// `[ -x '/home/u/.local/bin/sy' ] && ...`.
+// syPathRe finds the absolute wy path baked into a generated hook command:
+// `[ -x '/home/u/.local/bin/wy' ] && ...`.
 var syPathRe = regexp.MustCompile(`\[ -x '([^']+)' \]`)
 
 func checkSetup(rep *Report, o Options, cfg config.Config, slots []identity.Slot) {
@@ -34,45 +34,45 @@ func checkSetup(rep *Report, o Options, cfg config.Config, slots []identity.Slot
 	_, lerr := os.Stat(ledger.Path(st))
 	_, berr := os.Stat(backup.Root(st))
 	if lerr != nil && berr != nil {
-		return // sy setup has never run here
+		return // wy setup has never run here
 	}
 
 	// An interrupted run (7.6) is a failure until it is undone. A set in progress while
 	// setup.lock is held belongs to a command still running.
 	if ids, err := backup.InProgress(st); err == nil && len(ids) > 0 && !setupRunning(st) {
-		rep.add(Check{Name: "setup", Level: Fail, Detail: "an earlier sy setup run was interrupted: " + strings.Join(ids, ", "),
-			Fix: "sy setup --undo " + ids[0] + " (or sy setup --yes, which undoes it first)"})
+		rep.add(Check{Name: "setup", Level: Fail, Detail: "an earlier wy setup run was interrupted: " + strings.Join(ids, ", "),
+			Fix: "wy setup --undo " + ids[0] + " (or wy setup --yes, which undoes it first)"})
 	}
 	led, err := ledger.Read(st)
 	if err != nil {
 		rep.add(Check{Name: "setup", Level: Warn, Detail: "cannot read the setup ledger: " + err.Error(),
-			Fix: "sy setup --yes rewrites it"})
+			Fix: "wy setup --yes rewrites it"})
 		return
 	}
 
-	// The plugin: marketplace folder present, sy at the baked path, one switchyard plugin.
+	// The plugin: marketplace folder present, wy at the baked path, one watchyard plugin.
 	if led.Plugin != nil && !led.Plugin.Adopted && led.Plugin.Marketplace != "" {
-		hooks := filepath.Join(led.Plugin.Marketplace, "plugins", "switchyard", "hooks", "hooks.json")
+		hooks := filepath.Join(led.Plugin.Marketplace, "plugins", "watchyard", "hooks", "hooks.json")
 		b, err := os.ReadFile(hooks)
 		switch {
 		case err != nil:
-			rep.add(Check{Name: "plugin", Level: Fail, Detail: "the sy-local marketplace folder is missing (" + led.Plugin.Marketplace + ")",
-				Fix: "sy setup --yes writes it again"})
+			rep.add(Check{Name: "plugin", Level: Fail, Detail: "the wy-local marketplace folder is missing (" + led.Plugin.Marketplace + ")",
+				Fix: "wy setup --yes writes it again"})
 		default:
 			if m := syPathRe.FindSubmatch(b); m != nil {
 				p := string(m[1])
 				if _, err := os.Stat(p); err != nil {
 					rep.add(Check{Name: "plugin", Level: Fail, Detail: "hooks call " + p + ", which does not exist",
-						Fix: "reinstall sy there, or run sy setup --yes from the new sy"})
+						Fix: "reinstall wy there, or run wy setup --yes from the new wy"})
 				} else {
-					rep.add(Check{Name: "plugin", Level: OK, Detail: "switchyard@sy-local hooks call " + p})
+					rep.add(Check{Name: "plugin", Level: OK, Detail: "watchyard@wy-local hooks call " + p})
 				}
 				look := o.LookPath
 				if look == nil {
 					look = lookPath
 				}
-				if _, err := look("sy"); err != nil {
-					rep.add(Check{Name: "sy on PATH", Level: Warn, Detail: "sy is not on PATH (hooks still work: they use " + p + ")",
+				if _, err := look("wy"); err != nil {
+					rep.add(Check{Name: "wy on PATH", Level: Warn, Detail: "wy is not on PATH (hooks still work: they use " + p + ")",
 						Fix: "add " + filepath.Dir(p) + " to PATH in your shell profile"})
 				}
 			}
@@ -85,14 +85,14 @@ func checkSetup(rep *Report, o Options, cfg config.Config, slots []identity.Slot
 		}
 		var on []string
 		for k, en := range set.plugins {
-			if en && (k == "switchyard" || strings.HasPrefix(k, "switchyard@")) {
+			if en && (k == "watchyard" || strings.HasPrefix(k, "watchyard@")) {
 				on = append(on, k)
 			}
 		}
 		if len(on) > 1 {
 			rep.add(Check{Name: "plugin", Slot: s.Name, Level: Warn,
-				Detail: fmt.Sprintf("%d switchyard plugins are enabled (%s): every event is reported twice", len(on), strings.Join(on, ", ")),
-				Fix:    "sy setup --yes disables all but switchyard@sy-local"})
+				Detail: fmt.Sprintf("%d watchyard plugins are enabled (%s): every event is reported twice", len(on), strings.Join(on, ", ")),
+				Fix:    "wy setup --yes disables all but watchyard@wy-local"})
 		}
 	}
 
@@ -107,7 +107,7 @@ func checkSetup(rep *Report, o Options, cfg config.Config, slots []identity.Slot
 			if _, err := os.Stat(p); err != nil {
 				raw, _ := os.Readlink(p)
 				rep.add(Check{Name: "sharing", Slot: s.Name, Level: Fail, Detail: it.Name + " links to " + raw + ", which does not exist",
-					Fix: "restore the target, or sy setup --undo the run that made the link"})
+					Fix: "restore the target, or wy setup --undo the run that made the link"})
 			}
 		}
 	}
@@ -128,7 +128,7 @@ func checkSetup(rep *Report, o Options, cfg config.Config, slots []identity.Slot
 	if g, err := share.ReadMCPGuard(st); err == nil && g != nil {
 		rep.add(Check{Name: "mcp", Level: Warn, Detail: fmt.Sprintf("MCP sync paused since %s: it would have removed every server (%s) because %s no longer list them",
 			g.Time, strings.Join(g.Removed, ", "), strings.Join(g.By, ", ")),
-			Fix: "if you meant it, remove the servers in every folder by hand; otherwise add them back in " + strings.Join(g.By, ", ") + " (sy tick then resumes)"})
+			Fix: "if you meant it, remove the servers in every folder by hand; otherwise add them back in " + strings.Join(g.By, ", ") + " (wy tick then resumes)"})
 	}
 	if rm, err := share.ReadMCPRemovals(st); err == nil && len(rm) > 0 {
 		last := rm
@@ -146,7 +146,7 @@ func checkSetup(rep *Report, o Options, cfg config.Config, slots []identity.Slot
 		for _, g := range groups {
 			if g.Conflict {
 				rep.add(Check{Name: "copies", Level: Warn, Detail: g.Name + ": two synced copies changed since the last sync; nothing copied",
-					Fix: "make the copies equal by hand; sy tick resumes syncing"})
+					Fix: "make the copies equal by hand; wy tick resumes syncing"})
 			}
 		}
 	}
@@ -155,13 +155,13 @@ func checkSetup(rep *Report, o Options, cfg config.Config, slots []identity.Slot
 	if cfg.Hub.URL != "" {
 		if _, err := os.Stat(filepath.Join(st, "token")); err != nil {
 			rep.add(Check{Name: "hub", Level: Fail, Detail: "hub.url is " + cfg.Hub.URL + " but there is no device token",
-				Fix: "sy connect " + cfg.Hub.URL + " --token-stdin"})
+				Fix: "wy connect " + cfg.Hub.URL + " --token-stdin"})
 		}
 	}
 	if led.Timer {
 		if !timerPresent(o) {
-			rep.add(Check{Name: "timer", Level: Warn, Detail: "the flush timer sy installed is gone",
-				Fix: "sy connect <url> --token-stdin installs it again"})
+			rep.add(Check{Name: "timer", Level: Warn, Detail: "the flush timer wy installed is gone",
+				Fix: "wy connect <url> --token-stdin installs it again"})
 		}
 	}
 	if lerr == nil {
@@ -170,7 +170,7 @@ func checkSetup(rep *Report, o Options, cfg config.Config, slots []identity.Slot
 }
 
 // timerPresent looks for the timer's unit file (no service manager is asked).
-// setupRunning is true while another sy command holds setup.lock.
+// setupRunning is true while another wy command holds setup.lock.
 func setupRunning(stateDir string) bool {
 	unlock, err := apply.Lock(stateDir)
 	if err != nil {
@@ -181,7 +181,7 @@ func setupRunning(stateDir string) bool {
 }
 
 func timerPresent(o Options) bool {
-	// The names before a rename count too: `sy update` moves that timer (rename.md 2.3).
+	// The names before a rename count too: `wy update` moves that timer (rename.md 2.3).
 	for _, slug := range []string{brand.Slug, brand.OldSlug()} {
 		for _, p := range []string{
 			filepath.Join(o.Home, ".config", "systemd", "user", slug+"-flush.timer"),

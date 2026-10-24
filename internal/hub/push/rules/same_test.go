@@ -3,7 +3,7 @@ package rules
 import (
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
 )
 
 func TestSameScope(t *testing.T) {

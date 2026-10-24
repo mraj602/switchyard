@@ -9,17 +9,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
-	hublink "github.com/mraj602/switchyard/internal/hub/link"
-	"github.com/mraj602/switchyard/internal/hub/push/engine"
-	pushlink "github.com/mraj602/switchyard/internal/hub/push/link"
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/push/webpush"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/link"
-	"github.com/mraj602/switchyard/internal/link/linktest"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	hubkeys "github.com/mraj602/watchyard/internal/hub/keys"
+	hublink "github.com/mraj602/watchyard/internal/hub/link"
+	"github.com/mraj602/watchyard/internal/hub/push/engine"
+	pushlink "github.com/mraj602/watchyard/internal/hub/push/link"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/webpush"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/link"
+	"github.com/mraj602/watchyard/internal/link/linktest"
 )
 
 // The link channel end to end (push.md 13): the engine fires an alert, the link sender

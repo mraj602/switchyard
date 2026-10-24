@@ -24,10 +24,10 @@ import (
 
 	toml "github.com/pelletier/go-toml/v2"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/atomicfile"
 )
 
-// FileName is the only name sy owns inside the config folder (paths.md section 2).
+// FileName is the only name wy owns inside the config folder (paths.md section 2).
 const FileName = "config.toml"
 
 // Version is the schema version written to new files.
@@ -75,7 +75,7 @@ type Config struct {
 	} `toml:"hooks"`
 	Statusline struct {
 		Wrap string `toml:"wrap"`
-		// Show: append Switchyard's part ("label · 5h · ctx") to the line. Off still records
+		// Show: append Watchyard's part ("label · 5h · ctx") to the line. Off still records
 		// the limit samples; only the text is left out.
 		Show bool `toml:"show"`
 	} `toml:"statusline"`
@@ -98,7 +98,7 @@ type Config struct {
 	} `toml:"share"`
 	// Terminal is the [terminal] table of docs/spec/terminal.md T12.
 	Terminal struct {
-		// Titles is written only by `sy term titles on|off` (a config_set in its plan).
+		// Titles is written only by `wy term titles on|off` (a config_set in its plan).
 		Titles       bool   `toml:"titles"`
 		Band         bool   `toml:"band"`
 		PaneAutoOpen bool   `toml:"pane_auto_open"`
@@ -106,7 +106,7 @@ type Config struct {
 		ASCII        bool   `toml:"ascii"`
 	} `toml:"terminal"`
 	// Peers is the [peers] table of docs/spec/peers.md. Enabled turns on the session
-	// files `sy hook` writes (2.4); `sy agent enable` sets it too. Delivery is the
+	// files `wy hook` writes (2.4); `wy agent enable` sets it too. Delivery is the
 	// inbox delivery mode chosen by the delivery probe (8.5): honest | accept | courier.
 	Peers struct {
 		Enabled  bool   `toml:"enabled"`
@@ -166,14 +166,14 @@ const (
 	kMCP // true, false or "external" (share.mcp)
 )
 
-// spec describes one known key: its type, default and whether `sy config set` may change it.
+// spec describes one known key: its type, default and whether `wy config set` may change it.
 // A managed key is changed only through a plan (SetJSON, setup.md 6.1 config_set) by the
-// command that owns it; `sy config set` refuses it and names that command.
+// command that owns it; `wy config set` refuses it and names that command.
 type spec struct {
 	kind     kind
 	def      any
 	readOnly bool
-	managed  string // the command that owns the key, e.g. "sy term titles on|off"
+	managed  string // the command that owns the key, e.g. "wy term titles on|off"
 }
 
 var known = map[string]spec{
@@ -200,7 +200,7 @@ var known = map[string]spec{
 	"share.primary":             {kind: kString, def: ""},
 	"share.mcp":                 {kind: kMCP, def: ""},
 	"share.mcp_exclude":         {kind: kStrings, def: []any{}},
-	"terminal.titles":           {kind: kBool, def: false, managed: "sy term titles on|off"},
+	"terminal.titles":           {kind: kBool, def: false, managed: "wy term titles on|off"},
 	"terminal.band":             {kind: kBool, def: true},
 	"terminal.pane_auto_open":   {kind: kBool, def: true},
 	"terminal.source":           {kind: kString, def: TerminalSourceAuto},
@@ -230,7 +230,7 @@ func slotMapKey(key string) (table, rest string, ok bool) {
 	return "", "", false
 }
 
-// Known lists the keys `sy config get/set` understands, sorted.
+// Known lists the keys `wy config get/set` understands, sorted.
 func Known() []string {
 	out := make([]string, 0, len(known)+1)
 	for k := range known {
@@ -417,10 +417,10 @@ func (f *File) set(key string, args []string, fromPlan bool) error {
 		return fmt.Errorf("unknown key %q (known: %s)", key, strings.Join(Known(), ", "))
 	}
 	if sp.readOnly {
-		return fmt.Errorf("%s is managed by sy and cannot be set", key)
+		return fmt.Errorf("%s is managed by wy and cannot be set", key)
 	}
 	if sp.managed != "" && !fromPlan {
-		return fmt.Errorf("%s is changed by `%s` (it also edits files), not by sy config set", key, sp.managed)
+		return fmt.Errorf("%s is changed by `%s` (it also edits files), not by wy config set", key, sp.managed)
 	}
 	val, err := parse(key, sp.kind, args)
 	if err != nil {
@@ -530,7 +530,7 @@ func parseList(args []string) (any, error) {
 	return out, nil
 }
 
-// Unknown lists the dotted keys in the file that this version does not know, for `sy doctor`.
+// Unknown lists the dotted keys in the file that this version does not know, for `wy doctor`.
 func (f *File) Unknown() []string {
 	var out []string
 	var walk func(prefix string, m map[string]any)
@@ -575,8 +575,8 @@ func (f *File) Save() error {
 	if err != nil {
 		return err
 	}
-	header := []byte("# Switchyard (sy) settings. Unofficial; not affiliated with Anthropic.\n" +
-		"# Change with `sy config set`; comments added by hand are not kept.\n")
+	header := []byte("# Watchyard (wy) settings. Unofficial; not affiliated with Anthropic.\n" +
+		"# Change with `wy config set`; comments added by hand are not kept.\n")
 	if err := os.MkdirAll(f.dir, 0o700); err != nil {
 		return err
 	}
@@ -593,7 +593,7 @@ var labelRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,23}$`)
 // ValidLabel reports whether s is a valid account label (`^[a-z0-9][a-z0-9-]{0,23}$`).
 func ValidLabel(s string) bool { return labelRe.MatchString(s) }
 
-// SetJSON sets key from a JSON value, the form `sy setup` plans config changes in
+// SetJSON sets key from a JSON value, the form `wy setup` plans config changes in
 // (setup.md 6.1 config_set): a string or bool is passed to Set, an array of strings sets a
 // list, and null deletes the key (only the free-form slot keys and share.* may be deleted).
 func (f *File) SetJSON(key string, raw json.RawMessage) error {
@@ -646,7 +646,7 @@ func (f *File) Delete(key string) error {
 }
 
 // CheckDirectServer validates a push.direct.server value: an origin over https, or over http
-// only for loopback, private and tailnet addresses (the `sy connect` rule, push.md 7.1). The
+// only for loopback, private and tailnet addresses (the `wy connect` rule, push.md 7.1). The
 // secret topic and the Bearer token go to this server, so a public http URL is refused.
 func CheckDirectServer(server string) error {
 	u, err := url.Parse(server)

@@ -1,6 +1,6 @@
-# Switchyard: sy and the hub (Go), plus targets for the desktop app (app/) and the Android app (phone/).
+# Watchyard: wy and the hub (Go), plus targets for the desktop app (app/) and the Android app (phone/).
 #
-#   make build       build ./dist/sy
+#   make build       build ./dist/wy
 #   make test        go test ./...
 #   make lint        gofmt check + go vet
 #   make spec-check  load docs/spec/schema.sql into a temp SQLite db, validate docs/spec/api.yaml
@@ -8,16 +8,16 @@
 #   make check       lint + test + spec-check (what CI runs)
 #   make e2e-setup   setup E2E in the Fedora and Ubuntu containers (podman or docker; E2E_ENGINE=...)
 #                    or natively: test/e2e/setup/run.sh --native
-#   make e2e-machines  sy machine add / pull / remove against an sshd container (SY_E2E_RUNTIME=podman|docker;
+#   make e2e-machines  wy machine add / pull / remove against an sshd container (WY_E2E_RUNTIME=podman|docker;
 #                    skips when no container runtime works)
-#   make e2e-terminal  sy board / term / open / ssh end to end (test/e2e/terminal; fake opener, temp HOME)
+#   make e2e-terminal  wy board / term / open / ssh end to end (test/e2e/terminal; fake opener, temp HOME)
 #   make e2e-android the Android app against a real local hub on the emulator (test/e2e/android; ~15 min,
 #                    builds the APK once, ~6 min; skips without the SDK/AVD/KVM; never part of check)
 #   make pane-check  the Claude Code pane mod gate (scripts/pane-check.sh and its --self-test; needs claude)
-#   make release-check  a release build of sy contains no test seams (fakeclock, fakeopen)
+#   make release-check  a release build of wy contains no test seams (fakeclock, fakeopen)
 #   make app-test    the desktop app (app/): npm ci --ignore-scripts, lint, unit tests (no display)
 #   make app-smoke   the Electron smoke S1-S15 (Linux: under xvfb-run; a real hub built from here)
-#   make app-dist    the bundled sy for this machine + the app packages in app/dist (never signed;
+#   make app-dist    the bundled wy for this machine + the app packages in app/dist (never signed;
 #                    Linux without libcrypt.so.1: the AppImage only, see APP_DIST_LINUX)
 #   make app-e2e     the packaged AppImage end to end (its own e2e build in app/dist/e2e, which alone
 #                    allows --remote-debugging-port; Linux, xvfb-run)
@@ -28,8 +28,8 @@
 #   make phone-android-debug  optional: expo prebuild into phone/android (gitignored) and an
 #                    unsigned debug compile (needs ANDROID_HOME and JDK 17+; never distributed)
 #   make phone-apk-release  YOU run it, not an agent: expo prebuild + Gradle assembleRelease signed with
-#                    your own keystore (SY_ANDROID_KEYSTORE, SY_ANDROID_KEY_ALIAS, SY_ANDROID_KEYSTORE_PASSWORD
-#                    or SY_ANDROID_SIGNING_PROPERTIES; refuses without them) -> phone/dist/{apk,SHA256SUMS,manifest.json}
+#                    your own keystore (WY_ANDROID_KEYSTORE, WY_ANDROID_KEY_ALIAS, WY_ANDROID_KEYSTORE_PASSWORD
+#                    or WY_ANDROID_SIGNING_PROPERTIES; refuses without them) -> phone/dist/{apk,SHA256SUMS,manifest.json}
 
 GO       ?= go
 PYTHON   ?= python3
@@ -37,8 +37,8 @@ SQLITE3  ?= sqlite3
 VERSION  ?= $(shell git describe --tags --match 'v*' --always --dirty 2>/dev/null || echo dev)
 COMMIT   ?= $(shell git rev-parse --short HEAD 2>/dev/null)
 LDFLAGS  := -s -w \
-	-X github.com/mraj602/switchyard/internal/version.Version=$(VERSION) \
-	-X github.com/mraj602/switchyard/internal/version.Commit=$(COMMIT)
+	-X github.com/mraj602/watchyard/internal/version.Version=$(VERSION) \
+	-X github.com/mraj602/watchyard/internal/version.Commit=$(COMMIT)
 GOFILES   = $(shell git ls-files --cached --others --exclude-standard -- '*.go')
 
 .PHONY: all build test lint fmt spec-check fixtures check clean rename-test e2e-setup e2e-setup-fedora e2e-setup-ubuntu e2e-machines \
@@ -48,11 +48,11 @@ GOFILES   = $(shell git ls-files --cached --others --exclude-standard -- '*.go')
 all: check build
 
 build:
-	CGO_ENABLED=0 $(GO) build -trimpath -ldflags '$(LDFLAGS)' -o dist/sy ./cmd/sy
+	CGO_ENABLED=0 $(GO) build -trimpath -ldflags '$(LDFLAGS)' -o dist/wy ./cmd/wy
 
 test:
 	$(GO) test ./...
-	$(GO) test -tags fakeinbox,peerstest ./internal/peers/... ./cmd/sy
+	$(GO) test -tags fakeinbox,peerstest ./internal/peers/... ./cmd/wy
 	$(GO) test -tags fakeinbox ./test/e2e/peers
 
 lint:
@@ -98,7 +98,7 @@ e2e-setup-ubuntu:
 	test/e2e/setup/run.sh ubuntu $(E2E_ENGINE)
 
 # The end-to-end test for pull machines (docs/spec/machines.md): real SSH into a container, never the real HOME.
-# -v so a skip says why; the test picks podman, else docker, unless SY_E2E_RUNTIME is set.
+# -v so a skip says why; the test picks podman, else docker, unless WY_E2E_RUNTIME is set.
 e2e-machines:
 	$(GO) test -count=1 -v -timeout 15m ./test/e2e/machines
 
@@ -108,7 +108,7 @@ e2e-android:
 	test/e2e/android/run.sh
 
 # The desktop app. npm runs in app/ only.
-# Smoke and e2e use temp HOME / SY_HOME / user data folders; on Linux they run under xvfb-run
+# Smoke and e2e use temp HOME / WY_HOME / user data folders; on Linux they run under xvfb-run
 # when it is installed (unset WAYLAND_DISPLAY so Electron uses X11).
 # A private session bus too: under xvfb, Electron and Chrome still reach the desktop's D-Bus
 # and test alerts would pop up as real notifications. dbus-run-session gives the run its own
@@ -139,7 +139,7 @@ phone-prebuild:
 
 phone-android-debug: phone-deps
 	@test -n "$$ANDROID_HOME" || { echo "phone-android-debug: set ANDROID_HOME to the Android SDK"; exit 1; }
-	cd phone && SY_APP_VARIANT=development npx expo prebuild --platform android --no-install --clean
+	cd phone && WY_APP_VARIANT=development npx expo prebuild --platform android --no-install --clean
 	cd phone/android && ./gradlew :app:assembleDebug
 	@echo "unsigned debug APK: phone/android/app/build/outputs/apk/debug/ (never distribute it)"
 
@@ -150,8 +150,8 @@ phone-apk-release:
 	cd phone && ./scripts/release-apk.sh
 
 app-smoke: app-deps
-	CGO_ENABLED=0 $(GO) build -o app/node_modules/.cache/sy-smoke/sy ./cmd/sy
-	cd app && SY_BIN="$$PWD/node_modules/.cache/sy-smoke/sy" $(XVFB) $(NPM) run smoke
+	CGO_ENABLED=0 $(GO) build -o app/node_modules/.cache/sy-smoke/wy ./cmd/wy
+	cd app && WY_BIN="$$PWD/node_modules/.cache/sy-smoke/wy" $(XVFB) $(NPM) run smoke
 
 # On Linux the deb and rpm targets run electron-builder's bundled fpm, whose Ruby needs
 # libcrypt.so.1 (Fedora 40+ ships only libcrypt.so.2 unless libxcrypt-compat is installed).
@@ -163,7 +163,7 @@ app-dist: app-deps
 	$(if $(APP_DIST_LINUX),@echo "app-dist: Linux targets: $(APP_DIST_LINUX) (deb and rpm need libcrypt.so.1 for fpm: dnf install libxcrypt-compat)")
 	cd app && node scripts/fetch-sy.mjs auto auto && CSC_IDENTITY_AUTO_DISCOVERY=false $(NPM) run dist -- --publish never $(if $(APP_DIST_LINUX),--linux $(APP_DIST_LINUX))
 
-# The e2e build bakes switchyard.allowCdp=true into the asar (desktop.md C2); app-dist never does.
+# The e2e build bakes watchyard.allowCdp=true into the asar (desktop.md C2); app-dist never does.
 app-e2e: app-deps
 	cd app && node scripts/fetch-sy.mjs auto auto && scripts/dist-e2e.sh
 	cd app && $(XVFB) $(NPM) run e2e
@@ -171,7 +171,7 @@ app-e2e: app-deps
 clean:
 	rm -rf dist
 
-# The terminal scenarios (docs/spec/terminal.md), with `sy` built with -tags fakeopen.
+# The terminal scenarios (docs/spec/terminal.md), with `wy` built with -tags fakeopen.
 e2e-terminal:
 	$(GO) test -count=1 -v -timeout 15m ./test/e2e/terminal
 

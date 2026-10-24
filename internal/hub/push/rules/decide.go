@@ -1,7 +1,7 @@
 package rules
 
 import (
-	"github.com/mraj602/switchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
 )
 
 // SessionNow is a session as reconcile sees it (push.md 3.5).

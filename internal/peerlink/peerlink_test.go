@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/link"
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/link"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 const stopped = "t_0123456789abcdef"

@@ -92,7 +92,7 @@ func TestFleetOrderParallelAndPush(t *testing.T) {
 		t.Errorf("offline: %+v %v", by["offline"], f.pushed)
 	}
 	last := f.runs["offline"][1]
-	if got := strings.Join(last, " "); !strings.Contains(got, "--from-file /state/update/sy_0.5.0_linux_amd64.tar.gz --sums-file /state/update/SHA256SUMS") {
+	if got := strings.Join(last, " "); !strings.Contains(got, "--from-file /state/update/wy_0.5.0_linux_amd64.tar.gz --sums-file /state/update/SHA256SUMS") {
 		t.Errorf("push argv: %s", got)
 	}
 	if by["gone"].Outcome != "failed" || !strings.Contains(by["gone"].Error, "refused") {
@@ -104,7 +104,7 @@ func TestFleetOrderParallelAndPush(t *testing.T) {
 	if by["c"].Outcome != "updated" || by["d"].Outcome != "updated" {
 		t.Error("one failure stopped the others")
 	}
-	if got := strings.Join(f.runs["a"][0], " "); got != ".local/bin/sy update --yes --json --version 0.5.0 --no-attestation" {
+	if got := strings.Join(f.runs["a"][0], " "); got != ".local/bin/wy update --yes --json --version 0.5.0 --no-attestation" {
 		t.Errorf("argv %q", got)
 	}
 }

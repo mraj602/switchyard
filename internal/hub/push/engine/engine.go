@@ -8,7 +8,7 @@
 // Every timer is a column (alert.due_at, delivery.next_at), so a restart resumes where the
 // last run stopped (subject to the stale guard). Time comes only from a clock.Clock.
 //
-// Construction in `sy hub serve`:
+// Construction in `wy hub serve`:
 //
 //	eng := engine.New(engine.Config{Store: st, Clock: clock.Real{}, Senders: []model.Sender{wp, nf},
 //		TZ: rules.SystemZone(), PublicURL: publicURL, Log: logger})
@@ -26,11 +26,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/events"
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	"github.com/mraj602/switchyard/internal/hub/push/clock"
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/events"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	"github.com/mraj602/watchyard/internal/hub/push/clock"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // Defaults of push.md 3.3 and 3.6.
@@ -71,7 +71,7 @@ type Config struct {
 	// Log gets one line per fire, failed send and skip (push.md 10). Nil discards.
 	Log *log.Logger
 	// TZ is the hub time zone when the hub.tz setting is unset (the TZ environment variable
-	// of `sy hub serve`); empty = UTC.
+	// of `wy hub serve`); empty = UTC.
 	TZ string
 	// PublicURL is the hub's public origin (ntfy needs absolute links); empty falls back to
 	// the hub.public_url setting.

@@ -1,4 +1,4 @@
-title: Switchyard
+title: Watchyard
 body: 1 session needs you
 url: /#/alerts/al_1
 tag: sy-s-sess-1

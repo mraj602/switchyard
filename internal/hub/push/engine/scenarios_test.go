@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 const s1 = "c41e0000-0000-4000-8000-000000000001"
@@ -695,7 +695,7 @@ func TestRow38Private(t *testing.T) {
 	}
 	p := got[0].Msg.Payload
 	a := h.alertOf(s1, model.TriggerAsked)
-	if p.Title != "Switchyard" || p.Body != "1 session needs you" || p.URL != "/#/alerts/"+a.ID || !p.Private ||
+	if p.Title != "Watchyard" || p.Body != "1 session needs you" || p.URL != "/#/alerts/"+a.ID || !p.Private ||
 		strings.Contains(p.Body+p.Title, "migration") {
 		t.Fatalf("%+v", p)
 	}
@@ -710,7 +710,7 @@ func TestNtfyTargetPrivateOnNtfySh(t *testing.T) {
 	h.askQ(s1, 0)
 	h.advanceTo(time.Minute)
 	got := h.nf.sends()
-	if len(got) != 1 || got[0].Msg.Payload.Title != "Switchyard" || got[0].Msg.Priority != 4 || got[0].Msg.HubURL != "https://hub.example.ts.net" {
+	if len(got) != 1 || got[0].Msg.Payload.Title != "Watchyard" || got[0].Msg.Priority != 4 || got[0].Msg.HubURL != "https://hub.example.ts.net" {
 		t.Fatalf("%+v", got)
 	}
 }

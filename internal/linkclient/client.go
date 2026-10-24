@@ -1,4 +1,4 @@
-// Package linkclient is the machine side of the link (docs/spec/link.md): `sy agent run`
+// Package linkclient is the machine side of the link (docs/spec/link.md): `wy agent run`
 // logs in to the hub's /v1/link with this machine's device keys, verifies every frame
 // against the pinned hub key, opens the queued bodies, stores accepted matrix and
 // revocation documents, hands peer frames to a PeerHandler, acks, rejects and
@@ -29,10 +29,10 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/mraj602/switchyard/internal/agent"
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/link"
+	"github.com/mraj602/watchyard/internal/agent"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/link"
 )
 
 // PeerHandler is the peers seam: queued peer frames (peer_msg, peer_status,
@@ -59,7 +59,7 @@ type Config struct {
 	HubMayWiden bool
 	// Peers gets peer frames; nil: they are acked and dropped with a log line.
 	Peers PeerHandler
-	// Version is sy's version for hello.client.
+	// Version is wy's version for hello.client.
 	Version string
 	// Log gets one line per connect, close and stored document. Nil discards.
 	Log *log.Logger
@@ -114,7 +114,7 @@ func New(cfg Config) *Client {
 	return &Client{cfg: cfg, log: lg, status: agent.LinkStatus{State: "none"}}
 }
 
-// Status is the link's state for `sy agent status`.
+// Status is the link's state for `wy agent status`.
 func (c *Client) Status() agent.LinkStatus {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -212,11 +212,11 @@ func (c *Client) Run(ctx context.Context) error {
 		attempt++
 		switch code {
 		case link.CloseRevoked:
-			msg := "the hub removed this machine (4403); pair it again with sy agent enable"
+			msg := "the hub removed this machine (4403); pair it again with wy agent enable"
 			c.setStatus("stopped", msg)
 			return &stopError{msg}
 		case link.CloseUpgrade:
-			msg := "the hub needs a newer sy (4426); update sy"
+			msg := "the hub needs a newer wy (4426); update wy"
 			c.setStatus("stopped", msg)
 			return &stopError{msg}
 		case link.CloseUnauthorized:
@@ -264,10 +264,10 @@ type creds struct {
 func (c *Client) creds() (creds, error) {
 	dk, err := keys.ReadDeviceKeys(c.cfg.State)
 	if err != nil {
-		return creds{}, &stopError{"no device keys (run sy agent enable): " + err.Error()}
+		return creds{}, &stopError{"no device keys (run wy agent enable): " + err.Error()}
 	}
 	if dk.Device == "" {
-		return creds{}, &stopError{"device keys are not registered with the hub (run sy agent enable)"}
+		return creds{}, &stopError{"device keys are not registered with the hub (run wy agent enable)"}
 	}
 	var cr creds
 	cr.device = dk.Device
@@ -504,7 +504,7 @@ func (c *Client) pinOwner(cr creds, d *keys.Doc) {
 	err = keys.SetPin(keys.Path(c.cfg.State, keys.OwnerPinFile), keys.NewPin(ok.Pub, keys.PinTOFU, c.cfg.Now()))
 	switch {
 	case errors.Is(err, keys.ErrPinned):
-		c.setStatus("connected", "the hub's owner key "+keys.GroupFP(ok.FP)+" differs from the pinned one (sy keys trust-owner)")
+		c.setStatus("connected", "the hub's owner key "+keys.GroupFP(ok.FP)+" differs from the pinned one (wy keys trust-owner)")
 		c.log.Printf("link: warning: the hub's owner key %s differs from the pinned one; keeping the pin", keys.GroupFP(ok.FP))
 	case err != nil:
 		c.log.Printf("link: pinning the owner key: %v", err)

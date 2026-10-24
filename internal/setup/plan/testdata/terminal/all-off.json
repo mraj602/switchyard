@@ -1,5 +1,5 @@
 {
-  "plan_id": "p_13406d5838c8",
+  "plan_id": "p_7ef185da9326",
   "actions": [
     {
       "id": "a1",
@@ -13,7 +13,7 @@
         "claude",
         "plugin",
         "uninstall",
-        "switchyard-pane@sy-local",
+        "watchyard-pane@wy-local",
         "--json"
       ],
       "env": {
@@ -22,7 +22,7 @@
       "touches": [
         "/home/u/.claude/settings.json",
         "/home/u/.claude/plugins/installed_plugins.json",
-        "/home/u/.local/state/switchyard/term/journal/pane.uninstall"
+        "/home/u/.local/state/watchyard/term/journal/pane.uninstall"
       ],
       "watch": [
         "/home/u/.claude/plugins"
@@ -47,7 +47,7 @@
         "claude",
         "plugin",
         "uninstall",
-        "switchyard-pane@sy-local",
+        "watchyard-pane@wy-local",
         "--json"
       ],
       "env": {
@@ -56,7 +56,7 @@
       "touches": [
         "/home/u/.claude-3/settings.json",
         "/home/u/.claude-3/plugins/installed_plugins.json",
-        "/home/u/.local/state/switchyard/term/journal/pane.uninstall"
+        "/home/u/.local/state/watchyard/term/journal/pane.uninstall"
       ],
       "watch": [
         "/home/u/.claude-3/plugins"
@@ -91,7 +91,7 @@
       "touches": [
         "/home/u/.claude/settings.json",
         "/home/u/.claude/plugins/installed_plugins.json",
-        "/home/u/.local/state/switchyard/term/journal/warp-plugin.uninstall"
+        "/home/u/.local/state/watchyard/term/journal/warp-plugin.uninstall"
       ],
       "watch": [
         "/home/u/.claude/plugins"
@@ -119,7 +119,7 @@
       "touches": [
         "/home/u/.claude/settings.json",
         "/home/u/.claude/plugins/known_marketplaces.json",
-        "/home/u/.local/state/switchyard/term/journal/warp-plugin.marketplace-remove"
+        "/home/u/.local/state/watchyard/term/journal/warp-plugin.marketplace-remove"
       ],
       "watch": [
         "/home/u/.claude/plugins"
@@ -145,7 +145,7 @@
       "touches": [
         "/home/u/.claude-3/settings.json",
         "/home/u/.claude-3/plugins/installed_plugins.json",
-        "/home/u/.local/state/switchyard/term/journal/warp-plugin.uninstall"
+        "/home/u/.local/state/watchyard/term/journal/warp-plugin.uninstall"
       ],
       "watch": [
         "/home/u/.claude-3/plugins"
@@ -172,7 +172,7 @@
       "touches": [
         "/home/u/.claude-3/settings.json",
         "/home/u/.claude-3/plugins/known_marketplaces.json",
-        "/home/u/.local/state/switchyard/term/journal/warp-plugin.marketplace-remove"
+        "/home/u/.local/state/watchyard/term/journal/warp-plugin.marketplace-remove"
       ],
       "watch": [
         "/home/u/.claude-3/plugins"
@@ -210,14 +210,14 @@
       "id": "a9",
       "step": "terminal",
       "op": "move_to_backup",
-      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-me.toml",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-me.toml",
       "note": "tab config me",
       "pre": [
         {
-          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-me.toml",
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-me.toml",
           "state": {
             "type": "file",
-            "sha256": "df4b0e9301c36f660e42227e74eaa96d1df8bbc2121107bc69d2243d19f060b6"
+            "sha256": "5d57fbbe167ce5671b4b4425b7f3d8483d3e63ce61929e93b8c3e1e9745bc6e5"
           }
         }
       ]
@@ -226,14 +226,14 @@
       "id": "a10",
       "step": "terminal",
       "op": "move_to_backup",
-      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-work.toml",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-work.toml",
       "note": "tab config work",
       "pre": [
         {
-          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-work.toml",
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-work.toml",
           "state": {
             "type": "file",
-            "sha256": "19fbf0aae224849d9308e3031216b1555d5f85e4b1b17de325d7732fe3c15b97"
+            "sha256": "b32ad8f45f3e993ff1f254ee1a728955423cef613cfbe5104ea24f17e55a89d8"
           }
         }
       ]
@@ -242,14 +242,14 @@
       "id": "a11",
       "step": "terminal",
       "op": "move_to_backup",
-      "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-claude-3.toml",
+      "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-claude-3.toml",
       "note": "tab config claude-3",
       "pre": [
         {
-          "path": "/home/u/.local/share/warp-terminal/tab_configs/switchyard-claude-3.toml",
+          "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-claude-3.toml",
           "state": {
             "type": "file",
-            "sha256": "65f58e55fcbdaf4848065de618317d7d144f491340857d77faf13056256a24a1"
+            "sha256": "03a471b17393de4499c2ac087893af0aa10ff96ce3076379ba2a7b071cc396ee"
           }
         }
       ]
@@ -258,12 +258,12 @@
       "id": "a12",
       "step": "config",
       "op": "config_set",
-      "path": "/home/u/.config/switchyard/config.toml",
+      "path": "/home/u/.config/watchyard/config.toml",
       "value": false,
       "key": "terminal.titles",
       "pre": [
         {
-          "path": "/home/u/.config/switchyard/config.toml",
+          "path": "/home/u/.config/watchyard/config.toml",
           "state": {
             "type": "file"
           }

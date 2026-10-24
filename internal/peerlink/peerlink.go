@@ -20,10 +20,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/link"
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/link"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 // Waits of the agent (peers.md 4.3, 8.2).
@@ -290,7 +290,7 @@ func (r *Remote) Send(o peers.Outgoing) (*peers.Pending, *peers.Refusal) {
 	}
 	dk, err := keys.ReadDeviceKeys(r.Env.State)
 	if err != nil || dk.Device == "" {
-		return nil, peers.Refuse(peers.CodeFailed, "this machine has no registered device keys (sy agent enable)")
+		return nil, peers.Refuse(peers.CodeFailed, "this machine has no registered device keys (wy agent enable)")
 	}
 	sign, err := dk.SignKey()
 	if err != nil {

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/peers"
-	"github.com/mraj602/switchyard/internal/peers/fakeinbox"
+	"github.com/mraj602/watchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/peers/fakeinbox"
 )
 
 func sockPath(t *testing.T, name string) string {

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 // handleWorld is the two-account world with a hub that names session A "api@team.laptop"
@@ -94,7 +94,7 @@ func TestSendByAliasCarriesCanonicalHandle(t *testing.T) {
 		t.Fatal("nothing arrived")
 	}
 	body := w.b.All()[0].Wrapper.Body
-	if !strings.Contains(body, "Reply with: sy peers send api@team.laptop ") || w.b.All()[0].Wrapper.FromName != "api@team.laptop" {
+	if !strings.Contains(body, "Reply with: wy peers send api@team.laptop ") || w.b.All()[0].Wrapper.FromName != "api@team.laptop" {
 		t.Errorf("header: %q", body)
 	}
 	// B answers with the line it was given.

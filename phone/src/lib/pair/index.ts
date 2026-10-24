@@ -148,7 +148,7 @@ function finish(
   return { ok: true, input };
 }
 
-/** QR URL, switchyard://pair link, or typed address plus code (P2). */
+/** QR URL, watchyard://pair link, or typed address plus code (P2). */
 export function parsePairInput(text: string, opts: ParseOptions): ParsedPair {
   const t = text.trim();
   const address = opts.address?.trim() ?? '';
@@ -163,7 +163,7 @@ export function parsePairInput(text: string, opts: ParseOptions): ParsedPair {
     return finish(o.origin, undefined, t);
   }
 
-  // switchyard://pair?u=<origin>&s=…&c=…
+  // watchyard://pair?u=<origin>&s=…&c=…
   const sm = new RegExp(`^${SCHEME}://pair/?(?:\\?([^#]*))?(?:#.*)?$`, 'i').exec(t);
   if (sm) {
     const q = params(sm[1] ?? '');

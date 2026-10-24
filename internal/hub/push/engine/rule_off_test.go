@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
 )
 
 // push.md 3.6 step 2b: turning a rule off cancels its pending alerts at once; alerts that

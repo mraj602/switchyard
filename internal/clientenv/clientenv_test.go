@@ -11,19 +11,19 @@ func loadWith(t *testing.T, toml string) *Env {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
-	t.Setenv("SY_CONFIG_DIR", "")
-	t.Setenv("SY_STATE_DIR", "")
+	t.Setenv("WY_CONFIG_DIR", "")
+	t.Setenv("WY_STATE_DIR", "")
 	t.Setenv("XDG_CONFIG_HOME", "")
 	t.Setenv("XDG_STATE_HOME", "")
-	t.Setenv("SY_HOME", filepath.Join(home, "sy"))
-	cfg := filepath.Join(home, "sy", "config")
+	t.Setenv("WY_HOME", filepath.Join(home, "wy"))
+	cfg := filepath.Join(home, "wy", "config")
 	if err := os.MkdirAll(cfg, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(cfg, "config.toml"), []byte(toml), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	env := map[string]string{"HOME": home, "SY_HOME": filepath.Join(home, "sy")}
+	env := map[string]string{"HOME": home, "WY_HOME": filepath.Join(home, "wy")}
 	e, err := Load(func(k string) string { return env[k] })
 	if err != nil {
 		t.Fatal(err)

@@ -10,15 +10,15 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/hub/state"
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/paths"
-	"github.com/mraj602/switchyard/internal/termctl"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/hub/state"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/paths"
+	"github.com/mraj602/watchyard/internal/termctl"
 )
 
-// TitleFlag is the argument that turns `sy hook` into the title entry:
-// `sy hook --title <Event>` (docs/spec/terminal.md T6).
+// TitleFlag is the argument that turns `wy hook` into the title entry:
+// `wy hook --title <Event>` (docs/spec/terminal.md T6).
 const TitleFlag = "--title"
 
 // titleFile is what <state>/term/title-<session>.json holds: the last state word and the
@@ -34,7 +34,7 @@ const titleStdinWait = 700 * time.Millisecond
 
 var sessionIDRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
-// RunTitle is `sy hook --title <Event>`: it reads the hook JSON from stdin, folds only that
+// RunTitle is `wy hook --title <Event>`: it reads the hook JSON from stdin, folds only that
 // event onto the session's title file and prints the `terminalSequence` hook JSON when the
 // title changed. It prints nothing when terminal.titles is off, when the slot has no label,
 // when the event does not change the state word, or when the title is unchanged since the

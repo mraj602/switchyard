@@ -25,7 +25,7 @@ func names(t *testing.T, dir string) []string {
 }
 
 func TestMissingFileGivesDefaults(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "switchyard")
+	dir := filepath.Join(t.TempDir(), "watchyard")
 	f, err := Load(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -165,7 +165,7 @@ func TestBrokenTOML(t *testing.T) {
 // The config folder is shared with other tools: Save may add config.toml and
 // nothing else, and must leave every other entry (and no temp file) behind.
 func TestSaveOnlyTouchesConfigToml(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), ".config", "switchyard")
+	dir := filepath.Join(t.TempDir(), ".config", "watchyard")
 	if err := os.MkdirAll(filepath.Join(dir, "Partitions", "x"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +218,7 @@ func TestSaveWritesVersionAndHeader(t *testing.T) {
 		t.Fatal(err)
 	}
 	b, _ := os.ReadFile(filepath.Join(dir, FileName))
-	if !strings.Contains(string(b), "version = 1") || !strings.HasPrefix(string(b), "# Switchyard") {
+	if !strings.Contains(string(b), "version = 1") || !strings.HasPrefix(string(b), "# Watchyard") {
 		t.Errorf("unexpected file:\n%s", b)
 	}
 }

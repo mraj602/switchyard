@@ -1,46 +1,46 @@
 # Terminal board, pane and Warp hookups
 
 Status: spec v1. Implemented in `internal/board` (+ `hubsrc`, `tui`),
-`internal/termctl`, `internal/warp`, `internal/termenv`, `plugin/switchyard-pane/` and the
-`sy board`, `sy term`, `sy open`, `sy ssh` and `sy hook --title` commands. Unofficial; not affiliated with Anthropic.
+`internal/termctl`, `internal/warp`, `internal/termenv`, `plugin/watchyard-pane/` and the
+`wy board`, `wy term`, `wy open`, `wy ssh` and `wy hook --title` commands. Unofficial; not affiliated with Anthropic.
 
-Two parts: the session board in any terminal (`sy board`, and the same board as a Claude Code
+Two parts: the session board in any terminal (`wy board`, and the same board as a Claude Code
 pane mod), and Warp hookups with no fork (tab titles, a tab config per account, click to
 focus, Warp's own Claude Code plugin in every account folder). Nothing here changes the hub,
 the API, the schema or a record kind; record.md 3.3 only says who sets `term.host`.
 
 Rules that override everything below (hard rules): no live settings or Warp
-config is touched without an explicit `sy` command, and every such change goes through the
-setup.md 7 journal and `sy setup --undo`; in Warp's folders `sy` writes only its own
-`switchyard-*.toml` tab configs; the board and the pane read and never type; the board token
+config is touched without an explicit `wy` command, and every such change goes through the
+setup.md 7 journal and `wy setup --undo`; in Warp's folders `wy` writes only its own
+`watchyard-*.toml` tab configs; the board and the pane read and never type; the board token
 never leaves `<state>/board/token.json`; the terminal packages take their folders from
 `termenv.Env` (`internal/termenv/lint_test.go` refuses `os.UserHomeDir` and reads of `HOME`
 and similar in them).
 
 Related: record.md 3.3 (`term`), states.md (states, details, questions), api.yaml (the read
-API and `/v1/stream`), desktop.md C4 (`sy desktop token`, reused by `sy board connect`),
-setup.md 5.2 (the `sy-local` marketplace), 5.5 (settings pointers), 7 (journal and undo), 9.3
+API and `/v1/stream`), desktop.md C4 (`wy desktop token`, reused by `wy board connect`),
+setup.md 5.2 (the `wy-local` marketplace), 5.5 (settings pointers), 7 (journal and undo), 9.3
 (ledger), paths.md 3 and 4.
 
 ## T1. Commands
 
-The board is read-only: it only reads the hub (or the local outbox) and never ingests, uploads or writes records. Its commands change nothing on the hub except `sy board connect`, which claims a read token.
+The board is read-only: it only reads the hub (or the local outbox) and never ingests, uploads or writes records. Its commands change nothing on the hub except `wy board connect`, which claims a read token.
 
 | Command | Does | Exit codes |
 | --- | --- | --- |
-| `sy board [--once] [--json] [--follow --ndjson] [--compact] [--ascii] [--source auto\|hub\|local] [--filter all\|needs\|here\|machine:<name>] [--session <id>] [--cols N]` | Without `--once`/`--follow`: the interactive TUI (T4). `--once`: one text frame to stdout (no raw mode). `--once --json`: one `View`. `--follow --ndjson`: one `View` per line on change (T5). | 0; 2 usage; 4 `--source hub` without a usable hub; 5 hub unreachable with `--source hub` |
-| `sy board connect [--code-stdin] [--json]` | Gets the board token (T3). Prints `{device, hub}`, never the token | 0; 3 refused; 4 no admin channel and no `--code-stdin`; 5 unreachable |
-| `sy board disconnect` | Deletes `<state>/board/token.json`. Revoke is left to `sy hub token revoke` (printed) | 0 |
-| `sy analytics [report] [--days N] [--seat S] [--json]` | The hub's analytics reports as text tables, with the board token ([analytics.md](analytics.md) 6) | 0; 2 usage; 3 refused; 4 no hub or no board token; 5 unreachable |
-| `sy term focus --session <id> \| --url <u>` | Focuses the tab (T7) | 0; 4 no usable focus URL here; 6 opener failed |
-| `sy term setup [--pane] [--warp-plugin] [--titles] [--warp-tabs] [--accept-update] [--dry-run] [--yes] [--json]` | Plans and applies the chosen terminal pieces (T10). `--accept-update` (implies `--warp-plugin`) records the commit Warp's plugin checkout moved to, after the person read what changed (T10) | as `sy setup`: 0, 1 rolled back, 2 usage/locked, 4 precondition changed |
-| `sy term titles on\|off`, `sy term warp on\|off`, `sy term off` | Shorthands for one piece of `term setup`; `off` removes everything in `ledger.terminal` | as above |
-| `sy term status [--json]` | What is on, per folder and settings target; Warp detected (channel, folder); Claude Code version vs. the mod minimum | 0 |
-| `sy open [<label>] [--here]` | No label: lists accounts (label, folder, launcher, login, 5h %, reset, "most room" mark), choosing nothing. With a label in Warp: opens its tab config. `--here`, or outside Warp: `exec`s the launcher in this terminal | 0; 2 unknown label; 4 tab config missing (prints `sy term warp on`) |
-| `sy ssh <ssh args…>` | T9 | ssh's own exit code; 127 no `ssh` |
-| `sy hook --title <Event>` | Prints the `terminalSequence` JSON or nothing (T6) | always 0 |
+| `wy board [--once] [--json] [--follow --ndjson] [--compact] [--ascii] [--source auto\|hub\|local] [--filter all\|needs\|here\|machine:<name>] [--session <id>] [--cols N]` | Without `--once`/`--follow`: the interactive TUI (T4). `--once`: one text frame to stdout (no raw mode). `--once --json`: one `View`. `--follow --ndjson`: one `View` per line on change (T5). | 0; 2 usage; 4 `--source hub` without a usable hub; 5 hub unreachable with `--source hub` |
+| `wy board connect [--code-stdin] [--json]` | Gets the board token (T3). Prints `{device, hub}`, never the token | 0; 3 refused; 4 no admin channel and no `--code-stdin`; 5 unreachable |
+| `wy board disconnect` | Deletes `<state>/board/token.json`. Revoke is left to `wy hub token revoke` (printed) | 0 |
+| `wy analytics [report] [--days N] [--seat S] [--json]` | The hub's analytics reports as text tables, with the board token ([analytics.md](analytics.md) 6) | 0; 2 usage; 3 refused; 4 no hub or no board token; 5 unreachable |
+| `wy term focus --session <id> \| --url <u>` | Focuses the tab (T7) | 0; 4 no usable focus URL here; 6 opener failed |
+| `wy term setup [--pane] [--warp-plugin] [--titles] [--warp-tabs] [--accept-update] [--dry-run] [--yes] [--json]` | Plans and applies the chosen terminal pieces (T10). `--accept-update` (implies `--warp-plugin`) records the commit Warp's plugin checkout moved to, after the person read what changed (T10) | as `wy setup`: 0, 1 rolled back, 2 usage/locked, 4 precondition changed |
+| `wy term titles on\|off`, `wy term warp on\|off`, `wy term off` | Shorthands for one piece of `term setup`; `off` removes everything in `ledger.terminal` | as above |
+| `wy term status [--json]` | What is on, per folder and settings target; Warp detected (channel, folder); Claude Code version vs. the mod minimum | 0 |
+| `wy open [<label>] [--here]` | No label: lists accounts (label, folder, launcher, login, 5h %, reset, "most room" mark), choosing nothing. With a label in Warp: opens its tab config. `--here`, or outside Warp: `exec`s the launcher in this terminal | 0; 2 unknown label; 4 tab config missing (prints `wy term warp on`) |
+| `wy ssh <ssh args…>` | T9 | ssh's own exit code; 127 no `ssh` |
+| `wy hook --title <Event>` | Prints the `terminalSequence` JSON or nothing (T6) | always 0 |
 
-`sy open` never picks an account for the person ("it may suggest which
+`wy open` never picks an account for the person ("it may suggest which
 account has room; you choose").
 
 ## T2. The view model (`internal/board`, JSON `"v": 1`)
@@ -100,7 +100,7 @@ Rules, all in Go and table-tested:
 - **Recap / last lines.** For `done` and `working` rows, `line2` is the session's `last_message` (the last ≤ 200 characters the hub keeps). Code fences are removed and whitespace is collapsed to one line, with `line2_kind = recap`. When last messages are off (privacy), `line2` is empty and `line2_kind = none`. A failed row's `line2` is the error detail.
 - **Order.** `needs_you` keeps the hub's order (oldest waiting first). Groups follow `/v1/accounts` order, with "Unattributed" last. Rows inside a group keep `/v1/sessions` order (needs-you first, then newest activity). The local source sorts the same way (`status.rank`).
 - **`here`** is `machine == this machine` (or `term.host == this machine`). A machine chip is shown only when `here` is false. `this_session` is true for `--session <id>`.
-- **`can_focus`** is true only when `focus_url` was delivered (hub) or recorded locally, and it passes T7's allow-list. The URL itself is **not** in the `View`: `sy term focus --session` looks it up again, so it never travels through the mod.
+- **`can_focus`** is true only when `focus_url` was delivered (hub) or recorded locally, and it passes T7's allow-list. The URL itself is **not** in the `View`: `wy term focus --session` looks it up again, so it never travels through the mod.
 - **Limits.** The `View` holds at most 300 rows and is capped at 512 KiB. Overflow keeps all needs-you rows, then the newest, and adds `"truncated": n`.
 - **Text safety.** Every string from a record (project, title, question, last message, labels, machine names) is stripped of C0/C1 controls, ESC and bidi overrides before it enters the `View`. That makes it safe to print raw in a terminal and safe in a title (T6).
 
@@ -109,7 +109,7 @@ Rules, all in Go and table-tested:
 - **Selection (`--source auto`, the default).** Use the hub when `hub.url` is set and
   `<state>/board/token.json` exists for that URL (it is dropped when the URL differs, as in
   desktop.md C6). Otherwise use local, with `hub.state = none` (no URL) or `unpaired` (no
-  token), and show "run `sy board connect`" in the footer.
+  token), and show "run `wy board connect`" in the footer.
 - **Hub.**
   - Fetch `/v1/overview` first, then `/v1/accounts`, then `/v1/sessions?limit=300`.
   - Then `GET /v1/stream?last_event_id=<overview.stream_id>`. A `session` event updates
@@ -117,9 +117,9 @@ Rules, all in Go and table-tested:
   - Reconnect after 1, 2, 4 … 60 s. With no `ping` for 60 s, reconnect.
   - A `401` drops the token and shows `unpaired`.
   - Requests have a 10 s timeout and follow no redirects. Plain `http:` is allowed only for
-    loopback or for a URL `sy` already accepted (`hub.insecure_lan`). Replies are capped at
+    loopback or for a URL `wy` already accepted (`hub.insecure_lan`). Replies are capped at
     4 MiB.
-  - Forward-mode machines (`hub.dial`) dial as `sy flush` does.
+  - Forward-mode machines (`hub.dial`) dial as `wy flush` does.
 - **Offline.** After the first failed reconnect, `hub.state = offline` with `offline_since`
   set. This machine's rows come from the local fold, live. Other machines' rows keep their
   last hub values with `greyed = true`. The last hub view is kept in
@@ -132,13 +132,13 @@ Rules, all in Go and table-tested:
   - Accounts and limits come from `slots.labels` / `colours` and the newest `limit_sample`
     per slot.
   - Budget: a fold of a 20 MiB outbox under 200 ms (benchmark).
-- **Token.** `sy board connect` calls `desktop.Token` with name `terminal · <machine name>`,
+- **Token.** `wy board connect` calls `desktop.Token` with name `terminal · <machine name>`,
   through the admin channel (machines.md 4.4) or with `--code-stdin` (a **desktop** pairing
-  code from More → Devices → Add desktop app, or `sy hub pair --kind desktop`). It writes
+  code from More → Devices → Add desktop app, or `wy hub pair --kind desktop`). It writes
   `{"v":1,"url","device","token"}` atomically, mode 0600. On a hub host in merged mode this
   is one command with no code.
 
-## T4. `sy board` TUI (`internal/board/tui`)
+## T4. `wy board` TUI (`internal/board/tui`)
 
 - **Terminal handling.**
   - Raw mode and the alternate screen when stdout is a terminal. A line fallback
@@ -155,7 +155,7 @@ Rules, all in Go and table-tested:
     design: `▲ api · migrate-orders  asked`.
   - **Full** (> 60 columns) is two lines. Line 1: glyph, project · title, machine chip,
     status, context %, age. Line 2: dimmed `line2`.
-  - Both layouts have a header (`Switchyard  14 sessions · 3 machines · hub live`), a NEEDS
+  - Both layouts have a header (`Watchyard  14 sessions · 3 machines · hub live`), a NEEDS
     YOU block, then one block per account with its 5h / 7d text, and a footer of keys.
 - **Keys.**
   - `↑ ↓` / `j k` move. `Enter` focuses when `can_focus`, else shows why.
@@ -167,19 +167,19 @@ Rules, all in Go and table-tested:
   - `e` toggles ended rows, `r` refetches, `?` shows help, and `q` or `Ctrl-C` quits.
 - **It writes only to its own stdout.** No key sends input anywhere else.
 
-## T5. The pane mod (`plugin/switchyard-pane/`)
+## T5. The pane mod (`plugin/watchyard-pane/`)
 
-- **Packaging.** Files: `.claude-plugin/plugin.json` (`name: switchyard-pane`, the same
-  version as `sy`, `"types": "./types/index.d.ts"`), `hooks/hooks.json`
+- **Packaging.** Files: `.claude-plugin/plugin.json` (`name: watchyard-pane`, the same
+  version as `wy`, `"types": "./types/index.d.ts"`), `hooks/hooks.json`
   (`{"modules": ["./register.tsx"]}`), `hooks/register.tsx`, `types/index.d.ts` (its
   `$.state` contract), and tests `hooks/*.test.ts`. The tree is embedded as
-  `plugin.PaneFS()` (`plugin.PaneName`). `pluginmkt` writes it into `sy-local` as
-  `plugins/switchyard-pane/` next to `plugins/switchyard/` (the marketplace manifest lists
-  both; the id is `pluginmkt.PaneID = switchyard-pane@sy-local`), sets its version, and passes
+  `plugin.PaneFS()` (`plugin.PaneName`). `pluginmkt` writes it into `wy-local` as
+  `plugins/watchyard-pane/` next to `plugins/watchyard/` (the marketplace manifest lists
+  both; the id is `pluginmkt.PaneID = watchyard-pane@wy-local`), sets its version, and passes
   every file through `pluginmkt/pane.go`'s `paneFile`, which replaces the placeholder
-  `"__SY_PATH__"` in `register.tsx` with the absolute path of `sy`, as it already does for
+  `"__SY_PATH__"` in `register.tsx` with the absolute path of `wy`, as it already does for
   hook commands. Writing the pane into the marketplace installs nothing: only
-  `sy term setup --pane` runs `claude plugin install switchyard-pane@sy-local`.
+  `wy term setup --pane` runs `claude plugin install watchyard-pane@wy-local`.
 - **Skeleton.** `register.tsx` and `types/index.d.ts` are placeholders that register
   no hook and declare no state, so the written tree passes `claude plugin validate --strict`
   on 2.1.296 (a `modules` entry naming a missing file fails validation of the plugin, though
@@ -203,7 +203,7 @@ Rules, all in Go and table-tested:
   - `remote_url` is a `Link` only when it is `https://claude.ai/…`.
 - **Band (`ui.render` `AbovePrompt`).** Shown when at least one needs-you row is not
   `this_session` and `terminal.band` is true:
-  `▲ Switchyard  work · api (gpu-box) asked a question 4 min ago   +2 more need you`.
+  `▲ Watchyard  work · api (gpu-box) asked a question 4 min ago   +2 more need you`.
   Otherwise it calls `next(e)` and draws nothing. The engine's `[-]` hides it until the
   needs-you set changes.
 - **Status entry.** `$.ui.status("needs you: 3")`, or cleared at 0.
@@ -219,9 +219,9 @@ Rules, all in Go and table-tested:
   - Anything under `$.prompt`, `$.tool`, `$.model`, `$.agent`, `$.http`, `$.session.append`
     or `$.fs.write`, and any `tool.call` / `prompt.*` hook, fails the test.
 - **Minimum Claude Code.** 2.1.296, the version the skeleton was checked on (`plugin
-  validate`, `marketplace add` of the two-plugin `sy-local`, `install
-  switchyard-pane@sy-local`; the mod API names in this section are present in that build).
-  `sy term setup --pane` refuses an older `claude` with that message.
+  validate`, `marketplace add` of the two-plugin `wy-local`, `install
+  watchyard-pane@wy-local`; the mod API names in this section are present in that build).
+  `wy term setup --pane` refuses an older `claude` with that message.
 
 ## T6. Titles
 
@@ -229,7 +229,7 @@ Rules, all in Go and table-tested:
   words: working, permission, asked, done, failed (or `limit` for `rate_limit`) and ended.
   The label is the slot label (config), the project is the last folder of `cwd`, and both
   pass T2's text safety. A `;` or BEL in either is replaced.
-- **Delivery.** `sy hook --title <Event>` reads the hook stdin, folds only that event onto
+- **Delivery.** `wy hook --title <Event>` reads the hook stdin, folds only that event onto
   `<state>/term/title-<session>.json` (the last state word), and prints
   `{"terminalSequence":"\u001b]2;<title>\u0007"}`. It prints nothing when
   `terminal.titles` is false, when there is no label, or when the title is unchanged since
@@ -245,8 +245,8 @@ Rules, all in Go and table-tested:
   `CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1` also skips the background request that names the
   session (`/resume` shows no generated title) and turns off Claude Code's OSC 7501
   program-status reports to the terminal (code.claude.com/docs/en/terminal-config, "See
-  session status in your terminal"). `sy term titles on` prints both in its plan, and
-  `sy term status` shows them. A tab the person renamed in Warp may or may not keep its name
+  session status in your terminal"). `wy term titles on` prints both in its plan, and
+  `wy term status` shows them. A tab the person renamed in Warp may or may not keep its name
   (unverified).
 
 ## T7. Focus and the opener (`internal/termctl`)
@@ -265,9 +265,9 @@ Rules, all in Go and table-tested:
   - macOS: `open <url>`.
   - Windows: `rundll32.exe url.dll,FileProtocolHandler <url>`.
 
-  The opener has a 5 s timeout. Its stderr goes to `<state>/logs/sy.log`.
+  The opener has a 5 s timeout. Its stderr goes to `<state>/logs/wy.log`.
 - **Test seam.** The `Opener` interface (`internal/termctl/termctl.go`:
-  `Open(ctx context.Context, url string) error`). Under the build tag `fakeopen`, `SY_TEST_OPENER=<file>`
+  `Open(ctx context.Context, url string) error`). Under the build tag `fakeopen`, `WY_TEST_OPENER=<file>`
   records argv to a file instead. Release builds do not contain that code (checked as in
   the hub tests' `fakeclock`).
 
@@ -284,11 +284,11 @@ exists, or when `TERM_PROGRAM=WarpTerminal`. The channel decides the URI scheme 
 `warppreview://`). With both channels present, `--channel stable|preview` picks one; the
 default is stable.
 
-File `switchyard-<label>.toml` (label already `[a-z0-9-]`, setup.md 3), mode 0644:
+File `watchyard-<label>.toml` (label already `[a-z0-9-]`, setup.md 3), mode 0644:
 
 ```toml
-# sy-warp-tab v1 slot=~/.claude-2 label=work (written by sy term warp on; sy term warp off removes it)
-name = "Switchyard · work"
+# sy-warp-tab v1 slot=~/.claude-2 label=work (written by wy term warp on; wy term warp off removes it)
+name = "Watchyard · work"
 title = "work"
 color = "yellow"
 
@@ -304,16 +304,16 @@ commands = ["/home/u/.local/bin/claude-2"]
 - **Command.** The account's launcher by absolute path (`claude` for `~/.claude`). On
   Windows it is the `.cmd` path. A folder with no launcher gets no tab config and a plan
   warning. Warp runs `commands` in the pane's shell (bash, zsh, fish or PowerShell, which
-  `sy` cannot know and which quote differently), so a launcher path that would need
+  `wy` cannot know and which quote differently), so a launcher path that would need
   quoting (white space, a quote, `$`, `;`, `&`, `|`, `<>`, `()`, `[]`, `{}`, `*?!#%^,`,
   a `\` in a Unix path) gets no tab config either, with a plan warning to move it.
-- **Opening.** `sy open work` opens `warp://tab_config/switchyard-work` (Warp matches the
+- **Opening.** `wy open work` opens `warp://tab_config/watchyard-work` (Warp matches the
   file stem case-insensitively) through the T7 opener. This is a second fixed URI pattern,
-  allowed only for files `sy` wrote.
+  allowed only for files `wy` wrote.
 
-## T9. `sy ssh` and `term.host`
+## T9. `wy ssh` and `term.host`
 
-- **Running ssh.** `sy ssh <args>` execs the `ssh` on `PATH` (or `SY_SSH_COMMAND`, as
+- **Running ssh.** `wy ssh <args>` execs the `ssh` on `PATH` (or `WY_SSH_COMMAND`, as
   `internal/sshx`), with `-o SendEnv=LC_SY_FOCUS -o SendEnv=LC_SY_HOST` put before the
   person's args. Nothing else is added.
 - **Environment.** `LC_SY_FOCUS` = `LC_SY_FOCUS` if set (a nested hop), else
@@ -321,10 +321,10 @@ commands = ["/home/u/.local/bin/claude-2"]
   neither, it is plain `ssh`.
 - **Hook side.** `term.host` = `LC_SY_HOST` when it matches `^m_[0-9A-HJKMNP-TV-Z]{26}$` and
   differs from this machine's id. Otherwise it is absent. (record.md 3.3.)
-- **`sy ssh --print-config`** prints, but never writes, the `SendEnv` lines for people who
+- **`wy ssh --print-config`** prints, but never writes, the `SendEnv` lines for people who
   prefer their own `ssh` alias. Writing `~/.ssh/config` for this is a non-goal.
 
-## T10. Plan, ledger and undo (`sy term setup`)
+## T10. Plan, ledger and undo (`wy term setup`)
 
 **Planner.** `plan.Terminal(State, TermChoices) → model.Plan` is pure and deterministic, with
 the same `plan_id` rule as setup.md 6.3. `model.TermChoices{Pane, WarpPlugin, Titles,
@@ -335,34 +335,34 @@ The hooks-plugin refresh is a `write_tree` in `StepPlugin` and `terminal.titles`
 
 | Piece | Actions |
 | --- | --- |
-| `--pane` | Marketplace tree refresh (the existing `write_tree`), then `run claude plugin install switchyard-pane@sy-local` per settings target (as setup.md 5.2) |
-| `--warp-plugin` | `run claude plugin marketplace add warpdotdev/claude-code-warp#main` once per plugin root, then `run claude plugin install warp@claude-code-warp` per settings target. A commit cannot be pinned (item 4 under "Claude Code facts" below): the ledger records the commit `main` resolved to (`git -C <installLocation> rev-parse HEAD`, read-only, after the add) and `sy doctor` warns when the checkout moves (risk 7). It warns if `jq` is missing, because the plugin needs it |
+| `--pane` | Marketplace tree refresh (the existing `write_tree`), then `run claude plugin install watchyard-pane@wy-local` per settings target (as setup.md 5.2) |
+| `--warp-plugin` | `run claude plugin marketplace add warpdotdev/claude-code-warp#main` once per plugin root, then `run claude plugin install warp@claude-code-warp` per settings target. A commit cannot be pinned (item 4 under "Claude Code facts" below): the ledger records the commit `main` resolved to (`git -C <installLocation> rev-parse HEAD`, read-only, after the add) and `wy doctor` warns when the checkout moves (risk 7). It warns if `jq` is missing, because the plugin needs it |
 | `--titles` | `json_set /env/CLAUDE_CODE_DISABLE_TERMINAL_TITLE "1"` per settings target, the hooks plugin refresh (title hooks, T6) and `config_set terminal.titles true` |
-| `--warp-tabs` | `mkdir` the `tab_configs` folder if absent, then `write_file switchyard-<label>.toml` per account with a launcher |
+| `--warp-tabs` | `mkdir` the `tab_configs` folder if absent, then `write_file watchyard-<label>.toml` per account with a launcher |
 
 **Ledger.** It gains a `terminal` block (`model.LedgerTerminal`, field `Ledger.Terminal`):
 `{pane: {targets, installed, markets}, warp_plugin: {roots, targets, installed, ref, commit},
 titles: {targets}, title_prior: {<target>: <raw JSON>}, tabs: [{path, sha256, label}], warp:
-{channel, folder}}`. `installed` lists the plugin roots `sy` ran `claude plugin install` in,
-`roots` / `markets` the roots it added the marketplace to (a pane `marketplace add sy-local`
+{channel, folder}}`. `installed` lists the plugin roots `wy` ran `claude plugin install` in,
+`roots` / `markets` the roots it added the marketplace to (a pane `marketplace add wy-local`
 in a root that lacked it counts), and `title_prior` the value the env key had before
 `titles on` set it (kept after `titles off`, so an undo of the off can use it again).
 `commit` is recorded when a run adds Warp's marketplace or installs its plugin, or when
-none is recorded yet; a later run never moves it, so `sy doctor` keeps warning about a
-moved checkout until the person accepts it with `sy term setup --warp-plugin
+none is recorded yet; a later run never moves it, so `wy doctor` keeps warning about a
+moved checkout until the person accepts it with `wy term setup --warp-plugin
 --accept-update`. `ledger.Update` calls
 `updateTerminal(l, action, entry)` for every finished entry, and `ledger.Revert` calls
 `revertTerminal(l, entry)` first for every reverted entry; when that returns true the generic
-revert code is skipped for the entry (a pane install creates paths under `sy-local` and
-touches `installed_plugins.json`, which the generic code reads as the switchyard plugin going
-away). Both live in `internal/setup/ledger/terminal.go`. `sy term … off` and `sy uninstall`
+revert code is skipped for the entry (a pane install creates paths under `wy-local` and
+touches `installed_plugins.json`, which the generic code reads as the watchyard plugin going
+away). Both live in `internal/setup/ledger/terminal.go`. `wy term … off` and `wy uninstall`
 plan the reverse from it:
 
 - `json_delete` only where the value is still `"1"`, or a `json_set` back to `title_prior`
   where there is one;
 - `claude plugin disable` / `uninstall` / `marketplace remove` `run` actions only in the
   targets and roots the ledger records (a copy the person installed, enabled or added
-  stays; sy-local stays where the switchyard plugin still is). Without `claude` these
+  stays; wy-local stays where the watchyard plugin still is). Without `claude` these
   are skipped with a warning and their records stay; titles and tab configs still go;
 - removal of tab files whose hash still matches.
 
@@ -370,10 +370,10 @@ A second `on` with nothing changed gives "0 changes" and no backup set. The link
 (setup.md 7.5) applies: settings files behind links are edited at their target, and links
 stay.
 
-## T11. `sy doctor` additions
+## T11. `wy doctor` additions
 
 - **Titles.** When on: every settings target has the env key, the hooks plugin has the title
-  entries, and `sy hook --title` prints valid JSON for a fixture.
+  entries, and `wy hook --title` prints valid JSON for a fixture.
 - **Board.** The token file is mode 0600, `/v1/me` works, the device kind is `desktop`, and
   the device is bound to this machine.
 - **Pane.** It is enabled per target, and `claude --version` is at or above the mod minimum.
@@ -389,7 +389,7 @@ stay.
 
 ```toml
 [terminal]                  # (terminal.md)
-titles = false              # written only by sy term titles on|off (sy config set refuses it)
+titles = false              # written only by wy term titles on|off (wy config set refuses it)
 band = true                 # pane: band above the prompt when another session needs you
 pane_auto_open = true       # pane: open as a sidebar in wide fullscreen sessions
 source = "auto"             # board: auto | hub | local
@@ -400,9 +400,9 @@ New paths in `<state>`:
 
 - `board/token.json` (0600)
 - `board/last-view.json` (0600)
-- `term/title-<session>.json` (pruned after 7 days by `sy tick`)
+- `term/title-<session>.json` (pruned after 7 days by `wy tick`)
 
-Outside `<state>`, `sy` writes only the `switchyard-*.toml` tab configs (T8) and, through
+Outside `<state>`, `wy` writes only the `watchyard-*.toml` tab configs (T8) and, through
 `claude plugin` and `json_set`, the settings targets (T10). All of them are journaled.
 
 ## Claude Code facts
@@ -428,7 +428,7 @@ code of the installed build; "uncertain" means documented but not seen working.
    - On SessionStart and UserPromptSubmit only plain-text stdout becomes context. Stdout
      that is one JSON object is parsed as hook output, so `{"terminalSequence":"…"}` is not
      added as context. A JSON object that fails to parse is a non-blocking error and is not
-     added either; so `sy hook --title` must print exactly one object or nothing (T6).
+     added either; so `wy hook --title` must print exactly one object or nothing (T6).
    - Not seen: the title actually changing in Warp, Ghostty or tmux. That needs a logged-in
      interactive session; it is the "Titles" manual check. Risk 2's fallback stands.
    - Detail: 2.1.296 drops `terminalSequence` for hooks it treats as the person's own in one
@@ -448,11 +448,11 @@ code of the installed build; "uncertain" means documented but not seen working.
      of it being ignored on Windows and macOS are not settled. Risk 3's fallback stands.
 3. **`claude plugin validate` accepts a modules-only `hooks.json` next to the existing
    plugin in one marketplace** — **checked** (run).
-   - A `sy-local` with `plugins/switchyard` (this repository's plugin) and
-     `plugins/switchyard-pane` (`{"modules": ["./register.tsx"]}`): `validate --strict` of the
+   - A `wy-local` with `plugins/watchyard` (this repository's plugin) and
+     `plugins/watchyard-pane` (`{"modules": ["./register.tsx"]}`): `validate --strict` of the
      marketplace passes; `validate --strict` of the pane passes and reports the module's
-     hooks and calls (T5); `marketplace add <dir>` then `install switchyard@sy-local` and
-     `install switchyard-pane@sy-local` succeed and both are enabled.
+     hooks and calls (T5); `marketplace add <dir>` then `install watchyard@wy-local` and
+     `install watchyard-pane@wy-local` succeed and both are enabled.
    - A `modules` entry whose file is missing fails `validate` of the plugin (`no such file`)
      but not of the marketplace; hence the placeholder `register.tsx` (T5).
    - `types` in `plugin.json` is checked too: a contract file may export types only.
@@ -467,8 +467,8 @@ code of the installed build; "uncertain" means documented but not seen working.
      {"source": "github", "repo": "warpdotdev/claude-code-warp", "ref": "main"}`, and
      `known_marketplaces.json` records the `installLocation` checkout, whose `HEAD` is the
      commit.
-   - So `sy term setup --warp-plugin` adds `warpdotdev/claude-code-warp#main`, the ledger
-     records `ref: "main"` and the resolved `commit`, `sy doctor` warns when the checkout's
+   - So `wy term setup --warp-plugin` adds `warpdotdev/claude-code-warp#main`, the ledger
+     records `ref: "main"` and the resolved `commit`, `wy doctor` warns when the checkout's
      `HEAD` differs, and the piece stays opt-in (a fallback). A true pin would need a
-     `git-subdir` plugin source with `sha` in sy's own marketplace (id `warp@sy-local`); that
+     `git-subdir` plugin source with `sha` in wy's own marketplace (id `warp@wy-local`); that
      is not done.

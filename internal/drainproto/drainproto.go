@@ -1,4 +1,4 @@
-// Package drainproto is the wire format of `sy outbox drain --stdio`, the protocol the hub
+// Package drainproto is the wire format of `wy outbox drain --stdio`, the protocol the hub
 // speaks over an SSH channel to pull a machine's outbox (docs/spec/machines.md 3.5, proto 1).
 //
 // One frame is one line of compact UTF-8 JSON ending in "\n", at most MaxLine bytes, with a
@@ -103,7 +103,7 @@ type Frame interface {
 	Validate() error
 }
 
-// Busy: the remote could not take flush.lock (a local `sy flush` runs). Exit 0.
+// Busy: the remote could not take flush.lock (a local `wy flush` runs). Exit 0.
 type Busy struct{}
 
 // Hello is the remote's first frame.
@@ -111,10 +111,10 @@ type Hello struct {
 	Proto   int     `json:"proto"`
 	Machine string  `json:"machine"`
 	Name    string  `json:"name"`
-	Sy      string  `json:"sy"`       // sy version
+	Sy      string  `json:"sy"`       // wy version
 	OS      string  `json:"os"`       // GOOS
 	Arch    string  `json:"arch"`     // GOARCH
-	RecordV int     `json:"record_v"` // highest record v this sy writes
+	RecordV int     `json:"record_v"` // highest record v this wy writes
 	Backlog int64   `json:"backlog"`  // records past the cursor, an estimate
 	Oldest  *string `json:"oldest"`   // RFC 3339 ts of the oldest unanswered record, or null
 }

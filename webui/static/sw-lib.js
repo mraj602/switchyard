@@ -53,7 +53,7 @@
   // ---- push payloads (push.md 6.5) ------------------------------------------------------
 
   const FALLBACK = Object.freeze({
-    v: 1, type: 'alert', title: 'Switchyard · something needs you', body: 'Open the app to see what.',
+    v: 1, type: 'alert', title: 'Watchyard · something needs you', body: 'Open the app to see what.',
     tag: 'sy-fallback', url: '/#/', tap: 'session', needs_you: null, actions: null,
   });
 

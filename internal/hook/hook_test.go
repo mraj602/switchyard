@@ -11,15 +11,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 var update = flag.Bool("update", false, "rewrite testdata/golden")
 
 const fixtures = "../../testdata"
 
-// sandbox is a fake machine: HOME, SY_HOME and one slot (~/.claude-3) logged in as
+// sandbox is a fake machine: HOME, WY_HOME and one slot (~/.claude-3) logged in as
 // oauth-3.json. Nothing outside the temp folder is touched.
 type sandbox struct {
 	t      *testing.T
@@ -33,9 +33,9 @@ func newSandbox(t *testing.T) *sandbox {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
-	t.Setenv("SY_HOME", filepath.Join(home, "sy"))
+	t.Setenv("WY_HOME", filepath.Join(home, "wy"))
 	t.Setenv("XDG_STATE_HOME", "")
-	t.Setenv("SY_STATE_DIR", "")
+	t.Setenv("WY_STATE_DIR", "")
 	slot := filepath.Join(home, ".claude-3")
 	if err := os.MkdirAll(slot, 0o755); err != nil {
 		t.Fatal(err)
@@ -61,10 +61,10 @@ func newSandbox(t *testing.T) *sandbox {
 	}
 	sb.env["CLAUDE_CONFIG_DIR"] = slot
 	sb.env["HOME"] = home
-	sb.env["SY_HOME"] = filepath.Join(home, "sy")
+	sb.env["WY_HOME"] = filepath.Join(home, "wy")
 
 	origExe, origStart := executable, startProcess
-	executable = func() (string, error) { return "/nonexistent/sy", nil }
+	executable = func() (string, error) { return "/nonexistent/wy", nil }
 	startProcess = func(exe string, args []string, env []string) error {
 		sb.spawns = append(sb.spawns, args)
 		return nil
@@ -85,7 +85,7 @@ func (sb *sandbox) count(first string) int {
 
 func (sb *sandbox) getenv(k string) string { return sb.env[k] }
 
-func (sb *sandbox) state() string { return filepath.Join(sb.home, "sy", "state") }
+func (sb *sandbox) state() string { return filepath.Join(sb.home, "wy", "state") }
 
 func (sb *sandbox) run(event string, stdin []byte) {
 	Run([]string{event}, bytes.NewReader(stdin), sb.getenv)

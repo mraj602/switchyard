@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/mraj602/switchyard/internal/termenv"
+	"github.com/mraj602/watchyard/internal/termenv"
 )
 
 // Mode is how much styling a frame carries (docs/spec/terminal.md T4).

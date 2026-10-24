@@ -18,7 +18,7 @@ function Row({ row }: { row: WindowRow }) {
     <FlexWidget
       style={{ flexDirection: 'row', alignItems: 'center', width: 'match_parent', marginTop: 6 }}
       clickAction="OPEN_URI"
-      clickActionData={{ uri: `switchyard://accounts?seat=${encodeURIComponent(row.id)}` }}
+      clickActionData={{ uri: `watchyard://accounts?seat=${encodeURIComponent(row.id)}` }}
     >
       <TextWidget text={row.label} maxLines={1} truncate="END" style={{ width: 72, fontSize: 12, fontWeight: 'bold', color: row.colour as Hex }} />
       <FlexWidget style={{ flex: 1, flexDirection: 'row', height: 6, borderRadius: 3, backgroundColor: TRACK, marginHorizontal: 6 }}>
@@ -35,8 +35,8 @@ export function SyLimits({ snapshot, now, tz, height, win }: AndroidWidgetProps)
   const selected = win ?? '5 h';
   if (!snapshot) {
     return (
-      <FlexWidget style={ROOT} clickAction="OPEN_URI" clickActionData={{ uri: 'switchyard://now' }}>
-        <Brand title="Switchyard · Limits" />
+      <FlexWidget style={ROOT} clickAction="OPEN_URI" clickActionData={{ uri: 'watchyard://now' }}>
+        <Brand title="Watchyard · Limits" />
         <TextWidget text={EMPTY_TEXT} style={{ fontSize: 12, color: DIM, marginTop: 4 }} />
       </FlexWidget>
     );
@@ -44,9 +44,9 @@ export function SyLimits({ snapshot, now, tz, height, win }: AndroidWidgetProps)
   const all = windowRows(snapshot, selected, now, tz);
   const rows = all.slice(0, rowsThatFit(height, all.length));
   return (
-    <FlexWidget style={ROOT} clickAction="OPEN_URI" clickActionData={{ uri: 'switchyard://accounts' }}>
+    <FlexWidget style={ROOT} clickAction="OPEN_URI" clickActionData={{ uri: 'watchyard://accounts' }}>
       <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', width: 'match_parent', justifyContent: 'space-between' }}>
-        <Brand title="Switchyard · Limits" />
+        <Brand title="Watchyard · Limits" />
         <TextWidget text={`updated ${agoWords(snapshot.as_of, now)}`} maxLines={1} style={{ fontSize: 9, color: DIM }} />
         <WindowToggle selected={selected} />
       </FlexWidget>

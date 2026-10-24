@@ -1,20 +1,20 @@
 // Package machines is the end-to-end test over real SSH (scenario M3, docs/spec/machines.md): the
-// real `sy` binary adds an Ubuntu sshd container as a
-// pull machine, the hub pulls records from it, and `sy machine remove` takes it back out.
+// real `wy` binary adds an Ubuntu sshd container as a
+// pull machine, the hub pulls records from it, and `wy machine remove` takes it back out.
 //
 //	go test ./test/e2e/machines          (what `make e2e-machines` runs)
 //
-// The operator is this machine with a temporary HOME; the hub is `sy hub serve` on a
+// The operator is this machine with a temporary HOME; the hub is `wy hub serve` on a
 // loopback port (so the admin channel is `local`); the server is a container whose sshd is
-// published on 127.0.0.1. The container needs a runtime: SY_E2E_RUNTIME, else podman, else
+// published on 127.0.0.1. The container needs a runtime: WY_E2E_RUNTIME, else podman, else
 // docker. The test skips (never fails) when there is none, when it cannot run containers,
 // with -short, on Windows, and when ssh is missing.
 //
 // Host key checking is never turned off: the harness reads the container's host keys with
-// `<runtime> exec` and writes a known_hosts, and the hub pins the keys `sy machine add`
+// `<runtime> exec` and writes a known_hosts, and the hub pins the keys `wy machine add`
 // probes from /etc/ssh on the server. Nothing here touches the real HOME, ~/.ssh,
 // CLAUDE_CONFIG_DIR or any systemd/launchd unit (the container has no systemd and the
-// operator's sy runs with a temp HOME).
+// operator's wy runs with a temp HOME).
 package machines
 
 import (
@@ -26,7 +26,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 	"io"
 	"net"
 	"net/http"
@@ -40,7 +40,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // rig is the whole setup: container, operator home, hub.
@@ -50,8 +50,8 @@ type rig struct {
 	tmp     string
 	home    string // operator HOME
 	env     []string
-	sy      string // sy for this machine (the hub and the operator)
-	syLinux string // sy for the container (linux/amd64), installed with --binary
+	wy      string // wy for this machine (the hub and the operator)
+	syLinux string // wy for the container (linux/amd64), installed with --binary
 	sshCfg  string
 	sshPort string
 	cname   string
@@ -96,12 +96,12 @@ func goBuild(t *testing.T, root, goos, goarch, out, pkg string) {
 	}
 }
 
-// pickRuntime follows SY_E2E_RUNTIME, then podman, then docker, and skips when the chosen
+// pickRuntime follows WY_E2E_RUNTIME, then podman, then docker, and skips when the chosen
 // one cannot run containers (rootless podman without user namespaces, a stopped docker).
 func pickRuntime(t *testing.T) string {
 	t.Helper()
 	cands := []string{"podman", "docker"}
-	if v := os.Getenv("SY_E2E_RUNTIME"); v != "" {
+	if v := os.Getenv("WY_E2E_RUNTIME"); v != "" {
 		cands = []string{v}
 	}
 	for _, c := range cands {
@@ -117,17 +117,17 @@ func pickRuntime(t *testing.T) string {
 		}
 		return p
 	}
-	t.Skip("no container runtime (podman or docker; SY_E2E_RUNTIME selects one)")
+	t.Skip("no container runtime (podman or docker; WY_E2E_RUNTIME selects one)")
 	return ""
 }
 
-// cleanEnv is the parent's environment without anything that could point sy or Claude Code
+// cleanEnv is the parent's environment without anything that could point wy or Claude Code
 // at a real home, plus a temp HOME.
 func cleanEnv(home string) []string {
 	var env []string
 	for _, kv := range os.Environ() {
 		k, _, _ := strings.Cut(kv, "=")
-		if strings.HasPrefix(k, "CLAUDE") || strings.HasPrefix(k, "SY_") || strings.HasPrefix(k, "XDG_") ||
+		if strings.HasPrefix(k, "CLAUDE") || strings.HasPrefix(k, "WY_") || strings.HasPrefix(k, "XDG_") ||
 			(brand.OldEnvPrefix() != "" && strings.HasPrefix(k, brand.OldEnvPrefix())) ||
 			k == "HOME" || k == "TZ" || k == "NO_COLOR" || k == "SSH_AUTH_SOCK" {
 			continue
@@ -161,7 +161,7 @@ func runCmd(env []string, stdin string, name string, args ...string) (string, st
 func newRig(t *testing.T) *rig {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("end-to-end: builds sy and runs a container")
+		t.Skip("end-to-end: builds wy and runs a container")
 	}
 	if runtime.GOOS == "windows" {
 		t.Skip("needs a POSIX host (ssh, unix paths)")
@@ -179,18 +179,18 @@ func newRig(t *testing.T) *rig {
 		t.Fatal(err)
 	}
 
-	// Binaries: sy for the container and for this host (one build when they match), and the
+	// Binaries: wy for the container and for this host (one build when they match), and the
 	// fake claude for the container. Built into temp dirs; nothing is committed.
 	bin := filepath.Join(r.tmp, "bin")
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	r.syLinux = filepath.Join(bin, "sy-linux-amd64")
-	goBuild(t, root, "linux", "amd64", r.syLinux, "./cmd/sy")
-	r.sy = r.syLinux
+	goBuild(t, root, "linux", "amd64", r.syLinux, "./cmd/wy")
+	r.wy = r.syLinux
 	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
-		r.sy = filepath.Join(bin, "sy")
-		goBuild(t, root, runtime.GOOS, runtime.GOARCH, r.sy, "./cmd/sy")
+		r.wy = filepath.Join(bin, "wy")
+		goBuild(t, root, runtime.GOOS, runtime.GOARCH, r.wy, "./cmd/wy")
 	}
 
 	// Build context for the image: Containerfile, the test key and the fake claude.
@@ -279,9 +279,9 @@ func newRig(t *testing.T) *rig {
 	if err := os.WriteFile(r.sshCfg, []byte(cfg), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	// SY_SSH_COMMAND is how the operator's sy reaches the server (OpenSSH reads ~/.ssh from
+	// WY_SSH_COMMAND is how the operator's wy reaches the server (OpenSSH reads ~/.ssh from
 	// the password database, not $HOME, so a config file is passed explicitly).
-	r.env = append(cleanEnv(r.home), "SY_SSH_COMMAND=ssh -F "+r.sshCfg)
+	r.env = append(cleanEnv(r.home), "WY_SSH_COMMAND=ssh -F "+r.sshCfg)
 
 	// sshd needs a moment after `run`.
 	deadline := time.Now().Add(60 * time.Second)
@@ -298,11 +298,11 @@ func newRig(t *testing.T) *rig {
 	return r
 }
 
-// startHub runs `sy hub serve` on a free loopback port with the operator's HOME, so the
-// operator's `sy hub …` commands (the `local` admin channel) share its database.
+// startHub runs `wy hub serve` on a free loopback port with the operator's HOME, so the
+// operator's `wy hub …` commands (the `local` admin channel) share its database.
 func (r *rig) startHub() {
 	t := r.t
-	cmd := exec.Command(r.sy, "hub", "serve", "--listen", "127.0.0.1:0", "--no-push")
+	cmd := exec.Command(r.wy, "hub", "serve", "--listen", "127.0.0.1:0", "--no-push")
 	cmd.Env = r.env
 	pr, pw := io.Pipe()
 	cmd.Stderr = pw
@@ -348,13 +348,13 @@ func (r *rig) startHub() {
 	}
 }
 
-// syLocal runs the operator's sy; the test fails on a non-zero exit unless want says
+// syLocal runs the operator's wy; the test fails on a non-zero exit unless want says
 // otherwise.
 func (r *rig) syLocal(stdin string, args ...string) (string, string) {
 	r.t.Helper()
-	out, errb, code := runCmd(r.env, stdin, r.sy, args...)
+	out, errb, code := runCmd(r.env, stdin, r.wy, args...)
 	if code != 0 {
-		r.t.Fatalf("sy %s: exit %d\n%s%s", strings.Join(args, " "), code, out, errb)
+		r.t.Fatalf("wy %s: exit %d\n%s%s", strings.Join(args, " "), code, out, errb)
 	}
 	return out, errb
 }
@@ -407,12 +407,12 @@ func TestPullRoundTrip(t *testing.T) {
 	}
 
 	// 2. The binary on the server is byte-identical to the one we built.
-	shaOut, _, code := r.ssh("", "sha256sum", ".local/bin/sy")
+	shaOut, _, code := r.ssh("", "sha256sum", ".local/bin/wy")
 	if code != 0 {
 		t.Fatalf("remote sha256sum: exit %d", code)
 	}
 	if got, want := strings.Fields(shaOut)[0], sha256File(t, r.syLinux); got != want {
-		t.Errorf("remote sy sha256 %s, want %s", got, want)
+		t.Errorf("remote wy sha256 %s, want %s", got, want)
 	}
 
 	// 3. authorized_keys has the test key and exactly one hub line, restricted to the drain.
@@ -428,7 +428,7 @@ func TestPullRoundTrip(t *testing.T) {
 	}
 	line := pullLines[0]
 	if !strings.HasPrefix(line, "restrict,") || !strings.Contains(line, `command="`) ||
-		!strings.Contains(line, "/sy outbox drain --stdio") || !strings.HasSuffix(line, "sy-pull:"+sum.PullID) {
+		!strings.Contains(line, "/wy outbox drain --stdio") || !strings.HasSuffix(line, "sy-pull:"+sum.PullID) {
 		t.Errorf("authorized_keys line is not the restricted drain line for %s:\n%s", sum.PullID, line)
 	}
 	if !strings.Contains(ak, "sy-e2e") {
@@ -437,9 +437,9 @@ func TestPullRoundTrip(t *testing.T) {
 
 	// 4. Records written on the server (through its own outbox, as a hook would) reach the hub
 	// by pull, with reach pull.
-	idOut, _, code := r.ssh("", ".local/bin/sy", "machine", "show", "--json")
+	idOut, _, code := r.ssh("", ".local/bin/wy", "machine", "show", "--json")
 	if code != 0 {
-		t.Fatalf("remote sy machine show: exit %d", code)
+		t.Fatalf("remote wy machine show: exit %d", code)
 	}
 	var rm struct {
 		ID string `json:"id"`
@@ -453,7 +453,7 @@ func TestPullRoundTrip(t *testing.T) {
 		raw, _ := json.Marshal(map[string]any{"session_id": sid, "hook_event_name": "SessionStart", "source": "startup",
 			"cwd": "/home/dev/api", "transcript_path": "/home/dev/.claude/projects/x/" + sid + ".jsonl"})
 		rec, err := record.NewHookEvent(record.Meta{Machine: sum.Machine, Slot: "~/.claude",
-			Seat: &record.Seat{Account: "acc-e2e", Org: "org-e2e", Email: "e2e@example.com"}, Client: "sy/e2e"}, raw, record.HookOptions{})
+			Seat: &record.Seat{Account: "acc-e2e", Org: "org-e2e", Email: "e2e@example.com"}, Client: "wy/e2e"}, raw, record.HookOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -464,8 +464,8 @@ func TestPullRoundTrip(t *testing.T) {
 		recs.Write(b)
 		recs.WriteByte('\n')
 	}
-	if _, errb, code := r.ssh(recs.String(), ".local/bin/sy", "outbox", "append"); code != 0 {
-		t.Fatalf("remote sy outbox append: exit %d: %s", code, errb)
+	if _, errb, code := r.ssh(recs.String(), ".local/bin/wy", "outbox", "append"); code != 0 {
+		t.Fatalf("remote wy outbox append: exit %d: %s", code, errb)
 	}
 	r.syLocal("", "hub", "pull", "run", sum.PullName, "--wait")
 
@@ -535,7 +535,7 @@ func TestPullRoundTrip(t *testing.T) {
 	}
 }
 
-// TestForwardAddRegistersLinkKeys: `sy machine add --reach forward` joins the server through
+// TestForwardAddRegistersLinkKeys: `wy machine add --reach forward` joins the server through
 // an SSH forward to the operator's hub, registers its link keys over the SSH session (reg
 // ssh, keys.md 4.2) and pins the hub key there (how ssh); the server then reaches the hub
 // with its own token through the forward and finds its keys registered.
@@ -573,7 +573,7 @@ func TestForwardAddRegistersLinkKeys(t *testing.T) {
 		t.Fatalf("keys step: %+v\n%s%s", sum.Keys, out, errb)
 	}
 	// No owner key on this operator, no terminal: the next step is named.
-	if !strings.Contains(strings.Join(sum.Warnings, "\n"), "sy keys certify "+sum.Keys.Device) {
+	if !strings.Contains(strings.Join(sum.Warnings, "\n"), "wy keys certify "+sum.Keys.Device) {
 		t.Errorf("no certify next step in %q", sum.Warnings)
 	}
 
@@ -615,11 +615,11 @@ func TestForwardAddRegistersLinkKeys(t *testing.T) {
 	}
 
 	// The server pins the hub key over SSH, and through the forward its own token sees the
-	// same certificate (sy keys status asks the hub).
+	// same certificate (wy keys status asks the hub).
 	fwd := fmt.Sprintf("127.0.0.1:%d:%s", sum.Port, strings.TrimPrefix(r.hubBase, "http://"))
-	st, errs, code := runCmd(r.env, "", "ssh", "-F", r.sshCfg, "-o", "ExitOnForwardFailure=yes", "-R", fwd, "srv", ".local/bin/sy", "keys", "status", "--json")
+	st, errs, code := runCmd(r.env, "", "ssh", "-F", r.sshCfg, "-o", "ExitOnForwardFailure=yes", "-R", fwd, "srv", ".local/bin/wy", "keys", "status", "--json")
 	if code != 0 {
-		t.Fatalf("remote sy keys status: exit %d: %s", code, errs)
+		t.Fatalf("remote wy keys status: exit %d: %s", code, errs)
 	}
 	var ks struct {
 		HubPin *struct {

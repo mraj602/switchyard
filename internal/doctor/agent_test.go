@@ -4,8 +4,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/paths"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/paths"
 )
 
 func TestCheckAgent(t *testing.T) {
@@ -25,7 +25,7 @@ func TestCheckAgent(t *testing.T) {
 	}
 	cfg.Peers.Enabled = true
 	checkAgent(&rep, o, cfg)
-	if len(rep.Checks) != 1 || rep.Checks[0].Level != Warn || rep.Checks[0].Fix != "sy agent enable" {
+	if len(rep.Checks) != 1 || rep.Checks[0].Level != Warn || rep.Checks[0].Fix != "wy agent enable" {
 		t.Fatalf("%+v", rep.Checks)
 	}
 }

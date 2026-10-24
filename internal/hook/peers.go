@@ -4,9 +4,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/clientenv"
-	"github.com/mraj602/switchyard/internal/peers"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/clientenv"
+	"github.com/mraj602/watchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // peerDerived adds the peers facts the alert rules read (push.md 3.5, peers.md 6.4) to a hook

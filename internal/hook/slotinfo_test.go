@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 func writeConfig(t *testing.T, sb *sandbox, body string) {
 	t.Helper()
-	cfg := filepath.Join(sb.home, "sy", "config")
+	cfg := filepath.Join(sb.home, "wy", "config")
 	if err := os.MkdirAll(cfg, 0o700); err != nil {
 		t.Fatal(err)
 	}

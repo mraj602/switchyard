@@ -20,17 +20,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/setup/backup"
-	"github.com/mraj602/switchyard/internal/setup/ledger"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/setup/backup"
+	"github.com/mraj602/watchyard/internal/setup/ledger"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // Exit codes (setup.md section 4).
 const (
 	ExitOK           = 0
 	ExitFailed       = 1 // a local step failed and was rolled back, or the link guard tripped
-	ExitLocked       = 2 // another `sy setup` holds <state>/setup.lock
+	ExitLocked       = 2 // another `wy setup` holds <state>/setup.lock
 	ExitPrecondition = 4 // the world changed since detect
 	ExitHub          = 6 // hub step failed; local steps kept
 )
@@ -53,7 +53,7 @@ type Options struct {
 	Command   string // recorded in the manifest
 	SyVersion string
 	Machine   string
-	// SyPath is the absolute sy path baked into the marketplace plugin (write_tree).
+	// SyPath is the absolute wy path baked into the marketplace plugin (write_tree).
 	SyPath string
 	Now    func() time.Time
 
@@ -682,8 +682,8 @@ func (r *runner) runCmd(ctx context.Context, a model.Action) error {
 		}
 		paths = append(paths, backup.PathSpec{Path: t, Save: backup.SaveCopy})
 	}
-	// Only what the plugin commands make for sy's marketplace, and for Warp's marketplace
-	// that `sy term setup --warp-plugin` adds (terminal.md T10), is ever removed by
+	// Only what the plugin commands make for wy's marketplace, and for Warp's marketplace
+	// that `wy term setup --warp-plugin` adds (terminal.md T10), is ever removed by
 	// undo (7.3).
 	spec := backup.Spec{Paths: paths, Watch: a.Watch, Expect: []string{marketplaceName, warpMarketplaceName}}
 	return r.journaled(a, spec, func(tx *backup.Tx) error {

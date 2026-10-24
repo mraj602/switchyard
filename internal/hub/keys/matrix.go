@@ -9,8 +9,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 // The matrix at the hub (peers.md 5, keys.md 5): version 1 on first use, owner-signed

@@ -1,7 +1,7 @@
-// Package warp knows Warp's files that sy may touch (docs/spec/terminal.md T8): the per-OS
+// Package warp knows Warp's files that wy may touch (docs/spec/terminal.md T8): the per-OS
 // `tab_configs` folder of each channel, whether Warp is installed, the six chromatic colour
 // names a tab config may use (the nearest one to a seat colour by OKLab distance), the
-// `switchyard-<label>.toml` tab config sy renders (with its marker line, so sy can tell its
+// `watchyard-<label>.toml` tab config wy renders (with its marker line, so wy can tell its
 // own files from the person's), and the `warp://tab_config/…` URI that opens one.
 //
 // Rules for this package:
@@ -9,8 +9,8 @@
 //     calls os.UserHomeDir (internal/termenv/lint_test.go).
 //   - Nothing here writes: rendering returns bytes, and the files are written by
 //     internal/setup/apply from a plan (plan.Terminal), journaled and undoable.
-//   - sy never writes Warp's settings, launch configurations, themes or keybindings
-//     (docs/spec/terminal.md T8); only `switchyard-*.toml` files in `tab_configs/`.
+//   - wy never writes Warp's settings, launch configurations, themes or keybindings
+//     (docs/spec/terminal.md T8); only `watchyard-*.toml` files in `tab_configs/`.
 //
 // Depends on: termenv.
 package warp
@@ -19,7 +19,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/termenv"
+	"github.com/mraj602/watchyard/internal/termenv"
 )
 
 // Channels (model.WarpStable / model.WarpPreview).

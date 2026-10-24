@@ -1,4 +1,4 @@
-// Package account is the folder side of `sy account` and the account step of `sy setup`
+// Package account is the folder side of `wy account` and the account step of `wy setup`
 // (setup.md 5.6, 8): finding the next free `~/.claude-N`, creating it with the enabled items
 // linked through a model.Sharer, labels and colours, the login handoff to
 // `claude auth login --claudeai`, the `label`/`colour` fields of `slot_info` (record.md 4.7),
@@ -25,8 +25,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/claudecli"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/claudecli"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // Manager does the folder work. Sharer is internal/share's implementation in production.
@@ -274,7 +274,7 @@ var ErrLoginIncomplete = errors.New("account: login did not complete")
 
 // NeedsCommand is the exact command for a login that has to happen in a terminal (the `needs`
 // list of `--json` output).
-func NeedsCommand(display string) string { return "sy account login " + display }
+func NeedsCommand(display string) string { return "wy account login " + display }
 
 // Login runs `claude auth login --claudeai` as the folder with the terminal handed over
 // (stdin/stdout/stderr inherited), then confirms with `claude auth status --json`. out gets
@@ -325,14 +325,14 @@ func titleCase(s string) string {
 
 // ---- remove (8.1) ----------------------------------------------------------------------------------
 
-// LauncherFile is a launcher `sy` wrote, with the SHA-256 of the content it wrote. A launcher
+// LauncherFile is a launcher `wy` wrote, with the SHA-256 of the content it wrote. A launcher
 // whose content differs is the person's now and is left alone.
 type LauncherFile struct {
 	Path   string
 	SHA256 string
 }
 
-// RemoveRequest asks for `sy account remove`.
+// RemoveRequest asks for `wy account remove`.
 type RemoveRequest struct {
 	Dir       string // the folder; it, its login and its links stay
 	Unshare   bool   // convert each link into an independent copy
@@ -380,14 +380,14 @@ func UnshareSizes(dir string, items []string) (map[string]int64, error) {
 
 // Unsharer turns a link into an independent copy of its resolved target, never absent in
 // between. internal/share's Sharer implements it. Unlike Link with LinkCopy it does not
-// register a synced copy: the copy is the folder's own, and `sy tick` must never copy its
+// register a synced copy: the copy is the folder's own, and `wy tick` must never copy its
 // edits over the primary.
 type Unsharer interface {
 	Unshare(path string) error
 }
 
 // Remove stops managing a folder: with Unshare it converts each listed link into an
-// independent copy (through the Sharer's Unshare), and it deletes the launchers `sy` wrote
+// independent copy (through the Sharer's Unshare), and it deletes the launchers `wy` wrote
 // that are unchanged. Nothing is ever deleted from the folder.
 func (m *Manager) Remove(req RemoveRequest) (RemoveResult, error) {
 	var res RemoveResult

@@ -12,8 +12,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 // PendingTTL is how long an owner-key proposal waits for confirmation (keys.md 3.3 step 4).
@@ -211,7 +211,7 @@ func (s *Service) Propose(ctx context.Context, doc keys.Doc, by string) (OwnerKe
 	return out, err
 }
 
-// Confirm activates a pending proposal (an owner session, or `sy hub keys confirm-owner`):
+// Confirm activates a pending proposal (an owner session, or `wy hub keys confirm-owner`):
 // the hub re-checks the self-signature, adds its own over the same bytes, and retires the
 // key that was active (keys.md 3.3 steps 2, 3 and 5).
 func (s *Service) Confirm(ctx context.Context, fp, by string) (OwnerKeyInfo, error) {
@@ -246,7 +246,7 @@ func (s *Service) Confirm(ctx context.Context, fp, by string) (OwnerKeyInfo, err
 	return out, err
 }
 
-// ProposeAndConfirm is merged mode (keys.md 3.3 step 2, third case): `sy keys init` on the
+// ProposeAndConfirm is merged mode (keys.md 3.3 step 2, third case): `wy keys init` on the
 // hub's own machine and state folder makes the key active at once, confirmed by "cli".
 func (s *Service) ProposeAndConfirm(ctx context.Context, doc keys.Doc) (OwnerKeyInfo, error) {
 	p, err := s.Propose(ctx, doc, "cli")
@@ -391,13 +391,13 @@ func (s *Service) Certs(ctx context.Context) (map[string]DeviceKeyInfo, error) {
 // seal or SSH, or owner-certified, is refused with 409 ("re-pair this device"): a stolen
 // bearer must not downgrade it to keys of its own. Replaced keys go into the next
 // revocation list. The keys a device already has are a no-op: the stored certificate comes
-// back unchanged (`sy agent enable` run again).
+// back unchanged (`wy agent enable` run again).
 func (s *Service) RegisterKeys(ctx context.Context, deviceID string, k keys.DeviceKeysNew) (keys.Doc, error) {
 	return s.register(ctx, deviceID, "", k, keys.RegTOFU)
 }
 
-// RegisterSSH registers keys `sy machine add` read from the machine over the person's SSH
-// session and handed to the hub host through the admin channel (`sy hub keys register`,
+// RegisterSSH registers keys `wy machine add` read from the machine over the person's SSH
+// session and handed to the hub host through the admin channel (`wy hub keys register`,
 // keys.md 4.2, reg ssh). The device must be a live machine bound to machineID (the id the
 // add probed over SSH). The admin channel is the hub host itself, so it may replace the
 // keys of any registration (the old ones go into the next revocation list). The same keys
@@ -495,7 +495,7 @@ func (s *Service) Certify(ctx context.Context, deviceID, fp, sigB64 string) erro
 			return err
 		}
 		if owner == nil {
-			return conflict("this hub has no active owner key (sy keys init, then confirm it)")
+			return conflict("this hub has no active owner key (wy keys init, then confirm it)")
 		}
 		if fp != owner.FP {
 			return badRequest("signed by owner key %s, but the active owner key is %s", keys.GroupFP(fp), keys.GroupFP(owner.FP))
@@ -608,7 +608,7 @@ func (s *Service) appendRevocationTx(tx *store.Tx, entries []keys.RevokedDevice,
 		MadeBy: madeBy, CreatedAt: tx.NowMS()})
 }
 
-// RevokeDevice revokes a device as auth.Revoke does (DELETE /v1/devices/{id}, `sy hub token
+// RevokeDevice revokes a device as auth.Revoke does (DELETE /v1/devices/{id}, `wy hub token
 // revoke`), drops its link queue and state, and, when it had keys, signs the next revocation
 // list with the hub key. madeBy is the device that asked, or "cli". store.ErrNotFound when
 // there was nothing to revoke.

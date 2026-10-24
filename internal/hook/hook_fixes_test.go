@@ -56,7 +56,7 @@ func TestFlushStampIsTheOutboxOne(t *testing.T) {
 // A config error is logged, and an unrelated bad key does not re-enable last_message.
 func TestConfigErrorLoggedAndPrivacyKept(t *testing.T) {
 	sb := newSandbox(t)
-	cfg := filepath.Join(sb.home, "sy", "config")
+	cfg := filepath.Join(sb.home, "wy", "config")
 	if err := os.MkdirAll(cfg, 0o700); err != nil {
 		t.Fatal(err)
 	}

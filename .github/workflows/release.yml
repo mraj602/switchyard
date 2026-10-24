@@ -1,4 +1,4 @@
-# Release: a tag v<semver> runs the checks, builds the six sy archives with
+# Release: a tag v<semver> runs the checks, builds the six wy archives with
 # scripts/release/build.sh (the same script the E2E harness uses) and the desktop app packages
 # (Linux AppImage/deb/rpm, macOS dmg, Windows NSIS; unsigned) on three OSes, attests build
 # provenance for every file and publishes ONE GitHub Release with every file at once. The
@@ -72,8 +72,8 @@ jobs:
         run: make check PYTHON=python
 
   # Builds the unsigned desktop packages on each OS and hands them to the release job as
-  # artifacts. Read-only: it can publish nothing. The bundled sy is built here from the tagged
-  # commit (see the "Bundle sy" step), never downloaded.
+  # artifacts. Read-only: it can publish nothing. The bundled wy is built here from the tagged
+  # commit (see the "Bundle wy" step), never downloaded.
   desktop:
     name: desktop (${{ matrix.os }})
     needs: check
@@ -116,21 +116,21 @@ jobs:
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y rpm
 
-      # fetch-sy (no --from) runs `go build ./cmd/sy` on this checkout with CGO_ENABLED=0,
+      # fetch-sy (no --from) runs `go build ./cmd/wy` on this checkout with CGO_ENABLED=0,
       # -trimpath and the ldflags of scripts/release/build.sh, with the version taken from the
-      # tag (SY_VERSION), so the bundled sy is the sy of this commit and tag. Checked below.
-      - name: Bundle sy from this commit
+      # tag (WY_VERSION), so the bundled wy is the wy of this commit and tag. Checked below.
+      - name: Bundle wy from this commit
         working-directory: app
         env:
-          SY_VERSION: ${{ env.RELEASE_TAG }}
+          WY_VERSION: ${{ env.RELEASE_TAG }}
         run: |
           npm ci
           node scripts/fetch-sy.mjs auto auto
           want="${RELEASE_TAG#v}"
-          bin=$(find resources/sy -type f -name 'sy*')
+          bin=$(find resources/wy -type f -name 'wy*')
           out=$("${bin}" --version)
           echo "${out}"
-          case "${out}" in "sy ${want} ("*) ;; *) echo "bundled sy is not ${want}"; exit 1 ;; esac
+          case "${out}" in "wy ${want} ("*) ;; *) echo "bundled wy is not ${want}"; exit 1 ;; esac
 
       - name: Package
         working-directory: app
@@ -195,7 +195,7 @@ jobs:
             n=$(find . -maxdepth 1 -name "*.${pat}" | wc -l | tr -d ' ')
             [ "${n}" = 1 ] || { echo "expected one .${pat}, found ${n}"; ls -l; exit 1; }
           done
-          find . -maxdepth 1 -name 'Switchyard-*' -printf '%f\n' | LC_ALL=C sort | xargs sha256sum > SHA256SUMS-desktop
+          find . -maxdepth 1 -name 'Watchyard-*' -printf '%f\n' | LC_ALL=C sort | xargs sha256sum > SHA256SUMS-desktop
           cat SHA256SUMS-desktop
 
       - name: Attest build provenance
@@ -204,7 +204,7 @@ jobs:
           subject-path: |
             dist/release/*.tar.gz
             dist/release/*.zip
-            dist/desktop/Switchyard-*
+            dist/desktop/Watchyard-*
 
       - name: Create release
         env:

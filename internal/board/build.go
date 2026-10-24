@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/state"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/hub/state"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // Field widths of a View: free text is cut to these many columns (T2 text safety applies
@@ -31,7 +31,7 @@ const UnattributedLabel = "Unattributed"
 var (
 	hexColour = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 	// focusURL is T7's allow-list. The enforcing copy is internal/termctl; this one
-	// only decides Row.CanFocus, and `sy term focus` checks again before opening anything.
+	// only decides Row.CanFocus, and `wy term focus` checks again before opening anything.
 	focusURL = regexp.MustCompile(`^(warp|warppreview)://session/[0-9a-f]{32}$`)
 )
 

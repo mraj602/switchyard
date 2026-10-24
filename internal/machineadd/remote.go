@@ -13,14 +13,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/sshx"
-	"github.com/mraj602/switchyard/internal/update"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/sshx"
+	"github.com/mraj602/watchyard/internal/update"
 )
 
-// RemoteSy is the remote's sy relative to its home folder (ssh starts there): no remote
+// RemoteSy is the remote's wy relative to its home folder (ssh starts there): no remote
 // command depends on the remote PATH (machines.md 4.3).
-const RemoteSy = ".local/bin/sy"
+const RemoteSy = ".local/bin/wy"
 
 // Platform maps `uname -sm` to Go's goos/goarch. Windows-like systems are ErrWindows.
 func Platform(uname string) (goos, goarch string, err error) {
@@ -52,7 +52,7 @@ func Platform(uname string) (goos, goarch string, err error) {
 	return goos, goarch, nil
 }
 
-// ErrWindows is a remote that runs Windows: sy machine add supports Linux and macOS remotes.
+// ErrWindows is a remote that runs Windows: wy machine add supports Linux and macOS remotes.
 var ErrWindows = errors.New("the remote runs Windows: use install.ps1 on that machine")
 
 // remote runs things on one host through the person's ssh.
@@ -150,7 +150,7 @@ func (r remote) push(ctx context.Context, local, kind, name, wantVersion string)
 		v, verr := r.script(ctx, versionScript(), nil, kind, name, suffix)
 		if verr != nil || v.Exit != 0 || strings.TrimSpace(string(v.Stdout)) != wantVersion {
 			_, _ = r.script(ctx, discardScript(), nil, kind, name, suffix)
-			return pushed{}, fmt.Errorf("the copied sy on %s does not print version %s", r.host, wantVersion)
+			return pushed{}, fmt.Errorf("the copied wy on %s does not print version %s", r.host, wantVersion)
 		}
 	default:
 		_, _ = r.script(ctx, discardScript(), nil, kind, name, suffix)
@@ -237,7 +237,7 @@ func firstLine(b []byte) string {
 	return s
 }
 
-// FleetRemote implements update.Remote for `sy update --machines` with the person's ssh.
+// FleetRemote implements update.Remote for `wy update --machines` with the person's ssh.
 type FleetRemote struct{ SSH *sshx.Runner }
 
 // Run implements update.Remote.

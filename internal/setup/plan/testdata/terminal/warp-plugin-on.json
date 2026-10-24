@@ -1,5 +1,5 @@
 {
-  "plan_id": "p_3b5137b96dae",
+  "plan_id": "p_7b5ff51cc990",
   "actions": [
     {
       "id": "a1",
@@ -23,7 +23,7 @@
       "touches": [
         "/home/u/.claude/settings.json",
         "/home/u/.claude/plugins/known_marketplaces.json",
-        "/home/u/.local/state/switchyard/term/journal/warp-plugin.marketplace-add"
+        "/home/u/.local/state/watchyard/term/journal/warp-plugin.marketplace-add"
       ],
       "watch": [
         "/home/u/.claude/plugins"
@@ -58,7 +58,7 @@
       "touches": [
         "/home/u/.claude/settings.json",
         "/home/u/.claude/plugins/installed_plugins.json",
-        "/home/u/.local/state/switchyard/term/journal/warp-plugin.install"
+        "/home/u/.local/state/watchyard/term/journal/warp-plugin.install"
       ],
       "watch": [
         "/home/u/.claude/plugins"
@@ -86,7 +86,7 @@
       "touches": [
         "/home/u/.claude-3/settings.json",
         "/home/u/.claude-3/plugins/known_marketplaces.json",
-        "/home/u/.local/state/switchyard/term/journal/warp-plugin.marketplace-add"
+        "/home/u/.local/state/watchyard/term/journal/warp-plugin.marketplace-add"
       ],
       "watch": [
         "/home/u/.claude-3/plugins"
@@ -120,7 +120,7 @@
       "touches": [
         "/home/u/.claude-3/settings.json",
         "/home/u/.claude-3/plugins/installed_plugins.json",
-        "/home/u/.local/state/switchyard/term/journal/warp-plugin.install"
+        "/home/u/.local/state/watchyard/term/journal/warp-plugin.install"
       ],
       "watch": [
         "/home/u/.claude-3/plugins"
@@ -137,6 +137,6 @@
     "logins_touched": 0
   },
   "warnings": [
-    "Warp's plugin comes from github.com/warpdotdev/claude-code-warp at branch main (a commit cannot be pinned); sy records the commit it got and sy doctor warns when it moves"
+    "Warp's plugin comes from github.com/warpdotdev/claude-code-warp at branch main (a commit cannot be pinned); wy records the commit it got and wy doctor warns when it moves"
   ]
 }

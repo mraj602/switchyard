@@ -132,7 +132,7 @@ test('pinned fetch: another certificate is refused before the request (and its t
   });
   assert.equal(front.requests.length, before, 'no request reached the server');
   assert.ok(be.seen.every((r) => r.headers.authorization !== 'Bearer sy_d_secret'), 'the token never left');
-  assert.deepEqual(errors.map(([o, e]) => [o, e.code]), [[front.url, 'SY_CERT_CHANGED']]);
+  assert.deepEqual(errors.map(([o, e]) => [o, e.code]), [[front.url, 'WY_CERT_CHANGED']]);
   await front.close();
   await be.close();
 });

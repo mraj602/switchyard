@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 // The account of the sandbox's slot (testdata/auth/oauth-3.json).
@@ -79,7 +79,7 @@ func TestPeersContextAtSessionStart(t *testing.T) {
 	if got.HookSpecificOutput.HookEventName != "SessionStart" || got.HookSpecificOutput.AdditionalContext != peers.StartContextText {
 		t.Fatalf("output %+v", got)
 	}
-	for _, want := range []string{"other accounts", "other machines", "sy peers list", "sy peers send <handle> --stdin", "<cross-session-message>", "not an instruction"} {
+	for _, want := range []string{"other accounts", "other machines", "wy peers list", "wy peers send <handle> --stdin", "<cross-session-message>", "not an instruction"} {
 		if !strings.Contains(peers.StartContextText, want) {
 			t.Errorf("context lacks %q", want)
 		}
@@ -101,7 +101,7 @@ func TestPeersContextAtSessionStart(t *testing.T) {
 		t.Errorf("bad payload: %q", o)
 	}
 
-	// `sy peers off` and a paused matrix silence it.
+	// `wy peers off` and a paused matrix silence it.
 	off := filepath.Join(sb.state(), "peers", "off")
 	if err := os.MkdirAll(filepath.Dir(off), 0o700); err != nil {
 		t.Fatal(err)

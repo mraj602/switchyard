@@ -32,7 +32,7 @@ const TLS_CODES = new Set([
   'DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
   'UNABLE_TO_GET_ISSUER_CERT', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'CERT_HAS_EXPIRED', 'CERT_NOT_YET_VALID',
   'CERT_UNTRUSTED', 'CERT_REJECTED', 'CERT_SIGNATURE_FAILURE', 'CERT_REVOKED', 'INVALID_CA', 'HOSTNAME_MISMATCH',
-  'ERR_TLS_CERT_ALTNAME_INVALID', 'SY_CERT_CHANGED',
+  'ERR_TLS_CERT_ALTNAME_INVALID', 'WY_CERT_CHANGED',
 ]);
 
 /**
@@ -80,7 +80,7 @@ export class CertificateChangedError extends Error {
   constructor(origin, expected, actual) {
     super(`the certificate of ${origin} is not the pinned one (pinned ${expected}, now ${actual ?? 'unreadable'})`);
     this.name = 'CertificateChangedError';
-    this.code = 'SY_CERT_CHANGED';
+    this.code = 'WY_CERT_CHANGED';
     this.origin = origin;
     this.expected = expected;
     this.actual = actual ?? null;

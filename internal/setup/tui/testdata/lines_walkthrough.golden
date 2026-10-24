@@ -1,5 +1,5 @@
 
-sy setup — 1/5 Main
+wy setup — 1/5 Main
 
 Claude Code 2.1.296 at ~/.local/bin/claude
 
@@ -21,7 +21,7 @@ Already set up by hand
 
 Nothing has been changed yet.
 Continue? [Enter = yes, q = quit] 
-sy setup — 2/5 SetupSharing (accounts)
+wy setup — 2/5 SetupSharing (accounts)
 
 Accounts
   ~/.claude    claude     you@example.com  logged in · Max   launcher: claude (shell function)
@@ -32,31 +32,7 @@ Accounts
   ~/.claude-6  claude-6   not logged in   launcher: claude-6 (shell function)
   ~/.claude-7  claude-7   not logged in   launcher: claude-7 (shell function)
 Add an account: type label[:colour], or Enter to continue (b back, q quit): 
-sy setup — 2/5 SetupSharing (accounts)
-
-Accounts
-  ~/.claude    claude     you@example.com  logged in · Max   launcher: claude (shell function)
-  ~/.claude-2  claude-2   you@work.example  logged in · Max   launcher: claude-2 (shell function)
-  ~/.claude-3  claude-3   you@team.example  logged in · Team   launcher: claude-3 (shell function)
-  ~/.claude-4  claude-4   not logged in   launcher: claude-4 (shell function)
-  ~/.claude-5  claude-5   not logged in   launcher: claude-5 (shell function)
-  ~/.claude-6  claude-6   not logged in   launcher: claude-6 (shell function)
-  ~/.claude-7  claude-7   not logged in   launcher: claude-7 (shell function)
-  + new folder   work       next colour   log in after setup
-Add an account: type label[:colour], or Enter to continue (b back, q quit): 
-sy setup — 3/5 SetupSharing (sharing)
-
-Sharing (primary ~/.claude)
-1 [x] Settings                   linked by hand
-2 [x] Instructions               link
-3 [x] Skills, agents, commands   link
-4 [x] Plugins                    shared plugin root  (on while Settings is on)
-5 [ ] MCP servers                your launcher
-6 [x] History and memory         linked by hand  (two accounts resuming one session write into one transcript)
-7 [x] Prompt history, plans      linked by hand
-  Never shared: login and tokens, live sessions, caches, usage counters
-Toggle by number (e.g. 3 5), Enter to continue (b back, q quit): 
-sy setup — 2/5 SetupSharing (accounts)
+wy setup — 2/5 SetupSharing (accounts)
 
 Accounts
   ~/.claude    claude     you@example.com  logged in · Max   launcher: claude (shell function)
@@ -68,7 +44,7 @@ Accounts
   ~/.claude-7  claude-7   not logged in   launcher: claude-7 (shell function)
   + new folder   work       next colour   log in after setup
 Add an account: type label[:colour], or Enter to continue (b back, q quit): 
-sy setup — 3/5 SetupSharing (sharing)
+wy setup — 3/5 SetupSharing (sharing)
 
 Sharing (primary ~/.claude)
 1 [x] Settings                   linked by hand
@@ -80,7 +56,31 @@ Sharing (primary ~/.claude)
 7 [x] Prompt history, plans      linked by hand
   Never shared: login and tokens, live sessions, caches, usage counters
 Toggle by number (e.g. 3 5), Enter to continue (b back, q quit): 
-sy setup — 3/5 SetupSharing (sharing)
+wy setup — 2/5 SetupSharing (accounts)
+
+Accounts
+  ~/.claude    claude     you@example.com  logged in · Max   launcher: claude (shell function)
+  ~/.claude-2  claude-2   you@work.example  logged in · Max   launcher: claude-2 (shell function)
+  ~/.claude-3  claude-3   you@team.example  logged in · Team   launcher: claude-3 (shell function)
+  ~/.claude-4  claude-4   not logged in   launcher: claude-4 (shell function)
+  ~/.claude-5  claude-5   not logged in   launcher: claude-5 (shell function)
+  ~/.claude-6  claude-6   not logged in   launcher: claude-6 (shell function)
+  ~/.claude-7  claude-7   not logged in   launcher: claude-7 (shell function)
+  + new folder   work       next colour   log in after setup
+Add an account: type label[:colour], or Enter to continue (b back, q quit): 
+wy setup — 3/5 SetupSharing (sharing)
+
+Sharing (primary ~/.claude)
+1 [x] Settings                   linked by hand
+2 [x] Instructions               link
+3 [x] Skills, agents, commands   link
+4 [x] Plugins                    shared plugin root  (on while Settings is on)
+5 [ ] MCP servers                your launcher
+6 [x] History and memory         linked by hand  (two accounts resuming one session write into one transcript)
+7 [x] Prompt history, plans      linked by hand
+  Never shared: login and tokens, live sessions, caches, usage counters
+Toggle by number (e.g. 3 5), Enter to continue (b back, q quit): 
+wy setup — 3/5 SetupSharing (sharing)
 
 Sharing (primary ~/.claude)
 1 [x] Settings                   linked by hand
@@ -92,7 +92,7 @@ Sharing (primary ~/.claude)
 7 [x] Prompt history, plans      linked by hand
   Never shared: login and tokens, live sessions, caches, usage counters
 Toggle by number (e.g. 3 5), Enter to continue (b back, q quit): 
-sy setup — 4/5 SetupHub
+wy setup — 4/5 SetupHub
 
 Hub
 1 (•) Just this computer
@@ -101,9 +101,9 @@ Hub
 4 ( ) Later
   Tailscale is up: the hub can be reached at laptop.example.ts.net if you run `tailscale serve`.
 Choose 1-4 [1] (b back, q quit): 
-sy setup — 5/5 SetupDone
+wy setup — 5/5 SetupDone
 
 Phone and done
-  Phone: later (sy phone pair)
+  Phone: later (wy phone pair)
   Next: the plan is shown, and nothing changes until you accept it.
 Enter to show the plan (b back, q quit): 

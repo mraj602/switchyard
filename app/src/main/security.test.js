@@ -365,7 +365,7 @@ test('lint: each rule fires on a sample and respects its allowed files', () => {
   assert.deepEqual(lintText('main/usage/reader.js', 'wc.executeJavaScriptInIsolatedWorld(1001, [{code}])'), []);
   assert.equal(lintText('main/tabs/index.js', 'wc.executeJavaScriptInIsolatedWorld(1001, [{code}])').length, 1);
   assert.deepEqual(lintText('main/security.js', 'electron.shell.openExternal(u)'), []);
-  assert.deepEqual(lintText('main/sy/run.js', "import { execFile } from 'node:child_process'"), []);
+  assert.deepEqual(lintText('main/wy/run.js', "import { execFile } from 'node:child_process'"), []);
   assert.deepEqual(lintText('main/tabs/index.js', 'await security.openExternalSafe(url)'), []);
   assert.deepEqual(lintText('main/hub/pin.js', 'session.setCertificateVerifyProc(fn)'), []);
   assert.equal(lintText('main/hub/index.js', 'session.setCertificateVerifyProc(fn)').length, 1);

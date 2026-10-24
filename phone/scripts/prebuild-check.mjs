@@ -2,7 +2,7 @@
 // Prebuild sanity check (docs/spec/phone.md P14). Copies phone/ to a temp
 // directory (node_modules symlinked), runs `expo prebuild --platform <p> --no-install --clean`
 // there, and asserts the generated native config. The real tree is never touched, nothing
-// is signed or uploaded, and the copy is deleted afterwards (set SY_KEEP_PREBUILD=1 to keep it).
+// is signed or uploaded, and the copy is deleted afterwards (set WY_KEEP_PREBUILD=1 to keep it).
 // Usage: node scripts/prebuild-check.mjs android|ios
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
@@ -46,7 +46,7 @@ const findFiles = (dir, re, out = []) => {
 };
 
 try {
-  const env = { ...process.env, CI: '1', EXPO_NO_TELEMETRY: '1', EXPO_NO_GIT_STATUS: '1', SY_APP_VARIANT: 'production' };
+  const env = { ...process.env, CI: '1', EXPO_NO_TELEMETRY: '1', EXPO_NO_GIT_STATUS: '1', WY_APP_VARIANT: 'production' };
   delete env.CLAUDE_CONFIG_DIR;
   execFileSync('npx', ['expo', 'prebuild', '--platform', platform, '--no-install', '--clean'], { cwd: app, env, stdio: 'inherit' });
 
@@ -58,7 +58,7 @@ try {
       const re = new RegExp(`<uses-permission[^>]*android\\.permission\\.${p}"(?![^>]*tools:node="remove")[^>]*>`);
       check(!re.test(manifest), `no ${p} (or removed with tools:node="remove")`);
     }
-    check(/android:scheme="switchyard"/.test(manifest), 'switchyard intent filter');
+    check(/android:scheme="watchyard"/.test(manifest), 'watchyard intent filter');
     const receivers = [...manifest.matchAll(/<receiver[\s\S]*?<\/receiver>/g)].map((m) => m[0]).filter((r) => r.includes('android.appwidget.action.APPWIDGET_UPDATE'));
     // The widget list is read from app.config.ts (ANDROID_WIDGETS), so it cannot drift from this check.
     const cfg = fs.readFileSync(path.join(phone, 'app.config.ts'), 'utf8');
@@ -128,7 +128,7 @@ try {
     check(/<key>NSSupportsLiveActivities<\/key>\s*<true\/>/.test(plist), 'NSSupportsLiveActivities');
     // The QR scanner (modules/sy-scan) is Android only: the iOS app asks for no camera.
     check(!plist.includes('<key>NSCameraUsageDescription</key>'), 'no NSCameraUsageDescription (no scanner on iOS)');
-    check(/<key>CFBundleURLSchemes<\/key>\s*<array>[\s\S]*?<string>switchyard<\/string>/.test(plist), 'switchyard URL scheme');
+    check(/<key>CFBundleURLSchemes<\/key>\s*<array>[\s\S]*?<string>watchyard<\/string>/.test(plist), 'watchyard URL scheme');
     const ents = findFiles(path.join(app, 'ios'), /\.entitlements$/);
     const withGroup = ents.filter((f) => /com\.apple\.security\.application-groups[\s\S]*?group\./.test(fs.readFileSync(f, 'utf8')));
     check(withGroup.length >= 2, `App Group entitlement on the app and the widget extension (${withGroup.map((f) => path.relative(app, f)).join(', ') || 'none'})`);
@@ -142,7 +142,7 @@ try {
   failures.push(`prebuild failed: ${e instanceof Error ? e.message : String(e)}`);
   console.error(failures.at(-1));
 } finally {
-  if (process.env.SY_KEEP_PREBUILD === '1') console.log(`kept ${app}`);
+  if (process.env.WY_KEEP_PREBUILD === '1') console.log(`kept ${app}`);
   else fs.rmSync(work, { recursive: true, force: true });
 }
 

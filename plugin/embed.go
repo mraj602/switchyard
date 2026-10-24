@@ -1,13 +1,13 @@
-// Package plugin embeds the Claude Code plugins in plugin/ so `sy` can write them into its
-// own local marketplace (setup.md 5.2): switchyard (hooks.json, plugin.json and the skills)
-// and, optionally, switchyard-pane (the opt-in pane mod, docs/spec/terminal.md T5).
+// Package plugin embeds the Claude Code plugins in plugin/ so `wy` can write them into its
+// own local marketplace (setup.md 5.2): watchyard (hooks.json, plugin.json and the skills)
+// and, optionally, watchyard-pane (the opt-in pane mod, docs/spec/terminal.md T5).
 package plugin
 
 import (
 	"embed"
 	"io/fs"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
 // Name is the plugin's name and its folder name under plugin/ (the skills are /<Name>:setup
@@ -21,22 +21,22 @@ const PaneName = brand.Slug + "-pane"
 // The "all:" prefix is required: without it go:embed skips ".claude-plugin" (a dot folder),
 // and the plugin would have no plugin.json.
 //
-//go:embed all:switchyard
+//go:embed all:watchyard
 var content embed.FS
 
-//go:embed all:switchyard-pane
+//go:embed all:watchyard-pane
 var paneContent embed.FS
 
 // FS returns the plugin tree rooted at the plugin folder: ".claude-plugin/plugin.json",
 // "hooks/hooks.json", "skills/<name>/SKILL.md", "README.md". The tree is read-only and
-// identical to the repository folder at build time, so hook commands still call `sy` by name;
+// identical to the repository folder at build time, so hook commands still call `wy` by name;
 // internal/setup/pluginmkt rewrites them to an absolute path when it writes the copy.
 func FS() fs.FS { return sub(content, Name) }
 
 // PaneFS returns the pane mod's tree rooted at its folder: ".claude-plugin/plugin.json",
 // "hooks/hooks.json" (modules only), "hooks/register.tsx", "types/index.d.ts" and its tests.
 // register.tsx holds the placeholder "__SY_PATH__", which internal/setup/pluginmkt replaces
-// with the absolute path of sy when it writes the copy.
+// with the absolute path of wy when it writes the copy.
 func PaneFS() fs.FS { return sub(paneContent, PaneName) }
 
 func sub(f embed.FS, dir string) fs.FS {

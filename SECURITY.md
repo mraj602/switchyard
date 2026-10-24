@@ -2,9 +2,9 @@
 
 ## Supported versions
 
-Switchyard has not made a release yet. Until it does, security fixes land on `main` only.
+Watchyard has not made a release yet. Until it does, security fixes land on `main` only.
 After the first release, the latest release gets security fixes; older releases do not, so
-please update (`sy update`, the desktop app's updater, or the Android app's update notice).
+please update (`wy update`, the desktop app's updater, or the Android app's update notice).
 
 | Version | Supported |
 | --- | --- |
@@ -33,13 +33,13 @@ What to expect:
   needs. We will agree a disclosure date with you; 90 days is the default upper bound.
 - Credit in the release notes and the advisory, if you want it.
 
-Switchyard is a volunteer project and has no bug bounty.
+Watchyard is a volunteer project and has no bug bounty.
 
 ## Scope
 
 In scope: everything in this repository that ships, namely
 
-- `sy` and the hub (`cmd/`, `internal/`), including the API, pairing, tokens, the link, keys,
+- `wy` and the hub (`cmd/`, `internal/`), including the API, pairing, tokens, the link, keys,
   peers, the outbox, setup and the install and update paths;
 - the board (`webui/`);
 - the desktop app (`app/`), including its Electron security settings and IPC;
@@ -63,13 +63,13 @@ Out of scope:
   `archive/prototype` branch for history only and is not maintained).
 - claude.ai, Claude Code and Anthropic's services. Report problems there to Anthropic.
 - Attacks that need full control of the user's own account or machine already, beyond what
-  the threat model says Switchyard defends against.
+  the threat model says Watchyard defends against.
 - A hub deliberately exposed without HTTPS using `--insecure-lan`.
 - Findings from automated scanners without a demonstrated impact.
 
 ## Threat model
 
-What Switchyard protects, against whom, and what it does not try to stop are described in:
+What Watchyard protects, against whom, and what it does not try to stop are described in:
 
 - [docs/spec/keys.md](docs/spec/keys.md): keys, signatures, the owner key, the signing guard,
   and the threat model.
@@ -77,5 +77,5 @@ What Switchyard protects, against whom, and what it does not try to stop are des
   device tokens and pairing.
 - [docs/guide/security.md](docs/guide/security.md): a summary for users, including what leaves
   each machine and what the hub stores.
-- [docs/guide/claude-ai.md](docs/guide/claude-ai.md): every place Switchyard talks to
+- [docs/guide/claude-ai.md](docs/guide/claude-ai.md): every place Watchyard talks to
   claude.ai.

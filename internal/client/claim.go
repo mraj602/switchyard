@@ -9,8 +9,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/version"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/version"
 )
 
 // ClaimRequest is the body of POST /v1/pair/claim (pairing.md 3). Send exactly one of Code
@@ -67,7 +67,7 @@ type LinkInfo struct {
 // logged here; the caller stores it.
 func Claim(ctx context.Context, baseURL string, hc *http.Client, req ClaimRequest) (*ClaimReply, error) {
 	if req.Client == "" {
-		req.Client = "sy/" + version.Version
+		req.Client = "wy/" + version.Version
 	}
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -90,7 +90,7 @@ func Claim(ctx context.Context, baseURL string, hc *http.Client, req ClaimReques
 	}
 	var out ClaimReply
 	if err := json.Unmarshal(b, &out); err != nil {
-		return nil, fmt.Errorf("not a Switchyard hub (bad claim reply): %w", err)
+		return nil, fmt.Errorf("not a Watchyard hub (bad claim reply): %w", err)
 	}
 	if out.Token == "" && !req.Cookie {
 		return nil, errors.New("the hub answered without a token")

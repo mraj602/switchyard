@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/hub/push/webpushtest"
+	"github.com/mraj602/watchyard/internal/hub/push/webpushtest"
 )
 
 // RFC 8291 section 5 and appendix A.

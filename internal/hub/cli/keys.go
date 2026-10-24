@@ -11,16 +11,16 @@ import (
 	"os/signal"
 	"strings"
 
-	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
+	hubkeys "github.com/mraj602/watchyard/internal/hub/keys"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 // hubKeyPath is <state>/hub_sign.key (keys.md 3.4).
 func hubKeyPath() (string, error) { return hubkeys.DefaultPath() }
 
-// loadOrCreateHubKey reads the hub signing key, making it at first use (`sy hub serve`, the
-// first `sy hub pair`).
+// loadOrCreateHubKey reads the hub signing key, making it at first use (`wy hub serve`, the
+// first `wy hub pair`).
 func loadOrCreateHubKey() (*hubkeys.HubKey, error) {
 	p, err := hubKeyPath()
 	if err != nil {
@@ -60,22 +60,22 @@ func keysService(st *store.Store, logger *log.Logger) (*hubkeys.Service, error) 
 	return s, nil
 }
 
-const keysUsage = `Usage: sy hub keys <command> [flags]
+const keysUsage = `Usage: wy hub keys <command> [flags]
 
 Commands:
   show [--json]          The hub key's fingerprint, the active owner key and pending proposals
   confirm-owner <fp>     Activate a pending owner key proposal (compare the fingerprint
-                         with the one sy keys init printed on your terminal)
+                         with the one wy keys init printed on your terminal)
   register <device> --machine <id> --keys-stdin [--json]
                          Register a machine's link keys read over SSH (reg ssh; used by
-                         sy machine add through the admin channel)
+                         wy machine add through the admin channel)
   certify <device> --fp <owner fp> --sig-stdin
-                         Store an owner signature over a device's certificate (sy machine add)
+                         Store an owner signature over a device's certificate (wy machine add)
 
 Every command takes --db <file> (default <data>/hub.db).
 `
 
-// Keys is `sy hub keys …` (keys.md 3.3-3.4, 11).
+// Keys is `wy hub keys …` (keys.md 3.3-3.4, 11).
 func Keys(args []string, stdout, stderr io.Writer) error {
 	return KeysIn(os.Stdin, args, stdout, stderr)
 }
@@ -99,7 +99,7 @@ func KeysIn(stdin io.Reader, args []string, stdout, stderr io.Writer) error {
 	case "certify":
 		return keysCertify(stdin, args[1:], stdout, stderr)
 	}
-	fmt.Fprintf(stderr, "sy hub keys: unknown command %q\n\n%s", args[0], keysUsage)
+	fmt.Fprintf(stderr, "wy hub keys: unknown command %q\n\n%s", args[0], keysUsage)
 	return ErrUsage
 }
 
@@ -159,10 +159,10 @@ func keysShow(args []string, stdout, stderr io.Writer) error {
 	if owner != nil {
 		fmt.Fprintf(stdout, "owner key  %s (active, proposed by %s)\n", keys.GroupFP(owner.FP), orDash(owner.ProposedBy))
 	} else {
-		fmt.Fprintln(stdout, "owner key  none (run sy keys init on your main machine)")
+		fmt.Fprintln(stdout, "owner key  none (run wy keys init on your main machine)")
 	}
 	for _, x := range pending {
-		fmt.Fprintf(stdout, "pending    %s proposed by %s at %s: sy hub keys confirm-owner %s\n", keys.GroupFP(x.FP), orDash(x.ProposedBy), ms(x.CreatedAt), x.FP)
+		fmt.Fprintf(stdout, "pending    %s proposed by %s at %s: wy hub keys confirm-owner %s\n", keys.GroupFP(x.FP), orDash(x.ProposedBy), ms(x.CreatedAt), x.FP)
 	}
 	fmt.Fprintf(stdout, "revocations version %d\n", rv)
 	return nil
@@ -172,7 +172,7 @@ func keysConfirmOwner(args []string, stdout, stderr io.Writer) error {
 	fs, db := newFlags("keys confirm-owner", stderr)
 	if pos, err := parse(fs, args); err != nil || len(pos) != 1 {
 		if err == nil {
-			fmt.Fprintln(stderr, "usage: sy hub keys confirm-owner <fingerprint>")
+			fmt.Fprintln(stderr, "usage: wy hub keys confirm-owner <fingerprint>")
 		}
 		return ErrUsage
 	} else {
@@ -180,7 +180,7 @@ func keysConfirmOwner(args []string, stdout, stderr io.Writer) error {
 	}
 	fp, ok := keys.NormalizeFP(args[0])
 	if !ok {
-		return fmt.Errorf("%q is not a key fingerprint (24 characters, as sy keys init printed it)", args[0])
+		return fmt.Errorf("%q is not a key fingerprint (24 characters, as wy keys init printed it)", args[0])
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
@@ -201,12 +201,12 @@ func keysConfirmOwner(args []string, stdout, stderr io.Writer) error {
 		}
 		return err
 	}
-	fmt.Fprintf(stdout, "owner key %s is active; the hub signed it. Machines pin it at their next pairing or link login; run sy keys certify --all on your main machine.\n", keys.GroupFP(o.FP))
+	fmt.Fprintf(stdout, "owner key %s is active; the hub signed it. Machines pin it at their next pairing or link login; run wy keys certify --all on your main machine.\n", keys.GroupFP(o.FP))
 	return nil
 }
 
-// keysRegister is `sy hub keys register <device> --machine <id> --keys-stdin [--json]`: the
-// hub host's side of `sy machine add` (keys.md 4.2, reg ssh). The keys (api.yaml
+// keysRegister is `wy hub keys register <device> --machine <id> --keys-stdin [--json]`: the
+// hub host's side of `wy machine add` (keys.md 4.2, reg ssh). The keys (api.yaml
 // DeviceKeysNew) arrive on stdin from the operator, who read them over its SSH session to
 // the machine. The reply carries what the machine then pins: the hub key, the hub-signed
 // certificate and the active owner key document.
@@ -218,7 +218,7 @@ func keysRegister(stdin io.Reader, args []string, stdout, stderr io.Writer) erro
 	pos, err := parse(fs, args)
 	if err != nil || len(pos) != 1 || *machine == "" || !*fromStdin {
 		if err == nil {
-			fmt.Fprintln(stderr, "usage: sy hub keys register <device> --machine <id> --keys-stdin [--json]")
+			fmt.Fprintln(stderr, "usage: wy hub keys register <device> --machine <id> --keys-stdin [--json]")
 		}
 		return ErrUsage
 	}
@@ -260,8 +260,8 @@ func keysRegister(stdin io.Reader, args []string, stdout, stderr io.Writer) erro
 	return nil
 }
 
-// keysCertify is `sy hub keys certify <device> --fp <owner fp> --sig-stdin`: an owner
-// signature made on the owner machine (sy machine add), checked like POST
+// keysCertify is `wy hub keys certify <device> --fp <owner fp> --sig-stdin`: an owner
+// signature made on the owner machine (wy machine add), checked like POST
 // /v1/devices/{id}/cert.
 func keysCertify(stdin io.Reader, args []string, stdout, stderr io.Writer) error {
 	fs, db := newFlags("keys certify", stderr)
@@ -270,7 +270,7 @@ func keysCertify(stdin io.Reader, args []string, stdout, stderr io.Writer) error
 	pos, err := parse(fs, args)
 	if err != nil || len(pos) != 1 || *fp == "" || !*fromStdin {
 		if err == nil {
-			fmt.Fprintln(stderr, "usage: sy hub keys certify <device> --fp <owner fp> --sig-stdin")
+			fmt.Fprintln(stderr, "usage: wy hub keys certify <device> --fp <owner fp> --sig-stdin")
 		}
 		return ErrUsage
 	}

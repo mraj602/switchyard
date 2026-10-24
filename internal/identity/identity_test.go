@@ -572,7 +572,7 @@ func TestULIDOrderAndShape(t *testing.T) {
 
 // helper process for TestMachineIDConcurrentProcesses: creates the id and prints it.
 func TestMachineHelperProcess(t *testing.T) {
-	dir := os.Getenv("SY_TEST_MACHINE_STATE")
+	dir := os.Getenv("WY_TEST_MACHINE_STATE")
 	if dir == "" {
 		t.Skip("helper process")
 	}
@@ -594,7 +594,7 @@ func TestMachineIDConcurrent(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			cmd := exec.Command(os.Args[0], "-test.run=^TestMachineHelperProcess$")
-			cmd.Env = append(os.Environ(), "SY_TEST_MACHINE_STATE="+state)
+			cmd.Env = append(os.Environ(), "WY_TEST_MACHINE_STATE="+state)
 			out, err := cmd.Output()
 			if err != nil {
 				t.Errorf("helper: %v", err)
@@ -665,7 +665,7 @@ func BenchmarkCachedLogin(b *testing.B) {
 // Acceptance: a cached read takes under 1 ms (a benchmark would show about 20 us). Wall-clock
 // asserts flake under -race and load, so the numbers are only logged; the test fails only
 // above a bound 25 times looser (an uncached read of the big state file is far above it),
-// or above 1 ms when SY_TIMING_STRICT=1. testing.Short skips the assert.
+// or above 1 ms when WY_TIMING_STRICT=1. testing.Short skips the assert.
 func TestCachedLoginUnderOneMillisecond(t *testing.T) {
 	st, slot := cachedLoginSetup(t)
 	const n = 200
@@ -685,7 +685,7 @@ func TestCachedLoginUnderOneMillisecond(t *testing.T) {
 	avg := total / n
 	t.Logf("cached login read: average %v, worst %v over %d reads", avg, worst, n)
 	bound := 25 * time.Millisecond
-	if os.Getenv("SY_TIMING_STRICT") == "1" {
+	if os.Getenv("WY_TIMING_STRICT") == "1" {
 		bound = time.Millisecond
 	}
 	if !testing.Short() && avg > bound {

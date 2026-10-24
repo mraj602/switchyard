@@ -8,27 +8,27 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/claudecli"
-	"github.com/mraj602/switchyard/plugin"
+	"github.com/mraj602/watchyard/internal/claudecli"
+	"github.com/mraj602/watchyard/plugin"
 )
 
-// The marketplace also carries switchyard-pane. The switchyard plugin's
+// The marketplace also carries watchyard-pane. The watchyard plugin's
 // written tree is byte-identical to what it was before the pane existed (written alone, with
 // an empty pane source), and the pane tree is the embedded one with only its version set.
-func TestMarketplaceCarriesPaneAndLeavesSwitchyardAlone(t *testing.T) {
+func TestMarketplaceCarriesPaneAndLeavesWatchyardAlone(t *testing.T) {
 	state := t.TempDir()
-	sy := filepath.Join(state, "bin", "sy")
+	wy := filepath.Join(state, "bin", "wy")
 	both := filepath.Join(state, "both", "marketplace")
-	if err := New(claudecli.NewFake()).WriteMarketplace(both, sy, "0.7.0"); err != nil {
+	if err := New(claudecli.NewFake()).WriteMarketplace(both, wy, "0.7.0"); err != nil {
 		t.Fatal(err)
 	}
 	alone := filepath.Join(state, "alone", "marketplace")
 	empty := os.DirFS(t.TempDir())
-	if err := (&Installer{Runner: claudecli.NewFake(), PaneSource: empty}).WriteMarketplace(alone, sy, "0.7.0"); err != nil {
+	if err := (&Installer{Runner: claudecli.NewFake(), PaneSource: empty}).WriteMarketplace(alone, wy, "0.7.0"); err != nil {
 		t.Fatal(err)
 	}
 	if a, b := treeFiles(t, PluginDir(both)), treeFiles(t, PluginDir(alone)); !sameFiles(a, b) {
-		t.Fatal("the switchyard plugin tree changed when the pane was added")
+		t.Fatal("the watchyard plugin tree changed when the pane was added")
 	}
 
 	pane := treeFiles(t, PaneDir(both))
@@ -54,13 +54,13 @@ func TestMarketplaceCarriesPaneAndLeavesSwitchyardAlone(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(pane[".claude-plugin/plugin.json"]), `"version": "0.7.0"`) {
-		t.Error("pane plugin.json version not set to sy's version")
+		t.Error("pane plugin.json version not set to wy's version")
 	}
-	if PaneID != "switchyard-pane@sy-local" {
+	if PaneID != "watchyard-pane@wy-local" {
 		t.Errorf("PaneID = %s", PaneID)
 	}
 	mj, _ := os.ReadFile(filepath.Join(both, ".claude-plugin", "marketplace.json"))
-	if !strings.Contains(string(mj), "Read only; it runs only the sy command.") {
+	if !strings.Contains(string(mj), "Read only; it runs only the wy command.") {
 		t.Errorf("pane description not taken from its plugin.json:\n%s", mj)
 	}
 }

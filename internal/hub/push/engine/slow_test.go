@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/push/engine"
-	"github.com/mraj602/switchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/engine"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
 )
 
 // slowSender ignores its context and takes a long time: a tarpit server.

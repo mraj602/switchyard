@@ -3,7 +3,7 @@
 // leave a path absent (temp name + rename), tree comparison, the conflict merges (history
 // line union, directory union that is renames only), promotion, the MCP three-way merge of
 // the `mcpServers` key through internal/jsonedit, Windows synced copies, and Sync for
-// `sy tick`.
+// `wy tick`.
 //
 // Sharer implements model.Sharer, so internal/setup/apply drives it through the interface.
 // Nothing here ever reads or writes `.credentials.json` or any `.claude.json` key but

@@ -21,21 +21,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/agent"
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/cli"
-	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
-	hublink "github.com/mraj602/switchyard/internal/hub/link"
-	"github.com/mraj602/switchyard/internal/hub/peerrelay"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/link"
-	"github.com/mraj602/switchyard/internal/linkclient"
-	"github.com/mraj602/switchyard/internal/machineadd"
-	"github.com/mraj602/switchyard/internal/peerlink"
-	"github.com/mraj602/switchyard/internal/peers"
-	"github.com/mraj602/switchyard/internal/peers/fakeinbox"
+	"github.com/mraj602/watchyard/internal/agent"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/cli"
+	hubkeys "github.com/mraj602/watchyard/internal/hub/keys"
+	hublink "github.com/mraj602/watchyard/internal/hub/link"
+	"github.com/mraj602/watchyard/internal/hub/peerrelay"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/link"
+	"github.com/mraj602/watchyard/internal/linkclient"
+	"github.com/mraj602/watchyard/internal/machineadd"
+	"github.com/mraj602/watchyard/internal/peerlink"
+	"github.com/mraj602/watchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/peers/fakeinbox"
 )
 
 // Accounts of the test world: laptop's session is work, worker's two are personal and other.
@@ -128,7 +128,7 @@ func newHub(t *testing.T, maxTurns int) *testHub {
 	return newHubOwner(t, maxTurns, true)
 }
 
-// newHubNoOwner is the hub of an owner who never ran `sy keys init`: no owner key, the same
+// newHubNoOwner is the hub of an owner who never ran `wy keys init`: no owner key, the same
 // pairs plus personal → work (so work ⇄ personal) in a hub-signed matrix (an owner session on the board widened it), machines that
 // take hub-signed widening (hub_may_widen, the default) and certificates with the hub's
 // signature only (pairTOFU).
@@ -191,7 +191,7 @@ func newHubOwner(t *testing.T, maxTurns int, owner bool) *testHub {
 	return h
 }
 
-// confirmOwner is `sy keys init` on the owner machine plus its confirmation: the owner key
+// confirmOwner is `wy keys init` on the owner machine plus its confirmation: the owner key
 // becomes the hub's active one.
 func (h *testHub) confirmOwner() {
 	h.t.Helper()
@@ -204,7 +204,7 @@ func (h *testHub) confirmOwner() {
 	}
 }
 
-// certify is `sy keys certify` for one machine: the owner signs its hub-signed certificate.
+// certify is `wy keys certify` for one machine: the owner signs its hub-signed certificate.
 func (h *testHub) certify(m *machine) {
 	h.t.Helper()
 	var raw []byte
@@ -218,7 +218,7 @@ func (h *testHub) certify(m *machine) {
 	h.bind(m)
 }
 
-// bind is the accounts half of `sy keys certify` (keys.md 4.3): the owner signs the list of
+// bind is the accounts half of `wy keys certify` (keys.md 4.3): the owner signs the list of
 // the machine's accounts (those of its sessions) for its current certificate.
 func (h *testHub) bind(m *machine, extra ...string) {
 	h.t.Helper()
@@ -400,7 +400,7 @@ func (h *testHub) newMachine(name, id string, specs ...sessionSpec) *machine {
 	return h.newMachineWith((*testHub).pairQR, name, id, specs...)
 }
 
-// pairTOFU is `sy agent enable` on a hub with no owner key (reg tofu, keys.md 7.1): the keys
+// pairTOFU is `wy agent enable` on a hub with no owner key (reg tofu, keys.md 7.1): the keys
 // are registered and hub-signed, only the hub key is pinned, nothing is owner-certified.
 func (h *testHub) pairTOFU(m *machine, c auth.Created, dk keys.DeviceKeys) {
 	t := h.t
@@ -453,11 +453,11 @@ func (h *testHub) pairQR(m *machine, c auth.Created, dk keys.DeviceKeys) {
 	}
 }
 
-// pairSSH is sy machine add's keys step (machines.md 4.2): the hub host registers the keys
-// read over SSH through the admin channel (sy hub keys register, reg ssh), the remote pins
+// pairSSH is wy machine add's keys step (machines.md 4.2): the hub host registers the keys
+// read over SSH through the admin channel (wy hub keys register, reg ssh), the remote pins
 // the hub and owner keys it was handed (pin how ssh), and the owner machine certifies the
-// certificate through sy hub keys certify. The admin commands run in process against the
-// hub's database, with the hub's key file in SY_STATE_DIR.
+// certificate through wy hub keys certify. The admin commands run in process against the
+// hub's database, with the hub's key file in WY_STATE_DIR.
 func (h *testHub) pairSSH(m *machine, c auth.Created, dk keys.DeviceKeys) {
 	t := h.t
 	t.Helper()
@@ -468,7 +468,7 @@ func (h *testHub) pairSSH(m *machine, c auth.Created, dk keys.DeviceKeys) {
 			t.Fatal(err)
 		}
 	}
-	t.Setenv("SY_STATE_DIR", hubState)
+	t.Setenv("WY_STATE_DIR", hubState)
 	admin := machineadd.LocalAdmin{Run: func(_ context.Context, args []string, stdin []byte) ([]byte, []byte, int) {
 		var out, errb bytes.Buffer
 		if err := cli.KeysIn(bytes.NewReader(stdin), append(args[1:], "--db", filepath.Join(h.dir, "hub.db")), &out, &errb); err != nil {
@@ -536,7 +536,7 @@ func (h *testHub) newMachineWith(pair func(*testHub, *machine, auth.Created, key
 	}
 	pair(h, m, c, dk)
 
-	// Sessions: a claude process with a bash child (the Bash tool sy peers send runs in), the
+	// Sessions: a claude process with a bash child (the Bash tool wy peers send runs in), the
 	// registry file, a bypass-mode session file and a fake inbox; the same session at the hub.
 	for i, sp := range specs {
 		slot := filepath.Join(m.home, sp.slot)
@@ -689,7 +689,7 @@ func (m *machine) session(name string) *session {
 	return nil
 }
 
-// send is `sy peers send` from the session `from` through this machine's agent.
+// send is `wy peers send` from the session `from` through this machine's agent.
 func (m *machine) send(from, to, text string, ttl time.Duration, wait int) agent.Reply {
 	m.t.Helper()
 	s := m.session(from)

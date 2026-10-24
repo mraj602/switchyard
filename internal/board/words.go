@@ -6,15 +6,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/state"
-	"github.com/mraj602/switchyard/internal/status"
+	"github.com/mraj602/watchyard/internal/hub/state"
+	"github.com/mraj602/watchyard/internal/status"
 )
 
 // The words of the board (docs/spec/terminal.md T2 "States and words"): state words, limit
 // text with the reset in local time, ages, glyphs and the context level. Every renderer
 // shows these strings as they are.
 
-// Age renders d as "40s", "2m", "3h" or "2d" (the same rule as `sy status`).
+// Age renders d as "40s", "2m", "3h" or "2d" (the same rule as `wy status`).
 func Age(d time.Duration) string { return status.Age(d) }
 
 // ClockText is a reset time in the viewer's local time: "17:00" when it is today (or less

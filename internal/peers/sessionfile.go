@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/atomicfile"
 )
 
 // DeliveredWindow is the fallback of peers.md 2.4 (lab E12): a UserPromptSubmit within this
@@ -17,7 +17,7 @@ import (
 const DeliveredWindow = 10 * time.Second
 
 // SessionFile is `<state>/peers/sessions/<session_id>.json` (peers.md 2.4), written by
-// `sy hook` when peers are enabled. It holds no prompt text.
+// `wy hook` when peers are enabled. It holds no prompt text.
 type SessionFile struct {
 	V         int        `json:"v"`
 	Session   string     `json:"session"`
@@ -192,7 +192,7 @@ func UpdateSessionFile(c HookContext, e HookEvent) (wrote bool, err error) {
 	return true, atomicfile.Write(filepath.Join(SessionsDir(c.State), e.SessionID+".json"), b, 0o600)
 }
 
-// PruneSessionFiles removes session files not modified for 7 days (called by sy tick).
+// PruneSessionFiles removes session files not modified for 7 days (called by wy tick).
 func PruneSessionFiles(state string, now time.Time) {
 	ents, err := os.ReadDir(SessionsDir(state))
 	if err != nil {

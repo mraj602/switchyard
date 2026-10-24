@@ -3,11 +3,11 @@ package hubkeys
 import (
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
-// RegisterSSH (sy machine add through the admin channel, keys.md 4.2 reg ssh) and the
+// RegisterSSH (wy machine add through the admin channel, keys.md 4.2 reg ssh) and the
 // idempotence of both registration paths.
 func TestRegisterSSH(t *testing.T) {
 	f := newFix(t)

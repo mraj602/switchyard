@@ -13,16 +13,16 @@ export function NeedsYouSmall(props: WidgetTimelineProps) {
   const dim = foregroundStyle({ type: 'hierarchical', style: 'secondary' });
   if (!s) {
     return (
-      <VStack alignment="leading" spacing={4} modifiers={[padding({ all: 12 }), widgetURL('switchyard://now')]}>
-        <Text modifiers={[font({ size: 14, weight: 'semibold' })]}>Switchyard</Text>
-        <Text modifiers={[font({ size: 12 }), dim]}>Open Switchyard to set up</Text>
+      <VStack alignment="leading" spacing={4} modifiers={[padding({ all: 12 }), widgetURL('watchyard://now')]}>
+        <Text modifiers={[font({ size: 14, weight: 'semibold' })]}>Watchyard</Text>
+        <Text modifiers={[font({ size: 12 }), dim]}>Open Watchyard to set up</Text>
       </VStack>
     );
   }
   const top = s.top;
   const next = props.next;
   return (
-    <VStack alignment="leading" spacing={2} modifiers={[padding({ all: 12 }), widgetURL('switchyard://now')]}>
+    <VStack alignment="leading" spacing={2} modifiers={[padding({ all: 12 }), widgetURL('watchyard://now')]}>
       <Text modifiers={[font({ size: 12, weight: 'semibold' }), dim]}>Needs you</Text>
       <Text modifiers={[font({ size: 40, weight: 'bold' }), foregroundStyle(s.needs_you > 0 ? '#ff9f0a' : '#8e8e93')]}>
         {String(s.needs_you)}

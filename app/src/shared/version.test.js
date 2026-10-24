@@ -21,18 +21,18 @@ test('compareVersions', () => {
   assert.equal(compareVersions([1, 0, 0], [0, 99, 99]), 1);
 });
 
-test('updateNotice: newer hub or sy means an update, older means update them', () => {
-  assert.equal(updateNotice({ app: '0.6.0', hub: '0.6.0', sy: '0.6.0' }), null);
+test('updateNotice: newer hub or wy means an update, older means update them', () => {
+  assert.equal(updateNotice({ app: '0.6.0', hub: '0.6.0', wy: '0.6.0' }), null);
   assert.equal(updateNotice({ app: 'dev', hub: '0.7.0' }), null);
   assert.equal(updateNotice({ app: '0.6.0' }), null);
-  assert.equal(updateNotice({ app: '0.6.0', hub: 'junk', sy: null }), null);
+  assert.equal(updateNotice({ app: '0.6.0', hub: 'junk', wy: null }), null);
   assert.equal(updateNotice(), null);
 
-  const up = updateNotice({ app: '0.6.0', hub: '0.6.2', sy: '0.7.0' });
-  assert.deepEqual(up, { kind: 'update', app: '0.6.0', version: '0.7.0', from: 'sy', url: `${RELEASES_URL}/tag/v0.7.0` });
+  const up = updateNotice({ app: '0.6.0', hub: '0.6.2', wy: '0.7.0' });
+  assert.deepEqual(up, { kind: 'update', app: '0.6.0', version: '0.7.0', from: 'wy', url: `${RELEASES_URL}/tag/v0.7.0` });
   assert.equal(updateNotice({ app: '0.6.0', hub: 'v0.6.1-rc.1' }).from, 'hub');
 
-  const old = updateNotice({ app: '0.7.0', hub: '0.6.0', sy: '0.7.0' });
+  const old = updateNotice({ app: '0.7.0', hub: '0.6.0', wy: '0.7.0' });
   assert.deepEqual(old, { kind: 'older', app: '0.7.0', version: '0.6.0', from: 'hub', url: RELEASES_URL });
 });
 
@@ -46,6 +46,6 @@ test('releaseUrl: a tag page for a version, else the list', () => {
 
 test('updateText', () => {
   assert.equal(updateText(null), '');
-  assert.match(updateText({ kind: 'update', app: '0.6.0', version: '0.7.0', from: 'hub' }), /^Update available: Your hub runs Switchyard 0\.7\.0, this app is 0\.6\.0\.$/);
-  assert.match(updateText({ kind: 'older', app: '0.7.0', version: '0.6.0', from: 'sy' }), /sy on this computer runs Switchyard 0\.6\.0, older than this app \(0\.7\.0\)\. Update it with sy update\./);
+  assert.match(updateText({ kind: 'update', app: '0.6.0', version: '0.7.0', from: 'hub' }), /^Update available: Your hub runs Watchyard 0\.7\.0, this app is 0\.6\.0\.$/);
+  assert.match(updateText({ kind: 'older', app: '0.7.0', version: '0.6.0', from: 'wy' }), /wy on this computer runs Watchyard 0\.6\.0, older than this app \(0\.7\.0\)\. Update it with wy update\./);
 });

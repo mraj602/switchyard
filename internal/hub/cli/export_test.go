@@ -11,14 +11,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 func TestExportImportUnfreezeCLI(t *testing.T) {
 	ctx := context.Background()
 	srcState := t.TempDir()
-	t.Setenv("SY_STATE_DIR", srcState)
+	t.Setenv("WY_STATE_DIR", srcState)
 	os.WriteFile(filepath.Join(srcState, "pair_pepper"), []byte("pep"), 0o600)
 	os.WriteFile(filepath.Join(srcState, "hub_sign.key"), make([]byte, 32), 0o600)
 	srcDir := t.TempDir()
@@ -58,7 +58,7 @@ func TestExportImportUnfreezeCLI(t *testing.T) {
 	// import needs the passphrase and --yes (no terminal in tests)
 	dstDir := t.TempDir()
 	dstState := t.TempDir()
-	t.Setenv("SY_STATE_DIR", dstState)
+	t.Setenv("WY_STATE_DIR", dstState)
 	dstDB := filepath.Join(dstDir, "hub.db")
 	if _, err := run(t, "import", arch, "--db", dstDB, "--listen", "127.0.0.1:1", "--yes"); err == nil {
 		t.Fatal("encrypted import without a passphrase")
@@ -67,7 +67,7 @@ func TestExportImportUnfreezeCLI(t *testing.T) {
 	if err != nil {
 		t.Fatal(out, err)
 	}
-	if !strings.Contains(out, "sy connect <new url> --keep-token") {
+	if !strings.Contains(out, "wy connect <new url> --keep-token") {
 		t.Errorf("next steps missing: %s", out)
 	}
 	if b, _ := os.ReadFile(filepath.Join(dstState, "pair_pepper")); string(b) != "pep" {
@@ -119,7 +119,7 @@ func TestImportRefusesLiveHubAddress(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{"ok":true}`)) }))
 	defer s.Close()
 	addr := strings.TrimPrefix(s.URL, "http://")
-	t.Setenv("SY_STATE_DIR", t.TempDir())
+	t.Setenv("WY_STATE_DIR", t.TempDir())
 	f := filepath.Join(t.TempDir(), "x.syx")
 	os.WriteFile(f, []byte("x"), 0o600)
 	_, err := run(t, "import", f, "--db", filepath.Join(t.TempDir(), "hub.db"), "--listen", addr, "--yes")

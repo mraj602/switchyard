@@ -9,7 +9,7 @@ import (
 )
 
 // lock takes an exclusive advisory lock on path (creating it) and returns the unlock
-// function. The lock dies with the process, so a crashed sy never leaves it stuck.
+// function. The lock dies with the process, so a crashed wy never leaves it stuck.
 func lock(path string) (func(), error) {
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {

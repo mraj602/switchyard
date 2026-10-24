@@ -100,7 +100,7 @@ func (s *Server) pullMachine(w http.ResponseWriter, r *http.Request, _ *caller) 
 		return
 	}
 	if st := p["state"]; st == "host_key" || st == "refused" {
-		writeErr(w, 409, "conflict", "the pull target needs you first ("+st.(string)+"): fix it with sy hub pull")
+		writeErr(w, 409, "conflict", "the pull target needs you first ("+st.(string)+"): fix it with wy hub pull")
 		return
 	}
 	p["next_at"] = ts(s.opts.Now())

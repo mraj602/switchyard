@@ -11,15 +11,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	hubkeys "github.com/mraj602/watchyard/internal/hub/keys"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 func TestHubKeysShowConfirmAndRevoke(t *testing.T) {
 	state := t.TempDir()
-	t.Setenv("SY_STATE_DIR", state)
+	t.Setenv("WY_STATE_DIR", state)
 	db := filepath.Join(t.TempDir(), "hub.db")
 	ctx := context.Background()
 	st, err := store.Open(ctx, db, store.Options{NoBackupBeforeMigrate: true})

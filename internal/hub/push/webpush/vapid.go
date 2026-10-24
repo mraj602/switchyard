@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // Store keys (push.md 6.2).

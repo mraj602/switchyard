@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/account"
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/clientenv"
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/account"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/clientenv"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 const (
@@ -40,7 +40,7 @@ func (s sentSlot) same(o sentSlot) bool {
 
 // maybeSlotInfo queues a slot_info on SessionStart when the slot's login, label or colour
 // differs from the last one sent for it, or that one is a day old (record.md 4.7). That is
-// how a folder that was logged in again, logged out, or labelled after `sy connect` reaches
+// how a folder that was logged in again, logged out, or labelled after `wy connect` reaches
 // the hub, and the label follows the login to its new seat. It reads only the login the
 // hook already has and one small file. Errors are logged, never returned.
 func maybeSlotInfo(env *clientenv.Env, getenv func(string) string, event string, now time.Time) {

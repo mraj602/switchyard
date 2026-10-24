@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // CookieName is the browser session cookie of the web board.
@@ -162,7 +162,7 @@ func ViaCookie(ctx context.Context) bool {
 	return v
 }
 
-// IsOwnerSession reports whether d is an owner session made by `sy hub owner-link`.
+// IsOwnerSession reports whether d is an owner session made by `wy hub owner-link`.
 func IsOwnerSession(d store.Device) bool { return strings.HasPrefix(d.CreatedBy, "owner-link:") }
 
 // OwnerCreatedBy is the created_by of an owner session made from link code: "owner-link:<code

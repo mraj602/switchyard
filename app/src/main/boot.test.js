@@ -30,7 +30,7 @@ function recordingModules(app, over = {}) {
       start: () => note('background.start'),
       setSettings: async (p) => ({ ...p, set: true }),
     },
-    sy: { flushNow: async () => note('sy.flushNow') },
+    wy: { flushNow: async () => note('wy.flushNow') },
     hub: { start: async () => note('hub.start'), stop: async () => note('hub.stop'), view: () => null, ensureView: async () => note('hub.ensureView') },
     window: { selected: () => 'hub', onSelect: () => () => {}, shell: null },
     tabs: { start: async () => note('tabs.start'), stop: async () => note('tabs.stop'), openLink: () => true },
@@ -77,7 +77,7 @@ test('boot creates the modules in START_ORDER, with paths, security, schemes, ip
   for (const early of ['paths', 'security', 'security.applyGlobal', 'protocol', 'protocol.registerSchemes', 'ipc', 'store', 'autostart', 'background', 'background.claim']) {
     assert.equal(at(early).ready, false, `${early} must run before ready`);
   }
-  for (const later of ['protocol.handle', 'store.load', 'sy', 'hub', 'window', 'state', 'tabs', 'usage', 'tray', 'notify', 'menu', 'background.start']) {
+  for (const later of ['protocol.handle', 'store.load', 'wy', 'hub', 'window', 'state', 'tabs', 'usage', 'tray', 'notify', 'menu', 'background.start']) {
     assert.equal(at(later).ready, true, `${later} must run after ready`);
   }
   // The start order documented in boot.js.
@@ -100,8 +100,8 @@ test('boot creates the modules in START_ORDER, with paths, security, schemes, ip
 
 test('boot wires the deps each module asked for', async () => {
   const { at, handlers } = await run({}, {
-    env: { SY_APP_TEST_CLAUDE_ORIGIN: 'http://127.0.0.1:9', SY_APP_TEST_CADENCE_MS: '2000', HOME: '/h' },
-    testHooks: async () => ({ claudeOrigin: () => 'http://127.0.0.1:9', cadenceMs: () => 2000, syBin: () => '/x/sy', userData: () => null }),
+    env: { WY_APP_TEST_CLAUDE_ORIGIN: 'http://127.0.0.1:9', WY_APP_TEST_CADENCE_MS: '2000', HOME: '/h' },
+    testHooks: async () => ({ claudeOrigin: () => 'http://127.0.0.1:9', cadenceMs: () => 2000, syBin: () => '/x/wy', userData: () => null }),
   });
   assert.equal(at('security').deps.claudeOrigin, 'http://127.0.0.1:9');
   assert.equal(typeof at('store').deps.toast, 'function');
@@ -113,7 +113,7 @@ test('boot wires the deps each module asked for', async () => {
   assert.equal(at('tabs').deps.claudeOrigin, 'http://127.0.0.1:9');
   assert.equal(at('usage').deps.claudeOrigin, 'http://127.0.0.1:9');
   assert.equal(at('usage').deps.cadenceMs, 2000);
-  assert.equal(at('sy').deps.syBin, '/x/sy');
+  assert.equal(at('wy').deps.syBin, '/x/wy');
   assert.ok(at('state').deps.hub && at('state').deps.store);
   assert.match(at('tray').deps.assetsDir, /assets$/);
   const menu = at('menu').deps;
@@ -166,7 +166,7 @@ test('every module of the skeleton exports create()', () => {
   for (const [name, mod] of Object.entries(MODULES)) assert.equal(typeof mod.create, 'function', name);
 });
 
-test('only main/index.js imports electron, and only main/sy/ imports child_process', () => {
+test('only main/index.js imports electron, and only main/wy/ imports child_process', () => {
   const src = fileURLToPath(new URL('..', import.meta.url));
   const files = [];
   const walk = (d) => {
@@ -183,7 +183,7 @@ test('only main/index.js imports electron, and only main/sy/ imports child_proce
     const importsElectron = /from\s+['"]electron['"]|import\(\s*['"]electron['"]\s*\)|require\(\s*['"]electron['"]\s*\)/.test(text);
     if (importsElectron) assert.ok(rel === 'main/index.js' || rel === 'preload/shell.cjs', `${rel} imports electron`);
     const importsCp = /['"](node:)?child_process['"]/.test(text);
-    if (importsCp) assert.ok(rel.startsWith('main/sy/'), `${rel} imports child_process`);
+    if (importsCp) assert.ok(rel.startsWith('main/wy/'), `${rel} imports child_process`);
   }
 });
 
@@ -220,10 +220,10 @@ test('fake electron: safeStorage, ipcMain, protocol, sessions and recording', as
   view.webContents.on('will-navigate', (e) => e.preventDefault());
   assert.equal(view.webContents._cancellable('will-navigate', 'https://example.com'), true);
 
-  assert.equal(app.getPath('userData'), '/fake/appData/Switchyard');
-  app.setPath('userData', '/fake/appData/switchyard-desktop');
+  assert.equal(app.getPath('userData'), '/fake/appData/Watchyard');
+  app.setPath('userData', '/fake/appData/watchyard-desktop');
   app._ready();
   assert.throws(() => app.setPath('userData', '/elsewhere'));
-  assert.deepEqual(a.callsOf('app.setPath')[0], ['userData', '/fake/appData/switchyard-desktop']);
+  assert.deepEqual(a.callsOf('app.setPath')[0], ['userData', '/fake/appData/watchyard-desktop']);
   assert.equal(a.callsOf('safeStorage.encryptString')[0].length, 0, 'secrets are never recorded');
 });

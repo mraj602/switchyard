@@ -1,6 +1,6 @@
 #!/bin/sh
-# Transcript test for /switchyard:setup: runs `claude -p` with
-# the plugin folder and a fake `sy` that records its argv, then checks that the dry run came
+# Transcript test for /watchyard:setup: runs `claude -p` with
+# the plugin folder and a fake `wy` that records its argv, then checks that the dry run came
 # before the apply and that --expect-plan <id> was passed. Spends a little real Claude usage
 # and needs a logged-in `claude`, so it is run by hand, not by run.sh.
 #
@@ -12,20 +12,20 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/bin"
 log=$tmp/argv.log
-cat > "$tmp/bin/sy" <<EOF
+cat > "$tmp/bin/wy" <<EOF
 #!/bin/sh
 echo "\$*" >> "$log"
 case "\$*" in
-	"--version") echo "sy 0.0.0-fake" ;;
+	"--version") echo "wy 0.0.0-fake" ;;
 	*--detect*) echo '{"claude":{"version":"2.1.296"},"folders":[{"path":"~/.claude","logged_in":true}],"hub":{"connected":false}}' ;;
 	*--dry-run*) echo "plan: 1 change" >&2; echo '{"plan_id":"p_fake123","actions":[{"op":"write"}],"needs":[],"summary":{"changes":1,"links_changed":0}}' ;;
 	*--yes*) echo '{"applied":true,"needs":[]}' ;;
 esac
 EOF
-chmod +x "$tmp/bin/sy"
-PATH=$tmp/bin:$PATH "$claude" -p --plugin-dir "$src/plugin/switchyard" \
-	--allowedTools 'Bash(sy:*)' 'Bash(command -v sy)' \
-	'/switchyard:setup Use the defaults for everything (hub later, default sharing, no labels, no new accounts) and answer yes to applying the plan.' \
+chmod +x "$tmp/bin/wy"
+PATH=$tmp/bin:$PATH "$claude" -p --plugin-dir "$src/plugin/watchyard" \
+	--allowedTools 'Bash(wy:*)' 'Bash(command -v wy)' \
+	'/watchyard:setup Use the defaults for everything (hub later, default sharing, no labels, no new accounts) and answer yes to applying the plan.' \
 	>"$tmp/transcript.txt" 2>&1 || true
 cat "$log"
 dry=$(grep -n -- '--dry-run' "$log" | head -n 1 | cut -d: -f1)

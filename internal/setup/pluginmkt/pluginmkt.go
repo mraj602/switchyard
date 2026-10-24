@@ -1,9 +1,9 @@
-// Package pluginmkt writes the local directory marketplace `sy` owns (`sy-local`, setup.md
-// 5.2) from the embedded plugin and installs, enables, disables and removes the switchyard
+// Package pluginmkt writes the local directory marketplace `wy` owns (`wy-local`, setup.md
+// 5.2) from the embedded plugin and installs, enables, disables and removes the watchyard
 // plugin through a claudecli.Runner. It implements model.PluginInstaller.
 //
 // The marketplace folder is written to a temporary sibling and renamed into place, so Claude
-// Code never sees a half-written tree. Every hook command in the copy calls `sy` by absolute
+// Code never sees a half-written tree. Every hook command in the copy calls `wy` by absolute
 // path (hooks then work when Claude Code is started without ~/.local/bin on PATH).
 //
 // Depends on: plugin (embed), claudecli, model.
@@ -25,22 +25,22 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/claudecli"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/plugin"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/claudecli"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/plugin"
 )
 
 // Names fixed by setup.md 5.2 (and, for the pane, docs/spec/terminal.md T5).
 const (
 	MarketplaceName = brand.Marketplace
-	PluginName      = plugin.Name // "switchyard"
+	PluginName      = plugin.Name // "watchyard"
 	PluginID        = PluginName + "@" + MarketplaceName
-	PaneName        = plugin.PaneName // "switchyard-pane"
+	PaneName        = plugin.PaneName // "watchyard-pane"
 	PaneID          = PaneName + "@" + MarketplaceName
 )
 
-// LegacyIDs maps the sy-local plugin ids of the project's name before a rename (the plugin
+// LegacyIDs maps the wy-local plugin ids of the project's name before a rename (the plugin
 // and the pane mod) to the current ones; nil when there was no rename (rename.md 2.4).
 func LegacyIDs() map[string]string {
 	ids := brand.LegacyPluginIDs()
@@ -80,15 +80,15 @@ func (i *Installer) paneSource() fs.FS {
 
 // ---- hooks.json rewrite ------------------------------------------------------------------------
 
-// hookPrefix is how the embedded hooks call sy: it must be on PATH.
-const hookPrefix = "command -v sy >/dev/null 2>&1 && sy "
+// hookPrefix is how the embedded hooks call wy: it must be on PATH.
+const hookPrefix = "command -v wy >/dev/null 2>&1 && wy "
 
 // shellQuote single-quotes s for sh.
 func shellQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }
 
-// HookCommand rewrites one embedded hook command to call sy by absolute path:
-// `command -v sy >/dev/null 2>&1 && sy hook Stop || true` becomes
-// `[ -x '/home/u/.local/bin/sy' ] && '/home/u/.local/bin/sy' hook Stop || true`.
+// HookCommand rewrites one embedded hook command to call wy by absolute path:
+// `command -v wy >/dev/null 2>&1 && wy hook Stop || true` becomes
+// `[ -x '/home/u/.local/bin/wy' ] && '/home/u/.local/bin/wy' hook Stop || true`.
 // On Windows the path is written with forward slashes (hooks run under a POSIX shell).
 func HookCommand(cmd, syPath string) (string, error) {
 	rest, ok := strings.CutPrefix(cmd, hookPrefix)
@@ -172,12 +172,12 @@ func setVersion(doc []byte, version string) []byte {
 	})
 }
 
-// MarketplaceJSON renders .claude-plugin/marketplace.json. It lists both plugins: switchyard
-// and the opt-in pane mod, which is installed only by `sy term setup --pane`.
+// MarketplaceJSON renders .claude-plugin/marketplace.json. It lists both plugins: watchyard
+// and the opt-in pane mod, which is installed only by `wy term setup --pane`.
 func MarketplaceJSON(version, description, paneDescription string) []byte {
 	doc := fmt.Sprintf(`{
   "name": %s,
-  "owner": {"name": "switchyard"},
+  "owner": {"name": "watchyard"},
   "metadata": {"description": %s, "version": %s},
   "plugins": [
     {
@@ -194,7 +194,7 @@ func MarketplaceJSON(version, description, paneDescription string) []byte {
     }
   ]
 }
-`, jsonString(MarketplaceName), jsonString("Local marketplace written by sy setup"), jsonString(version),
+`, jsonString(MarketplaceName), jsonString("Local marketplace written by wy setup"), jsonString(version),
 		jsonString(PluginName), PluginName, jsonString(description), jsonString(version),
 		jsonString(PaneName), PaneName, jsonString(paneDescription), jsonString(version))
 	return []byte(doc)
@@ -225,7 +225,7 @@ func (i *Installer) WriteMarketplace(dir, syPath, version string) error {
 		return fmt.Errorf("pluginmkt: marketplace folder %q is not absolute", dir)
 	}
 	if !filepath.IsAbs(syPath) {
-		return fmt.Errorf("pluginmkt: sy path %q is not absolute", syPath)
+		return fmt.Errorf("pluginmkt: wy path %q is not absolute", syPath)
 	}
 	sep := string(os.PathListSeparator)
 	if runtime.GOOS == "windows" {
@@ -253,8 +253,8 @@ func (i *Installer) WriteMarketplace(dir, syPath, version string) error {
 	}
 
 	pane := i.paneSource()
-	desc := manifestDescription(src, "Switchyard for Claude Code")
-	paneDesc := manifestDescription(pane, "Switchyard session board pane")
+	desc := manifestDescription(src, "Watchyard for Claude Code")
+	paneDesc := manifestDescription(pane, "Watchyard session board pane")
 	mj := filepath.Join(tmp, ".claude-plugin", "marketplace.json")
 	if err := writeFile(mj, MarketplaceJSON(version, desc, paneDesc), 0o644); err != nil {
 		return cleanup(err)
@@ -370,8 +370,8 @@ func samePath(a, b string) bool {
 }
 
 // Install implements model.PluginInstaller: `marketplace add <dir>` (or `marketplace update`
-// when sy-local is already known for this root from the same folder), then `install
-// switchyard@sy-local`. It always runs install, even when the plugin is listed, because
+// when wy-local is already known for this root from the same folder), then `install
+// watchyard@wy-local`. It always runs install, even when the plugin is listed, because
 // installing from the folder that owns the root makes installPath canonical (5.2).
 func (i *Installer) Install(ctx context.Context, folder claudecli.Folder, marketplaceDir string) error {
 	known, err := i.Runner.PluginMarketplaceList(ctx, folder)
@@ -408,9 +408,9 @@ func (i *Installer) Install(ctx context.Context, folder claudecli.Folder, market
 	return check(res, err, "claude plugin install "+PluginID)
 }
 
-// Update is `sy update`'s plugin step for one plugin root, run as the folder that owns it
-// (setup.md 5.2, machines.md 7.3 step 7): `claude plugin marketplace update sy-local`, then
-// `claude plugin update switchyard@sy-local`. WriteMarketplace has rewritten the folder for
+// Update is `wy update`'s plugin step for one plugin root, run as the folder that owns it
+// (setup.md 5.2, machines.md 7.3 step 7): `claude plugin marketplace update wy-local`, then
+// `claude plugin update watchyard@wy-local`. WriteMarketplace has rewritten the folder for
 // the new version first.
 func (i *Installer) Update(ctx context.Context, folder claudecli.Folder) error {
 	res, err := i.Runner.PluginMarketplaceUpdate(ctx, folder, MarketplaceName)
@@ -421,7 +421,7 @@ func (i *Installer) Update(ctx context.Context, folder claudecli.Folder) error {
 	return check(res, err, "claude plugin update "+PluginID)
 }
 
-// RemoveLegacy uninstalls, from folder's plugin root, the sy-local plugins of the project's
+// RemoveLegacy uninstalls, from folder's plugin root, the wy-local plugins of the project's
 // name before a rename and returns the current ids that replace them (rename.md 2.4). Run it
 // before WriteMarketplace drops the old plugin folders, then InstallCurrent after.
 func (i *Installer) RemoveLegacy(ctx context.Context, folder claudecli.Folder) ([]string, error) {
@@ -466,7 +466,7 @@ func (i *Installer) RemoveLegacy(ctx context.Context, folder claudecli.Folder) (
 }
 
 // InstallCurrent installs ids (from RemoveLegacy) from the rewritten marketplace at dir:
-// `claude plugin marketplace update sy-local` (`add <dir>` when this root does not know it
+// `claude plugin marketplace update wy-local` (`add <dir>` when this root does not know it
 // yet, after a rename of the command), then `claude plugin install <id>` for each.
 func (i *Installer) InstallCurrent(ctx context.Context, folder claudecli.Folder, dir string, ids []string) error {
 	known, err := i.Runner.PluginMarketplaceList(ctx, folder)
@@ -510,8 +510,8 @@ func (i *Installer) Disable(ctx context.Context, folder claudecli.Folder, id str
 	return check(res, err, "claude plugin disable "+id)
 }
 
-// Uninstall implements model.PluginInstaller: `uninstall switchyard@sy-local`, then
-// `marketplace remove sy-local`, each only if present (a repeated uninstall is not an error).
+// Uninstall implements model.PluginInstaller: `uninstall watchyard@wy-local`, then
+// `marketplace remove wy-local`, each only if present (a repeated uninstall is not an error).
 // Claude Code removes the record for every folder sharing folder's plugin root, so callers
 // run it once per root.
 func (i *Installer) Uninstall(ctx context.Context, folder claudecli.Folder) error {
@@ -542,7 +542,7 @@ func (i *Installer) Uninstall(ctx context.Context, folder claudecli.Folder) erro
 }
 
 // HooksEvents lists the events and matchers of a hooks.json as "Event" or "Event[matcher]"
-// strings, sorted (for tests and `sy doctor`).
+// strings, sorted (for tests and `wy doctor`).
 func HooksEvents(hooksJSON []byte) ([]string, error) {
 	var doc struct {
 		Hooks map[string][]struct {

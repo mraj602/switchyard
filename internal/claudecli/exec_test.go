@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 		name = "claude.exe"
 	}
 	fakeBin = filepath.Join(dir, name)
-	cmd := exec.Command("go", "build", "-o", fakeBin, "github.com/mraj602/switchyard/test/e2e/setup/fakeclaude")
+	cmd := exec.Command("go", "build", "-o", fakeBin, "github.com/mraj602/watchyard/test/e2e/setup/fakeclaude")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		fakeBuild = errors.New(strings.TrimSpace(string(out)) + ": " + err.Error())
 	}
@@ -67,9 +67,9 @@ func (r *rig) marketplace() string {
 	r.t.Helper()
 	dir := filepath.Join(r.home, "mkt")
 	for p, c := range map[string]string{
-		".claude-plugin/marketplace.json":               `{"name":"sy-local","owner":{"name":"x"},"plugins":[{"name":"switchyard","source":"./plugins/switchyard"}]}`,
-		"plugins/switchyard/.claude-plugin/plugin.json": `{"name":"switchyard","version":"1.2.3"}`,
-		"plugins/switchyard/hooks/hooks.json":           `{"hooks":{}}`,
+		".claude-plugin/marketplace.json":              `{"name":"wy-local","owner":{"name":"x"},"plugins":[{"name":"watchyard","source":"./plugins/watchyard"}]}`,
+		"plugins/watchyard/.claude-plugin/plugin.json": `{"name":"watchyard","version":"1.2.3"}`,
+		"plugins/watchyard/hooks/hooks.json":           `{"hooks":{}}`,
 	} {
 		full := filepath.Join(dir, filepath.FromSlash(p))
 		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
@@ -161,45 +161,45 @@ func TestExecPluginFlow(t *testing.T) {
 	}
 
 	res, err := r.x.PluginMarketplaceAdd(ctx, owner, mkt)
-	if err != nil || !res.OK() || len(res.Raw) == 0 || !strings.Contains(res.Message, "sy-local") {
+	if err != nil || !res.OK() || len(res.Raw) == 0 || !strings.Contains(res.Message, "wy-local") {
 		t.Fatalf("%+v %v", res, err)
 	}
 	ms, err := r.x.PluginMarketplaceList(ctx, owner)
-	if err != nil || len(ms) != 1 || ms[0].Name != "sy-local" || ms[0].Source != mkt {
+	if err != nil || len(ms) != 1 || ms[0].Name != "wy-local" || ms[0].Source != mkt {
 		t.Fatalf("%+v %v", ms, err)
 	}
-	if res, err = r.x.PluginInstall(ctx, owner, "switchyard@sy-local"); err != nil || !res.OK() {
+	if res, err = r.x.PluginInstall(ctx, owner, "watchyard@wy-local"); err != nil || !res.OK() {
 		t.Fatalf("%+v %v", res, err)
 	}
 	ps, err := r.x.PluginList(ctx, owner)
-	if err != nil || len(ps) != 1 || ps[0].ID != "switchyard@sy-local" || !ps[0].Enabled || ps[0].Version != "1.2.3" || ps[0].Scope != "user" {
+	if err != nil || len(ps) != 1 || ps[0].ID != "watchyard@wy-local" || !ps[0].Enabled || ps[0].Version != "1.2.3" || ps[0].Scope != "user" {
 		t.Fatalf("%+v %v", ps, err)
 	}
-	if _, err = r.x.PluginDisable(ctx, owner, "switchyard@sy-local"); err != nil {
+	if _, err = r.x.PluginDisable(ctx, owner, "watchyard@wy-local"); err != nil {
 		t.Fatal(err)
 	}
 	if ps, _ = r.x.PluginList(ctx, owner); ps[0].Enabled {
 		t.Fatal("still enabled")
 	}
-	if _, err = r.x.PluginEnable(ctx, owner, "switchyard@sy-local"); err != nil {
+	if _, err = r.x.PluginEnable(ctx, owner, "watchyard@wy-local"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = r.x.PluginMarketplaceUpdate(ctx, owner, "sy-local"); err != nil {
+	if _, err = r.x.PluginMarketplaceUpdate(ctx, owner, "wy-local"); err != nil {
 		t.Fatal(err)
 	}
 	// a failed command is an *Error with the JSON message
-	_, err = r.x.PluginInstall(ctx, owner, "nope@sy-local")
+	_, err = r.x.PluginInstall(ctx, owner, "nope@wy-local")
 	var ce *Error
 	if !errors.As(err, &ce) || ce.ExitCode != 1 || ce.Outcome != "failed" || ce.FailureCode != "not_found" || !strings.Contains(ce.Message, "not found") {
 		t.Fatalf("got %#v", err)
 	}
-	if _, err = r.x.PluginUninstall(ctx, owner, "switchyard@sy-local"); err != nil {
+	if _, err = r.x.PluginUninstall(ctx, owner, "watchyard@wy-local"); err != nil {
 		t.Fatal(err)
 	}
 	if ps, _ = r.x.PluginList(ctx, owner); len(ps) != 0 {
 		t.Fatal(ps)
 	}
-	if _, err = r.x.PluginMarketplaceRemove(ctx, owner, "sy-local"); err != nil {
+	if _, err = r.x.PluginMarketplaceRemove(ctx, owner, "wy-local"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -300,13 +300,13 @@ func TestLocate(t *testing.T) {
 // TestResultParsing feeds recorded Claude Code 2.1.296 outcome lines to result().
 func TestResultParsing(t *testing.T) {
 	const (
-		okInstall = `{"command":"install","outcome":"ok","plugin":"switchyard@sy-local","pluginId":"switchyard@sy-local","scope":"user","message":"Successfully installed plugin: switchyard@sy-local (scope: user)"}`
-		okMarket  = `{"command":"marketplace-add","outcome":"ok","marketplace":"sy-local","message":"Successfully added marketplace: sy-local (declared in user settings)"}`
-		alEnable  = `{"command":"enable","outcome":"failed","plugin":"switchyard@sy-local","message":"Plugin \"switchyard@sy-local\" is already enabled","failureCode":"already_in_goal_state","alreadyInGoalState":true}`
-		alDisable = `{"command":"disable","outcome":"failed","plugin":"switchyard@sy-local","message":"Plugin \"switchyard@sy-local\" is already disabled","failureCode":"already_in_goal_state","alreadyInGoalState":true}`
-		notInst   = `{"command":"uninstall","outcome":"failed","plugin":"switchyard@sy-local","scope":"user","message":"Plugin \"switchyard@sy-local\" not found in installed plugins","failureCode":"not_installed"}`
-		notFound  = `{"command":"install","outcome":"failed","plugin":"x@sy-local","scope":"user","message":"Plugin \"x\" not found in marketplace \"sy-local\".","failureCode":"not_found"}`
-		notConf   = `{"command":"marketplace-remove","marketplace":"sy-local","outcome":"failed","message":"Marketplace 'sy-local' not found","failureCode":"not_configured"}`
+		okInstall = `{"command":"install","outcome":"ok","plugin":"watchyard@wy-local","pluginId":"watchyard@wy-local","scope":"user","message":"Successfully installed plugin: watchyard@wy-local (scope: user)"}`
+		okMarket  = `{"command":"marketplace-add","outcome":"ok","marketplace":"wy-local","message":"Successfully added marketplace: wy-local (declared in user settings)"}`
+		alEnable  = `{"command":"enable","outcome":"failed","plugin":"watchyard@wy-local","message":"Plugin \"watchyard@wy-local\" is already enabled","failureCode":"already_in_goal_state","alreadyInGoalState":true}`
+		alDisable = `{"command":"disable","outcome":"failed","plugin":"watchyard@wy-local","message":"Plugin \"watchyard@wy-local\" is already disabled","failureCode":"already_in_goal_state","alreadyInGoalState":true}`
+		notInst   = `{"command":"uninstall","outcome":"failed","plugin":"watchyard@wy-local","scope":"user","message":"Plugin \"watchyard@wy-local\" not found in installed plugins","failureCode":"not_installed"}`
+		notFound  = `{"command":"install","outcome":"failed","plugin":"x@wy-local","scope":"user","message":"Plugin \"x\" not found in marketplace \"wy-local\".","failureCode":"not_found"}`
+		notConf   = `{"command":"marketplace-remove","marketplace":"wy-local","outcome":"failed","message":"Marketplace 'wy-local' not found","failureCode":"not_configured"}`
 	)
 	cases := []struct {
 		name        string
@@ -354,7 +354,7 @@ func TestExecIdempotentPluginCommands(t *testing.T) {
 	r := newRig(t)
 	ctx := context.Background()
 	f := r.folder(".claude")
-	const id = "switchyard@sy-local"
+	const id = "watchyard@wy-local"
 	mkt := r.marketplace()
 	for i := 0; i < 2; i++ {
 		if res, err := r.x.PluginMarketplaceAdd(ctx, f, mkt); err != nil || !res.OK() {
@@ -381,13 +381,13 @@ func TestExecIdempotentPluginCommands(t *testing.T) {
 		}
 	}
 	for i := 0; i < 2; i++ {
-		res, err := r.x.PluginMarketplaceRemove(ctx, f, "sy-local")
+		res, err := r.x.PluginMarketplaceRemove(ctx, f, "wy-local")
 		if err != nil || !res.OK() || res.AlreadyInGoalState != (i == 1) {
 			t.Fatalf("marketplace remove #%d: %+v %v", i, res, err)
 		}
 	}
 	// a real failure is still an error, with the failure code
-	_, err := r.x.PluginInstall(ctx, f, "nope@sy-local")
+	_, err := r.x.PluginInstall(ctx, f, "nope@wy-local")
 	var ce *Error
 	if !errors.As(err, &ce) || ce.FailureCode != "not_found" {
 		t.Fatalf("got %#v", err)

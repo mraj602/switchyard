@@ -1,6 +1,6 @@
 {
   "platforms": ["android"],
   "android": {
-    "modules": ["dev.switchyard.link.SyLinkModule"]
+    "modules": ["dev.watchyard.link.SyLinkModule"]
   }
 }

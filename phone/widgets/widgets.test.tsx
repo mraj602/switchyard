@@ -64,7 +64,7 @@ describe('NeedsYouSmall', () => {
     const timer = allOf(tree, 'SwiftUI.Text').find((x) => x.props.dateStyle === 'timer')!;
     expect(timer.props.dateStyle).toBe('timer');
     expect((timer.props.date as Date).toISOString()).toBe(snapshot.next_reset!.resets_at);
-    expect(callsOf('SwiftUI.modifier.widgetURL')[0]?.args).toEqual(['switchyard://now']);
+    expect(callsOf('SwiftUI.modifier.widgetURL')[0]?.args).toEqual(['watchyard://now']);
   });
 
   it('private mode shows no project', () => {
@@ -84,7 +84,7 @@ describe('NeedsYouSmall', () => {
 
   it('says to open the app when there is no snapshot', () => {
     const tree = render(NeedsYouSmall, { snapshot: null, reset: [], stale: null, next: null, rows: [] });
-    expect(texts(tree)).toContain('Open Switchyard to set up');
+    expect(texts(tree)).toContain('Open Watchyard to set up');
   });
 });
 
@@ -111,7 +111,7 @@ describe('AccountsMedium', () => {
   });
 
   it('says to open the app when there is no snapshot', () => {
-    expect(texts(render(AccountsMedium, { snapshot: null, reset: [], stale: null, next: null, rows: [] }))).toContain('Open Switchyard to set up');
+    expect(texts(render(AccountsMedium, { snapshot: null, reset: [], stale: null, next: null, rows: [] }))).toContain('Open Watchyard to set up');
   });
 });
 
@@ -164,7 +164,7 @@ describe('iOS adapter', () => {
     expect(await startCountdown(live, 'seat_client')).toBe('started');
     expect(await startCountdown({ ...live, pct: 99 }, 'seat_client')).toBe('updated');
     expect(callsOf('widgets.activity.start')).toHaveLength(1);
-    expect(callsOf('widgets.activity.start')[0]!.args[2]).toBe('switchyard://accounts?seat=seat_client');
+    expect(callsOf('widgets.activity.start')[0]!.args[2]).toBe('watchyard://accounts?seat=seat_client');
     expect(widgetsState.activities).toHaveLength(1);
     expect(callsOf('widgets.activity.update')).toHaveLength(1);
     // A stray second activity (say, from an older run) is ended on the next start.
@@ -178,7 +178,7 @@ describe('iOS adapter', () => {
     expect(await syncCountdown(snapshot, NOW, false)).toBe('none');
     expect(widgetsState.activities).toHaveLength(0);
     expect(await syncCountdown(snapshot, NOW, true)).toBe('started');
-    expect(callsOf('widgets.activity.start')[0]!.args[2]).toBe('switchyard://accounts?seat=seat_client');
+    expect(callsOf('widgets.activity.start')[0]!.args[2]).toBe('watchyard://accounts?seat=seat_client');
     expect(await syncCountdown(snapshot, NOW + 1000, false)).toBe('updated');
     expect(widgetsState.activities).toHaveLength(1);
     const resetMs = Date.parse(live.resets_at);
@@ -209,7 +209,7 @@ describe('iOS adapter', () => {
 
 describe('Android widgets', () => {
   const memory = (init?: string): KVStore & { m: Map<string, string> } => {
-    const m = new Map<string, string>(init === undefined ? [] : [['sy.widget.v1', init]]);
+    const m = new Map<string, string>(init === undefined ? [] : [['wy.widget.v1', init]]);
     return { m, getItem: async (k) => m.get(k) ?? null, setItem: async (k, v) => void m.set(k, v), removeItem: async (k) => void m.delete(k) };
   };
   const aTexts = (n: TestInstance) => allOf(n, 'Android.TextWidget').map((t) => String(t.props.text));
@@ -220,10 +220,10 @@ describe('Android widgets', () => {
   it('SySessions shows running, needs input and done, the needs-you highlight and "updated 3 min ago"', () => {
     const tree = renderWidget(<SySessions {...androidProps(snapshot, AGO, 'UTC')} />);
     expect(tree.type).toBe('Android.FlexWidget');
-    expect(tree.props.clickActionData).toEqual({ uri: 'switchyard://sessions' });
+    expect(tree.props.clickActionData).toEqual({ uri: 'watchyard://sessions' });
     const t = aTexts(tree);
-    expect(t).toEqual(['Switchyard · Sessions', 'updated 3 min ago', '5', 'Running', '3', 'Needs input', '3', 'Done', 'Needs you: data-pipeline · failed']);
-    expect(uris(tree)).toEqual(expect.arrayContaining(['switchyard://sessions?filter=working', 'switchyard://now', 'switchyard://sessions?filter=done']));
+    expect(t).toEqual(['Watchyard · Sessions', 'updated 3 min ago', '5', 'Running', '3', 'Needs input', '3', 'Done', 'Needs you: data-pipeline · failed']);
+    expect(uris(tree)).toEqual(expect.arrayContaining(['watchyard://sessions?filter=working', 'watchyard://now', 'watchyard://sessions?filter=done']));
   });
 
   it('SySessions in private mode names no project, and has no highlight when nothing needs you', () => {
@@ -235,8 +235,8 @@ describe('Android widgets', () => {
   it('SyLimits shows every account with its tighter window, % and reset time, and "updated 3 min ago"', () => {
     const tree = renderWidget(<SyLimits {...androidProps(snapshot, AGO, 'UTC', 400)} />);
     const t = aTexts(tree);
-    expect(t).toEqual(expect.arrayContaining(['Switchyard · Limits', 'updated 3 min ago', '5 h', '7 d', 'personal', '62%', 'resets 08:07', 'work', 'client', '100%', 'resets 06:36', 'research']));
-    expect(uris(tree)).toContain('switchyard://accounts?seat=seat_client');
+    expect(t).toEqual(expect.arrayContaining(['Watchyard · Limits', 'updated 3 min ago', '5 h', '7 d', 'personal', '62%', 'resets 08:07', 'work', 'client', '100%', 'resets 06:36', 'research']));
+    expect(uris(tree)).toContain('watchyard://accounts?seat=seat_client');
   });
 
   it('SyLimits draws only the rows that fit the height', () => {
@@ -261,12 +261,12 @@ describe('Android widgets', () => {
     expect(it).toEqual(expect.arrayContaining(['claude-5', '0%', 'not started']));
   });
 
-  it('both widgets say "Open Switchyard once to load" only without a snapshot, and tap opens Now', () => {
+  it('both widgets say "Open Watchyard once to load" only without a snapshot, and tap opens Now', () => {
     for (const C of [SyLimits, SySessions]) {
       const none = renderWidget(<C {...androidProps(null, NOW)} />);
-      expect(aTexts(none)).toContain('Open Switchyard once to load');
-      expect(none.props.clickActionData).toEqual({ uri: 'switchyard://now' });
-      expect(aTexts(renderWidget(<C {...androidProps(snapshot, NOW)} />)).join('|')).not.toContain('Open Switchyard');
+      expect(aTexts(none)).toContain('Open Watchyard once to load');
+      expect(none.props.clickActionData).toEqual({ uri: 'watchyard://now' });
+      expect(aTexts(renderWidget(<C {...androidProps(snapshot, NOW)} />)).join('|')).not.toContain('Open Watchyard');
     }
   });
 
@@ -283,12 +283,12 @@ describe('Android widgets', () => {
     expect(aTexts(renderWidget(rendered[2]!)).filter((x) => x.endsWith('%'))).toHaveLength(1);
   });
 
-  it('the task handler says "Open Switchyard once to load" with no snapshot (and with a broken one)', async () => {
+  it('the task handler says "Open Watchyard once to load" with no snapshot (and with a broken one)', async () => {
     for (const store of [memory(), memory('{"v":1}')]) {
       const handler = createTaskHandler({ store, now: () => NOW });
       const rendered: React.ReactElement[] = [];
       await handler({ widgetInfo: info('SySessions'), widgetAction: 'WIDGET_UPDATE', renderWidget: (w: unknown) => void rendered.push(w as React.ReactElement) } as never);
-      expect(aTexts(renderWidget(rendered[0]!))).toContain('Open Switchyard once to load');
+      expect(aTexts(renderWidget(rendered[0]!))).toContain('Open Watchyard once to load');
     }
   });
 
@@ -321,7 +321,7 @@ describe('Android widgets', () => {
     const spy = jest.replaceProperty(Platform, 'OS', 'android');
     const store = memory();
     await updateAndroidWidgets(snapshot, { store, now: () => NOW, tz: 'UTC' });
-    expect(JSON.parse(store.m.get('sy.widget.v1')!)).toEqual(snapshot);
+    expect(JSON.parse(store.m.get('wy.widget.v1')!)).toEqual(snapshot);
     expect(callsOf('androidWidget.requestWidgetUpdate').map((c) => (c.args[0] as { widgetName: string }).widgetName)).toEqual(['SyLimits', 'SySessions', 'SyNeeds', 'SyRing', 'SyNextReset', 'SyMachines']);
     await clearAndroidWidgets({ store, now: () => NOW });
     expect(store.m.size).toBe(0);

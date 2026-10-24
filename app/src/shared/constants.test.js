@@ -27,8 +27,8 @@ test('tab ids, partitions and folder names follow C1', () => {
   }
   assert.equal(C.TAB_PARTITION_PREFIX + 't_9c1e5f0a7b2d4e68', 'persist:tab-t_9c1e5f0a7b2d4e68');
   assert.equal(C.HUB_PARTITION, 'persist:sy-hub');
-  assert.equal(C.USER_DATA_DIRNAME, 'switchyard-desktop');
-  assert.equal(C.DESKTOP_ENTRY, 'switchyard-desktop.desktop');
+  assert.equal(C.USER_DATA_DIRNAME, 'watchyard-desktop');
+  assert.equal(C.DESKTOP_ENTRY, 'watchyard-desktop.desktop');
 });
 
 test('web preferences and permissions are the C2 baseline', () => {
@@ -51,11 +51,11 @@ test('the cadence and backoff are those of C5', () => {
 
 test('the package pins exact versions and names minSy', () => {
   const pkg = JSON.parse(read('../../package.json'));
-  assert.equal(pkg.name, 'switchyard-desktop');
-  assert.equal(pkg.productName, 'Switchyard');
+  assert.equal(pkg.name, 'watchyard-desktop');
+  assert.equal(pkg.productName, 'Watchyard');
   assert.equal(pkg.type, 'module');
   assert.equal(pkg.main, 'src/main/index.js');
-  assert.equal(pkg.switchyard.minSy, '0.6.0');
+  assert.equal(pkg.watchyard.minSy, '0.6.0');
   assert.equal(pkg.dependencies, undefined, 'no runtime dependencies');
   assert.deepEqual(Object.keys(pkg.devDependencies).sort(), ['@electron/fuses', 'electron', 'electron-builder', 'playwright-core']);
   for (const [n, v] of Object.entries(pkg.devDependencies)) assert.match(v, /^\d+\.\d+\.\d+$/, `${n} must be pinned exactly`);

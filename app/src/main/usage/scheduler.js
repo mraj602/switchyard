@@ -1,5 +1,5 @@
 // The reading scheduler (C5 cadence): per-tab timers on an injectable clock. It knows nothing
-// about claude.ai or sy; it asks `read(id, ctx)` to do a read and acts on the outcome:
+// about claude.ai or wy; it asks `read(id, ctx)` to do a read and acts on the outcome:
 //
 //   {type: 'ok'}                 reset the backoff, next periodic read
 //   {type: 'retry'}              back off 5, 10, 20, 40, then 60 min (plus jitter)

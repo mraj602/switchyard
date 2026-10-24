@@ -37,7 +37,7 @@ function get(): Handles {
   return handles;
 }
 
-/** Writes the timeline of both widgets (snapshot null: "Open Switchyard to set up"). */
+/** Writes the timeline of both widgets (snapshot null: "Open Watchyard to set up"). */
 export function updateTimelines(snapshot: WidgetSnapshot | null, now: number, tz?: string): void {
   if (!isIos()) return;
   const h = get();
@@ -48,7 +48,7 @@ export function updateTimelines(snapshot: WidgetSnapshot | null, now: number, tz
 
 /** The deep link a countdown opens (P7): the account card. */
 export function countdownUrl(seatId: string | undefined): string {
-  return seatId ? `switchyard://accounts?seat=${encodeURIComponent(seatId)}` : 'switchyard://accounts';
+  return seatId ? `watchyard://accounts?seat=${encodeURIComponent(seatId)}` : 'watchyard://accounts';
 }
 
 export type CountdownResult = 'started' | 'updated' | 'ended' | 'none';

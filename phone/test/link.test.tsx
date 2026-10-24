@@ -223,7 +223,7 @@ describe('applyLinkRefresh', () => {
   it('the Android widget handler draws the stored snapshot with the link refresh on top', async () => {
     const store = memoryKV();
     const snap = base();
-    await store.setItem('sy.widget.v1', JSON.stringify(snap));
+    await store.setItem('wy.widget.v1', JSON.stringify(snap));
     const linkRefresh = jest.fn(async () => ({ v: 1 as const, needs_you: 7, seats: [], ts: new Date(NOW + 1000).toISOString() }));
     const rendered: unknown[] = [];
     const handler = createTaskHandler({ store, now: () => NOW + 1000, linkRefresh });

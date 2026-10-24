@@ -21,7 +21,7 @@ import (
 const (
 	// DefaultIter is the PBKDF2-SHA256 iteration count of a new sealed file (OWASP 2023).
 	DefaultIter = 600_000
-	// MinPassphrase is the shortest passphrase sy takes, in characters.
+	// MinPassphrase is the shortest passphrase wy takes, in characters.
 	MinPassphrase = 12
 	// maxIter bounds what a damaged or hostile file can make us compute.
 	maxIter   = 50_000_000

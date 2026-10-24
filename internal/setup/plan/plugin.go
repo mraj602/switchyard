@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 const pluginCacheEnv = "CLAUDE_CODE_PLUGIN_CACHE_DIR"
@@ -246,7 +246,7 @@ type ownPlugin struct {
 	folder string
 }
 
-// --- the sy-local plugin ------------------------------------------------------------------
+// --- the wy-local plugin ------------------------------------------------------------------
 
 func (p *planner) marketplaceDir() string {
 	return filepath.Join(p.st.StateDir, "plugin", "marketplace")
@@ -320,7 +320,7 @@ func (p *planner) planPlugin() error {
 		}
 	}
 
-	// Duplicates first (5.2): exactly one switchyard plugin per folder.
+	// Duplicates first (5.2): exactly one watchyard plugin per folder.
 	seen := map[string]bool{}
 	for _, n := range p.nodes {
 		t := p.finalTarget(n)
@@ -329,26 +329,26 @@ func (p *planner) planPlugin() error {
 		}
 		seen[t] = true
 		ts := p.targetState(t)
-		if ts == nil || len(ts.SwitchyardPlugins) < 2 {
+		if ts == nil || len(ts.WatchyardPlugins) < 2 {
 			continue
 		}
-		keep := ts.SwitchyardPlugins[0]
-		if contains(ts.SwitchyardPlugins, PluginID) {
+		keep := ts.WatchyardPlugins[0]
+		if contains(ts.WatchyardPlugins, PluginID) {
 			keep = PluginID
 		}
 		first := p.nodesOfTarget(t)[0]
-		for _, id := range ts.SwitchyardPlugins {
+		for _, id := range ts.WatchyardPlugins {
 			if id == keep {
 				continue
 			}
-			if id == "switchyard@skills-dir" {
-				p.warn("%s has a switchyard plugin folder inside skills/ as well as %s; remove it by hand (it cannot be disabled)", p.tilde(t), keep)
+			if id == "watchyard@skills-dir" {
+				p.warn("%s has a watchyard plugin folder inside skills/ as well as %s; remove it by hand (it cannot be disabled)", p.tilde(t), keep)
 				continue
 			}
 			if p.c.NoPlugin {
 				continue
 			}
-			p.warn("two switchyard plugins are enabled in %s; disabling %s and keeping %s (two copies would report every event twice)", p.tilde(t), id, keep)
+			p.warn("two watchyard plugins are enabled in %s; disabling %s and keeping %s (two copies would report every event twice)", p.tilde(t), id, keep)
 			a := p.runAction([]string{"claude", "plugin", "disable", id, "--json"}, first, []string{t}, []bool{ts.Exists}, "", p.covers(t), "")
 			p.add(model.StepPlugin, a)
 		}
@@ -426,7 +426,7 @@ func (p *planner) planPlugin() error {
 	}
 
 	for _, g := range groups {
-		// Targets in this group that have no switchyard plugin at all.
+		// Targets in this group that have no watchyard plugin at all.
 		var need []string
 		seenT := map[string]bool{}
 		for _, n := range g.nodes {
@@ -437,12 +437,12 @@ func (p *planner) planPlugin() error {
 			seenT[t] = true
 			ts := p.targetState(t)
 			switch {
-			case ts == nil || len(ts.SwitchyardPlugins) == 0:
+			case ts == nil || len(ts.WatchyardPlugins) == 0:
 				need = append(need, t)
-			case contains(ts.SwitchyardPlugins, PluginID):
+			case contains(ts.WatchyardPlugins, PluginID):
 				p.out.Keep = append(p.out.Keep, model.Keep{What: "plugin", Path: p.tilde(t), Note: PluginID + " enabled"})
 			default:
-				p.out.Keep = append(p.out.Keep, model.Keep{What: "plugin", Path: p.tilde(t), Note: "adopted " + ts.SwitchyardPlugins[0]})
+				p.out.Keep = append(p.out.Keep, model.Keep{What: "plugin", Path: p.tilde(t), Note: "adopted " + ts.WatchyardPlugins[0]})
 			}
 		}
 		if len(need) == 0 {
@@ -483,9 +483,9 @@ func (p *planner) planPlugin() error {
 			needTree = true
 			enabledByInstall = ownerT
 			if !contains(need, ownerT) {
-				// The install enabled it in a settings file that already has another switchyard plugin.
+				// The install enabled it in a settings file that already has another watchyard plugin.
 				runs = append(runs, p.runAction([]string{"claude", "plugin", "disable", PluginID, "--json"}, g.owner,
-					[]string{ownerT}, []bool{true}, "", p.covers(ownerT), "the folder already has "+"a switchyard plugin"))
+					[]string{ownerT}, []bool{true}, "", p.covers(ownerT), "the folder already has "+"a watchyard plugin"))
 			}
 		}
 		for _, t := range need {
@@ -505,7 +505,7 @@ func (p *planner) planPlugin() error {
 			pre = preType(dir, model.TypeDir)
 		}
 		p.add(model.StepPlugin, model.Action{Op: model.OpWriteTree, Path: dir, ContentSHA256: hex.EncodeToString(sum[:]),
-			Note: fmt.Sprintf("switchyard %s (%s)", p.opt.Version, MarketplaceName), Pre: pres(pre)})
+			Note: fmt.Sprintf("watchyard %s (%s)", p.opt.Version, MarketplaceName), Pre: pres(pre)})
 	}
 	for _, r := range runs {
 		p.add(model.StepPlugin, r)

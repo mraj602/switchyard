@@ -2,14 +2,14 @@
 
 Status: spec v1. Implemented in `internal/hub/pair` (codes, claim, rate limits, QR),
 `internal/hub/auth` (owner sessions, expiry, cookie rules), `internal/hub/api` (handlers),
-`internal/hub/cli` (`sy hub pair`, `sy hub owner-link`), `cmd/sy` (`sy phone pair`,
-`sy connect --code`). Replaces tokens.md section 5.
+`internal/hub/cli` (`wy hub pair`, `wy hub owner-link`), `cmd/wy` (`wy phone pair`,
+`wy connect --code`). Replaces tokens.md section 5.
 
 ## 1. What pairing changes
 
 | Without pairing | With pairing |
 | --- | --- |
-| Devices exist only through `sy hub token create` on the hub machine. | A device can also be made by claiming a one-time **pairing code** (any kind). |
+| Devices exist only through `wy hub token create` on the hub machine. | A device can also be made by claiming a one-time **pairing code** (any kind). |
 | The board signs in by pasting a token; its cookie is a read-only `browser` device. | Unchanged, plus: an **owner session** (`sy_o_`) from a one-time sign-in link, needed for everything that changes the hub (pairing, devices, rules, channels). |
 | No device ever expires. | `device.expires_at` (schema v3): owner sessions expire after 30 days. Other devices still never expire. |
 | `pair_code` table is a placeholder. | Recreated in schema v3 with its final shape (push.md section 9). |
@@ -22,7 +22,7 @@ One pairing code has two secrets, both single use together:
 
 | Part | Shape | Entropy | Used by |
 | --- | --- | --- | --- |
-| **Code** | 6 decimal digits, shown `482-913`, from `crypto/rand` (uniform, no modulo bias: reject values ≥ 1 000 000 from 20-bit draws) | ~20 bits | People typing it: `sy connect --code`, the phone's "type a code" field |
+| **Code** | 6 decimal digits, shown `482-913`, from `crypto/rand` (uniform, no modulo bias: reject values ≥ 1 000 000 from 20-bit draws) | ~20 bits | People typing it: `wy connect --code`, the phone's "type a code" field |
 | **Secret** | 16 random bytes, base64url without padding (22 characters) | 128 bits | The QR code and links: never typed |
 
 Owner sign-in links (section 4) have a secret and no code.
@@ -78,7 +78,7 @@ QR encoding: byte mode, error correction **M**, quiet zone 4 modules. Library
 `rsc.io/qr` (pure Go, BSD, no dependencies; the QR standard does not change, so its age is
 not a concern). The hub renders the module matrix once and serves it in two forms:
 
-- **Terminal** (`sy hub pair`, `sy phone pair`, `sy setup` step 5): two modules per character
+- **Terminal** (`wy hub pair`, `wy phone pair`, `wy setup` step 5): two modules per character
   row with `▀`, `▄`, `█` and space, wrapped in ANSI `\e[30;47m` (black on white) so it scans
   on dark and light terminals. When stdout is not a TTY or `NO_COLOR` is set, the QR is
   omitted and only the URL and code are printed (`--qr` forces it).
@@ -89,8 +89,8 @@ not a concern). The hub renders the module matrix once and serves it in two form
 
 The phone must be given the address it will use, which the hub cannot always see. In order:
 
-1. `--url <url>` on `sy hub pair` / `sy phone pair`, or `url` in `POST /v1/pair/codes`.
-2. Setting `hub.public_url` (`sy hub serve --public-url <url>` stores it; also editable on
+1. `--url <url>` on `wy hub pair` / `wy phone pair`, or `url` in `POST /v1/pair/codes`.
+2. Setting `hub.public_url` (`wy hub serve --public-url <url>` stores it; also editable on
    the board).
 3. For a code made through the API: the origin the board itself was loaded from
    (`X-Forwarded-Proto` + `Host` when the request came through a loopback proxy, else the
@@ -103,19 +103,19 @@ Push need a secure context). `http://` is refused with the fix ("run `tailscale 
 <port>` on the hub and use its https address", with the port of that http address, so a hub
 on `--listen 127.0.0.1:19100` reads `--bg 19100`) unless `--insecure` is given, in which case the
 pairing works but the web app cannot install or receive pushes, and the CLI says so. Machine
-codes follow `sy connect`'s rule (tokens.md 4: loopback, tailnet or `--insecure-lan`).
+codes follow `wy connect`'s rule (tokens.md 4: loopback, tailnet or `--insecure-lan`).
 
 ### 2.4 Making a code
 
 | Where | How | Needs |
 | --- | --- | --- |
-| Hub machine, CLI | `sy hub pair --kind phone\|browser\|machine\|desktop [--name N] [--machine ID] [--url U] [--ttl 10m] [--wait] [--json]` | Shell on the hub (direct database access, like `sy hub token create`). In Docker: `docker compose exec hub sy hub pair --kind phone` |
-| Hub machine, CLI | `sy phone pair [--url U] [--name N]` = `sy hub pair --kind phone --wait` | Same |
+| Hub machine, CLI | `wy hub pair --kind phone\|browser\|machine\|desktop [--name N] [--machine ID] [--url U] [--ttl 10m] [--wait] [--json]` | Shell on the hub (direct database access, like `wy hub token create`). In Docker: `docker compose exec hub wy hub pair --kind phone` |
+| Hub machine, CLI | `wy phone pair [--url U] [--name N]` = `wy hub pair --kind phone --wait` | Same |
 | Board / desktop app | Settings → Phones → **Add phone** (also **Add machine**) → `POST /v1/pair/codes` | Owner session |
-| `sy setup` step 5 | Calls the same code path as `sy phone pair` when the hub is local ("Just this computer"); for a remote hub it prints "open the board → Settings → Add phone, or run `sy phone pair` on the hub" | Local hub |
-| `sy machine add` | Mints a `machine` code through its admin channel (`sy hub pair --kind machine --machine <id> --json`, locally or over the person's SSH to the hub host) and hands the remote the **secret** on stdin (`--code-stdin`), never as an argument; machines.md 4.2, 4.4 | Local hub, or SSH to the hub host |
+| `wy setup` step 5 | Calls the same code path as `wy phone pair` when the hub is local ("Just this computer"); for a remote hub it prints "open the board → Settings → Add phone, or run `wy phone pair` on the hub" | Local hub |
+| `wy machine add` | Mints a `machine` code through its admin channel (`wy hub pair --kind machine --machine <id> --json`, locally or over the person's SSH to the hub host) and hands the remote the **secret** on stdin (`--code-stdin`), never as an argument; machines.md 4.2, 4.4 | Local hub, or SSH to the hub host |
 
-`sy phone pair` on a machine that is not the hub (no hub database in `<data>`) fails with
+`wy phone pair` on a machine that is not the hub (no hub database in `<data>`) fails with
 that same instruction. A machine token can never make codes: that would let a stolen machine
 token mint read access ("machine tokens can only write").
 
@@ -132,7 +132,7 @@ Scan with your phone's camera:
 
 Waiting for the phone… (Ctrl-C stops waiting; the code stays valid)
 Paired: iPhone · Safari (dev_01JA…). It can read and receive pushes; revoke it with
-`sy hub token revoke dev_01JA…` or from the board's Devices list.
+`wy hub token revoke dev_01JA…` or from the board's Devices list.
 ```
 
 `--json` prints the `PairCode` object of api.yaml (with `secret`, `code`, `url`, `qr`) and,
@@ -157,11 +157,11 @@ offers **Test push** (push.md). Closing the dialog does not cancel the code;
 | Field | Rule |
 | --- | --- |
 | `secret` or `code` | Exactly one. `code` accepts `482913`, `482-913`, `482 913`. |
-| `name` | 1–60 characters after trimming; control characters removed. A code made with a `name` (`sy hub pair --name`) names the device whatever the claimer sends; otherwise this `name`, else `"<kind> <yyyy-mm-dd>"`. The web app sends a name prefilled with a guess from the user agent ("iPhone · Safari", "Pixel 9 · Chrome"): the typed-code form has it as an editable field, and a QR link claims at once with the guess and lets the person change it on the Paired screen (5.1). |
+| `name` | 1–60 characters after trimming; control characters removed. A code made with a `name` (`wy hub pair --name`) names the device whatever the claimer sends; otherwise this `name`, else `"<kind> <yyyy-mm-dd>"`. The web app sends a name prefilled with a guess from the user agent ("iPhone · Safari", "Pixel 9 · Chrome"): the typed-code form has it as an editable field, and a QR link claims at once with the guess and lets the person change it on the Paired screen (5.1). |
 | `machine` | Required for `machine` and `desktop` codes (400 `bad_request` "machine is required" without consuming the code); must match the record envelope pattern. Ignored for other kinds. |
-| `expect_kind` | Optional. When it differs from the code's kind the reply is 409 `conflict` and the code is **not** consumed (`sy connect` sends `machine`; the web app sends `phone` or `browser`). |
+| `expect_kind` | Optional. When it differs from the code's kind the reply is 409 `conflict` and the code is **not** consumed (`wy connect` sends `machine`; the web app sends `phone` or `browser`). |
 | `cookie` | Only for `phone` and `browser` codes. When true the token is not returned in the body; it is set as the `sy_session` cookie instead (3.2). |
-| `client` | Optional, e.g. `sy/0.4.0`, `pwa/3f9c01ab`. Stored in `device.created_by` detail for the Devices list. |
+| `client` | Optional, e.g. `wy/0.4.0`, `pwa/3f9c01ab`. Stored in `device.created_by` detail for the Devices list. |
 
 Steps, in one write transaction:
 
@@ -171,7 +171,7 @@ Steps, in one write transaction:
    expired code" (the same body for unknown, used, cancelled and expired, so the reply never
    says whether a code existed); count a failure for typed codes.
 3. `expect_kind` / `machine` checks (409 / 400, code untouched).
-4. Create the device exactly as `sy hub token create` does (tokens.md 2–3: scopes from the
+4. Create the device exactly as `wy hub token create` does (tokens.md 2–3: scopes from the
    kind, hashed token, hint), `created_by = "pair:<pair_code id>"`.
 5. `UPDATE pair_code SET claimed_at = now, device_id = ?, claim_ip = ? WHERE id = ? AND
    claimed_at IS NULL`; zero rows changed means a concurrent claim won: roll back, 401.
@@ -184,7 +184,7 @@ gets 401 (step 2).
 
 | Kind | Claimer | Then |
 | --- | --- | --- |
-| machine | `sy connect <url> --code 482-913` (and `sy setup --hub join:<url> --code …`) | Writes `<state>/token` and `hub.url`, installs the timer, one flush: tokens.md 4 unchanged, except the token comes from the claim. |
+| machine | `wy connect <url> --code 482-913` (and `wy setup --hub join:<url> --code …`) | Writes `<state>/token` and `hub.url`, installs the timer, one flush: tokens.md 4 unchanged, except the token comes from the claim. |
 | desktop | Desktop app | As machine, `write` + `read`. |
 | phone | The web app (`cookie: true`), or the native phone app (token in body, kept in the OS keychain) | Web app: register Web Push (pwa.md 6), offer a test push. |
 | browser | The web app on a computer (`cookie: true`) | As phone. |
@@ -251,7 +251,7 @@ worker's caches:
 | Database copy or backup | Only HMAC hashes; the pepper is outside the database (2.1). Someone with both the database and the state folder already has everything a paired device could read. |
 | A token in a phone's browser | `HttpOnly` cookie only; never in JS-readable storage or the service worker cache. |
 | A malicious page asks a paired phone's browser to act | `SameSite=Strict`, JSON content type and `Origin` checks (3.2). Phone scopes cannot change rules or devices other than itself anyway. |
-| Lost phone | Board → Devices → Revoke, or `sy hub token revoke`. Its token, cookie and push targets stop at once (section 6). |
+| Lost phone | Board → Devices → Revoke, or `wy hub token revoke`. Its token, cookie and push targets stop at once (section 6). |
 
 ## 4. Owner sessions
 
@@ -260,7 +260,7 @@ The hub provides it with a one-time **sign-in link** made on the hub machine. Pa
 passkey sign-in (the schema's `owner.password_hash`) are not implemented yet (desktop settings).
 
 ```
-sy hub owner-link [--url U] [--ttl 10m] [--json]
+wy hub owner-link [--url U] [--ttl 10m] [--json]
 → https://hub.example.ts.net/#/owner?s=4mR8…   (works once, for 10 minutes)
 ```
 
@@ -288,7 +288,7 @@ sy hub owner-link [--url U] [--ttl 10m] [--json]
   128-bit secret already means having the link. Every refusal counts against the rate
   limit as before. The board strips `s` from the address bar before it posts, sends each
   secret once per page, and says which reason it was (UI audit O1, O2).
-- Why a link rather than a password now: whoever can run `sy` on the hub already owns the
+- Why a link rather than a password now: whoever can run `wy` on the hub already owns the
   data; the link needs no password storage, cannot be guessed (128 bits), and works the same
   on a VPS. It is a strong owner login for a single-user hub.
 - `owner` implies nothing by itself in code: scope checks stay explicit, which is why the
@@ -304,13 +304,13 @@ sy hub owner-link [--url U] [--ttl 10m] [--json]
 
 ### 4.1 Where owner links come from
 
-1. **On the hub's computer:** `sy hub owner-link` (above), the recovery path.
+1. **On the hub's computer:** `wy hub owner-link` (above), the recovery path.
 2. **From any owner device:** board More → Devices → **Make another device owner**
    (`POST /v1/owner-links`, owner sessions only). It shows the link, its QR and "Open it on
    the other device, or paste it into the desktop app". The link is a `pair_code` of kind
    `owner` with `created_by = "owner:<device id>"`, always 10 minutes (the `pair.ttl_s`
    setting does not apply), single use, and consumed by `POST /v1/session/owner` exactly
-   as one from `sy hub owner-link`. At most 3 such links are live; a fourth cancels the
+   as one from `wy hub owner-link`. At most 3 such links are live; a fourth cancels the
    oldest. Rate limited per client IP as claims are (3.3); cookie requests follow the CSRF
    rules of 3.2. The hub log gets `pair owner-link made code=pc_… by=dev_… ip=… expires=…`
    and, when used, `pair owner ok device=dev_… code=pc_…`; never the secret or the link.
@@ -318,27 +318,27 @@ sy hub owner-link [--url U] [--ttl 10m] [--json]
    **Cancel this link** is `DELETE /v1/pair/codes/{id}`.
 3. **First start:** while the hub has never had an owner session
    (`store.HadOwnerSession`: no device with `created_by` `owner-link:*`, revoked ones
-   included), `sy hub serve` makes one owner link at each start. When its stderr is a
+   included), `wy hub serve` makes one owner link at each start. When its stderr is a
    terminal it prints one block there with a terminal QR, the board URL and "Open this on your
    computer to become owner. Pair everything else from the board." When it is not (the
    journal of a service, `docker logs`, a log file) the block goes to
    `first-owner-link.txt` in the database's folder (mode 0600, replacing any older file) and
    the log names only that file, because a log outlives the link's 10 minutes and is readable
-   by more people than the owner (`sy hub owner-link` always works too; in Docker,
+   by more people than the owner (`wy hub owner-link` always works too; in Docker,
    `docker compose exec hub cat /data/first-owner-link.txt`). A start that finds an owner
-   deletes a leftover file. The `sy setup --hub here` summary prints the same block on its
+   deletes a leftover file. The `wy setup --hub here` summary prints the same block on its
    terminal. The address is `--public-url` (or `hub.public_url`), else the listen address (a
    wildcard address shows as `127.0.0.1`). The link works once, for 10 minutes, and only
    until someone is owner; after the first owner session the hub never makes one again.
 
 The signed-out board (`#/login`, "Sign in to this hub") offers the same three: paste an
 owner link (accepted only for this hub's own origin and an `#/owner?s=` link), **Pair with a
-code** (read-only), and a fold-out "On the hub's computer" with `sy hub owner-link`. After a
+code** (read-only), and a fold-out "On the hub's computer" with `wy hub owner-link`. After a
 401 it shows the reason (`revoked`: "This browser was removed from the hub.",
 `owner_expired`: "Your owner access ended."). Inside the desktop app's Hub view no CLI is
 named: non-owner hints read "Use Sign in as owner on the Hub tab." The board knows it is in
 the app from `/v1/me` `via.kind = desktop`, or, signed out too, from the user agent token
-` SwitchyardDesktop/<version>` the app adds to the view's session (or `?in=desktop` in its
+` WatchyardDesktop/<version>` the app adds to the view's session (or `?in=desktop` in its
 start URL).
 
 ## 5. The phone's side
@@ -367,7 +367,7 @@ Push works only inside it. Claiming in Safari would pair Safari, not the app. So
 
 1. The camera opens the URL in Safari. The pair page sees iOS and
    `navigator.standalone !== true`, does **not** claim, and shows: "1. Tap Share → Add to Home
-   Screen. 2. Open Switchyard from your Home Screen. 3. Enter **482-913**." with the digits
+   Screen. 2. Open Watchyard from your Home Screen. 3. Enter **482-913**." with the digits
    large and a 10-minute countdown.
 2. The installed app starts at `/#/`, has no cookie, gets 401 from `/v1/me`, and opens the
    pair screen (`/#/pair`): the digits field (address shown read-only: it is the app's own
@@ -402,7 +402,7 @@ handled as in 5.3.
 | `GET /v1/devices/{id}` | owner; any device for `self` | One device. `self` = the caller. The web app uses `GET /v1/devices/self` for its Settings page. |
 | `PATCH /v1/devices/{id}` | owner; push-scoped devices for `self` | `{name?, prefs?}` (prefs: push.md 5.4). |
 | `DELETE /v1/devices/{id}` | owner; push-scoped devices for `self` ("Unpair this phone") | Sets `revoked_at`, disables and deletes its push targets, cancels its pending deliveries, revokes board/owner sessions made from it (`created_by = login:<id>`). 204. Revoking `self` also clears the cookie. |
-| `POST /v1/session/logout` | the cookie's device | **Sign out** in the board. Revokes the device behind the cookie when it is a board session (`login:`), an owner session (`owner-link:`) or a phone or browser paired in cookie mode (`pair:`), with the sessions made from it, then clears the cookie. So a signed-out browser does not stay listed in Devices. No other device is touched: the owner signing out of one browser leaves every phone and computer it paired alone. A token made with `sy hub token create` and pasted is not revoked. A request with a foreign `Origin` only clears the cookie. |
+| `POST /v1/session/logout` | the cookie's device | **Sign out** in the board. Revokes the device behind the cookie when it is a board session (`login:`), an owner session (`owner-link:`) or a phone or browser paired in cookie mode (`pair:`), with the sessions made from it, then clears the cookie. So a signed-out browser does not stay listed in Devices. No other device is touched: the owner signing out of one browser leaves every phone and computer it paired alone. A token made with `wy hub token create` and pasted is not revoked. A request with a foreign `Origin` only clears the cookie. |
 
 - Lists (Devices, Alerts' receivers, Settings → Notifications) tell apart devices that share
   a name: the first one paired keeps it, later ones get their place ("Pixel 9 · Chrome · 2",
@@ -432,6 +432,6 @@ handled as in 5.3.
   list.
 - Cookie CSRF rules: POST with cookie and `text/plain` → 403; wrong `Origin` → 403; bearer
   requests unaffected.
-- CLI: `sy hub pair --json` shape; terminal QR decodes back to the URL (decode the half-block
-  rendering into a matrix and compare with the encoder's); `sy connect --code` against a
+- CLI: `wy hub pair --json` shape; terminal QR decodes back to the URL (decode the half-block
+  rendering into a matrix and compare with the encoder's); `wy connect --code` against a
   test hub writes the token and installs nothing on failure.

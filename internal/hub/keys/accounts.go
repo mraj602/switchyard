@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 // Machine accounts (keys.md 4.3): the owner-signed list of accounts whose sessions a
@@ -28,7 +28,7 @@ func (s *Service) SetAccounts(ctx context.Context, deviceID string, doc keys.Doc
 			return err
 		}
 		if owner == nil {
-			return conflict("this hub has no active owner key (sy keys init, then confirm it)")
+			return conflict("this hub has no active owner key (wy keys init, then confirm it)")
 		}
 		r, err := tx.DeviceKey(deviceID)
 		if errors.Is(err, store.ErrNotFound) {

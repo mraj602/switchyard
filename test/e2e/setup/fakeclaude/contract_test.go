@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/setup/pluginmkt"
+	"github.com/mraj602/watchyard/internal/setup/pluginmkt"
 )
 
 // The contract test runs one script of plugin commands against the real `claude` and against
@@ -22,11 +22,11 @@ import (
 // normalising times, versions and paths. Run it by hand before tagging and whenever Claude
 // Code updates:
 //
-//	SY_E2E_REAL_CLAUDE=1 go test ./test/e2e/setup/fakeclaude -run Contract -v
+//	WY_E2E_REAL_CLAUDE=1 go test ./test/e2e/setup/fakeclaude -run Contract -v
 //
-// SY_E2E_KEEP_DIR=<dir> keeps each throwaway HOME (plus a .log of every command) under dir.
+// WY_E2E_KEEP_DIR=<dir> keeps each throwaway HOME (plus a .log of every command) under dir.
 //
-// SY_E2E_REAL_CLAUDE_BIN names the real binary (default: claude on PATH, which must be the
+// WY_E2E_REAL_CLAUDE_BIN names the real binary (default: claude on PATH, which must be the
 // executable, not a shell function). The real claude only ever sees the throwaway HOME and a
 // CLAUDE_CONFIG_DIR inside it; no real ~/.claude* folder is touched. The result is recorded
 // in docs/spec/setup.md with the Claude Code version.
@@ -77,7 +77,7 @@ func (r *scriptRun) claude(folder string, args ...string) []byte {
 		r.t.Fatal(err)
 	}
 	out, err := cmd.CombinedOutput()
-	if os.Getenv("SY_E2E_KEEP_DIR") != "" {
+	if os.Getenv("WY_E2E_KEEP_DIR") != "" {
 		// debug aid: a log of every command and its output, next to the kept HOME
 		if f, ferr := os.OpenFile(r.home+".log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644); ferr == nil {
 			fmt.Fprintf(f, "$ [%s] claude %s\n(exit err: %v)\n%s\n", folder, strings.Join(args, " "), err, out)
@@ -107,7 +107,7 @@ func (r *scriptRun) try(folder string, args ...string) string {
 		}
 		code = ee.ExitCode()
 	}
-	if os.Getenv("SY_E2E_KEEP_DIR") != "" {
+	if os.Getenv("WY_E2E_KEEP_DIR") != "" {
 		if f, ferr := os.OpenFile(r.home+".log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644); ferr == nil {
 			fmt.Fprintf(f, "$ [%s] claude %s\n(exit %d)\nstdout: %sstderr: %s\n", folder, strings.Join(args, " "), code, so.String(), se.String())
 			f.Close()
@@ -267,7 +267,7 @@ func snapshot(t *testing.T, home string) map[string]string {
 func runScript(t *testing.T, bin string) []step {
 	t.Helper()
 	r := &scriptRun{t: t, bin: bin, home: t.TempDir()}
-	if keep := os.Getenv("SY_E2E_KEEP_DIR"); keep != "" {
+	if keep := os.Getenv("WY_E2E_KEEP_DIR"); keep != "" {
 		// debug aid: keep the throwaway HOME (and a command log beside it) for inspection
 		if err := os.MkdirAll(keep, 0o755); err != nil {
 			t.Fatal(err)
@@ -283,12 +283,12 @@ func runScript(t *testing.T, bin string) []step {
 	if h, err := filepath.EvalSymlinks(r.home); err == nil {
 		r.home = h
 	}
-	// The marketplace is the one sy writes, so the contract covers what sy really installs.
+	// The marketplace is the one wy writes, so the contract covers what wy really installs.
 	mkt := r.p("mkt")
-	if err := pluginmkt.New(nil).WriteMarketplace(mkt, r.p("sybin/sy"), "0.0.1"); err != nil {
+	if err := pluginmkt.New(nil).WriteMarketplace(mkt, r.p("sybin/wy"), "0.0.1"); err != nil {
 		t.Fatal(err)
 	}
-	const id = "switchyard@sy-local"
+	const id = "watchyard@wy-local"
 
 	// folders: A = ~/.claude (variable unset), B links settings and plugins to A, C links
 	// plugins to A but has its own settings, D names a plugin root in settings env.
@@ -342,10 +342,10 @@ func runScript(t *testing.T, bin string) []step {
 		{"uninstall", id},
 		{"uninstall", id},
 		{"enable", id},
-		{"install", "nothere@sy-local"},
-		{"install", "switchyard@nomkt"},
-		{"marketplace", "remove", "sy-local"},
-		{"marketplace", "remove", "sy-local"},
+		{"install", "nothere@wy-local"},
+		{"install", "watchyard@nomkt"},
+		{"marketplace", "remove", "wy-local"},
+		{"marketplace", "remove", "wy-local"},
 	} {
 		args := append([]string{"plugin"}, c...)
 		args = append(args, "--json")
@@ -399,7 +399,7 @@ func buildFake(t *testing.T) string {
 		name = "claude.exe"
 	}
 	bin := filepath.Join(t.TempDir(), name)
-	out, err := exec.Command("go", "build", "-o", bin, "github.com/mraj602/switchyard/test/e2e/setup/fakeclaude").CombinedOutput()
+	out, err := exec.Command("go", "build", "-o", bin, "github.com/mraj602/watchyard/test/e2e/setup/fakeclaude").CombinedOutput()
 	if err != nil {
 		t.Skipf("cannot build the fake: %v\n%s", err, out)
 	}
@@ -426,27 +426,27 @@ func TestContractScriptOnFake(t *testing.T) {
 		t.Error("settings link was not kept")
 	}
 	s3 := steps[3].tree
-	if !strings.Contains(s3["out:list B"], "<HOME>/.claude/plugins/cache/sy-local/switchyard") {
+	if !strings.Contains(s3["out:list B"], "<HOME>/.claude/plugins/cache/wy-local/watchyard") {
 		t.Errorf("the first installer stays (no rewrite):\n%s", s3["out:list B"])
 	}
-	if strings.Contains(steps[6].tree["out:list A"], "switchyard@sy-local") {
+	if strings.Contains(steps[6].tree["out:list A"], "watchyard@wy-local") {
 		t.Error("uninstall must remove the record for every folder sharing the root")
 	}
-	if !strings.Contains(steps[6].tree[".claude-3/settings.json"], `"switchyard@sy-local": true`) {
+	if !strings.Contains(steps[6].tree[".claude-3/settings.json"], `"watchyard@wy-local": true`) {
 		t.Error("another folder's settings must keep their enabledPlugins entry after an uninstall elsewhere")
 	}
 }
 
-// TestContract compares the fake with the real claude. It runs only with SY_E2E_REAL_CLAUDE=1.
+// TestContract compares the fake with the real claude. It runs only with WY_E2E_REAL_CLAUDE=1.
 func TestContract(t *testing.T) {
-	if os.Getenv("SY_E2E_REAL_CLAUDE") != "1" {
-		t.Skip("set SY_E2E_REAL_CLAUDE=1 to compare the fake with the real claude (run by hand before tagging)")
+	if os.Getenv("WY_E2E_REAL_CLAUDE") != "1" {
+		t.Skip("set WY_E2E_REAL_CLAUDE=1 to compare the fake with the real claude (run by hand before tagging)")
 	}
-	real := os.Getenv("SY_E2E_REAL_CLAUDE_BIN")
+	real := os.Getenv("WY_E2E_REAL_CLAUDE_BIN")
 	if real == "" {
 		var err error
 		if real, err = exec.LookPath("claude"); err != nil {
-			t.Skip("claude not found (set SY_E2E_REAL_CLAUDE_BIN)")
+			t.Skip("claude not found (set WY_E2E_REAL_CLAUDE_BIN)")
 		}
 	}
 	vcmd := exec.Command(real, "--version")

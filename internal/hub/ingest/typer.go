@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/hub/usage"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/usage"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // typer turns stored records into typed rows inside one write transaction.

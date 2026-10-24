@@ -1,7 +1,7 @@
 package model
 
 // State is what detect (setup.md 3 step 1) found: the planner's whole input besides Choices.
-// It is also the `state` object of `sy setup --detect --json` (6.3). Paths named "dir",
+// It is also the `state` object of `wy setup --detect --json` (6.3). Paths named "dir",
 // "target" in absolute form are real paths; every field called Folder/Name is the "~/..."
 // form used on screen and on the wire.
 type State struct {
@@ -13,7 +13,7 @@ type State struct {
 
 	Home string `json:"home,omitempty"` // absolute home folder
 	OS   string `json:"os,omitempty"`   // runtime.GOOS
-	// Sy is the absolute path of the sy binary that will be baked into hooks and the status line.
+	// Sy is the absolute path of the wy binary that will be baked into hooks and the status line.
 	Sy string `json:"sy,omitempty"`
 	// StateDir is <state> (paths.md); nothing is created there before apply.
 	StateDir string `json:"state_dir,omitempty"`
@@ -28,7 +28,7 @@ type State struct {
 	MCP             MCPState         `json:"mcp,omitzero"`
 	// Links is the link-guard baseline (7.5): every symlink/junction found at detect time.
 	Links []LinkRecord `json:"links,omitempty"`
-	// Switchyard facts (step 7).
+	// Watchyard facts (step 7).
 	ConfigPresent  bool       `json:"config_present,omitempty"`
 	Ledger         *Ledger    `json:"ledger,omitempty"`
 	IncompleteSets []string   `json:"incomplete_sets,omitempty"` // backup ids still "in-progress"
@@ -180,8 +180,8 @@ type SettingsTarget struct {
 	// PluginCacheDir is the value of env.CLAUDE_CODE_PLUGIN_CACHE_DIR when set (a path, not a secret).
 	PluginCacheDir string      `json:"plugin_cache_dir,omitempty"`
 	StatusLine     *StatusLine `json:"status_line,omitempty"`
-	// SwitchyardPlugins are every enabled switchyard@* (and switchyard@skills-dir) id.
-	SwitchyardPlugins []string `json:"switchyard_plugins,omitempty"`
+	// WatchyardPlugins are every enabled watchyard@* (and watchyard@skills-dir) id.
+	WatchyardPlugins []string `json:"watchyard_plugins,omitempty"`
 	// LegacyPlugins are the enabled plugin and pane ids of the project's name before a rename
 	// (<old>@*, <old>-pane@*, <old>@skills-dir); setup disables them (rename.md 2.4).
 	LegacyPlugins []string `json:"legacy_plugins,omitempty"`

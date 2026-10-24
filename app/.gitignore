@@ -1,8 +1,8 @@
-# Never commit dependencies, build output or the bundled sy binaries.
+# Never commit dependencies, build output or the bundled wy binaries.
 node_modules/
 dist/
 out/
-resources/sy/
+resources/wy/
 *.AppImage
 *.deb
 *.rpm

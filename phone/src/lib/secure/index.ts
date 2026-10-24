@@ -3,7 +3,7 @@
 import { SECURE_HUB_KEY, SECURE_REVOKE_KEY } from '../../contract/constants';
 import type { SecureStoreLike, SecureStoreOptions } from '../../contract/platform';
 
-/** JSON under SecureStore key sy.hub.v1. */
+/** JSON under SecureStore key wy.hub.v1. */
 export interface StoredHub {
   origin: string;
   token: string;

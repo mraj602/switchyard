@@ -11,21 +11,21 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/plan"
-	"github.com/mraj602/switchyard/internal/warp"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/plan"
+	"github.com/mraj602/watchyard/internal/warp"
 )
 
 var updateGoldens = flag.Bool("update", false, "rewrite testdata/terminal goldens")
 
 // termState is a fixed laptop at /home/u: ~/.claude (default, primary, owns the plugin
 // root), ~/.claude-2 sharing its settings (a link) and plugin root, and ~/.claude-3 with its
-// own settings and root. claude-2 and claude-3 are launcher files sy wrote.
+// own settings and root. claude-2 and claude-3 are launcher files wy wrote.
 func termState() model.State {
 	h := "/home/u"
 	return model.State{
-		Home: h, OS: "linux", Sy: h + "/.local/bin/sy",
-		StateDir: h + "/.local/state/switchyard", ConfigDir: h + "/.config/switchyard", ConfigPresent: true,
+		Home: h, OS: "linux", Sy: h + "/.local/bin/wy",
+		StateDir: h + "/.local/state/watchyard", ConfigDir: h + "/.config/watchyard", ConfigPresent: true,
 		Claude: model.ClaudeInfo{Path: "~/.local/bin/claude", Version: "2.1.296"},
 		Folders: []model.Folder{
 			{Folder: "~/.claude", Dir: h + "/.claude", Default: true, Primary: true, Label: "me", Colour: "#14b8a6",
@@ -37,15 +37,15 @@ func termState() model.State {
 		},
 		SettingsTargets: []model.SettingsTarget{
 			{Path: h + "/.claude/settings.json", Folders: []string{"~/.claude", "~/.claude-2"}, Exists: true,
-				EnabledPlugins: map[string]bool{"switchyard@sy-local": true}},
+				EnabledPlugins: map[string]bool{"watchyard@wy-local": true}},
 			{Path: h + "/.claude-3/settings.json", Folders: []string{"~/.claude-3"}, Exists: true,
-				EnabledPlugins: map[string]bool{"switchyard@sy-local": true}},
+				EnabledPlugins: map[string]bool{"watchyard@wy-local": true}},
 		},
 		PluginRoots: []model.PluginRoot{
 			{Root: h + "/.claude/plugins", Owner: "~/.claude", Folders: []string{"~/.claude", "~/.claude-2"},
-				Plugins: []string{"switchyard@sy-local"}, Markets: []string{"sy-local"}},
+				Plugins: []string{"watchyard@wy-local"}, Markets: []string{"wy-local"}},
 			{Root: h + "/.claude-3/plugins", Owner: "~/.claude-3", Folders: []string{"~/.claude-3"},
-				Plugins: []string{"switchyard@sy-local"}, Markets: []string{"sy-local"}},
+				Plugins: []string{"watchyard@wy-local"}, Markets: []string{"wy-local"}},
 		},
 		Launchers: []model.Launcher{
 			{Name: "claude-2", Kind: model.LauncherFile, Path: "~/.local/bin/claude-2", Ours: true, Folder: "~/.claude-2"},
@@ -181,7 +181,7 @@ func TestTerminalShape(t *testing.T) {
 		steps = append(steps, string(a.Step))
 		if a.Op == model.OpRun {
 			mark := filepath.ToSlash(a.Touches[len(a.Touches)-1])
-			if !strings.HasPrefix(mark, "/home/u/.local/state/switchyard/term/journal/") {
+			if !strings.HasPrefix(mark, "/home/u/.local/state/watchyard/term/journal/") {
 				t.Errorf("run without a journal mark: %+v", a)
 			}
 			if a.Argv[0] != "claude" {
@@ -199,8 +199,8 @@ func TestTerminalShape(t *testing.T) {
 			tabs = append(tabs, a)
 		}
 	}
-	if len(tabs) != 3 || !strings.HasSuffix(tabs[0].Path, "switchyard-me.toml") || !strings.HasSuffix(tabs[1].Path, "switchyard-work.toml") ||
-		!strings.HasSuffix(tabs[2].Path, "switchyard-claude-3.toml") {
+	if len(tabs) != 3 || !strings.HasSuffix(tabs[0].Path, "watchyard-me.toml") || !strings.HasSuffix(tabs[1].Path, "watchyard-work.toml") ||
+		!strings.HasSuffix(tabs[2].Path, "watchyard-claude-3.toml") {
 		t.Fatalf("tabs %+v", tabs)
 	}
 	if !strings.Contains(tabs[0].Note, "cyan") || !strings.Contains(tabs[1].Note, "yellow") {
@@ -249,15 +249,15 @@ func TestTerminalRefusals(t *testing.T) {
 	if p.Actions[0].Op != model.OpWriteTree || p.Actions[0].Step != model.StepPlugin {
 		t.Errorf("no refresh: %s", dump(p))
 	}
-	// ... and every root with the switchyard plugin updates it, so the title hooks run.
+	// ... and every root with the watchyard plugin updates it, so the title hooks run.
 	var updates []string
 	for _, a := range p.Actions {
 		if a.Op == model.OpRun && a.Step == model.StepTerminal && strings.Contains(strings.Join(a.Argv, " "), "update") {
 			updates = append(updates, strings.Join(a.Argv[2:], " ")+"@"+a.Watch[0])
 		}
 	}
-	wantUp := []string{"marketplace update sy-local --json@/home/u/.claude/plugins", "update switchyard@sy-local --json@/home/u/.claude/plugins",
-		"marketplace update sy-local --json@/home/u/.claude-3/plugins", "update switchyard@sy-local --json@/home/u/.claude-3/plugins"}
+	wantUp := []string{"marketplace update wy-local --json@/home/u/.claude/plugins", "update watchyard@wy-local --json@/home/u/.claude/plugins",
+		"marketplace update wy-local --json@/home/u/.claude-3/plugins", "update watchyard@wy-local --json@/home/u/.claude-3/plugins"}
 	if strings.Join(updates, "\n") != strings.Join(wantUp, "\n") {
 		t.Errorf("updates:\n%s\nwant\n%s", strings.Join(updates, "\n"), strings.Join(wantUp, "\n"))
 	}
@@ -283,33 +283,33 @@ func TestTerminalTabsOwnership(t *testing.T) {
 		t.Fatalf("off: %s", dump(p))
 	}
 	for _, a := range p.Actions {
-		if a.Op != model.OpMoveToBackup || strings.HasSuffix(a.Path, "switchyard-work.toml") {
+		if a.Op != model.OpMoveToBackup || strings.HasSuffix(a.Path, "watchyard-work.toml") {
 			t.Fatalf("off touched the edited file: %+v", a)
 		}
 	}
-	if !strings.Contains(strings.Join(p.Warnings, "\n"), "switchyard-work.toml was edited") || !hasKeep(p, "yours now") {
+	if !strings.Contains(strings.Join(p.Warnings, "\n"), "watchyard-work.toml was edited") || !hasKeep(p, "yours now") {
 		t.Errorf("edited file not reported: %v %v", p.Warnings, p.Keep)
 	}
 
 	st, f = termState(), termFacts()
 	f.Warp.FolderExists = true
-	f.Tabs = []warp.Found{{Path: f.Warp.Folder + "/switchyard-work.toml", Label: "work", SHA256: "theirs"}}
+	f.Tabs = []warp.Found{{Path: f.Warp.Folder + "/watchyard-work.toml", Label: "work", SHA256: "theirs"}}
 	p = termPlan(t, st, model.TermChoices{WarpTabs: true}, f)
 	for _, a := range p.Actions {
-		if strings.HasSuffix(a.Path, "switchyard-work.toml") || a.Op == model.OpMkdir {
+		if strings.HasSuffix(a.Path, "watchyard-work.toml") || a.Op == model.OpMkdir {
 			t.Fatalf("touched: %+v", a)
 		}
 	}
-	if len(p.Actions) != 2 || !strings.Contains(strings.Join(p.Warnings, "\n"), "is not sy's") {
+	if len(p.Actions) != 2 || !strings.Contains(strings.Join(p.Warnings, "\n"), "is not wy's") {
 		t.Errorf("no-marker: %s", dump(p))
 	}
-	// A marker file whose hash matches neither this sy nor the ledger is the person's too.
+	// A marker file whose hash matches neither this wy nor the ledger is the person's too.
 	f.Tabs[0].Marker = true
 	p = termPlan(t, st, model.TermChoices{WarpTabs: true}, f)
 	if len(p.Actions) != 2 || !hasKeep(p, "yours now") {
 		t.Errorf("edited with marker: %s", dump(p))
 	}
-	// One sy wrote (ledger hash) with an older body is rewritten in place.
+	// One wy wrote (ledger hash) with an older body is rewritten in place.
 	st.Ledger.Terminal = &model.LedgerTerminal{Tabs: []model.LedgerTab{{Path: f.Tabs[0].Path, SHA256: "theirs", Label: "work"}}}
 	p = termPlan(t, st, model.TermChoices{WarpTabs: true}, f)
 	if len(p.Actions) != 3 || p.Actions[1].Pre[0].State.SHA256 != "theirs" {
@@ -355,7 +355,7 @@ func TestTerminalTabLayouts(t *testing.T) {
 	f.Warp.Folder = `C:\Users\u\AppData\Roaming\warp\Warp\data\tab_configs`
 	f.Warp.Data = `C:\Users\u\AppData\Roaming\warp\Warp\data`
 	specs, warns := plan.TabSpecs(st, f)
-	if len(specs) != 3 || len(warns) != 0 || specs[1].Path != f.Warp.Folder+`\switchyard-work.toml` ||
+	if len(specs) != 3 || len(warns) != 0 || specs[1].Path != f.Warp.Folder+`\watchyard-work.toml` ||
 		!strings.HasSuffix(specs[1].Spec.Command, "claude-2.cmd") {
 		t.Fatalf("windows specs %+v %v", specs, warns)
 	}

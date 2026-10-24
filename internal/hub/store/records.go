@@ -260,7 +260,7 @@ func (s *Store) TouchDevice(ctx context.Context, id string, at int64, ip string)
 	})
 }
 
-// EachRecordOfKind streams every stored record of one kind in (ts, id) order to fn (sy hub
+// EachRecordOfKind streams every stored record of one kind in (ts, id) order to fn (wy hub
 // refold reads token_rows this way).
 func (tx *Tx) EachRecordOfKind(kind string, fn func(RecordRef) error) error {
 	rows, err := tx.QueryContext(tx.ctx, `SELECT id, ts, body FROM record WHERE kind = ? ORDER BY ts, id`, kind)

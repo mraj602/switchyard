@@ -5,15 +5,15 @@
 #
 # Targets: Linux AppImage, deb and rpm; macOS dmg; Windows NSIS installer. Unsigned macOS and
 # Windows builds trigger Gatekeeper and SmartScreen warnings on first start.
-appId: io.github.mraj602.switchyard.desktop
-productName: Switchyard
-copyright: Copyright (c) Switchyard contributors
+appId: io.github.mraj602.watchyard.desktop
+productName: Watchyard
+copyright: Copyright (c) Watchyard contributors
 # deb and rpm need a homepage and a maintainer.
 extraMetadata:
-  homepage: https://github.com/mraj602/switchyard
+  homepage: https://github.com/mraj602/watchyard
   author:
-    name: Switchyard contributors
-    email: noreply@switchyard.invalid
+    name: Watchyard contributors
+    email: noreply@watchyard.invalid
 asar: true
 npmRebuild: false
 nodeGypRebuild: false
@@ -37,27 +37,27 @@ files:
   - "!src/renderer/dev/**"
   - "!src/main/test-hooks.js"
 
-# The bundled `sy` (scripts/fetch-sy.mjs fills resources/sy/<os>-<arch>/) lands at
-# <resources>/sy/sy[.exe], outside the asar so it can be executed.
+# The bundled `wy` (scripts/fetch-sy.mjs fills resources/wy/<os>-<arch>/) lands at
+# <resources>/wy/wy[.exe], outside the asar so it can be executed.
 extraResources:
-  - from: resources/sy/${os}-${arch}/
-    to: sy
+  - from: resources/wy/${os}-${arch}/
+    to: wy
     filter:
-      - "sy*"
+      - "wy*"
 
-artifactName: Switchyard-${version}-${os}-${arch}.${ext}
+artifactName: Watchyard-${version}-${os}-${arch}.${ext}
 
 linux:
   target: [AppImage, deb, rpm]
   category: Utility
-  executableName: switchyard-desktop
-  # package.json desktopName (switchyard-desktop.desktop) is Electron's Wayland app_id and the
+  executableName: watchyard-desktop
+  # package.json desktopName (watchyard-desktop.desktop) is Electron's Wayland app_id and the
   # libnotify desktop-entry hint; the .desktop file has that name and StartupWMClass, so GNOME
   # and KDE match the window, the dock and notifications to it (and show its icon).
   syncDesktopName: true
-  synopsis: "Unofficial desktop app for Switchyard: Claude account tabs, web usage and the hub board (not affiliated with Anthropic)"
+  synopsis: "Unofficial desktop app for Watchyard: Claude account tabs, web usage and the hub board (not affiliated with Anthropic)"
   description: Unofficial, self-hosted tool. Not affiliated with, endorsed by or sponsored by Anthropic. Claude and claude.ai are trademarks of Anthropic.
-  maintainer: Switchyard contributors <noreply@switchyard.invalid>
+  maintainer: Watchyard contributors <noreply@watchyard.invalid>
 
 mac:
   target: dmg
@@ -76,3 +76,11 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+
+# The package of the name before the rename: this one replaces it instead of installing
+# beside it (docs/spec/rename.md 2.9). rename:keep-begin
+deb:
+  fpm: ["--replaces=switchyard-desktop", "--conflicts=switchyard-desktop"]
+rpm:
+  fpm: ["--replaces=switchyard-desktop", "--conflicts=switchyard-desktop"]
+# rename:keep-end

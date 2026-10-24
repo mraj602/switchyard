@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // The local fixture: one outbox day file under testdata/local/outbox. `go test
@@ -41,7 +41,7 @@ func (b *fxBuilder) add(kind string, at string, slot string, seat *record.Seat, 
 	b.n++
 	r := &record.Record{
 		V: 1, ID: fmt.Sprintf("01JA2XRB3T0M2N4P6Q8R%04d", b.n), Kind: kind, TS: record.FormatTime(ts),
-		Machine: fxMachine, Slot: slot, Seat: seat, Term: term, Client: "sy/0.7.0", Derived: record.Derived{},
+		Machine: fxMachine, Slot: slot, Seat: seat, Term: term, Client: "wy/0.7.0", Derived: record.Derived{},
 	}
 	for k, v := range derived {
 		r.Derived.Set(k, v)

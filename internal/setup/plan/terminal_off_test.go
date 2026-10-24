@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/plan"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/plan"
 )
 
 func runsOf(p model.Plan) []string {
@@ -20,7 +20,7 @@ func runsOf(p model.Plan) []string {
 	return out
 }
 
-// `off` takes back only what the ledger says sy did: a copy of Warp's plugin (and its
+// `off` takes back only what the ledger says wy did: a copy of Warp's plugin (and its
 // marketplace) the person installed in ~/.claude, and a pane they enabled there, stay.
 func TestTerminalOffOnlyRecordedRoots(t *testing.T) {
 	st, f := onState()
@@ -33,7 +33,7 @@ func TestTerminalOffOnlyRecordedRoots(t *testing.T) {
 	p := termPlan(t, st, model.TermChoices{Pane: true, WarpPlugin: true, Off: true}, f)
 	got := strings.Join(runsOf(p), "\n")
 	want := strings.Join([]string{
-		"uninstall switchyard-pane@sy-local@/home/u/.claude-3/settings.json",
+		"uninstall watchyard-pane@wy-local@/home/u/.claude-3/settings.json",
 		"uninstall warp@claude-code-warp@/home/u/.claude-3/settings.json",
 		"marketplace remove claude-code-warp@/home/u/.claude-3/settings.json",
 	}, "\n")
@@ -44,7 +44,7 @@ func TestTerminalOffOnlyRecordedRoots(t *testing.T) {
 		t.Errorf("off touched ~/.claude: %s", dump(p))
 	}
 
-	// sy only enabled Warp's plugin in ~/.claude (the person installed it and added the
+	// wy only enabled Warp's plugin in ~/.claude (the person installed it and added the
 	// marketplace): off disables it there and keeps the install and the marketplace.
 	st, f = onState()
 	lt = st.Ledger.Terminal
@@ -61,12 +61,12 @@ func TestTerminalOffOnlyRecordedRoots(t *testing.T) {
 	lt.WarpPlugin.Installed = []string{"/home/u/.claude-3/plugins"}
 	lt.WarpPlugin.Targets = []string{"/home/u/.claude-3/settings.json"}
 	p = termPlan(t, st, model.TermChoices{WarpPlugin: true, Off: true}, f)
-	if got := runsOf(p); len(got) != 2 || !strings.Contains(strings.Join(p.Warnings, "\n"), "installed but not by sy") {
+	if got := runsOf(p); len(got) != 2 || !strings.Contains(strings.Join(p.Warnings, "\n"), "installed but not by wy") {
 		t.Fatalf("theirs in ~/.claude: %v %v", got, p.Warnings)
 	}
 }
 
-// The pane adds sy-local to a root that lacks it; off removes it there, unless the switchyard
+// The pane adds wy-local to a root that lacks it; off removes it there, unless the watchyard
 // plugin is (now) in that root.
 func TestTerminalPaneMarketplace(t *testing.T) {
 	st, f := termState(), termFacts()
@@ -83,14 +83,14 @@ func TestTerminalPaneMarketplace(t *testing.T) {
 	r.Plugins = []string{plan.PaneID}
 	st.Ledger.Terminal.Pane.Markets = []string{"/home/u/.claude-3/plugins"}
 	p = termPlan(t, st, model.TermChoices{Pane: true, Off: true}, f)
-	if got := strings.Join(runsOf(p), "\n"); !strings.HasSuffix(got, "uninstall switchyard-pane@sy-local@/home/u/.claude-3/settings.json\nmarketplace remove sy-local@/home/u/.claude-3/settings.json") {
+	if got := strings.Join(runsOf(p), "\n"); !strings.HasSuffix(got, "uninstall watchyard-pane@wy-local@/home/u/.claude-3/settings.json\nmarketplace remove wy-local@/home/u/.claude-3/settings.json") {
 		t.Fatalf("off:\n%s", got)
 	}
-	// With the switchyard plugin there, sy-local stays and the record is let go.
+	// With the watchyard plugin there, wy-local stays and the record is let go.
 	r.Plugins = []string{plan.PaneID, plan.PluginID}
 	p = termPlan(t, st, model.TermChoices{Pane: true, Off: true}, f)
 	if strings.Contains(strings.Join(runsOf(p), "\n"), "marketplace remove") || !hasKeep(p, plan.KeepForSwitch) {
-		t.Fatalf("off with switchyard: %s", dump(p))
+		t.Fatalf("off with watchyard: %s", dump(p))
 	}
 }
 
@@ -122,7 +122,7 @@ func TestTerminalTitlesOffRestoresPrior(t *testing.T) {
 	}
 }
 
-// `sy term off` without claude: titles and tabs go, the plugin pieces stay with a warning.
+// `wy term off` without claude: titles and tabs go, the plugin pieces stay with a warning.
 func TestTerminalOffWithoutClaude(t *testing.T) {
 	st, f := onState()
 	st.Claude.Path = ""

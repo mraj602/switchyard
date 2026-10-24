@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // lineTimestamp extracts the "timestamp" field of a history line as milliseconds: a JSON

@@ -61,7 +61,7 @@ test('why a change is not available', () => {
   assert.doesNotMatch(P.whyNot({ ...ok, widens: true, app: true }), /owner-link|owner link/);
   // in a browser: an owner link from an owner device, no command
   assert.match(P.whyNot({ ...ok, widens: true }), /Make another device owner/);
-  assert.doesNotMatch(P.whyNot({ ...ok, widens: true }), /sy hub/);
+  assert.doesNotMatch(P.whyNot({ ...ok, widens: true }), /wy hub/);
   assert.doesNotMatch(P.whyNot({ ...ok, push: false, app: true }), /paired phone/);
 });
 

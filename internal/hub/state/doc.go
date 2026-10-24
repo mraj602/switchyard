@@ -6,5 +6,5 @@
 //
 // The fold is pure (no I/O, no clock) and takes its own input types (Input, Hook, ListObs),
 // so it does not import internal/record; an adapter turns records into Inputs. It is used by
-// `sy status` on a machine and by the hub.
+// `wy status` on a machine and by the hub.
 package state

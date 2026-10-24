@@ -1,14 +1,14 @@
 #!/bin/bash
 # Runs the screenshot audit (screens.mjs) under xvfb on a private session bus.
 #   app/test/screens/run.sh <out dir> [phase ...]
-# SY_BIN defaults to the smoke build (make app-smoke builds it); temp files go to
+# WY_BIN defaults to the smoke build (make app-smoke builds it); temp files go to
 # ~/.cache/sy-audit/tmp so a small /tmp quota is not filled.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 app="$(cd "$here/../.." && pwd)"
 out="${1:?usage: run.sh <out dir> [phase ...]}"
 shift
-export SY_BIN="${SY_BIN:-$app/node_modules/.cache/sy-smoke/sy}"
+export WY_BIN="${WY_BIN:-$app/node_modules/.cache/sy-smoke/wy}"
 export TMPDIR="${TMPDIR_AUDIT:-$HOME/.cache/sy-audit/tmp}"
 mkdir -p "$TMPDIR" "$out"
 cd "$app"

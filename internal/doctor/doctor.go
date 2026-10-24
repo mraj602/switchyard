@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/client"
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/paths"
+	"github.com/mraj602/watchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/paths"
 )
 
 // Level is the verdict of one check.
@@ -42,7 +42,7 @@ type Report struct {
 	Fail   int     `json:"fail"`
 }
 
-// Failed reports whether any check failed: the only case where `sy doctor` exits non-zero.
+// Failed reports whether any check failed: the only case where `wy doctor` exits non-zero.
 func (r Report) Failed() bool { return r.Fail > 0 }
 
 func (r *Report) add(c Check) {
@@ -110,7 +110,7 @@ func Run(ctx context.Context, o Options) Report {
 		rep.add(Check{Name: "slots", Level: Fail, Detail: err.Error(), Fix: "check that the home folder is readable"})
 	} else if len(slots) == 0 {
 		rep.add(Check{Name: "slots", Level: Warn, Detail: "no Claude config folder found",
-			Fix: "run claude once, or list folders in config.toml: sy config set slots.extra <folder>"})
+			Fix: "run claude once, or list folders in config.toml: wy config set slots.extra <folder>"})
 	} else {
 		names := make([]string, len(slots))
 		for i, s := range slots {
@@ -144,12 +144,12 @@ func checkConfig(rep *Report, o Options) config.Config {
 		o.Dirs.Data.Path, o.Dirs.Data.Describe())})
 	f, err := config.Load(o.Dirs.Config.Path)
 	if err != nil {
-		rep.add(Check{Name: "config", Level: Fail, Detail: err.Error(), Fix: "fix or remove config.toml (sy config get/set edit it safely)"})
+		rep.add(Check{Name: "config", Level: Fail, Detail: err.Error(), Fix: "fix or remove config.toml (wy config get/set edit it safely)"})
 		return config.Defaults()
 	}
 	cfg, err := f.Typed()
 	if err != nil {
-		rep.add(Check{Name: "config", Level: Fail, Detail: err.Error(), Fix: "correct the value with: sy config set <key> <value>"})
+		rep.add(Check{Name: "config", Level: Fail, Detail: err.Error(), Fix: "correct the value with: wy config set <key> <value>"})
 		return config.Defaults()
 	}
 	if unk := f.Unknown(); len(unk) > 0 {
@@ -170,7 +170,7 @@ func checkClaude(ctx context.Context, rep *Report, o Options) string {
 	p, err := look("claude")
 	if err != nil {
 		rep.add(Check{Name: "claude", Level: Fail, Detail: "claude not found on PATH",
-			Fix: "install Claude Code and make sure `claude` is on PATH (the status line and sy agents need it)"})
+			Fix: "install Claude Code and make sure `claude` is on PATH (the status line and wy agents need it)"})
 		return ""
 	}
 	run := o.Run
@@ -242,7 +242,7 @@ func checkOutbox(rep *Report, o Options, cfg config.Config) {
 	dir := filepath.Join(o.Dirs.State.Path, "outbox")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		rep.add(Check{Name: "outbox", Level: Fail, Detail: "cannot create " + dir + ": " + err.Error(),
-			Fix: "make the state folder writable, or point SY_STATE_DIR at a writable folder"})
+			Fix: "make the state folder writable, or point WY_STATE_DIR at a writable folder"})
 		return
 	}
 	probe, err := os.CreateTemp(dir, ".doctor-probe-*")
@@ -258,7 +258,7 @@ func checkOutbox(rep *Report, o Options, cfg config.Config) {
 	st, err := outbox.New(dir).Stat()
 	if err != nil {
 		rep.add(Check{Name: "outbox size", Level: Warn, Detail: "cannot measure: " + err.Error(),
-			Fix: "run sy outbox stat for the details"})
+			Fix: "run wy outbox stat for the details"})
 		return
 	}
 	size := fmt.Sprintf("%s in %d day and %d spill files, %s not yet flushed", humanBytes(st.Bytes), st.DayFiles, st.SpillFiles, humanBytes(st.UnflushedBytes))
@@ -275,17 +275,17 @@ func checkOutbox(rep *Report, o Options, cfg config.Config) {
 		rep.add(Check{Name: "oldest unflushed", Level: OK, Detail: "none"})
 	case hub == "":
 		rep.add(Check{Name: "oldest unflushed", Level: OK,
-			Detail: fmt.Sprintf("%s ago (no hub configured: records stay local for sy status)", age(o.now().Sub(st.OldestUnflushed)))})
+			Detail: fmt.Sprintf("%s ago (no hub configured: records stay local for wy status)", age(o.now().Sub(st.OldestUnflushed)))})
 	case o.now().Sub(st.OldestUnflushed) > 15*time.Minute:
 		rep.add(Check{Name: "oldest unflushed", Level: Warn, Detail: age(o.now().Sub(st.OldestUnflushed)) + " ago",
-			Fix: "run sy flush and read its error; check the hub is reachable"})
+			Fix: "run wy flush and read its error; check the hub is reachable"})
 	default:
 		rep.add(Check{Name: "oldest unflushed", Level: OK, Detail: age(o.now().Sub(st.OldestUnflushed)) + " ago"})
 	}
 	checkFlushStatus(rep, o, dir, hub)
 }
 
-// checkFlushStatus shows what the last `sy flush` run found (flush.status.json): a token
+// checkFlushStatus shows what the last `wy flush` run found (flush.status.json): a token
 // the hub rejected, a hub that refuses records, any other error, and the last success.
 // Nothing is shown without a hub or before the first flush.
 func checkFlushStatus(rep *Report, o Options, dir, hub string) {
@@ -303,13 +303,13 @@ func checkFlushStatus(rep *Report, o Options, dir, hub string) {
 	switch {
 	case fs.AuthFailed:
 		rep.add(Check{Name: "flush", Level: Fail, Detail: "token rejected by the hub (" + last + "): " + fs.Error,
-			Fix: "create a new token on the hub and run: sy connect " + hub + " --token-stdin (paste the token on standard input)"})
+			Fix: "create a new token on the hub and run: wy connect " + hub + " --token-stdin (paste the token on standard input)"})
 	case fs.RefusesRecords:
 		rep.add(Check{Name: "flush", Level: Fail, Detail: "hub refuses records (" + last + "): " + fs.Error,
 			Fix: "the hub or a proxy in front of it answers 400/413 to everything; check its logs and size limits; nothing is dropped meanwhile"})
 	case !fs.OK && fs.Error != "":
 		rep.add(Check{Name: "flush", Level: Warn, Detail: "last flush failed (" + last + "): " + fs.Error,
-			Fix: "run sy flush by hand and read its error; check the hub is reachable"})
+			Fix: "run wy flush by hand and read its error; check the hub is reachable"})
 	default:
 		rep.add(Check{Name: "flush", Level: OK, Detail: last})
 	}

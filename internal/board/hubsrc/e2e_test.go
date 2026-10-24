@@ -19,16 +19,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/board"
-	"github.com/mraj602/switchyard/internal/record"
-	"github.com/mraj602/switchyard/internal/termenv"
+	"github.com/mraj602/watchyard/internal/board"
+	"github.com/mraj602/watchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/termenv"
 )
 
-// The end-to-end test: the real `sy` binary runs a hub on a free loopback port
-// in a temp SY_HOME; records reach it through `sy outbox append` + `sy flush` (this machine)
-// and POST /v1/ingest as a second machine; `sy board connect` makes the board token; the hub
-// source reads it. Everything runs with a temp HOME, SY_HOME and CLAUDE_CONFIG_DIR, and no
-// SY_* / XDG_* from the real environment.
+// The end-to-end test: the real `wy` binary runs a hub on a free loopback port
+// in a temp WY_HOME; records reach it through `wy outbox append` + `wy flush` (this machine)
+// and POST /v1/ingest as a second machine; `wy board connect` makes the board token; the hub
+// source reads it. Everything runs with a temp HOME, WY_HOME and CLAUDE_CONFIG_DIR, and no
+// WY_* / XDG_* from the real environment.
 //
 //	go test ./internal/board/hubsrc -run E2E     (skipped with -short and on Windows)
 
@@ -51,7 +51,7 @@ func (s *syncBuf) String() string {
 
 type rig struct {
 	t      *testing.T
-	sy     string
+	wy     string
 	env    []string
 	state  string
 	addr   string
@@ -69,22 +69,22 @@ func buildSy(t *testing.T, dir string) string {
 		t.Fatal(err)
 	}
 	root := filepath.Dir(strings.TrimSpace(string(out)))
-	bin := filepath.Join(dir, "bin", "sy")
-	cmd := exec.Command("go", "build", "-o", bin, "./cmd/sy")
+	bin := filepath.Join(dir, "bin", "wy")
+	cmd := exec.Command("go", "build", "-o", bin, "./cmd/wy")
 	cmd.Dir = root
 	if b, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build sy: %v\n%s", err, b)
+		t.Fatalf("build wy: %v\n%s", err, b)
 	}
 	return bin
 }
 
 func cleanEnv(tmp string) []string {
-	// Built from nothing but PATH: no HOME, XDG_*, SY_* or CLAUDE_* of the real environment
+	// Built from nothing but PATH: no HOME, XDG_*, WY_* or CLAUDE_* of the real environment
 	// can reach the binary (and the terminal packages never read the process environment
 	// themselves, internal/termenv/lint_test.go).
 	return []string{
 		"PATH=" + termenv.FromOS().Lookup("PATH"),
-		"HOME=" + filepath.Join(tmp, "home"), "SY_HOME=" + filepath.Join(tmp, "sy"),
+		"HOME=" + filepath.Join(tmp, "home"), "WY_HOME=" + filepath.Join(tmp, "wy"),
 		"CLAUDE_CONFIG_DIR=" + filepath.Join(tmp, "claude"), "TZ=UTC", "NO_COLOR=1",
 	}
 }
@@ -92,7 +92,7 @@ func cleanEnv(tmp string) []string {
 func newRig(t *testing.T) *rig {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("end-to-end: builds and runs sy")
+		t.Skip("end-to-end: builds and runs wy")
 	}
 	if runtime.GOOS == "windows" {
 		t.Skip("end-to-end: unix only")
@@ -101,7 +101,7 @@ func newRig(t *testing.T) *rig {
 	if err := os.MkdirAll(filepath.Join(tmp, "home"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	r := &rig{t: t, sy: buildSy(t, tmp), env: cleanEnv(tmp), state: filepath.Join(tmp, "sy", "state")}
+	r := &rig{t: t, wy: buildSy(t, tmp), env: cleanEnv(tmp), state: filepath.Join(tmp, "wy", "state")}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -132,7 +132,7 @@ func newRig(t *testing.T) *rig {
 
 func (r *rig) startHub() {
 	r.t.Helper()
-	cmd := exec.Command(r.sy, "hub", "serve", "--listen", r.addr, "--no-push", "--no-pull")
+	cmd := exec.Command(r.wy, "hub", "serve", "--listen", r.addr, "--no-push", "--no-pull")
 	cmd.Env = r.env
 	hubLog := &syncBuf{}
 	r.hubLog = hubLog
@@ -185,13 +185,13 @@ func (r *rig) run(args ...string) string {
 
 func (r *rig) runIn(stdin string, args ...string) string {
 	r.t.Helper()
-	cmd := exec.Command(r.sy, args...)
+	cmd := exec.Command(r.wy, args...)
 	cmd.Env = r.env
 	cmd.Stdin = strings.NewReader(stdin)
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
 	if err := cmd.Run(); err != nil {
-		r.t.Fatalf("sy %s: %v\n%s%s", strings.Join(args, " "), err, out.String(), errb.String())
+		r.t.Fatalf("wy %s: %v\n%s%s", strings.Join(args, " "), err, out.String(), errb.String())
 	}
 	return out.String()
 }
@@ -206,7 +206,7 @@ func (r *rig) hookRec(machine string, term *record.Term, sid, event string, fiel
 		p[k] = v
 	}
 	raw, _ := json.Marshal(p)
-	rec, err := record.NewHookEvent(record.Meta{Machine: machine, Slot: "~/.claude", Seat: e2eSeat, Term: term, Client: "sy/e2e", Now: time.Now()},
+	rec, err := record.NewHookEvent(record.Meta{Machine: machine, Slot: "~/.claude", Seat: e2eSeat, Term: term, Client: "wy/e2e", Now: time.Now()},
 		raw, record.HookOptions{LastMessages: true})
 	if err != nil {
 		r.t.Fatal(err)
@@ -214,7 +214,7 @@ func (r *rig) hookRec(machine string, term *record.Term, sid, event string, fiel
 	return rec
 }
 
-// viaOutbox is how this machine's records travel: sy outbox append, then sy flush.
+// viaOutbox is how this machine's records travel: wy outbox append, then wy flush.
 func (r *rig) viaOutbox(recs ...*record.Record) {
 	r.t.Helper()
 	var in bytes.Buffer
@@ -241,7 +241,7 @@ func (r *rig) asMachine(machine, token string, recs ...*record.Record) {
 		}
 		raws = append(raws, b)
 	}
-	body, _ := json.Marshal(map[string]any{"v": 1, "client": "sy/e2e", "records": raws})
+	body, _ := json.Marshal(map[string]any{"v": 1, "client": "wy/e2e", "records": raws})
 	req, _ := http.NewRequest("POST", r.base+"/v1/ingest", bytes.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
@@ -463,7 +463,7 @@ func sameAsHub(t errorfer, r *rig, token string, v board.View) {
 func TestE2ERealHub(t *testing.T) {
 	r := newRig(t)
 
-	// ---- the board token, through the real `sy board connect` (local admin channel).
+	// ---- the board token, through the real `wy board connect` (local admin channel).
 	out := r.run("board", "connect", "--json")
 	var conn struct{ Device, Hub string }
 	if err := json.Unmarshal([]byte(out), &conn); err != nil || conn.Hub != r.base || conn.Device == "" {

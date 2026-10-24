@@ -4,7 +4,7 @@
 // ---- C1 folders and identity
 
 /** Basename of the app's own user-data folder under app.getPath('appData'). */
-export const USER_DATA_DIRNAME = 'switchyard-desktop';
+export const USER_DATA_DIRNAME = 'watchyard-desktop';
 /** The user-data folder of the last release before a rename (docs/spec/rename.md 2.9). */
 export const LEGACY_USER_DATA_DIRNAME = 'switchyard-desktop'; // rename:keep
 /** Files the app owns in its user-data folder. */
@@ -26,10 +26,10 @@ export const HUB_PARTITION = 'persist:sy-hub';
 export const TAB_NAME_MAX = 24;
 
 /** `client` in records: CLIENT_NAME + '/' + app version. */
-export const CLIENT_NAME = 'switchyard-desktop';
+export const CLIENT_NAME = 'watchyard-desktop';
 
 /** Linux autostart and launcher entry name. */
-export const DESKTOP_ENTRY = 'switchyard-desktop.desktop';
+export const DESKTOP_ENTRY = 'watchyard-desktop.desktop';
 /** The entry name of the last release before a rename, removed when run at login is set. */
 export const LEGACY_DESKTOP_ENTRY = 'switchyard-desktop.desktop'; // rename:keep
 
@@ -137,7 +137,7 @@ export const READING_ON = 'on';
 export const READING_OFF = 'off';
 export const READING_NEVER_ASKED = 'never_asked';
 
-/** Cadence, in milliseconds (C5). SY_APP_TEST_CADENCE_MS replaces PERIOD, FLOOR and MANUAL_FLOOR. */
+/** Cadence, in milliseconds (C5). WY_APP_TEST_CADENCE_MS replaces PERIOD, FLOOR and MANUAL_FLOOR. */
 export const CADENCE = Object.freeze({
   PERIOD_MS: 300_000,
   JITTER_MS: 15_000, // ±
@@ -153,7 +153,7 @@ export const BACKOFF_MS = Object.freeze([300_000, 600_000, 1_200_000, 2_400_000,
 /** Statuses that stop reading until the person presses Resume. */
 export const STOP_STATUSES = Object.freeze([401, 403, 429]);
 
-/** Debounce of `sy flush --quiet` after appends, coalesced across tabs (C5). */
+/** Debounce of `wy flush --quiet` after appends, coalesced across tabs (C5). */
 export const FLUSH_DEBOUNCE_MS = 2_000;
 
 // ---- C6 hub connection
@@ -165,7 +165,7 @@ export const STREAM_PING_TIMEOUT_MS = 60_000;
 export const NEEDS_YOU_DEBOUNCE_MS = 1_000;
 
 /** The project's release page (C8 update notice; opened only through openExternalSafe). */
-export const RELEASES_URL = 'https://github.com/mraj602/switchyard/releases';
+export const RELEASES_URL = 'https://github.com/mraj602/watchyard/releases';
 
 // ---- C3 state push
 
@@ -176,24 +176,24 @@ export const STATE_PUSH_DEBOUNCE_MS = 100;
 export const NOTIFY_QUESTION_MAX = 140;
 export const TRAY_SESSIONS_MAX = 5;
 
-// ---- C11 running sy
+// ---- C11 running wy
 
-export const SY_TIMEOUT_MS = 15_000;
-export const SY_LONG_TIMEOUT_MS = 60_000; // flush, desktop token, desktop owner-link
-export const SY_STDOUT_MAX = 1024 * 1024;
-export const SY_STDERR_MAX = 64 * 1024;
+export const WY_TIMEOUT_MS = 15_000;
+export const WY_LONG_TIMEOUT_MS = 60_000; // flush, desktop token, desktop owner-link
+export const WY_STDOUT_MAX = 1024 * 1024;
+export const WY_STDERR_MAX = 64 * 1024;
 
-/** `sy desktop` exit codes (C4). */
-export const SY_EXIT = Object.freeze({ OK: 0, USAGE: 2, REFUSED: 3, NOT_HERE: 4, UNREACHABLE: 5 });
+/** `wy desktop` exit codes (C4). */
+export const WY_EXIT = Object.freeze({ OK: 0, USAGE: 2, REFUSED: 3, NOT_HERE: 4, UNREACHABLE: 5 });
 
 // ---- test-only environment (read only when !app.isPackaged, through main/test-hooks.js)
 
 export const TEST_ENV = Object.freeze({
-  USER_DATA: 'SY_APP_USER_DATA',
-  CLAUDE_ORIGIN: 'SY_APP_TEST_CLAUDE_ORIGIN',
-  CADENCE_MS: 'SY_APP_TEST_CADENCE_MS',
-  SY_BIN: 'SY_BIN',
-  // '1': boot.js puts its modules on globalThis.__switchyard so the Electron smoke test can
+  USER_DATA: 'WY_APP_USER_DATA',
+  CLAUDE_ORIGIN: 'WY_APP_TEST_CLAUDE_ORIGIN',
+  CADENCE_MS: 'WY_APP_TEST_CADENCE_MS',
+  WY_BIN: 'WY_BIN',
+  // '1': boot.js puts its modules on globalThis.__watchyard so the Electron smoke test can
   // inspect them from the main process (Playwright app.evaluate). Unpackaged only.
-  EXPOSE: 'SY_APP_TEST_EXPOSE',
+  EXPOSE: 'WY_APP_TEST_EXPOSE',
 });

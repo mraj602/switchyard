@@ -1,5 +1,5 @@
 // Headless browser smoke test for the web app. Run by TestBrowserSmoke (webui/smoke),
-// gated by SY_WEBUI_BROWSER=1. Needs puppeteer-core (install it in a temp dir and point
+// gated by WY_WEBUI_BROWSER=1. Needs puppeteer-core (install it in a temp dir and point
 // NODE_PATH at its node_modules) and a Chrome binary (CHROME, default /usr/bin/google-chrome).
 //
 // Env: BASE_URL (mock hub), TOKEN (board login token), PAIR_SECRET, PAIR_CODE, OWNER_SECRET,
@@ -120,7 +120,7 @@ async function auditChecks(page, sizeName) {
   // G14: the Now title.
   await page.evaluate(() => { location.hash = '#/'; });
   await page.waitForSelector('.page-now');
-  if (!/^\(\d+\) Now · Switchyard$/.test(await page.title())) fail(t(`Now title is "${await page.title()}"`));
+  if (!/^\(\d+\) Now · Watchyard$/.test(await page.title())) fail(t(`Now title is "${await page.title()}"`));
   // G1/G3: imported history folds into one line, and Open leaves it out.
   await fetch(BASE + '/_dev/scenario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ names: ['history'] }) });
   await page.evaluate(() => { location.hash = '#/sessions?filter=ended'; });
@@ -153,7 +153,7 @@ async function boardFlow(sizeName, w, hgt) {
   const ctx = await browser.createBrowserContext();
   const page = await newPage(ctx, sizeName, w, hgt, { ua: undefined, label: 'board', mobile: false });
   await page.goto(BASE + '/#/login', { waitUntil: 'networkidle2' });
-  // "Sign in to this hub": an owner link, a code, the hub-computer fold-out (sy hub owner-link);
+  // "Sign in to this hub": an owner link, a code, the hub-computer fold-out (wy hub owner-link);
   // the token form is behind a disclosure (L1).
   await page.waitForSelector('.login-card [data-key=owner-link-form]');
   await page.waitForSelector('.login-card [data-key=to-pair]');
@@ -308,10 +308,10 @@ async function phoneFlow(sizeName, w, hgt) {
   // The desktop app's Hub view marks itself in the user agent (works signed out): no CLI on the
   // sign-in page; signed in, the sidebar says Hub settings.
   const appCtx = await browser.createBrowserContext();
-  const app = await newPage(appCtx, sizeName, w, hgt, { label: 'in-app', mobile: false, ua: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Electron/37.10.3 Safari/537.36 SwitchyardDesktop/0.6.0' });
+  const app = await newPage(appCtx, sizeName, w, hgt, { label: 'in-app', mobile: false, ua: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Electron/37.10.3 Safari/537.36 WatchyardDesktop/0.6.0' });
   await app.goto(BASE + '/#/login', { waitUntil: 'networkidle2' });
   try { await app.waitForSelector('[data-key=login-app]', { timeout: 4000 }); } catch (e) { fail(app.tag('the app sign-in page is not the in-app one')); }
-  if (/sy hub/.test(await app.evaluate(() => document.body.textContent || ''))) fail(app.tag('the app sign-in page names a CLI command'));
+  if (/wy hub/.test(await app.evaluate(() => document.body.textContent || ''))) fail(app.tag('the app sign-in page names a CLI command'));
   const signedIn = await app.evaluate(async (t) => { const r = await fetch('/v1/session/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: t }) }); return r.status + ' ' + await r.text(); }, TOKEN);
   if (!/^2/.test(signedIn)) fail(app.tag('app sign-in: ' + signedIn));
   await app.evaluate(() => { location.hash = '#/'; });
@@ -585,8 +585,8 @@ async function machinesFlow(page, sizeName) {
   await page.evaluate(() => { location.hash = '#/more/devices'; });
   await page.waitForSelector('[data-key=add-machine]');
   await press(page, 'add-machine');
-  try { await page.waitForSelector('dialog[open] [data-key=cmd-machine-add]', { timeout: 4000 }); } catch (e) { fail(page.tag('Add machine did not show the sy machine add command')); }
-  await want('[data-key=cmd-machine-add]', /^sy machine add user@host$/, 'machine add command');
+  try { await page.waitForSelector('dialog[open] [data-key=cmd-machine-add]', { timeout: 4000 }); } catch (e) { fail(page.tag('Add machine did not show the wy machine add command')); }
+  await want('[data-key=cmd-machine-add]', /^wy machine add user@host$/, 'machine add command');
   await want('[data-key=cmd-install]', /install\.sh \| sh -s -- -- --hub join:http.*--code 482-913/, 'install command');
   await shot(page, `${sizeName}-o-add-machine`);
   await page.click('[data-key=dialog-close]');
@@ -873,7 +873,7 @@ async function keysFlow(sizeName, w, hgt) {
   try { await opage.waitForSelector('[data-key=keys-step-certify]', { timeout: 6000 }); } catch (e) { fail(t(opage, 'no Certify step after Confirm')); }
   await sleep(350);
   if ((await txt(opage, '[data-key=owner-fp]')) !== grouped) fail(t(opage, 'active owner key not shown'));
-  if (!/sy keys certify --all/.test((await txt(opage, '[data-key=cmd-keys-certify]')) || '')) fail(t(opage, 'certify command missing'));
+  if (!/wy keys certify --all/.test((await txt(opage, '[data-key=cmd-keys-certify]')) || '')) fail(t(opage, 'certify command missing'));
   const states = await opage.$$eval('[data-key^=key-dev-] [data-state]', (e) => e.map((x) => x.dataset.state));
   if (states.join() !== 'certified,hub-signed') fail(t(opage, `device states ${states}`));
   if (!(await opage.$('[data-key=certify-hint]'))) fail(t(opage, 'no certify hint'));
@@ -916,7 +916,7 @@ async function pwaFlow() {
   await cdp.send('Page.enable');
   const m = await cdp.send('Page.getAppManifest');
   if (m.errors && m.errors.length) fail(`manifest errors: ${JSON.stringify(m.errors)}`);
-  if (!m.data || !m.data.includes('"Switchyard"')) fail('manifest did not load');
+  if (!m.data || !m.data.includes('"Watchyard"')) fail('manifest did not load');
   const inst = await cdp.send('Page.getInstallabilityErrors');
   const instErrs = (inst.installabilityErrors || []).filter((x) => x.errorId !== 'in-incognito'); // the test browser context is incognito
   if (instErrs.length) fail(`installability errors: ${JSON.stringify(instErrs)}`);
@@ -993,15 +993,15 @@ async function pwaFlow() {
   }
 
   // fonts: the symbols face loads from the hub for the arrows and shapes Plex lacks
-  const symFaces = await page.evaluate(async () => (await document.fonts.load('16px "Switchyard Symbols"', '\u2192\u25CF\u283F\u24D8')).length);
-  if (symFaces < 3) fail(`the Switchyard Symbols faces did not load (${symFaces} of 3)`);
+  const symFaces = await page.evaluate(async () => (await document.fonts.load('16px "Watchyard Symbols"', '\u2192\u25CF\u283F\u24D8')).length);
+  if (symFaces < 3) fail(`the Watchyard Symbols faces did not load (${symFaces} of 3)`);
 
   // update: the hub switches to another build
   await fetch(BASE + '/_dev/build', { method: 'POST', body: JSON.stringify({ hash: 'ffffffffffff' }), headers: { 'Content-Type': 'application/json' } });
   await page.evaluate(() => { location.hash = '#/'; });
   // A page this young would take the new build by itself (checked below); stop that here so the
   // banner and its Reload button are what is tested.
-  await page.evaluate(() => sessionStorage.setItem('sy.autoUpdateAt', String(Date.now())));
+  await page.evaluate(() => sessionStorage.setItem('wy.autoUpdateAt', String(Date.now())));
   await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration()).update(); });
   try { await page.waitForSelector('.banner-update', { timeout: 8000 }); } catch (e) { fail('"Update ready" never appeared after the build changed'); }
   await shot(page, 'phone-update-banner');
@@ -1011,7 +1011,7 @@ async function pwaFlow() {
   const build1 = await page.evaluate(() => new Promise((res) => { navigator.serviceWorker.addEventListener('message', (e) => e.data.type === 'build' && res(e.data.build)); navigator.serviceWorker.controller.postMessage({ type: 'build' }); }));
   if (build1 !== 'ffffffffffff' || build1 === build0) fail(`reloaded page runs build ${build1}, expected ffffffffffff (was ${build0})`);
   // A page that has only just started applies the next build without a tap.
-  await page.evaluate(() => sessionStorage.removeItem('sy.autoUpdateAt'));
+  await page.evaluate(() => sessionStorage.removeItem('wy.autoUpdateAt'));
   // ...but not with a dialog open: the banner shows, the page is not reloaded, and the build is
   // taken once the dialog is closed (the loop below).
   await page.evaluate(() => { window.__alive = true; const d = document.createElement('dialog'); d.id = 'smoke-modal'; document.body.append(d); d.setAttribute('open', ''); });

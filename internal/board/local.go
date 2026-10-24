@@ -15,16 +15,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/state"
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/record"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/status"
-	"github.com/mraj602/switchyard/internal/termenv"
+	"github.com/mraj602/watchyard/internal/hub/state"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/status"
+	"github.com/mraj602/watchyard/internal/termenv"
 )
 
 // The local source (T3 "Local"): this machine's outbox folded with the same code as
-// `sy status` (status.Load, status.Adapt, state.Fold), so the two agree on ids, states,
+// `wy status` (status.Load, status.Adapt, state.Fold), so the two agree on ids, states,
 // order and questions. It reads only; it never writes to the outbox.
 
 // Defaults of LocalSource's timing (T3).

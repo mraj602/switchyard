@@ -1,5 +1,5 @@
 // Pair screen (phone.md P2).
-// Scan the QR (or open a switchyard://pair link) or type an address and code; claim; keep the
+// Scan the QR (or open a watchyard://pair link) or type an address and code; claim; keep the
 // token in the keychain through the state layer; then go to Now. `pairWith` resolves only after
 // the integration's onPaired (src/lib/integrate: GET /v1/rules, the notifications prompt and
 // registration, P6.3), so this is the one navigation and Now comes after the prompt (P2). A
@@ -98,7 +98,7 @@ export default function PairScreen() {
     [hub.dev, submit],
   );
 
-  // A switchyard://pair link opened the screen: origin, secret and code arrive as params (the
+  // A watchyard://pair link opened the screen: origin, secret and code arrive as params (the
   // names src/lib/links routeToHref writes). A link never claims by itself (P7): it is parsed
   // into a pre-filled card, and only the tap on "Pair with <host>" claims.
   const origin = paramString(params.origin);
@@ -125,7 +125,7 @@ export default function PairScreen() {
     ]
       .filter(Boolean)
       .join('&');
-    return parsePairInput(`switchyard://pair?${q}`, { dev: hub.dev });
+    return parsePairInput(`watchyard://pair?${q}`, { dev: hub.dev });
   }, [origin, secret, code, hubFp, sealKey, hub.dev]);
   // The link card is shown until the person taps Pair or Cancel on it (then this link is done).
   const [doneLink, setDoneLink] = useState<string | null>(null);

@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/atomicfile"
 )
 
 // Thread rules of peers.md 6.

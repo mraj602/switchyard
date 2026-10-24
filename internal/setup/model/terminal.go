@@ -1,13 +1,13 @@
 package model
 
-// Terminal pieces (docs/spec/terminal.md T10): what `sy term setup`,
-// `sy term titles|warp on|off`, `sy term off` and `sy setup --terminal` ask for, and what the
+// Terminal pieces (docs/spec/terminal.md T10): what `wy term setup`,
+// `wy term titles|warp on|off`, `wy term off` and `wy setup --terminal` ask for, and what the
 // ledger records once they are applied.
 
 // StepTerminal holds the terminal actions of T10 except the hooks-plugin refresh (a
 // write_tree in StepPlugin) and the terminal.titles config_set (StepConfig): the
 // `/env/CLAUDE_CODE_DISABLE_TERMINAL_TITLE` json_set/json_delete per settings target, the
-// `claude plugin …` runs for switchyard-pane and Warp's plugin, and the tab-config mkdir and
+// `claude plugin …` runs for watchyard-pane and Warp's plugin, and the tab-config mkdir and
 // write_file actions.
 const StepTerminal Step = "terminal"
 
@@ -19,12 +19,12 @@ const (
 
 // TermChoices are the answers that, with a State, determine a terminal Plan
 // (plan.Terminal). With Off false the chosen pieces are turned on; with Off true they are
-// turned off (planned in reverse from Ledger.Terminal). `sy term off` is Off with every piece.
+// turned off (planned in reverse from Ledger.Terminal). `wy term off` is Off with every piece.
 type TermChoices struct {
-	Pane       bool `json:"pane,omitempty"`        // switchyard-pane@sy-local in every settings target
+	Pane       bool `json:"pane,omitempty"`        // watchyard-pane@wy-local in every settings target
 	WarpPlugin bool `json:"warp_plugin,omitempty"` // warp@claude-code-warp in every settings target
-	Titles     bool `json:"titles,omitempty"`      // sy hook --title + CLAUDE_CODE_DISABLE_TERMINAL_TITLE
-	WarpTabs   bool `json:"warp_tabs,omitempty"`   // switchyard-<label>.toml tab configs
+	Titles     bool `json:"titles,omitempty"`      // wy hook --title + CLAUDE_CODE_DISABLE_TERMINAL_TITLE
+	WarpTabs   bool `json:"warp_tabs,omitempty"`   // watchyard-<label>.toml tab configs
 	// Channel is WarpStable or WarpPreview ("" = stable); it matters only for WarpTabs.
 	Channel string `json:"channel,omitempty"`
 	Off     bool   `json:"off,omitempty"`
@@ -34,7 +34,7 @@ type TermChoices struct {
 func (c TermChoices) Any() bool { return c.Pane || c.WarpPlugin || c.Titles || c.WarpTabs }
 
 // LedgerTerminal is the ledger's `terminal` block (setup.md 9.3, terminal.md T10): what the
-// terminal pieces have installed now. `sy term … off` and `sy uninstall` plan the reverse
+// terminal pieces have installed now. `wy term … off` and `wy uninstall` plan the reverse
 // from it. A nil piece is not installed.
 type LedgerTerminal struct {
 	Pane       *LedgerTermTargets `json:"pane,omitempty"`
@@ -43,7 +43,7 @@ type LedgerTerminal struct {
 	Tabs       []LedgerTab        `json:"tabs,omitempty"`
 	Warp       *LedgerWarp        `json:"warp,omitempty"`
 	// TitlePrior maps a settings target to the raw JSON value its
-	// env.CLAUDE_CODE_DISABLE_TERMINAL_TITLE had before `sy term titles on` set it to "1";
+	// env.CLAUDE_CODE_DISABLE_TERMINAL_TITLE had before `wy term titles on` set it to "1";
 	// `titles off` puts that value back instead of deleting the key. It outlives the titles
 	// piece (an undo of `titles off` needs it again) and is dropped when an undo of `titles
 	// on` puts the value back itself.
@@ -57,9 +57,9 @@ func (t *LedgerTerminal) Empty() bool {
 }
 
 // LedgerTermTargets lists the settings targets a piece was applied to: for the pane, where
-// switchyard-pane@sy-local was enabled; for titles, where sy set
+// watchyard-pane@wy-local was enabled; for titles, where wy set
 // /env/CLAUDE_CODE_DISABLE_TERMINAL_TITLE = "1". For the pane, Installed lists the plugin
-// roots sy ran `claude plugin install` in, and Markets the roots sy added sy-local to (a
+// roots wy ran `claude plugin install` in, and Markets the roots wy added wy-local to (a
 // root that lacked it); `off` removes only those (titles leave both empty).
 type LedgerTermTargets struct {
 	Targets   []string `json:"targets"`
@@ -71,13 +71,13 @@ type LedgerTermTargets struct {
 // the settings targets it was enabled in, the marketplace ref asked for, and the commit that
 // ref resolved to when it was added. `claude plugin marketplace add` pins only a branch or
 // tag, never a commit (checked on 2.1.296, terminal.md "Claude Code facts"), and the
-// repository has no tags, so Ref is a branch and Commit is what `sy doctor` compares the
+// repository has no tags, so Ref is a branch and Commit is what `wy doctor` compares the
 // checkout's HEAD with (risk 7).
 //
-// Installed lists the plugin roots sy ran `claude plugin install` in. `off` uninstalls only
+// Installed lists the plugin roots wy ran `claude plugin install` in. `off` uninstalls only
 // there, disables only in Targets and removes the marketplace only in Roots: a copy the
-// person installed is theirs. Commit is set when sy adds the marketplace or installs the
-// plugin, or by `sy term setup --warp-plugin --accept-update` (never silently).
+// person installed is theirs. Commit is set when wy adds the marketplace or installs the
+// plugin, or by `wy term setup --warp-plugin --accept-update` (never silently).
 type LedgerWarpPlugin struct {
 	Roots     []string `json:"roots,omitempty"`
 	Targets   []string `json:"targets,omitempty"`
@@ -86,7 +86,7 @@ type LedgerWarpPlugin struct {
 	Commit    string   `json:"commit,omitempty"`
 }
 
-// LedgerTab is a tab config sy wrote: its path, the SHA-256 of what sy wrote (a file whose
+// LedgerTab is a tab config wy wrote: its path, the SHA-256 of what wy wrote (a file whose
 // hash differs belongs to the person now), and the account label.
 type LedgerTab struct {
 	Path   string `json:"path"`

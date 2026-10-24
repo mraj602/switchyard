@@ -1,5 +1,5 @@
 // Poller, last-known cache and reducer (phone.md P5). The cache (AsyncStorage
-// sy.cache.v1) never holds a token or secret: it stores hub replies only.
+// wy.cache.v1) never holds a token or secret: it stores hub replies only.
 import type { Alert, AlertBrief, Overview, Seat, Session } from '../../contract/api';
 import { CACHE_KEY, POLL_MS } from '../../contract/constants';
 import type { AppStateSource, Clock, KVStore } from '../../contract/platform';

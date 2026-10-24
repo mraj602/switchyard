@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 // The peers calls of api.yaml (tag peers): the matrix, the kill switch and the audit log.

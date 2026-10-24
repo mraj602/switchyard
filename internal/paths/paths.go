@@ -1,5 +1,5 @@
 // Package paths resolves the config, state and data folders for each OS, including the
-// SY_CONFIG_DIR / SY_STATE_DIR / SY_DATA_DIR / SY_HOME overrides. No other package
+// WY_CONFIG_DIR / WY_STATE_DIR / WY_DATA_DIR / WY_HOME overrides. No other package
 // builds paths from $HOME.
 //
 // Contract: docs/spec/paths.md (and rename.md 2.1 for the folders of an older name).
@@ -14,7 +14,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
 // app is the folder name used under each XDG base folder; appWin the one under
@@ -28,9 +28,9 @@ const (
 type Source string
 
 const (
-	SourceDirEnv  Source = "env"     // SY_CONFIG_DIR / SY_STATE_DIR / SY_DATA_DIR (Dir.Var names it)
-	SourceSYHome  Source = "SY_HOME" // $SY_HOME/<role>
-	SourceXDG     Source = "xdg"     // $XDG_*_HOME/switchyard (Dir.Var names it)
+	SourceDirEnv  Source = "env"     // WY_CONFIG_DIR / WY_STATE_DIR / WY_DATA_DIR (Dir.Var names it)
+	SourceSYHome  Source = "WY_HOME" // $WY_HOME/<role>
+	SourceXDG     Source = "xdg"     // $XDG_*_HOME/watchyard (Dir.Var names it)
 	SourceDefault Source = "default" // the per-OS default
 )
 
@@ -44,7 +44,7 @@ type Dir struct {
 	Legacy bool
 }
 
-// Describe renders the source for humans, e.g. "SY_STATE_DIR", "XDG_STATE_HOME" or "default".
+// Describe renders the source for humans, e.g. "WY_STATE_DIR", "XDG_STATE_HOME" or "default".
 func (d Dir) Describe() string {
 	if d.Legacy {
 		return d.describe() + ", " + brand.OldSlug() + " folder from before the rename"
@@ -92,7 +92,7 @@ func StatExists(p string) bool {
 	return err == nil
 }
 
-// Resolve computes the three folders. Precedence per folder: SY_<ROLE>_DIR, then SY_HOME,
+// Resolve computes the three folders. Precedence per folder: WY_<ROLE>_DIR, then WY_HOME,
 // then the per-OS table of paths.md section 1. SWITCHYARD_DATA is never read.
 func Resolve(e Env) (Dirs, error) {
 	get := e.Getenv
@@ -105,9 +105,9 @@ func Resolve(e Env) (Dirs, error) {
 		name, dirVar, xdgVar, xdgDefault string
 		out                              *Dir
 	}{
-		{"config", "SY_CONFIG_DIR", "XDG_CONFIG_HOME", ".config", &d.Config},
-		{"state", "SY_STATE_DIR", "XDG_STATE_HOME", ".local/state", &d.State},
-		{"data", "SY_DATA_DIR", "XDG_DATA_HOME", ".local/share", &d.Data},
+		{"config", "WY_CONFIG_DIR", "XDG_CONFIG_HOME", ".config", &d.Config},
+		{"state", "WY_STATE_DIR", "XDG_STATE_HOME", ".local/state", &d.State},
+		{"data", "WY_DATA_DIR", "XDG_DATA_HOME", ".local/share", &d.Data},
 	}
 	for _, r := range roles {
 		dir, err := resolveOne(e, get, win, r.name, r.dirVar, r.xdgVar, r.xdgDefault)
@@ -126,11 +126,11 @@ func resolveOne(e Env, get func(string) string, win bool, role, dirVar, xdgVar, 
 		}
 		return Dir{Path: clean(win, v), Source: SourceDirEnv, Var: dirVar}, nil
 	}
-	if v := get("SY_HOME"); v != "" {
+	if v := get("WY_HOME"); v != "" {
 		if !isAbs(win, v) {
-			return Dir{}, fmt.Errorf("SY_HOME must be an absolute path, got %q", v)
+			return Dir{}, fmt.Errorf("WY_HOME must be an absolute path, got %q", v)
 		}
-		return Dir{Path: join(win, v, role), Source: SourceSYHome, Var: "SY_HOME"}, nil
+		return Dir{Path: join(win, v, role), Source: SourceSYHome, Var: "WY_HOME"}, nil
 	}
 	if win {
 		if base := get("LOCALAPPDATA"); base != "" && isAbs(true, base) {
@@ -146,7 +146,7 @@ func resolveOne(e Env, get func(string) string, win bool, role, dirVar, xdgVar, 
 		return Dir{Path: join(false, v, app), Source: SourceXDG, Var: xdgVar}, nil
 	}
 	if e.Home == "" {
-		return Dir{}, errors.New("home folder is unknown; set " + dirVar + " or SY_HOME")
+		return Dir{}, errors.New("home folder is unknown; set " + dirVar + " or WY_HOME")
 	}
 	return Dir{Path: join(false, e.Home, xdgDefault, app), Source: SourceDefault}, nil
 }

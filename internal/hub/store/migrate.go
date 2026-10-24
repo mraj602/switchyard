@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/version"
+	"github.com/mraj602/watchyard/internal/version"
 )
 
 // Migrations live in migrations/NNNN_name.sql. 0001 is version 1 of docs/spec/schema.sql
@@ -102,7 +102,7 @@ func (s *Store) migrate(ctx context.Context, opt Options) error {
 	}
 	latest := ms[len(ms)-1].Version
 	if cur > latest {
-		return fmt.Errorf("store: database schema is v%d, this sy knows up to v%d: upgrade sy", cur, latest)
+		return fmt.Errorf("store: database schema is v%d, this wy knows up to v%d: upgrade wy", cur, latest)
 	}
 	if cur == latest {
 		return nil

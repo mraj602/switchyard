@@ -1,6 +1,6 @@
-// Package service installs the hub as a user service for `sy setup --hub here`
+// Package service installs the hub as a user service for `wy setup --hub here`
 // (setup.md step 4): a systemd user unit on Linux (the same unit as
-// deploy/systemd/switchyard-hub.service, with `sy` by absolute path), a LaunchAgent on macOS
+// deploy/systemd/watchyard-hub.service, with `wy` by absolute path), a LaunchAgent on macOS
 // and a Task Scheduler task on Windows. It implements model.Service on the Runner pattern of
 // internal/timer: nothing real runs unless the caller hands in a real Runner and the real
 // home folder; tests use a temp home and a recording Runner.
@@ -18,9 +18,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/timer"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/timer"
 )
 
 // Defaults of the hub service.
@@ -28,15 +28,15 @@ const (
 	DefaultName   = brand.Slug + "-hub"
 	DefaultListen = "127.0.0.1:8787"
 
-	// AgentName is the peers agent's service (`sy agent enable`, peers.md 2.1). The macOS
-	// label is com.switchyard.switchyard-agent.
+	// AgentName is the peers agent's service (`wy agent enable`, peers.md 2.1). The macOS
+	// label is com.watchyard.watchyard-agent.
 	AgentName = brand.Slug + "-agent"
 )
 
 // AgentArgs are the arguments of the agent service's ExecStart.
 var AgentArgs = []string{"agent", "run"}
 
-// AgentSpec is the ServiceSpec `sy agent enable` installs.
+// AgentSpec is the ServiceSpec `wy agent enable` installs.
 func AgentSpec() model.ServiceSpec { return model.ServiceSpec{Name: AgentName, Args: AgentArgs} }
 
 // Runner runs an external command (systemctl, loginctl, launchctl, schtasks). It is the
@@ -52,7 +52,7 @@ type Env struct {
 	Home     string
 	UID      int
 	User     string
-	SyPath   string // absolute path of the sy binary the service runs
+	SyPath   string // absolute path of the wy binary the service runs
 	StateDir string // for the log (macOS) and the task XML (Windows)
 	Getenv   func(string) string
 	Runner   Runner
@@ -66,8 +66,8 @@ type Env struct {
 }
 
 // passEnv are the folder overrides copied into the unit so the service sees the same folders
-// as the shell that ran `sy setup`.
-var passEnv = []string{"SY_HOME", "SY_CONFIG_DIR", "SY_STATE_DIR", "SY_DATA_DIR"}
+// as the shell that ran `wy setup`.
+var passEnv = []string{"WY_HOME", "WY_CONFIG_DIR", "WY_STATE_DIR", "WY_DATA_DIR"}
 
 func (e Env) envPairs() [][2]string {
 	if e.PairsSet {
@@ -237,9 +237,9 @@ func hasControl(s string) bool {
 // describe is the one-line description of a service in its unit, plist and task.
 func describe(name string) string {
 	if isAgent(name) {
-		return "Switchyard agent (peers)"
+		return "Watchyard agent (peers)"
 	}
-	return "Switchyard hub (merged mode)"
+	return "Watchyard hub (merged mode)"
 }
 
 // logName is the file launchd writes the service's stdout and stderr to, inside StateDir. The
@@ -251,14 +251,14 @@ func logName(name string) string {
 	return "hub.log"
 }
 
-// SystemdUnit renders the user unit. It matches deploy/systemd/switchyard-hub.service except
-// that ExecStart names sy by absolute path and Environment lines carry the folder overrides.
+// SystemdUnit renders the user unit. It matches deploy/systemd/watchyard-hub.service except
+// that ExecStart names wy by absolute path and Environment lines carry the folder overrides.
 func SystemdUnit(e Env, spec model.ServiceSpec) string {
 	var b strings.Builder
 	b.WriteString("[Unit]\n")
 	agent := isAgent(spec.Name)
 	b.WriteString("Description=" + describe(spec.Name) + "\n")
-	b.WriteString("Documentation=https://github.com/mraj602/switchyard\n")
+	b.WriteString("Documentation=https://github.com/mraj602/watchyard\n")
 	if !agent {
 		b.WriteString("After=network.target\n")
 	}
@@ -420,7 +420,7 @@ func (s *Service) Install(ctx context.Context, spec model.ServiceSpec) error {
 		return err
 	}
 	if !filepath.IsAbs(s.Env.SyPath) {
-		return fmt.Errorf("service: sy path %q is not absolute", s.Env.SyPath)
+		return fmt.Errorf("service: wy path %q is not absolute", s.Env.SyPath)
 	}
 	if err := ctx.Err(); err != nil {
 		return err
@@ -440,7 +440,7 @@ func (s *Service) Install(ctx context.Context, spec model.ServiceSpec) error {
 	case "windows":
 		return s.installWindows(spec)
 	}
-	return fmt.Errorf("service: no user service support for %s; run `sy hub serve` from your own supervisor", s.Env.GOOS)
+	return fmt.Errorf("service: no user service support for %s; run `wy hub serve` from your own supervisor", s.Env.GOOS)
 }
 
 func (s *Service) installSystemd(spec model.ServiceSpec) error {
@@ -545,7 +545,7 @@ func (s *Service) Uninstall(ctx context.Context, name string) error {
 
 // Status reports whether the service is installed and running. On Linux it also sets
 // LingerOff when `loginctl show-user` says Linger=no ("the hub stops when you log out; run
-// `loginctl enable-linger`"; sy never runs that itself).
+// `loginctl enable-linger`"; wy never runs that itself).
 func (s *Service) Status(ctx context.Context, name string) (model.ServiceStatus, error) {
 	var st model.ServiceStatus
 	spec, err := normalize(model.ServiceSpec{Name: name})
@@ -584,7 +584,7 @@ func (s *Service) Status(ctx context.Context, name string) (model.ServiceStatus,
 // ---- the name before a rename (rename.md 2.2) ---------------------------------------------------
 
 // InstalledPath is the unit, plist or task XML of the installed service name: UnitPath, or on
-// macOS the dev.<slug>.hub.plist that `sy setup --hub here` wrote before the rename when only that
+// macOS the dev.<slug>.hub.plist that `wy setup --hub here` wrote before the rename when only that
 // one exists.
 func InstalledPath(e Env, name string) string {
 	p := UnitPath(e, model.ServiceSpec{Name: name})

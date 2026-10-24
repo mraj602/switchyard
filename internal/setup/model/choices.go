@@ -33,7 +33,7 @@ type Choices struct {
 	TokenStdin bool   `json:"token_stdin,omitempty"`
 	Code       string `json:"code,omitempty"`
 	// CodeStdin reads the code (or a 22-character pairing secret) from the first stdin line
-	// after the plan is accepted (sy machine add); a dry run never reads it.
+	// after the plan is accepted (wy machine add); a dry run never reads it.
 	CodeStdin bool `json:"code_stdin,omitempty"`
 	// Dial and Reach go to hub.dial and hub.reach with --hub join (machines.md 3).
 	Dial        string `json:"dial,omitempty"`

@@ -34,7 +34,7 @@ mkdir -p "$out"
 pretty() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.stringify(JSON.parse(s),null,2)+"\n"))'; }
 
 curl -fsS -X POST "$base/v1/pair/claim" -H 'Content-Type: application/json' \
-  -d "{\"secret\":\"$pair_secret\",\"name\":\"Pixel\",\"expect_kind\":\"phone\",\"cookie\":false,\"client\":\"switchyard-phone/0.8.0\"}" \
+  -d "{\"secret\":\"$pair_secret\",\"name\":\"Pixel\",\"expect_kind\":\"phone\",\"cookie\":false,\"client\":\"watchyard-phone/0.8.0\"}" \
   | pretty >"$out/pair-claim.json"
 token="$(node -e 'process.stdout.write(require(process.argv[1]).token)' "$out/pair-claim.json")"
 

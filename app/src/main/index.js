@@ -28,12 +28,12 @@ const refused = electron.app.isPackaged
   : null;
 
 if (refused) {
-  console.error(`switchyard-desktop: --${refused} is not allowed in this build`);
+  console.error(`watchyard-desktop: --${refused} is not allowed in this build`);
   electron.app.exit(1);
   process.exit(1);
 } else {
   boot(electron).catch((err) => {
-    console.error('switchyard-desktop: start failed:', err);
+    console.error('watchyard-desktop: start failed:', err);
     electron.app.exit(1);
   });
 }

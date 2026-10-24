@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/peers"
-	"github.com/mraj602/switchyard/internal/peers/fakeinbox"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/peers/fakeinbox"
 )
 
 // waitMatrix waits until this machine accepted matrix version v (or later).
@@ -151,7 +151,7 @@ func TestUnknownAndAmbiguousHandles(t *testing.T) {
 	w := newWorld(t, peers.NoTurnLimit)
 	rf := w.laptop.send("api", "nobody@nowhere.gpu-box", "hello?", 0, 0).Refusal()
 	refusedWith(t, rf, peers.CodeUnknownTarget)
-	if line := peers.Describe(rf); !strings.Contains(line, "sy peers list") {
+	if line := peers.Describe(rf); !strings.Contains(line, "wy peers list") {
 		t.Errorf("line %q", line)
 	}
 	if code := peers.ExitCode(rf.Code); code != peers.ExitNotSent {

@@ -77,7 +77,7 @@ export function narrowings(allow: [string, string][], from: string, to: string, 
 export const BLOCK_ALL_CONFIRM = 'Stop all peer messages between accounts? Threads in progress stop too.';
 /** The loop guard's explanation (peers.md 6.3), the same sentence the board shows. */
 export const TURNS_HELP =
-  'When two sessions message each other on their own, with no one typing, Switchyard stops delivering after this many messages, so two agents cannot keep replying to each other forever. Typing in either session (or Resume thread) starts the count again.';
+  'When two sessions message each other on their own, with no one typing, Watchyard stops delivering after this many messages, so two agents cannot keep replying to each other forever. Typing in either session (or Resume thread) starts the count again.';
 /** Shown under the turn limit (peers.md 5.4), the same sentence the board shows. */
 export const NO_LIMIT_HELP = 'No limit lets agents keep talking with no one watching; the other limits still apply.';
 /** max_turns 0 is "no limit" (peers.md 5.1), the default of a new matrix. */

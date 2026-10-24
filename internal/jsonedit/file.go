@@ -42,7 +42,7 @@ type Options struct {
 	Claude bool
 	// Folder is the config folder whose sessions/*.json are checked (Claude mode).
 	Folder string
-	// IgnoreLive turns the live-session skip off (`sy share sync --now`).
+	// IgnoreLive turns the live-session skip off (`wy share sync --now`).
 	IgnoreLive bool
 	// LockWait is how long to wait for a fresh lock (default 5 s); LockStale is the age past
 	// which a lock is broken (default 10 s).
@@ -217,7 +217,7 @@ func applyOnce(target string, o Options, ops []Op) (Result, bool, error) {
 	if err := Verify(before, doc, ops); err != nil {
 		return res, false, err
 	}
-	tmp := filepath.Join(filepath.Dir(target), filepath.Base(target)+".sy."+randHex()+".tmp")
+	tmp := filepath.Join(filepath.Dir(target), filepath.Base(target)+".wy."+randHex()+".tmp")
 	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, fi.Mode().Perm())
 	if err != nil {
 		return res, false, err
@@ -272,7 +272,7 @@ func syncDir(dir string) {
 
 // Verify is the check of setup.md 5.4 step 4: the result parses, every top-level key other
 // than those the ops touched is deep-equal to before, and oauthAccount is byte-identical
-// (unless an op targeted it, which sy never does).
+// (unless an op targeted it, which wy never does).
 func Verify(before, after []byte, ops []Op) error {
 	if !json.Valid(after) {
 		return errors.New("jsonedit: check failed: result does not parse")

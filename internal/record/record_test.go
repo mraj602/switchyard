@@ -18,7 +18,7 @@ var testMeta = Meta{
 	Machine: "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K",
 	Slot:    "~/.claude-2",
 	Seat:    &Seat{Account: "aaaaaaaa-0000-4000-8000-000000000001", Org: "bbbbbbbb-0000-4000-8000-000000000001", Src: "claude_json"},
-	Client:  "sy/0.1.0",
+	Client:  "wy/0.1.0",
 	Now:     time.Date(2026, 10, 11, 14, 3, 22, 418e6, time.UTC),
 }
 
@@ -298,7 +298,7 @@ func TestRoundTripUsage(t *testing.T) {
 	for _, f := range fixtureFiles(t, "usage/response-*.json") {
 		in, _ := os.ReadFile(f)
 		active := true
-		r, err := NewWebUsage(Meta{Machine: testMeta.Machine, Seat: testMeta.Seat, Client: "switchyard-desktop/0.6.0", Now: testMeta.Now}, WebUsagePayload{
+		r, err := NewWebUsage(Meta{Machine: testMeta.Machine, Seat: testMeta.Seat, Client: "watchyard-desktop/0.6.0", Now: testMeta.Now}, WebUsagePayload{
 			TabID: "t_1", Active: &active, Usage: json.RawMessage(in),
 			Org: json.RawMessage(`{"uuid":"bbbbbbbb-0000-4000-8000-000000000001","name":"Org 1"}`),
 		})

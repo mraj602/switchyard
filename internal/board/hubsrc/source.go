@@ -21,7 +21,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/board"
+	"github.com/mraj602/watchyard/internal/board"
 )
 
 // Defaults of T3.
@@ -42,13 +42,13 @@ type Options struct {
 	URL   string
 	Token string
 	// AllowHTTP lets a plain http: URL through for a non-loopback host; the caller sets it
-	// only for a URL `sy` already accepted (hub.insecure_lan, or Tailscale). Loopback hosts
+	// only for a URL `wy` already accepted (hub.insecure_lan, or Tailscale). Loopback hosts
 	// never need it.
 	AllowHTTP bool
 	// Transport carries the requests; the command layer passes client.DialTransport(hub.dial)
-	// so a forward-mode machine dials as `sy flush` does. nil is a plain transport.
+	// so a forward-mode machine dials as `wy flush` does. nil is a plain transport.
 	Transport http.RoundTripper
-	// Machine is this machine; ThisSession marks one row (sy board --session).
+	// Machine is this machine; ThisSession marks one row (wy board --session).
 	Machine     board.Machine
 	ThisSession string
 	// StateDir holds board/last-view.json. Empty: nothing is saved or loaded.
@@ -64,7 +64,7 @@ type Options struct {
 	// for board.EndedWithin, so the TUI's `e` toggle has rows to show.
 	IncludeEnded bool
 	// WarpColour maps a seat colour to Warp's colour name; nil is board's built-in table.
-	// sy passes internal/warp's, the table the tab configs use.
+	// wy passes internal/warp's, the table the tab configs use.
 	WarpColour func(hex string) string
 	// Loc is the zone of the reset times shown; nil is time.Local.
 	Loc *time.Location

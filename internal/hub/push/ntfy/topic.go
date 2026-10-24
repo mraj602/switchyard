@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/hub/push/netguard"
+	"github.com/mraj602/watchyard/internal/hub/push/netguard"
 )
 
 // DefaultServer is the public ntfy server.
@@ -43,7 +43,7 @@ func ValidTopic(s string) bool { return topicRE.MatchString(s) }
 
 // CheckServer validates an ntfy server URL and returns it normalised (no trailing slash).
 // Empty means DefaultServer. The owner may point at their own server: https anywhere, or
-// plain http for loopback, private, Tailscale (*.ts.net, 100.64.0.0/10), the rule of `sy connect` (tokens.md 4). A push-scoped caller (owner false)
+// plain http for loopback, private, Tailscale (*.ts.net, 100.64.0.0/10), the rule of `wy connect` (tokens.md 4). A push-scoped caller (owner false)
 // gets https to a public DNS name or public address only; the sender's dial guard enforces
 // the same at connect time (push.md 7.4).
 func CheckServer(raw string, owner bool) (string, error) {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Switchyard Android app against a real local hub, on the Android emulator (make e2e-android).
+# Watchyard Android app against a real local hub, on the Android emulator (make e2e-android).
 #
 # Never part of `make check`. It skips cleanly (exit 0, "SKIP: ...") without the SDK, the AVD,
 # KVM, python3 or an APK it can build. Details and the findings it was written from:
@@ -7,7 +7,7 @@
 #
 # What runs, in order (each line below is one or more PASS/FAIL checks):
 #   1  install + grant POST_NOTIFICATIONS; the app starts (bundled JS, no Metro)
-#   2  pairing through the switchyard://pair deep link with the QR's h and k (the QR path, the seal)
+#   2  pairing through the watchyard://pair deep link with the QR's h and k (the QR path, the seal)
 #   3  sy-link service: foreground service up, hub sees the link, persistent notification
 #   4  an "asked" alert (fake machine -> hub ingest -> alert engine -> link -> notification) with
 #      Open / Snooze / Seen; Seen; the hub's "send test notification"; Snooze
@@ -19,7 +19,7 @@
 #  11  claude.ai account tabs (P17): two seats, a WebView profile each, Open in Claude, sign out
 #  12  analytics (More > Analytics): a token_rows record from the fake machine shows in the totals
 #  10  revoke from the hub API (DELETE /v1/devices/{id}): 4403, service stops, UI says so, and no
-#      orphaned notification is left; then `sy hub token revoke` (CLI) the same way
+#      orphaned notification is left; then `wy hub token revoke` (CLI) the same way
 #
 # Safety: only the emulator serial it starts (or an emulator-* that is already attached) is ever
 # addressed (adb -s); real devices are never touched. The hub runs with a temporary HOME and XDG
@@ -27,27 +27,27 @@
 #
 # Environment (all optional):
 #   ANDROID_HOME        SDK (default ~/Android/Sdk)
-#   SY_E2E_AVD          AVD name (default pixel_7_api35)
-#   SY_E2E_EMU_PORT     console port of the emulator it starts (default 5584 -> emulator-5584)
-#   SY_E2E_GPU          emulator -gpu mode (default swangle_indirect; swiftshader_indirect and
+#   WY_E2E_AVD          AVD name (default pixel_7_api35)
+#   WY_E2E_EMU_PORT     console port of the emulator it starts (default 5584 -> emulator-5584)
+#   WY_E2E_GPU          emulator -gpu mode (default swangle_indirect; swiftshader_indirect and
 #                       guest crash the emulator's renderer on some hosts)
-#   SY_E2E_APK          APK to install (default phone/dist/app-e2e.apk; built by
+#   WY_E2E_APK          APK to install (default phone/dist/app-e2e.apk; built by
 #                       phone/scripts/e2e-android-apk.sh when missing, ~6 min)
-#   SY_E2E_NO_BUILD=1   skip instead of building a missing APK
-#   SY_E2E_KEEP=1       keep the temp dir (hub state, logs) even when everything passes
-#   SY_E2E_KEEP_EMU=1   leave the emulator running at the end
-#   SY_E2E_PHASES       space separated list of phase numbers to run (default: all; phase 2 always)
-#   SY_E2E_PORT         the hub's port on 127.0.0.1 (default: a free one)
+#   WY_E2E_NO_BUILD=1   skip instead of building a missing APK
+#   WY_E2E_KEEP=1       keep the temp dir (hub state, logs) even when everything passes
+#   WY_E2E_KEEP_EMU=1   leave the emulator running at the end
+#   WY_E2E_PHASES       space separated list of phase numbers to run (default: all; phase 2 always)
+#   WY_E2E_PORT         the hub's port on 127.0.0.1 (default: a free one)
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 ROOT="$(cd "$HERE/../../.." && pwd -P)"
 LIB="$HERE/lib.py"
-PKG="${SY_APP_ID:-io.github.mraj602.switchyard.dev}"
-AVD="${SY_E2E_AVD:-pixel_7_api35}"
-EMU_PORT="${SY_E2E_EMU_PORT:-5584}"
-GPU="${SY_E2E_GPU:-swangle_indirect}"
-APK="${SY_E2E_APK:-$ROOT/phone/dist/app-e2e.apk}"
+PKG="${WY_APP_ID:-io.github.mraj602.watchyard.dev}"
+AVD="${WY_E2E_AVD:-pixel_7_api35}"
+EMU_PORT="${WY_E2E_EMU_PORT:-5584}"
+GPU="${WY_E2E_GPU:-swangle_indirect}"
+APK="${WY_E2E_APK:-$ROOT/phone/dist/app-e2e.apk}"
 
 skip() { echo "SKIP: $*"; exit 0; }
 die() { echo "ERROR: $*" >&2; exit 1; }
@@ -62,7 +62,7 @@ command -v emulator >/dev/null || skip "emulator is not on PATH"
 command -v go >/dev/null || skip "go is not on PATH"
 command -v python3 >/dev/null || skip "python3 is not on PATH"
 command -v curl >/dev/null || skip "curl is not on PATH"
-emulator -list-avds 2>/dev/null | grep -qx "$AVD" || skip "no AVD named $AVD (set SY_E2E_AVD)"
+emulator -list-avds 2>/dev/null | grep -qx "$AVD" || skip "no AVD named $AVD (set WY_E2E_AVD)"
 [ -r /dev/kvm ] && [ -w /dev/kvm ] || skip "no usable /dev/kvm (the emulator would be unusably slow)"
 
 # ---------------------------------------------------------------- state and cleanup
@@ -82,11 +82,11 @@ adbx() { adb -s "$SER" "$@"; }
 cleanup() {
   local rc=$?
   [ -n "$HUB_PID" ] && kill -INT "$HUB_PID" 2>/dev/null
-  if [ "$STARTED_EMU" = 1 ] && [ -z "${SY_E2E_KEEP_EMU:-}" ] && [ -n "$SER" ]; then
+  if [ "$STARTED_EMU" = 1 ] && [ -z "${WY_E2E_KEEP_EMU:-}" ] && [ -n "$SER" ]; then
     adb -s "$SER" emu kill >/dev/null 2>&1
     [ -n "$EMU_PID" ] && { sleep 2; kill "$EMU_PID" 2>/dev/null; }
   fi
-  if [ "$NFAIL" -gt 0 ] || [ -n "${SY_E2E_KEEP:-}" ] || [ "$rc" -ne 0 ]; then
+  if [ "$NFAIL" -gt 0 ] || [ -n "${WY_E2E_KEEP:-}" ] || [ "$rc" -ne 0 ]; then
     echo "kept: $T (hub.log, emulator.log, logcat-*.txt, ui-*.xml)"
   else
     rm -rf "$T"
@@ -128,8 +128,8 @@ check_not() {
 }
 
 phase_on() {
-  [ -z "${SY_E2E_PHASES:-}" ] && return 0
-  case " $SY_E2E_PHASES " in *" $1 "*) return 0 ;; esac
+  [ -z "${WY_E2E_PHASES:-}" ] && return 0
+  case " $WY_E2E_PHASES " in *" $1 "*) return 0 ;; esac
   return 1
 }
 
@@ -157,14 +157,14 @@ wait_boot() {
 }
 
 # ---------------------------------------------------------------- the hub
-# Every sy call runs with a scrubbed environment: a temp HOME and XDG dirs, nothing of the caller's.
+# Every wy call runs with a scrubbed environment: a temp HOME and XDG dirs, nothing of the caller's.
 HENV=(env -i PATH="$PATH" HOME="$T/home" TZ=UTC NO_COLOR=1 XDG_CONFIG_HOME="$T/cfg" XDG_DATA_HOME="$T/data"
   XDG_STATE_HOME="$T/state" XDG_CACHE_HOME="$T/cache")
 hsy() { "${HENV[@]}" "$SY" "$@"; }
 free_port() { python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])'; }
 hub_up() { curl -fsS "http://127.0.0.1:$PORT/health" >/dev/null 2>&1; }
 hub_start() {
-  # not through hsy(): $! must be the hub itself (env execs sy), so SIGINT reaches it
+  # not through hsy(): $! must be the hub itself (env execs wy), so SIGINT reaches it
   "${HENV[@]}" "$SY" hub serve --listen "127.0.0.1:$PORT" --no-app-mirror >>"$T/hub.log" 2>&1 &
   HUB_PID=$!
   wait_until 30 hub_up
@@ -258,20 +258,20 @@ save_diag() { # save_diag TAG: logcat and the screen, for a failure
 }
 
 # ================================================================ build what the test needs
-SY="$ROOT/dist/sy"
-echo "== build sy and the fake machine"
+SY="$ROOT/dist/wy"
+echo "== build wy and the fake machine"
 (cd "$ROOT" && make build >"$T/build.log" 2>&1) || { cat "$T/build.log"; die "make build failed"; }
 (cd "$ROOT" && go build -o "$T/bin/fakemachine" ./test/e2e/android/fakemachine) || die "building fakemachine failed"
 
 if [ ! -f "$APK" ]; then
-  [ -z "${SY_E2E_NO_BUILD:-}" ] || skip "no APK at $APK and SY_E2E_NO_BUILD is set (phone/scripts/e2e-android-apk.sh builds it)"
+  [ -z "${WY_E2E_NO_BUILD:-}" ] || skip "no APK at $APK and WY_E2E_NO_BUILD is set (phone/scripts/e2e-android-apk.sh builds it)"
   echo "== build the APK (no Metro, cleartext hub allowed): ~6 min"
-  SY_E2E_APK="$APK" "$ROOT/phone/scripts/e2e-android-apk.sh" >"$T/apk-build.log" 2>&1 || { tail -30 "$T/apk-build.log"; die "APK build failed (log: $T/apk-build.log)"; }
+  WY_E2E_APK="$APK" "$ROOT/phone/scripts/e2e-android-apk.sh" >"$T/apk-build.log" 2>&1 || { tail -30 "$T/apk-build.log"; die "APK build failed (log: $T/apk-build.log)"; }
 fi
 
 # ================================================================ hub
 echo "== hub (temp HOME $T/home)"
-PORT="${SY_E2E_PORT:-$(free_port)}"
+PORT="${WY_E2E_PORT:-$(free_port)}"
 hub_start || { cat "$T/hub.log"; die "the hub did not start"; }
 owner_login || die "owner sign-in failed"
 # The alert engine waits 60 s before an "asked" push: this test does not.
@@ -297,13 +297,13 @@ launch
 if check "1.2 the app starts and shows the Pair screen (bundled JS)" 60 ui_has "Pair with your hub"; then :; else save_diag start; exit 1; fi
 
 # ================================================================ 2 pairing by deep link
-echo "== 2  pairing through switchyard://pair (the QR's secret, code, h and k)"
+echo "== 2  pairing through watchyard://pair (the QR's secret, code, h and k)"
 pair_by_link() {
   local json url q
   json="$(hsy hub pair --kind phone --url "http://10.0.2.2:$PORT" --insecure --json)" || return 1
   url="$(printf '%s' "$json" | python3 -I "$LIB" json url)"
   q="${url#*#/pair?}"
-  adbx shell "am start -a android.intent.action.VIEW -d 'switchyard://pair?u=http%3A%2F%2F10.0.2.2%3A$PORT&$q' $PKG" >/dev/null 2>&1
+  adbx shell "am start -a android.intent.action.VIEW -d 'watchyard://pair?u=http%3A%2F%2F10.0.2.2%3A$PORT&$q' $PKG" >/dev/null 2>&1
 }
 # The card's tap, then the hub's device list. A "Can't reach" right after the install has been
 # seen once in a few runs (the claim never arrived at the hub): one fresh link is tried, and said.
@@ -415,7 +415,7 @@ if phase_on 8; then
   sleep 3
   gone=0
   for dur in 300 600; do
-    ui_dump && xy="$(python3 -I "$LIB" tap "Switchyard" <"$T/ui.xml")" || break
+    ui_dump && xy="$(python3 -I "$LIB" tap "Watchyard" <"$T/ui.xml")" || break
     set -- $xy
     adbx shell input swipe "$1" "$2" "$1" 100 "$dur"
     sleep 4
@@ -461,7 +461,7 @@ if phase_on 10; then
   launch
   if check "10.4 the app shows the Pair screen and says why" 30 ui_has "unpaired on the hub"; then :; else save_diag revoke; fi
 
-  echo "== 10b revoke from the hub's CLI (sy hub token revoke)"
+  echo "== 10b revoke from the hub's CLI (wy hub token revoke)"
   pair_by_link
   check "10.5 re-pairing works after a revoke" 30 ui_has "Pair with 10.0.2.2:$PORT"
   tap_pair

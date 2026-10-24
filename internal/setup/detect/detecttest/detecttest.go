@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/claudecli"
-	"github.com/mraj602/switchyard/internal/setup/detect"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/testtree"
+	"github.com/mraj602/watchyard/internal/claudecli"
+	"github.com/mraj602/watchyard/internal/setup/detect"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/testtree"
 )
 
 // jsonEsc escapes s for the inside of a JSON string literal (Windows paths carry backslashes).
@@ -59,9 +59,9 @@ func (h *Home) Deps() detect.Deps {
 			return ""
 		},
 		Claude:     h.Fake,
-		ConfigDir:  h.Abs(".config/switchyard"),
-		StateDir:   h.Abs(".local/state/switchyard"),
-		Sy:         h.Abs(".local/bin/sy"),
+		ConfigDir:  h.Abs(".config/watchyard"),
+		StateDir:   h.Abs(".local/state/watchyard"),
+		Sy:         h.Abs(".local/bin/wy"),
 		LookPath:   func(string) (string, error) { return h.Abs(".local/bin/claude"), nil },
 		ShellProbe: func(context.Context, []string) (string, error) { return "", nil },
 		HubProbe:   func(context.Context, string) model.HubState { return model.HubState{} },

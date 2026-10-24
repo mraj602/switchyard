@@ -3,24 +3,24 @@
 
    The Plex subsets are latin only and Plex has no glyph for the arrows, shapes and marks the
    board draws (<- -> two-way arrow, middle ellipsis, circled i, squares, triangles, circles,
-   braille grip, check). 'Switchyard Symbols' is Noto Sans Math / Symbols / Symbols 2 (OFL 1.1)
+   braille grip, check). 'Watchyard Symbols' is Noto Sans Math / Symbols / Symbols 2 (OFL 1.1)
    cut down to exactly those glyphs (3 KB in all); it sits after Plex in --sans and --mono, so
    these characters look the same on every platform instead of coming from whatever system
    font is found. Weight 100-900 so a bold label does not get a synthesised bold. The
    characters Plex does have (en and em dash, quotes, ellipsis, middle dot, times, up and down
    arrows, the single right angle quote) stay in the Plex ranges below. */
 @font-face {
-  font-family: 'Switchyard Symbols'; font-style: normal; font-weight: 100 900; font-display: swap;
+  font-family: 'Watchyard Symbols'; font-style: normal; font-weight: 100 900; font-display: swap;
   src: url('../fonts/noto-sans-math-symbols.woff2') format('woff2');
   unicode-range: U+2190, U+2192, U+21C4, U+22EF, U+25A0, U+25B8, U+25BE, U+25CB, U+25CC, U+25CF, U+2713;
 }
 @font-face {
-  font-family: 'Switchyard Symbols'; font-style: normal; font-weight: 100 900; font-display: swap;
+  font-family: 'Watchyard Symbols'; font-style: normal; font-weight: 100 900; font-display: swap;
   src: url('../fonts/noto-sans-symbols-info.woff2') format('woff2');
   unicode-range: U+24D8;
 }
 @font-face {
-  font-family: 'Switchyard Symbols'; font-style: normal; font-weight: 100 900; font-display: swap;
+  font-family: 'Watchyard Symbols'; font-style: normal; font-weight: 100 900; font-display: swap;
   src: url('../fonts/noto-sans-symbols-2-braille.woff2') format('woff2');
   unicode-range: U+283F;
 }

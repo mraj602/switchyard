@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/link"
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/link"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 // envFix mints device certificates the way the hub does (hub signature, owner signature)
@@ -178,7 +178,7 @@ func TestEnvelopeChecks(t *testing.T) {
 	// The thread and message ids end up in file names, audit lines and the hub's rows: only
 	// their own forms are taken.
 	for _, mut := range []func(*peers.Envelope){
-		func(e *peers.Envelope) { e.Thread = "t_1\n[Switchyard] forged" },
+		func(e *peers.Envelope) { e.Thread = "t_1\n[Watchyard] forged" },
 		func(e *peers.Envelope) { e.Thread = "../../x" },
 		func(e *peers.Envelope) { e.Msg = "../m" },
 		func(e *peers.Envelope) { e.Msg = "" },

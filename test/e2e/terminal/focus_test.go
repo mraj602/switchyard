@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 const (
@@ -23,7 +23,7 @@ func with(base []string, kv ...string) []string {
 // openerFile is where a machine's fake opener records, and what is in it.
 func (m *machine) openerFile() string {
 	for _, kv := range m.extra {
-		if v, ok := strings.CutPrefix(kv, "SY_TEST_OPENER="); ok {
+		if v, ok := strings.CutPrefix(kv, "WY_TEST_OPENER="); ok {
 			return v
 		}
 	}
@@ -45,7 +45,7 @@ func sameArgv(got [][]string, want ...[]string) bool {
 	return true
 }
 
-// E5: focus. A laptop hook carries WARP_FOCUS_URL; `sy term focus --session <id>` hands the
+// E5: focus. A laptop hook carries WARP_FOCUS_URL; `wy term focus --session <id>` hands the
 // opener exactly `xdg-open warp://session/<hex>`. The same session asked from the
 // gpu-box's board exits 4 and records nothing.
 func TestE5Focus(t *testing.T) {
@@ -81,7 +81,7 @@ func TestE5Focus(t *testing.T) {
 	if r, ok := gv.Rows[sid]; !ok || r.CanFocus || r.Here {
 		t.Errorf("gpu-box row of a laptop session: %+v (present %v)", r, ok)
 	}
-	if r := f.gpu.sy("term", "focus", "--session", sid); r.code != 4 {
+	if r := f.gpu.wy("term", "focus", "--session", sid); r.code != 4 {
 		t.Errorf("gpu-box focus: exit %d, want 4\n%s%s", r.code, r.out, r.err)
 	}
 	if got := f.gpu.openerRecords(); len(got) != 0 {
@@ -100,7 +100,7 @@ func TestE5Focus(t *testing.T) {
 }
 
 // E6: focus over SSH. A gpu-box hook carries LC_SY_FOCUS (the laptop tab's URL, sent by
-// `sy ssh`) and LC_SY_HOST (the laptop's machine id). The laptop's board can focus the row,
+// `wy ssh`) and LC_SY_HOST (the laptop's machine id). The laptop's board can focus the row,
 // the gpu-box's cannot, and focus on the laptop opens the laptop URL.
 func TestE6FocusOverSSH(t *testing.T) {
 	f := newFleet(t)
@@ -126,7 +126,7 @@ func TestE6FocusOverSSH(t *testing.T) {
 		t.Errorf("laptop opener got %v, want %v", got, openerArgv(focusSSH))
 	}
 	// The gpu-box has no tab for it: the session's tab is on the laptop.
-	if r := f.gpu.sy("term", "focus", "--session", sid); r.code != 4 {
+	if r := f.gpu.wy("term", "focus", "--session", sid); r.code != 4 {
 		t.Errorf("gpu-box focus: exit %d, want 4", r.code)
 	}
 	if got := f.gpu.openerRecords(); len(got) != 0 {
@@ -135,7 +135,7 @@ func TestE6FocusOverSSH(t *testing.T) {
 }
 
 // E7: hostile focus URLs. A record whose focus_url is file:///etc/passwd (and one that is
-// https://evil…) never becomes focusable: can_focus is false and `sy term focus` exits 4
+// https://evil…) never becomes focusable: can_focus is false and `wy term focus` exits 4
 // with the opener file empty. A valid URL still opens, so the empty file means something.
 func TestE7HostileFocus(t *testing.T) {
 	f := newFleet(t)
@@ -143,7 +143,7 @@ func TestE7HostileFocus(t *testing.T) {
 		"e7000000-0000-4000-8000-000000000001": "file:///etc/passwd",
 		"e7000000-0000-4000-8000-000000000002": "https://evil.example/session/0123456789abcdef0123456789abcdef",
 		"e7000000-0000-4000-8000-000000000003": "warp://session/0123456789abcdef0123456789abcdef%0a--x",
-		"e7000000-0000-4000-8000-000000000004": "warp://tab_config/switchyard-work",
+		"e7000000-0000-4000-8000-000000000004": "warp://tab_config/watchyard-work",
 	}
 	laptopID := f.l.machineID()
 	n := 0
@@ -172,7 +172,7 @@ func TestE7HostileFocus(t *testing.T) {
 		if r.CanFocus {
 			t.Errorf("row with focus_url %q has can_focus = true", url)
 		}
-		res := f.l.sy("term", "focus", "--session", sid)
+		res := f.l.wy("term", "focus", "--session", sid)
 		if res.code != 4 {
 			t.Errorf("focus of %q: exit %d, want 4\n%s%s", url, res.code, res.out, res.err)
 		}
@@ -184,7 +184,7 @@ func TestE7HostileFocus(t *testing.T) {
 		}
 	}
 	// A valid --url outside Warp is refused too (T7: only where Warp runs).
-	if res := f.l.sy("term", "focus", "--url", focusLaptop); res.code != 4 {
+	if res := f.l.wy("term", "focus", "--url", focusLaptop); res.code != 4 {
 		t.Errorf("--url outside Warp: exit %d, want 4", res.code)
 	}
 	if got := f.l.openerRecords(); len(got) != 0 {

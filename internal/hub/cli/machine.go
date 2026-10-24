@@ -9,22 +9,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
-// Machine is `sy hub machine show <id> [--json] [--db F]` (machines.md 4.5): one machine's read
+// Machine is `wy hub machine show <id> [--json] [--db F]` (machines.md 4.5): one machine's read
 // model (api.yaml Machine, removed machines included) for the admin channel, which is how
-// `sy machine add` checks a machine reached the hub.
+// `wy machine add` checks a machine reached the hub.
 func Machine(args []string, stdout, stderr io.Writer) error {
 	if len(args) == 0 || args[0] != "show" {
-		fmt.Fprintln(stderr, "usage: sy hub machine show <id> [--json] [--db hub.db]")
+		fmt.Fprintln(stderr, "usage: wy hub machine show <id> [--json] [--db hub.db]")
 		return ErrUsage
 	}
 	fs, db := newFlags("machine show", stderr)
 	asJSON := fs.Bool("json", false, "print JSON (api.yaml Machine)")
 	pos, err := parse(fs, args[1:])
 	if err != nil || len(pos) != 1 {
-		fmt.Fprintln(stderr, "usage: sy hub machine show <id> [--json] [--db hub.db]")
+		fmt.Fprintln(stderr, "usage: wy hub machine show <id> [--json] [--db hub.db]")
 		return ErrUsage
 	}
 	ctx := context.Background()
@@ -35,7 +35,7 @@ func Machine(args []string, stdout, stderr io.Writer) error {
 	defer st.Close()
 	m, err := st.MachineByID(ctx, pos[0], time.Now())
 	if errors.Is(err, store.ErrNotFound) {
-		return fmt.Errorf("sy hub machine: no machine %s", pos[0])
+		return fmt.Errorf("wy hub machine: no machine %s", pos[0])
 	} else if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func Machine(args []string, stdout, stderr io.Writer) error {
 	fmt.Fprintf(stdout, "%s  %s\n", m.ID, m.Name)
 	fmt.Fprintf(stdout, "  os/arch     %s/%s\n", str(m.OS), str(m.Arch))
 	fmt.Fprintf(stdout, "  reach       %s\n", str(m.Reach))
-	fmt.Fprintf(stdout, "  sy          %s (%s)\n", str(m.SyVersion), m.VersionStatus)
+	fmt.Fprintf(stdout, "  wy          %s (%s)\n", str(m.SyVersion), m.VersionStatus)
 	fmt.Fprintf(stdout, "  last seen   %s\n", ms(int64(m.LastSeen)))
 	fmt.Fprintf(stdout, "  last record %s\n", ms(int64(m.LastRecord)))
 	backlog := "-"

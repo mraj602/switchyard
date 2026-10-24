@@ -39,7 +39,7 @@ func openPTY() (master, slave *os.File, err error) {
 }
 
 // session is a fake Claude Code session on a pty: a shell script that puts the terminal in
-// raw mode, starts the pane's child (`sy board --follow --ndjson --session <id>`, sharing
+// raw mode, starts the pane's child (`wy board --follow --ndjson --session <id>`, sharing
 // the pty as its stdin and controlling terminal) and then logs every input byte the
 // terminal delivers to <dir>/input.log.
 type session struct {

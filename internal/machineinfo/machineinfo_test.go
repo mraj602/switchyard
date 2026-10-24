@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 func cfgWith(url, reach, dial string) config.Config {
@@ -28,7 +28,7 @@ func TestReachAndDial(t *testing.T) {
 	}{
 		{"https://hub.example", config.ReachDirect, "", record.ReachDirect, ""},
 		{"https://hub.example", config.ReachForward, "127.0.0.1:47830", record.ReachForward, "tcp"},
-		{"https://hub.example", config.ReachForward, "unix:/run/user/1000/sy.sock", record.ReachForward, "unix"},
+		{"https://hub.example", config.ReachForward, "unix:/run/user/1000/wy.sock", record.ReachForward, "unix"},
 		{"", config.ReachPull, "", record.ReachPull, ""},
 		{"", config.ReachDirect, "", record.ReachNone, ""},
 	} {
@@ -73,7 +73,7 @@ func outboxRecords(t *testing.T, state string) []record.MachineInfoPayload {
 func TestSendOnChangeAndEverySixHours(t *testing.T) {
 	state := t.TempDir()
 	now := time.Date(2026, 10, 13, 9, 0, 0, 0, time.UTC)
-	o := Options{StateDir: state, Config: cfgWith("https://hub.example", config.ReachForward, "unix:/tmp/sy.sock"),
+	o := Options{StateDir: state, Config: cfgWith("https://hub.example", config.ReachForward, "unix:/tmp/wy.sock"),
 		Now: func() time.Time { return now }, GOOS: "linux", GOARCH: "arm64",
 		Timer: func() Timer { l := true; return Timer{Active: true, Linger: &l} }}
 
@@ -125,8 +125,8 @@ func TestSendOnChangeAndEverySixHours(t *testing.T) {
 	}
 }
 
-// machine_info.name is the machine's own name; a rename is a change, so `sy tick` sends it
-// even without the forced send of `sy machine rename`.
+// machine_info.name is the machine's own name; a rename is a change, so `wy tick` sends it
+// even without the forced send of `wy machine rename`.
 func TestSendCarriesTheMachineName(t *testing.T) {
 	state := t.TempDir()
 	now := time.Date(2026, 10, 13, 9, 0, 0, 0, time.UTC)
@@ -152,7 +152,7 @@ func TestSendCarriesTheMachineName(t *testing.T) {
 
 func TestBuildNeverLeaksTheDialAddressOrTopic(t *testing.T) {
 	state := t.TempDir()
-	c := cfgWith("https://hub.example", config.ReachForward, "unix:/home/u/.secret-path/sy.sock")
+	c := cfgWith("https://hub.example", config.ReachForward, "unix:/home/u/.secret-path/wy.sock")
 	c.Push.Direct.Enabled = true
 	c.Push.Direct.Server = "https://ntfy.example.org"
 	p, err := Build(Options{StateDir: state, Config: c})

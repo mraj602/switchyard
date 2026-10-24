@@ -16,7 +16,7 @@ func TestRollbackRefusedWhenOldBinaryCannotOpenHub(t *testing.T) {
 		t.Fatal(err)
 	}
 	o.Current = "0.0.1-e2e"
-	o.HubSchema = 5 // a migration since the update; sy.old opens up to v4
+	o.HubSchema = 5 // a migration since the update; wy.old opens up to v4
 	before := read(t, exe)
 	_, err := Rollback(context.Background(), o)
 	if code(err) != ExitRefused || !strings.Contains(err.Error(), "cannot open the hub database (v5)") {
@@ -34,7 +34,7 @@ func TestRollbackRefusedWhenOldBinaryCannotOpenHub(t *testing.T) {
 func TestUnreadableHubDBRefuses(t *testing.T) {
 	o, exe, r, _ := setup(t, "0.0.0-e2e")
 	r.add(t, "0.0.1-e2e", 4, true)
-	o.HubDBErr = "/srv/sy/hub.db: file is not a database"
+	o.HubDBErr = "/srv/wy/hub.db: file is not a database"
 	before := read(t, exe)
 	if _, err := Apply(context.Background(), o); code(err) != ExitRefused {
 		t.Fatalf("apply: %v", err)
@@ -56,7 +56,7 @@ func TestUpdateLockBlocksSecondRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := read(t, exe)
-	if _, err := Apply(context.Background(), o); code(err) != ExitFailed || !strings.Contains(err.Error(), "another sy update") {
+	if _, err := Apply(context.Background(), o); code(err) != ExitFailed || !strings.Contains(err.Error(), "another wy update") {
 		t.Fatalf("got %v", err)
 	}
 	if _, err := Rollback(context.Background(), o); code(err) != ExitFailed {
@@ -77,7 +77,7 @@ func TestUpdateLockBlocksSecondRun(t *testing.T) {
 func TestFromFileArchiveInUpdateDirSurvives(t *testing.T) {
 	o, _, r, _ := setup(t, "0.0.0-e2e")
 	r.add(t, "0.0.1-e2e", 4, false)
-	name := "sy_0.0.1-e2e_linux_amd64.tar.gz"
+	name := "wy_0.0.1-e2e_linux_amd64.tar.gz"
 	dir := filepath.Join(t.TempDir(), "update") // the user's own folder, named update
 	os.MkdirAll(dir, 0o755)
 	arch := r["/download/v0.0.1-e2e/"+name]
@@ -112,7 +112,7 @@ func TestLatestDownloadsByTagURL(t *testing.T) {
 }
 
 func TestScoopIsPackageManaged(t *testing.T) {
-	for _, p := range []string{`C:\Users\a\scoop\apps\sy\current\sy.exe`, `C:\Users\a\scoop\shims\sy.exe`} {
+	for _, p := range []string{`C:\Users\a\scoop\apps\wy\current\wy.exe`, `C:\Users\a\scoop\shims\wy.exe`} {
 		if _, owned := PackageManager(p); !owned {
 			t.Errorf("%s should be package-managed", p)
 		}

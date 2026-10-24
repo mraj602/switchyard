@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/hublock"
+	"github.com/mraj602/watchyard/internal/hub/hublock"
 )
 
 // The plaintext snapshot never lands next to --out.
@@ -106,7 +106,7 @@ func TestExportImportHonourPullDir(t *testing.T) {
 	}
 }
 
-// A running `sy hub serve` (hub.lock) stops an import.
+// A running `wy hub serve` (hub.lock) stops an import.
 func TestImportRefusesWhileHubLockHeld(t *testing.T) {
 	ctx := context.Background()
 	src := openTest(t, t.TempDir())

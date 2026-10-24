@@ -44,7 +44,7 @@ func (c Change) Apply(doc []byte) []byte {
 }
 
 // ParsePointer splits an RFC 6901 pointer ("/a/b~1c") into its unescaped tokens. The empty
-// pointer (the whole document) is refused: sy never replaces a whole file.
+// pointer (the whole document) is refused: wy never replaces a whole file.
 func ParsePointer(p string) ([]string, error) {
 	if p == "" || p[0] != '/' {
 		return nil, fmt.Errorf("%w: %q", ErrBadPointer, p)

@@ -5,11 +5,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/state"
-	"github.com/mraj602/switchyard/internal/warp"
+	"github.com/mraj602/watchyard/internal/hub/state"
+	"github.com/mraj602/watchyard/internal/warp"
 )
 
-// sortRows orders rows the way `sy status` does (status.rank): needs-you first (the one
+// sortRows orders rows the way `wy status` does (status.rank): needs-you first (the one
 // waiting longest first), then working, done, transient failures, ended, gone; inside a
 // class the newest first; ties by id. The hub source keeps the hub's own order instead.
 func sortRows(rows []Row) {

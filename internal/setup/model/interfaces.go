@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/mraj602/switchyard/internal/claudecli"
+	"github.com/mraj602/watchyard/internal/claudecli"
 )
 
 // ErrNotImplemented is returned by the Unimplemented* stand-ins, which embed in a partial implementation or a test fake.
@@ -75,7 +75,7 @@ type MCPSyncRequest struct {
 	Files    []MCPFile `json:"files"`
 	StateDir string    `json:"state_dir"`         // for share/mcp-base.json and mcp-conflicts.jsonl
 	DryRun   bool      `json:"dry_run,omitempty"` // compute names, write nothing
-	Now      bool      `json:"now,omitempty"`     // `sy share sync --now`: ignore the live-session skip
+	Now      bool      `json:"now,omitempty"`     // `wy share sync --now`: ignore the live-session skip
 }
 
 // MCPSyncResult reports a sync pass. It never contains server values.
@@ -95,30 +95,30 @@ type MCPSkip struct {
 	Reason string `json:"reason"` // "live-session", "locked", "changed-while-writing", ...
 }
 
-// PluginInstaller installs and removes the switchyard plugin (setup.md 5.2), implemented by
+// PluginInstaller installs and removes the watchyard plugin (setup.md 5.2), implemented by
 // internal/setup/pluginmkt on a claudecli.Runner. All calls run as the given folder.
 type PluginInstaller interface {
 	// WriteMarketplace writes <dir> (the marketplace tree: .claude-plugin/marketplace.json
-	// "sy-local" and plugins/switchyard) from the embedded plugin with hook commands rewritten
+	// "wy-local" and plugins/watchyard) from the embedded plugin with hook commands rewritten
 	// to the absolute syPath, into a temp folder then renamed over dir.
 	WriteMarketplace(dir, syPath, version string) error
-	// Install runs `marketplace add <dir>` then `install switchyard@sy-local` as folder.
+	// Install runs `marketplace add <dir>` then `install watchyard@wy-local` as folder.
 	Install(ctx context.Context, folder claudecli.Folder, marketplaceDir string) error
-	// Enable enables switchyard@sy-local in folder's settings target (shared root, own settings).
+	// Enable enables watchyard@wy-local in folder's settings target (shared root, own settings).
 	Enable(ctx context.Context, folder claudecli.Folder) error
-	// Disable disables the plugin id (a duplicate switchyard@* ) in folder's settings target.
+	// Disable disables the plugin id (a duplicate watchyard@* ) in folder's settings target.
 	Disable(ctx context.Context, folder claudecli.Folder, id string) error
-	// Uninstall runs `uninstall switchyard@sy-local` then `marketplace remove sy-local` once
+	// Uninstall runs `uninstall watchyard@wy-local` then `marketplace remove wy-local` once
 	// for the root folder belongs to.
 	Uninstall(ctx context.Context, folder claudecli.Folder) error
 }
 
 // ServiceSpec describes the hub user service (setup.md step 4, `--hub here`).
 type ServiceSpec struct {
-	Name   string   `json:"name"`             // "switchyard-hub"
+	Name   string   `json:"name"`             // "watchyard-hub"
 	Unit   string   `json:"unit,omitempty"`   // unit/plist/XML path
 	Listen string   `json:"listen,omitempty"` // 127.0.0.1:8787
-	Args   []string `json:"args,omitempty"`   // sy hub serve ...
+	Args   []string `json:"args,omitempty"`   // wy hub serve ...
 }
 
 // ServiceStatus is the state of a user service.
@@ -137,7 +137,7 @@ type Service interface {
 	Status(ctx context.Context, name string) (ServiceStatus, error)
 }
 
-// ConnectRequest is `sy connect` as the hub step uses it. Token is read from stdin by the
+// ConnectRequest is `wy connect` as the hub step uses it. Token is read from stdin by the
 // command layer and passed here; it is never logged, journaled or put in a plan.
 type ConnectRequest struct {
 	URL   string
@@ -162,7 +162,7 @@ type ConnectResult struct {
 type Connector interface {
 	Connect(ctx context.Context, req ConnectRequest) (ConnectResult, error)
 	// MintMachineToken makes a machine token against the local hub data folder
-	// (`sy hub token create --kind machine`) for `--hub here`.
+	// (`wy hub token create --kind machine`) for `--hub here`.
 	MintMachineToken(ctx context.Context, machine string) (string, error)
 	// WaitHealthy polls url's /health for up to the given seconds.
 	WaitHealthy(ctx context.Context, url string, seconds int) error

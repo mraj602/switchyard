@@ -1,6 +1,6 @@
 # Machines E2E image: a plain Ubuntu server
 # with sshd, a user "dev" that accepts the per-run test key, and the fake claude on
-# the PATH of non-interactive shells (/usr/local/bin). No sy inside: `sy machine add`
+# the PATH of non-interactive shells (/usr/local/bin). No wy inside: `wy machine add`
 # installs it. Host keys are generated here, at build time, so the harness can read them
 # back and write a known_hosts that is checked strictly (no test turns host key checking off).
 #
@@ -17,7 +17,7 @@ COPY authorized_key.pub /home/dev/.ssh/authorized_keys
 RUN chown -R dev:dev /home/dev/.ssh && chmod 700 /home/dev/.ssh && chmod 600 /home/dev/.ssh/authorized_keys
 COPY claude /usr/local/bin/claude
 # A Claude Code that has run once and is logged in (the shape of test/e2e/setup/homes/_lib.sh
-# login_folder): `sy setup` on the server refuses to run without ~/.claude.
+# login_folder): `wy setup` on the server refuses to run without ~/.claude.
 USER dev
 RUN mkdir -m 700 /home/dev/.claude \
     && printf '%s' '{"numStartups":12,"installMethod":"native","oauthAccount":{"emailAddress":"dev@example.com","organizationName":"Example Org","organizationType":"claude_max","accountUuid":"00000000-0000-4000-8000-000000000001"},"mcpServers":{},"projects":{}}' > /home/dev/.claude.json \

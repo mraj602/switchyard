@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // PullStatus is a pull target's health (api.yaml PullStatus; machines.md 3.4, 6.1). The
@@ -73,7 +73,7 @@ func (s *Server) frozenState(ctx context.Context) (Frozen, bool) {
 }
 
 // Puller runs a pull now; the hub's pull scheduler (internal/hub/pull) implements it and
-// `sy hub serve` passes it as Config.Puller. RunNow sets the target's next run to now and
+// `wy hub serve` passes it as Config.Puller. RunNow sets the target's next run to now and
 // returns its status; errors the handler maps: ErrNoPullTarget (404), ErrPullBlocked (409).
 // A nil Puller makes POST /v1/machines/{id}/pull answer 503.
 type Puller interface {

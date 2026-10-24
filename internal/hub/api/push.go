@@ -13,11 +13,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/push/ntfy"
-	"github.com/mraj602/switchyard/internal/hub/push/webpush"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/ntfy"
+	"github.com/mraj602/watchyard/internal/hub/push/webpush"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // Push channel and target endpoints (push.md 6, 7, 13; api.yaml tag push). The sender side is
@@ -586,7 +586,7 @@ func (s *Server) testTarget(w http.ResponseWriter, r *http.Request, lim *testLim
 		return
 	}
 	msg := model.Message{
-		Payload: model.Payload{V: model.PayloadVersion, Type: model.TypeTest, Title: "Switchyard",
+		Payload: model.Payload{V: model.PayloadVersion, Type: model.TypeTest, Title: "Watchyard",
 			Body: "Test push from your hub", Tag: "sy-test", URL: "/#/", Tap: model.TapAuto, TS: model.TimeOf(now)},
 		TTL: time.Minute, Urgency: "high", Priority: 3, HubURL: s.hubURL(r),
 	}

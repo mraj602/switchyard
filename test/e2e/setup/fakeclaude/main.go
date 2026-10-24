@@ -1,5 +1,5 @@
 // Command fakeclaude is a stand-in for the `claude` binary, for the end-to-end tests of
-// `sy setup`. It mimics, with files on disk, everything `sy` calls:
+// `wy setup`. It mimics, with files on disk, everything `wy` calls:
 //
 //	claude --version
 //	claude auth status --json | auth login --claudeai
@@ -12,7 +12,7 @@
 //	go build -o "$DIR/claude" ./test/e2e/setup/fakeclaude
 //
 // Behaviour follows docs/spec/setup.md 5.2 and 13 (Claude Code 2.1.296). The Contract test
-// (SY_E2E_REAL_CLAUDE=1) compares it with the real binary.
+// (WY_E2E_REAL_CLAUDE=1) compares it with the real binary.
 //
 // Environment:
 //
@@ -152,7 +152,7 @@ func (a *app) logCall(f folder, args []string) {
 }
 
 // touchState creates the state file if missing and rewrites it (bumping numStartups), as
-// Claude Code does on every run. sy must neither back it up nor restore it.
+// Claude Code does on every run. wy must neither back it up nor restore it.
 func (a *app) touchState(f folder) error {
 	if err := os.MkdirAll(filepath.Dir(f.stateFile), 0o755); err != nil {
 		return err

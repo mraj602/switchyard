@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // Exit codes the command layer maps results to (setup.md section 4).
@@ -69,7 +69,7 @@ type Result struct {
 	Restored []string `json:"restored,omitempty"`
 	// KeysRestored lists "file pointer" pairs reverted at key level while later edits were kept.
 	KeysRestored []string `json:"keys_restored,omitempty"`
-	// Kept lists created folders left because they hold files sy did not create.
+	// Kept lists created folders left because they hold files wy did not create.
 	Kept []string `json:"kept,omitempty"`
 	// Skipped lists paths that changed since the run (exit 5).
 	Skipped []Skip `json:"skipped,omitempty"`
@@ -261,7 +261,7 @@ func (u *undoer) skip(seq int, path, reason string) {
 
 // CopyForgetter is implemented by a Sharer that registers synced copies (internal/share,
 // Windows copy mode): undo of a link entry deregisters the copy at the path it restored, so
-// `sy tick` stops syncing the restored original into the shared primary (5.7).
+// `wy tick` stops syncing the restored original into the shared primary (5.7).
 type CopyForgetter interface {
 	ForgetCopy(path string) error
 }
@@ -284,7 +284,7 @@ func (u *undoer) entry(ctx context.Context, e model.Entry) bool {
 				clean = false
 			}
 		}
-		u.res.Notes = append(u.res.Notes, "the device token on the hub is not revoked: sy hub token revoke <name>")
+		u.res.Notes = append(u.res.Notes, "the device token on the hub is not revoked: wy hub token revoke <name>")
 	}
 
 	fc, _ := u.d.Sharer.(CopyForgetter)
@@ -326,8 +326,8 @@ func (u *undoer) entry(ctx context.Context, e model.Entry) bool {
 // both narrowed to the entry's Expect names when it has them (an interrupted run without
 // them removes nothing: what appeared since may be anyone's). The created paths outside the
 // Expect names are listed too, marked emptyOnly: they go only when they are empty folders
-// (the `marketplaces/` Claude Code makes beside sy's). Paths the entry journals itself (a
-// registry it touched) are left to the path-level undo, which reverts only sy's entries.
+// (the `marketplaces/` Claude Code makes beside wy's). Paths the entry journals itself (a
+// registry it touched) are left to the path-level undo, which reverts only wy's entries.
 func (u *undoer) created(e model.Entry) (out []string, emptyOnly map[string]bool) {
 	w, _ := u.s.readWatch(e.Seq)
 	created := e.Created
@@ -394,7 +394,7 @@ func (u *undoer) removeCreated(e model.Entry, p string, states map[string]model.
 	return true
 }
 
-// removeLoginlessState empties a folder sy created of what Claude Code puts in any new
+// removeLoginlessState empties a folder wy created of what Claude Code puts in any new
 // folder on its first run of a command (for example the `claude auth status` setup runs for
 // every folder), so that it does not make undo keep the folder: a `.claude.json` without an
 // oauthAccount and an empty `sessions/`. It does so only when they are the folder's only
@@ -441,7 +441,7 @@ func removeLoginlessState(dir string) {
 	}
 }
 
-// wantTreeHash is the tree hash a folder at pe.Path must have to be what sy wrote ("" when
+// wantTreeHash is the tree hash a folder at pe.Path must have to be what wy wrote ("" when
 // none was recorded).
 func wantTreeHash(pe model.PathEntry) string {
 	if pe.After != nil && pe.After.Type == model.TypeDir && pe.After.SHA256 != "" {
@@ -487,7 +487,7 @@ func (u *undoer) path(ctx context.Context, e model.Entry, pe model.PathEntry) bo
 	if !stale && StateEq(cur, pe.Before) {
 		return true
 	}
-	// What is there is what sy left: the recorded after-state, or for an interrupted entry
+	// What is there is what wy left: the recorded after-state, or for an interrupted entry
 	// (no after-state) the state it meant to leave. Anything else may hold later edits.
 	ours := false
 	switch {
@@ -544,7 +544,7 @@ func (u *undoer) path(ctx context.Context, e model.Entry, pe model.PathEntry) bo
 // removeDir removes the folder at pe.Path that undo must take away. A parent created on the
 // way, or a folder of an op that writes no trees, is removed only when empty (after the
 // login-less state of a first run): kept=true otherwise. The folder an op wrote as a tree
-// (a copy, the marketplace) is removed whole only when it is verified to hold just what sy
+// (a copy, the marketplace) is removed whole only when it is verified to hold just what wy
 // wrote: its tree hash matched the recorded one (cur.SHA256), or it equals the tree of the
 // link it replaced (an older manifest without the hash).
 func (u *undoer) removeDir(e model.Entry, pe model.PathEntry, cur model.PathState) (kept bool, err error) {
@@ -556,7 +556,7 @@ func (u *undoer) removeDir(e model.Entry, pe model.PathEntry, cur model.PathStat
 		return false, nil
 	}
 	if cur.SHA256 == "" && !copyOfTarget(pe) {
-		return false, errors.New("the folder holds files sy did not write; left as is")
+		return false, errors.New("the folder holds files wy did not write; left as is")
 	}
 	return false, os.RemoveAll(pe.Path)
 }
@@ -613,7 +613,7 @@ func (u *undoer) restore(ctx context.Context, e model.Entry, pe model.PathEntry,
 			return err
 		}
 		if kept {
-			return errors.New("a folder holding files sy did not write is in the way")
+			return errors.New("a folder holding files wy did not write is in the way")
 		}
 	case model.TypeFile:
 		// a file over a file is replaced atomically by restoreSaved: removing it first
@@ -711,7 +711,7 @@ func (u *undoer) restoreSaved(path string, b model.PathState) error {
 
 // keyRevert reverts each recorded pointer of a JSON edit, keeping every other later change.
 // When the file differs from its saved original only at those pointers, and each holds what
-// sy wrote, the saved original is put back whole instead (exact bytes; nothing to keep).
+// wy wrote, the saved original is put back whole instead (exact bytes; nothing to keep).
 func (u *undoer) keyRevert(e model.Entry, pe model.PathEntry, cur model.PathState) bool {
 	if cur.Type != model.TypeFile && cur.Type != model.TypeSymlink {
 		u.skip(e.Seq, pe.Path, "the file is gone; keys cannot be reverted")
@@ -781,7 +781,7 @@ func (u *undoer) keyRevert(e model.Entry, pe model.PathEntry, cur model.PathStat
 	return ok
 }
 
-// keyIsOurs reports whether the value at k.Pointer now is the one sy wrote (or, for an
+// keyIsOurs reports whether the value at k.Pointer now is the one wy wrote (or, for an
 // interrupted edit whose value was not known up front, whether it may be: key-level revert
 // is then the least that can be undone). A value already equal to the original counts too.
 func (u *undoer) keyIsOurs(e model.Entry, pe model.PathEntry, k model.KeyChange) bool {
@@ -823,7 +823,7 @@ func (u *undoer) confinedTo(pe model.PathEntry, ptrs []string) bool {
 // jsonEqualExcept compares two JSON documents with the values at ptrs removed from both. With
 // prune, empty objects are dropped (a parent the edit created); with registry, a document
 // reduced to nothing but a "version" number counts as empty (a registry file Claude Code
-// created for sy's entry alone).
+// created for wy's entry alone).
 func jsonEqualExcept(a, b []byte, ptrs []string, prune, registry bool) bool {
 	parse := func(d []byte) (any, bool) {
 		if len(bytes.TrimSpace(d)) == 0 {
@@ -937,10 +937,10 @@ func runPointers(path string) []string {
 }
 
 // runRevert reverts, in a file a `run` touched that is not exactly as the run left it (it
-// changed since, or the run was interrupted), only the switchyard@sy-local / sy-local entries
+// changed since, or the run was interrupted), only the watchyard@wy-local / wy-local entries
 // to what the saved original had. When everything else in the file still equals the
 // original, the original is put back whole (or the file removed, when the run created it
-// for sy's entries alone).
+// for wy's entries alone).
 func (u *undoer) runRevert(e model.Entry, pe model.PathEntry, cur model.PathState) bool {
 	if cur.Type != model.TypeFile && cur.Type != model.TypeSymlink {
 		u.skip(e.Seq, pe.Path, "changed since the run")

@@ -75,9 +75,9 @@ func (h *harness) mustRun(dir string, env map[string]string, args ...string) str
 
 func (h *harness) marketplace() string {
 	h.write("mkt/.claude-plugin/marketplace.json",
-		`{"name":"sy-local","owner":{"name":"x"},"plugins":[{"name":"switchyard","source":"./plugins/switchyard"}]}`)
-	h.write("mkt/plugins/switchyard/.claude-plugin/plugin.json", `{"name":"switchyard","version":"9.9.9"}`)
-	h.write("mkt/plugins/switchyard/hooks/hooks.json", `{"hooks":{}}`)
+		`{"name":"wy-local","owner":{"name":"x"},"plugins":[{"name":"watchyard","source":"./plugins/watchyard"}]}`)
+	h.write("mkt/plugins/watchyard/.claude-plugin/plugin.json", `{"name":"watchyard","version":"9.9.9"}`)
+	h.write("mkt/plugins/watchyard/hooks/hooks.json", `{"hooks":{}}`)
 	return h.path("mkt")
 }
 
@@ -205,12 +205,12 @@ func TestPluginLifecycleWithLinks(t *testing.T) {
 	if r["outcome"] != "ok" {
 		t.Fatal(r)
 	}
-	r = jsonOf(t, h.mustRun("", nil, "plugin", "install", "switchyard@sy-local", "--json"))
+	r = jsonOf(t, h.mustRun("", nil, "plugin", "install", "watchyard@wy-local", "--json"))
 	if r["outcome"] != "ok" {
 		t.Fatal(r)
 	}
 	settings := h.read(".claude/settings.json")
-	for _, want := range []string{`"theme": "dark"`, `"enabledPlugins"`, `"switchyard@sy-local": true`, `"extraKnownMarketplaces"`, `"source": "directory"`} {
+	for _, want := range []string{`"theme": "dark"`, `"enabledPlugins"`, `"watchyard@wy-local": true`, `"extraKnownMarketplaces"`, `"source": "directory"`} {
 		if !strings.Contains(settings, want) {
 			t.Fatalf("settings lack %s:\n%s", want, settings)
 		}
@@ -218,18 +218,18 @@ func TestPluginLifecycleWithLinks(t *testing.T) {
 	if strings.Index(settings, "theme") > strings.Index(settings, "enabledPlugins") {
 		t.Fatal("insertion order not kept")
 	}
-	if !strings.Contains(h.read(".claude/plugins/installed_plugins.json"), A+"/plugins/cache/sy-local/switchyard/9.9.9") {
+	if !strings.Contains(h.read(".claude/plugins/installed_plugins.json"), A+"/plugins/cache/wy-local/watchyard/9.9.9") {
 		t.Fatal(h.read(".claude/plugins/installed_plugins.json"))
 	}
-	if _, err := os.Stat(h.path(".claude/plugins/cache/sy-local/switchyard/9.9.9/hooks/hooks.json")); err != nil {
+	if _, err := os.Stat(h.path(".claude/plugins/cache/wy-local/watchyard/9.9.9/hooks/hooks.json")); err != nil {
 		t.Fatal(err)
 	}
 
 	// install again from a linked folder whose (shared) settings already enable it: a no-op,
 	// the first installer's path stays (2.1.296), the link is kept.
 	before, _ := os.Stat(filepath.Join(A, "settings.json"))
-	h.mustRun(B, nil, "plugin", "install", "switchyard@sy-local", "--json")
-	if !strings.Contains(h.read(".claude/plugins/installed_plugins.json"), A+"/plugins/cache/sy-local/switchyard/9.9.9") {
+	h.mustRun(B, nil, "plugin", "install", "watchyard@wy-local", "--json")
+	if !strings.Contains(h.read(".claude/plugins/installed_plugins.json"), A+"/plugins/cache/wy-local/watchyard/9.9.9") {
 		t.Fatal("installPath moved on a no-op install:\n" + h.read(".claude/plugins/installed_plugins.json"))
 	}
 	if fi, err := os.Lstat(filepath.Join(B, "settings.json")); err != nil || fi.Mode()&os.ModeSymlink == 0 {
@@ -241,13 +241,13 @@ func TestPluginLifecycleWithLinks(t *testing.T) {
 	}
 
 	// enable in a folder with its own settings and a shared root
-	h.mustRun(C, nil, "plugin", "enable", "switchyard@sy-local", "--json")
-	if !strings.Contains(h.read(".claude-3/settings.json"), `"switchyard@sy-local": true`) || !strings.Contains(h.read(".claude-3/settings.json"), `"model"`) {
+	h.mustRun(C, nil, "plugin", "enable", "watchyard@wy-local", "--json")
+	if !strings.Contains(h.read(".claude-3/settings.json"), `"watchyard@wy-local": true`) || !strings.Contains(h.read(".claude-3/settings.json"), `"model"`) {
 		t.Fatal(h.read(".claude-3/settings.json"))
 	}
 	// disable
-	h.mustRun(C, nil, "plugin", "disable", "switchyard@sy-local", "--json")
-	if !strings.Contains(h.read(".claude-3/settings.json"), `"switchyard@sy-local": false`) {
+	h.mustRun(C, nil, "plugin", "disable", "watchyard@wy-local", "--json")
+	if !strings.Contains(h.read(".claude-3/settings.json"), `"watchyard@wy-local": false`) {
 		t.Fatal(h.read(".claude-3/settings.json"))
 	}
 	var list []map[string]any
@@ -257,20 +257,20 @@ func TestPluginLifecycleWithLinks(t *testing.T) {
 
 	// uninstall from B removes the record for every folder sharing the root; C's settings
 	// still say (false here) and A's still say true.
-	h.mustRun(B, nil, "plugin", "uninstall", "switchyard@sy-local", "--json")
+	h.mustRun(B, nil, "plugin", "uninstall", "watchyard@wy-local", "--json")
 	if err := json.Unmarshal([]byte(h.mustRun("", nil, "plugin", "list", "--json")), &list); err != nil || len(list) != 0 {
 		t.Fatalf("record survived uninstall: %v", list)
 	}
-	h.mustRun(B, nil, "plugin", "marketplace", "remove", "sy-local", "--json")
-	if strings.Contains(h.read(".claude/plugins/known_marketplaces.json"), "sy-local") {
+	h.mustRun(B, nil, "plugin", "marketplace", "remove", "wy-local", "--json")
+	if strings.Contains(h.read(".claude/plugins/known_marketplaces.json"), "wy-local") {
 		t.Fatal("marketplace not removed")
 	}
 	// enable of a plugin neither installed nor in a known marketplace fails with an outcome line
-	if code, out, _ := h.run(C, nil, "", "plugin", "enable", "switchyard@sy-local", "--json"); code == 0 || jsonOf(t, out)["outcome"] != "failed" {
+	if code, out, _ := h.run(C, nil, "", "plugin", "enable", "watchyard@wy-local", "--json"); code == 0 || jsonOf(t, out)["outcome"] != "failed" {
 		t.Fatal("enable of an unknown plugin must fail")
 	}
 	// removing it again: failed / not_configured
-	if code, out, _ := h.run(B, nil, "", "plugin", "marketplace", "remove", "sy-local", "--json"); code == 0 || jsonOf(t, out)["failureCode"] != "not_configured" {
+	if code, out, _ := h.run(B, nil, "", "plugin", "marketplace", "remove", "wy-local", "--json"); code == 0 || jsonOf(t, out)["failureCode"] != "not_configured" {
 		t.Fatal("second remove must fail with not_configured")
 	}
 }
@@ -282,7 +282,7 @@ func TestPluginRootFromSettingsEnvAndProcessEnv(t *testing.T) {
 	h.write(".claude-4/settings.json", `{"env":{"CLAUDE_CODE_PLUGIN_CACHE_DIR":"`+filepath.ToSlash(shared)+`"}}`)
 	D := h.path(".claude-4")
 	h.mustRun(D, nil, "plugin", "marketplace", "add", mkt, "--json")
-	h.mustRun(D, nil, "plugin", "install", "switchyard@sy-local", "--json")
+	h.mustRun(D, nil, "plugin", "install", "watchyard@wy-local", "--json")
 	if _, err := os.Stat(filepath.Join(shared, "installed_plugins.json")); err != nil {
 		t.Fatal("settings env root not honoured")
 	}
@@ -307,7 +307,7 @@ func TestFaultInjection(t *testing.T) {
 	mkt := h.marketplace()
 	// FAIL
 	for _, spec := range []string{"plugin install", "install", "plugin"} {
-		code, out, _ := h.run(h.path(".claude-2"), map[string]string{"FAKE_CLAUDE_FAIL": spec}, "", "plugin", "install", "switchyard@sy-local", "--json")
+		code, out, _ := h.run(h.path(".claude-2"), map[string]string{"FAKE_CLAUDE_FAIL": spec}, "", "plugin", "install", "watchyard@wy-local", "--json")
 		if code != 1 || jsonOf(t, out)["outcome"] != "error" {
 			t.Fatalf("FAIL=%s: %d %s", spec, code, out)
 		}

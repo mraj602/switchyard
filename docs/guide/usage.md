@@ -1,6 +1,6 @@
 # Usage limits and analytics
 
-Switchyard shows every account's plan limits in one place (the board's Accounts screen, the
+Watchyard shows every account's plan limits in one place (the board's Accounts screen, the
 Android app, the desktop app's strips and the widgets) and keeps their history on the hub. It
 also counts Claude Code tokens per account, model and project. This guide explains where the
 numbers come from and how to read them. Specs: [analytics.md](../spec/analytics.md),
@@ -12,16 +12,16 @@ There are two sources. Neither is required; with both, the hub merges them per a
 
 | Source | How | Calls claude.ai? | On by default |
 | --- | --- | --- | --- |
-| Claude Code status line | `sy statusline` reads the `rate_limits` that Claude Code itself hands to the status line command | No | Yes, after `sy setup` |
+| Claude Code status line | `wy statusline` reads the `rate_limits` that Claude Code itself hands to the status line command | No | Yes, after `wy setup` |
 | Desktop app usage reading | A script in each signed-in claude.ai tab reads the numbers claude.ai shows under Settings, Usage | Yes, undocumented endpoints | No: off per account until you accept a warning |
 
 ### The status line (local)
 
-`sy setup` wraps your status line: Claude Code runs `sy statusline --wrap '<your old
+`wy setup` wraps your status line: Claude Code runs `wy statusline --wrap '<your old
 command>'`, which prints your old status line unchanged and records the limits Claude Code
 passes in (at most one sample a minute per session). Nothing extra is sent to Anthropic. This
-only updates while a Claude Code session of that account is running. `sy setup
---no-statusline` skips it; `sy uninstall` unwraps it.
+only updates while a Claude Code session of that account is running. `wy setup
+--no-statusline` skips it; `wy uninstall` unwraps it.
 
 ### The desktop app (opt-in, may break)
 
@@ -31,12 +31,12 @@ accounts you use only on claude.ai (chat, Cowork). It calls claude.ai's internal
 does, it shows this warning, once per account:
 
 > **Read usage for this account?**
-> Every 5 minutes, Switchyard runs a small script inside this tab that reads the same numbers
+> Every 5 minutes, Watchyard runs a small script inside this tab that reads the same numbers
 > claude.ai shows under Settings → Usage. It reads numbers only: no chats, no cookies. They go
 > to your own hub.
 > This uses an internal claude.ai endpoint, not a public API. It may stop working, and
 > automated access may not be allowed by Anthropic's consumer terms, so it could get this
-> account flagged. Switchyard is unofficial and not affiliated with Anthropic.
+> account flagged. Watchyard is unofficial and not affiliated with Anthropic.
 > You can turn reading off for this account at any time in its usage bar or in Settings.
 
 The endpoints are undocumented and can change or disappear at any time. A 401, 403 or 429
@@ -64,7 +64,7 @@ owner can drag. For each: its windows, reset times and pace. Pace compares use s
 even use over the window, and projects where the window will be at reset.
 
 The line **Most room right now** names the account with the most room left. It is a
-suggestion only. Switchyard never switches or rotates accounts on its own, and never moves a
+suggestion only. Watchyard never switches or rotates accounts on its own, and never moves a
 session to another account to get around a limit: you choose. Use only your own,
 legitimately held accounts, within the terms of your plan; advertised limits assume ordinary
 individual use. See [faq.md](faq.md).
@@ -77,7 +77,7 @@ reset time and the account that has room. Rules and channels: [alerts.md](alerts
 
 ## Analytics
 
-The hub also counts tokens from Claude Code transcripts (`sy scan` reads them on each
+The hub also counts tokens from Claude Code transcripts (`wy scan` reads them on each
 machine, from the timer). Reports cover tokens, an API-equivalent cost, models, projects, a
 weekday-by-hour heatmap, the biggest sessions, every limit window and every "you've hit your
 limit" reply.
@@ -94,23 +94,23 @@ can read it, including a read-only phone.
 
 ### In a terminal
 
-`sy analytics` needs a read token. A machine's own token can only send records, so first pair
+`wy analytics` needs a read token. A machine's own token can only send records, so first pair
 the terminal board once:
 
 ```sh
-sy board connect            # one click on a local or admin-reachable hub
-# or, with a desktop pairing code from the board (More, Devices) or `sy hub pair --kind desktop`:
-sy board connect --code-stdin
+wy board connect            # one click on a local or admin-reachable hub
+# or, with a desktop pairing code from the board (More, Devices) or `wy hub pair --kind desktop`:
+wy board connect --code-stdin
 ```
 
 Then:
 
 ```sh
-sy analytics                          # daily (the default)
-sy analytics models --days 7
-sy analytics projects --from 2026-10-01 --to 2026-10-21
-sy analytics heatmap --seat work
-sy analytics limits --json
+wy analytics                          # daily (the default)
+wy analytics models --days 7
+wy analytics projects --from 2026-10-01 --to 2026-10-21
+wy analytics heatmap --seat work
+wy analytics limits --json
 ```
 
 Reports: `daily`, `models`, `projects`, `heatmap`, `sessions`, `limits`, `hits`. Flags:
@@ -122,8 +122,8 @@ time zone, which the range line names.
 The hub keeps raw records by default. To keep less, on the hub:
 
 ```sh
-sy hub prune --older-than 90d --dry-run     # count first
-sy hub prune --older-than 90d
+wy hub prune --older-than 90d --dry-run     # count first
+wy hub prune --older-than 90d
 ```
 
 Backups and moving the hub are in [maintenance.md](maintenance.md).

@@ -14,16 +14,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/push/webpush"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/webpush"
 )
 
 // Independent check (push.md 11.2): Martin Thomson's http_ece, the reference implementation
 // Node's web-push library uses, decrypts bodies made by our encoder, padded and unpadded,
 // and a whole payload as the sender builds it.
 //
-// Opt in with SY_WEBPUSH_NODE=1. Needs node and npm; the package is installed into a temp
-// directory (network), or set SY_WEBPUSH_NODE_MODULES to a directory that already holds
+// Opt in with WY_WEBPUSH_NODE=1. Needs node and npm; the package is installed into a temp
+// directory (network), or set WY_WEBPUSH_NODE_MODULES to a directory that already holds
 // node_modules/http_ece.
 const eceScript = `
 const ece = require('http_ece');
@@ -41,14 +41,14 @@ process.stdout.write(out.toString('base64'));
 `
 
 func TestHTTPECEDecryptsOurBodies(t *testing.T) {
-	if os.Getenv("SY_WEBPUSH_NODE") != "1" {
-		t.Skip("set SY_WEBPUSH_NODE=1 to run (needs node and npm)")
+	if os.Getenv("WY_WEBPUSH_NODE") != "1" {
+		t.Skip("set WY_WEBPUSH_NODE=1 to run (needs node and npm)")
 	}
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatal("node not found: ", err)
 	}
-	dir := os.Getenv("SY_WEBPUSH_NODE_MODULES")
+	dir := os.Getenv("WY_WEBPUSH_NODE_MODULES")
 	if dir == "" {
 		npm, err := exec.LookPath("npm")
 		if err != nil {
@@ -108,7 +108,7 @@ func TestHTTPECEDecryptsOurBodies(t *testing.T) {
 	priv, _ := ecdh.P256().GenerateKey(rand.Reader)
 	auth := make([]byte, 16)
 	_, _ = rand.Read(auth)
-	p := model.Payload{V: 1, Type: model.TypeTest, Title: "Test", Body: "Switchyard test push", Tag: "sy-test", URL: "/#/", Tap: "auto"}
+	p := model.Payload{V: 1, Type: model.TypeTest, Title: "Test", Body: "Watchyard test push", Tag: "sy-test", URL: "/#/", Tap: "auto"}
 	plain, _ := json.Marshal(p)
 	body, err := webpush.Encrypt(rand.Reader, plain, priv.PublicKey().Bytes(), auth, webpush.PadMultiple)
 	if err != nil {

@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/push/netguard"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/netguard"
 )
 
 // Endpoint allow-list and dial guard (push.md 6.6). A push-scoped token chooses the URL the

@@ -23,7 +23,7 @@ describe('parsePairInput', () => {
 
   it('drops an explicit default port, so later same-origin checks match', () => {
     expect(parsePairInput(`https://hub.example.ts.net:443/#/pair?s=${S}`, prod)).toEqual({ ok: true, input: { origin: 'https://hub.example.ts.net', secret: S } });
-    expect(parsePairInput(`switchyard://pair?u=${encodeURIComponent('https://hub.example.ts.net:443')}&s=${S}`, prod)).toEqual({
+    expect(parsePairInput(`watchyard://pair?u=${encodeURIComponent('https://hub.example.ts.net:443')}&s=${S}`, prod)).toEqual({
       ok: true,
       input: { origin: 'https://hub.example.ts.net', secret: S },
     });
@@ -40,9 +40,9 @@ describe('parsePairInput', () => {
     });
   });
 
-  it('accepts the switchyard:// link', () => {
+  it('accepts the watchyard:// link', () => {
     const u = encodeURIComponent('https://hub.example.ts.net:8443');
-    expect(parsePairInput(`switchyard://pair?u=${u}&s=${S}&c=482913`, prod)).toEqual({
+    expect(parsePairInput(`watchyard://pair?u=${u}&s=${S}&c=482913`, prod)).toEqual({
       ok: true,
       input: { origin: 'https://hub.example.ts.net:8443', secret: S, code: '482913' },
     });
@@ -99,10 +99,10 @@ describe('parsePairInput', () => {
     ['five-digit code', 'hub.example.ts.net 48291', prod, 'bad_code'],
     ['code with letters', 'hub.example.ts.net 48a-913', prod, 'bad_code'],
     ['seven-digit code', 'hub.example.ts.net 4829133', prod, 'bad_code'],
-    ['switchyard link without u', `switchyard://pair?s=${S}`, prod, 'bad_origin'],
-    ['switchyard link with a javascript u', `switchyard://pair?u=${encodeURIComponent('javascript:alert(1)')}&s=${S}`, prod, 'not_https'],
-    ['switchyard link with another host', 'switchyard://sessions?u=https://x', prod, 'bad_origin'],
-    ['bad percent-encoding', 'switchyard://pair?u=%E0%A4%A&s=x', prod, 'bad_origin'],
+    ['watchyard link without u', `watchyard://pair?s=${S}`, prod, 'bad_origin'],
+    ['watchyard link with a javascript u', `watchyard://pair?u=${encodeURIComponent('javascript:alert(1)')}&s=${S}`, prod, 'not_https'],
+    ['watchyard link with another host', 'watchyard://sessions?u=https://x', prod, 'bad_origin'],
+    ['bad percent-encoding', 'watchyard://pair?u=%E0%A4%A&s=x', prod, 'bad_origin'],
   ];
   it.each(refused)('refuses %s', (_name, text, opts, reason) => {
     expect(parsePairInput(text, opts)).toEqual({ ok: false, reason });

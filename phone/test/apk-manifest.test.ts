@@ -5,7 +5,7 @@ const { spawnSync } = require('node:child_process') as typeof import('node:child
 const path = require('node:path') as typeof import('node:path');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'check-apk-manifest.mjs');
-const ID = 'io.github.mraj602.switchyard';
+const ID = 'io.github.mraj602.watchyard';
 
 function dump(over: { pkg?: string; debuggable?: string; cleartext?: string; backup?: string } = {}) {
   const A = 'http://schemas.android.com/apk/res/android';

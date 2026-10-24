@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
-	"github.com/mraj602/switchyard/internal/status"
+	"github.com/mraj602/watchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/status"
 )
 
 // loadRecords returns what status.Load returns, as a set, including the cases Load skips:

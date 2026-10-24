@@ -66,17 +66,17 @@ test('linux: dot image and count by state, tooltip carries the count', () => {
   assert.equal(needsYouText(0), '');
 });
 
-test('linux: always the light glyph (panels are dark), whatever the theme; SWITCHYARD_TRAY_ICON overrides', () => {
+test('linux: always the light glyph (panels are dark), whatever the theme; WATCHYARD_TRAY_ICON overrides', () => {
   const a = setup('linux', { darkTheme: false });
   a.tray.start();
   assert.equal(a.fake.trays[0].image.path, icon('light', 'tray-22.png'));
-  const b = setup('linux', { darkTheme: true, env: { SWITCHYARD_TRAY_ICON: 'dark' } });
+  const b = setup('linux', { darkTheme: true, env: { WATCHYARD_TRAY_ICON: 'dark' } });
   b.tray.start();
   assert.equal(b.fake.trays[0].image.path, icon('dark', 'tray-22.png'));
-  const c = setup('linux', { darkTheme: false, env: { SWITCHYARD_TRAY_ICON: 'light' } });
+  const c = setup('linux', { darkTheme: false, env: { WATCHYARD_TRAY_ICON: 'light' } });
   c.tray.start();
   assert.equal(c.fake.trays[0].image.path, icon('light', 'tray-22.png'));
-  const d = setup('linux', { env: { SWITCHYARD_TRAY_ICON: 'bogus' } });
+  const d = setup('linux', { env: { WATCHYARD_TRAY_ICON: 'bogus' } });
   d.tray.start();
   assert.equal(d.fake.trays[0].image.path, icon('light', 'tray-22.png'));
 });
@@ -122,11 +122,11 @@ test('menu: open, up to five sessions with routes, refresh, pause (confirmed), q
   bus.emit('needs_you', needs(7, sessions));
   const menu = fake.trays[0].menu;
   assert.deepEqual(labels(menu), [
-    'Open Switchyard', '-', '7 sessions need you', 'work · api0 · asked', 'work · api1 · asked', 'work · api2 · asked', 'work · api3 · asked', 'work · api4 · asked',
+    'Open Watchyard', '-', '7 sessions need you', 'work · api0 · asked', 'work · api1 · asked', 'work · api2 · asked', 'work · api3 · asked', 'work · api4 · asked',
     '-', 'Refresh usage', 'Pause all reading', '-', 'Quit',
   ]);
   const by = (l) => menu.template.find((i) => i.label === l);
-  by('Open Switchyard').click();
+  by('Open Watchyard').click();
   by('work · api1 · asked').click();
   by('Refresh usage').click();
   await by('Pause all reading').click();

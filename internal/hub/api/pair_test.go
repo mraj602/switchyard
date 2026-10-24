@@ -12,16 +12,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/api"
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/pair"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/api"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/pair"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 const pairHubURL = "https://hub.example.ts.net"
 
 // pairHub is a hub whose pairing pepper lives in a temp folder, plus a service on the same
-// pepper to make codes the way `sy hub pair` does.
+// pepper to make codes the way `wy hub pair` does.
 type pairHub struct {
 	*hub
 	svc *pair.Service
@@ -292,7 +292,7 @@ func TestPairCodesAPI(t *testing.T) {
 	// The explicit url wins over the setting; machine codes carry the connect command.
 	r = h.call("POST", "/v1/pair/codes", map[string]any{"kind": "machine", "url": "https://other.example.ts.net", "ttl_s": 60}, opts{cookie: owner})
 	m := r.json(t)
-	if r.code != 201 || !strings.HasPrefix(m["command"].(string), "sy connect https://other.example.ts.net --code ") {
+	if r.code != 201 || !strings.HasPrefix(m["command"].(string), "wy connect https://other.example.ts.net --code ") {
 		t.Errorf("machine code: %d %v", r.code, m)
 	}
 	for _, bad := range []map[string]any{{"kind": "owner", "url": pairHubURL}, {"kind": "phone", "url": pairHubURL, "ttl_s": 5},

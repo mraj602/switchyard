@@ -7,10 +7,10 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/mraj602/switchyard/internal/termenv"
+	"github.com/mraj602/watchyard/internal/termenv"
 )
 
-// Test seam (docs/spec/terminal.md T7): with `-tags fakeopen` and SY_TEST_OPENER=<file>,
+// Test seam (docs/spec/terminal.md T7): with `-tags fakeopen` and WY_TEST_OPENER=<file>,
 // Open appends the argv it would have run, as a JSON array on one line, to that file and
 // runs nothing. Release builds do not contain this file.
 
@@ -19,7 +19,7 @@ type recordOpener struct {
 }
 
 func fakeOpener(env termenv.Env) Opener {
-	f := env.Lookup("SY_TEST_OPENER")
+	f := env.Lookup("WY_TEST_OPENER")
 	if f == "" {
 		return nil
 	}

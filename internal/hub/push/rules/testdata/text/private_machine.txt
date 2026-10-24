@@ -1,4 +1,4 @@
-title: Switchyard
+title: Watchyard
 body: A machine went quiet
 url: /#/alerts/al_3
 tag: sy-m-m-old

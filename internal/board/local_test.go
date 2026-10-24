@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
-	"github.com/mraj602/switchyard/internal/status"
-	"github.com/mraj602/switchyard/internal/termenv"
+	"github.com/mraj602/watchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/status"
+	"github.com/mraj602/watchyard/internal/termenv"
 )
 
 func fakeEnv(t testing.TB) termenv.Env { return termenv.Fake("/home/u", "linux", nil) }
@@ -45,7 +45,7 @@ func TestFixtureUpToDate(t *testing.T) {
 	}
 }
 
-// The local View equals `sy status --json` on ids, states, order and question.
+// The local View equals `wy status --json` on ids, states, order and question.
 func TestLocalMatchesStatus(t *testing.T) {
 	lo := fixtureOptions(t)
 	v := buildFixture(t, nil)

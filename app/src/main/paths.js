@@ -1,10 +1,10 @@
 // User data folder (C1). Runs before 'ready': sets app.setPath('userData') to
-// <appData>/switchyard-desktop (or SY_APP_USER_DATA, absolute, only when !app.isPackaged, read
+// <appData>/watchyard-desktop (or WY_APP_USER_DATA, absolute, only when !app.isPackaged, read
 // through test-hooks.js). The folder name stays as it is so existing installs keep their data.
 // After a rename, the folder of the old name is moved to the new one on the first start that
 // finds only the old one (docs/spec/rename.md 2.9); if the move fails the old folder is used.
 //
-// Electron would otherwise derive the folder from productName ('Switchyard').
+// Electron would otherwise derive the folder from productName ('Watchyard').
 //
 // Contract: docs/spec/desktop.md C1.
 
@@ -26,7 +26,7 @@ export function create(deps) {
   if (!app.isPackaged && deps.testHooks?.userData) {
     const given = deps.testHooks.userData(env ?? {});
     if (given) {
-      if (!path.isAbsolute(given)) throw new Error('paths: SY_APP_USER_DATA must be an absolute path');
+      if (!path.isAbsolute(given)) throw new Error('paths: WY_APP_USER_DATA must be an absolute path');
       dir = path.resolve(given);
       override = true;
     }

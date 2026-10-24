@@ -13,7 +13,7 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/mraj602/switchyard/webui"
+	"github.com/mraj602/watchyard/webui"
 )
 
 // client is a browser-like caller of the mock with its own cookie jar.

@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/drainproto"
-	"github.com/mraj602/switchyard/internal/hub/api"
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/drainproto"
+	"github.com/mraj602/watchyard/internal/hub/api"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // Scheduler tuning (machines.md 3.4).
@@ -335,7 +335,7 @@ func (s *Scheduler) unmark(id string) {
 }
 
 // RunTarget runs one target now and waits, regardless of its next_at and state (but not
-// while another run of it is in progress or the hub is frozen). `sy hub pull run` uses it
+// while another run of it is in progress or the hub is frozen). `wy hub pull run` uses it
 // when no hub process is running.
 func (s *Scheduler) RunTarget(ctx context.Context, t store.PullTarget) error {
 	if s.frozen(ctx) {
@@ -402,7 +402,7 @@ func Status(t store.PullTarget, frozen bool) api.PullStatus {
 }
 
 // run is one session for t, then the row update. scheduled is false for RunTarget (an
-// explicit `sy hub pull run`), which always reports the real outcome.
+// explicit `wy hub pull run`), which always reports the real outcome.
 func (s *Scheduler) run(ctx context.Context, t store.PullTarget, scheduled bool) {
 	res, stderr, exit, err := s.session(ctx, t)
 	s.record(ctx, t, res, stderr, exit, err, scheduled)
@@ -482,7 +482,7 @@ func (s *Scheduler) record(ctx context.Context, t store.PullTarget, res Result, 
 		}
 		r = store.PullResult{State: store.PullStateOK, OK: true, NextAt: now.Add(d).UnixMilli()}
 	case res.Outcome == OutcomeRefused:
-		msg := "the remote's machine changed: check it, then sy hub pull remove and add again"
+		msg := "the remote's machine changed: check it, then wy hub pull remove and add again"
 		if res.Code == drainproto.RefuseMachineMismatch && res.Msg != "" {
 			msg = "the hub refused the pull: " + res.Msg
 		}
@@ -501,10 +501,10 @@ func (s *Scheduler) record(ctx context.Context, t store.PullTarget, res Result, 
 		r = store.PullResult{State: store.PullStateRefused, Error: msg, OK: true}
 	case strings.Contains(stderr, "Host key verification failed") || strings.Contains(stderr, "HOST IDENTIFICATION HAS CHANGED"):
 		r = store.PullResult{State: store.PullStateHostKey, FailCount: fails,
-			Error: "host key changed: check the server, then `sy hub pull trust " + t.Name + "`"}
+			Error: "host key changed: check the server, then `wy hub pull trust " + t.Name + "`"}
 	case scheduled && strings.Contains(stderr, "Permission denied") && t.State == store.PullStateNew && t.LastOKAt == 0 &&
 		now.Sub(time.UnixMilli(t.CreatedAt)) < NewAuthGrace:
-		// Just registered: `sy machine add` adds the target before it authorizes the key on the
+		// Just registered: `wy machine add` adds the target before it authorizes the key on the
 		// server, so the first scheduled try can race it. Stay `new` and retry soon.
 		r = store.PullResult{State: store.PullStateNew, FailCount: fails, NextAt: now.Add(Ladder[0]).UnixMilli(),
 			Error: sshLine(line) + " (the pull key may not be authorized yet)"}

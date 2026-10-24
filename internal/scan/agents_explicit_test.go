@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/identity"
 )
 
 // Given the explicit view of ~/.claude, both views (variable unset and set) are still run

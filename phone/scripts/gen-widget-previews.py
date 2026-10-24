@@ -14,29 +14,29 @@ def ring(p,c,size,stroke):
 def card(w,h,body,pad=12): return (w,h,f'<div class="card" style="width:{w}px;height:{h}px;padding:{pad}px">{body}</div>')
 def limits():
     rows=[('claude-1','#8B6CF6',62,'resets 15:48'),('claude-2','#4FC3B5',23,'resets 17:10'),('claude-3','#FF8A65',88,'resets 14:05'),('claude-4','#E8B04B',0,'not started')]
-    b=f'<div class="row" style="justify-content:space-between;align-items:center">{brand("Switchyard · Limits")}<span style="font-size:9px;color:{DIM}">updated 2 min ago</span>{toggle("5 h")}</div>'
+    b=f'<div class="row" style="justify-content:space-between;align-items:center">{brand("Watchyard · Limits")}<span style="font-size:9px;color:{DIM}">updated 2 min ago</span>{toggle("5 h")}</div>'
     for n,c,p,t in rows:
         b+=f'<div class="row" style="align-items:center;margin-top:6px"><b style="width:72px;font-size:12px;color:{c}">{n}</b><div class="row" style="flex:1;height:6px;border-radius:3px;background:{TRACK};margin:0 6px"><div style="width:{p}%;border-radius:3px;background:{c}"></div></div><b style="width:34px;font-size:12px">{p}%</b><span style="width:72px;font-size:10px;color:{DIM}">{t}</span></div>'
     return card(300,150,b)
 def sessions():
     cell=lambda n,l,c:f'<div style="flex:1;text-align:center"><div style="font-size:28px;font-weight:bold;color:{c}">{n}</div><div style="font-size:11px;color:{DIM}">{l}</div></div>'
-    b=f'<div class="row" style="justify-content:space-between;align-items:center">{brand("Switchyard · Sessions")}<span style="font-size:9px;color:{DIM}">updated 2 min ago</span></div><div class="row" style="margin-top:6px">{cell(5,"Running",ON)}{cell(2,"Needs input",NEEDS)}{cell(8,"Done",FG)}</div><div style="margin-top:8px;padding:6px;border-radius:8px;background:#3A2A0E;color:{NEEDS};font-weight:bold;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Needs you: api · asked</div>'
+    b=f'<div class="row" style="justify-content:space-between;align-items:center">{brand("Watchyard · Sessions")}<span style="font-size:9px;color:{DIM}">updated 2 min ago</span></div><div class="row" style="margin-top:6px">{cell(5,"Running",ON)}{cell(2,"Needs input",NEEDS)}{cell(8,"Done",FG)}</div><div style="margin-top:8px;padding:6px;border-radius:8px;background:#3A2A0E;color:{NEEDS};font-weight:bold;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Needs you: api · asked</div>'
     return card(240,124,b)
 def needs():
     rows=[('claude-2','#4FC3B5','api','asked','4 min'),('claude-4','#FF8A65','etl','needs permission','9 min'),('claude-1','#8B6CF6','web','asked','21 min')]
-    b=f'<div class="row" style="justify-content:space-between;align-items:center">{brand("Switchyard · Needs you")}<b style="font-size:11px;color:{NEEDS}">3 waiting</b><span style="font-size:9px;color:{DIM}">updated 2 min ago</span></div>'
+    b=f'<div class="row" style="justify-content:space-between;align-items:center">{brand("Watchyard · Needs you")}<b style="font-size:11px;color:{NEEDS}">3 waiting</b><span style="font-size:9px;color:{DIM}">updated 2 min ago</span></div>'
     for n,c,p,s,a in rows:
         b+=f'<div class="row" style="align-items:center;margin-top:8px"><div style="width:8px;height:8px;border-radius:4px;background:{c};margin-right:8px"></div><b style="flex:1;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{n} · {p} · {s}</b><span style="font-size:11px;color:{DIM};margin-left:6px">{a}</span></div>'
     return card(300,128,b)
 def ringw():
-    b=f'<div style="display:flex;flex-direction:column;align-items:center;height:100%"><div style="width:100%">{brand("Switchyard")}</div><div class="row" style="width:100%;justify-content:space-between;align-items:center;margin-top:3px"><b style="font-size:11px;color:#4FC3B5">claude-2</b>{toggle("5 h")}</div><div style="position:relative;width:58px;height:58px;margin-top:4px">{ring(23,"#4FC3B5",58,7)}<div style="position:absolute;left:0;top:0;width:58px;height:58px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold">23 %</div></div><div style="font-size:10px;color:{DIM};margin-top:2px">resets 15:48</div></div>'
+    b=f'<div style="display:flex;flex-direction:column;align-items:center;height:100%"><div style="width:100%">{brand("Watchyard")}</div><div class="row" style="width:100%;justify-content:space-between;align-items:center;margin-top:3px"><b style="font-size:11px;color:#4FC3B5">claude-2</b>{toggle("5 h")}</div><div style="position:relative;width:58px;height:58px;margin-top:4px">{ring(23,"#4FC3B5",58,7)}<div style="position:absolute;left:0;top:0;width:58px;height:58px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold">23 %</div></div><div style="font-size:10px;color:{DIM};margin-top:2px">resets 15:48</div></div>'
     return card(130,130,b,8)
 def nextr():
-    b=f'{brand("Switchyard")}<div class="row" style="align-items:baseline;margin-top:2px"><b style="font-size:20px">15:48</b><span style="font-size:10px;color:{DIM};white-space:pre">  claude-2 · 5 h</span></div>'
+    b=f'{brand("Watchyard")}<div class="row" style="align-items:baseline;margin-top:2px"><b style="font-size:20px">15:48</b><span style="font-size:10px;color:{DIM};white-space:pre">  claude-2 · 5 h</span></div>'
     return card(130,56,b,8)
 def machines():
     ms=[('gpu-box',True,'2 live'),('laptop',True,'1 live'),('vps',False,'silent 1 h')]
-    b=f'<div class="row" style="justify-content:space-between;align-items:center">{brand("Switchyard")}<b style="font-size:11px">Machines · 2 of 3 online</b><span style="font-size:9px;color:{DIM}">updated 2 min ago</span></div><div class="row" style="margin-top:6px">'
+    b=f'<div class="row" style="justify-content:space-between;align-items:center">{brand("Watchyard")}<b style="font-size:11px">Machines · 2 of 3 online</b><span style="font-size:9px;color:{DIM}">updated 2 min ago</span></div><div class="row" style="margin-top:6px">'
     for n,o,t in ms:
         b+=f'<div class="row" style="flex:1;align-items:center"><div style="width:7px;height:7px;border-radius:4px;background:{ON if o else OFF};margin-right:5px"></div><b style="font-size:12px">{n}</b><span style="font-size:10px;color:{DIM if o else OFF};white-space:pre"> {t}</span></div>'
     b+='</div>'

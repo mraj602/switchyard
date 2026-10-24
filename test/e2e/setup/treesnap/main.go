@@ -15,7 +15,7 @@
 //	-claude-json       compare every .claude.json by its "oauthAccount" and "mcpServers"
 //	                   keys only (Claude Code and the fake rewrite the rest on every run)
 //
-// With no -ignore, the setup harness defaults apply: .local/state/switchyard, .local/bin/sy.
+// With no -ignore, the setup harness defaults apply: .local/state/watchyard, .local/bin/wy.
 // Pass -ignore ” to ignore nothing.
 package main
 
@@ -29,13 +29,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/setup/testtree"
+	"github.com/mraj602/watchyard/internal/setup/testtree"
 )
 
 // emptySubset is the reduced identity of a .claude.json without oauthAccount and mcpServers.
 var emptySubset = func() string { s := sha256.Sum256([]byte("{}")); return "subset:" + hex.EncodeToString(s[:]) }()
 
-const defaultIgnore = ".local/state/switchyard,.local/bin/sy"
+const defaultIgnore = ".local/state/watchyard,.local/bin/wy"
 
 func main() {
 	if len(os.Args) < 2 {

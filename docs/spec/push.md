@@ -48,7 +48,7 @@ quiet hours, for times in push text when a device has no `prefs.tz`, and for ana
 `push.vapid_public` (6.2), `push.baseline_done` (3.8).
 
 **The hub's time zone** is `hub.tz` when it names a zone the hub can load; else the hub
-machine's own zone: `$TZ` of `sy hub serve` when it names one (a leading `:` is dropped),
+machine's own zone: `$TZ` of `wy hub serve` when it names one (a leading `:` is dropped),
 else the zone `/etc/localtime` links to (the part after `zoneinfo/`); else UTC. A hub run as a
 systemd user service has no `$TZ`, so `/etc/localtime` is what makes an Asia/Kolkata machine's
 hub keep Asia/Kolkata and not UTC. `GET /v1/overview` returns it as `tz`, with `tz_source`
@@ -95,7 +95,7 @@ sends exactly one push" also holds for a window that jumps straight past 95%.
 - `alert.episode` is `UNIQUE`: creating an alert is `INSERT … ON CONFLICT(episode) DO
   NOTHING`. Restarts, refolds, replays and two code paths racing can never make two alerts
   for one episode.
-- The direct ntfy push from `sy` (machines.md 5) computes the same session key on the
+- The direct ntfy push from `wy` (machines.md 5) computes the same session key on the
   machine (it knows the session, the state and the record `ts` that entered it). It reports
   each push in a **`direct_push` record** (record.md 4.9; an earlier draft put
   `derived.direct_push` on a hook record, which cannot work because outbox records are
@@ -220,7 +220,7 @@ For a machine: a record from it closes its open `machine_silent` alert (`recover
 is sent for recovery.
 
 "Answering in the terminal at 40 seconds means no push" (an acceptance case): the
-UserPromptSubmit record reaches the hub about 2 s after the answer (`sy flush` debounce), the
+UserPromptSubmit record reaches the hub about 2 s after the answer (`wy flush` debounce), the
 fold moves the session to `working`, reconcile cancels the pending alert (due at 60 s) with
 reason `answered`, and the Alerts log shows it as **cancelled**.
 
@@ -431,7 +431,7 @@ Question and message text appear only when the hub has them, which needs last me
 allowed; otherwise the generic body is used.
 
 **Private pushes** (`prefs.private` or hub default) replace title and body with:
-"Switchyard" / "1 session needs you" (session triggers), "N sessions need you" (summary),
+"Watchyard" / "1 session needs you" (session triggers), "N sessions need you" (summary),
 "An account is near its limit" (limits), "A limit has reset", "A machine went quiet". The
 deep link becomes `/#/alerts/<alert id>`, which the web app resolves after it has loaded
 (pwa.md 3), so neither the text nor the link names a project, account or session.
@@ -480,7 +480,7 @@ by the rule the board and the phone use for "Most room right now" (pwa.md, Accou
 
 So an idle account (0%, its window already reset or never read for this key) is named before a
 busier one. Wording: "work has 59% left" (100 minus the effective use; an idle account "has
-100% left"). Nothing is said when no seat qualifies. Switchyard never switches accounts.
+100% left"). Nothing is said when no seat qualifies. Watchyard never switches accounts.
 
 The Accounts page's "Most room right now" line uses a different, idle-friendly rule (pwa.md 3.0a):
 a window counts as 0 when its `resets_at` has passed or when the account has no reading for it but
@@ -490,8 +490,8 @@ the 5 h and 7 d use, lowest first, under 80%. Seats that are idle are the ones w
 ### 5.8 Remote Control link and deep links
 
 - **Remote Control link.** `session.remote_url`, filled by ingest from a hook record's
-  `derived.remote_url` (`sy hook` finds it in the transcript tail) or from a `token_rows`
-  record's `sessions[].remote_url` (`sy scan`), newest wins (record.md 4.1 and 4.4). The
+  `derived.remote_url` (`wy hook` finds it in the transcript tail) or from a `token_rows`
+  record's `sessions[].remote_url` (`wy scan`), newest wins (record.md 4.1 and 4.4). The
   engine copies it into `alert.facts` when the alert is created and refreshes it when it
   fires, so a link found during the delay is still included. **Uncertain:** a stored link
   says Remote Control was on at some point, not that it is on now; a stale link opens a
@@ -537,7 +537,7 @@ So: package `internal/hub/push/webpush`, no new dependency (ARCHITECTURE.md rule
   scalar (32 bytes) goes in `hub_secret` key `vapid_private`; the public key, uncompressed
   (65 bytes, `0x04‖X‖Y`) and base64url without padding, in setting `push.vapid_public` and in
   `GET /v1/push/config` (the web app passes it as `applicationServerKey`).
-- The keys are part of the database, so `sy hub backup`, export and import keep every
+- The keys are part of the database, so `wy hub backup`, export and import keep every
   subscription valid. Rotating the keys invalidates every subscription (browsers bind a
   subscription to the key), so there is no rotation command.
 - JWT: header `{"typ":"JWT","alg":"ES256"}`, claims `{"aud": "<scheme>://<host>[:port]
@@ -662,7 +662,7 @@ or that contains a backslash (browsers read `/\` as `//`).
 An ntfy target is `{server, topic, token?, name?, private?}`:
 
 - `server`: default `https://ntfy.sh`. The **owner** may name any `https://` URL, or `http://`
-  for loopback, private, and tailnet addresses (the `sy connect` rule, tokens.md 4), so a
+  for loopback, private, and tailnet addresses (the `wy connect` rule, tokens.md 4), so a
   self-hosted ntfy keeps working. A **push-scoped device** may name only an `https://` server
   on a public DNS name or public address (no loopback, private, tailnet, single-label or
   `.local`/`.internal` hosts), otherwise 400. The hub's ntfy client mirrors this at connect
@@ -717,7 +717,7 @@ UTF-8 titles intact:
   action (ntfy sees the text, unlike Web Push), Snooze and Seen kept. Their URLs reveal the hub's host name and a
   24-hour action token to the ntfy server (a leaked token can only snooze or mark that one alert seen, 24 hours); that is the price of
   the buttons, and security.md tells the owner.
-- **Without `hub.public_url`** (`sy hub serve --public-url https://…`, pairing.md 2.3) the hub
+- **Without `hub.public_url`** (`wy hub serve --public-url https://…`, pairing.md 2.3) the hub
   has no absolute address to put in a message: ntfy alerts carry **no `click` link and no
   Snooze/Seen buttons**, only the title, the body and "Open in Claude" when the session has a
   Remote Control link. Set the public URL to get the tap-through and the buttons.
@@ -924,7 +924,7 @@ CREATE INDEX delivery_next ON delivery(next_at) WHERE next_at IS NOT NULL;
 CREATE INDEX delivery_batch ON delivery(batch);
 ```
 
-Retention: `sy hub prune` and the daily maintenance delete alerts (and their deliveries)
+Retention: `wy hub prune` and the daily maintenance delete alerts (and their deliveries)
 older than 365 days, gone targets after 30 days, and pair codes 30 days after they expire.
 
 ## 10. Engine structure
@@ -956,7 +956,7 @@ type Result struct {
 }
 ```
 
-`engine.Engine` is created by `sy hub serve` with the store, the clock, the senders and the
+`engine.Engine` is created by `wy hub serve` with the store, the clock, the senders and the
 `events.Broker`; `api.Server` calls `engine.Notify(ingest.Changes)` after publishing a batch
 (non-blocking; changes are merged while the engine is busy), and the alert handlers call
 `engine.Snooze`, `engine.Seen`, `engine.Act(token)`. A nil engine (tests, `--no-push`) makes
@@ -1047,7 +1047,7 @@ moves; "expect" lists sends and final alert status.
 | 35 | Refold | late record makes an `asked` session `working` retroactively | Pending alert `cancelled` |
 | 36 | Gone target | fake service returns 410 | Delivery `gone`, target disabled, next alert not sent to it |
 | 37 | Retry | 503, 503, 201 | Sent on the third try at +15 s, +1 min; skipped if the session was answered in between |
-| 38 | Private | device private | Payload title "Switchyard", url `/#/alerts/<id>`, no question text |
+| 38 | Private | device private | Payload title "Watchyard", url `/#/alerts/<id>`, no question text |
 | 39 | Peer message answered | a peer message starts a turn (`peer_prompt`); it ends on a question | `skipped` / `peers`, nothing sent; the session is still `asked`, `needs_you` 1 |
 | 40 | Waiting on a peer | a person's turn ends on a question with `peer_wait`; then the reply starts a turn that ends on a question | Both `skipped` / `peers`; nothing sent |
 | 41 | Permission in a peer turn | peer turn, then PermissionRequest | Pushed at 30 s |
@@ -1072,20 +1072,20 @@ matching, quiet-hour windows across midnight and DST (Europe/London 2026-03-29 a
   the test package (RFC 8188 decryption), verifies the `vapid` header, and answers scripted
   statuses (201, 404, 410, 413, 429 + `Retry-After`, 500, slow). Used by the engine tests and
   the end-to-end test.
-- **Independent check** (opt-in, `SY_WEBPUSH_NODE=1`): Node's `http_ece` package decrypts a
+- **Independent check** (opt-in, `WY_WEBPUSH_NODE=1`): Node's `http_ece` package decrypts a
   body made by our encoder.
 
 ### 11.3 ntfy
 
 - `ntfytest.Server` (`httptest`): records published JSON; asserts title, priority, tags,
   click, the three actions and the Bearer token; scripted 429/401/500.
-- Opt-in real server (`SY_NTFY_DOCKER=1`): `docker run --rm -p 127.0.0.1:0:80
+- Opt-in real server (`WY_NTFY_DOCKER=1`): `docker run --rm -p 127.0.0.1:0:80
   binwiederhier/ntfy serve` (podman works the same), publish through the sender, read it back
   with `GET /<topic>/json?poll=1`, and check the actions survived. CI runs it on Linux only.
 
 ### 11.4 End to end (hub process)
 
-`sy hub serve` in a test with the fake clock, the fake push service and an ntfy stub: pair a
+`wy hub serve` in a test with the fake clock, the fake push service and an ntfy stub: pair a
 phone (pairing.md), register a webpush target, ingest a Stop(question) through
 `/v1/ingest` with a machine token, advance 60 s, decrypt the push the fake service received
 and check it against 6.5; then repeat with a UserPromptSubmit at 40 s and check nothing
@@ -1225,13 +1225,13 @@ updater (phone.md P16). JavaScript only configures it and reads its state.
 
 ```
 phone/modules/sy-link/
-  expo-module.config.json      {"platforms":["android"],"android":{"modules":["dev.switchyard.link.SyLinkModule"]}}
+  expo-module.config.json      {"platforms":["android"],"android":{"modules":["dev.watchyard.link.SyLinkModule"]}}
   index.ts                     the JS API (14.8); every function rejects "sy-link: Android only" elsewhere
   src/SyLink.types.ts
   android/build.gradle         okhttp (the version React Native already ships), androidx.work, androidx.core,
                                com.google.crypto.tink:tink-android (Ed25519 verification only)
   android/src/main/AndroidManifest.xml
-  android/src/main/java/dev/switchyard/link/
+  android/src/main/java/dev/watchyard/link/
     SyLinkModule.kt            Expo module: functions and events
     SyLinkService.kt           foreground service (specialUse)
     LinkClient.kt              OkHttp WebSocket and long-poll, login, acks, backoff
@@ -1347,7 +1347,7 @@ Made by `prepareKeys()` before the claim (phone.md P2):
 | Concern | Design |
 | --- | --- |
 | Start | `start()` from JS after pairing and on each app start while instant delivery is on; `BootReceiver` (boot, app update); the watchdog. `startForegroundService`, then `goForeground()` (14.2) within 5 s. |
-| Persistent notification | Channel `sy_connection` (name "Connection (always on)", importance MIN, no badge, no sound; small icon `sy_notify_connection`, grey, no large icon, phone.md P6.1a): "Connected to hub · 2 min", "Reconnecting… (next try in 20 s)", "Not connected: \<reason>". Tapping it opens Now (`switchyard://now`), like any other notification, never a settings page; its **Settings** button opens Settings → Notifications (`switchyard://settings/notifications`, phone.md P7). Every notification the module posts has a content intent that names the app's launcher activity, so a tap always starts the app (a notification with none makes Samsung open the app's notification settings). It can be hidden in Android's settings. |
+| Persistent notification | Channel `sy_connection` (name "Connection (always on)", importance MIN, no badge, no sound; small icon `sy_notify_connection`, grey, no large icon, phone.md P6.1a): "Connected to hub · 2 min", "Reconnecting… (next try in 20 s)", "Not connected: \<reason>". Tapping it opens Now (`watchyard://now`), like any other notification, never a settings page; its **Settings** button opens Settings → Notifications (`watchyard://settings/notifications`, phone.md P7). Every notification the module posts has a content intent that names the app's launcher activity, so a tap always starts the app (a notification with none makes Samsung open the app's notification settings). It can be hidden in Android's settings. |
 | Connection | OkHttp `WebSocket` to the first working `urls` entry, subprotocol `sy-link.1`, `pingInterval` = `ping_s` (default 180; Settings allows 300–600 on the tailnet), read timeout 0, connect timeout 15 s. `ping_s` is the claim reply's (or `setPingInterval`'s); the `welcome`'s `ping_s` is not applied over the phone's own choice. Long-poll (link.md 2.1) after 3 failed handshakes while `GET /health` answers; while on long-poll the WebSocket is tried again every 30 min. In long-poll mode, pending actions (14.6) go in the `up` frames of the poll requests. |
 | Login | link.md 3: the challenge's hub signature and fingerprint are checked against the pin from pairing (`h=`); `hello` is signed with `sy_link_sign`. |
 | Reconnect | 1, 2, 5, 10, 20, 30, 60 s, then 120 s, each ±20 % jitter; reset after a connection that lasted 60 s. `registerDefaultNetworkCallback`: a new default network (Wi-Fi ↔ mobile, a VPN such as Tailscale coming up) reconnects at once with the backoff reset. |
@@ -1370,13 +1370,13 @@ Per frame, under the wake lock:
    - `alert` with `type` `alert`, `summary` or `test`: post on the channel of phone.md P6.1 for
      the trigger (`sy_test` for tests). **Notification id** = the first 4 bytes of SHA-256(tag)
      read **big-endian** as a signed int (`ByteBuffer.getInt`, Java's default), so a new alert
-     with the same tag replaces the old one and the tag's `dismiss` cancels it. Group `sy`.
+     with the same tag replaces the old one and the tag's `dismiss` cancels it. Group `wy`.
      Buttons when `actions` is present: Open (the app at `url`), "Snooze \<n> min", "Seen"
      (14.6); `<n>` is the hub's `snooze_min`, which the app passes with `setSnoozeMinutes`
      (default 15). The buttons are left off a payload whose `origin` is not the paired hub's.
      **Tap and Open** (native, no JS): `tap: "claude"` with an `https` `remote_url` opens that
      link; anything else opens the app at the payload's `url` mapped to the app link
-     (`/#/sessions/x` → `switchyard://sessions/x`, phone.md P7). The `auto` rule's `/health`
+     (`/#/sessions/x` → `watchyard://sessions/x`, phone.md P7). The `auto` rule's `/health`
      probe of phone.md P6.4 is not run natively. Private payloads carry the hub's private text
      (5.5). The small and large icons follow the trigger (phone.md P6.1a: the mark with a
      kind badge; `summary` and `test` by type, unknown triggers the plain mark). `when` = the payload's `ts`. A `missed` count emits `refresh` to JS.
@@ -1510,8 +1510,8 @@ notification.
 - **JVM** (Robolectric where Android classes are needed): RFC 8291 decryption against RFC 8291
   appendix A and the hub's goldens (`internal/hub/push/webpush/testdata`, and
   `internal/link/testdata/*.json`, link.md 10, read in place: the module's `build.gradle` passes
-  both directories to the test JVM as system properties `sy.linkVectors` and
-  `sy.webpushVectors`, and the runner skips while a directory does not exist yet); Ed25519 against RFC 8032's vectors through Tink; the login signature verified by
+  both directories to the test JVM as system properties `wy.linkVectors` and
+  `wy.webpushVectors`, and the runner skips while a directory does not exist yet); Ed25519 against RFC 8032's vectors through Tink; the login signature verified by
   the Go side's golden check (`hello-phone`); frame signature checks (each field changed →
   `reject`, `last` unchanged); seq dedupe across a simulated restart; the clock offset; backoff
   bounds; the notification id from a tag; the action fallback order with a fake clock;

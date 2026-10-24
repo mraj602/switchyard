@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/outbox"
 )
 
 // Flush tuning from outbox.md section 5.
@@ -33,9 +33,9 @@ const (
 	// outbox is kept and the flusher backs off.
 	loneDropWindow = time.Hour
 
-	// StatusFile is written next to the cursor for `sy doctor`.
+	// StatusFile is written next to the cursor for `wy doctor`.
 	StatusFile = "flush.status.json"
-	// StampFile's mtime is the last flush start (debouncing by `sy hook`).
+	// StampFile's mtime is the last flush start (debouncing by `wy hook`).
 	StampFile = "flush.stamp"
 )
 
@@ -45,7 +45,7 @@ type FlushOptions struct {
 	Client *Client
 
 	// Wait keeps retrying failed batches with jittered backoff until Budget is used up
-	// (used by `sy flush --wait` and `sy connect`). Without it a failure stops the run and
+	// (used by `wy flush --wait` and `wy connect`). Without it a failure stops the run and
 	// leaves the backoff in cursor.json for the next trigger.
 	Wait bool
 	// Force ignores a stored backoff and a stored "token rejected" state (a flush started
@@ -53,7 +53,7 @@ type FlushOptions struct {
 	Force bool
 
 	// Linger, when set, keeps a drained run alive until flush.stamp is Linger old, reading
-	// the outbox once more after that (outbox.md section 5, step 8). `sy hook` skips its own
+	// the outbox once more after that (outbox.md section 5, step 8). `wy hook` skips its own
 	// flush while the stamp is younger than its debounce, so the flush it started must pick
 	// up what those later hooks wrote. The hook-started flush sets it to that debounce.
 	Linger time.Duration
@@ -91,7 +91,7 @@ type FlushResult struct {
 	Held int
 }
 
-// Status is flush.status.json: the last run's outcome, for sy doctor.
+// Status is flush.status.json: the last run's outcome, for wy doctor.
 type Status struct {
 	Time        string `json:"time"`
 	OK          bool   `json:"ok"`
@@ -100,12 +100,12 @@ type Status struct {
 	TokenFP     string `json:"token_fp,omitempty"`
 	LastSuccess string `json:"last_success,omitempty"`
 	// RefusesRecords: the hub answered 400/413 to single records again and again with
-	// nothing accepted, so nothing was dropped (`sy doctor`: "hub refuses records").
+	// nothing accepted, so nothing was dropped (`wy doctor`: "hub refuses records").
 	RefusesRecords bool `json:"refuses_records,omitempty"`
 
 	// outbox.md 8. LastContact is the last successful exchange with the hub: a 200
 	// ingest reply, a 200 /health, or a drain start (a 401/403/5xx is not contact). Via is
-	// "push" (sy flush) or "pull" (sy outbox drain). PullRefused is the drain `refuse` code
+	// "push" (wy flush) or "pull" (wy outbox drain). PullRefused is the drain `refuse` code
 	// of the last pull. Held and HubTooOld say records are kept back for an older hub.
 	LastContact string     `json:"last_contact,omitempty"`
 	Via         string     `json:"via,omitempty"`
@@ -233,7 +233,7 @@ func Flush(ctx context.Context, o FlushOptions) FlushResult {
 			return f.res
 		}
 		if st := ReadStatus(o.Outbox.Dir); st.AuthFailed && st.TokenFP == fp {
-			f.res.Skipped = "the hub rejected this token; fix it, or run `sy flush` by hand to retry"
+			f.res.Skipped = "the hub rejected this token; fix it, or run `wy flush` by hand to retry"
 			return f.res
 		}
 	}

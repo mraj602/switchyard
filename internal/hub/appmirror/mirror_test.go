@@ -94,7 +94,7 @@ func (f *fakeGitHub) serve(w http.ResponseWriter, r *http.Request) {
 				"assets": []map[string]any{
 					{"name": "manifest.json", "browser_download_url": base + "manifest.json"},
 					{"name": "SHA256SUMS", "browser_download_url": base + "SHA256SUMS"},
-					{"name": "switchyard-" + ver + ".apk", "browser_download_url": base + "switchyard-" + ver + ".apk"},
+					{"name": "watchyard-" + ver + ".apk", "browser_download_url": base + "watchyard-" + ver + ".apk"},
 				}})
 		}
 		_ = json.NewEncoder(w).Encode(out)
@@ -106,7 +106,7 @@ func (f *fakeGitHub) serve(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		ver := strings.TrimPrefix(rl.tag, "phone-v")
-		apkName := "switchyard-" + ver + ".apk"
+		apkName := "watchyard-" + ver + ".apk"
 		digest := sum(rl.apk)
 		switch parts[1] {
 		case "manifest.json":

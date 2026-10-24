@@ -36,7 +36,7 @@ func TestMigrationsMatchSpec(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(ms) < 2 || !strings.Contains(ms[0].SQL, "Switchyard hub schema, version 1.") {
+	if len(ms) < 2 || !strings.Contains(ms[0].SQL, "Watchyard hub schema, version 1.") {
 		t.Fatalf("migration 0001 must be version 1 of schema.sql")
 	}
 	spec, err := os.ReadFile(specSchema)

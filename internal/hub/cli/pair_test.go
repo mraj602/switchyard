@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/pair"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/pair"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // pairEnv points the state folder (the pairing pepper) at a temp dir and makes an empty hub
@@ -20,8 +20,8 @@ import (
 func pairEnv(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	t.Setenv("SY_HOME", filepath.Join(root, "sy"))
-	for _, v := range []string{"SY_CONFIG_DIR", "SY_STATE_DIR", "SY_DATA_DIR"} {
+	t.Setenv("WY_HOME", filepath.Join(root, "wy"))
+	for _, v := range []string{"WY_CONFIG_DIR", "WY_STATE_DIR", "WY_DATA_DIR"} {
 		t.Setenv(v, "")
 	}
 	db := filepath.Join(root, "hub.db")
@@ -100,7 +100,7 @@ func TestHubPairMachineCodePrintsTheConnectCommand(t *testing.T) {
 	if err := Pair([]string{"--db", db, "--kind", "machine", "--url", "https://hub.example.ts.net"}, &out, &errb); err != nil {
 		t.Fatal(err, errb.String())
 	}
-	if !strings.Contains(out.String(), "sy connect https://hub.example.ts.net --code ") || strings.Contains(out.String(), "\x1b[") {
+	if !strings.Contains(out.String(), "wy connect https://hub.example.ts.net --code ") || strings.Contains(out.String(), "\x1b[") {
 		t.Errorf("output %q", out.String())
 	}
 }
@@ -138,13 +138,13 @@ func TestHubPairErrorsAndUsage(t *testing.T) {
 	}
 	// http for a phone: refused with the fix, allowed with --insecure (and says what is lost).
 	err = Pair([]string{"--db", db, "--kind", "phone", "--url", "http://hub.example.ts.net:8787"}, &out, &errb)
-	if err == nil || !strings.Contains(err.Error(), "tailscale serve --bg 8787") || !strings.Contains(err.Error(), "sy hub serve --public-url https://") {
+	if err == nil || !strings.Contains(err.Error(), "tailscale serve --bg 8787") || !strings.Contains(err.Error(), "wy hub serve --public-url https://") {
 		t.Errorf("http phone: %v", err)
 	}
 	out.Reset()
 	if err := Pair([]string{"--db", db, "--kind", "phone", "--url", "http://hub.example.ts.net:8787", "--insecure"}, &out, &errb); err != nil ||
 		!strings.Contains(out.String(), "cannot be installed or receive pushes") ||
-		!strings.Contains(out.String(), "sy hub serve --public-url https://<hub address>") ||
+		!strings.Contains(out.String(), "wy hub serve --public-url https://<hub address>") ||
 		!strings.Contains(out.String(), "if your tailnet supports HTTPS certificates") {
 		t.Errorf("--insecure: %v %s", err, out.String())
 	}

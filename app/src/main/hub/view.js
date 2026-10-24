@@ -3,7 +3,7 @@
 // partition holds no read cookie) and whenever the view lands on `#/login` or `#/pair`, main posts
 // the desktop token to `<hub>/v1/session/login` through that partition's own session, so the
 // cookie lands there and the token never enters the page. The login only ever targets the hub's
-// origin. Owner sign-in loads the one-time link of `sy desktop owner-link`.
+// origin. Owner sign-in loads the one-time link of `wy desktop owner-link`.
 
 import { HUB_PARTITION } from '../../shared/constants.js';
 import { hubUrl } from './client.js';
@@ -21,7 +21,7 @@ const LOGIN_MAX_IN_WINDOW = 2;
  *          onSessionLink: (url: string) => void,
  *          onOwner: (owner: boolean, until?: string|null) => void,
  *          onLoginRefused: (status: number) => void,       // 401 on login: the token is revoked
- *          userAgentSuffix?: string,                        // ' SwitchyardDesktop/<version>': the board can tell it is in the app
+ *          userAgentSuffix?: string,                        // ' WatchyardDesktop/<version>': the board can tell it is in the app
  *          onBlocked?: () => void,                          // the board kept asking for a login main could not give
  *          now?: () => number, timeoutMs?: number}} deps
  */

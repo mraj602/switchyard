@@ -3,7 +3,7 @@ package statuswrap
 import (
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
 // rename.md 2.13: a status line written for the command's old name is still recognised, so

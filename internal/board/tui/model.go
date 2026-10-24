@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/board"
+	"github.com/mraj602/watchyard/internal/board"
 )
 
 // Filters (the `f` key and --filter): "all", "needs", "here", or "machine:<name>".

@@ -8,8 +8,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/keys"
-	"github.com/mraj602/switchyard/internal/link"
+	"github.com/mraj602/watchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/link"
 )
 
 // The test phone opens the shared alert-phone vector (RFC 8291 with the appendix's keys)

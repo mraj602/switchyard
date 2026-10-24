@@ -11,12 +11,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
-// Fleet update (`sy update --machines`, machines.md 7.4). The operator runs it with the
+// Fleet update (`wy update --machines`, machines.md 7.4). The operator runs it with the
 // person's own SSH. internal/sshx and the machine registry reader are not imported here:
-// this package codes against the two small interfaces below and cmd/sy adapts them. Nothing in this file starts anything on the hub: the operator
+// this package codes against the two small interfaces below and cmd/wy adapts them. Nothing in this file starts anything on the hub: the operator
 // pushes.
 
 // FleetMachine is one registry entry as the fleet update needs it.
@@ -29,13 +29,13 @@ type FleetMachine struct {
 	// OS and Arch are the remote's platform ("linux", "arm64"), used for the push path; empty
 	// means ask Remote.Platform.
 	OS, Arch string
-	// RemoteSy is the remote's sy path relative to its home ("" = ".local/bin/sy").
+	// RemoteSy is the remote's wy path relative to its home ("" = ".local/bin/wy").
 	RemoteSy string
 }
 
-func (m FleetMachine) sy() string {
+func (m FleetMachine) wy() string {
 	if m.RemoteSy == "" {
-		return ".local/bin/sy"
+		return ".local/bin/wy"
 	}
 	return m.RemoteSy
 }
@@ -59,7 +59,7 @@ type Remote interface {
 }
 
 // Time limits for the SSH steps of a fleet update, so one hung machine cannot stall the run.
-// A remote `sy update` downloads and runs the post-update steps, hence the longer limit.
+// A remote `wy update` downloads and runs the post-update steps, hence the longer limit.
 const (
 	remoteRunTimeout = 10 * time.Minute
 	pushTimeout      = 10 * time.Minute
@@ -95,7 +95,7 @@ type FleetResult struct {
 	Error   string `json:"error,omitempty"`
 }
 
-// remoteReply is the last JSON line of a remote `sy update --json`.
+// remoteReply is the last JSON line of a remote `wy update --json`.
 type remoteReply struct {
 	Status string `json:"status"`
 	From   string `json:"from"`
@@ -204,7 +204,7 @@ func UpdateFleet(ctx context.Context, o FleetOptions) ([]FleetResult, bool) {
 
 func updateOne(ctx context.Context, o FleetOptions, m FleetMachine) FleetResult {
 	res := FleetResult{Name: m.Name, To: o.Version}
-	argv := []string{m.sy(), "update", "--yes", "--json", "--version", o.Version}
+	argv := []string{m.wy(), "update", "--yes", "--json", "--version", o.Version}
 	if !o.Attestation.Auto && !o.Attestation.Required {
 		argv = append(argv, "--no-attestation")
 	}
@@ -308,7 +308,7 @@ func pushUpdate(ctx context.Context, o FleetOptions, m FleetMachine, res FleetRe
 	if err != nil {
 		return failWith("push path: uploading SHA256SUMS: %v", err)
 	}
-	argv := []string{m.sy(), "update", "--yes", "--json", "--version", o.Version, "--from-file", rArch, "--sums-file", rSums,
+	argv := []string{m.wy(), "update", "--yes", "--json", "--version", o.Version, "--from-file", rArch, "--sums-file", rSums,
 		"--no-attestation"} // the operator checked it above; the remote cannot reach GitHub
 	rctx, rcancel := context.WithTimeout(ctx, remoteRunTimeout)
 	defer rcancel()

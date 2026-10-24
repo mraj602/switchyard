@@ -3,7 +3,7 @@ package rules
 import (
 	"slices"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
 )
 
 // SameScope reports whether two scopes of trigger t match exactly the same subjects (push.md

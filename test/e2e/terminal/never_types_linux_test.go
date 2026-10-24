@@ -11,8 +11,8 @@ import (
 
 // E11: never types. While E2's scenario runs, a pty-backed fake "session" (its own
 // controlling terminal, in raw mode, logging every input byte) shares its terminal with the
-// board child of the pane (`sy board --follow --ndjson --session <id>`); `sy board --once`,
-// `sy term focus` and the live hook all run meanwhile. The session's input log stays empty.
+// board child of the pane (`wy board --follow --ndjson --session <id>`); `wy board --once`,
+// `wy term focus` and the live hook all run meanwhile. The session's input log stays empty.
 // A control line written to the master afterwards shows the log can see input at all.
 func TestE11NeverTypes(t *testing.T) {
 	f := newFleet(t)

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/drainproto"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/drainproto"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 func TestHealthSaysWhatTheHubReads(t *testing.T) {

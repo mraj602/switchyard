@@ -12,14 +12,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/events"
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	"github.com/mraj602/switchyard/internal/hub/push/clock"
-	"github.com/mraj602/switchyard/internal/hub/push/engine"
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/events"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	"github.com/mraj602/watchyard/internal/hub/push/clock"
+	"github.com/mraj602/watchyard/internal/hub/push/engine"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // T0 is the start of every scenario (push.md 11.1: "an empty hub at T = 0").
@@ -306,7 +306,7 @@ func (h *harness) hookOn(sid, email, event string, ts time.Duration, fields map[
 		o(nil, p)
 	}
 	raw, _ := json.Marshal(p)
-	r, err := record.NewHookEvent(record.Meta{Machine: h.machine, Slot: slot, Seat: seat, Client: "sy/0.0.0-test", Now: at(ts)},
+	r, err := record.NewHookEvent(record.Meta{Machine: h.machine, Slot: slot, Seat: seat, Client: "wy/0.0.0-test", Now: at(ts)},
 		raw, record.HookOptions{LastMessages: true})
 	if err != nil {
 		h.t.Fatal(err)
@@ -323,7 +323,7 @@ func (h *harness) ingest(r *record.Record) {
 	if err != nil {
 		h.t.Fatal(err)
 	}
-	body, _ := json.Marshal(map[string]any{"v": 1, "client": "sy/0.0.0-test", "records": []json.RawMessage{b}})
+	body, _ := json.Marshal(map[string]any{"v": 1, "client": "wy/0.0.0-test", "records": []json.RawMessage{b}})
 	rep, err := h.ing.Ingest(h.ctx, h.dev, body, nil)
 	if err != nil {
 		h.t.Fatal(err)
@@ -367,7 +367,7 @@ func (h *harness) sample(email string, ts time.Duration, pct float64, resets tim
 		rl["seven_day"] = map[string]any{"used_percentage": sevenDay, "resets_at": resets7.Unix()}
 	}
 	raw, _ := json.Marshal(map[string]any{"session_id": "", "rate_limits": rl})
-	r, err := record.NewLimitSample(record.Meta{Machine: h.machine, Slot: slot, Seat: seat, Client: "sy/0.0.0-test", Now: at(ts)}, raw)
+	r, err := record.NewLimitSample(record.Meta{Machine: h.machine, Slot: slot, Seat: seat, Client: "wy/0.0.0-test", Now: at(ts)}, raw)
 	if err != nil {
 		h.t.Fatal(err)
 	}
@@ -380,7 +380,7 @@ func (h *harness) webIdle(email string, ts time.Duration) {
 	h.t.Helper()
 	seat, _ := h.seatMeta(email)
 	seat.Src = "claude_ai"
-	r, err := record.NewWebUsage(record.Meta{Machine: h.machine, Seat: seat, Client: "switchyard-desktop/0.0.0-test", Now: at(ts)},
+	r, err := record.NewWebUsage(record.Meta{Machine: h.machine, Seat: seat, Client: "watchyard-desktop/0.0.0-test", Now: at(ts)},
 		record.WebUsagePayload{TabID: "t_idle", Usage: json.RawMessage(`{"five_hour":{"utilization":0,"resets_at":null},"seven_day":null,
 			"limits":[{"kind":"session","group":"session","percent":0,"resets_at":null,"is_active":true}]}`)})
 	if err != nil {

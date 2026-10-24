@@ -17,11 +17,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/machineadd"
-	"github.com/mraj602/switchyard/internal/paths"
-	"github.com/mraj602/switchyard/internal/service"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/machineadd"
+	"github.com/mraj602/watchyard/internal/paths"
+	"github.com/mraj602/watchyard/internal/service"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden files")
@@ -198,8 +198,8 @@ func TestInfoRemoteHubAdminPrefixAndDial(t *testing.T) {
 	e := sandboxEnv(t)
 	connect(t, &e, "https://hub.example.ts.net")
 	e.Config.Hub.Dial = "127.0.0.1:47830"
-	e.Config.Machines.HubAdmin = "ssh hub-host sy"
-	e.AdminName = "ssh hub-host sy"
+	e.Config.Machines.HubAdmin = "ssh hub-host wy"
+	e.AdminName = "ssh hub-host wy"
 	e.HTTP = func(time.Duration) (*http.Client, error) {
 		return &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) { return nil, errors.New("down") })}, nil
 	}
@@ -209,7 +209,7 @@ func TestInfoRemoteHubAdminPrefixAndDial(t *testing.T) {
 		t.Fatal(err)
 	}
 	if info.Hub.Reachable || info.Hub.Local || info.Hub.Service != nil || info.Hub.Dial == nil || *info.Hub.Dial != "127.0.0.1:47830" ||
-		info.Admin == nil || *info.Admin != "ssh hub-host sy" {
+		info.Admin == nil || *info.Admin != "ssh hub-host wy" {
 		t.Fatalf("%+v", info)
 	}
 	// forward mode: the app is refused token and owner-link.
@@ -239,7 +239,7 @@ func codeOf(err error) int {
 func TestTokenThroughAdminChannel(t *testing.T) {
 	e := sandboxEnv(t)
 	connect(t, &e, "https://hub.example.ts.net")
-	a := &fakeAdmin{out: `{"device":"dev_01JA","token":"sy_d_` + strings.Repeat("A", 43) + `","scopes":["write","read"]}` + "\n", name: "ssh hub-host sy"}
+	a := &fakeAdmin{out: `{"device":"dev_01JA","token":"sy_d_` + strings.Repeat("A", 43) + `","scopes":["write","read"]}` + "\n", name: "ssh hub-host wy"}
 	e.Admin = a
 	tok, err := RunToken(context.Background(), e, TokenOptions{Name: "my-laptop"})
 	if err != nil {
@@ -270,7 +270,7 @@ func TestTokenNeedsAdminAndConnection(t *testing.T) {
 	if _, err := RunToken(context.Background(), e, TokenOptions{}); codeOf(err) != ExitNotHere {
 		t.Fatalf("no admin channel: %v", err)
 	}
-	for _, bad := range []string{"bad/name", "Switchyard desktop laptop"} {
+	for _, bad := range []string{"bad/name", "Watchyard desktop laptop"} {
 		if _, err := RunToken(context.Background(), e, TokenOptions{Name: bad}); codeOf(err) != ExitUsage {
 			t.Fatalf("bad name %q: %v", bad, err)
 		}
@@ -362,7 +362,7 @@ func TestOwnerLink(t *testing.T) {
 	}
 	golden(t, "owner_link.golden", l)
 
-	// A plain http LAN hub needs --insecure only when sy itself was told so.
+	// A plain http LAN hub needs --insecure only when wy itself was told so.
 	connect(t, &e, "http://192.168.1.5:8787")
 	a.calls = nil
 	_, _ = RunOwnerLink(context.Background(), e)
@@ -385,7 +385,7 @@ func TestHubStatusStartStop(t *testing.T) {
 	ctx := context.Background()
 
 	st, err := RunHub(ctx, e, ActionStatus)
-	if err != nil || st.Service != ServiceStopped || st.Unit != "switchyard-hub.service" {
+	if err != nil || st.Service != ServiceStopped || st.Unit != "watchyard-hub.service" {
 		t.Fatalf("%+v %v", st, err)
 	}
 	golden(t, "hub_stopped.golden", st)
@@ -416,10 +416,10 @@ func TestHubStatusStartStop(t *testing.T) {
 
 func TestBatchMode(t *testing.T) {
 	for in, want := range map[string]string{
-		"ssh hub-host sy":                  "ssh -o BatchMode=yes hub-host sy",
-		"/usr/bin/ssh -p 2222 hub-host sy": "/usr/bin/ssh -o BatchMode=yes -p 2222 hub-host sy",
-		"ssh -o BatchMode=yes hub-host sy": "ssh -o BatchMode=yes hub-host sy",
-		"docker exec -T hub sy":            "docker exec -T hub sy",
+		"ssh hub-host wy":                  "ssh -o BatchMode=yes hub-host wy",
+		"/usr/bin/ssh -p 2222 hub-host wy": "/usr/bin/ssh -o BatchMode=yes -p 2222 hub-host wy",
+		"ssh -o BatchMode=yes hub-host wy": "ssh -o BatchMode=yes hub-host wy",
+		"docker exec -T hub wy":            "docker exec -T hub wy",
 	} {
 		p, err := machineadd.NewPrefixAdmin(in)
 		if err != nil {
@@ -469,12 +469,12 @@ func TestTokenThroughSSHPrefixAdmin(t *testing.T) {
 	rec := fakeSSH(t)
 	e := sandboxEnv(t)
 	connect(t, &e, "https://hub.example.ts.net")
-	p, err := machineadd.NewPrefixAdmin("ssh hub-host sy")
+	p, err := machineadd.NewPrefixAdmin("ssh hub-host wy")
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.Admin, e.AdminName = BatchMode(p), "ssh hub-host sy"
-	tok, err := RunToken(context.Background(), e, TokenOptions{Name: "Switchyard-desktop-laptop"})
+	e.Admin, e.AdminName = BatchMode(p), "ssh hub-host wy"
+	tok, err := RunToken(context.Background(), e, TokenOptions{Name: "Watchyard-desktop-laptop"})
 	if err != nil {
 		t.Fatalf("pairing through ssh: %v", err)
 	}
@@ -485,7 +485,7 @@ func TestTokenThroughSSHPrefixAdmin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(string(argv), "-o BatchMode=yes hub-host sy 'hub' 'token' 'create'") || !strings.Contains(string(argv), "'--name' 'Switchyard-desktop-laptop'") {
+	if !strings.HasPrefix(string(argv), "-o BatchMode=yes hub-host wy 'hub' 'token' 'create'") || !strings.Contains(string(argv), "'--name' 'Watchyard-desktop-laptop'") {
 		t.Fatalf("ssh argv %q", argv)
 	}
 }
@@ -500,12 +500,12 @@ func TestAdminFailureNotAdminErrorIsExit1(t *testing.T) {
 	// The real PrefixAdmin with a program that does not exist: exit 1, the exec error.
 	e := sandboxEnv(t)
 	connect(t, &e, "https://hub.example.ts.net")
-	p, perr := machineadd.NewPrefixAdmin(filepath.Join(t.TempDir(), "no-such-ssh") + " hub-host sy")
+	p, perr := machineadd.NewPrefixAdmin(filepath.Join(t.TempDir(), "no-such-ssh") + " hub-host wy")
 	if perr != nil {
 		t.Fatal(perr)
 	}
 	e.Admin = p
-	_, err = RunToken(context.Background(), e, TokenOptions{Name: "Switchyard-desktop-laptop"})
+	_, err = RunToken(context.Background(), e, TokenOptions{Name: "Watchyard-desktop-laptop"})
 	if codeOf(err) != 1 || strings.Contains(err.Error(), "no admin channel") {
 		t.Fatalf("missing program: %v (code %d)", err, codeOf(err))
 	}
@@ -515,7 +515,7 @@ func TestAdminFailureNotAdminErrorIsExit1(t *testing.T) {
 func TestBadHubAdminOnlyBreaksTheActionsThatNeedIt(t *testing.T) {
 	e := sandboxEnv(t)
 	connect(t, &e, "https://hub.example.ts.net")
-	e.Config.Machines.HubAdmin = "ssh -o StrictHostKeyChecking=no hub-host sy"
+	e.Config.Machines.HubAdmin = "ssh -o StrictHostKeyChecking=no hub-host wy"
 	e.AdminName = e.Config.Machines.HubAdmin
 	_, e.AdminErr = machineadd.NewPrefixAdmin(e.Config.Machines.HubAdmin)
 	if e.AdminErr == nil {

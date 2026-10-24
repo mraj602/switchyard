@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
 // rename.md 2.6: an export made before a rename (kind <old>-hub-export) is still read.
@@ -33,7 +33,7 @@ func TestUnpackReadsLegacyKind(t *testing.T) {
 		f.Close()
 		return path
 	}
-	const refused = "not a hub export this sy reads"
+	const refused = "not a hub export this wy reads"
 	for kind, want := range map[string]bool{ManifestKind: true, "oldname-hub-export": true, "other-hub-export": false, "": false} {
 		_, err := unpack(write(kind), "", t.TempDir())
 		if got := err == nil || !strings.Contains(err.Error(), refused); got != want {

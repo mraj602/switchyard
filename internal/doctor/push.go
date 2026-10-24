@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/service"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/service"
 	_ "modernc.org/sqlite" // the driver; the hub database is opened read-only here
 )
 
@@ -59,12 +59,12 @@ func checkPush(ctx context.Context, rep *Report, o Options, cfg config.Config) {
 	var ver sql.NullInt64
 	if err := db.QueryRowContext(ctx, `SELECT max(version) FROM schema_version`).Scan(&ver); err != nil {
 		rep.add(Check{Name: "push", Level: Warn, Detail: "cannot read the hub database: " + err.Error(),
-			Fix: "check " + path + " is a Switchyard hub database"})
+			Fix: "check " + path + " is a Watchyard hub database"})
 		return
 	}
 	if ver.Int64 < 3 {
 		rep.add(Check{Name: "push", Level: Warn, Detail: fmt.Sprintf("push: hub database is too old for push (schema v%d)", ver.Int64),
-			Fix: "restart the hub to migrate: sy hub serve"})
+			Fix: "restart the hub to migrate: wy hub serve"})
 		return
 	}
 	if err := pushChecks(ctx, rep, db, o.now(), hubListen(o)); err != nil {
@@ -142,7 +142,7 @@ func pushChecks(ctx context.Context, rep *Report, db *sql.DB, now time.Time, lis
 		rep.add(Check{Name: "push keys", Level: OK, Detail: "VAPID keys present"})
 	} else {
 		rep.add(Check{Name: "push keys", Level: Warn, Detail: "no VAPID keys yet",
-			Fix: "they are made on the first `sy hub serve` start"})
+			Fix: "they are made on the first `wy hub serve` start"})
 	}
 
 	// 3. live targets: enabled, not gone, and either an ntfy topic of the hub or a
@@ -173,7 +173,7 @@ GROUP BY t.kind ORDER BY t.kind`, now.UnixMilli())
 	}
 	if total == 0 {
 		rep.add(Check{Name: "push targets", Level: Warn, Detail: "no live target: no phone will get pushes",
-			Fix: "open the app on the phone, then Settings, Turn on notifications (pair first with `sy phone pair`)"})
+			Fix: "open the app on the phone, then Settings, Turn on notifications (pair first with `wy phone pair`)"})
 	} else {
 		rep.add(Check{Name: "push targets", Level: OK, Detail: fmt.Sprintf("%d targets (%s)", total, strings.Join(parts, ", "))})
 	}

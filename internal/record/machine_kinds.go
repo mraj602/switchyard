@@ -92,7 +92,7 @@ func (p *DirectPushState) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// TimerState is machine_info.timer, as sy doctor sees it. Linger is Linux only (nil elsewhere).
+// TimerState is machine_info.timer, as wy doctor sees it. Linger is Linux only (nil elsewhere).
 type TimerState struct {
 	Active bool  `json:"active"`
 	Linger *bool `json:"linger,omitempty"`
@@ -113,7 +113,7 @@ func (p *TimerState) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// UpdateState is machine_info.update, from `sy update --check` when it ran.
+// UpdateState is machine_info.update, from `wy update --check` when it ran.
 type UpdateState struct {
 	LastCheck string `json:"last_check,omitempty"`
 	Latest    string `json:"latest,omitempty"`
@@ -147,7 +147,7 @@ type MachineInfoPayload struct {
 	Timer         *TimerState     `json:"timer,omitempty"`
 	ClaudeVersion string          `json:"claude_version,omitempty"`
 	Update        *UpdateState    `json:"update,omitempty"`
-	// Name is the machine's own name (<state>/machine.json, `sy machine rename`). Optional:
+	// Name is the machine's own name (<state>/machine.json, `wy machine rename`). Optional:
 	// older clients leave it out and a hub that does not know it keeps it in info only.
 	Name  string `json:"name,omitempty"`
 	Extra Extra  `json:"-"`
@@ -176,7 +176,7 @@ func (p *MachineInfoPayload) Validate() error {
 	case p.Arch == "":
 		return fmt.Errorf("machine_info: arch is required")
 	case p.Sy == "":
-		return fmt.Errorf("machine_info: sy is required")
+		return fmt.Errorf("machine_info: wy is required")
 	case p.RecordV < 1:
 		return fmt.Errorf("machine_info: record_v must be at least 1")
 	}

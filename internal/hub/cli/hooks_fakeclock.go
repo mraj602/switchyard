@@ -15,28 +15,28 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/push/clock"
-	"github.com/mraj602/switchyard/internal/hub/push/engine"
-	"github.com/mraj602/switchyard/internal/hub/push/refresh"
+	"github.com/mraj602/watchyard/internal/hub/push/clock"
+	"github.com/mraj602/watchyard/internal/hub/push/engine"
+	"github.com/mraj602/watchyard/internal/hub/push/refresh"
 )
 
 // newServeHooks reads two variables:
 //
-//   - SY_FAKE_CLOCK=<path>: run on a clock.Fake that starts at the wall time and is moved
+//   - WY_FAKE_CLOCK=<path>: run on a clock.Fake that starts at the wall time and is moved
 //     only through a control server on the unix socket <path>:
 //     GET /now (RFC 3339 time), POST /advance?d=<duration> (advance, then one engine pass
 //     and one widget refresh pass), POST /sync (the same without advancing).
-//   - SY_TEST_WEBPUSH_DIAL=<host:port>: the Web Push sender connects to this address for
+//   - WY_TEST_WEBPUSH_DIAL=<host:port>: the Web Push sender connects to this address for
 //     every endpoint and skips certificate checks, so endpoints on an allow-listed fake host
 //     reach webpushtest's TLS server.
 func newServeHooks(logf func(string, ...any)) (serveHooks, error) {
 	h := serveHooks{Clock: clock.Real{}, Attach: func(*engine.Engine) {},
 		AttachRefresh: func(*refresh.Refresher) {}, Close: func() {}}
-	if addr := os.Getenv("SY_TEST_WEBPUSH_DIAL"); addr != "" {
+	if addr := os.Getenv("WY_TEST_WEBPUSH_DIAL"); addr != "" {
 		h.WebPushClient = dialClient(addr)
 		logf("TEST BUILD: web push goes to %s", addr)
 	}
-	sock := os.Getenv("SY_FAKE_CLOCK")
+	sock := os.Getenv("WY_FAKE_CLOCK")
 	if sock == "" {
 		return h, nil
 	}

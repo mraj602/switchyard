@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/setup/ledger"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/ledger"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 func TestReadMissingIsEmptyAndRoundTrip(t *testing.T) {
@@ -29,14 +29,14 @@ func TestReadMissingIsEmptyAndRoundTrip(t *testing.T) {
 func TestUpdateAndRevert(t *testing.T) {
 	plan := model.Plan{Actions: []model.Action{
 		{ID: "a1", Op: model.OpWriteTree, Step: model.StepPlugin, Path: "/s/plugin/marketplace"},
-		{ID: "a2", Op: model.OpRun, Step: model.StepPlugin, Argv: []string{"claude", "plugin", "install", "switchyard@sy-local"},
+		{ID: "a2", Op: model.OpRun, Step: model.StepPlugin, Argv: []string{"claude", "plugin", "install", "watchyard@wy-local"},
 			Watch: []string{"/h/.claude/plugins"}, Touches: []string{"/h/.claude/settings.json", "/h/.claude/plugins/installed_plugins.json"}},
 		{ID: "a3", Op: model.OpJSONSet, Step: model.StepStatusLine, File: "/h/.claude/settings.json", Pointer: "/statusLine/command",
-			Before: json.RawMessage(`"bash old.sh"`), Value: json.RawMessage(`"sy statusline --wrap 'bash old.sh'"`)},
+			Before: json.RawMessage(`"bash old.sh"`), Value: json.RawMessage(`"wy statusline --wrap 'bash old.sh'"`)},
 		{ID: "a4", Op: model.OpJSONSet, Step: model.StepSharing, File: "/h/.claude-2/settings.json", Pointer: "/env/CLAUDE_CODE_PLUGIN_CACHE_DIR"},
 		{ID: "a5", Op: model.OpWriteFile, Step: model.StepLaunchers, Path: "/h/bin/claude-2", ContentSHA256: "abc"},
 		{ID: "a6", Op: model.OpMCPSync, Step: model.StepMCP, Files: []string{"/h/.claude.json", "/h/.claude-2/.claude.json"}},
-		{ID: "a7", Op: model.OpService, Step: model.StepHub, Name: "switchyard-hub", Unit: "/u/hub.service"},
+		{ID: "a7", Op: model.OpService, Step: model.StepHub, Name: "watchyard-hub", Unit: "/u/hub.service"},
 		{ID: "a8", Op: model.OpConnect, Step: model.StepHub, URL: "https://h"},
 	}}
 	var m model.Manifest
@@ -61,7 +61,7 @@ func TestUpdateAndRevert(t *testing.T) {
 		m.Entries = append(m.Entries, e)
 	}
 	l := ledger.Update(model.Ledger{}, plan, m)
-	if l.Plugin == nil || l.Plugin.Marketplace != "/s/plugin/marketplace" || l.Plugin.ID != "switchyard@sy-local" ||
+	if l.Plugin == nil || l.Plugin.Marketplace != "/s/plugin/marketplace" || l.Plugin.ID != "watchyard@wy-local" ||
 		len(l.Plugin.Roots) != 1 || len(l.Plugin.Targets) != 1 {
 		t.Fatalf("plugin %+v", l.Plugin)
 	}

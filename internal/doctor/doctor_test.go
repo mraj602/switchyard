@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/paths"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/paths"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 func write(t *testing.T, path, body string) {
@@ -37,17 +37,17 @@ func fixtureFile(t *testing.T, name string) string {
 }
 
 const (
-	allHooks = `"SessionStart":[{"hooks":[{"type":"command","command":"sy hook","async":true}]}],` +
-		`"UserPromptSubmit":[{"hooks":[{"type":"command","command":"/usr/local/bin/sy hook UserPromptSubmit"}]}],` +
-		`"PermissionRequest":[{"hooks":[{"type":"command","command":"sy hook"}]}],` +
-		`"Notification":[{"hooks":[{"type":"command","command":"sy hook"}]}],` +
-		`"PreToolUse":[{"matcher":"AskUserQuestion|ExitPlanMode","hooks":[{"type":"command","command":"sy hook"}]}],` +
-		`"Stop":[{"hooks":[{"type":"command","command":"sy hook"}]}],` +
-		`"StopFailure":[{"hooks":[{"type":"command","command":"sy hook"}]}],` +
-		`"SubagentStop":[{"hooks":[{"type":"command","command":"sy hook"}]}],` +
-		`"SessionEnd":[{"hooks":[{"type":"command","command":"sy hook"}]}],` +
-		`"PreCompact":[{"hooks":[{"type":"command","command":"sy hook"}]}],` +
-		`"PermissionDenied":[{"hooks":[{"type":"command","command":"sy hook"}]}]`
+	allHooks = `"SessionStart":[{"hooks":[{"type":"command","command":"wy hook","async":true}]}],` +
+		`"UserPromptSubmit":[{"hooks":[{"type":"command","command":"/usr/local/bin/wy hook UserPromptSubmit"}]}],` +
+		`"PermissionRequest":[{"hooks":[{"type":"command","command":"wy hook"}]}],` +
+		`"Notification":[{"hooks":[{"type":"command","command":"wy hook"}]}],` +
+		`"PreToolUse":[{"matcher":"AskUserQuestion|ExitPlanMode","hooks":[{"type":"command","command":"wy hook"}]}],` +
+		`"Stop":[{"hooks":[{"type":"command","command":"wy hook"}]}],` +
+		`"StopFailure":[{"hooks":[{"type":"command","command":"wy hook"}]}],` +
+		`"SubagentStop":[{"hooks":[{"type":"command","command":"wy hook"}]}],` +
+		`"SessionEnd":[{"hooks":[{"type":"command","command":"wy hook"}]}],` +
+		`"PreCompact":[{"hooks":[{"type":"command","command":"wy hook"}]}],` +
+		`"PermissionDenied":[{"hooks":[{"type":"command","command":"wy hook"}]}]`
 )
 
 type fakeEnv struct {
@@ -72,9 +72,9 @@ func newFakeHome(t *testing.T, settings string) fakeEnv {
 	write(t, filepath.Join(home, ".claude-2", "sessions", "1.abc.key"), "SECRET")
 	st := t.TempDir()
 	return fakeEnv{home: home, dirs: paths.Dirs{
-		Config: paths.Dir{Path: filepath.Join(st, "config"), Source: paths.SourceSYHome, Var: "SY_HOME"},
-		State:  paths.Dir{Path: filepath.Join(st, "state"), Source: paths.SourceSYHome, Var: "SY_HOME"},
-		Data:   paths.Dir{Path: filepath.Join(st, "data"), Source: paths.SourceSYHome, Var: "SY_HOME"},
+		Config: paths.Dir{Path: filepath.Join(st, "config"), Source: paths.SourceSYHome, Var: "WY_HOME"},
+		State:  paths.Dir{Path: filepath.Join(st, "state"), Source: paths.SourceSYHome, Var: "WY_HOME"},
+		Data:   paths.Dir{Path: filepath.Join(st, "data"), Source: paths.SourceSYHome, Var: "WY_HOME"},
 	}}
 }
 
@@ -123,7 +123,7 @@ func wantLevel(t *testing.T, rep Report, name, slot string, lvl Level) Check {
 }
 
 func TestHealthyHome(t *testing.T) {
-	e := newFakeHome(t, `{"hooks":{`+allHooks+`},"statusLine":{"type":"command","command":"sy statusline --wrap 'bash ~/x.sh'"}}`)
+	e := newFakeHome(t, `{"hooks":{`+allHooks+`},"statusLine":{"type":"command","command":"wy statusline --wrap 'bash ~/x.sh'"}}`)
 	fs := &recFS{FS: identity.OSFS{}}
 	rep := Run(context.Background(), e.opts(fs))
 	if rep.Failed() {
@@ -181,12 +181,12 @@ func TestHooksAndStatusLineVariants(t *testing.T) {
 		hooks, status  Level
 		hookHas        string
 	}{
-		{"plugin enabled", `{"enabledPlugins":{"switchyard@switchyard":true},"statusLine":{"command":"bash x.sh"}}`, OK, Warn, "plugin switchyard@switchyard"},
-		{"plugin disabled", `{"enabledPlugins":{"switchyard@switchyard":false}}`, Warn, Warn, "disabled"},
-		{"none", `{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"bash ~/.claude/switchyard-hook.sh"}]}]}}`, Warn, Warn, "no `sy hook`"},
-		{"partial", `{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"sy hook"}]}],"SessionStart":[{"hooks":[{"type":"command","command":"sy hook"}]}]}}`, Warn, Warn, "missing for: UserPromptSubmit"},
-		{"look-alike", `{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"easy hook"}]}]},"statusLine":{"command":"easy statusline"}}`, Warn, Warn, "no `sy hook`"},
-		{"wrapped exe", `{"statusLine":{"type":"command","command":"\"C:\\sy.exe\" statusline --wrap x"}}`, Warn, OK, ""},
+		{"plugin enabled", `{"enabledPlugins":{"watchyard@watchyard":true},"statusLine":{"command":"bash x.sh"}}`, OK, Warn, "plugin watchyard@watchyard"},
+		{"plugin disabled", `{"enabledPlugins":{"watchyard@watchyard":false}}`, Warn, Warn, "disabled"},
+		{"none", `{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"bash ~/.claude/watchyard-hook.sh"}]}]}}`, Warn, Warn, "no `wy hook`"},
+		{"partial", `{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"wy hook"}]}],"SessionStart":[{"hooks":[{"type":"command","command":"wy hook"}]}]}}`, Warn, Warn, "missing for: UserPromptSubmit"},
+		{"look-alike", `{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"easy hook"}]}]},"statusLine":{"command":"easy statusline"}}`, Warn, Warn, "no `wy hook`"},
+		{"wrapped exe", `{"statusLine":{"type":"command","command":"\"C:\\wy.exe\" statusline --wrap x"}}`, Warn, OK, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

@@ -1,4 +1,4 @@
-// Package directpush is direct ntfy from `sy` (machines.md 5): when the hub cannot be reached,
+// Package directpush is direct ntfy from `wy` (machines.md 5): when the hub cannot be reached,
 // this machine pushes its own sessions' needs_permission / asked / failed episodes straight to
 // an ntfy topic, then tells the hub with a direct_push record so the hub does not push again.
 //
@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/client"
 )
 
 // Triggers a machine computes itself (machines.md 5.1).
@@ -84,7 +84,7 @@ type Policy struct {
 // DefaultMaxAgeS is the hub's stale guard default (push.md 3.3).
 const DefaultMaxAgeS = 900
 
-// PolicyEvery is how often `sy tick` refreshes the cached policy (machines.md 5.3).
+// PolicyEvery is how often `wy tick` refreshes the cached policy (machines.md 5.3).
 const PolicyEvery = time.Hour
 
 // DefaultPolicy is what applies with no policy (machines.md 5.3): push.md 3.1's base rules,
@@ -239,8 +239,8 @@ type Secret struct {
 // SecretPath is <state>/push/direct.json.
 func SecretPath(stateDir string) string { return filepath.Join(PushDir(stateDir), "direct.json") }
 
-// ErrNoSecret: direct push has no topic yet (`sy direct-push on --secret-stdin`).
-var ErrNoSecret = errors.New("direct push has no ntfy topic (run `sy direct-push on --secret-stdin`)")
+// ErrNoSecret: direct push has no topic yet (`wy direct-push on --secret-stdin`).
+var ErrNoSecret = errors.New("direct push has no ntfy topic (run `wy direct-push on --secret-stdin`)")
 
 // LoadSecret reads direct.json.
 func LoadSecret(stateDir string) (Secret, error) {

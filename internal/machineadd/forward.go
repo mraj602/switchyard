@@ -13,18 +13,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/brand"
-	"github.com/mraj602/switchyard/internal/setup/apply"
-	"github.com/mraj602/switchyard/internal/setup/backup"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/sshx"
-	"github.com/mraj602/switchyard/internal/version"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/setup/apply"
+	"github.com/mraj602/watchyard/internal/setup/backup"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/sshx"
+	"github.com/mraj602/watchyard/internal/version"
 )
 
-// The forward block (machines.md 3.3): one marked block per machine in ~/.ssh/switchyard.conf
-// and, once, `Include switchyard.conf` as the first line of ~/.ssh/config. Both files are
-// journaled in a setup backup set, so `sy machine remove` and `sy setup --undo` take them out.
+// The forward block (machines.md 3.3): one marked block per machine in ~/.ssh/watchyard.conf
+// and, once, `Include watchyard.conf` as the first line of ~/.ssh/config. Both files are
+// journaled in a setup backup set, so `wy machine remove` and `wy setup --undo` take them out.
 
 // Files in ~/.ssh.
 const (
@@ -98,7 +98,7 @@ var nameSafe = regexp.MustCompile(`[^A-Za-z0-9._-]`)
 func (f Forward) Block() string {
 	name := nameSafe.ReplaceAllString(f.Name, "_")
 	var b strings.Builder
-	fmt.Fprintf(&b, "# sy-forward v1 machine=%s name=%s (sy machine add; sy machine remove undoes it)\n", f.Machine, name)
+	fmt.Fprintf(&b, "# sy-forward v1 machine=%s name=%s (wy machine add; wy machine remove undoes it)\n", f.Machine, name)
 	fmt.Fprintf(&b, "Host %s\n", f.Host)
 	fmt.Fprintf(&b, "  RemoteForward %s %s\n", f.Listen(), f.Target)
 	if f.Socket != "" {
@@ -168,8 +168,8 @@ func blockRange(content []byte, machine string) (int, int, bool) {
 	return i, end, true
 }
 
-// hasInclude reports whether cfg already includes switchyard.conf before its first Host or
-// Match line: `Include switchyard.conf`, quoted, with the full path, or through a glob
+// hasInclude reports whether cfg already includes watchyard.conf before its first Host or
+// Match line: `Include watchyard.conf`, quoted, with the full path, or through a glob
 // (`Include ~/.ssh/*.conf`, `Include *`), alone or among other patterns.
 func hasInclude(cfg []byte, home, name string) bool {
 	sshDir := filepath.ToSlash(filepath.Join(home, ".ssh"))
@@ -229,8 +229,8 @@ func splitConfigWords(line string) []string {
 	return out
 }
 
-// OwnedForward finds the block sy wrote for this machine in ~/.ssh/switchyard.conf and
-// returns its listening port or socket. Such a block is sy's own, never "adopted".
+// OwnedForward finds the block wy wrote for this machine in ~/.ssh/watchyard.conf and
+// returns its listening port or socket. Such a block is wy's own, never "adopted".
 func OwnedForward(home, machine string) (port int, socket string, ok bool) {
 	sshDir := filepath.Join(home, ".ssh")
 	b, err := readOptional(filepath.Join(sshDir, forwardConf(sshDir)))
@@ -374,7 +374,7 @@ func WriteForward(home, stateDir string, f Forward, command string, now time.Tim
 // RemoveForward takes the machine's block out again. When the backup set that wrote it is
 // the last change to both files, that set is undone, which restores them exactly (bytes,
 // mode, mtime; a file or ~/.ssh it created is removed). Otherwise only the block's bytes go
-// (and the Include line and switchyard.conf when no block is left), journaled in a new set.
+// (and the Include line and watchyard.conf when no block is left), journaled in a new set.
 func RemoveForward(home, stateDir string, machine, setID, command string, now time.Time) (bool, error) {
 	dir := filepath.Join(home, ".ssh")
 	name := forwardConf(dir)
@@ -424,7 +424,7 @@ func RemoveForward(home, stateDir string, machine, setID, command string, now ti
 }
 
 // undoIfUnchanged undoes the set (the caller holds setup.lock) when every path it wrote is
-// still as it left it and the file switchyard.conf had no block of this machine before the
+// still as it left it and the file watchyard.conf had no block of this machine before the
 // set: undoing a set that replaced an older block would bring that block back.
 func undoIfUnchanged(stateDir, id, conf, machine string) (bool, error) {
 	set, err := backup.Open(stateDir, id)

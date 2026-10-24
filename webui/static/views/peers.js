@@ -300,7 +300,7 @@ export function render() {
   const head = h('header', { class: 'page-head col' }, h('h1', {}, 'Peers'), moreTabs('peers', { owner }),
     h('p', { class: 'muted small', 'data-key': 'peers-intro' }, 'Lets Claude sessions on different accounts send each other messages. Off by default: nothing passes between two accounts until you allow it below.'));
   if (!st.matrix) {
-    return { title: 'Peers · Switchyard', node: h('div', { class: 'page' }, head, h('p', { class: 'muted' }, st.error || 'Loading…')) };
+    return { title: 'Peers · Watchyard', node: h('div', { class: 'page' }, head, h('p', { class: 'muted' }, st.error || 'Loading…')) };
   }
   const seats = (store.overview && store.overview.seats) || [];
   const names = new Map(accounts(seats, st.matrix.matrix).map((a) => [a.account, a.label]));
@@ -311,5 +311,5 @@ export function render() {
     auditBlock(label),
     messagesBlock(label),
     !owner ? ownerHintNode({ app: inApp(), lead: 'Widening, and resuming after a pause or a loop-guard stop, need an owner sign-in.', key: 'peers-owner-hint' }) : null);
-  return { title: 'Peers · Switchyard', node };
+  return { title: 'Peers · Watchyard', node };
 }

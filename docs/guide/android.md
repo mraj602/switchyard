@@ -26,14 +26,14 @@ can stop it (see [Battery](#battery-and-phone-makers)).
 ## Install the APK
 
 The APK is published on GitHub as its own release, `phone-vX.Y.Z` (the `vX.Y.Z` releases are
-for `sy` and the desktop app). It is signed with the maintainer's own key, not by CI. Android
+for `wy` and the desktop app). It is signed with the maintainer's own key, not by CI. Android
 refuses an update signed by a different key, so the maintainer uses the same key for every
 release.
 
 ### Verify the APK
 
-1. Download `switchyard-<version>.apk` and `SHA256SUMS` from the
-   [`phone-v*` release](https://github.com/mraj602/switchyard/releases). Check the hash:
+1. Download `watchyard-<version>.apk` and `SHA256SUMS` from the
+   [`phone-v*` release](https://github.com/mraj602/watchyard/releases). Check the hash:
 
    ```sh
    sha256sum -c --ignore-missing SHA256SUMS
@@ -42,7 +42,7 @@ release.
 2. Check the signing certificate. `apksigner` is in the Android SDK build-tools:
 
    ```sh
-   apksigner verify --print-certs switchyard-<version>.apk
+   apksigner verify --print-certs watchyard-<version>.apk
    ```
 
    The certificate's `SHA-256 digest` must be:
@@ -59,7 +59,7 @@ install by hand.
 
 ### Install (sideload)
 
-- Over USB: `adb install switchyard-<version>.apk`.
+- Over USB: `adb install watchyard-<version>.apk`.
 - Or copy the APK to the phone and open it in a file manager; Android asks you to allow
   installs from that app once.
 
@@ -67,8 +67,8 @@ install by hand.
 
 [Obtainium](https://obtainium.imranr.dev/) installs and updates apps from GitHub releases.
 
-1. In Obtainium, tap **Add App** and enter `https://github.com/mraj602/switchyard`.
-2. The `sy` releases (`vX.Y.Z`) are in the same repository. Open **Additional options** and
+1. In Obtainium, tap **Add App** and enter `https://github.com/mraj602/watchyard`.
+2. The `wy` releases (`vX.Y.Z`) are in the same repository. Open **Additional options** and
    set **Filter Release Titles by Regular Expression** to `^Android `, which matches only the
    APK releases.
 3. Add the app. Before you open it, check the certificate of the downloaded APK against the
@@ -94,7 +94,7 @@ make phone-android-debug
 # APK: phone/android/app/build/outputs/apk/debug/
 ```
 
-This runs `expo prebuild` with `SY_APP_VARIANT=development` and an unsigned Gradle debug
+This runs `expo prebuild` with `WY_APP_VARIANT=development` and an unsigned Gradle debug
 compile. A development build also accepts plain `http://` hubs on loopback, private (LAN) and
 Tailscale addresses, which helps when testing. Do not share this APK.
 
@@ -107,27 +107,27 @@ phone must uninstall and reinstall).
 1. Create the keystore:
 
    ```sh
-   keytool -genkeypair -v -keystore ~/secrets/switchyard-release.jks -alias switchyard \
+   keytool -genkeypair -v -keystore ~/secrets/watchyard-release.jks -alias watchyard \
      -keyalg RSA -keysize 4096 -validity 10000
    ```
 
 2. Give the build the keystore and build:
 
    ```sh
-   export SY_ANDROID_KEYSTORE=~/secrets/switchyard-release.jks
-   export SY_ANDROID_KEY_ALIAS=switchyard
-   read -rs SY_ANDROID_KEYSTORE_PASSWORD && export SY_ANDROID_KEYSTORE_PASSWORD
+   export WY_ANDROID_KEYSTORE=~/secrets/watchyard-release.jks
+   export WY_ANDROID_KEY_ALIAS=watchyard
+   read -rs WY_ANDROID_KEYSTORE_PASSWORD && export WY_ANDROID_KEYSTORE_PASSWORD
    make phone-apk-release
    ```
 
-   `SY_ANDROID_KEY_PASSWORD` is needed only when the key password differs. A properties file
-   named by `SY_ANDROID_SIGNING_PROPERTIES` works too (see [phone/README.md](../../phone/README.md)).
+   `WY_ANDROID_KEY_PASSWORD` is needed only when the key password differs. A properties file
+   named by `WY_ANDROID_SIGNING_PROPERTIES` works too (see [phone/README.md](../../phone/README.md)).
 
-3. The output is in `phone/dist/`: `switchyard-<version>.apk`, `SHA256SUMS` and
+3. The output is in `phone/dist/`: `watchyard-<version>.apk`, `SHA256SUMS` and
    `manifest.json`. The signing certificate's fingerprint is printed; note it.
 
-The published app's package name is `io.github.mraj602.switchyard`; a development build is
-`io.github.mraj602.switchyard.dev`, so both can be installed side by side. `SY_APP_ID` overrides
+The published app's package name is `io.github.mraj602.watchyard`; a development build is
+`io.github.mraj602.watchyard.dev`, so both can be installed side by side. `WY_APP_ID` overrides
 it: a fork that shares its own build must use its own reverse-DNS id, because only the original
 signing key can update the published app.
 
@@ -155,7 +155,7 @@ submitted yet):
   ```sh
   cd phone
   npm ci
-  SY_APP_VARIANT=production npx expo prebuild --platform android --no-install --clean
+  WY_APP_VARIANT=production npx expo prebuild --platform android --no-install --clean
   cd android && ./gradlew :app:assembleRelease
   ```
 
@@ -165,7 +165,7 @@ submitted yet):
   signing keys differ, so a store build and your own build cannot update each other).
 
 Install your own build the same way as a downloaded one: `adb install
-phone/dist/switchyard-<version>.apk`, or copy it to the phone.
+phone/dist/watchyard-<version>.apk`, or copy it to the phone.
 
 ## Pair with your hub
 
@@ -176,7 +176,7 @@ The hub must be reachable over `https://` from the phone, for example with
 1. On the hub machine, make a pairing code:
 
    ```sh
-   sy phone pair --url https://laptop.example.ts.net
+   wy phone pair --url https://laptop.example.ts.net
    ```
 
    It prints a QR and a 6-digit code, valid once for 10 minutes. If the hub already knows its
@@ -192,7 +192,7 @@ sequenceDiagram
     participant You
     participant Hub
     participant App as Android app
-    You->>Hub: sy phone pair --url https://...
+    You->>Hub: wy phone pair --url https://...
     Hub-->>You: QR (address, secret, code, hub key fingerprint, seal key)
     You->>App: scan the QR
     App->>App: make device keys in the Android Keystore
@@ -225,11 +225,11 @@ Tap **Fix** under Battery first. Some makers stop background apps anyway:
 
 | Maker | Setting |
 | --- | --- |
-| Samsung | Settings, Battery, Background usage limits, Never sleeping apps: add Switchyard |
-| Xiaomi, Redmi, Poco | Settings, Apps, Switchyard: Autostart on; Battery saver: No restrictions |
-| OnePlus, Oppo, Realme | Settings, Battery, Switchyard: Don't optimize; allow background activity |
-| Huawei, Honor | Settings, Battery, App launch, Switchyard: Manage manually, all three on |
-| Others | Settings, Apps, Switchyard, Battery: Unrestricted |
+| Samsung | Settings, Battery, Background usage limits, Never sleeping apps: add Watchyard |
+| Xiaomi, Redmi, Poco | Settings, Apps, Watchyard: Autostart on; Battery saver: No restrictions |
+| OnePlus, Oppo, Realme | Settings, Battery, Watchyard: Don't optimize; allow background activity |
+| Huawei, Honor | Settings, Battery, App launch, Watchyard: Manage manually, all three on |
+| Others | Settings, Apps, Watchyard, Battery: Unrestricted |
 
 After a reboot the "Connected to hub" notification comes back by itself.
 
@@ -240,7 +240,7 @@ Alerts arrive on these channels, which you can tune in Android's own settings: N
 has **Open**, **Snooze** (15 minutes) and **Seen**; Snooze and Seen work without opening the
 app and clear the alert on other devices too. Turn on **Private pushes** in Settings to keep
 project and account names off the lock screen. Whatever that setting says, a locked phone
-shows only "Open Switchyard to see this" for every alert; the details show after you unlock. Rules, quiet hours and triggers are in
+shows only "Open Watchyard to see this" for every alert; the details show after you unlock. Rules, quiet hours and triggers are in
 [alerts.md](alerts.md).
 
 ## Widgets
@@ -276,8 +276,8 @@ tab)** removes a tab's sign-in.
 The app updates itself, with your confirmation each time:
 
 1. Once a day the hub checks the project's GitHub releases for a `phone-vX.Y.Z` release of
-   `mraj602/switchyard`, verifies the APK's checksum and that it is signed by the release key built
-   into the hub, and keeps a copy (`sy hub serve --no-app-mirror` turns this off;
+   `mraj602/watchyard`, verifies the APK's checksum and that it is signed by the release key built
+   into the hub, and keeps a copy (`wy hub serve --no-app-mirror` turns this off;
    `--app-repo owner/name` points it elsewhere). A hub build without the release key mirrors
    nothing.
 2. The app asks the hub (or GitHub directly) at most once a day; Settings, App version,

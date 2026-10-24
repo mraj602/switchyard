@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 var t0 = time.Date(2026, 10, 12, 14, 0, 0, 0, time.UTC)

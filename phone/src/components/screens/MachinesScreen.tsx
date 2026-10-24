@@ -23,7 +23,7 @@ export default function MachinesScreen({ machine: focus }: { machine?: string })
   return (
     <Page back title="Machines" meta={`${plural(list.length, 'machine')} reporting to this hub`}>
       {list.length === 0 ? (
-        <Calm>{"No machines have connected yet. Add machines from a computer: sy machine add, or the board's Devices."}</Calm>
+        <Calm>{"No machines have connected yet. Add machines from a computer: wy machine add, or the board's Devices."}</Calm>
       ) : (
         list.map((m) => {
           const st = machineStatus(m, api.now);
@@ -42,7 +42,7 @@ export default function MachinesScreen({ machine: focus }: { machine?: string })
                 <Muted>{reach ?? 'reach not reported'}{(m.held ?? 0) > 0 ? ` · ${plural(m.held as number, 'record')} held` : ''}</Muted>
                 {alert ? <Text style={{ color: t.warn, fontSize: 13 }}>{alert}</Text> : null}
                 <KV k="System" v={[m.os, m.arch].filter(Boolean).join(' · ') || '–'} />
-                <KV k="sy version" v={<Text style={{ color: tone(ver.tone), fontSize: 14, flexShrink: 1, textAlign: 'right' }}>{ver.text}</Text>} />
+                <KV k="wy version" v={<Text style={{ color: tone(ver.tone), fontSize: 14, flexShrink: 1, textAlign: 'right' }}>{ver.text}</Text>} />
                 <KV k="Last record" v={agoLabel(m.last_record, api.now) || '–'} />
                 <KV k="Last seen" v={agoLabel(m.last_seen, api.now) || '–'} />
                 <KV k="Queued records" v={backlog || (m.backlog == null ? 'not reported' : '0')} />

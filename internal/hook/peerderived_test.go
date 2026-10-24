@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 // derivedOf is derived.<key> of the newest hook record ("" when absent).

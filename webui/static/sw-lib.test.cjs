@@ -59,11 +59,11 @@ test('needsProbe only for auto with a Remote Control link', () => {
 test('parsePayload falls back to a generic notice', () => {
   for (const bad of ['', 'not json', '[]', 'null', '"x"', '42']) {
     const p = L.parsePayload(bad);
-    assert.equal(p.title, 'Switchyard · something needs you', bad);
+    assert.equal(p.title, 'Watchyard · something needs you', bad);
     assert.equal(p.url, '/#/');
     assert.equal(p.actions, null);
   }
-  assert.equal(L.parsePayload(undefined).title, 'Switchyard · something needs you');
+  assert.equal(L.parsePayload(undefined).title, 'Watchyard · something needs you');
 });
 
 test('parsePayload keeps a good payload and repairs bad fields', () => {
@@ -72,7 +72,7 @@ test('parsePayload keeps a good payload and repairs bad fields', () => {
   assert.equal(good.tag, 'sy-s-1');
   assert.equal(good.needs_you, 3);
   const bad = L.parsePayload(JSON.stringify({ title: '', body: 5, tag: '', url: 'http://x', tap: 'bogus', actions: 'x' }));
-  assert.equal(bad.title, 'Switchyard · something needs you');
+  assert.equal(bad.title, 'Watchyard · something needs you');
   assert.equal(bad.body, '');
   assert.equal(bad.url, '/#/');
   assert.equal(bad.tap, 'auto');
@@ -203,7 +203,7 @@ test('push event with an unreadable payload still shows a notification', async (
   await w.dispatch('push', { data: { text: () => { throw new Error('boom'); } } });
   await w.dispatch('push', {});
   assert.equal(w.calls.notifications.length, 2);
-  assert.equal(w.calls.notifications[0].title, 'Switchyard · something needs you');
+  assert.equal(w.calls.notifications[0].title, 'Watchyard · something needs you');
   deq(w.calls.badges, []);
 });
 

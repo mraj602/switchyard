@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/board"
-	"github.com/mraj602/switchyard/internal/termenv"
+	"github.com/mraj602/watchyard/internal/board"
+	"github.com/mraj602/watchyard/internal/termenv"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden frames")
@@ -555,7 +555,7 @@ func TestHubStates(t *testing.T) {
 	}
 	v.Hub = board.HubInfo{State: board.HubUnpaired}
 	s = RenderOnce(v, 100, o)
-	if !strings.Contains(s, "run `sy board connect`") {
+	if !strings.Contains(s, "run `wy board connect`") {
 		t.Errorf("unpaired hint:\n%s", s)
 	}
 	v.Hub = board.HubInfo{State: board.HubNone}

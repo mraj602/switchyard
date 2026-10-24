@@ -7,16 +7,16 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 // TestAllowEnv names the file an unsigned local allow list is read from in `peerstest`
 // builds. It exists only for tests; scripts/ci/check-release-seams.sh proves a release
 // binary contains no trace of it.
-const TestAllowEnv = "SY_PEERS_TEST_ALLOW"
+const TestAllowEnv = "WY_PEERS_TEST_ALLOW"
 
 // DefaultMatrix reads an unsigned allow file ({"paused","same_account","max_turns","allow"}):
-// $SY_PEERS_TEST_ALLOW, else <state>/peers/test-allow.json, evaluated like a signed document
+// $WY_PEERS_TEST_ALLOW, else <state>/peers/test-allow.json, evaluated like a signed document
 // (no signatures). With no file it is the signed document, as in a release build.
 func DefaultMatrix(state string) Matrix {
 	p := os.Getenv(TestAllowEnv)

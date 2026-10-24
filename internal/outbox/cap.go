@@ -66,7 +66,7 @@ type capEntry struct {
 // session_list older than an hour that is not the newest of its slot, limit_sample except
 // the newest per session per hour, history_import. hook_event, token_rows, slot_info,
 // web_usage and unknown kinds are never dropped: a dropped token_rows record would be lost
-// for good, because sy scan has already moved its transcript offsets past those bytes. The newest day file and today's
+// for good, because wy scan has already moved its transcript offsets past those bytes. The newest day file and today's
 // file are never compacted. A compacted file loses its already-flushed prefix.
 func (o *Outbox) EnforceCap(maxBytes int64) (CapResult, error) {
 	res := CapResult{Dropped: map[string]int{}}

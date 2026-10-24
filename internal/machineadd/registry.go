@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/update"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/update"
 )
 
 // RegistryFile is the operator's list of added machines inside the state folder
@@ -31,7 +31,7 @@ type Entry struct {
 	Socket string `json:"socket,omitempty"`
 	// ForwardTarget is the right side of the RemoteForward (the hub as the operator reaches it).
 	ForwardTarget string `json:"forward_target,omitempty"`
-	// ForwardSet is the backup set that wrote the forward block (sy setup --undo can also
+	// ForwardSet is the backup set that wrote the forward block (wy setup --undo can also
 	// take it out).
 	ForwardSet string `json:"forward_set,omitempty"`
 	// ForwardAdopted says the person's own config already had the forward: nothing was written.
@@ -73,7 +73,7 @@ func LoadRegistry(stateDir string) (*Registry, error) {
 		return nil, fmt.Errorf("%s is not readable: %w (move it away to start a new registry)", r.path, err)
 	}
 	if r.V != 1 {
-		return nil, fmt.Errorf("%s has version %d; this sy reads version 1", r.path, r.V)
+		return nil, fmt.Errorf("%s has version %d; this wy reads version 1", r.path, r.V)
 	}
 	return r, nil
 }
@@ -192,7 +192,7 @@ func (r *Registry) UsedPorts(machine, sshHost string) map[int]bool {
 	return out
 }
 
-// FleetRegistry is the registry as `sy update --machines` reads it (update.Registry).
+// FleetRegistry is the registry as `wy update --machines` reads it (update.Registry).
 // HubAdmin is the admin channel prefix: a registry machine whose SSH host is the host of an
 // `ssh <host> …` prefix is the hub host, updated first (machines.md 7.4 step 1).
 type FleetRegistry struct {

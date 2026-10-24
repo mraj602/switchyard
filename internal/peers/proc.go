@@ -28,7 +28,7 @@ type ProcInfo struct {
 // Proc reads the process tree. Tests give it a fake /proc (LinuxProc{Root: dir}) or a map.
 // The environment is reachable only through ConfigDir and HasEnv, so no caller can read, keep
 // or log another variable: a session's environment holds CLAUDE_CODE_MESSAGING_TOKEN, a
-// credential Switchyard treats like sessions/*.key (keys.md 8).
+// credential Watchyard treats like sessions/*.key (keys.md 8).
 type Proc interface {
 	Info(pid int) (ProcInfo, error)
 	// ConfigDir is CLAUDE_CONFIG_DIR from the process's environment (set is false when the
@@ -249,7 +249,7 @@ func ClaudeCandidates(p Proc, start int) []ProcInfo {
 }
 
 // NearestClaude is the pid of the nearest ancestor of start that looks like Claude Code, or 0.
-// It stops at the first one: `sy hook` asks it, and on macOS every step runs ps.
+// It stops at the first one: `wy hook` asks it, and on macOS every step runs ps.
 func NearestClaude(p Proc, start int) int {
 	pid := start
 	for i := 0; i < MaxWalk && pid > 1; i++ {

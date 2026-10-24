@@ -341,10 +341,10 @@ function FixSheet({ seat, tab, profiles, colourOf, onClose, onSignOut, onUse }: 
             <>
               {'The claude.ai account in this tab is the one Claude Code uses as '}
               <Text style={{ fontWeight: '700' }}>{otherName}</Text>
-              {". Switchyard matched them by the account's ID, not by email."}
+              {". Watchyard matched them by the account's ID, not by email."}
             </>
           ) : (
-            "The claude.ai account in this tab is not one of the accounts on your hub. Switchyard matched them by the account's ID, not by email."
+            "The claude.ai account in this tab is not one of the accounts on your hub. Watchyard matched them by the account's ID, not by email."
           )}
         </Text>
         <View style={{ backgroundColor: t.bg, borderRadius: 10, padding: 12, gap: 8 }}>

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/claudecli"
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/claudecli"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // testSharer implements Link with real symlinks and copies; everything else is unimplemented.
@@ -308,7 +308,7 @@ func TestLoginFailures(t *testing.T) {
 	if _, err := m.Login(context.Background(), LoginRequest{Folder: f, Display: "~/.claude-4"}, claudecli.Stdio{In: strings.NewReader("a@b.c\n")}, nil); err == nil {
 		t.Fatal("status failure ignored")
 	}
-	if got := NeedsCommand("~/.claude-4"); got != "sy account login ~/.claude-4" {
+	if got := NeedsCommand("~/.claude-4"); got != "wy account login ~/.claude-4" {
 		t.Fatal(got)
 	}
 }

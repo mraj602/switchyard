@@ -251,7 +251,7 @@ func (tx *Tx) SessionIDs() ([]string, error) {
 	return out, rows.Err()
 }
 
-// SetSessionStart replaces started_at (0 = unknown, NULL). Only sy hub refold uses it:
+// SetSessionStart replaces started_at (0 = unknown, NULL). Only wy hub refold uses it:
 // ingest keeps the earliest start (PatchSession).
 func (tx *Tx) SetSessionStart(id string, at int64) error {
 	_, err := tx.exec(`UPDATE session SET started_at = ? WHERE id = ?`, nullInt(at), id)

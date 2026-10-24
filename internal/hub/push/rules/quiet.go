@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
 )
 
 // ParseHHMM parses "HH:MM" (00:00-23:59) into minutes after midnight.

@@ -32,14 +32,14 @@ async function rig({ tabs = [tabRecord(TAB)], url = '/new', loggedIn = true, cad
   }
   const store = memStore(tabs);
   const bus = newBus();
-  const sy = fakeSy();
+  const wy = fakeSy();
   const ipc = fakeIpc();
   const clock = fakeClock();
   const tabsApi = {
     list: () => (store.get().tabs ?? []).map((t) => ({ ...t, signed_in: true, loaded: true })),
     view: (id) => views.get(id),
   };
-  const usage = create({ tabs: tabsApi, sy, store, bus, ipc, log: silentLog, clientVersion: '0.6.0', clock, random: () => 0.5, claudeOrigin: server.origin, cadenceMs });
+  const usage = create({ tabs: tabsApi, wy, store, bus, ipc, log: silentLog, clientVersion: '0.6.0', clock, random: () => 0.5, claudeOrigin: server.origin, cadenceMs });
   const events = [];
   bus.on('usage', (p) => events.push(p));
   const tabEvents = [];
@@ -52,7 +52,7 @@ async function rig({ tabs = [tabRecord(TAB)], url = '/new', loggedIn = true, cad
     await waitFor(() => last(id)?.last_read || last(id)?.read_state === 'stopped', 3000, 'first read');
   };
   const stats = async () => (await fetch(`${server.origin}/_fake/stats`)).json();
-  return { usage, store, bus, sy, ipc, clock, views, browser, events, tabEvents, tab, last, accept, stats, f };
+  return { usage, store, bus, wy, ipc, clock, views, browser, events, tabEvents, tab, last, accept, stats, f };
 }
 
 const script = (path, status, extra = {}) => fetch(`${server.origin}/_fake/script`, { method: 'POST', body: JSON.stringify({ path, status, ...extra }) });
@@ -62,7 +62,7 @@ test('no read until the warning is accepted: zero requests', async () => {
   await r.ipc.call('usage:refresh', {});
   await r.clock.advance(40 * 60_000);
   assert.equal((await r.stats()).total, 0);
-  assert.equal(r.sy.appended.length, 0);
+  assert.equal(r.wy.appended.length, 0);
   assert.equal(r.last().read_state, 'off', 'never_asked shows as off');
 });
 
@@ -71,13 +71,13 @@ test('accepting the warning turns reading on and reads at once; one record per o
   await r.accept();
   assert.equal(r.tab().reading, 'on');
   assert.equal(r.tab().warning_accepted, WARNING_VERSION);
-  assert.equal(r.sy.batches.length, 1);
-  assert.equal(r.sy.appended.length, 2);
-  assert.equal(r.sy.flushes, 1);
-  const [a, b] = r.sy.appended;
+  assert.equal(r.wy.batches.length, 1);
+  assert.equal(r.wy.appended.length, 2);
+  assert.equal(r.wy.flushes, 1);
+  const [a, b] = r.wy.appended;
   assert.equal(a.kind, 'web_usage');
-  assert.equal(a.machine, r.sy.machine);
-  assert.equal(a.client, 'switchyard-desktop/0.6.0');
+  assert.equal(a.machine, r.wy.machine);
+  assert.equal(a.client, 'watchyard-desktop/0.6.0');
   assert.match(a.ts, /^\d{4}-\d\d-\d\dT/);
   assert.equal(a.payload.tab_id, TAB);
   assert.match(a.payload.tab_id, TAB_ID_RE);
@@ -88,7 +88,7 @@ test('accepting the warning turns reading on and reads at once; one record per o
   assert.equal(b.payload.active, false);
   assert.equal(JSON.stringify(a.payload.usage), JSON.stringify(JSON.parse(server.fixtureText(0))), 'usage kept whole');
   assert.equal(JSON.stringify(b.payload.usage), JSON.stringify(JSON.parse(server.fixtureText(1))));
-  assert.equal('v' in a || 'id' in a, false, 'id and v are sy\'s');
+  assert.equal('v' in a || 'id' in a, false, 'id and v are wy\'s');
   // the strip and the stored seat
   const ev = r.last();
   assert.equal(ev.read_state, 'idle');
@@ -105,17 +105,17 @@ test('a tab that is not on a claude.ai app page is not read', async () => {
   await r.usage.refresh();
   await r.clock.advance(20 * 60_000);
   assert.equal((await r.stats()).total, 0);
-  assert.equal(r.sy.appended.length, 0);
+  assert.equal(r.wy.appended.length, 0);
 });
 
 test('periodic reads every 5 minutes (fake clock), floor and jitter from the scheduler', async () => {
   const r = await rig();
   await r.accept();
-  assert.equal(r.sy.batches.length, 1);
+  assert.equal(r.wy.batches.length, 1);
   await r.clock.advance(5 * 60_000);
-  await waitFor(() => r.sy.batches.length === 2, 3000, 'second batch');
+  await waitFor(() => r.wy.batches.length === 2, 3000, 'second batch');
   await r.clock.advance(5 * 60_000);
-  await waitFor(() => r.sy.batches.length === 3, 3000, 'third batch');
+  await waitFor(() => r.wy.batches.length === 3, 3000, 'third batch');
 });
 
 test('turning reading off during a delayed read: zero appends, no more requests', async () => {
@@ -128,8 +128,8 @@ test('turning reading off during a delayed read: zero appends, no more requests'
   assert.equal(r.tab().reading, 'off');
   assert.equal(r.last().read_state, 'off');
   await sleep(900); // the delayed read finishes meanwhile
-  assert.equal(r.sy.appended.length, 0, 'the result was dropped before the outbox');
-  assert.equal(r.sy.flushes, 0);
+  assert.equal(r.wy.appended.length, 0, 'the result was dropped before the outbox');
+  assert.equal(r.wy.flushes, 0);
   assert.equal(r.last().last_read, null, 'and not shown in the strip');
   const before = (await r.stats()).total;
   await r.clock.advance(3 * 60 * 60_000);
@@ -141,47 +141,47 @@ test('turning reading off during a delayed read: zero appends, no more requests'
 test('429: stops with exactly one error record per seat, then no requests until Resume', async () => {
   const r = await rig();
   await r.accept(); // learns the two seats
-  r.sy.batches.length = 0;
-  r.sy.appended.length = 0;
+  r.wy.batches.length = 0;
+  r.wy.appended.length = 0;
   await script('usage', 429);
   await r.clock.advance(5 * 60_000);
   await waitFor(() => r.tab().stopped, 3000, 'stopped');
   assert.equal(r.tab().stopped.status, 429);
   assert.match(r.tab().stopped.at, /^\d{4}-/);
-  assert.equal(r.sy.batches.length, 1);
-  assert.equal(r.sy.appended.length, 2, 'one per known seat');
-  for (const e of r.sy.appended) {
+  assert.equal(r.wy.batches.length, 1);
+  assert.equal(r.wy.appended.length, 2, 'one per known seat');
+  for (const e of r.wy.appended) {
     assert.deepEqual(e.payload.error, { status: 429, message: 'rate limited' });
     assert.equal('usage' in e.payload, false);
   }
-  assert.deepEqual(r.sy.appended.map((e) => e.seat.org), [uuidOf('org', 1), uuidOf('org', 2)]);
+  assert.deepEqual(r.wy.appended.map((e) => e.seat.org), [uuidOf('org', 1), uuidOf('org', 2)]);
   assert.equal(r.last().read_state, 'stopped');
   assert.deepEqual(r.last().stopped, r.tab().stopped);
   const reqs = (await r.stats()).total;
   await r.clock.advance(6 * 60 * 60_000);
   await r.usage.refresh();
   assert.equal((await r.stats()).total, reqs, 'no further requests');
-  assert.equal(r.sy.appended.length, 2, 'no further records');
+  assert.equal(r.wy.appended.length, 2, 'no further records');
 
   // Resume reads again.
   await r.ipc.call('usage:resume', { id: TAB });
-  await waitFor(() => r.sy.appended.length === 4, 3000, 'resumed read');
+  await waitFor(() => r.wy.appended.length === 4, 3000, 'resumed read');
   assert.equal(r.tab().stopped, null);
   assert.equal(r.last().read_state, 'idle');
-  assert.ok(r.sy.appended.at(-1).payload.usage);
+  assert.ok(r.wy.appended.at(-1).payload.usage);
 });
 
 test('401 stops the same way, and a 403 on the org list too (worded as not available)', async () => {
   for (const status of [401, 403]) {
     const r = await rig();
     await r.accept();
-    r.sy.appended.length = 0;
+    r.wy.appended.length = 0;
     await script('organizations', status);
     await r.clock.advance(5 * 60_000);
     await waitFor(() => r.tab().stopped, 3000, 'stopped');
     assert.equal(r.tab().stopped.status, status);
-    assert.equal(r.sy.appended.length, 2);
-    assert.equal(r.sy.appended[0].payload.error.message, status === 401 ? 'signed out' : 'usage not available for this account');
+    assert.equal(r.wy.appended.length, 2);
+    assert.equal(r.wy.appended[0].payload.error.message, status === 401 ? 'signed out' : 'usage not available for this account');
   }
 });
 
@@ -190,7 +190,7 @@ test('a stop before any seat is known appends nothing; a restart uses the stored
   await script('account', 401);
   await r.ipc.call('usage:accept-warning', { id: TAB, version: WARNING_VERSION });
   await waitFor(() => r.tab().stopped, 3000, 'stopped');
-  assert.equal(r.sy.appended.length, 0, 'unknown seat: none');
+  assert.equal(r.wy.appended.length, 0, 'unknown seat: none');
   assert.equal(r.last().read_state, 'stopped');
 
   const seat = { account: uuidOf('acct', 1), org: uuidOf('org', 1) };
@@ -198,8 +198,8 @@ test('a stop before any seat is known appends nothing; a restart uses the stored
   await script('usage', 429);
   await r2.usage.refresh(TAB);
   await waitFor(() => r2.tab().stopped, 3000, 'stopped');
-  assert.equal(r2.sy.appended.length, 1);
-  assert.deepEqual(r2.sy.appended[0].seat, { account: seat.account, org: seat.org, src: 'claude_ai' });
+  assert.equal(r2.wy.appended.length, 1);
+  assert.deepEqual(r2.wy.appended[0].seat, { account: seat.account, org: seat.org, src: 'claude_ai' });
 });
 
 test('a stopped tab stays stopped across a restart (reading never starts by itself)', async () => {
@@ -215,8 +215,8 @@ test('send_to_hub off: the strip updates, nothing is appended', async () => {
   await r.usage.refresh(TAB);
   await waitFor(() => r.last().last_read, 3000, 'read');
   assert.ok(r.last().windows.length);
-  assert.equal(r.sy.batches.length, 0);
-  assert.equal(r.sy.flushes, 0);
+  assert.equal(r.wy.batches.length, 0);
+  assert.equal(r.wy.flushes, 0);
   // and the switch is stored
   await r.ipc.call('usage:set-send', { id: TAB, on: true });
   assert.equal(r.tab().send_to_hub, true);
@@ -229,10 +229,10 @@ test('a server error backs off: no records, state retrying with a retry time, on
   await waitFor(() => r.last().read_state === 'retrying', 3000, 'retrying');
   const retryAt = Date.parse(r.last().retry_at);
   assert.ok(retryAt - r.clock.now() >= 5 * 60_000 && retryAt - r.clock.now() <= 5 * 60_000 + 15_000);
-  assert.equal(r.sy.appended.length, 0);
+  assert.equal(r.wy.appended.length, 0);
   assert.equal(r.tab().stopped, null);
   await r.clock.advance(retryAt - r.clock.now());
-  await waitFor(() => r.sy.appended.length === 2, 3000, 'recovered');
+  await waitFor(() => r.wy.appended.length === 2, 3000, 'recovered');
   assert.equal(r.last().read_state, 'idle');
   assert.equal(r.last().retry_at, null);
 });
@@ -249,18 +249,18 @@ test('a network error (both worlds throw) backs off too', async () => {
   };
   await r.ipc.call('usage:accept-warning', { id: TAB, version: WARNING_VERSION });
   await waitFor(() => r.last().read_state === 'retrying', 3000, 'retrying');
-  assert.equal(r.sy.appended.length, 0);
+  assert.equal(r.wy.appended.length, 0);
 });
 
 test('an append that returns the wrong number of ids is logged, not retried, and not flushed', async () => {
   const r = await rig();
-  r.sy.appendResult = () => ({ ok: true, ids: ['only-one'] });
+  r.wy.appendResult = () => ({ ok: true, ids: ['only-one'] });
   await r.accept();
-  assert.equal(r.sy.batches.length, 1);
-  assert.equal(r.sy.flushes, 0);
+  assert.equal(r.wy.batches.length, 1);
+  assert.equal(r.wy.flushes, 0);
   assert.equal(r.last().read_state, 'idle', 'not a backoff');
   await r.clock.advance(60_000);
-  assert.equal(r.sy.batches.length, 1, 'not retried');
+  assert.equal(r.wy.batches.length, 1, 'not retried');
 });
 
 test('pauseAll sets every tab off and drops timers', async () => {
@@ -276,7 +276,7 @@ test('pauseAll sets every tab off and drops timers', async () => {
 test('set-reading on (after off) reads again; a raised warning version stops reading until re-accepted', async () => {
   const r = await rig({ tabs: [tabRecord(TAB, { reading: 'off', warning_accepted: WARNING_VERSION })] });
   await r.ipc.call('usage:set-reading', { id: TAB, on: true });
-  await waitFor(() => r.sy.appended.length === 2, 3000, 'read');
+  await waitFor(() => r.wy.appended.length === 2, 3000, 'read');
 
   const old = await rig({ tabs: [tabRecord(TAB, { reading: 'on', warning_accepted: WARNING_VERSION - 1 })] });
   await old.usage.refresh();
@@ -288,21 +288,21 @@ test('did-finish-load on the app page reads 1.5 s later; in-page navigation is d
   const wc = r.views.get(TAB).webContents;
   wc.emit('did-finish-load');
   await r.clock.advance(1400);
-  assert.equal(r.sy.batches.length, 0);
+  assert.equal(r.wy.batches.length, 0);
   await r.clock.advance(200);
-  await waitFor(() => r.sy.batches.length === 1, 3000, 'open read');
+  await waitFor(() => r.wy.batches.length === 1, 3000, 'open read');
   wc.emit('did-navigate-in-page', {}, `${server.origin}/chat/1`);
   await r.clock.advance(3100);
-  assert.equal(r.sy.batches.length, 1, 'the last read is younger than 60 s');
+  assert.equal(r.wy.batches.length, 1, 'the last read is younger than 60 s');
   await r.clock.advance(61_000);
   wc.emit('did-navigate-in-page', {}, `${server.origin}/chat/2`);
   await r.clock.advance(3100);
-  await waitFor(() => r.sy.batches.length === 2, 3000, 'nav read');
+  await waitFor(() => r.wy.batches.length === 2, 3000, 'nav read');
   // a load that lands on /login does not read
   wc._setURL(`${server.origin}/login`);
   wc.emit('did-finish-load');
   await r.clock.advance(2000);
-  assert.equal(r.sy.batches.length, 2);
+  assert.equal(r.wy.batches.length, 2);
 });
 
 test('a tab removed from the list is forgotten: its timers die', async () => {
@@ -318,13 +318,13 @@ test('a tab removed from the list is forgotten: its timers die', async () => {
 test('stop waits for the last append and clears the timers', async () => {
   const r = await rig({ tabs: [tabRecord(TAB, { reading: 'on', warning_accepted: WARNING_VERSION })] });
   let release;
-  r.sy.appendResult = (records) => new Promise((res) => (release = () => res({ ok: true, ids: records.map((_, i) => `i${i}`) })));
+  r.wy.appendResult = (records) => new Promise((res) => (release = () => res({ ok: true, ids: records.map((_, i) => `i${i}`) })));
   const reading = r.usage.refresh(TAB);
   await waitFor(() => release, 3000, 'append pending');
   let stopped = false;
   const stopping = r.usage.stop().then(() => (stopped = true));
   await sleep(50);
-  assert.equal(stopped, false, 'waiting for sy.append');
+  assert.equal(stopped, false, 'waiting for wy.append');
   release();
   await stopping;
   await reading;
@@ -339,13 +339,13 @@ test('a Team account whose tab is on its free personal org: records and seat onl
     // the tab already has its Team seat
     const r = await rig({ tabs: [{ ...tabRecord(TAB), seat: { account: uuidOf('acct', 1), org: uuidOf('org', 2) } }] });
     await r.accept();
-    assert.equal(r.sy.appended.length, 1, 'no record for the free personal org');
-    assert.equal(r.sy.appended[0].seat.org, uuidOf('org', 2));
+    assert.equal(r.wy.appended.length, 1, 'no record for the free personal org');
+    assert.equal(r.wy.appended[0].seat.org, uuidOf('org', 2));
     assert.deepEqual(r.tab().seat, { account: uuidOf('acct', 1), org: uuidOf('org', 2) });
     // and a tab with no seat yet does not make the personal one either
     const r2 = await rig();
     await r2.accept();
-    assert.deepEqual(r2.sy.appended.map((x) => x.seat.org), [uuidOf('org', 2)]);
+    assert.deepEqual(r2.wy.appended.map((x) => x.seat.org), [uuidOf('org', 2)]);
     assert.deepEqual(r2.tab().seat, { account: uuidOf('acct', 1), org: uuidOf('org', 2) });
   } finally {
     await server.close();

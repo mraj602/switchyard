@@ -20,10 +20,10 @@ var corpus = []string{
 	"tab\tseparated",
 	`C:\Program Files\x.exe --flag`,
 	"echo statusline --wrap foo",
-	"/bin/sy statusline --wrap",
+	"/bin/wy statusline --wrap",
 }
 
-const syPath = "/home/u/.local/bin/sy"
+const syPath = "/home/u/.local/bin/wy"
 
 func TestRoundTrip(t *testing.T) {
 	for _, c := range corpus {
@@ -55,23 +55,23 @@ func TestWrapShapes(t *testing.T) {
 }
 
 func TestDifferentSyPathUpdatedNotNested(t *testing.T) {
-	old := Wrap("bash x.sh", "/old/bin/sy")
-	got := Wrap(old, "/new/bin/sy")
-	if got != "/new/bin/sy statusline --wrap 'bash x.sh'" {
+	old := Wrap("bash x.sh", "/old/bin/wy")
+	got := Wrap(old, "/new/bin/wy")
+	if got != "/new/bin/wy statusline --wrap 'bash x.sh'" {
 		t.Errorf("got %q", got)
 	}
-	if got := Wrap("/old/sy statusline", "/new/sy"); got != "/new/sy statusline" {
+	if got := Wrap("/old/wy statusline", "/new/wy"); got != "/new/wy statusline" {
 		t.Errorf("bare: %q", got)
 	}
-	if got := Wrap(`C:\bin\sy.exe statusline`, "/new/sy"); got != "/new/sy statusline" {
+	if got := Wrap(`C:\bin\wy.exe statusline`, "/new/wy"); got != "/new/wy statusline" {
 		t.Errorf("windows path: %q", got)
 	}
 }
 
 func TestSyPathWithSpaces(t *testing.T) {
-	p := "/home/my user/.local/bin/sy"
+	p := "/home/my user/.local/bin/wy"
 	w := Wrap("echo hi", p)
-	if w != `'/home/my user/.local/bin/sy' statusline --wrap 'echo hi'` {
+	if w != `'/home/my user/.local/bin/wy' statusline --wrap 'echo hi'` {
 		t.Fatalf("got %q", w)
 	}
 	if c, ok := Unwrap(w); !ok || c != "echo hi" {
@@ -80,8 +80,8 @@ func TestSyPathWithSpaces(t *testing.T) {
 }
 
 func TestIsOurs(t *testing.T) {
-	yes := []string{"sy statusline", "/x/sy statusline", "/x/sy.exe statusline --wrap 'a b'", `/x/sy statusline --wrap "a b"`, "/x/sy statusline --wrap abc"}
-	no := []string{"", "bash x.sh", "/x/sy status", "/x/notsy statusline", "/x/sy statusline --wrap", "/x/sy statusline --wrap a b", "/x/sy statusline --other 'a'", "sy statusline 'unterminated"}
+	yes := []string{"wy statusline", "/x/wy statusline", "/x/wy.exe statusline --wrap 'a b'", `/x/wy statusline --wrap "a b"`, "/x/wy statusline --wrap abc"}
+	no := []string{"", "bash x.sh", "/x/wy status", "/x/notsy statusline", "/x/wy statusline --wrap", "/x/wy statusline --wrap a b", "/x/wy statusline --other 'a'", "wy statusline 'unterminated"}
 	for _, c := range yes {
 		if !IsOurs(c) {
 			t.Errorf("IsOurs(%q) = false", c)
@@ -92,7 +92,7 @@ func TestIsOurs(t *testing.T) {
 			t.Errorf("IsOurs(%q) = true", c)
 		}
 	}
-	if _, ok := Unwrap("/x/sy statusline"); ok {
+	if _, ok := Unwrap("/x/wy statusline"); ok {
 		t.Error("Unwrap of bare form reported ok")
 	}
 }

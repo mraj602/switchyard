@@ -13,7 +13,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 // ErrTampered means a claim reply did not hold up (keys.md 7.3): the device must forget the

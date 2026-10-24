@@ -1,5 +1,5 @@
 // Package localtime formats times for a person reading a terminal: in the local time zone,
-// with the zone named ("2026-10-12 14:02 IST"). Text output of `sy` commands goes through
+// with the zone named ("2026-10-12 14:02 IST"). Text output of `wy` commands goes through
 // it; `--json` output keeps RFC 3339 UTC and never does.
 package localtime
 

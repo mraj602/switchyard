@@ -78,7 +78,7 @@ async function doApply() {
 }
 
 const PAGE_START = Date.now();
-const AUTO_KEY = 'sy.autoUpdateAt';
+const AUTO_KEY = 'wy.autoUpdateAt';
 const editing = () => {
   const a = document.activeElement;
   return !!a && (a.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(a.tagName));

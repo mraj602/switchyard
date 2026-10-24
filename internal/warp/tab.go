@@ -13,14 +13,14 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/mraj602/switchyard/internal/brand"
+	"github.com/mraj602/watchyard/internal/brand"
 )
 
-// Marker starts the first line of every tab config sy writes (T8). A file without it is
-// never touched; a file with it whose hash differs from what sy wrote belongs to the person.
+// Marker starts the first line of every tab config wy writes (T8). A file without it is
+// never touched; a file with it whose hash differs from what wy wrote belongs to the person.
 const Marker = "# sy-warp-tab v1 "
 
-// Prefix and Suffix make the file name of a tab config: switchyard-<label>.toml.
+// Prefix and Suffix make the file name of a tab config: watchyard-<label>.toml.
 const (
 	Prefix = brand.Slug + "-"
 	Suffix = ".toml"
@@ -96,14 +96,14 @@ func FileURI(channel, path string) string {
 	return Scheme(channel) + "://tab_config/" + stemOf(path)
 }
 
-// IsTabPath reports whether path is a switchyard-<label>.toml inside a tab_configs folder.
+// IsTabPath reports whether path is a watchyard-<label>.toml inside a tab_configs folder.
 func IsTabPath(path string) bool {
 	p := strings.ReplaceAll(path, `\`, "/")
 	dir := p[:max(strings.LastIndex(p, "/"), 0)]
 	return LabelOf(p) != "" && strings.HasSuffix(dir, "/tab_configs")
 }
 
-// TabURI is the URI that opens label's tab config: warp://tab_config/switchyard-<label>
+// TabURI is the URI that opens label's tab config: warp://tab_config/watchyard-<label>
 // (warppreview:// for Preview). Warp matches the file stem case-insensitively.
 func TabURI(channel, label string) string {
 	return Scheme(channel) + "://tab_config/" + Stem(label)
@@ -154,7 +154,7 @@ func Check(s Spec) error {
 		}
 	}
 	if bad := unsafeInShell(s.Command); bad != "" {
-		return fmt.Errorf("the launcher path %q has %s: Warp runs a tab config's commands in the pane's shell (bash, zsh, fish or PowerShell, which sy cannot know and which quote differently), so sy writes only paths that need no quoting; move the launcher to a plain path", s.Command, bad)
+		return fmt.Errorf("the launcher path %q has %s: Warp runs a tab config's commands in the pane's shell (bash, zsh, fish or PowerShell, which wy cannot know and which quote differently), so wy writes only paths that need no quoting; move the launcher to a plain path", s.Command, bad)
 	}
 	if strings.Contains(s.Slot, " label=") {
 		return fmt.Errorf("folder %q cannot be written into the marker", s.Slot)
@@ -187,8 +187,8 @@ func unsafeInShell(cmd string) string {
 
 // Render returns the tab config of s (Check it first; Render itself never fails):
 //
-//	# sy-warp-tab v1 slot=~/.claude-2 label=work (written by sy term warp on; sy term warp off removes it)
-//	name = "Switchyard · work"
+//	# sy-warp-tab v1 slot=~/.claude-2 label=work (written by wy term warp on; wy term warp off removes it)
+//	name = "Watchyard · work"
 //	title = "work"
 //	color = "yellow"
 //
@@ -198,8 +198,8 @@ func unsafeInShell(cmd string) string {
 //	commands = ["/home/u/.local/bin/claude-2"]
 func Render(s Spec) []byte {
 	var b bytes.Buffer
-	fmt.Fprintf(&b, "%sslot=%s label=%s (written by sy term warp on; sy term warp off removes it)\n", Marker, s.Slot, s.Label)
-	fmt.Fprintf(&b, "name = %s\n", tomlString("Switchyard · "+s.Label))
+	fmt.Fprintf(&b, "%sslot=%s label=%s (written by wy term warp on; wy term warp off removes it)\n", Marker, s.Slot, s.Label)
+	fmt.Fprintf(&b, "name = %s\n", tomlString("Watchyard · "+s.Label))
 	fmt.Fprintf(&b, "title = %s\n", tomlString(s.Label))
 	if s.Colour != "" {
 		fmt.Fprintf(&b, "color = %s\n", tomlString(s.Colour))
@@ -255,12 +255,12 @@ func Hash(content []byte) string {
 	return hex.EncodeToString(s[:])
 }
 
-// Found is one switchyard-*.toml file in a tab_configs folder.
+// Found is one watchyard-*.toml file in a tab_configs folder.
 type Found struct {
 	Path   string `json:"path"`
 	Label  string `json:"label"`
 	SHA256 string `json:"sha256"`
-	// Marker: the file starts with sy's marker line. A file without it is never touched.
+	// Marker: the file starts with wy's marker line. A file without it is never touched.
 	Marker bool `json:"marker"`
 	// Slot is the folder the marker names.
 	Slot string `json:"slot,omitempty"`
@@ -269,7 +269,7 @@ type Found struct {
 // maxTab bounds what Scan reads of one file.
 const maxTab = 1 << 20
 
-// Scan lists the switchyard-*.toml files of folder, by name. A missing folder is no files.
+// Scan lists the watchyard-*.toml files of folder, by name. A missing folder is no files.
 func Scan(folder string) ([]Found, error) {
 	if folder == "" {
 		return nil, nil

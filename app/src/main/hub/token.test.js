@@ -132,7 +132,7 @@ test('basic_text: plain-text encryption is allowed first, so the token is writte
 test('normalizeHubUrl', () => {
   assert.equal(normalizeHubUrl('https://Hub.Example.com:443/'), 'https://hub.example.com');
   assert.equal(normalizeHubUrl('http://127.0.0.1:8787//'), 'http://127.0.0.1:8787');
-  assert.equal(normalizeHubUrl('https://hub.example.com/sy/#x'), 'https://hub.example.com/sy');
+  assert.equal(normalizeHubUrl('https://hub.example.com/wy/#x'), 'https://hub.example.com/wy');
   assert.equal(normalizeHubUrl('ftp://x'), null);
   assert.equal(normalizeHubUrl('https://u:p@x.com'), null);
   assert.equal(normalizeHubUrl('nope'), null);

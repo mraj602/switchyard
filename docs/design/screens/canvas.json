@@ -1,20 +1,20 @@
 {
   "v": 3,
   "createdOnFiles": {"v": 1, "at": "2026-10-11T15:40:00Z"},
-  "title": "Switchyard screens",
+  "title": "Watchyard screens",
   "launch": {"view": "canvas", "page": "install"},
   "pages": [
     {"id": "install", "name": "Install (terminal)"},
     {"id": "desktop", "name": "Desktop app + hub web"},
     {"id": "phone", "name": "Phone"},
-    {"id": "terminal", "name": "Switchyard Terminal"}
+    {"id": "terminal", "name": "Watchyard Terminal"}
   ],
   "boards": {
-    "Main.dc.html": {"x": 0, "y": 0, "w": 960, "h": 640, "page": "install", "title": "sy setup · 1 Detect"},
-    "SetupSharing.dc.html": {"x": 1040, "y": 0, "w": 960, "h": 640, "page": "install", "title": "sy setup · 2-3 Accounts and sharing"},
-    "SetupHub.dc.html": {"x": 2080, "y": 0, "w": 960, "h": 640, "page": "install", "title": "sy setup · 4 Hub"},
-    "SetupDone.dc.html": {"x": 3120, "y": 0, "w": 960, "h": 640, "page": "install", "title": "sy setup · 5 Phone + done"},
-    "InstallByClaude.dc.html": {"x": 4160, "y": 0, "w": 960, "h": 640, "page": "install", "title": "Installed by Claude (/switchyard:setup)"},
+    "Main.dc.html": {"x": 0, "y": 0, "w": 960, "h": 640, "page": "install", "title": "wy setup · 1 Detect"},
+    "SetupSharing.dc.html": {"x": 1040, "y": 0, "w": 960, "h": 640, "page": "install", "title": "wy setup · 2-3 Accounts and sharing"},
+    "SetupHub.dc.html": {"x": 2080, "y": 0, "w": 960, "h": 640, "page": "install", "title": "wy setup · 4 Hub"},
+    "SetupDone.dc.html": {"x": 3120, "y": 0, "w": 960, "h": 640, "page": "install", "title": "wy setup · 5 Phone + done"},
+    "InstallByClaude.dc.html": {"x": 4160, "y": 0, "w": 960, "h": 640, "page": "install", "title": "Installed by Claude (/watchyard:setup)"},
 
     "DeskHome.dc.html": {"x": 0, "y": 0, "w": 1440, "h": 900, "page": "desktop", "expand": "fill", "title": "Home"},
     "DeskSessions.dc.html": {"x": 1520, "y": 0, "w": 1440, "h": 900, "page": "desktop", "expand": "fill", "title": "Sessions board"},
@@ -31,7 +31,7 @@
     "PhonePair.dc.html": {"x": 2350, "y": 0, "w": 390, "h": 844, "page": "phone", "title": "Pairing"},
     "PhoneLock.dc.html": {"x": 2820, "y": 0, "w": 390, "h": 844, "page": "phone", "title": "Lock screen: push + widgets"},
 
-    "TermWarp.dc.html": {"x": 0, "y": 0, "w": 1440, "h": 900, "page": "terminal", "title": "Switchyard Terminal (Warp fork)"},
+    "TermWarp.dc.html": {"x": 0, "y": 0, "w": 1440, "h": 900, "page": "terminal", "title": "Watchyard Terminal (Warp fork)"},
     "TermPane.dc.html": {"x": 1520, "y": 0, "w": 1200, "h": 760, "page": "terminal", "title": "Session pane inside Claude Code (any terminal)"}
   },
   "order": [
@@ -44,7 +44,7 @@
     "t-install": {"x": 0, "y": -300, "text": "Install: one setup, run in the terminal (or by Claude)", "kind": "title1", "maxW": 5120, "page": "install"},
     "t-desktop": {"x": 0, "y": -300, "text": "Desktop app — the same screens are the hub's web UI", "kind": "title1", "maxW": 4480, "page": "desktop"},
     "t-phone": {"x": 0, "y": -300, "text": "Phone: who needs you, what's left, what's running", "kind": "title1", "maxW": 3210, "page": "phone"},
-    "t-terminal": {"x": 0, "y": -300, "text": "Switchyard Terminal: every session, grouped by account", "kind": "title1", "maxW": 2720, "page": "terminal"}
+    "t-terminal": {"x": 0, "y": -300, "text": "Watchyard Terminal: every session, grouped by account", "kind": "title1", "maxW": 2720, "page": "terminal"}
   },
   "designSystems": []
 }

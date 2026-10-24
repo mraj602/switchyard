@@ -8,16 +8,16 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/atomicfile"
 )
 
 // The board token (docs/spec/terminal.md T3): a read-only desktop-kind device token that
-// `sy board connect` stores in <state>/board/token.json (mode 0600) and the board reads. It
+// `wy board connect` stores in <state>/board/token.json (mode 0600) and the board reads. It
 // is bound to the hub URL it was issued for: a token whose URL differs from hub.url is
 // dropped, as the desktop app does (desktop.md C6). The token never leaves this file: it is
 // not printed, not put in argv or the environment, and not logged.
 
-// TokenName is the device name `sy board connect` asks the hub for. T3 says
+// TokenName is the device name `wy board connect` asks the hub for. T3 says
 // "terminal · <machine name>", but the name travels as one word of a remote command through
 // the admin channel (ssh), which accepts only letters, digits and `_ . - ` (and desktop.NameRE
 // refuses the middle dot), so it is "terminal-<machine>" with every other character of the
@@ -78,7 +78,7 @@ func SaveToken(stateDir string, t Token) error {
 
 // LoadToken returns the stored token when it was issued for hubURL. A missing file returns
 // ErrNoToken. A file that does not parse, or is bound to another URL, also returns
-// ErrNoToken and is deleted (the person runs `sy board connect` again).
+// ErrNoToken and is deleted (the person runs `wy board connect` again).
 func LoadToken(stateDir, hubURL string) (Token, error) {
 	path := TokenFile(stateDir)
 	b, err := os.ReadFile(path)
@@ -109,7 +109,7 @@ func RemoveToken(stateDir string) (bool, error) {
 }
 
 // RemoveTokenIf deletes token.json only while it still holds secret: a board that was
-// refused (401) with an old token must not delete one `sy board connect` has saved since.
+// refused (401) with an old token must not delete one `wy board connect` has saved since.
 func RemoveTokenIf(stateDir, secret string) (bool, error) {
 	cur, ok := PeekToken(stateDir)
 	if !ok || cur.Token != secret {
@@ -124,7 +124,7 @@ func SameHub(a, b string) bool {
 	return norm(a) == norm(b)
 }
 
-// PeekToken reads token.json without checking the hub URL or deleting anything. `sy board
+// PeekToken reads token.json without checking the hub URL or deleting anything. `wy board
 // disconnect` uses it to name the device to revoke. ok is false when there is no readable
 // file.
 func PeekToken(stateDir string) (Token, bool) {

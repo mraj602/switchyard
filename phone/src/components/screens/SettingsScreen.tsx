@@ -177,7 +177,7 @@ export default function SettingsScreen() {
           <KV k="Device" v={`${api.app.model} · ${api.app.platform}`} />
           {api.updater ? <UpdateRow updater={api.updater} /> : null}
         </Card>
-        <Muted>Switchyard is an unofficial, self-hosted tool and is not affiliated with Anthropic.</Muted>
+        <Muted>Watchyard is an unofficial, self-hosted tool and is not affiliated with Anthropic.</Muted>
       </Section>
 
       <Section title="This device">

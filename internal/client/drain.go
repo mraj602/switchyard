@@ -8,9 +8,9 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/drainproto"
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/version"
+	"github.com/mraj602/watchyard/internal/drainproto"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/version"
 )
 
 // Steps passed to DrainOptions.Hook, for failure injection in tests: a non-nil return
@@ -30,11 +30,11 @@ type DrainOptions struct {
 
 	// SyVersion, OS, Arch default to this binary's.
 	SyVersion, OS, Arch string
-	// RecordV is the highest record v this sy writes; default record MaxVersion (1).
+	// RecordV is the highest record v this wy writes; default record MaxVersion (1).
 	RecordV int
 
 	// CapBytes and KeepDays are outbox.max_mb and outbox.keep_days: a pulled machine never
-	// runs `sy flush` against a hub, so the end of a successful session (flush.lock still
+	// runs `wy flush` against a hub, so the end of a successful session (flush.lock still
 	// held) does the housekeeping the flusher does. 0 skips each.
 	CapBytes int64
 	KeepDays int
@@ -65,10 +65,10 @@ type drainEvent struct {
 	err error
 }
 
-// Drain runs the remote end of `sy outbox drain --stdio`: frames go to out, the hub's frames
+// Drain runs the remote end of `wy outbox drain --stdio`: frames go to out, the hub's frames
 // come from in. It takes flush.lock (a busy lock sends `busy`), says hello, reads batches
 // from the cursor with outbox.ReadV, sends one at a time (stop-and-wait) and applies each
-// ack with outbox.Apply, the function `sy flush` uses. The cursor moves only on an ack that
+// ack with outbox.Apply, the function `wy flush` uses. The cursor moves only on an ack that
 // carries the outstanding seq and names only ids of that batch; a nack, bye, timeout, EOF or
 // protocol error stops without applying anything more.
 func Drain(ctx context.Context, in io.Reader, out io.Writer, o DrainOptions) DrainResult {

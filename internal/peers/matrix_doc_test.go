@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/keys"
+	"github.com/mraj602/watchyard/internal/keys"
 )
 
 func TestDocMatrixAllowed(t *testing.T) {

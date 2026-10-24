@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/appmirror"
-	"github.com/mraj602/switchyard/internal/hub/push/netguard"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/appmirror"
+	"github.com/mraj602/watchyard/internal/hub/push/netguard"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // Settings of the app mirror (phone.md P16.2), in the push settings table like hub.public_url:

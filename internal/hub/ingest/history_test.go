@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 const (
@@ -23,7 +23,7 @@ func tokenRows(t *testing.T, machine string, at time.Time, rows []record.TokenRo
 		b, _ := json.Marshal(map[string]any{"session_id": id, "title": "t " + id[:4]})
 		p.Sessions = append(p.Sessions, b)
 	}
-	r, err := record.NewTokenRows(record.Meta{Machine: machine, Slot: "~/.claude", Client: "sy/0.5.0", Now: at}, p)
+	r, err := record.NewTokenRows(record.Meta{Machine: machine, Slot: "~/.claude", Client: "wy/0.5.0", Now: at}, p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func row(key, sid string, at time.Time, cwd string) record.TokenRow {
 
 func hook(t *testing.T, machine string, at time.Time, payload string) *record.Record {
 	t.Helper()
-	r, err := record.NewHookEvent(record.Meta{Machine: machine, Slot: "~/.claude", Client: "sy/0.5.0", Now: at}, []byte(payload), record.HookOptions{})
+	r, err := record.NewHookEvent(record.Meta{Machine: machine, Slot: "~/.claude", Client: "wy/0.5.0", Now: at}, []byte(payload), record.HookOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestTranscriptSessionsAreHistory(t *testing.T) {
 	}
 }
 
-// sy hub refold repairs sessions typed by an older hub (live "done", started at the scan
+// wy hub refold repairs sessions typed by an older hub (live "done", started at the scan
 // time, no project) from the stored records, and is idempotent.
 func TestRefoldRepairsHistory(t *testing.T) {
 	f := newFixture(t)

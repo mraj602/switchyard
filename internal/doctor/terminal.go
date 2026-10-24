@@ -20,21 +20,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/board"
-	"github.com/mraj602/switchyard/internal/client"
-	"github.com/mraj602/switchyard/internal/config"
-	"github.com/mraj602/switchyard/internal/hook"
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/jsonedit"
-	"github.com/mraj602/switchyard/internal/paths"
-	"github.com/mraj602/switchyard/internal/setup/ledger"
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/plan"
-	"github.com/mraj602/switchyard/internal/status"
-	"github.com/mraj602/switchyard/internal/termctl"
-	"github.com/mraj602/switchyard/internal/termenv"
-	"github.com/mraj602/switchyard/internal/warp"
-	"github.com/mraj602/switchyard/plugin"
+	"github.com/mraj602/watchyard/internal/board"
+	"github.com/mraj602/watchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/hook"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/jsonedit"
+	"github.com/mraj602/watchyard/internal/paths"
+	"github.com/mraj602/watchyard/internal/setup/ledger"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/plan"
+	"github.com/mraj602/watchyard/internal/status"
+	"github.com/mraj602/watchyard/internal/termctl"
+	"github.com/mraj602/watchyard/internal/termenv"
+	"github.com/mraj602/watchyard/internal/warp"
+	"github.com/mraj602/watchyard/plugin"
 )
 
 // BoardMe is what GET /v1/me tells about the board token's device.
@@ -170,7 +170,7 @@ func checkBoardToken(ctx context.Context, rep *Report, o Options, cfg config.Con
 	if !board.SameHub(tok.URL, cfg.Hub.URL) {
 		rep.add(Check{Name: "board token", Level: Warn,
 			Detail: "the token was issued for " + tok.URL + " but hub.url is " + orNone(cfg.Hub.URL) + ": the board ignores it",
-			Fix:    "run: sy board connect"})
+			Fix:    "run: wy board connect"})
 		return
 	}
 	probe := o.BoardProbe
@@ -181,21 +181,21 @@ func checkBoardToken(ctx context.Context, rep *Report, o Options, cfg config.Con
 	switch {
 	case errors.Is(err, ErrBoardRejected):
 		rep.add(Check{Name: "board token", Level: Warn, Detail: "the hub rejected the token of device " + tok.Device,
-			Fix: "run: sy board connect"})
+			Fix: "run: wy board connect"})
 		return
 	case err != nil:
 		rep.add(Check{Name: "board token", Level: Warn,
 			Detail: "the hub did not confirm the token (" + scrub(err.Error(), tok.Token) + "): the board shows this machine's sessions only",
-			Fix:    "check the hub is reachable (see the hub lines above), then run sy doctor again"})
+			Fix:    "check the hub is reachable (see the hub lines above), then run wy doctor again"})
 		return
 	case me.Kind != "desktop":
 		rep.add(Check{Name: "board token", Level: Warn, Detail: "the token's device is a " + orNone(me.Kind) + ", not a desktop device",
-			Fix: "run: sy board disconnect, then sy board connect"})
+			Fix: "run: wy board disconnect, then wy board connect"})
 		return
 	}
 	if m, err := readMachineID(o.Dirs.State.Path); err == nil && me.Machine != m {
 		rep.add(Check{Name: "board token", Level: Warn, Detail: "device " + tok.Device + " is not bound to this machine",
-			Fix: "run: sy board disconnect, then sy board connect"})
+			Fix: "run: wy board disconnect, then wy board connect"})
 		return
 	}
 	rep.add(Check{Name: "board token", Level: OK, Detail: "device " + tok.Device + " (desktop, this machine), mode 0600"})
@@ -204,7 +204,7 @@ func checkBoardToken(ctx context.Context, rep *Report, o Options, cfg config.Con
 // titleFixtureEvent is the hook payload the title check feeds to the in-process title code.
 const titleFixtureEvent = `{"session_id":"doctor-fixture","cwd":"/tmp/doctor-fixture","hook_event_name":"Stop"}`
 
-// runTitleFixture runs `sy hook --title Stop` in process against a throwaway state folder
+// runTitleFixture runs `wy hook --title Stop` in process against a throwaway state folder
 // (never the real one) and returns what it printed.
 func runTitleFixture() (string, error) {
 	tmp, err := os.MkdirTemp("", "sy-doctor-title-")
@@ -223,9 +223,9 @@ func runTitleFixture() (string, error) {
 		return "", err
 	}
 	env := map[string]string{
-		"SY_CONFIG_DIR":     cfgDir,
-		"SY_STATE_DIR":      filepath.Join(tmp, "state"),
-		"SY_DATA_DIR":       filepath.Join(tmp, "data"),
+		"WY_CONFIG_DIR":     cfgDir,
+		"WY_STATE_DIR":      filepath.Join(tmp, "state"),
+		"WY_DATA_DIR":       filepath.Join(tmp, "data"),
 		"CLAUDE_CONFIG_DIR": slotDir,
 	}
 	var out bytes.Buffer
@@ -269,7 +269,7 @@ func checkTitles(rep *Report, o Options, led model.Ledger, term *model.LedgerTer
 	}
 	if len(targets) == 0 {
 		rep.add(Check{Name: "titles", Level: Warn, Detail: "terminal.titles is on but no settings target is recorded",
-			Fix: "run: sy term titles on"})
+			Fix: "run: wy term titles on"})
 	} else {
 		var missing []string
 		for _, t := range targets {
@@ -283,7 +283,7 @@ func checkTitles(rep *Report, o Options, led model.Ledger, term *model.LedgerTer
 			rep.add(Check{Name: "titles", Level: Warn,
 				Detail: fmt.Sprintf("%s is not \"1\" in %d of %d settings targets (%s): Claude Code's own title will fight ours",
 					ledger.TitleEnvKey, len(missing), len(targets), strings.Join(missing, ", ")),
-				Fix: "run: sy term titles on"})
+				Fix: "run: wy term titles on"})
 		} else {
 			rep.add(Check{Name: "titles", Level: OK, Detail: fmt.Sprintf("%s set in %d settings target(s)", ledger.TitleEnvKey, len(targets))})
 		}
@@ -291,10 +291,10 @@ func checkTitles(rep *Report, o Options, led model.Ledger, term *model.LedgerTer
 
 	hooks, where := titleHooksFile(led)
 	if n := strings.Count(hooks, "hook "+hook.TitleFlag); n == 0 {
-		rep.add(Check{Name: "title hooks", Level: Warn, Detail: "the switchyard plugin (" + where + ") has no `sy hook --title` entries",
-			Fix: "run: sy setup --yes (rewrites the plugin)"})
+		rep.add(Check{Name: "title hooks", Level: Warn, Detail: "the watchyard plugin (" + where + ") has no `wy hook --title` entries",
+			Fix: "run: wy setup --yes (rewrites the plugin)"})
 	} else {
-		rep.add(Check{Name: "title hooks", Level: OK, Detail: fmt.Sprintf("%d title entries in the switchyard plugin (%s)", n, where)})
+		rep.add(Check{Name: "title hooks", Level: OK, Detail: fmt.Sprintf("%d title entries in the watchyard plugin (%s)", n, where)})
 	}
 
 	out, err := runTitleFixture()
@@ -302,24 +302,24 @@ func checkTitles(rep *Report, o Options, led model.Ledger, term *model.LedgerTer
 		err = validTitleOutput(out)
 	}
 	if err != nil {
-		rep.add(Check{Name: "title output", Level: Warn, Detail: "sy hook --title printed invalid output for a Stop fixture: " + err.Error(),
-			Fix: "update sy (sy update), or run: sy term titles off"})
+		rep.add(Check{Name: "title output", Level: Warn, Detail: "wy hook --title printed invalid output for a Stop fixture: " + err.Error(),
+			Fix: "update wy (wy update), or run: wy term titles off"})
 	} else {
-		rep.add(Check{Name: "title output", Level: OK, Detail: "sy hook --title prints valid JSON for a Stop fixture"})
+		rep.add(Check{Name: "title output", Level: OK, Detail: "wy hook --title prints valid JSON for a Stop fixture"})
 	}
 }
 
-// titleHooksFile is the hooks.json text of the installed switchyard plugin when sy-local has
-// it, else the one embedded in this sy, and where it came from.
+// titleHooksFile is the hooks.json text of the installed watchyard plugin when wy-local has
+// it, else the one embedded in this wy, and where it came from.
 func titleHooksFile(led model.Ledger) (string, string) {
 	if led.Plugin != nil && !led.Plugin.Adopted && led.Plugin.Marketplace != "" {
-		p := filepath.Join(led.Plugin.Marketplace, "plugins", "switchyard", "hooks", "hooks.json")
+		p := filepath.Join(led.Plugin.Marketplace, "plugins", "watchyard", "hooks", "hooks.json")
 		if b, err := os.ReadFile(p); err == nil {
 			return string(b), "installed"
 		}
 	}
 	b, _ := fs.ReadFile(plugin.FS(), "hooks/hooks.json")
-	return string(b), "embedded in this sy"
+	return string(b), "embedded in this wy"
 }
 
 // versionOnly turns "2.1.296 (Claude Code)" into "2.1.296".
@@ -345,7 +345,7 @@ func enabledIn(o Options, targets []string, id string) (n int) {
 func checkPane(rep *Report, o Options, targets []string, claudeVersion string) {
 	if n := enabledIn(o, targets, plan.PaneID); n < len(targets) {
 		rep.add(Check{Name: "pane", Level: Warn, Detail: fmt.Sprintf("%s is enabled in %d of %d settings targets", plan.PaneID, n, len(targets)),
-			Fix: "run: sy term setup --pane"})
+			Fix: "run: wy term setup --pane"})
 		return
 	}
 	v := versionOnly(claudeVersion)
@@ -374,7 +374,7 @@ func checkWarpPlugin(rep *Report, o Options, w *model.LedgerWarpPlugin) {
 	n := enabledIn(o, w.Targets, plan.WarpPluginID)
 	if n < len(w.Targets) {
 		rep.add(Check{Name: "warp plugin", Level: Warn, Detail: fmt.Sprintf("%s is enabled in %d of %d settings targets", plan.WarpPluginID, n, len(w.Targets)),
-			Fix: "run: sy term setup --warp-plugin"})
+			Fix: "run: wy term setup --warp-plugin"})
 	} else {
 		rep.add(Check{Name: "warp plugin", Level: OK, Detail: fmt.Sprintf("enabled in %d of %d settings targets", n, len(w.Targets))})
 	}
@@ -394,17 +394,17 @@ func checkWarpPlugin(rep *Report, o Options, w *model.LedgerWarpPlugin) {
 	}
 	switch {
 	case cur == "":
-		// Unknown checkout (not cloned yet, or a layout this sy does not read): nothing to compare.
+		// Unknown checkout (not cloned yet, or a layout this wy does not read): nothing to compare.
 	case cur != w.Commit:
 		rep.add(Check{Name: "warp plugin commit", Level: Warn,
-			Detail: fmt.Sprintf("the checkout moved: sy recorded %s, the marketplace is now at %s (code from github.com/warpdotdev/claude-code-warp runs in every session)", shortSHA(w.Commit), shortSHA(cur)),
-			Fix:    "read what changed, then accept it with: sy term setup --warp-plugin --accept-update (or remove it: sy term off)"})
+			Detail: fmt.Sprintf("the checkout moved: wy recorded %s, the marketplace is now at %s (code from github.com/warpdotdev/claude-code-warp runs in every session)", shortSHA(w.Commit), shortSHA(cur)),
+			Fix:    "read what changed, then accept it with: wy term setup --warp-plugin --accept-update (or remove it: wy term off)"})
 	default:
 		rep.add(Check{Name: "warp plugin commit", Level: OK, Detail: "marketplace checkout at " + shortSHA(cur) + ", as recorded"})
 	}
 }
 
-// checkTabs: each tab config sy wrote still has sy's hash (else it is the person's now, shown
+// checkTabs: each tab config wy wrote still has wy's hash (else it is the person's now, shown
 // as information) and the launcher it runs still exists.
 func checkTabs(rep *Report, o Options, tabs []model.LedgerTab) {
 	for _, t := range tabs {
@@ -412,23 +412,23 @@ func checkTabs(rep *Report, o Options, tabs []model.LedgerTab) {
 		b, err := os.ReadFile(t.Path)
 		switch {
 		case errors.Is(err, fs.ErrNotExist):
-			rep.add(Check{Name: name, Level: OK, Detail: o.tilde(t.Path) + " is gone (sy term warp on writes it again)"})
+			rep.add(Check{Name: name, Level: OK, Detail: o.tilde(t.Path) + " is gone (wy term warp on writes it again)"})
 			continue
 		case err != nil:
 			rep.add(Check{Name: name, Level: Warn, Detail: "cannot read " + o.tilde(t.Path) + ": " + err.Error(),
-				Fix: "make the file readable, or remove it: sy term warp off"})
+				Fix: "make the file readable, or remove it: wy term warp off"})
 			continue
 		case warp.Hash(b) != t.SHA256:
-			rep.add(Check{Name: name, Level: OK, Detail: o.tilde(t.Path) + " is yours now (edited since sy wrote it; sy leaves it alone)"})
+			rep.add(Check{Name: name, Level: OK, Detail: o.tilde(t.Path) + " is yours now (edited since wy wrote it; wy leaves it alone)"})
 			continue
 		}
 		cmd := warp.TabCommand(b)
 		if cmd == "" {
 			rep.add(Check{Name: name, Level: Warn, Detail: o.tilde(t.Path) + " runs no command",
-				Fix: "run: sy term warp on"})
+				Fix: "run: wy term warp on"})
 		} else if _, err := os.Stat(cmd); err != nil {
 			rep.add(Check{Name: name, Level: Warn, Detail: "it runs " + cmd + ", which does not exist",
-				Fix: "run: sy term warp on (writes the tab configs again), or sy setup --yes to restore the launcher"})
+				Fix: "run: wy term warp on (writes the tab configs again), or wy setup --yes to restore the launcher"})
 		} else {
 			rep.add(Check{Name: name, Level: OK, Detail: o.tilde(t.Path) + " runs " + cmd})
 		}
@@ -463,7 +463,7 @@ func checkWarpDetect(rep *Report, o Options, term *model.LedgerTerminal) {
 	case !termctl.ValidFocusURL(u):
 		rep.add(Check{Name: "warp focus url", Level: Warn,
 			Detail: "WARP_FOCUS_URL is " + focusShown(u) + ", not warp://session/<32 hex>: Warp may have changed its focus URL format",
-			Fix:    "sy still records sessions, but focusing a tab will not work until sy is updated: sy update"})
+			Fix:    "wy still records sessions, but focusing a tab will not work until wy is updated: wy update"})
 	}
 }
 
@@ -478,7 +478,7 @@ func focusShown(u string) string {
 }
 
 // checkAcceptEnv is risk 8 (report only, never written): on Fedora and RHEL sshd lists the
-// LC_ variables it accepts, so LC_SY_FOCUS and LC_SY_HOST sent by `sy ssh` are dropped. We
+// LC_ variables it accepts, so LC_SY_FOCUS and LC_SY_HOST sent by `wy ssh` are dropped. We
 // see it as a session of the last day, recorded in this outbox from Warp, that carries
 // neither term.focus_url nor term.host, while this shell is itself an SSH session (so the
 // check is silent on a laptop, and costs nothing there).
@@ -501,7 +501,7 @@ func checkAcceptEnv(rep *Report, o Options) {
 	}
 	rep.add(Check{Name: "ssh env", Level: Warn,
 		Detail: fmt.Sprintf("%d record(s) in the last day came from Warp over SSH without a focus URL or host: this server's sshd drops LC_SY_FOCUS and LC_SY_HOST", n),
-		Fix:    "add `AcceptEnv LC_SY_*` to /etc/ssh/sshd_config on this server (sy never writes it)"})
+		Fix:    "add `AcceptEnv LC_SY_*` to /etc/ssh/sshd_config on this server (wy never writes it)"})
 }
 
 func lookup(o Options) func(string) (string, error) {

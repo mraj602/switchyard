@@ -1,6 +1,6 @@
 {
   "platforms": ["android"],
   "android": {
-    "modules": ["dev.switchyard.scan.SyScanModule"]
+    "modules": ["dev.watchyard.scan.SyScanModule"]
   }
 }

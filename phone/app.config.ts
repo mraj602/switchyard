@@ -3,18 +3,18 @@
 // project. No proprietary Google code either (Firebase, Play services, ML Kit): notifications and
 // the QR scanner are the app's own modules (modules/sy-notify, modules/sy-scan), and
 // scripts/check-no-google.mjs fails the build on any of them. Reads only non-secret environment values:
-//   SY_APP_ID                bundle id and package name (default io.github.mraj602.switchyard,
-//                            or io.github.mraj602.switchyard.dev for a development build)
-//   SY_APP_VARIANT           "development" allows cleartext traffic (loopback hubs, P2)
+//   WY_APP_ID                bundle id and package name (default io.github.mraj602.watchyard,
+//                            or io.github.mraj602.watchyard.dev for a development build)
+//   WY_APP_VARIANT           "development" allows cleartext traffic (loopback hubs, P2)
 // Never put a credential here (phone.md P13).
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const DEV = process.env.SY_APP_VARIANT === 'development';
+const DEV = process.env.WY_APP_VARIANT === 'development';
 /** The published app's id never changes (a new id is a new app); a development build gets its own, so both can be installed. */
-export const RELEASE_APP_ID = 'io.github.mraj602.switchyard';
-const APP_ID = process.env.SY_APP_ID || (DEV ? `${RELEASE_APP_ID}.dev` : RELEASE_APP_ID);
+export const RELEASE_APP_ID = 'io.github.mraj602.watchyard';
+const APP_ID = process.env.WY_APP_ID || (DEV ? `${RELEASE_APP_ID}.dev` : RELEASE_APP_ID);
 const GROUP_ID = `group.${APP_ID}`;
 /** The app version comes from package.json, so a release bumps it in one place. */
 const VERSION: string = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8')).version;
@@ -57,7 +57,7 @@ export const IOS_WIDGETS = [
 export const ANDROID_WIDGETS = [
   {
     name: 'SySessions',
-    label: 'Switchyard: sessions',
+    label: 'Watchyard: sessions',
     description: 'Running, needs input and done, and what needs you',
     minWidth: '180dp',
     minHeight: '70dp',
@@ -69,7 +69,7 @@ export const ANDROID_WIDGETS = [
   },
   {
     name: 'SyLimits',
-    label: 'Switchyard: limits',
+    label: 'Watchyard: limits',
     description: 'Every account: the tighter of 5 h and 7 d, and when it resets',
     minWidth: '250dp',
     minHeight: '110dp',
@@ -81,7 +81,7 @@ export const ANDROID_WIDGETS = [
   },
   {
     name: 'SyNeeds',
-    label: 'Switchyard: needs you',
+    label: 'Watchyard: needs you',
     description: 'The sessions waiting on you, oldest first; tap one to open it',
     minWidth: '250dp',
     minHeight: '110dp',
@@ -93,7 +93,7 @@ export const ANDROID_WIDGETS = [
   },
   {
     name: 'SyRing',
-    label: 'Switchyard: account ring',
+    label: 'Watchyard: account ring',
     description: 'One account: the tighter of 5 h and 7 d as a ring, and when it resets',
     minWidth: '110dp',
     minHeight: '130dp',
@@ -107,7 +107,7 @@ export const ANDROID_WIDGETS = [
   },
   {
     name: 'SyNextReset',
-    label: 'Switchyard: next reset',
+    label: 'Watchyard: next reset',
     description: 'The soonest limit reset across your accounts',
     minWidth: '110dp',
     minHeight: '50dp',
@@ -119,7 +119,7 @@ export const ANDROID_WIDGETS = [
   },
   {
     name: 'SyMachines',
-    label: 'Switchyard: machines',
+    label: 'Watchyard: machines',
     description: 'Each machine online or silent, and how many sessions are live',
     minWidth: '250dp',
     minHeight: '40dp',
@@ -138,10 +138,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   return {
     ...config,
-    name: 'Switchyard',
-    slug: 'switchyard',
+    name: 'Watchyard',
+    slug: 'watchyard',
     version: VERSION,
-    scheme: 'switchyard',
+    scheme: 'watchyard',
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     ...(icon ? { icon } : {}),
@@ -175,7 +175,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     extra: {
       appGroup: GROUP_ID,
-      // SY_APP_VARIANT=development: the pair screen also accepts http:// loopback / LAN hubs in a
+      // WY_APP_VARIANT=development: the pair screen also accepts http:// loopback / LAN hubs in a
       // bundled (non-__DEV__) build, matching usesCleartextTraffic above (phone.md P2).
       cleartext: DEV,
     },
@@ -193,7 +193,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         'expo-widgets',
         {
           groupIdentifier: GROUP_ID,
-          // The widget extension's bundle id (register it with Apple next to SY_APP_ID).
+          // The widget extension's bundle id (register it with Apple next to WY_APP_ID).
           bundleIdentifier: `${APP_ID}.widgets`,
           enablePushNotifications: false,
           enableAndroid: false,

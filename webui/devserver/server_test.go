@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/webui"
+	"github.com/mraj602/watchyard/webui"
 )
 
 // ---- a minimal reader for the schemas in docs/spec/api.yaml ------------------------

@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/events"
-	"github.com/mraj602/switchyard/internal/hub/push/clock"
-	pushlink "github.com/mraj602/switchyard/internal/hub/push/link"
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/push/refresh"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/hub/events"
+	"github.com/mraj602/watchyard/internal/hub/push/clock"
+	pushlink "github.com/mraj602/watchyard/internal/hub/push/link"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/push/refresh"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 var gNow = time.Date(2026, 10, 12, 12, 0, 0, 0, time.UTC)

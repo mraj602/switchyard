@@ -12,7 +12,7 @@ import (
 
 // FS is the read-only view of the user's Claude folders that this package uses. Every
 // access to ~/.claude* goes through it, so a test can record exactly what is opened.
-// (State-folder files that sy owns, such as machine.json, are accessed directly.)
+// (State-folder files that wy owns, such as machine.json, are accessed directly.)
 type FS interface {
 	Open(name string) (io.ReadCloser, error)
 	Stat(name string) (fs.FileInfo, error)
@@ -20,12 +20,12 @@ type FS interface {
 	EvalSymlinks(name string) (string, error)
 }
 
-// ErrForbidden is returned for files sy must never read (identity.md section 4).
+// ErrForbidden is returned for files wy must never read (identity.md section 4).
 var ErrForbidden = errors.New("identity: refusing to access a credentials file")
 
 var claudeFolder = regexp.MustCompile(`^\.claude([-_].+)?$`)
 
-// Forbidden reports whether name is a file sy must never open: .credentials.json,
+// Forbidden reports whether name is a file wy must never open: .credentials.json,
 // sessions/*.key, or anything under a Claude folder's daemon/ folder. Names are compared
 // without case: the default file systems of macOS and Windows ignore it, so
 // ".Credentials.json" opens the same file there.

@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/client"
-	"github.com/mraj602/switchyard/internal/hub/api"
-	"github.com/mraj602/switchyard/internal/hub/pull"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/hub/api"
+	"github.com/mraj602/watchyard/internal/hub/pull"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // fakeProc is a scripted ssh process.
@@ -115,7 +115,7 @@ func TestSchedulerRunsDueTargetsOnInterval(t *testing.T) {
 		t.Fatalf("starter calls %d", log.n())
 	}
 	argv := log.calls[0]
-	want := []string{"-F", filepath.Join(e.dir, "ssh_config"), "-T", "sy-" + e.target.ID, ".local/bin/sy", "outbox", "drain", "--stdio"}
+	want := []string{"-F", filepath.Join(e.dir, "ssh_config"), "-T", "sy-" + e.target.ID, ".local/bin/wy", "outbox", "drain", "--stdio"}
 	if strings.Join(argv, "\x00") != strings.Join(want, "\x00") {
 		t.Fatalf("argv %q, want %q", argv, want)
 	}
@@ -200,7 +200,7 @@ func TestSchedulerHostKeyStopsRetrying(t *testing.T) {
 	s := e.sched(failStarter(&log, 255, "Host key verification failed."), nil)
 	s.Tick(context.Background())
 	row := e.row()
-	if row.State != store.PullStateHostKey || !strings.Contains(row.LastError, "sy hub pull trust gpu-box") {
+	if row.State != store.PullStateHostKey || !strings.Contains(row.LastError, "wy hub pull trust gpu-box") {
 		t.Fatalf("%+v", row)
 	}
 	for i := 0; i < 5; i++ {
@@ -483,7 +483,7 @@ func TestSchedulerWithFakeSSHProgram(t *testing.T) {
 	s.Tick(context.Background())
 	argv, _ := os.ReadFile(rec + ".argv")
 	got := strings.Split(strings.TrimSpace(string(argv)), "\n")
-	want := []string{"-F", filepath.Join(e.dir, "ssh_config"), "-T", "sy-" + e.target.ID, ".local/bin/sy", "outbox", "drain", "--stdio"}
+	want := []string{"-F", filepath.Join(e.dir, "ssh_config"), "-T", "sy-" + e.target.ID, ".local/bin/wy", "outbox", "drain", "--stdio"}
 	if strings.Join(got, "|") != strings.Join(want, "|") {
 		t.Fatalf("argv %q", got)
 	}

@@ -11,26 +11,26 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/pair"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/service"
+	"github.com/mraj602/watchyard/internal/hub/pair"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/service"
 )
 
-// ErrExpired is returned by `sy hub pair --wait` when the code ended (expired or cancelled)
+// ErrExpired is returned by `wy hub pair --wait` when the code ended (expired or cancelled)
 // before anyone claimed it. The message has already been printed; the command exits 3.
 var ErrExpired = errors.New("the pairing code expired before it was claimed")
 
 // pairPollEvery is how often --wait looks at the code (a variable so tests can speed it up).
 var pairPollEvery = time.Second
 
-// PairUsage is the help of `sy hub pair`.
-const PairUsage = `Usage: sy hub pair --kind phone|browser|machine|desktop [flags]
+// PairUsage is the help of `wy hub pair`.
+const PairUsage = `Usage: wy hub pair --kind phone|browser|machine|desktop [flags]
 
 Makes a one-time pairing code (10 minutes, single use) on this hub and shows it with a QR.
 
   --kind K      what is being paired (required)
   --name N      the device name (wins over the name the claimer sends)
-  --machine ID  machine and desktop codes: the machine id (optional; sy machine prints it)
+  --machine ID  machine and desktop codes: the machine id (optional; wy machine prints it)
   --url U       the hub address the phone opens (default: the hub.public_url setting)
   --ttl D       lifetime, 1m to 1h (default 10m)
   --wait        wait until the code is claimed (exit 3 if it expires first)
@@ -40,13 +40,13 @@ Makes a one-time pairing code (10 minutes, single use) on this hub and shows it 
   --db FILE     hub database (default <data>/hub.db)
 `
 
-// Pair is `sy hub pair`: it makes a pairing code directly in the hub's database (pairing.md
-// 2.4), so it must run on the hub machine (in Docker: docker compose exec hub sy hub pair).
+// Pair is `wy hub pair`: it makes a pairing code directly in the hub's database (pairing.md
+// 2.4), so it must run on the hub machine (in Docker: docker compose exec hub wy hub pair).
 func Pair(args []string, stdout, stderr io.Writer) error {
 	return pairCmd("hub pair", "", false, args, stdout, stderr)
 }
 
-// PhonePair is `sy phone pair`: `sy hub pair --kind phone --wait`.
+// PhonePair is `wy phone pair`: `wy hub pair --kind phone --wait`.
 func PhonePair(args []string, stdout, stderr io.Writer) error {
 	return pairCmd("phone pair", "phone", true, args, stdout, stderr)
 }
@@ -67,16 +67,16 @@ func pairCmd(name, kind string, wait bool, args []string, stdout, stderr io.Writ
 	insecure := fs.Bool("insecure", false, "allow http for a phone")
 	if pos, err := parse(fs, args); err != nil || len(pos) > 0 {
 		if err == nil {
-			fmt.Fprintf(stderr, "sy %s: unexpected argument %q\n", name, pos[0])
+			fmt.Fprintf(stderr, "wy %s: unexpected argument %q\n", name, pos[0])
 		}
 		return ErrUsage
 	}
 	if kind == "" {
-		fmt.Fprintf(stderr, "sy %s: --kind is required (phone, browser, machine or desktop)\n", name)
+		fmt.Fprintf(stderr, "wy %s: --kind is required (phone, browser, machine or desktop)\n", name)
 		return ErrUsage
 	}
 	if *ttl != 0 && (*ttl < pair.MinTTL || *ttl > pair.MaxTTL) {
-		fmt.Fprintf(stderr, "sy %s: --ttl must be between 1m and 1h\n", name)
+		fmt.Fprintf(stderr, "wy %s: --ttl must be between 1m and 1h\n", name)
 		return ErrUsage
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -93,7 +93,7 @@ func pairCmd(name, kind string, wait bool, args []string, stdout, stderr io.Writ
 	}
 	svc := pair.NewService(st, "")
 	// The QR carries the hub key's fingerprint and the seal key (keys.md 7); the first
-	// `sy hub pair` makes the hub key if serve has not yet.
+	// `wy hub pair` makes the hub key if serve has not yet.
 	if svc.Keys, err = keysService(st, nil); err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func printClaimed(w io.Writer, st pair.Status, asJSON bool) error {
 		fmt.Fprintln(w, "Paired.")
 		return nil
 	}
-	fmt.Fprintf(w, "Paired: %s (%s). It can %s; revoke it with `sy hub token revoke %s` or from the board's Devices list.\n",
+	fmt.Fprintf(w, "Paired: %s (%s). It can %s; revoke it with `wy hub token revoke %s` or from the board's Devices list.\n",
 		d.Name, d.ID, abilities(d.Scopes), d.ID)
 	return nil
 }
@@ -246,15 +246,15 @@ func abilities(scopes []string) string {
 	return strings.Join(out, " and ")
 }
 
-// OwnerLinkUsage is the help of `sy hub owner-link`.
-const OwnerLinkUsage = `Usage: sy hub owner-link [--url U] [--ttl D] [--json] [--insecure]
+// OwnerLinkUsage is the help of `wy hub owner-link`.
+const OwnerLinkUsage = `Usage: wy hub owner-link [--url U] [--ttl D] [--json] [--insecure]
 
 Makes a one-time sign-in link for the board's owner settings (pairing phones, devices,
 rules). Open it in a browser; it works once, for 10 minutes, and signs that browser in as
 the owner for 30 days.
 `
 
-// OwnerLink is `sy hub owner-link` (pairing.md 4).
+// OwnerLink is `wy hub owner-link` (pairing.md 4).
 func OwnerLink(args []string, stdout, stderr io.Writer) error {
 	fs, db := newFlags("hub owner-link", stderr)
 	fs.Usage = func() { fmt.Fprint(stderr, OwnerLinkUsage) }
@@ -264,12 +264,12 @@ func OwnerLink(args []string, stdout, stderr io.Writer) error {
 	insecure := fs.Bool("insecure", false, "allow an http address that is not loopback")
 	if pos, err := parse(fs, args); err != nil || len(pos) > 0 {
 		if err == nil {
-			fmt.Fprintf(stderr, "sy hub owner-link: unexpected argument %q\n", pos[0])
+			fmt.Fprintf(stderr, "wy hub owner-link: unexpected argument %q\n", pos[0])
 		}
 		return ErrUsage
 	}
 	if *ttl != 0 && (*ttl < pair.MinTTL || *ttl > pair.MaxTTL) {
-		fmt.Fprintln(stderr, "sy hub owner-link: --ttl must be between 1m and 1h")
+		fmt.Fprintln(stderr, "wy hub owner-link: --ttl must be between 1m and 1h")
 		return ErrUsage
 	}
 	ctx := context.Background()
@@ -303,7 +303,7 @@ func OwnerLink(args []string, stdout, stderr io.Writer) error {
 // FirstOwnerNext is the next step under a first-start owner link (pairing.md 4.1).
 const FirstOwnerNext = "Open this on your computer to become owner. Pair everything else from the board."
 
-// FirstOwnerLinkFile is where `sy hub serve` writes the first-start owner link when its log is
+// FirstOwnerLinkFile is where `wy hub serve` writes the first-start owner link when its log is
 // not a terminal (in the database's folder, mode 0600).
 const FirstOwnerLinkFile = "first-owner-link.txt"
 
@@ -327,10 +327,10 @@ func deliverFirstOwnerLink(logf func(string, ...any), w io.Writer, terminal bool
 		return f.Close()
 	}()
 	if err != nil {
-		logf("this hub has no owner yet, and the owner link could not be written (%v): run `sy hub owner-link` on the hub machine", err)
+		logf("this hub has no owner yet, and the owner link could not be written (%v): run `wy hub owner-link` on the hub machine", err)
 		return
 	}
-	logf("this hub has no owner yet: the one-time owner link (works once, 10 minutes) is in %s, readable by the hub's user only; or run `sy hub owner-link` on the hub machine", file)
+	logf("this hub has no owner yet: the one-time owner link (works once, 10 minutes) is in %s, readable by the hub's user only; or run `wy hub owner-link` on the hub machine", file)
 }
 
 // FirstOwnerLink makes the first-start owner link of pairing.md 4.1 and returns it as one
@@ -373,7 +373,7 @@ func FirstOwnerLink(ctx context.Context, st *store.Store, svc *pair.Service, hub
 	return b.String(), nil
 }
 
-// FirstOwnerLinkDB is FirstOwnerLink on the hub database at db ("" = the default), for `sy
+// FirstOwnerLinkDB is FirstOwnerLink on the hub database at db ("" = the default), for `wy
 // setup --hub here`: the link uses the hub.public_url setting when set, else hubURL. It
 // prints the block to w and says whether it printed one.
 func FirstOwnerLinkDB(ctx context.Context, db, hubURL string, w io.Writer, ansi bool) (bool, error) {
@@ -406,7 +406,7 @@ func openHubStore(ctx context.Context, db string) (*store.Store, error) {
 	}
 	if _, err := os.Stat(path); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("there is no hub database at %s: run this on the hub machine (in Docker: docker compose exec hub sy hub pair ...), "+
+			return nil, fmt.Errorf("there is no hub database at %s: run this on the hub machine (in Docker: docker compose exec hub wy hub pair ...), "+
 				"or, signed in as owner on the board, open More, Devices, Add phone", path)
 		}
 		return nil, err

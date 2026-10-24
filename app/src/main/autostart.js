@@ -1,6 +1,6 @@
-// Run at login (C1): Linux ~/.config/autostart/switchyard-desktop.desktop and
-// ~/.local/share/applications/switchyard-desktop.desktop; macOS and Windows
-// app.setLoginItemSettings with --background. Never reads or writes switchyard.desktop.
+// Run at login (C1): Linux ~/.config/autostart/watchyard-desktop.desktop and
+// ~/.local/share/applications/watchyard-desktop.desktop; macOS and Windows
+// app.setLoginItemSettings with --background. Never reads or writes watchyard.desktop.
 // After a rename, the Linux entries of the old name are replaced by the current ones (the first
 // get() that finds only the old autostart entry rewrites it) and removed by every set()
 // (docs/spec/rename.md 2.9).
@@ -12,7 +12,7 @@ import { DESKTOP_ENTRY, LEGACY_DESKTOP_ENTRY, FLAG_BACKGROUND, TEST_ENV } from '
  *          env?: Record<string,string|undefined>, iconName?: string}} deps
  *   fs: the promise API (mkdir, writeFile, rm, access). appImage: $APPIMAGE, used instead of
  *   execPath (which sits in a temporary mount). appPath + !isPackaged: a development run
- *   (`electron <appPath>`). env: only SY_APP_USER_DATA is read, and only when !isPackaged.
+ *   (`electron <appPath>`). env: only WY_APP_USER_DATA is read, and only when !isPackaged.
  * @returns {{get(): Promise<boolean>, set(on: boolean): Promise<void>, desktopEntry(background: boolean): string,
  *            files(): {autostart: string, launcher: string}}}
  */
@@ -20,7 +20,7 @@ export function create(deps) {
   const { electron, fs, path, platform, home, execPath } = deps;
   const { app } = electron;
   const isPackaged = deps.isPackaged ?? app.isPackaged;
-  const iconName = deps.iconName ?? 'switchyard-desktop';
+  const iconName = deps.iconName ?? 'watchyard-desktop';
 
   const files = () => ({
     autostart: path.join(home, '.config', 'autostart', DESKTOP_ENTRY),
@@ -49,13 +49,13 @@ export function create(deps) {
     return [
       '[Desktop Entry]',
       'Type=Application',
-      'Name=Switchyard Desktop',
+      'Name=Watchyard Desktop',
       'Comment=Usage, limits and alerts for several Claude accounts (unofficial)',
       `Exec=${env}${exec}${background ? ` ${FLAG_BACKGROUND}` : ''}`,
       `Icon=${iconName}`,
       'Terminal=false',
       'Categories=Utility;Development;',
-      'StartupWMClass=switchyard-desktop',
+      'StartupWMClass=watchyard-desktop',
       ...(background ? ['X-GNOME-Autostart-enabled=true', 'X-GNOME-Autostart-Delay=10'] : []),
       '',
     ].join('\n');

@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mraj602/switchyard/internal/atomicfile"
-	"github.com/mraj602/switchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/atomicfile"
+	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
 // File names inside the pull folder (paths.md).
@@ -41,7 +41,7 @@ func ValidateTarget(t store.PullTarget) error {
 		// person's known_hosts, a prompt): the pinned-host-key guarantee would stop at the hop.
 		return fmt.Errorf("ProxyJump (%q) is not supported: the jump host's key cannot be pinned; reach the server directly (a tailnet address) instead", t.Jump)
 	case t.RemoteSy != "" && !syRe.MatchString(t.RemoteSy):
-		return fmt.Errorf("bad remote sy path %q", t.RemoteSy)
+		return fmt.Errorf("bad remote wy path %q", t.RemoteSy)
 	}
 	return nil
 }
@@ -111,7 +111,7 @@ func quotePath(p string) string {
 func SSHArgs(dir string, t store.PullTarget) []string {
 	remote := t.RemoteSy
 	if remote == "" {
-		remote = ".local/bin/sy"
+		remote = ".local/bin/wy"
 	}
 	return []string{"-F", filepath.Join(dir, ConfigFile), "-T", Alias(t), remote, "outbox", "drain", "--stdio"}
 }

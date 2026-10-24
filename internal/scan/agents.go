@@ -11,15 +11,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/identity"
-	"github.com/mraj602/switchyard/internal/outbox"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/identity"
+	"github.com/mraj602/watchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // AgentsTimeout bounds one `claude agents --json` run.
 const AgentsTimeout = 20 * time.Second
 
-// AgentsOptions configures Agents, the `sy agents` command.
+// AgentsOptions configures Agents, the `wy agents` command.
 type AgentsOptions struct {
 	Slots   []identity.Slot
 	Environ []string        // the environment `claude` runs in (os.Environ())

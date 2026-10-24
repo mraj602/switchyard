@@ -11,14 +11,14 @@ export function AccountsMedium(props: WidgetTimelineProps) {
   const dim = foregroundStyle({ type: 'hierarchical', style: 'secondary' });
   if (!s) {
     return (
-      <VStack alignment="leading" spacing={4} modifiers={[padding({ all: 12 }), widgetURL('switchyard://now')]}>
-        <Text modifiers={[font({ size: 14, weight: 'semibold' })]}>Switchyard</Text>
-        <Text modifiers={[font({ size: 12 }), dim]}>Open Switchyard to set up</Text>
+      <VStack alignment="leading" spacing={4} modifiers={[padding({ all: 12 }), widgetURL('watchyard://now')]}>
+        <Text modifiers={[font({ size: 14, weight: 'semibold' })]}>Watchyard</Text>
+        <Text modifiers={[font({ size: 12 }), dim]}>Open Watchyard to set up</Text>
       </VStack>
     );
   }
   return (
-    <VStack alignment="leading" spacing={6} modifiers={[padding({ all: 12 }), widgetURL('switchyard://accounts')]}>
+    <VStack alignment="leading" spacing={6} modifiers={[padding({ all: 12 }), widgetURL('watchyard://accounts')]}>
       <HStack spacing={6}>
         <Text modifiers={[font({ size: 12, weight: 'semibold' }), dim]}>Accounts</Text>
         <Spacer />

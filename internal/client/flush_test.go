@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/outbox"
+	"github.com/mraj602/watchyard/internal/outbox"
 )
 
 // ---- fake hub ---------------------------------------------------------------------------
@@ -604,7 +604,7 @@ func TestLingerSendsRecordsWrittenDuringTheDebounce(t *testing.T) {
 		t.Fatalf("slept %v, want one wait of 2s (until the stamp is 2s old)", slept)
 	}
 
-	// Without Linger (the timer, sy flush by hand) a drained run returns at once.
+	// Without Linger (the timer, wy flush by hand) a drained run returns at once.
 	o.Linger, slept = 0, nil
 	if res := Flush(context.Background(), o); !res.Drained || len(slept) != 0 {
 		t.Fatalf("no linger: %+v slept %v", res, slept)

@@ -1,4 +1,4 @@
-// Package tui is `sy board`'s screen (docs/spec/terminal.md T4): the session board as a
+// Package tui is `wy board`'s screen (docs/spec/terminal.md T4): the session board as a
 // dense terminal UI that lays out a board.View, never builds one. It has a compact (one line
 // per session) and a full (two lines) layout, a header, a NEEDS YOU block, one block per
 // account and a footer of keys, 24-bit / 256 / mono colour, Unicode or ASCII glyphs, and the
@@ -8,7 +8,7 @@
 // VT console mode on Windows, console_windows.go) and hands Run its input, its output and a
 // size function, so tests drive it with scripted keys over a fake terminal. Run writes only to
 // Options.Out (its stdout); no key sends anything to another terminal or session. Enter
-// and `o` run callbacks the caller supplies (`sy term focus`, the T7 opener); the TUI itself
+// and `o` run callbacks the caller supplies (`wy term focus`, the T7 opener); the TUI itself
 // opens nothing.
 //
 // Folders and the environment come from termenv.Env (internal/termenv/lint_test.go).
@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/board"
+	"github.com/mraj602/watchyard/internal/board"
 )
 
 // Options configures Run and RenderOnce.
@@ -49,7 +49,7 @@ type Options struct {
 	// AltScreen enters the alternate screen and hides the cursor for the life of Run.
 	AltScreen bool
 
-	// Focus runs `sy term focus --session <id>`; OpenURL opens an https://claude.ai/ link
+	// Focus runs `wy term focus --session <id>`; OpenURL opens an https://claude.ai/ link
 	// through the T7 opener; Refresh asks the source for a refetch. Nil ones answer with a
 	// footer message.
 	Focus   func(ctx context.Context, id string) error
@@ -60,7 +60,7 @@ type Options struct {
 	Throttle time.Duration
 }
 
-// RenderOnce lays v out as plain text lines for `sy board --once` and the line fallback: no
+// RenderOnce lays v out as plain text lines for `wy board --once` and the line fallback: no
 // cursor, no key footer, and a hint line when the hub is not in use. Width is cols (100 when
 // <= 0).
 func RenderOnce(v board.View, cols int, o Options) string {

@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/setup/backup"
+	"github.com/mraj602/watchyard/internal/setup/backup"
 )
 
-// The refusal reads once: no "setup:" of its own (the command adds "sy setup: ") and the
+// The refusal reads once: no "setup:" of its own (the command adds "wy setup: ") and the
 // advice said one time.
 func TestStackErrorReadsOnce(t *testing.T) {
 	msg := (&backup.StackError{ID: "20261012T173000Z", Newer: []string{"20261013T090000Z"}}).Error()

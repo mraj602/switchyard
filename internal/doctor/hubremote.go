@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/client"
-	"github.com/mraj602/switchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/client"
+	"github.com/mraj602/watchyard/internal/config"
 )
 
 // healthProbeTimeout bounds the one network call checkRemoteHub makes.
@@ -92,7 +92,7 @@ func checkRemoteHub(ctx context.Context, rep *Report, o Options, cfg config.Conf
 	}
 	if !strings.HasPrefix(strings.ToLower(hub), "https://") {
 		rep.add(Check{Name: "hub health", Level: Warn, Detail: d + ", but hub.url is not https",
-			Fix: "use the hub's https address: sy config set hub.url https://<hub address>"})
+			Fix: "use the hub's https address: wy config set hub.url https://<hub address>"})
 		return
 	}
 	rep.add(Check{Name: "hub health", Level: OK, Detail: d})

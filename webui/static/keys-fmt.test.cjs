@@ -49,7 +49,7 @@ test('certification: certified or hub-signed only', () => {
   assert.equal(K.certState(phone), 'phone');
   assert.equal(K.uncertified([cert, phone]), 0);
   assert.equal(K.CERT_WORD['hub-signed'], 'Hub-signed only');
-  assert.match(K.CERTIFY_HINT, /sy keys certify --all/);
+  assert.match(K.CERTIFY_HINT, /wy keys certify --all/);
 });
 
 test('the next step', () => {

@@ -3,12 +3,12 @@
   {
    "content_sha256": "<hash>",
    "id": "a1",
-   "note": "switchyard <version> (sy-local)",
+   "note": "watchyard <version> (wy-local)",
    "op": "write_tree",
-   "path": "$HOME/.local/state/switchyard/plugin/marketplace",
+   "path": "$HOME/.local/state/watchyard/plugin/marketplace",
    "pre": [
     {
-     "path": "$HOME/.local/state/switchyard/plugin/marketplace",
+     "path": "$HOME/.local/state/watchyard/plugin/marketplace",
      "state": {
       "type": "absent"
      }
@@ -22,7 +22,7 @@
     "plugin",
     "marketplace",
     "add",
-    "$HOME/.local/state/switchyard/plugin/marketplace",
+    "$HOME/.local/state/watchyard/plugin/marketplace",
     "--json"
    ],
    "env": {
@@ -58,7 +58,7 @@
     "claude",
     "plugin",
     "install",
-    "switchyard@sy-local",
+    "watchyard@wy-local",
     "--json"
    ],
    "covers": [
@@ -117,7 +117,7 @@
     }
    ],
    "step": "statusline",
-   "value": "$HOME/.local/bin/sy statusline --wrap 'bash $HOME/.claude/statusline-command.sh'",
+   "value": "$HOME/.local/bin/wy statusline --wrap 'bash $HOME/.claude/statusline-command.sh'",
    "via": [
     "$HOME/.claude-2/settings.json",
     "$HOME/.claude-3/settings.json",
@@ -130,10 +130,10 @@
   {
    "id": "a5",
    "op": "config_set",
-   "path": "$HOME/.config/switchyard/config.toml",
+   "path": "$HOME/.config/watchyard/config.toml",
    "pre": [
     {
-     "path": "$HOME/.config/switchyard/config.toml",
+     "path": "$HOME/.config/watchyard/config.toml",
      "state": {
       "type": "absent"
      }

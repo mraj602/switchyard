@@ -3,7 +3,7 @@
 The desktop app puts every claude.ai account you use in one window, one tab per account, each
 with its own sign-in. Under each tab a usage strip shows that account's limits. A **Hub** tab
 shows the board, and the app turns hub alerts into OS notifications and a tray badge. It is
-optional: `sy` and the hub work without it. The spec is [desktop.md](../spec/desktop.md).
+optional: `wy` and the hub work without it. The spec is [desktop.md](../spec/desktop.md).
 
 ![The desktop app's Hub tab: four sessions that need you, with the accounts in the sidebar (sample data)](../media/desktop-hub.png)
 
@@ -15,12 +15,12 @@ not code-signed, so macOS and Windows warn on first start (see
 
 ## Download
 
-Every `sy` release on [GitHub Releases](https://github.com/mraj602/switchyard/releases)
-(tags `vX.Y.Z`) also carries the desktop packages, built from the same commit as the `sy`
+Every `wy` release on [GitHub Releases](https://github.com/mraj602/watchyard/releases)
+(tags `vX.Y.Z`) also carries the desktop packages, built from the same commit as the `wy`
 archives, plus `SHA256SUMS-desktop`. The app inside has the same version as the tag, and
-bundles the `sy` of that release.
+bundles the `wy` of that release.
 
-The files are named `Switchyard-<version>-<os>-<arch>.<ext>`:
+The files are named `Watchyard-<version>-<os>-<arch>.<ext>`:
 
 | OS | Package |
 | --- | --- |
@@ -41,13 +41,13 @@ your OS. The packages are unsigned, so macOS and Windows warn the first time.
 
 ## Build from source
 
-You can build it yourself instead. You need Node 22 or later and Go (the package bundles its own `sy`).
+You can build it yourself instead. You need Node 22 or later and Go (the package bundles its own `wy`).
 
 ```sh
 make app-dist                 # packages in app/dist/
 ```
 
-`make app-dist` builds `sy` for this machine, bundles it and runs electron-builder for this
+`make app-dist` builds `wy` for this machine, bundles it and runs electron-builder for this
 OS. On Linux without `libcrypt.so.1` (Fedora: `dnf install libxcrypt-compat`) only the
 AppImage is built; set `APP_DIST_LINUX="AppImage deb rpm"` to choose targets.
 
@@ -59,23 +59,23 @@ npm ci                        # downloads the Electron binary
 npm start
 ```
 
-The app looks for `sy` on `PATH` or in `~/.local/bin` (when it is recent enough), else uses
-its bundled copy. Without any `sy` the account tabs still work, and the Hub tab says to run
-`sy setup` ([install.md](install.md)).
+The app looks for `wy` on `PATH` or in `~/.local/bin` (when it is recent enough), else uses
+its bundled copy. Without any `wy` the account tabs still work, and the Hub tab says to run
+`wy setup` ([install.md](install.md)).
 
 ### Unsigned builds on macOS and Windows
 
-Switchyard does not pay for Apple or Microsoft code-signing certificates, so the macOS and
+Watchyard does not pay for Apple or Microsoft code-signing certificates, so the macOS and
 Windows packages are unsigned and the OS warns the first time you open them.
 
-- **macOS:** in Finder, right-click (or Control-click) **Switchyard** in Applications, choose
+- **macOS:** in Finder, right-click (or Control-click) **Watchyard** in Applications, choose
   **Open**, then **Open** again in the dialog. macOS remembers the choice. On recent macOS,
   if there is no Open button, go to System Settings, Privacy & Security, and click
-  **Open Anyway** for Switchyard. From a terminal you can instead remove the quarantine flag
+  **Open Anyway** for Watchyard. From a terminal you can instead remove the quarantine flag
   that the download added:
 
   ```sh
-  xattr -dr com.apple.quarantine /Applications/Switchyard.app
+  xattr -dr com.apple.quarantine /Applications/Watchyard.app
   ```
 
 - **Windows:** when SmartScreen says "Windows protected your PC", click **More info**, then
@@ -85,11 +85,11 @@ Do this only for a package you built yourself or got from the project's GitHub r
 check where a release file came from, use its GitHub build attestation:
 
 ```sh
-gh attestation verify <file> --repo mraj602/switchyard
+gh attestation verify <file> --repo mraj602/watchyard
 ```
 
 The release workflow builds every desktop package in CI, attests each one and publishes
-`SHA256SUMS-desktop`, so `gh attestation verify` works on them, as on the `sy` archives. The
+`SHA256SUMS-desktop`, so `gh attestation verify` works on them, as on the `wy` archives. The
 attestation proves the file was built by this repository's release workflow; it is not a code
 signature, so the OS warning stays. If you would rather not trust the download, build it
 yourself with `make app-dist`.
@@ -97,9 +97,9 @@ yourself with `make app-dist`.
 ### Updates
 
 The app has no updater and asks no update server. Settings, About lists this app's version,
-sy's and the hub's. When sy or the hub runs a newer release than the app, Settings says
+wy's and the hub's. When wy or the hub runs a newer release than the app, Settings says
 "Update available" with **Open the release page**; when the app is newer, it suggests
-`sy update`. Install the new package the same way as the first.
+`wy update`. Install the new package the same way as the first.
 
 ## Account tabs
 
@@ -115,10 +115,10 @@ signing in with email inside the tab is not affected.
 
 How sign-in is handled:
 
-- You sign in on Anthropic's own claude.ai page. Switchyard shows no login form of its own.
+- You sign in on Anthropic's own claude.ai page. Watchyard shows no login form of its own.
 - Each tab's sign-in lives in its own local Electron session (`persist:tab-<id>`) on this
   computer. It never reaches the hub or any other machine.
-- Switchyard never reads, exports or sends cookies or tokens.
+- Watchyard never reads, exports or sends cookies or tokens.
 - The cookies that keep a tab signed in are encrypted on disk with your operating system's key
   store. If you update from an early build, a tab may ask you to sign in again once.
 - A website cannot use a certificate from your computer to identify you: the app offers none.
@@ -146,12 +146,12 @@ strip says **Usage reading not enabled** with a **Review** button. The first tim
 tab could read, the app asks:
 
 > **Read usage for this account?**
-> Every 5 minutes, Switchyard runs a small script inside this tab that reads the same numbers
+> Every 5 minutes, Watchyard runs a small script inside this tab that reads the same numbers
 > claude.ai shows under Settings → Usage. It reads numbers only: no chats, no cookies. They go
 > to your own hub.
 > This uses an internal claude.ai endpoint, not a public API. It may stop working, and
 > automated access may not be allowed by Anthropic's consumer terms, so it could get this
-> account flagged. Switchyard is unofficial and not affiliated with Anthropic.
+> account flagged. Watchyard is unofficial and not affiliated with Anthropic.
 > You can turn reading off for this account at any time in its usage bar or in Settings.
 > **[Read usage for this account]  [Not now]**
 
@@ -160,7 +160,7 @@ What accepting does:
 - Every 5 minutes (and shortly after the tab loads), the app calls claude.ai's internal
   endpoints `/api/organizations`, `/api/organizations/{uuid}/usage` and `/api/account` from
   inside the signed-in tab, with that tab's own session.
-- The numbers are handed to `sy outbox append` and sent to your hub as `web_usage` records.
+- The numbers are handed to `wy outbox append` and sent to your hub as `web_usage` records.
   A tab with "send to hub" off only updates its own strip.
 - Errors back off (5 minutes up to an hour). A 401 (signed out), 403 or 429 (rate limited)
   stops reading for that account until you click **Resume**.
@@ -173,11 +173,11 @@ You decide whether to enable it. **Not now** leaves the tab working normally. Th
 
 The Hub tab shows the board, signed in with a read-only desktop token.
 
-1. Run `sy setup` on this computer and connect it to your hub (or run the hub here).
+1. Run `wy setup` on this computer and connect it to your hub (or run the hub here).
 2. Open the Hub tab. If this computer can reach the hub's admin side (a local hub, or one
-   added with `sy machine add`), pairing is one click.
+   added with `wy machine add`), pairing is one click.
 3. Otherwise make a desktop code on the board (More, Devices, Add desktop app) or on the hub
-   with `sy hub pair --kind desktop`, and type it into the app.
+   with `wy hub pair --kind desktop`, and type it into the app.
 
 The token is stored encrypted with the OS keyring (`safeStorage`) and never enters a web
 page; the app signs the Hub view in with a read-only cookie. On Linux without a keyring the
@@ -206,7 +206,7 @@ openssl s_client -connect hub.lan:8443 -servername hub.lan </dev/null 2>/dev/nul
 
 (Leave out `-servername` for an IP address.) If every pair matches, click **The fingerprints
 match: trust it**. The app pins that certificate for this hub: from then on it accepts exactly
-that certificate for it, in its own requests and in the Hub tab, and nothing else. `sy` and the
+that certificate for it, in its own requests and in the Hub tab, and nothing else. `wy` and the
 hub cannot print this fingerprint, because the hub itself speaks plain http behind the proxy
 and never sees the certificate.
 
@@ -217,7 +217,7 @@ someone may be intercepting the connection: do not trust it. Unpairing and forge
 removes the pin.
 
 **Owner sign-in.** Changing rules, devices, peers or keys needs an owner session. Settings,
-Hub, **Sign in as owner** asks `sy desktop owner-link` for a one-time link and opens it in
+Hub, **Sign in as owner** asks `wy desktop owner-link` for a one-time link and opens it in
 the Hub tab. It lasts 30 days. Keys and Peers are the board's own pages, shown in the Hub tab
 (see [peers.md](peers.md)).
 
@@ -225,13 +225,13 @@ the Hub tab. It lasts 30 days. Keys and Peers are the board's own pages, shown i
 
 - **Account tabs:** name, the account's label and colour (editable with an owner session),
   the reading switch, the send-to-hub switch, the warning status, Remove.
-- **This computer's Claude Code folders:** the output of `sy account list` with the sharing
+- **This computer's Claude Code folders:** the output of `wy account list` with the sharing
   switches. Adding an account or logging in needs a terminal, so the app shows the
-  `sy account add` and `sy account login` commands to copy. See [accounts.md](accounts.md).
+  `wy account add` and `wy account login` commands to copy. See [accounts.md](accounts.md).
 - **Hub:** address, connection, version, owner yes or no, pairing, the certificate state of
   an https hub (verified, pinned, or not trusted), an encryption warning for plain http, and
   for a local hub the service state with Start and Stop.
-- **About:** the versions of this app, sy and the hub, and the update notice.
+- **About:** the versions of this app, wy and the hub, and the update notice.
 - **Notifications** and **Background:** run at login, start hidden, keep running when the
   window is closed, tray.
 - **Hub settings:** links to the board's Machines, Alerts and rules, Devices, Phone pairing
@@ -261,16 +261,16 @@ without the AppIndicator extension), closing the window quits unless "Keep runni
 
 Settings, Background, **Run at login** starts the app hidden at login (`--background`): no
 window, but usage reading and notifications continue. On Linux this writes
-`~/.config/autostart/switchyard-desktop.desktop`; on macOS and Windows it uses the OS login
+`~/.config/autostart/watchyard-desktop.desktop`; on macOS and Windows it uses the OS login
 items. A second launch shows the existing window.
 
 ## Where its data lives
 
 | OS | Folder |
 | --- | --- |
-| Linux | `~/.config/switchyard-desktop` |
-| macOS | `~/Library/Application Support/switchyard-desktop` |
-| Windows | `%APPDATA%\switchyard-desktop` |
+| Linux | `~/.config/watchyard-desktop` |
+| macOS | `~/Library/Application Support/watchyard-desktop` |
+| Windows | `%APPDATA%\watchyard-desktop` |
 
 It holds `app-state.json` (tabs and settings, mode 0600), `hub-token.bin` (the encrypted
 desktop token) and Chromium's own folders, including each tab's sign-in. Deleting a tab
@@ -291,7 +291,7 @@ every sign-in (see [uninstall.md](uninstall.md)).
   show your hub. See [claude-ai.md](claude-ai.md).
 - Certificate errors are never overridden, except for a hub certificate you pinned yourself
   (above), and only in the Hub tab and the app's own hub requests.
-- `sy` is run without a shell, from an allow-list of commands; secrets go on stdin, never on
+- `wy` is run without a shell, from an allow-list of commands; secrets go on stdin, never on
   the command line. Nothing the hub sends can make the app run anything.
 - Packaged builds disable `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS` and `--inspect`, and check
   the integrity of the app archive.

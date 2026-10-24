@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/mraj602/switchyard/internal/setup/model"
-	"github.com/mraj602/switchyard/internal/setup/testtree"
+	"github.com/mraj602/watchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/testtree"
 )
 
 // managedAll lists every copy path copies.json registers (what the ledger lists after setup).
@@ -35,7 +35,7 @@ func TestSyncCopiesSkipsPathsTheLedgerDropped(t *testing.T) {
 	if err := s.ReplaceWithLink(b.Abs("f/settings.json"), b.Abs("p/settings.json"), model.LinkCopy, b.Abs("saved")); err != nil {
 		t.Fatal(err)
 	}
-	// undo puts the folder's original back (here without deregistering: an older sy)
+	// undo puts the folder's original back (here without deregistering: an older wy)
 	if err := os.Remove(b.Abs("f/settings.json")); err != nil {
 		t.Fatal(err)
 	}

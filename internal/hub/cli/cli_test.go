@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/auth"
 )
 
 func TestParseAge(t *testing.T) {

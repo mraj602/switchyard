@@ -1,5 +1,5 @@
 // Electron smoke S1–S11, S14, S15 (docs/spec/desktop.md): one app, a real hub, the fake
-// claude.ai and the real sy, all in a temp sandbox. The scenarios build on each other, so they
+// claude.ai and the real wy, all in a temp sandbox. The scenarios build on each other, so they
 // run in order inside one test. Run: `npm run smoke` (Linux: under xvfb-run).
 
 import { test } from 'node:test';
@@ -26,7 +26,7 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
   const hub = await startHub(sb, bin);
   const fixture = freshFixture(sb.root, { five: 42, week: 61 });
   const claude = await startFakeClaude({ fixtures: [path.relative(USAGE_DIR, fixture)] });
-  const env = { SY_BIN: bin, SY_APP_TEST_CLAUDE_ORIGIN: claude.origin, SY_APP_TEST_CADENCE_MS: String(CADENCE_MS) };
+  const env = { WY_BIN: bin, WY_APP_TEST_CLAUDE_ORIGIN: claude.origin, WY_APP_TEST_CADENCE_MS: String(CADENCE_MS) };
   let run = null;
   const ids = {};
   const stats = async () => (await fetch(`${claude.origin}/_fake/stats`)).json();
@@ -40,7 +40,7 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
     }
     await claude.close();
     await hub.stop();
-    if (!process.env.SY_SMOKE_KEEP) sb.cleanup();
+    if (!process.env.WY_SMOKE_KEEP) sb.cleanup();
   });
 
   const signIn = async (id) => {
@@ -59,7 +59,7 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
     const resp = await shell.reload();
     assert.equal(resp.headers()['content-security-policy'], SHELL_CSP);
     await shell.waitForLoadState('load');
-    const keys = await shell.evaluate(() => Object.keys(window.sy).sort());
+    const keys = await shell.evaluate(() => Object.keys(window.wy).sort());
     assert.deepEqual(keys, [...Object.keys(FUNCTIONS), 'on'].sort());
     assert.deepEqual(await shell.evaluate(() => [typeof require, typeof process]), ['undefined', 'undefined']);
     assert.equal(await app.evaluate(({ app: a }) => a.getPath('userData')), sb.userData);
@@ -71,7 +71,7 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
   });
 
   await t.test('pairing (one click, local admin channel)', async () => {
-    const r = await run.shell.evaluate(() => window.sy.pair({}));
+    const r = await run.shell.evaluate(() => window.wy.pair({}));
     assert.equal(r.ok, true, JSON.stringify(r));
     await waitFor(async () => (await shellState(run.shell)).hub.status === 'ok', 20_000, 'hub status ok');
     // basic_text (no keyring in the sandbox): the file is written with mode 0600 and Settings warns.
@@ -82,10 +82,10 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
   });
 
   await t.test('S2 two tabs, isolated partitions', async () => {
-    ids.work = (await run.shell.evaluate(() => window.sy.addTab({ name: 'work' }))).id;
-    ids.home = (await run.shell.evaluate(() => window.sy.addTab({ name: 'home' }))).id;
+    ids.work = (await run.shell.evaluate(() => window.wy.addTab({ name: 'work' }))).id;
+    ids.home = (await run.shell.evaluate(() => window.wy.addTab({ name: 'home' }))).id;
     // Stay in Settings, so the warning of a tab is not opened by selecting it.
-    await run.shell.evaluate(() => window.sy.selectView({ view: 'settings' }));
+    await run.shell.evaluate(() => window.wy.selectView({ view: 'settings' }));
     await signIn(ids.work);
     await signIn(ids.home);
     await inTab(run.app, ids.work, "document.cookie = 'probe=work; path=/; max-age=86400'");
@@ -103,7 +103,7 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
   await t.test('S3 warning once per tab', async () => {
     await waitFor(async () => (await tabOf(ids.work))?.needs_warning, 10_000, 'work needs the warning');
     assert.equal(await usageCount(), 0, 'no usage request before the warning is accepted');
-    await run.shell.evaluate((id) => window.sy.selectView({ view: id }), ids.work);
+    await run.shell.evaluate((id) => window.wy.selectView({ view: id }), ids.work);
     await waitFor(warningOpen, 10_000, 'the warning dialog');
     await sleep(2 * CADENCE_MS);
     assert.equal(await usageCount(), 0, 'still none while the dialog is open');
@@ -130,7 +130,7 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
     assert.equal(byKey.seven_day, 61);
     ids.seat = seat.id;
 
-    await run.shell.evaluate(() => window.sy.hubRoute({ route: '#/accounts' }));
+    await run.shell.evaluate(() => window.wy.hubRoute({ route: '#/accounts' }));
     const board = await waitFor(() => run.app.windows().find((p) => p.url().startsWith(hub.url)), 20_000, 'the hub view page');
     // The board was loaded at pairing, before the seat existed; its stream only updates seats
     // it already has (webui store.js applyUsage), so load it again for the new seat.
@@ -182,13 +182,13 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
   await step('S5 turning reading off stops a read in flight and every later one', async () => {
     await script({ path: 'usage', delay: 3000 });
     const before = await usageCount();
-    await run.shell.evaluate((id) => window.sy.refreshUsage({ id }), ids.work);
+    await run.shell.evaluate((id) => window.wy.refreshUsage({ id }), ids.work);
     await waitFor(async () => (await usageCount()) > before, 10_000, 'a read in flight');
     // The delayed request is held for 3 s; a read that finished just before it may still be
     // appending, so let that settle before counting.
     await sleep(400);
     const recs0 = (await outboxOf(ofTab(ids.work))).length;
-    await run.shell.evaluate((id) => window.sy.setReading({ id, on: false }), ids.work);
+    await run.shell.evaluate((id) => window.wy.setReading({ id, on: false }), ids.work);
     const n0 = await usageCount();
     await sleep(3 * CADENCE_MS + 3500);
     assert.equal(await usageCount(), n0, 'no new usage request over 3 cadences');
@@ -197,7 +197,7 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
   });
 
   await step('S6 a 429 stops reading with one error record per seat; Resume reads again', async () => {
-    await run.shell.evaluate((id) => window.sy.setReading({ id, on: true }), ids.work);
+    await run.shell.evaluate((id) => window.wy.setReading({ id, on: true }), ids.work);
     await waitFor(async () => (await tabOf(ids.work)).read_state !== 'off', 10_000, 'reading on again');
     await script({ path: 'usage', status: 429 });
     const errs = async () => (await outboxOf((r) => ofTab(ids.work)(r) && r.payload.error)).length;
@@ -211,16 +211,16 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
     assert.equal(await usageCount(), n0, 'no further requests while stopped');
     assert.equal(await errs(), e0 + 1, 'exactly one error record for the one seat');
     // The strip says so.
-    await run.shell.evaluate((id) => window.sy.selectView({ view: id }), ids.work);
+    await run.shell.evaluate((id) => window.wy.selectView({ view: id }), ids.work);
     await waitFor(() => run.shell.evaluate(() => document.body.innerText.includes('Stopped')), 10_000, 'the strip shows Stopped');
     // The hub knows why.
-    await hub.sy(['flush', '--quiet']);
+    await hub.wy(['flush', '--quiet']);
     await waitFor(async () => {
       const { accounts } = await hub.get('/v1/accounts');
       const place = accounts.flatMap((a) => a.places ?? []).find((p) => p.tab_id === ids.work);
       return place?.stopped_reason === '429';
     }, 15_000, 'the hub place with stopped_reason 429');
-    await run.shell.evaluate((id) => window.sy.resumeReading({ id }), ids.work);
+    await run.shell.evaluate((id) => window.wy.resumeReading({ id }), ids.work);
     await waitFor(async () => (await usageCount()) > n0, 15_000, 'Resume reads again');
     await waitFor(async () => (await tabOf(ids.work)).stopped === null, 10_000, 'not stopped');
   });
@@ -247,7 +247,7 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
   });
 
   await step('S8 hub view: cookie login, owner sign-in, seat label edit', async () => {
-    await run.shell.evaluate(() => window.sy.selectView({ view: 'hub' }));
+    await run.shell.evaluate(() => window.wy.selectView({ view: 'hub' }));
     // Through main, not run.app.windows(): after the restart the hub view exists before Playwright attached, and
     // Playwright then never lists it (the page is fine: loaded, visible, signed in).
     const hubPage = (fn) => main(run.app, (m, _e, code) => m.hub.view()?.webContents.executeJavaScript(code), `(${fn})()`);
@@ -259,14 +259,14 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
     assert.equal(leaks, false, 'the desktop token is never in the page');
     const me0 = await main(run.app, async (m, e, url) => (await e.session.fromPartition('persist:sy-hub').fetch(`${url}/v1/me`)).json(), hub.url);
     assert.equal(me0.owner ?? false, false);
-    const r = await run.shell.evaluate(() => window.sy.ownerSignIn({}));
+    const r = await run.shell.evaluate(() => window.wy.ownerSignIn({}));
     assert.equal(r.ok, true, JSON.stringify(r));
     await waitFor(async () => (await main(run.app, async (m, e, url) => (await e.session.fromPartition('persist:sy-hub').fetch(`${url}/v1/me`)).json(), hub.url)).owner === true,
       20_000, 'an owner session in persist:sy-hub');
     await waitFor(async () => (await shellState(run.shell)).hub.owner === true, 10_000, 'ShellState hub.owner');
     const work = await waitFor(async () => (await tabOf(ids.work))?.seat, 10_000, 'the work tab knows its seat');
     assert.equal(work, ids.seat);
-    const u = await run.shell.evaluate((seat) => window.sy.updateSeat({ seat, label: 'smoke-work', colour: '#0e7c76' }), ids.seat);
+    const u = await run.shell.evaluate((seat) => window.wy.updateSeat({ seat, label: 'smoke-work', colour: '#0e7c76' }), ids.seat);
     assert.equal(u.ok, true, JSON.stringify(u));
     await waitFor(async () => (await tabOf(ids.work)).label === 'smoke-work', 15_000, 'the tab shows the new label');
     assert.equal((await tabOf(ids.work)).colour, '#0e7c76');
@@ -288,7 +288,7 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
     assert.equal(await inTab(run.app, ids.work, "window.open('javascript:alert(1)') === null"), true, 'javascript: window.open denied');
     await sleep(300);
     assert.equal(await main(run.app, () => globalThis.__ext.length), 1, 'nothing else opened');
-    assert.deepEqual(await inTab(run.app, ids.work, '[typeof window.sy, typeof require, typeof process]'), ['undefined', 'undefined', 'undefined']);
+    assert.deepEqual(await inTab(run.app, ids.work, '[typeof window.wy, typeof require, typeof process]'), ['undefined', 'undefined', 'undefined']);
     const refused = await main(run.app, async (m, e, id) => {
       const handlers = e.ipcMain._invokeHandlers;
       const fn = handlers?.get?.('state:get');
@@ -335,9 +335,9 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
       session_id: sid, hook_event_name: 'Stop', cwd: path.join(sb.home, 'api'), transcript_path: path.join(sb.home, '.claude', 'projects', 'x', `${sid}.jsonl`),
       last_assistant_message: 'Done with the schema.\n\nShould I also update the migration?',
     };
-    const h = await hub.sy(['hook', 'Stop'], { stdin: JSON.stringify(hookIn) });
+    const h = await hub.wy(['hook', 'Stop'], { stdin: JSON.stringify(hookIn) });
     assert.equal(h.code, 0, h.stderr);
-    const f = await hub.sy(['flush']);
+    const f = await hub.wy(['flush']);
     assert.equal(f.code, 0, f.stderr);
     const notes = await waitFor(async () => {
       const n = await main(run.app, () => globalThis.__notes.map((x) => ({ title: x.title, body: x.body })));
@@ -385,21 +385,21 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
     // A second account on the hub that this computer has no tab for (a record from "another machine").
     const acct2 = uuidOf('acct', 2);
     const org2 = uuidOf('org', 7);
-    const machine = await main(run.app, (m) => m.sy.machineId());
+    const machine = await main(run.app, (m) => m.wy.machineId());
     const usage = JSON.parse(fs.readFileSync(fixture, 'utf8'));
     const recs = buildRecords({
       orgs: [{ org: { uuid: org2, name: 'seven', capabilities: ['chat'], rate_limit_tier: 't', billing_type: 'b', raven_type: null }, usage }],
       account: { uuid: acct2, email_address: 'seven@example.com', full_name: 'Seven', display_name: 'Seven' },
       activeOrg: org2, fetchMs: 5, tabId: 't_00000000000000a7', machine, client: clientOf('0.0.0'), ts: new Date().toISOString(),
     });
-    await main(run.app, (m, _e, r) => m.sy.append(r), recs);
-    await hub.sy(['flush', '--quiet']);
+    await main(run.app, (m, _e, r) => m.wy.append(r), recs);
+    await hub.wy(['flush', '--quiet']);
     const seven = await waitFor(async () => (await hub.get('/v1/accounts')).accounts.find((a) => a.account === acct2), 30_000, 'the second account on the hub');
     const cookie = await hub.ownerCookie();
     await hub.ownerFetch(cookie, 'PATCH', `/v1/accounts/${seven.id}`, { label: 'claude-7' });
     ids.seven = seven.id;
     await waitFor(async () => ((await shellState(run.shell)).missing ?? []).some((x) => x.label === 'claude-7'), 30_000, 'claude-7 listed as having no tab');
-    await run.shell.evaluate(() => window.sy.selectView({ view: 'hub' }));
+    await run.shell.evaluate(() => window.wy.selectView({ view: 'hub' }));
     await waitFor(() => run.shell.evaluate(() => document.body.innerText.includes('claude-7 has no tab here.')), 10_000, 'the notice in the Hub tab');
     await run.shell.screenshot({ path: path.join(out, 's14-hub-notice.png') });
     // "+" offers the account next to the blank tab.
@@ -415,7 +415,7 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
     assert.deepEqual(stored.expect, { seat: ids.seven, account: acct2, org: org2, label: 'claude-7' });
     assert.deepEqual((await shellState(run.shell)).missing, [], 'nothing missing any more');
     // Adding again for the same account makes no second tab.
-    const again = await run.shell.evaluate((seat) => window.sy.addTab({ name: 'claude-7', seat }), ids.seven);
+    const again = await run.shell.evaluate((seat) => window.wy.addTab({ name: 'claude-7', seat }), ids.seven);
     assert.equal(again.id, made.id);
     assert.equal((await shellState(run.shell)).tabs.filter((x) => x.expected === 'claude-7').length, 1);
   });
@@ -423,13 +423,13 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
   await step('S15 a tab signed in as another account says so; a seat link never opens in another account\'s tab', async () => {
     const acct2 = uuidOf('acct', 2);
     // The fake claude.ai answers as account 1 only: signing in here is the wrong account for claude-7.
-    await run.shell.evaluate(() => window.sy.selectView({ view: 'settings' }));
+    await run.shell.evaluate(() => window.wy.selectView({ view: 'settings' }));
     await signIn(ids.seventab);
-    await run.shell.evaluate((v) => window.sy.acceptWarning({ id: v.id, version: v.version }), { id: ids.seventab, version: WARNING_VERSION });
-    await run.shell.evaluate((id) => window.sy.setReading({ id, on: true }), ids.seventab);
+    await run.shell.evaluate((v) => window.wy.acceptWarning({ id: v.id, version: v.version }), { id: ids.seventab, version: WARNING_VERSION });
+    await run.shell.evaluate((id) => window.wy.setReading({ id, on: true }), ids.seventab);
     const wrong = await waitFor(async () => (await tabOf(ids.seventab))?.mismatch, 30_000, 'the tab sees it is signed in as another account');
     assert.equal(wrong.expected, 'claude-7');
-    await run.shell.evaluate((id) => window.sy.selectView({ view: id }), ids.seventab);
+    await run.shell.evaluate((id) => window.wy.selectView({ view: id }), ids.seventab);
     await waitFor(() => run.shell.evaluate(() => document.body.innerText.includes('Sign out and sign in as claude-7')), 10_000, 'the notice and the sign-out option on the tab');
     assert.equal(await run.shell.evaluate(() => document.querySelector('[data-fk="strip-adopt"]')?.textContent), `Use this tab for ${wrong.actual}`);
     await run.shell.screenshot({ path: path.join(out, 's15-mismatch.png') });
@@ -469,7 +469,7 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
     const actual = wrong.actual;
     assert.ok(actual, 'the hub knows the account the tab is signed in as');
     assert.equal(wrong.shared, true);
-    await run.shell.evaluate((id) => window.sy.selectView({ view: id }), ids.seventab);
+    await run.shell.evaluate((id) => window.wy.selectView({ view: id }), ids.seventab);
     await run.shell.locator('[data-fk="strip-adopt"]').click();
     await run.shell.locator('[data-fk="adopt-confirm"]').waitFor({ timeout: 10_000 });
     assert.equal(await run.shell.locator('[data-fk="adopt-confirm"]').textContent(), `Another tab is already signed in as ${actual}. Use this one too?`);

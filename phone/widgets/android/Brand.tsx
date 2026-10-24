@@ -1,5 +1,5 @@
 // The brand header of every Android widget (phone.md P11): the gold double-chevron mark (the
-// app's mark, assets/src/mark.svg, drawn with SvgWidget) and "Switchyard", or "Switchyard ·
+// app's mark, assets/src/mark.svg, drawn with SvgWidget) and "Watchyard", or "Watchyard ·
 // Limits" where there is room. Plus the 5 h | 7 d toggle of the Limits and ring widgets.
 import { FlexWidget, SvgWidget, TextWidget } from 'react-native-android-widget';
 
@@ -20,7 +20,7 @@ export function Brand({ title }: { title: string }) {
 }
 
 /** Click action of a toggle segment: the task handler stores the choice and redraws, the app stays closed. */
-export const TOGGLE_ACTION = 'SY_TOGGLE_WINDOW';
+export const TOGGLE_ACTION = 'WY_TOGGLE_WINDOW';
 
 function Segment({ win, on }: { win: LimitWindow; on: boolean }) {
   return (

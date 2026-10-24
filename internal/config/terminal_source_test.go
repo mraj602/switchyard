@@ -50,13 +50,13 @@ func TestTerminalKeysSetAndValidate(t *testing.T) {
 	}
 }
 
-// terminal.titles is written only by `sy term titles on|off`: `sy config set` refuses it,
+// terminal.titles is written only by `wy term titles on|off`: `wy config set` refuses it,
 // the plan path (SetJSON, config_set) accepts it.
 func TestTerminalTitlesIsManaged(t *testing.T) {
 	f, _ := Load(t.TempDir())
 	err := f.Set("terminal.titles", []string{"true"})
-	if err == nil || !strings.Contains(err.Error(), "sy term titles on|off") {
-		t.Fatalf("sy config set terminal.titles: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "wy term titles on|off") {
+		t.Fatalf("wy config set terminal.titles: %v", err)
 	}
 	if err := f.SetJSON("terminal.titles", json.RawMessage(`true`)); err != nil {
 		t.Fatalf("SetJSON: %v", err)

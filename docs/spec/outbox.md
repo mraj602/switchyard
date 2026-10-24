@@ -4,7 +4,7 @@ Status: spec v1. Implemented in `internal/outbox`; flushed by
 `internal/client`.
 
 The outbox is where every record waits until the hub has accepted it. It must survive a
-crash at any point, never block Claude Code, and cope with many `sy hook` processes writing
+crash at any point, never block Claude Code, and cope with many `wy hook` processes writing
 at the same moment (one per hook event, across every session and account on the machine).
 
 ## 1. Files
@@ -17,10 +17,10 @@ All under `<state>/outbox/` ([paths.md](paths.md)). The folder is mode `0700`, f
 | `spill-<pid>-<ulid>.jsonl` | One record that could not get the day file's lock in time (section 3, step 4). |
 | `cursor.json` | How far the hub has acknowledged (section 5). |
 | `flush.lock` | Held by the one running flusher. Empty file. |
-| `cap.stamp` | Mtime of the last size-cap check made by `sy flush` when no hub is configured (at most every 10 minutes). |
-| `flush.stamp` | Its mtime is the last flush start, for debouncing. Empty file. `sy hook` and the flusher both touch it; the hook starts a flush only if it is older than 2 s. |
-| `flush.status.json` | The last flush run's outcome for `sy doctor`: `time`, `ok`, `error`, `auth_failed` ("token rejected"), `refuses_records` ("hub refuses records"), `last_success`, `token_fp`. |
-| `rejected.jsonl` | Records the hub rejected, with the reason. Kept for `sy doctor`; capped at 5 MB, then rotated to `rejected.1.jsonl`. |
+| `cap.stamp` | Mtime of the last size-cap check made by `wy flush` when no hub is configured (at most every 10 minutes). |
+| `flush.stamp` | Its mtime is the last flush start, for debouncing. Empty file. `wy hook` and the flusher both touch it; the hook starts a flush only if it is older than 2 s. |
+| `flush.status.json` | The last flush run's outcome for `wy doctor`: `time`, `ok`, `error`, `auth_failed` ("token rejected"), `refuses_records` ("hub refuses records"), `last_success`, `token_fp`. |
+| `rejected.jsonl` | Records the hub rejected, with the reason. Kept for `wy doctor`; capped at 5 MB, then rotated to `rejected.1.jsonl`. |
 | `corrupt.jsonl` | Lines that could not be parsed, with file and offset. Same cap. Each corrupt line is logged once: `corrupt.marks.json` remembers, per day file, the end offset of the last one logged, so a failed flush that re-reads the line does not log it again (compaction forgets the file's mark). A spill file with no trailing newline and untouched for 10 minutes (`TornSpillAge`) is a crashed writer's leftover: it is copied here and deleted. |
 
 ## 2. Line format
@@ -28,7 +28,7 @@ All under `<state>/outbox/` ([paths.md](paths.md)). The folder is mode `0700`, f
 - One record ([record.md](record.md)) encoded as compact JSON, UTF-8, followed by one `\n`.
   The JSON encoder escapes newlines inside strings, so a record is always exactly one line.
 - At most 1 MiB per line including the `\n`. Larger records are refused by the writer, and
-  the producer (only `sy scan`) splits them.
+  the producer (only `wy scan`) splits them.
 - No header, no checksums: JSON parse failure is the integrity check, and the record id
   makes resending safe.
 
@@ -57,7 +57,7 @@ Steps for `outbox.Append(record)`:
    readers of section 4 must still read the file), retrying every 1 ms.
    If the lock is not taken within **50 ms**, give up on the day file and write the record
    to a new `spill-<pid>-<ulid>.jsonl` instead (created with `O_EXCL`, no lock needed),
-   then go to step 8. This keeps `sy hook` from ever waiting long on a stuck process.
+   then go to step 8. This keeps `wy hook` from ever waiting long on a stuck process.
 5. Compare `fstat(fd)` with `stat(path)` (device and inode on Unix, file index on Windows).
    If they differ, the file was replaced by compaction (section 6): unlock, close, go to 3.
 6. If the file is not empty, read its last byte (`pread` at size − 1). If it is not `\n`, a
@@ -71,14 +71,14 @@ Steps for `outbox.Append(record)`:
    `outbox/` folder once so the new name is durable.
 9. Close. Return the record id.
 
-Durability: after step 8 returns, the record survives a crash of `sy`, of Claude Code and
+Durability: after step 8 returns, the record survives a crash of `wy`, of Claude Code and
 of the OS. `config.toml: outbox.fsync = false` skips step 8's sync for slow disks; the
 record then survives a process crash but maybe not a power cut.
 
-Budget: steps 1–9 must take under 5 ms p95 on an SSD, so `sy hook` fits in 20 ms.
+Budget: steps 1–9 must take under 5 ms p95 on an SSD, so `wy hook` fits in 20 ms.
 
 Other writers: the desktop app does not write the files itself. It runs
-`sy outbox append` with records on stdin (one JSON value per line, or any run of JSON
+`wy outbox append` with records on stdin (one JSON value per line, or any run of JSON
 values; `v`, `id` and `ts` are filled in when missing; one id is printed per record), so there is one implementation of
 these rules.
 
@@ -91,7 +91,7 @@ these rules.
 - Order: day files in name order, then spill files in name order. Within a file, line order.
   The hub does not rely on this order (it orders by `ts` per session), but flushing in this
   order keeps hook events roughly in sequence.
-- `sy status` reads the last 7 days of day files (flushed or not) to build the
+- `wy status` reads the last 7 days of day files (flushed or not) to build the
   local view.
 
 ## 5. Flushing and the cursor
@@ -122,8 +122,8 @@ Flush loop:
 4. On a network error, `429`, or `5xx`: stop, keep the cursor, and retry on the next trigger
    with backoff (1 s, 2 s, 4 s … up to 5 min, reset after a success). The backoff state is
    kept in `cursor.json` (`retry_after`, `failures`).
-5. On `401`/`403`: stop and record the error for `sy doctor` ("token rejected"). Do not
-   retry until the token changes or `sy flush` is run by hand.
+5. On `401`/`403`: stop and record the error for `wy doctor` ("token rejected"). Do not
+   retry until the token changes or `wy flush` is run by hand.
 6. On `400`/`413` for a batch of several records, halve the batch and retry, down to one
    record. A **lone** record that still gets 400/413 is a poison record: log it to
    `rejected.jsonl` and drop it (the cursor moves past it), **but only when the hub has
@@ -133,27 +133,27 @@ Flush loop:
    400/413 with nothing accepted in this run and the previous lone drop was less than an hour
    ago, the hub or a proxy in front of it is refusing everything: nothing more is dropped,
    a backoff is stored (as in step 4) and `flush.status.json` gets `refuses_records: true`
-   (`sy doctor`: "hub refuses records"). At most 10 records are dropped per run in any case.
+   (`wy doctor`: "hub refuses records"). At most 10 records are dropped per run in any case.
 7. Repeat until the outbox is drained or 30 seconds have passed.
-8. A flush started by `sy hook` (`--from-hook`), once drained, waits until `flush.stamp` is
+8. A flush started by `wy hook` (`--from-hook`), once drained, waits until `flush.stamp` is
    2 seconds old and reads the outbox again, repeating while that finds records (within the
    30 seconds). The hooks that wrote while the stamp was younger started no flush of their
    own (below), so without this their records (say a Stop a second after a SubagentStop)
-   would wait for the timer. The timer's flush and `sy flush` by hand do not wait.
+   would wait for the timer. The timer's flush and `wy flush` by hand do not wait.
 
 A crash between the hub's reply and the cursor write just resends the batch; the hub reports
 the ids as accepted duplicates.
 
-Triggers: after each `sy hook` write, `sy hook` starts `sy flush --quiet` as a detached
+Triggers: after each `wy hook` write, `wy hook` starts `wy flush --quiet` as a detached
 process (new session, stdio closed) unless `flush.stamp` is younger than 2 seconds; and the
-OS timer runs `sy tick` (flush + `sy agents` + `sy scan`) every minute. Without a
-hub, `sy flush` is a no-op and the cursor stays at the start.
+OS timer runs `wy tick` (flush + `wy agents` + `wy scan`) every minute. Without a
+hub, `wy flush` is a no-op and the cursor stays at the start.
 
 ## 6. Retention, size cap and compaction
 
 - **Flushed files** (wholly before the cursor) are deleted after `outbox.keep_days` days
-  (default 7), so `sy status` keeps a local week of history.
-- **No hub configured:** `sy flush` sends nothing, but still runs the size cap (not the
+  (default 7), so `wy status` keeps a local week of history.
+- **No hub configured:** `wy flush` sends nothing, but still runs the size cap (not the
   pruning: there is no cursor), at most once per 10 minutes (`cap.stamp`) and only if it can
   take `flush.lock`, so the outbox of a machine that never connects stays bounded.
 - **Size cap:** when the unflushed part of the outbox exceeds
@@ -161,15 +161,15 @@ hub, `sy flush` is a no-op and the cursor stays at the start.
   dropping records in this order until under the cap:
   1. `session_list` older than 1 hour (only the newest list per slot matters).
   2. `limit_sample` (keeping the newest per session per hour).
-  3. `history_import` (it is re-sent by `sy scan --history`).
+  3. `history_import` (it is re-sent by `wy scan --history`).
 
   `hook_event`, `token_rows`, `slot_info`, `web_usage` and kinds this version does not know
-  are never dropped. `token_rows` in particular: `sy scan` commits its transcript offsets
+  are never dropped. `token_rows` in particular: `wy scan` commits its transcript offsets
   as soon as the rows are in the outbox, so a dropped `token_rows` record could never be
   re-read and its usage would be lost for good. (Dropping them and rolling the scan offsets
   back was considered and rejected: a record's `source` range is optional debugging data and
   covers only single-file batches.) If the never-dropped kinds alone exceed the cap, writing
-  continues and `sy doctor` reports the backlog.
+  continues and `wy doctor` reports the backlog.
 - **Compaction of a file** (only by the flusher, holding `flush.lock`): take the file's
   exclusive lock (waiting, since writers hold it only for one write), write the kept lines
   of the unflushed part to `<name>.compact.tmp`, fsync, **set the cursor to `offset 0` of
@@ -194,23 +194,23 @@ hub, `sy flush` is a no-op and the cursor stays at the start.
 
 ## 8. Pull mode
 
-`sy outbox drain --stdio` is the remote end of the hub pulling over SSH; the protocol is
+`wy outbox drain --stdio` is the remote end of the hub pulling over SSH; the protocol is
 [machines.md](machines.md) 3.5. It replaces the reserved `--since-cursor` / `--ack <file:offset>`
 flags of earlier drafts: an acknowledgement is the hub's ingest reply for one batch, sent back
 over the same SSH channel, so the cursor rules are exactly section 5's:
 
 - The drainer is a flusher: it takes `flush.lock`, reads with the same `Read` (day files, then
   spill files, the same batch limits), and applies each acknowledgement with the same function
-  as `sy flush` (rejected log, answered spill files deleted, cursor past the longest answered
+  as `wy flush` (rejected log, answered spill files deleted, cursor past the longest answered
   prefix of day-file records, written atomically). One batch is unacknowledged at a time.
 - It stops before the first record whose `v` is above the hub's `record_v_max` (machines.md
   7.2), as at the end of the outbox.
 - It writes `flush.status.json` with `via: "pull"`, `last_contact` and `last_success`, so
-  `sy doctor` and direct push (machines.md 5.4) see when the hub last pulled.
-- The size cap and pruning run from `sy tick` as before; they need `flush.lock`, so they never
+  `wy doctor` and direct push (machines.md 5.4) see when the hub last pulled.
+- The size cap and pruning run from `wy tick` as before; they need `flush.lock`, so they never
   run during a drain.
 
-`sy outbox drain --peek [--max N]` prints the next records as JSONL for people and changes
+`wy outbox drain --peek [--max N]` prints the next records as JSONL for people and changes
 nothing.
 
 Pull mode also adds to `flush.status.json`: `last_contact` (the last successful exchange with the hub: a `200`

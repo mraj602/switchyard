@@ -10,16 +10,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/drainproto"
-	"github.com/mraj602/switchyard/internal/hub/auth"
-	"github.com/mraj602/switchyard/internal/hub/events"
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	hubkeys "github.com/mraj602/switchyard/internal/hub/keys"
-	"github.com/mraj602/switchyard/internal/hub/push/model"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/record"
-	"github.com/mraj602/switchyard/internal/version"
-	"github.com/mraj602/switchyard/webui"
+	"github.com/mraj602/watchyard/internal/drainproto"
+	"github.com/mraj602/watchyard/internal/hub/auth"
+	"github.com/mraj602/watchyard/internal/hub/events"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	hubkeys "github.com/mraj602/watchyard/internal/hub/keys"
+	"github.com/mraj602/watchyard/internal/hub/push/model"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/version"
+	"github.com/mraj602/watchyard/webui"
 )
 
 // Config wires the hub's parts together.
@@ -42,7 +42,7 @@ type Config struct {
 	// Senders are the push channels by kind (webpush, ntfy), for the test-push endpoint.
 	// Nil or missing kind: that endpoint answers 503.
 	Senders map[string]model.Sender
-	// PublicURL is the hub's public origin from `sy hub serve --public-url`; empty falls
+	// PublicURL is the hub's public origin from `wy hub serve --public-url`; empty falls
 	// back to the hub.public_url setting (pairing.md 2.3).
 	PublicURL string
 	// Puller runs a pull-mode machine's pull now (machines.md 6.2). Nil (tests, --no-pull) is fine:
@@ -84,7 +84,7 @@ type Server struct {
 	streams   streamSet // open GET /v1/stream responses, so a revoke ends them at once
 }
 
-// HTTPServer is the http.Server `sy hub serve` runs s.Handler() on. It sets no ReadTimeout
+// HTTPServer is the http.Server `wy hub serve` runs s.Handler() on. It sets no ReadTimeout
 // and no WriteTimeout on purpose: in net/http both bound the whole request, so either would
 // cut /v1/stream (a server-sent event response that stays open for hours) at that age. The
 // stream bounds each write itself (streamWriteTimeout, armed before every write) and sends a

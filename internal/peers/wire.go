@@ -1,6 +1,6 @@
 package peers
 
-import "github.com/mraj602/switchyard/internal/keys"
+import "github.com/mraj602/watchyard/internal/keys"
 
 // The peer frames on the link (link.md 6.2-6.4), shared by the hub's relay and the agent.
 

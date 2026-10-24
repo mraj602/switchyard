@@ -1,5 +1,5 @@
 {
-  "plan_id": "p_98d20321999c",
+  "plan_id": "p_c869ffc26957",
   "actions": [
     {
       "id": "a1",
@@ -22,7 +22,7 @@
       "touches": [
         "/home/u/.claude/settings.json",
         "/home/u/.claude/plugins/installed_plugins.json",
-        "/home/u/.local/state/switchyard/term/journal/warp-plugin.uninstall"
+        "/home/u/.local/state/watchyard/term/journal/warp-plugin.uninstall"
       ],
       "watch": [
         "/home/u/.claude/plugins"
@@ -58,7 +58,7 @@
       "touches": [
         "/home/u/.claude/settings.json",
         "/home/u/.claude/plugins/known_marketplaces.json",
-        "/home/u/.local/state/switchyard/term/journal/warp-plugin.marketplace-remove"
+        "/home/u/.local/state/watchyard/term/journal/warp-plugin.marketplace-remove"
       ],
       "watch": [
         "/home/u/.claude/plugins"
@@ -84,7 +84,7 @@
       "touches": [
         "/home/u/.claude-3/settings.json",
         "/home/u/.claude-3/plugins/installed_plugins.json",
-        "/home/u/.local/state/switchyard/term/journal/warp-plugin.uninstall"
+        "/home/u/.local/state/watchyard/term/journal/warp-plugin.uninstall"
       ],
       "watch": [
         "/home/u/.claude-3/plugins"
@@ -119,7 +119,7 @@
       "touches": [
         "/home/u/.claude-3/settings.json",
         "/home/u/.claude-3/plugins/known_marketplaces.json",
-        "/home/u/.local/state/switchyard/term/journal/warp-plugin.marketplace-remove"
+        "/home/u/.local/state/watchyard/term/journal/warp-plugin.marketplace-remove"
       ],
       "watch": [
         "/home/u/.claude-3/plugins"

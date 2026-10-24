@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/config"
+	"github.com/mraj602/watchyard/internal/config"
 )
 
 // Forward dialing (machines.md 3.3): with hub.dial set, the client opens its connection to
@@ -63,12 +63,12 @@ func HTTPClient(dial string, timeout time.Duration) (*http.Client, error) {
 
 // ForConfig returns a client for hub.url with token, dialing through hub.dial when set. The
 // HTTP client has the default 20 s timeout. The URL is checked again here with CheckURL
-// (hub.insecure_lan), so a config.toml edited by hand, or written by an older sy, cannot send
-// the token over plain http to a host `sy connect` would have refused.
+// (hub.insecure_lan), so a config.toml edited by hand, or written by an older wy, cannot send
+// the token over plain http to a host `wy connect` would have refused.
 func ForConfig(cfg config.Config, token string) (*Client, error) {
 	norm, _, err := CheckURL(cfg.Hub.URL, cfg.Hub.InsecureLAN)
 	if err != nil {
-		return nil, fmt.Errorf("hub.url in config.toml: %w (to allow it anyway, run sy config set hub.insecure_lan true)", err)
+		return nil, fmt.Errorf("hub.url in config.toml: %w (to allow it anyway, run wy config set hub.insecure_lan true)", err)
 	}
 	c := New(norm, token)
 	if cfg.Hub.Dial != "" {
@@ -91,6 +91,6 @@ func removeStaleSocket(path string) {
 		return
 	}
 	if err := os.Remove(path); err == nil {
-		fmt.Fprintf(os.Stderr, "sy: removed the stale hub socket %s (the next SSH connection can forward it again)\n", path)
+		fmt.Fprintf(os.Stderr, "wy: removed the stale hub socket %s (the next SSH connection can forward it again)\n", path)
 	}
 }

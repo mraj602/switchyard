@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/peers"
+	"github.com/mraj602/watchyard/internal/peers"
 )
 
 // Config is what Run needs. Everything environmental is injectable.
@@ -150,7 +150,7 @@ func listen(path string) (net.Listener, error) {
 	}
 	if c, err := net.DialTimeout("unix", path, time.Second); err == nil {
 		c.Close()
-		return nil, fmt.Errorf("another sy agent is already listening on %s", path)
+		return nil, fmt.Errorf("another wy agent is already listening on %s", path)
 	}
 	_ = os.Remove(path)
 	ln, err := net.Listen("unix", path)
@@ -232,7 +232,7 @@ func (s *server) dispatch(req Request, pid int) Reply {
 	case OpOff, OpOn:
 		// Terminal only: a session may not switch the machine's messaging on or off.
 		if _, rf := env.Whoami(); rf == nil || rf.Code != peers.CodeNotASession {
-			return fail(peers.CodeNotASession, "sy peers %s runs at a terminal, not inside a session", req.Op)
+			return fail(peers.CodeNotASession, "wy peers %s runs at a terminal, not inside a session", req.Op)
 		}
 		if err := env.SetOff(req.Op == OpOff); err != nil {
 			return fail(peers.CodeFailed, "%v", err)

@@ -24,11 +24,11 @@ function setup({ isPackaged = true, platform = 'linux', withSettings = true, kee
 
 const last = (fake) => fake.callsOf('Menu.buildFromTemplate').at(-1)[0];
 
-test('build sets the application menu: Switchyard menu, editMenu, no devtools when packaged', async () => {
+test('build sets the application menu: Watchyard menu, editMenu, no devtools when packaged', async () => {
   const { fake, m } = setup();
   await m.build();
   const t = last(fake);
-  assert.equal(t[0].label, 'Switchyard');
+  assert.equal(t[0].label, 'Watchyard');
   assert.deepEqual(t[0].submenu.map((i) => i.label ?? '-'), [
     'Hub', 'Account 1: work', 'Account 2: home', '-', 'Refresh usage', '-', 'Run at login', 'Keep running', '-', 'Quit',
   ]);
@@ -73,7 +73,7 @@ test('the checkboxes are disabled until settings are wired', async () => {
 test('darwin names the first menu after the app; bus events rebuild', async () => {
   const { fake, m } = setup({ platform: 'darwin' });
   await m.build();
-  assert.equal(last(fake)[0].label, 'Switchyard');
+  assert.equal(last(fake)[0].label, 'Watchyard');
   const before = fake.callsOf('Menu.setApplicationMenu').length;
   // rebuilds are wired on first build via the bus
   const bus = createBus();

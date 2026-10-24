@@ -37,7 +37,7 @@ export interface HubApi {
    */
   countdown?: { can(seatId: string): boolean; start(seatId: string): Promise<void> };
   /**
-   * Settings "Auto countdown" (iOS, P12): a local app setting (AsyncStorage `sy.local.v1`), not
+   * Settings "Auto countdown" (iOS, P12): a local app setting (AsyncStorage `wy.local.v1`), not
    * a hub pref. Absent (Android): no switch.
    */
   autoCountdown?: { on: boolean; set(on: boolean): Promise<void> };

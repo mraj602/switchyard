@@ -53,12 +53,12 @@ export function create(deps) {
     minHeight: WINDOW.MIN_HEIGHT,
     show: false,
     backgroundColor,
-    title: deps.title ?? 'Switchyard',
-    // Linux and Windows: the menu (Switchyard, Edit, View) stays one Alt press away instead of a
+    title: deps.title ?? 'Watchyard',
+    // Linux and Windows: the menu (Watchyard, Edit, View) stays one Alt press away instead of a
     // second bar above the app's own top bar. macOS keeps its menu bar.
     autoHideMenuBar: true,
     // The window icon (X11 _NET_WM_ICON, the Windows taskbar). On Wayland the shell finds the
-    // icon through the app_id, which package.json desktopName sets (switchyard-desktop).
+    // icon through the app_id, which package.json desktopName sets (watchyard-desktop).
     ...(deps.icon ? { icon: deps.icon } : {}),
     webPreferences: security.webPreferences(VIEW_SHELL, { preload: deps.preloadPath }),
   });

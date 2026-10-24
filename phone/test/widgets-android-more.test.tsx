@@ -133,15 +133,15 @@ describe('helpers', () => {
 
 describe('SyNeeds', () => {
   it('no snapshot: open the app', () => {
-    expect(texts(<SyNeeds {...androidProps(null, NOW)} />)).toContain('Open Switchyard once to load');
+    expect(texts(<SyNeeds {...androidProps(null, NOW)} />)).toContain('Open Watchyard once to load');
   });
   it('normal: header with the count, rows, one tap target each', () => {
     const s = snap();
     const t = texts(<SyNeeds {...androidProps(s, NOW + MIN)} />);
-    expect(t[0]).toBe('Switchyard · Needs you');
+    expect(t[0]).toBe('Watchyard · Needs you');
     expect(t[1]).toBe(`${s.counts!.needs_you} waiting`);
     expect(t.some((x) => /· (asked|needs permission|failed)$/.test(x))).toBe(true);
-    expect(uris(<SyNeeds {...androidProps(s, NOW)} />).filter((u) => u.startsWith('switchyard://sessions/'))).toHaveLength(needsRows(s, NOW).length);
+    expect(uris(<SyNeeds {...androidProps(s, NOW)} />).filter((u) => u.startsWith('watchyard://sessions/'))).toHaveLength(needsRows(s, NOW).length);
   });
   it('many: at most 3 rows; a short widget shows fewer', () => {
     const base = snap().needs_list![0]!;
@@ -153,19 +153,19 @@ describe('SyNeeds', () => {
   it('empty: Nothing needs you', () => {
     const t = texts(<SyNeeds {...androidProps(snap({ needs_you: 0, counts: { working: 1, needs_you: 0, done: 0 }, needs_list: [], top: null }), NOW)} />);
     expect(t).toContain('Nothing needs you');
-    expect(t[0]).toBe('Switchyard · Needs you');
+    expect(t[0]).toBe('Watchyard · Needs you');
     expect(t[1]).toBe('all clear');
   });
   it('private: the count without a list', () => {
     const t = texts(<SyNeeds {...androidProps(buildSnapshot(overview, accounts, NOW, { ...PREFS, private: true }), NOW)} />);
     expect(t.join('|')).toContain('waiting');
-    expect(t).toContain('Open Switchyard to see which');
+    expect(t).toContain('Open Watchyard to see which');
   });
 });
 
 describe('SyRing', () => {
   it('no snapshot / unknown account', () => {
-    expect(texts(<SyRing {...androidProps(null, NOW)} />)).toContain('Open Switchyard once to load');
+    expect(texts(<SyRing {...androidProps(null, NOW)} />)).toContain('Open Watchyard once to load');
     expect(texts(<SyRing {...androidProps(snap(), NOW, undefined, undefined, undefined, 'gone')} />).join(' ')).toContain('Reconfigure');
   });
   it('normal: label, %, window, reset clock, tap opens that account', () => {
@@ -177,7 +177,7 @@ describe('SyRing', () => {
     expect(t.some((x) => /^\d+ %$/.test(x))).toBe(true);
     expect(t).toEqual(expect.arrayContaining(['5 h', '7 d']));
     expect(t.some((x) => /^resets /.test(x))).toBe(true);
-    expect(uris(el)).toContain(`switchyard://accounts?seat=${id}`);
+    expect(uris(el)).toContain(`watchyard://accounts?seat=${id}`);
     expect(allOf(renderWidget(el), 'Android.SvgWidget')).toHaveLength(2); // the mark and the ring
   });
   it('idle: 0 % and not started', () => {
@@ -189,7 +189,7 @@ describe('SyRing', () => {
   it('the handler draws the configured account and forgets it on delete', async () => {
     const store = memoryKV();
     const s = snap();
-    await store.setItem('sy.widget.v1', JSON.stringify(s));
+    await store.setItem('wy.widget.v1', JSON.stringify(s));
     await setRingSeat(store, 42, s.seats[1]!.id);
     const out: unknown[] = [];
     const alarm = jest.fn(async () => {});
@@ -205,35 +205,35 @@ describe('SyRing', () => {
 
 describe('SyNextReset', () => {
   it('no snapshot', () => {
-    expect(texts(<SyNextReset {...androidProps(null, NOW)} />)).toContain('Open Switchyard once to load');
+    expect(texts(<SyNextReset {...androidProps(null, NOW)} />)).toContain('Open Watchyard once to load');
   });
   it('normal: seat, window and the time; taps Accounts', () => {
     const s = snap();
     const n = nextResetModel(s, NOW, 'UTC')!;
     const el = <SyNextReset {...androidProps(s, NOW, 'UTC')} />;
-    expect(texts(el)).toEqual(['Switchyard · Next reset', n.at, `  ${n.seat} · ${n.window}`]);
-    expect(texts(<SyNextReset {...androidProps(s, NOW, 'UTC', 40, 110)} />)[0]).toBe('Switchyard');
-    expect(uris(el)).toContain('switchyard://accounts');
+    expect(texts(el)).toEqual(['Watchyard · Next reset', n.at, `  ${n.seat} · ${n.window}`]);
+    expect(texts(<SyNextReset {...androidProps(s, NOW, 'UTC', 40, 110)} />)[0]).toBe('Watchyard');
+    expect(uris(el)).toContain('watchyard://accounts');
   });
   it('nothing ahead (all idle or passed)', () => {
     const t = texts(<SyNextReset {...androidProps(snap({ seats: [{ id: 'i', label: 'i', colour: '#222222', five_hour: { pct: 0, resets_at: null } }] }), NOW)} />);
-    expect(t).toEqual(['Switchyard · Next reset', 'None ahead']);
+    expect(t).toEqual(['Watchyard · Next reset', 'None ahead']);
   });
 });
 
 describe('SyMachines', () => {
   const ms = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `m${i}`, name: `box-${i}`, online: i !== 1, live: i === 0 ? 2 : 0, last_seen: iso(NOW - H) }));
   it('no snapshot', () => {
-    expect(texts(<SyMachines {...androidProps(null, NOW)} />)).toContain('Open Switchyard once to load');
+    expect(texts(<SyMachines {...androidProps(null, NOW)} />)).toContain('Open Watchyard once to load');
   });
   it('normal: header, live and silent notes, taps Machines', () => {
     const el = <SyMachines {...androidProps(snap({ machines: ms(3) }), NOW, undefined, 70, 320)} />;
     const t = texts(el);
     expect(t).toContain('Machines · 2 of 3 online');
-    expect(t[0]).toBe('Switchyard');
+    expect(t[0]).toBe('Watchyard');
     expect(t).toContain(' 2 live');
     expect(machineRows(snap({ machines: ms(3) }), NOW)[1]!.note).toBe('silent 1 h');
-    expect(uris(el)).toContain('switchyard://machines');
+    expect(uris(el)).toContain('watchyard://machines');
   });
   it('many: a narrow 4x1 shows what fits; a tall one shows all 6', () => {
     const s = snap({ machines: ms(6) });
@@ -253,17 +253,17 @@ describe('brand header and the 5 h | 7 d toggle', () => {
     ['SyNextReset', (p: ReturnType<typeof androidProps>) => <SyNextReset {...p} />],
     ['SyMachines', (p: ReturnType<typeof androidProps>) => <SyMachines {...p} />],
   ] as const;
-  it.each(all)('%s draws the mark and the word Switchyard, with and without a snapshot', (_n, make) => {
+  it.each(all)('%s draws the mark and the word Watchyard, with and without a snapshot', (_n, make) => {
     for (const s of [null, snap()]) {
       const tree = renderWidget(make(androidProps(s, NOW, 'UTC', undefined, undefined, snap().seats[0]!.id)));
       expect(allOf(tree, 'Android.SvgWidget')[0]!.props.svg).toContain('#E8B04B');
-      expect(texts(make(androidProps(s, NOW, 'UTC', undefined, undefined, snap().seats[0]!.id))).some((x) => x.startsWith('Switchyard'))).toBe(true);
+      expect(texts(make(androidProps(s, NOW, 'UTC', undefined, undefined, snap().seats[0]!.id))).some((x) => x.startsWith('Watchyard'))).toBe(true);
     }
   });
 
   it('the toggle has a 5 h and a 7 d segment, the selected one highlighted', () => {
     const tree = renderWidget(<SyLimits {...androidProps(snap(), NOW, 'UTC', 300, undefined, undefined, '7 d')} />);
-    const segs = [tree, ...tree.queryAll(() => true)].filter((n) => n.props.clickAction === 'SY_TOGGLE_WINDOW');
+    const segs = [tree, ...tree.queryAll(() => true)].filter((n) => n.props.clickAction === 'WY_TOGGLE_WINDOW');
     expect(segs.map((n) => (n.props.clickActionData as { window: string }).window)).toEqual(['5 h', '7 d']);
     expect(segs.map((n) => n.props.style as { backgroundColor: string }).map((s) => s.backgroundColor)).toEqual(['#2A2E32', '#E8B04B']);
   });
@@ -281,22 +281,22 @@ describe('brand header and the 5 h | 7 d toggle', () => {
   it('a toggle tap stores the choice for that widget and redraws, without the app; update keeps it; delete drops it', async () => {
     const store = memoryKV();
     const s = snap();
-    await store.setItem('sy.widget.v1', JSON.stringify(s));
+    await store.setItem('wy.widget.v1', JSON.stringify(s));
     const out: { props: { win?: string } }[] = [];
     const h = createTaskHandler({ store, now: () => NOW });
     const info = { widgetName: 'SyLimits', widgetId: 9, width: 300, height: 300 };
     const call = (widgetAction: string, extra: object = {}) => h({ widgetInfo: info, widgetAction, renderWidget: (t: unknown) => out.push(t as never), ...extra } as never);
     await call('WIDGET_UPDATE');
     expect(out.pop()!.props.win).toBe('5 h');
-    await call('WIDGET_CLICK', { clickAction: 'SY_TOGGLE_WINDOW', clickActionData: { window: '7 d' } });
+    await call('WIDGET_CLICK', { clickAction: 'WY_TOGGLE_WINDOW', clickActionData: { window: '7 d' } });
     expect(out.pop()!.props.win).toBe('7 d');
     expect(await windowChoice(store, 9)).toBe('7 d');
     await call('WIDGET_UPDATE');
     expect(out.pop()!.props.win).toBe('7 d');
     // another widget keeps its own choice; junk or other clicks do nothing
     expect(await windowChoice(store, 10)).toBe('5 h');
-    await call('WIDGET_CLICK', { clickAction: 'SY_TOGGLE_WINDOW', clickActionData: { window: 'x' } });
-    await call('WIDGET_CLICK', { clickAction: 'OPEN_URI', clickActionData: { uri: 'switchyard://now' } });
+    await call('WIDGET_CLICK', { clickAction: 'WY_TOGGLE_WINDOW', clickActionData: { window: 'x' } });
+    await call('WIDGET_CLICK', { clickAction: 'OPEN_URI', clickActionData: { uri: 'watchyard://now' } });
     expect(out).toHaveLength(0);
     await call('WIDGET_DELETED');
     expect(await windowChoice(store, 9)).toBe('5 h');

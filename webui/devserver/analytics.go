@@ -78,7 +78,7 @@ func (s *Server) analyticsRoutes() {
 				with(tok(0, 12), M{"model": "mystery-9", "label": "mystery-9", "priced": false})}})
 		case "projects":
 			out = with(head("projects"), M{"projects": []M{
-				with(tok(240*scale, 700), M{"project": "/home/u/switchyard", "name": "switchyard", "sessions": 9, "last_ts": ts(now.Add(-2 * time.Hour))}),
+				with(tok(240*scale, 700), M{"project": "/home/u/watchyard", "name": "watchyard", "sessions": 9, "last_ts": ts(now.Add(-2 * time.Hour))}),
 				with(tok(120*scale, 500), M{"project": "/home/u/api", "name": "api", "sessions": 4, "last_ts": ts(now.Add(-30 * time.Hour))})}})
 		case "heatmap":
 			var usd [7][24]float64
@@ -92,7 +92,7 @@ func (s *Server) analyticsRoutes() {
 			out = with(head("heatmap"), M{"api_usd": usd, "replies": replies})
 		case "sessions":
 			out = with(head("sessions"), M{"sessions": []M{
-				with(tok(80*scale, 200), M{"session_id": "s_1", "seat": "seat_work", "seat_name": "work", "project": "/home/u/switchyard",
+				with(tok(80*scale, 200), M{"session_id": "s_1", "seat": "seat_work", "seat_name": "work", "project": "/home/u/watchyard",
 					"models": []string{"claude-opus-4-6"}, "first_ts": ts(now.Add(-5 * time.Hour)), "last_ts": ts(now.Add(-time.Hour))})}})
 		case "limits":
 			out = with(head("limits"), M{"windows": []M{{"seat": "seat_work", "seat_name": "work", "key": "five_hour", "label": "5-hour",

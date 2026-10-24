@@ -3,11 +3,11 @@
 Status: spec v1. Implemented in `internal/paths`. Every other package gets
 its folders from there; nothing else builds paths from `$HOME`.
 
-`sy` uses three folders:
+`wy` uses three folders:
 
 | Folder | Holds | Can be lost? |
 | --- | --- | --- |
-| **config** | `config.toml` only. | Recreated by `sy setup` / `sy connect`. |
+| **config** | `config.toml` only. | Recreated by `wy setup` / `wy connect`. |
 | **state** | Machine id, device token, outbox, caches, logs, setup backups. | Losing it loses unflushed records and makes this a new machine. |
 | **data** | The hub database and its backups. Only on the machine that runs the hub. | No: this is the long-term record. |
 
@@ -15,9 +15,9 @@ its folders from there; nothing else builds paths from `$HOME`.
 
 | | Linux, WSL, BSD | macOS | Windows |
 | --- | --- | --- | --- |
-| config | `$XDG_CONFIG_HOME/switchyard` (default `~/.config/switchyard`) | `$XDG_CONFIG_HOME/switchyard` (default `~/.config/switchyard`) | `%LOCALAPPDATA%\Switchyard\config` |
-| state | `$XDG_STATE_HOME/switchyard` (default `~/.local/state/switchyard`) | `$XDG_STATE_HOME/switchyard` (default `~/.local/state/switchyard`) | `%LOCALAPPDATA%\Switchyard\state` |
-| data | `$XDG_DATA_HOME/switchyard` (default `~/.local/share/switchyard`) | `$XDG_DATA_HOME/switchyard` (default `~/.local/share/switchyard`) | `%LOCALAPPDATA%\Switchyard\data` |
+| config | `$XDG_CONFIG_HOME/watchyard` (default `~/.config/watchyard`) | `$XDG_CONFIG_HOME/watchyard` (default `~/.config/watchyard`) | `%LOCALAPPDATA%\Watchyard\config` |
+| state | `$XDG_STATE_HOME/watchyard` (default `~/.local/state/watchyard`) | `$XDG_STATE_HOME/watchyard` (default `~/.local/state/watchyard`) | `%LOCALAPPDATA%\Watchyard\state` |
+| data | `$XDG_DATA_HOME/watchyard` (default `~/.local/share/watchyard`) | `$XDG_DATA_HOME/watchyard` (default `~/.local/share/watchyard`) | `%LOCALAPPDATA%\Watchyard\data` |
 
 XDG variables are used only when set to an absolute path (the XDG rule); otherwise the
 default applies. On Windows, `%LOCALAPPDATA%` is used if set and absolute, else
@@ -25,76 +25,76 @@ default applies. On Windows, `%LOCALAPPDATA%` is used if set and absolute, else
 
 **Overrides** (in this order, first wins):
 
-1. `SY_CONFIG_DIR`, `SY_STATE_DIR`, `SY_DATA_DIR`: one folder each.
+1. `WY_CONFIG_DIR`, `WY_STATE_DIR`, `WY_DATA_DIR`: one folder each.
    Overrides must be absolute paths: a relative one is an error (a hook's working folder
    is arbitrary, so a relative path would scatter state).
-2. `SY_HOME`: sets all three to `$SY_HOME/config`, `$SY_HOME/state`, `$SY_HOME/data`. Used by
-   tests and by running a second, throwaway `sy` next to the real one.
+2. `WY_HOME`: sets all three to `$WY_HOME/config`, `$WY_HOME/state`, `$WY_HOME/data`. Used by
+   tests and by running a second, throwaway `wy` next to the real one.
 3. The table above.
 
-`sy` never reads `SWITCHYARD_DATA`.
+`wy` never reads `SWITCHYARD_DATA`.
 
-`sy paths` prints the three folders and where each came from; `sy doctor` shows the
+`wy paths` prints the three folders and where each came from; `wy doctor` shows the
 same.
 
 ## 2. Decisions and why
 
-### Linux: `~/.config/switchyard` is shared
+### Linux: `~/.config/watchyard` is shared
 
-An Electron app named `switchyard` would keep its user data in `~/.config/switchyard`
-(`~/Library/Application Support/switchyard` on macOS, `%APPDATA%\switchyard` on Windows), and
-older versions of Switchyard did. `sy` still uses `~/.config/switchyard` as its config folder,
-so the folder can hold other files that `sy` does not own.
+An Electron app named `watchyard` would keep its user data in `~/.config/watchyard`
+(`~/Library/Application Support/watchyard` on macOS, `%APPDATA%\watchyard` on Windows), and
+older versions of Watchyard did. `wy` still uses `~/.config/watchyard` as its config folder,
+so the folder can hold other files that `wy` does not own.
 
-The desktop app (`app/`, package `switchyard-desktop`) sets its user data explicitly, before
-`ready`, to `<appData>/switchyard-desktop` (desktop.md C1):
+The desktop app (`app/`, package `watchyard-desktop`) sets its user data explicitly, before
+`ready`, to `<appData>/watchyard-desktop` (desktop.md C1):
 
 | | Linux | macOS | Windows |
 | --- | --- | --- | --- |
-| desktop app user data | `~/.config/switchyard-desktop` | `~/Library/Application Support/switchyard-desktop` | `%APPDATA%\switchyard-desktop` |
+| desktop app user data | `~/.config/watchyard-desktop` | `~/Library/Application Support/watchyard-desktop` | `%APPDATA%\watchyard-desktop` |
 
-Electron would otherwise derive `Switchyard` from `productName`. `SY_APP_USER_DATA`
+Electron would otherwise derive `Watchyard` from `productName`. `WY_APP_USER_DATA`
 (absolute) overrides the folder for development and tests, and only in an unpackaged build.
 
-`sy` keeps to strict rules in `~/.config/switchyard`:
+`wy` keeps to strict rules in `~/.config/watchyard`:
 
-- `sy` owns exactly one name in that folder: `config.toml` (plus its transient
+- `wy` owns exactly one name in that folder: `config.toml` (plus its transient
   `.config.toml.<random>.tmp` during an atomic write, and `config.toml.bak` written by
-  `sy setup`).
-- `sy` never creates any other file there, never lists, cleans, moves or deletes the folder,
+  `wy setup`).
+- `wy` never creates any other file there, never lists, cleans, moves or deletes the folder,
   and never reads other files in it.
-- `sy uninstall --purge` removes only `config.toml` and `config.toml.bak`, never the folder.
+- `wy uninstall --purge` removes only `config.toml` and `config.toml.bak`, never the folder.
 - Neither desktop app writes `config.toml`. The desktop app reads what it needs by running
-  `sy` (`sy desktop info --json` and the other commands of desktop.md C11); it does not open
-  `config.toml` or any `sy` folder itself.
-- If `sy` creates the folder, it uses mode `0700`, as Electron does.
+  `wy` (`wy desktop info --json` and the other commands of desktop.md C11); it does not open
+  `config.toml` or any `wy` folder itself.
+- If `wy` creates the folder, it uses mode `0700`, as Electron does.
 
-Why not a separate name such as `~/.config/switchyard-sy` or `~/.config/sy`: the
-docs all say `~/.config/switchyard/config.toml`; `sy` is a short, generic
+Why not a separate name such as `~/.config/watchyard-sy` or `~/.config/wy`: the
+docs all say `~/.config/watchyard/config.toml`; `wy` is a short, generic
 name likely to clash with other tools. The rules above make sharing the folder harmless:
-there is no file-name overlap and `sy` never deletes the folder.
+there is no file-name overlap and `wy` never deletes the folder.
 
-Everything that `sy` writes often, and everything that matters (outbox, token, machine id),
+Everything that `wy` writes often, and everything that matters (outbox, token, machine id),
 lives in the state folder, which nothing else uses.
 
 ### macOS: XDG layout, not `~/Library/Application Support`
 
-An earlier design put macOS state in `~/Library/Application Support/Switchyard`. But an Electron
+An earlier design put macOS state in `~/Library/Application Support/Watchyard`. But an Electron
 app's default user-data folder on macOS is `~/Library/Application Support/<name>`, and the
 default APFS volume is case-insensitive, so that would be the **same folder** as an Electron
 app's. Putting the outbox and the device token inside an app's folder is exactly the clash we
-want to avoid. So on macOS `sy` uses the same `~/.config` / `~/.local/state` / `~/.local/share`
+want to avoid. So on macOS `wy` uses the same `~/.config` / `~/.local/state` / `~/.local/share`
 layout as on Linux. Command-line tools commonly do this on macOS (git, gh, fish), it is the
 same on every Unix machine (simpler docs, the same paths on SSH servers), and there is no
-clash: the desktop app uses its own `~/Library/Application Support/switchyard-desktop`.
+clash: the desktop app uses its own `~/Library/Application Support/watchyard-desktop`.
 
 launchd agents still go in `~/Library/LaunchAgents`, and their logs go to the
 state folder.
 
 ### Windows: `%LOCALAPPDATA%`, not `%APPDATA%`
 
-Electron's user data on Windows is `%APPDATA%\switchyard` (roaming). `sy` uses
-`%LOCALAPPDATA%\Switchyard`, which does not clash, and which does not roam: the machine id,
+Electron's user data on Windows is `%APPDATA%\watchyard` (roaming). `wy` uses
+`%LOCALAPPDATA%\Watchyard`, which does not clash, and which does not roam: the machine id,
 device token and outbox are per machine and must never be copied to another computer by a
 roaming profile. Config also lives there, so a roaming profile does not carry one machine's
 hub token to another. Subfolders `config`, `state`, `data` keep the three roles apart inside
@@ -112,15 +112,15 @@ one folder.
   token                        device token, one line, mode 0600 (tokens.md)
   outbox/                      outbox.md
   identity/                    per-slot login cache (identity.md)
-  scan/offsets.json            transcript read offsets (sy scan)
+  scan/offsets.json            transcript read offsets (wy scan)
   scan/history.json            slots already history-imported
   statusline/last.json         last limit_sample per session (once-a-minute rule)
   statusline/wrapped-<session>.txt  last good output of the wrapped status line (timeout fallback)
-  logs/sy.log                  rotated at 5 MB, 3 kept
-  backup/<UTC time>/           journal + saved files of each sy setup/account/uninstall run (setup.md 7)
+  logs/wy.log                  rotated at 5 MB, 3 kept
+  backup/<UTC time>/           journal + saved files of each wy setup/account/uninstall run (setup.md 7)
   setup.lock                   held while a setup run applies
-  setup/ledger.json            what sy has installed now (setup.md 9.3)
-  plugin/marketplace/          the local sy-local plugin marketplace (setup.md 5.2)
+  setup/ledger.json            what wy has installed now (setup.md 9.3)
+  plugin/marketplace/          the local wy-local plugin marketplace (setup.md 5.2)
   share/mcp-base.json          last synced mcpServers, mode 0600 (setup.md 5.4)
   share/mcp-conflicts.jsonl    MCP merge conflicts (names only)
   share/copies.json            Windows synced copies (setup.md 5.7)
@@ -133,49 +133,49 @@ one folder.
   update/                      downloads and verified archives (machines.md 7.3); cache/ for other platforms
   hub.sock                     forward mode with --forward-socket only (machines.md 3.3)
   pull/                        hub host only: id_ed25519(.pub), generated ssh_config and known_hosts (machines.md 3.4)
-  board/token.json             read-only board token for sy board and the pane, mode 0600 (terminal.md T3)
+  board/token.json             read-only board token for wy board and the pane, mode 0600 (terminal.md T3)
   board/last-view.json         last board view shown, mode 0600 (terminal.md T3)
-  term/title-<session>.json    last tab title per session, pruned after 7 days by sy tick (terminal.md T6)
+  term/title-<session>.json    last tab title per session, pruned after 7 days by wy tick (terminal.md T6)
   keys/                        mode 0700: device.json, owner.sealed (owner machine), owner.pub, hub.pub,
                                certs.json, matrix.json, revocations.json (keys.md 10)
   hub_sign.key                 hub machine only: the hub signing key, mode 0600, exported with the hub (keys.md 3.4)
-  agent/                       sy agent: link.json (last seq), audit-out.jsonl, agent.sock on macOS (peers.md 2)
-  peers/sessions/<session>.json  written by sy hook when peers are on: mode, human_at (peers.md 2.4)
+  agent/                       wy agent: link.json (last seq), audit-out.jsonl, agent.sock on macOS (peers.md 2)
+  peers/sessions/<session>.json  written by wy hook when peers are on: mode, human_at (peers.md 2.4)
   peers/delivered/<session>    time of the agent's last delivery into that session
   peers/threads.json, peers/seen.json, peers/audit.jsonl, peers/off   (peers.md 6.2, 8.4, 10, 11)
-  logs/agent.log               rotated like sy.log
+  logs/agent.log               rotated like wy.log
 
 <data>/                        mode 0700, hub only
   hub.db, hub.db-wal, hub.db-shm
-  backups/hub-<UTC time>.db    sy hub backup
-  exports/hub-<UTC time>.syx   sy hub export, mode 0600 (machines.md 8.1)
+  backups/hub-<UTC time>.db    wy hub backup
+  exports/hub-<UTC time>.syx   wy hub export, mode 0600 (machines.md 8.1)
   app/android/                 mirrored phone release: current and previous APK + manifest (phone.md P16.2)
 ```
 
-Runtime sockets (Linux, `$XDG_RUNTIME_DIR`): `sy/agent.sock` and `sy/r/<16 hex>.sock`, folders The agent socket falls back to `$TMPDIR/sy-<uid>/agent.sock` when the path would exceed the sun_path limit (103 bytes macOS, 107 Linux).
-0700, sockets 0600 (peers.md 2.3, 8.6). `sy` reads, never writes, each slot's
+Runtime sockets (Linux, `$XDG_RUNTIME_DIR`): `wy/agent.sock` and `wy/r/<16 hex>.sock`, folders The agent socket falls back to `$TMPDIR/sy-<uid>/agent.sock` when the path would exceed the sun_path limit (103 bytes macOS, 107 Linux).
+0700, sockets 0600 (peers.md 2.3, 8.6). `wy` reads, never writes, each slot's
 `<config>/sessions/<pid>.json` and never opens `sessions/*.key` (identity.md 4).
 
-Outside these folders, machine management writes only `~/.ssh/switchyard.conf` and one `Include` line in
+Outside these folders, machine management writes only `~/.ssh/watchyard.conf` and one `Include` line in
 `~/.ssh/config` on the operator (forward mode), and one line in `~/.ssh/authorized_keys` on a
-pulled remote (machines.md 3.3, 3.4); both are journaled and undone by `sy machine remove`.
-The terminal integration writes only its own `switchyard-*.toml` tab configs in Warp's tab config folder
-(terminal.md T8), journaled and undone by `sy term warp off` or `sy setup --undo`.
+pulled remote (machines.md 3.3, 3.4); both are journaled and undone by `wy machine remove`.
+The terminal integration writes only its own `watchyard-*.toml` tab configs in Warp's tab config folder
+(terminal.md T8), journaled and undone by `wy term warp off` or `wy setup --undo`.
 
-Inside a Docker image the hub uses `SY_DATA_DIR=/data` (a volume).
+Inside a Docker image the hub uses `WY_DATA_DIR=/data` (a volume).
 
 ## 4. `config.toml`
 
 TOML, read with a small, well-maintained parser (candidate
 `github.com/pelletier/go-toml/v2`). Unknown keys are kept on rewrite and reported by
-`sy doctor`. Written atomically (temp file, fsync, rename), preserving comments where the
-parser allows; `sy config set` is the supported way to change it. `sy config set hub.url <url>`
-applies the same check as `sy connect` (plain `http` only to loopback or Tailscale
+`wy doctor`. Written atomically (temp file, fsync, rename), preserving comments where the
+parser allows; `wy config set` is the supported way to change it. `wy config set hub.url <url>`
+applies the same check as `wy connect` (plain `http` only to loopback or Tailscale
 (`*.ts.net` names, `100.64.0.0/10` addresses), unless `hub.insecure_lan` is true or `--insecure-lan` is given, which
 records it) and stores the normalised scheme://host[:port].
 
 ```toml
-# Switchyard (sy) settings. Unofficial; not affiliated with Anthropic.
+# Watchyard (wy) settings. Unofficial; not affiliated with Anthropic.
 version = 1
 
 [hub]
@@ -191,11 +191,11 @@ private = true
 after_s = 120
 
 [update]                                     # (machines.md 7.3)
-base_url = ""                                # default GitHub releases; SY_INSTALL_BASE_URL wins
+base_url = ""                                # default GitHub releases; WY_INSTALL_BASE_URL wins
 verify_attestation = true                  # check the build attestation when gh is installed
 
 [machines]                                   # operator (machines.md 4.4)
-hub_admin = ""                               # "local" or a command prefix, e.g. "ssh hub sy"
+hub_admin = ""                               # "local" or a command prefix, e.g. "ssh hub wy"
 
 [privacy]
 last_message = true                          # send derived.last_message (on for your own hub)
@@ -223,11 +223,11 @@ mcp = true                                   # true | false | "external"
 mcp_exclude = []
 
 [peers]                                      # (peers.md 2.4, 8.5)
-enabled = false                              # sy hook writes the session files; sy peers works only when true
+enabled = false                              # wy hook writes the session files; wy peers works only when true
 delivery = "honest"                          # honest | accept | courier (peers.md 8.5)
 
 [terminal]                                   # (terminal.md T12)
-titles = false                               # written only by sy term titles on|off (sy config set refuses it)
+titles = false                               # written only by wy term titles on|off (wy config set refuses it)
 band = true                                  # pane: band above the prompt when another session needs you
 pane_auto_open = true                        # pane: open as a sidebar in wide fullscreen sessions
 source = "auto"                              # board: auto | hub | local

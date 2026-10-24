@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // nasty pieces: escape sequences, bidi controls, C0 and C1 controls, line breaks, invisible

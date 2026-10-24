@@ -5,7 +5,7 @@ package backup
 import (
 	"os"
 
-	"github.com/mraj602/switchyard/internal/setup/model"
+	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
 // linkKind returns the link type of a Lstat result, or "" when it is not a link.

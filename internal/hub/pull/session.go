@@ -9,10 +9,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/mraj602/switchyard/internal/drainproto"
-	"github.com/mraj602/switchyard/internal/hub/ingest"
-	"github.com/mraj602/switchyard/internal/hub/store"
-	"github.com/mraj602/switchyard/internal/record"
+	"github.com/mraj602/watchyard/internal/drainproto"
+	"github.com/mraj602/watchyard/internal/hub/ingest"
+	"github.com/mraj602/watchyard/internal/hub/store"
+	"github.com/mraj602/watchyard/internal/record"
 )
 
 // SettingFrozen is the hub.frozen setting (machines.md 8.1): while it exists the hub
@@ -426,7 +426,7 @@ func onlyMismatch(rs []ingest.Rejected) bool {
 func buildBody(syVersion string, recs []json.RawMessage) []byte {
 	var b bytes.Buffer
 	b.WriteString(`{"v":1,"client":`)
-	cl, _ := json.Marshal("sy/" + syVersion)
+	cl, _ := json.Marshal("wy/" + syVersion)
 	b.Write(cl)
 	b.WriteString(`,"records":[`)
 	for i, r := range recs {
