@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	_ "time/tzdata" // old zone names (Asia/Calcutta) on hosts whose tzdata drops them, e.g. Ubuntu 26.04
 	"unicode"
 
 	"github.com/mraj602/watchyard/internal/hub/auth"
