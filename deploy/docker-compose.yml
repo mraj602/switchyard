@@ -41,6 +41,7 @@ services:
 
 volumes:
   hub-data:
-    # The volume keeps the name the first release gave it, so the hub's data stays where it is
-    # whatever this project is called (docs/spec/rename.md 2.11).
-    name: switchyard_hub-data # rename:keep
+    # Named explicitly, so the hub's data stays in this volume whatever the compose project is
+    # called. A hub started before the rename used switchyard_hub-data: copy it over once
+    # (docs/spec/rename.md 2.11).
+    name: watchyard_hub-data

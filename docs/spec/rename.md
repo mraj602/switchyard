@@ -175,10 +175,19 @@ apps never both answer a link.
 
 ### 2.11 Docker volume
 
-`deploy/docker-compose.yml` names the volume `switchyard_hub-data` explicitly, so the hub's
-data stays in the same volume under any project name. The project, image and container names
-change: stop the old project (`docker compose -p switchyard down`, which keeps volumes) before
-starting the new one. The compose files read `SY_BIND`, `SY_PORT`, `SY_PUBLIC_URL` and
+`deploy/docker-compose.yml` names the volume `watchyard_hub-data` explicitly, so the hub's
+data stays in the same volume under any project name. A hub started before the rename keeps its
+data in `switchyard_hub-data`; the new compose file does not read it, so it is copied once while
+both projects are stopped (the old volume is left as it is):
+
+```sh
+docker compose -p switchyard down    # keeps volumes
+docker volume create watchyard_hub-data
+docker run --rm -v switchyard_hub-data:/from:ro -v watchyard_hub-data:/to alpine cp -a /from/. /to/
+docker compose up -d                 # from the new deploy/
+```
+
+The project, image and container names change as well. The compose files read `SY_BIND`, `SY_PORT`, `SY_PUBLIC_URL` and
 `SY_TRUSTED_PROXY` from an older `.env` when the `WY_` name is not set
 (`${WY_BIND:-${SY_BIND:-…}}`).
 
@@ -244,8 +253,8 @@ identifiers and modules everywhere.
   runbook. Code calls them `WyVersion` and `RemoteWy`, and the API says `wy_version`.
 - The SSH environment variables `LC_SY_FOCUS` and `LC_SY_HOST` (terminal.md): a server's
   `AcceptEnv LC_SY_*`, which `wy doctor` asked people to add, would drop new names.
-- `SWITCHYARD_DATA`, which the command asserts it never reads (paths.md), the Docker volume
-  `switchyard_hub-data` (2.11), and the release signing certificate pin.
+- `SWITCHYARD_DATA`, which the command asserts it never reads (paths.md), and the release
+  signing certificate pin.
 - With `--version` (a rename in a new release), CHANGELOG history, tags and links to earlier
   releases. With `--reissue` (this rename) the whole CHANGELOG is rewritten, because its
   releases are published again under the new name.

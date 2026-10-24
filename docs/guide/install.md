@@ -189,7 +189,7 @@ docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d --bui
 
 Run `wy` commands for the hub inside the container, for example
 `docker compose exec hub wy hub owner-link`. Data lives in the
-`switchyard_hub-data` volume. <!-- rename:keep -->
+`watchyard_hub-data` volume.
 
 ### systemd user service, no Docker
 

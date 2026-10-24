@@ -88,6 +88,8 @@ The first public version. Everything below is new.
   a plugin move that failed half-way. `wy doctor` names system units of the old name, which
   are moved by hand (scripts/rename/RUNBOOK.md); on Windows the update prints the commands that
   replace the old scheduled task.
+- The Docker volume is now `watchyard_hub-data`. A hub started with the first build keeps its
+  data in `switchyard_hub-data`: copy it once with the commands in docs/spec/rename.md 2.11.
 
 [Unreleased]: https://github.com/mraj602/watchyard/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/mraj602/watchyard/releases/tag/v1.0.0
