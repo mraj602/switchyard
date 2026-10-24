@@ -145,12 +145,21 @@ func (r Result) OK() bool { return r.Outcome == "ok" || r.AlreadyInGoalState }
 
 // PluginInfo is one row of `claude plugin list --json`.
 type PluginInfo struct {
-	ID          string `json:"id"` // "watchyard@wy-local"
-	Version     string `json:"version,omitempty"`
-	Enabled     bool   `json:"enabled"`
-	Scope       string `json:"scope,omitempty"`
+	ID      string `json:"id"` // "watchyard@wy-local"
+	Version string `json:"version,omitempty"`
+	Enabled bool   `json:"enabled"`
+	// Scope is where this install lives: "user" (or empty), "project" or "local". A plugin
+	// installed in two scopes is two rows.
+	Scope string `json:"scope,omitempty"`
+	// ProjectPath is the project a "project" or "local" install belongs to; Claude Code only
+	// uninstalls it with that folder as the working directory.
+	ProjectPath string `json:"projectPath,omitempty"`
 	InstallPath string `json:"installPath,omitempty"`
 }
+
+// UserScope reports whether the install is in the user scope (`claude plugin uninstall`'s
+// default); an empty scope is the user's.
+func (p PluginInfo) UserScope() bool { return p.Scope == "" || p.Scope == "user" }
 
 // MarketplaceInfo is one row of `claude plugin marketplace list --json`.
 type MarketplaceInfo struct {
@@ -203,6 +212,11 @@ type Runner interface {
 	// (`wy update`'s post-update step, setup.md 5.2).
 	PluginUpdate(ctx context.Context, f Folder, id string) (Result, error)
 	PluginUninstall(ctx context.Context, f Folder, id string) (Result, error)
+	// PluginUninstallScoped removes the install of id that PluginList reported with scope and
+	// projectPath: `claude plugin uninstall id --scope <scope>`, run with projectPath as the
+	// working directory for the "project" and "local" scopes (Claude Code finds those installs
+	// by the folder). An empty or "user" scope is PluginUninstall.
+	PluginUninstallScoped(ctx context.Context, f Folder, id, scope, projectPath string) (Result, error)
 	PluginEnable(ctx context.Context, f Folder, id string) (Result, error)
 	PluginDisable(ctx context.Context, f Folder, id string) (Result, error)
 	PluginList(ctx context.Context, f Folder) ([]PluginInfo, error)

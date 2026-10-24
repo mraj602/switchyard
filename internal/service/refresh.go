@@ -19,6 +19,9 @@ type RefreshResult struct {
 	Installed bool // a unit file was found
 	Rewritten bool // its content changed for this binary and was written again
 	Restarted bool
+	// Enabled and Started say, after a move from the old name, what the new unit was left as:
+	// the state the old one had (rename.md 2.2). Unset without a move.
+	Enabled, Started bool
 	// Migrated names the unit from before the rename that was replaced by one under the
 	// current name, keeping its arguments and environment (rename.md 2.2).
 	Migrated string
@@ -119,13 +122,15 @@ func (s *Service) migrate(ctx context.Context, spec model.ServiceSpec, old strin
 		spec.Args = args
 	}
 	c := *s
+	st := s.stateOf(old)
 	if env != nil {
 		c.Env.Pairs, c.Env.PairsSet = currentEnvNames(env), true
 	}
-	if err := c.Install(ctx, spec); err != nil { // Install removes old first
+	if err := c.install(ctx, spec, st); err != nil { // install removes old first
 		return res, err
 	}
-	res.Rewritten, res.Restarted = true, true
+	res.Rewritten, res.Restarted = true, st.Active
+	res.Enabled, res.Started = st.Enabled, st.Active
 	return res, nil
 }
 

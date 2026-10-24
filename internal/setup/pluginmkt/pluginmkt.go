@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 
@@ -439,8 +440,9 @@ func (i *Installer) RemoveLegacy(ctx context.Context, folder claudecli.Folder) (
 		if !ok {
 			continue
 		}
-		res, err := i.Runner.PluginUninstall(ctx, folder, p.ID)
-		if e := check(res, err, "claude plugin uninstall "+p.ID); e != nil {
+		// Each install goes with its own scope: one made from a project (the home folder is a
+		// project to Claude Code) is refused by the default user scope.
+		if e := i.uninstallInstall(ctx, folder, p); e != nil {
 			return out, e
 		}
 		out = append(out, cur)
@@ -462,7 +464,18 @@ func (i *Installer) RemoveLegacy(ctx context.Context, folder claudecli.Folder) (
 		}
 	}
 	sort.Strings(out)
-	return out, nil
+	return slices.Compact(out), nil // one id per plugin, however many scopes held it
+}
+
+// uninstallInstall removes one row of `claude plugin list`: with --scope and, for the project
+// and local scopes, the project folder as the working directory.
+func (i *Installer) uninstallInstall(ctx context.Context, folder claudecli.Folder, p claudecli.PluginInfo) error {
+	if p.UserScope() {
+		res, err := i.Runner.PluginUninstall(ctx, folder, p.ID)
+		return check(res, err, "claude plugin uninstall "+p.ID)
+	}
+	res, err := i.Runner.PluginUninstallScoped(ctx, folder, p.ID, p.Scope, p.ProjectPath)
+	return check(res, err, "claude plugin uninstall "+p.ID+" --scope "+p.Scope)
 }
 
 // MissingCurrent returns the current plugin id when folder's plugin root has neither it nor a
@@ -540,12 +553,10 @@ func (i *Installer) Uninstall(ctx context.Context, folder claudecli.Folder) erro
 		return fmt.Errorf("claude plugin list: %w", err)
 	}
 	for _, p := range plugins {
-		if p.ID == PluginID {
-			res, err := i.Runner.PluginUninstall(ctx, folder, PluginID)
-			if e := check(res, err, "claude plugin uninstall "+PluginID); e != nil {
+		if p.ID == PluginID { // every install, in whichever scope it was made
+			if e := i.uninstallInstall(ctx, folder, p); e != nil {
 				return e
 			}
-			break
 		}
 	}
 	known, err := i.Runner.PluginMarketplaceList(ctx, folder)

@@ -1,6 +1,8 @@
 package timer
 
 import (
+	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -82,5 +84,66 @@ func TestNoLegacyWithoutRename(t *testing.T) {
 	}
 	if !strings.HasPrefix(strings.Join(r.calls, "\n"), "systemctl --user disable --now "+SystemdName+".timer") {
 		t.Errorf("calls: %v", r.calls)
+	}
+}
+
+// stateRunner answers is-enabled / is-active by their last argument's suffix.
+type stateRunner struct {
+	calls           []string
+	enabled, active string
+}
+
+func (r *stateRunner) Run(name string, args ...string) ([]byte, error) {
+	c := name + " " + strings.Join(args, " ")
+	r.calls = append(r.calls, c)
+	switch {
+	case strings.Contains(c, " is-enabled "):
+		return []byte(r.enabled), errors.New("exit 1")
+	case strings.Contains(c, " is-active "):
+		return []byte(r.active), errors.New("exit 3")
+	}
+	return nil, nil
+}
+
+// The post-update move (KeepLegacyState) leaves the new timer as the old one was.
+func TestInstallKeepsLegacyTimerState(t *testing.T) {
+	defer brand.SetLegacyForTest("oldname", "Oldname")()
+	for _, c := range []struct {
+		enabled, active string
+		want            string // the call after the last daemon-reload, "" for none
+	}{
+		{"enabled\n", "active\n", "systemctl --user enable --now " + SystemdName + ".timer"},
+		{"enabled\n", "inactive\n", "systemctl --user enable " + SystemdName + ".timer"},
+		{"disabled\n", "inactive\n", ""},
+	} {
+		t.Run(c.enabled+c.active, func(t *testing.T) {
+			e, _, _ := fakeHome(t, "linux")
+			r := &stateRunner{enabled: c.enabled, active: c.active}
+			e.Runner, e.Out, e.User = r, &bytes.Buffer{}, ""
+			e.KeepLegacyState = true
+			d := SystemdDir(e)
+			for _, f := range []string{"oldname-flush.timer", "oldname-flush.service"} {
+				if err := writeFile(filepath.Join(d, f), "old"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := Install(e); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := os.Stat(filepath.Join(d, SystemdName+".timer")); err != nil {
+				t.Fatalf("new timer missing: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(d, "oldname-flush.timer")); !os.IsNotExist(err) {
+				t.Error("old timer left behind")
+			}
+			last := r.calls[len(r.calls)-1]
+			if c.want == "" {
+				if last != "systemctl --user daemon-reload" {
+					t.Errorf("calls:\n%s", strings.Join(r.calls, "\n"))
+				}
+			} else if last != c.want {
+				t.Errorf("last call %q, want %q", last, c.want)
+			}
+		})
 	}
 }

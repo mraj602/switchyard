@@ -214,6 +214,9 @@ func (missingClaude) PluginInstall(context.Context, claudecli.Folder, string) (c
 func (missingClaude) PluginUninstall(context.Context, claudecli.Folder, string) (claudecli.Result, error) {
 	return claudecli.Result{}, errNoClaude
 }
+func (missingClaude) PluginUninstallScoped(context.Context, claudecli.Folder, string, string, string) (claudecli.Result, error) {
+	return claudecli.Result{}, errNoClaude
+}
 func (missingClaude) PluginEnable(context.Context, claudecli.Folder, string) (claudecli.Result, error) {
 	return claudecli.Result{}, errNoClaude
 }

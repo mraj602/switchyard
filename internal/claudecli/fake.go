@@ -47,7 +47,8 @@ type Fake struct {
 	roots   map[string]string            // folder dir -> root key
 	targets map[string]string            // folder dir -> settings target key
 	markets map[string]map[string]string // root -> marketplace name -> source
-	plugins map[string]map[string]string // root -> id -> installPath
+	plugins map[string]map[string]string // root -> id -> installPath (user scope)
+	scoped  map[string][]PluginInfo      // root -> installs in the project and local scopes
 	enabled map[string]map[string]bool   // settings target -> id -> enabled
 	extra   map[string]map[string]bool   // settings target -> extraKnownMarketplaces
 	agents  map[string][]Agent
@@ -66,6 +67,7 @@ func NewFake() *Fake {
 		targets:           map[string]string{},
 		markets:           map[string]map[string]string{},
 		plugins:           map[string]map[string]string{},
+		scoped:            map[string][]PluginInfo{},
 		enabled:           map[string]map[string]bool{},
 		extra:             map[string]map[string]bool{},
 		agents:            map[string][]Agent{},
@@ -138,6 +140,25 @@ func (f *Fake) Installed(dir string) []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return sortedKeys(f.plugins[f.rootOf(dir)])
+}
+
+// AddScopedInstall records an install of id in the "project" or "local" scope of projectPath
+// in dir's plugin root, as Claude Code does when the plugin was installed from a project.
+// Only PluginUninstallScoped with that scope removes it; the user-scope PluginUninstall fails
+// as the real CLI does.
+func (f *Fake) AddScopedInstall(dir, id, scope, projectPath string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	root := f.rootOf(dir)
+	f.scoped[root] = append(f.scoped[root], PluginInfo{ID: id, Version: "fake", Enabled: true,
+		Scope: scope, ProjectPath: projectPath, InstallPath: filepath.Join(dir, "plugins", "cache", id)})
+}
+
+// ScopedInstalls returns the "project" and "local" installs recorded in dir's plugin root.
+func (f *Fake) ScopedInstalls(dir string) []PluginInfo {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]PluginInfo(nil), f.scoped[f.rootOf(dir)]...)
 }
 
 // Enabled reports whether id is enabled in dir's settings target.
@@ -374,10 +395,37 @@ func (f *Fake) PluginUninstall(ctx context.Context, fo Folder, id string) (Resul
 	defer f.mu.Unlock()
 	root := f.rootOf(fo.Dir)
 	if _, ok := f.plugins[root][id]; !ok {
+		for _, p := range f.scoped[root] {
+			if p.ID == id {
+				return Result{}, failure(fmt.Sprintf("Plugin %q is installed in %s scope, not user. Use --scope %s to uninstall.", id, p.Scope, p.Scope),
+					"plugin", "uninstall", id)
+			}
+		}
 		return alreadyResult("uninstall", "not_installed", fmt.Sprintf("Plugin %q not found in installed plugins", id)), nil
 	}
 	delete(f.plugins[root], id)
 	return okResult("uninstalled " + id), nil
+}
+
+// PluginUninstallScoped implements Runner: the install in that scope (and, for project and
+// local, that projectPath) goes; one in another scope or project stays.
+func (f *Fake) PluginUninstallScoped(ctx context.Context, fo Folder, id, scope, projectPath string) (Result, error) {
+	if scope == "" || scope == "user" {
+		return f.PluginUninstall(ctx, fo, id)
+	}
+	if err := f.begin(ctx, "PluginUninstallScoped", fo, id, scope, projectPath); err != nil {
+		return Result{}, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	root := f.rootOf(fo.Dir)
+	for i, p := range f.scoped[root] {
+		if p.ID == id && p.Scope == scope && p.ProjectPath == projectPath {
+			f.scoped[root] = append(f.scoped[root][:i:i], f.scoped[root][i+1:]...)
+			return okResult("uninstalled " + id), nil
+		}
+	}
+	return alreadyResult("uninstall", "not_installed", fmt.Sprintf("Plugin %q not found in installed plugins", id)), nil
 }
 
 func (f *Fake) setEnabled(ctx context.Context, method string, fo Folder, id string, on bool) (Result, error) {
@@ -424,6 +472,7 @@ func (f *Fake) PluginList(ctx context.Context, fo Folder) ([]PluginInfo, error) 
 		out = append(out, PluginInfo{ID: id, Version: "fake", Enabled: f.enabled[target][id],
 			Scope: "user", InstallPath: f.plugins[root][id]})
 	}
+	out = append(out, f.scoped[root]...)
 	return out, nil
 }
 

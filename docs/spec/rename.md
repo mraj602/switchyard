@@ -78,6 +78,19 @@ the old prefix renamed, 2.13), install the unit of the current name for the curr
 start it and remove the old one. `Install` removes a legacy unit first; `Uninstall` removes
 both. The setup ledger may still name the legacy service; it is read through `brand.Current`.
 
+The move keeps the old unit's state. Before removing it, the step asks the service manager
+whether it was enabled and whether it was running (`systemctl --user is-enabled` and
+`is-active`; on macOS whether the agent was loaded; on Windows whether the task was
+disabled or running), then leaves the new unit the same: enabled and running gets `enable
+--now`, enabled and stopped only `enable`, disabled and running only `start`, and disabled
+and stopped just the unit file (written, not enabled, not started; on macOS not loaded; on
+Windows created and disabled). A hub that moved to a server long before and was left
+disabled therefore stays off. An answer the service manager does not give counts as on. This
+holds for the hub, the agent and the flush timer (2.3); a plain `Install` (`wy setup`,
+`wy agent enable`) still enables and starts. The post-update line says what the new unit was
+left as ("restarted", "enabled, not started", "started, not enabled", "left disabled and
+stopped").
+
 The old unit is removed before the new one starts: both would listen on the same address.
 System-wide units (a hub in `/etc/systemd/system`, a backup timer someone wrote) are not
 managed by `wy`; `wy doctor` and the post-update summary name every system unit that starts
@@ -90,8 +103,9 @@ On macOS the planner wrote `dev.<slug>.hub.plist` while the service code looked 
 
 The tick timer (`<slug>-flush`, launchd `com.<slug>.flush`, task `<Name> Flush`) of the legacy
 name is removed when the timer is installed or removed, and the post-update step installs the
-current one with the environment the legacy unit had. `wy doctor` accepts either while the
-move is pending.
+current one with the environment the legacy unit had and, like the services (2.2), the state
+it had: a legacy timer that was disabled or stopped gives a current one that is not enabled
+or not started. `wy doctor` accepts either while the move is pending.
 
 ### 2.4 Claude Code plugin, pane and marketplace
 
@@ -102,7 +116,14 @@ settings file; the plan disables the legacy ids, removes the marketplace `<old c
 from each plugin root that knows it (its folder is the same `<state>/plugin/marketplace`,
 now carrying the new name), adds `<cli>-local` and installs the current plugin, with a
 warning. The post-update step does the same in every plugin root the ledger records and
-updates the ledger. When removing an old plugin fails in any root, it rewrites nothing and asks for the
+updates the ledger. `claude plugin list --json` has one row per install, with its `scope`
+(`user`, `project` or `local`) and, for the last two, its `projectPath`. Each legacy install
+is uninstalled with its own scope: `claude plugin uninstall <id> --scope=<scope>` run with
+`projectPath` as the working directory (the default user scope is refused with "installed in
+project scope, not user"; Claude Code treats the home folder as a project). The current
+plugin is installed in the user scope afterwards. `wy setup --undo` likewise uninstalls every
+install of the current plugin by its scope, and a current or legacy install in any scope
+counts as present for "a root left with neither plugin". When removing an old plugin fails in any root, it rewrites nothing and asks for the
 step to be run again; a root left with neither plugin (the install failed after the removal)
 gets the current plugin installed on the next run, not updated. A pane lost that way comes
 back with `wy setup`. `wy setup --undo` restores the legacy pointers. `wy doctor` warns while a

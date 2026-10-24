@@ -63,6 +63,7 @@ func TestRefreshMigratesLegacyLinuxUnit(t *testing.T) {
 	}
 
 	r.calls = nil
+	r.out["systemctl --user is-enabled"] = "enabled\n"
 	res, err := s.Refresh(ctx, DefaultName)
 	if err != nil || !res.Installed || !res.Restarted || res.Migrated != "oldname-hub.service" {
 		t.Fatalf("refresh: %+v %v", res, err)
@@ -80,6 +81,8 @@ func TestRefreshMigratesLegacyLinuxUnit(t *testing.T) {
 		}
 	}
 	want := []string{
+		"systemctl --user is-enabled oldname-hub.service",
+		"systemctl --user is-active oldname-hub.service",
 		"systemctl --user disable --now oldname-hub.service",
 		"systemctl --user daemon-reload",
 		"systemctl --user daemon-reload",
@@ -192,5 +195,124 @@ func TestCurrentEnvNamesLiteral(t *testing.T) {
 		if got[i] != want[i] {
 			t.Fatalf("got %v, want %v", got, want)
 		}
+	}
+}
+
+// The move keeps what the old unit was: enabled or not, running or not. A hub that was
+// disabled and stopped (it moved to a server long ago) stays so.
+func TestRefreshMigrationKeepsLinuxUnitState(t *testing.T) {
+	defer brand.SetLegacyForTest("oldname", "Oldname")()
+	for _, c := range []struct {
+		name, enabled, active string
+		want                  []string // after daemon-reload
+	}{
+		{"enabled active", "enabled\n", "active\n", []string{"systemctl --user enable --now " + DefaultName + ".service"}},
+		{"enabled inactive", "enabled\n", "inactive\n", []string{"systemctl --user enable " + DefaultName + ".service"}},
+		{"disabled active", "disabled\n", "active\n", []string{"systemctl --user start " + DefaultName + ".service"}},
+		{"disabled inactive", "disabled\n", "inactive\n", nil},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			home := t.TempDir()
+			r := &rec{out: map[string]string{
+				"systemctl --user is-enabled": c.enabled, "systemctl --user is-active": c.active,
+			}}
+			e := envFor("linux", home, r)
+			oldPath := SystemdUnitPath(e, "oldname-hub")
+			if err := writeFile(oldPath, []byte(SystemdUnit(e, model.ServiceSpec{Name: "oldname-hub", Args: []string{"hub", "serve"}})), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			res, err := New(e).Refresh(context.Background(), DefaultName)
+			if err != nil || res.Migrated != "oldname-hub.service" {
+				t.Fatalf("refresh: %+v %v", res, err)
+			}
+			wantEnabled, wantStarted := strings.HasPrefix(c.enabled, "enabled"), c.active == "active\n"
+			if res.Enabled != wantEnabled || res.Started != wantStarted || res.Restarted != wantStarted {
+				t.Errorf("result %+v", res)
+			}
+			if _, err := os.Stat(oldPath); !os.IsNotExist(err) {
+				t.Error("old unit left behind")
+			}
+			if _, err := os.Stat(SystemdUnitPath(e, DefaultName)); err != nil {
+				t.Errorf("new unit missing: %v", err)
+			}
+			var after []string
+			seen := false
+			for _, l := range r.lines() {
+				if seen {
+					after = append(after, l)
+				}
+				if l == "systemctl --user daemon-reload" {
+					seen = true
+					after = nil
+				}
+			}
+			if strings.Join(after, "\n") != strings.Join(c.want, "\n") {
+				t.Errorf("after the last daemon-reload:\n%v\nwant %v", after, c.want)
+			}
+		})
+	}
+}
+
+func TestRefreshMigrationKeepsAgentState(t *testing.T) {
+	defer brand.SetLegacyForTest("oldname", "Oldname")()
+	home := t.TempDir()
+	r := &rec{out: map[string]string{"systemctl --user is-enabled": "disabled\n", "systemctl --user is-active": "inactive\n"}}
+	e := envFor("linux", home, r)
+	if err := writeFile(SystemdUnitPath(e, "oldname-agent"), []byte(SystemdUnit(e, model.ServiceSpec{Name: "oldname-agent", Args: AgentArgs})), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, err := New(e).Refresh(context.Background(), AgentName)
+	if err != nil || res.Migrated == "" || res.Enabled || res.Started {
+		t.Fatalf("refresh: %+v %v", res, err)
+	}
+	for _, l := range r.lines() {
+		if strings.Contains(l, " enable ") || strings.Contains(l, " start ") {
+			t.Errorf("unexpected call %q", l)
+		}
+	}
+}
+
+func TestRefreshMigrationKeepsDarwinState(t *testing.T) {
+	defer brand.SetLegacyForTest("oldname", "Oldname")()
+	home := t.TempDir()
+	r := &rec{fail: map[string]bool{"launchctl print": true}} // the old agent is not loaded
+	e := envFor("darwin", home, r)
+	oldPath := filepath.Join(home, "Library", "LaunchAgents", "com.oldname.hub.plist")
+	if err := writeFile(oldPath, []byte(LaunchdPlist(e, model.ServiceSpec{Name: "oldname-hub", Args: []string{"hub", "serve"}})), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, err := New(e).Refresh(context.Background(), DefaultName)
+	if err != nil || res.Migrated == "" || res.Started {
+		t.Fatalf("refresh: %+v %v", res, err)
+	}
+	if _, err := os.Stat(LaunchAgentPath(e, DefaultName)); err != nil {
+		t.Error("new plist missing")
+	}
+	if _, err := os.Stat(oldPath); !os.IsNotExist(err) {
+		t.Error("old plist left behind")
+	}
+	for _, l := range r.lines() {
+		if strings.Contains(l, "bootstrap") {
+			t.Errorf("loaded the new agent: %q", l)
+		}
+	}
+}
+
+func TestRefreshMigrationKeepsWindowsState(t *testing.T) {
+	defer brand.SetLegacyForTest("oldname", "Oldname")()
+	home := t.TempDir()
+	r := &rec{out: map[string]string{"schtasks /Query": "Oldname Hub    N/A    Disabled\n"}}
+	e := envFor("windows", home, r)
+	oldPath := filepath.Join(e.StateDir, WindowsXMLFile("oldname-hub"))
+	if err := writeFile(oldPath, timer.UTF16LE(WindowsTaskXML(e, model.ServiceSpec{Name: "oldname-hub", Args: []string{"hub", "serve"}})), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	res, err := New(e).Refresh(context.Background(), DefaultName)
+	if err != nil || res.Enabled || res.Started {
+		t.Fatalf("refresh: %+v %v", res, err)
+	}
+	got := strings.Join(r.lines(), "\n")
+	if !strings.Contains(got, "schtasks /Change /TN "+WindowsTask(DefaultName)+" /DISABLE") || strings.Contains(got, "/Run") {
+		t.Errorf("calls:\n%s", got)
 	}
 }

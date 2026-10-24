@@ -6,6 +6,13 @@ All notable changes to Watchyard are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The move from the Switchyard names (`wy update --post-update`) keeps the old units' state: a
+  disabled or stopped hub, agent or flush timer stays disabled or stopped instead of being
+  enabled and started, and a legacy plugin installed at project or local scope is uninstalled
+  with its own `--scope` and project folder instead of failing.
+
 ## [1.0.0] - 2026-10-24
 
 The first public version. Everything below is new.

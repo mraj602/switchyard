@@ -53,6 +53,10 @@ type Env struct {
 	Getenv   func(string) string
 	Runner   Runner
 	Out      io.Writer // hints and instructions
+	// KeepLegacyState makes Install give the timer of the current name the state the one of
+	// the old name had (enabled or not, running or not) when it replaces that one: the
+	// post-update move, rename.md 2.3. Otherwise Install enables and starts the timer.
+	KeepLegacyState bool
 }
 
 // passEnv are the folder overrides copied into the unit, so a timer started by the service
@@ -282,12 +286,16 @@ func writeFile(path, content string) error {
 // reported in the returned error but the files stay, so the user can finish by hand.
 func Install(e Env) (Result, error) {
 	var res Result
+	st := state{Enabled: true, Active: true}
+	if e.KeepLegacyState {
+		st = legacyState(e)
+	}
 	res.Removed = removeLegacy(e)
 	switch e.GOOS {
 	case "linux":
-		return res, installSystemd(e, &res)
+		return res, installSystemd(e, &res, st)
 	case "darwin":
-		return res, installLaunchd(e, &res)
+		return res, installLaunchd(e, &res, st)
 	case "windows":
 		return res, installWindows(e, &res)
 	}
@@ -397,7 +405,38 @@ func exists(p string) bool {
 	return err == nil
 }
 
-func installSystemd(e Env, res *Result) error {
+// state is whether the timer starts by itself (enabled, loaded) and whether it runs now.
+type state struct{ Enabled, Active bool }
+
+// legacyState reads the state of the timer of the name before a rename; both on when there
+// is none or the service manager gives no answer.
+func legacyState(e Env) state {
+	st := state{Enabled: true, Active: true}
+	n, ok := legacy()
+	if !ok || LegacyUnit(e) == "" {
+		return st
+	}
+	word := func(args ...string) string {
+		out, _ := e.Runner.Run(args[0], args[1:]...)
+		return strings.TrimSpace(string(out))
+	}
+	switch e.GOOS {
+	case "linux":
+		if w := word("systemctl", "--user", "is-enabled", n.systemd+".timer"); w != "" {
+			st.Enabled = strings.HasPrefix(w, "enabled") || w == "linked" || w == "alias"
+		}
+		if w := word("systemctl", "--user", "is-active", n.systemd+".timer"); w != "" {
+			st.Active = w == "active" || w == "activating"
+		}
+	case "darwin":
+		if _, err := e.Runner.Run("launchctl", "print", fmt.Sprintf("gui/%d/%s", e.UID, n.label)); err != nil {
+			st = state{}
+		}
+	}
+	return st
+}
+
+func installSystemd(e Env, res *Result, st state) error {
 	dir := SystemdDir(e)
 	svc, tm := filepath.Join(dir, SystemdName+".service"), filepath.Join(dir, SystemdName+".timer")
 	if err := writeFile(svc, SystemdService(e)); err != nil {
@@ -407,10 +446,16 @@ func installSystemd(e Env, res *Result) error {
 		return err
 	}
 	res.Files = append(res.Files, svc, tm)
-	for _, args := range [][]string{
-		{"--user", "daemon-reload"},
-		{"--user", "enable", "--now", SystemdName + ".timer"},
-	} {
+	cmds := [][]string{{"--user", "daemon-reload"}}
+	switch {
+	case st.Enabled && st.Active:
+		cmds = append(cmds, []string{"--user", "enable", "--now", SystemdName + ".timer"})
+	case st.Enabled:
+		cmds = append(cmds, []string{"--user", "enable", SystemdName + ".timer"})
+	case st.Active:
+		cmds = append(cmds, []string{"--user", "start", SystemdName + ".timer"})
+	}
+	for _, args := range cmds {
 		if out, err := e.Runner.Run("systemctl", args...); err != nil {
 			return fmt.Errorf("systemctl %s: %v: %s\nThe unit files are in %s; start the timer later with:\n  systemctl --user enable --now %s.timer\nOr, without systemd, run `wy tick --quiet` every minute from cron.",
 				strings.Join(args, " "), err, strings.TrimSpace(string(out)), dir, SystemdName)
@@ -430,12 +475,15 @@ func installSystemd(e Env, res *Result) error {
 	return nil
 }
 
-func installLaunchd(e Env, res *Result) error {
+func installLaunchd(e Env, res *Result, st state) error {
 	p := LaunchAgentPath(e)
 	if err := writeFile(p, LaunchdPlist(e)); err != nil {
 		return err
 	}
 	res.Files = append(res.Files, p)
+	if !st.Enabled && !st.Active {
+		return nil // the old agent was not loaded: the file is written, nothing is loaded
+	}
 	domain := fmt.Sprintf("gui/%d", e.UID)
 	_, _ = e.Runner.Run("launchctl", "bootout", domain+"/"+LaunchdLabel) // replace an older copy
 	if out, err := e.Runner.Run("launchctl", "bootstrap", domain, p); err != nil {

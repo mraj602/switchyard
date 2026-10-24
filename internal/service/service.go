@@ -415,6 +415,15 @@ func (s *Service) run(name string, args ...string) ([]byte, error) {
 // Install writes the unit and starts the service. A failing service manager is reported in
 // the returned error but the file stays, so the person can finish by hand.
 func (s *Service) Install(ctx context.Context, spec model.ServiceSpec) error {
+	return s.install(ctx, spec, unitState{Enabled: true, Active: true})
+}
+
+// unitState is what a service manager holds for a unit: whether it starts by itself
+// (enabled, loaded) and whether it runs now. Install uses both; the move from the name
+// before the rename carries the old unit's state over (rename.md 2.2).
+type unitState struct{ Enabled, Active bool }
+
+func (s *Service) install(ctx context.Context, spec model.ServiceSpec, st unitState) error {
 	spec, err := normalize(spec)
 	if err != nil {
 		return err
@@ -434,23 +443,32 @@ func (s *Service) Install(ctx context.Context, spec model.ServiceSpec) error {
 	}
 	switch s.Env.GOOS {
 	case "linux":
-		return s.installSystemd(spec)
+		return s.installSystemd(spec, st)
 	case "darwin":
-		return s.installLaunchd(spec)
+		return s.installLaunchd(spec, st)
 	case "windows":
-		return s.installWindows(spec)
+		return s.installWindows(spec, st)
 	}
 	return fmt.Errorf("service: no user service support for %s; run `wy hub serve` from your own supervisor", s.Env.GOOS)
 }
 
-func (s *Service) installSystemd(spec model.ServiceSpec) error {
+func (s *Service) installSystemd(spec model.ServiceSpec, st unitState) error {
 	e := s.Env
 	p := UnitPath(e, spec)
 	if err := writeFile(p, []byte(SystemdUnit(e, spec)), 0o644); err != nil {
 		return err
 	}
 	unit := spec.Name + ".service"
-	for _, args := range [][]string{{"--user", "daemon-reload"}, {"--user", "enable", "--now", unit}} {
+	cmds := [][]string{{"--user", "daemon-reload"}}
+	switch {
+	case st.Enabled && st.Active:
+		cmds = append(cmds, []string{"--user", "enable", "--now", unit})
+	case st.Enabled:
+		cmds = append(cmds, []string{"--user", "enable", unit})
+	case st.Active:
+		cmds = append(cmds, []string{"--user", "start", unit})
+	}
+	for _, args := range cmds {
 		if out, err := s.run("systemctl", args...); err != nil {
 			return fmt.Errorf("systemctl %s: %v: %s\nThe unit file is %s; start the service later with:\n  systemctl --user enable --now %s",
 				strings.Join(args, " "), err, strings.TrimSpace(string(out)), p, unit)
@@ -468,11 +486,14 @@ func (s *Service) installSystemd(spec model.ServiceSpec) error {
 	return nil
 }
 
-func (s *Service) installLaunchd(spec model.ServiceSpec) error {
+func (s *Service) installLaunchd(spec model.ServiceSpec, st unitState) error {
 	e := s.Env
 	p := UnitPath(e, spec)
 	if err := writeFile(p, []byte(LaunchdPlist(e, spec)), 0o644); err != nil {
 		return err
+	}
+	if !st.Enabled && !st.Active {
+		return nil // the old agent was not loaded: the file is written, nothing is loaded
 	}
 	domain := fmt.Sprintf("gui/%d", e.UID)
 	_, _ = s.run("launchctl", "bootout", domain+"/"+LaunchdLabel(spec.Name)) // replace an older copy
@@ -483,7 +504,7 @@ func (s *Service) installLaunchd(spec model.ServiceSpec) error {
 	return nil
 }
 
-func (s *Service) installWindows(spec model.ServiceSpec) error {
+func (s *Service) installWindows(spec model.ServiceSpec, st unitState) error {
 	e := s.Env
 	p := UnitPath(e, spec)
 	if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
@@ -497,8 +518,15 @@ func (s *Service) installWindows(spec model.ServiceSpec) error {
 		return fmt.Errorf("schtasks /Create: %v: %s\nThe task file is %s; create it by hand with:\n  schtasks /Create /TN \"%s\" /XML \"%s\"",
 			err, strings.TrimSpace(string(out)), p, task, p)
 	}
-	if out, err := s.run("schtasks", "/Run", "/TN", task); err != nil {
-		return fmt.Errorf("schtasks /Run: %v: %s", err, strings.TrimSpace(string(out)))
+	if !st.Enabled {
+		if out, err := s.run("schtasks", "/Change", "/TN", task, "/DISABLE"); err != nil {
+			return fmt.Errorf("schtasks /Change /DISABLE: %v: %s", err, strings.TrimSpace(string(out)))
+		}
+	}
+	if st.Active {
+		if out, err := s.run("schtasks", "/Run", "/TN", task); err != nil {
+			return fmt.Errorf("schtasks /Run: %v: %s", err, strings.TrimSpace(string(out)))
+		}
 	}
 	return nil
 }
@@ -632,4 +660,37 @@ func exists(p string) bool {
 // LingerNote is the one-line hint printed when LingerOff is set.
 func LingerNote(user string) string {
 	return "the hub stops when you log out; run `loginctl enable-linger " + user + "`"
+}
+
+// stateOf reads, before the unit is removed, whether the service installed as name is enabled
+// and running. An answer the service manager does not give (no systemctl, an error with no
+// output) counts as on, as an install without a previous unit would be.
+func (s *Service) stateOf(name string) unitState {
+	e := s.Env
+	st := unitState{Enabled: true, Active: true}
+	word := func(cmd string, args ...string) string {
+		out, _ := s.run(cmd, args...)
+		return strings.TrimSpace(string(out))
+	}
+	switch e.GOOS {
+	case "linux":
+		unit := name + ".service"
+		if w := word("systemctl", "--user", "is-enabled", unit); w != "" {
+			st.Enabled = strings.HasPrefix(w, "enabled") || w == "linked" || w == "alias"
+		}
+		if w := word("systemctl", "--user", "is-active", unit); w != "" {
+			st.Active = w == "active" || w == "activating" || w == "reloading"
+		}
+	case "darwin":
+		// A plist that is not loaded was booted out by hand: there is no enabled/active split.
+		if _, err := s.run("launchctl", "print", fmt.Sprintf("gui/%d/%s", e.UID, LaunchdLabel(name))); err != nil {
+			st = unitState{}
+		}
+	case "windows":
+		if w := word("schtasks", "/Query", "/TN", WindowsTask(name)); w != "" {
+			st.Enabled = !strings.Contains(w, "Disabled")
+			st.Active = strings.Contains(w, "Running")
+		}
+	}
+	return st
 }

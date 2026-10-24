@@ -85,6 +85,11 @@ func (e *Exec) run(ctx context.Context, f *Folder, args ...string) (output, erro
 
 // runEnv is run with the child's whole environment given.
 func (e *Exec) runEnv(ctx context.Context, env []string, args ...string) (output, error) {
+	return e.runIn(ctx, env, e.Dir, args...)
+}
+
+// runIn is runEnv with the working directory given.
+func (e *Exec) runIn(ctx context.Context, env []string, dir string, args ...string) (output, error) {
 	if e.Path == "" {
 		return output{}, ErrNotFound
 	}
@@ -92,7 +97,7 @@ func (e *Exec) runEnv(ctx context.Context, env []string, args ...string) (output
 	defer cancel()
 	cmd := exec.CommandContext(ctx, e.Path, args...)
 	cmd.Env = env
-	cmd.Dir = e.Dir
+	cmd.Dir = dir
 	cmd.Stdin = nil // /dev/null
 	var so, se bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &so, &se
@@ -348,6 +353,25 @@ func (e *Exec) PluginUninstall(ctx context.Context, f Folder, id string) (Result
 	return absentIsDone(res, err, "not_installed")
 }
 
+// PluginUninstallScoped implements Runner. Installs in the project and local scopes are only
+// found from their project folder, so the command runs there.
+func (e *Exec) PluginUninstallScoped(ctx context.Context, f Folder, id, scope, projectPath string) (Result, error) {
+	if scope == "" || scope == "user" {
+		return e.PluginUninstall(ctx, f, id)
+	}
+	args := []string{"plugin", "uninstall", id, "--scope=" + scope, "--json"}
+	dir := e.Dir
+	if projectPath != "" {
+		dir = projectPath
+	}
+	o, err := e.runIn(ctx, f.Environ(e.base()), dir, args...)
+	if err != nil {
+		return Result{}, err
+	}
+	res, err := result(args, o)
+	return absentIsDone(res, err, "not_installed")
+}
+
 // PluginEnable implements Runner.
 func (e *Exec) PluginEnable(ctx context.Context, f Folder, id string) (Result, error) {
 	return e.plugin(ctx, f, "plugin", "enable", id)
@@ -432,6 +456,7 @@ func (e *Exec) PluginList(ctx context.Context, f Folder) ([]PluginInfo, error) {
 			ID:          str(m, "id", "plugin"),
 			Version:     str(m, "version"),
 			Scope:       str(m, "scope"),
+			ProjectPath: str(m, "projectPath", "project_path"),
 			InstallPath: str(m, "installPath", "install_path"),
 		}
 		if p.ID == "" {

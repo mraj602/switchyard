@@ -159,6 +159,7 @@ func postUpdateTimer(_ context.Context, _ string) (string, error) {
 	}
 	te := e.timerEnv()
 	te.Out = io.Discard
+	te.KeepLegacyState = true // a timer of the old name that was off stays off (rename.md 2.3)
 	// Keep the folder overrides the timer was installed with: this process (often a
 	// non-interactive ssh `wy update`) may not carry them. A timer from before a rename is
 	// replaced by Install with the same overrides (rename.md 2.3).
@@ -294,11 +295,25 @@ func postUpdateService(ctx context.Context, _ string) (string, error) {
 	case !res.Installed:
 		return "no hub service here", nil
 	case res.Migrated != "":
-		return "moved from " + res.Migrated + " to " + service.UnitName(e.goos, name) + ", restarted", nil
+		return "moved from " + res.Migrated + " to " + service.UnitName(e.goos, name) + movedState(res), nil
 	case res.Rewritten:
 		return "unit rewritten, restarted", nil
 	}
 	return "restarted", nil
+}
+
+// movedState says what a unit moved from the old name was left as: it keeps the old one's
+// state, so a disabled and stopped hub stays that way (rename.md 2.2).
+func movedState(res service.RefreshResult) string {
+	switch {
+	case res.Enabled && res.Started:
+		return ", restarted"
+	case res.Enabled:
+		return ", enabled, not started (the old one was stopped)"
+	case res.Started:
+		return ", started, not enabled (the old one was disabled)"
+	}
+	return ", left disabled and stopped (as the old one was)"
 }
 
 // postUpdateAgent rewrites (if needed) and restarts the peers agent when its unit exists, so it
@@ -318,7 +333,7 @@ func postUpdateAgent(ctx context.Context, _ string) (string, error) {
 		return "no agent service here", nil
 	}
 	if res.Migrated != "" {
-		return "moved from " + res.Migrated + ", restarted", nil
+		return "moved from " + res.Migrated + movedState(res), nil
 	}
 	return "restarted", nil
 }
