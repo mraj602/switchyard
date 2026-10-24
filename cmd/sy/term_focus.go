@@ -112,7 +112,7 @@ type focusState struct {
 
 func loadFocusState(env termenv.Env) (focusState, error) {
 	var fsx focusState
-	dirs, err := paths.Resolve(paths.Env{GOOS: env.GOOS, Home: env.Home, Getenv: env.Lookup})
+	dirs, err := paths.Resolve(paths.Env{GOOS: env.GOOS, Home: env.Home, Getenv: env.Lookup, Exists: paths.StatExists})
 	if err != nil {
 		return fsx, err
 	}
@@ -251,7 +251,7 @@ func hubSessionFocus(ctx context.Context, st focusState, id string) (string, err
 // focusSyLog opens <state>/logs/sy.log for the opener's stderr; when it cannot, the
 // opener's stderr is dropped.
 func focusSyLog(env termenv.Env) (io.Writer, func()) {
-	dirs, err := paths.Resolve(paths.Env{GOOS: env.GOOS, Home: env.Home, Getenv: env.Lookup})
+	dirs, err := paths.Resolve(paths.Env{GOOS: env.GOOS, Home: env.Home, Getenv: env.Lookup, Exists: paths.StatExists})
 	if err != nil {
 		return nil, func() {}
 	}

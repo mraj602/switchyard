@@ -23,8 +23,21 @@ function Install-Sy {
 
     $ErrorActionPreference = 'Stop'
     $owner = 'mraj602'
+    $repo = 'switchyard'
+    # The repository's name before a rename (docs/spec/rename.md 2.7); equal to $repo without one.
+    $legacyRepo = 'switchyard' # rename:keep
+    # The command's name before a rename (docs/spec/rename.md 2.13): its variables still apply
+    # and its binary becomes a copy of the new one. Equal to sy without one.
+    $legacyCli = 'sy' # rename:keep
+    if ($legacyCli -ne 'sy') {
+        foreach ($v in @('INSTALL_BASE_URL', 'VERIFY_ATTESTATION')) {
+            $cur = [Environment]::GetEnvironmentVariable("SY_$v")
+            $old = [Environment]::GetEnvironmentVariable($legacyCli.ToUpper() + "_$v")
+            if (-not $cur -and $old) { [Environment]::SetEnvironmentVariable("SY_$v", $old) }
+        }
+    }
     $base = $env:SY_INSTALL_BASE_URL
-    if (-not $base) { $base = "https://github.com/$owner/switchyard/releases" }
+    if (-not $base) { $base = "https://github.com/$owner/$repo/releases" }
     $base = $base.TrimEnd('/')
     # https only; plain http just to a loopback host (the tests' local server).
     $baseUri = $null
@@ -116,10 +129,13 @@ function Install-Sy {
         } elseif (Get-Command gh -ErrorAction SilentlyContinue) {
             # 5.1 turns native stderr into an error record under Stop; any failure here is exit 3.
             $ok = $false
-            try {
-                & gh attestation verify (Join-Path $tmp $archive) --repo "$owner/switchyard" --signer-workflow "$owner/switchyard/.github/workflows/release.yml" 2>&1 | Out-Null
-                $ok = ($LASTEXITCODE -eq 0)
-            } catch { $ok = $false }
+            foreach ($r in @($repo, $legacyRepo | Select-Object -Unique)) {
+                try {
+                    & gh attestation verify (Join-Path $tmp $archive) --repo "$owner/$r" --signer-workflow "$owner/$r/.github/workflows/release.yml" 2>&1 | Out-Null
+                    $ok = ($LASTEXITCODE -eq 0)
+                } catch { $ok = $false }
+                if ($ok) { break }
+            }
             if (-not $ok) {
                 [Console]::Error.WriteLine("install.ps1: attestation verification failed for $archive; nothing installed (gh must be signed in and reach github.com; SY_VERIFY_ATTESTATION=0 skips this check)"); return 3
             }
@@ -148,6 +164,11 @@ function Install-Sy {
         if (-not $moved) {
             Remove-Item -Force -ErrorAction SilentlyContinue $new
             [Console]::Error.WriteLine("install.ps1: cannot replace $dest (in use?)"); return 4
+        }
+        $legacyExe = Join-Path $BinDir ($legacyCli + '.exe')
+        if ($legacyCli -ne 'sy' -and (Test-Path -PathType Leaf $legacyExe)) {
+            # Hooks, tasks and launchers written for the old name keep working.
+            try { Copy-Item -Force -Path $dest -Destination $legacyExe } catch { Write-Host "note: $legacyExe is in use and stays as it was" }
         }
     } finally {
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $tmp

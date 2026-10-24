@@ -792,7 +792,9 @@ same way:
    the old inode). Windows: rename `sy.exe` to `sy.exe.old` (allowed while it runs), move the
    new file in; `sy.exe.old` is deleted by the next `sy` run that can.
 7. **After**, with the new binary (`sy update --post-update <old version>`, an internal step):
-   refresh the plugin marketplace and run `claude plugin marketplace update sy-local` and
+   after a rename of the command, give the binary its current name and leave the old name as
+   a link to it (rename.md 2.13); move what an older release installed under the old project
+   name (rename.md 2.2 to 2.4); refresh the plugin marketplace and run `claude plugin marketplace update sy-local` and
    `claude plugin update switchyard@sy-local` per plugin root (setup.md 5.2); rewrite the
    timer unit and the hub service unit if their content changed; restart the hub service if
    it is installed here (`internal/service`: systemd user unit, launchd agent, scheduled

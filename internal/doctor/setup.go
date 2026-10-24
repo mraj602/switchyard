@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/mraj602/switchyard/internal/brand"
 	"github.com/mraj602/switchyard/internal/config"
 	"github.com/mraj602/switchyard/internal/identity"
 	"github.com/mraj602/switchyard/internal/setup/apply"
@@ -180,13 +181,16 @@ func setupRunning(stateDir string) bool {
 }
 
 func timerPresent(o Options) bool {
-	for _, p := range []string{
-		filepath.Join(o.Home, ".config", "systemd", "user", "switchyard-flush.timer"),
-		filepath.Join(o.Home, "Library", "LaunchAgents", "com.switchyard.flush.plist"),
-		filepath.Join(o.Dirs.State.Path, "switchyard-flush.task.xml"),
-	} {
-		if _, err := os.Stat(p); err == nil {
-			return true
+	// The names before a rename count too: `sy update` moves that timer (rename.md 2.3).
+	for _, slug := range []string{brand.Slug, brand.OldSlug()} {
+		for _, p := range []string{
+			filepath.Join(o.Home, ".config", "systemd", "user", slug+"-flush.timer"),
+			filepath.Join(o.Home, "Library", "LaunchAgents", "com."+slug+".flush.plist"),
+			filepath.Join(o.Dirs.State.Path, slug+"-flush.task.xml"),
+		} {
+			if _, err := os.Stat(p); err == nil {
+				return true
+			}
 		}
 	}
 	return false

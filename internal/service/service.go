@@ -18,18 +18,19 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/mraj602/switchyard/internal/brand"
 	"github.com/mraj602/switchyard/internal/setup/model"
 	"github.com/mraj602/switchyard/internal/timer"
 )
 
 // Defaults of the hub service.
 const (
-	DefaultName   = "switchyard-hub"
+	DefaultName   = brand.Slug + "-hub"
 	DefaultListen = "127.0.0.1:8787"
 
 	// AgentName is the peers agent's service (`sy agent enable`, peers.md 2.1). The macOS
 	// label is com.switchyard.switchyard-agent.
-	AgentName = "switchyard-agent"
+	AgentName = brand.Slug + "-agent"
 )
 
 // AgentArgs are the arguments of the agent service's ExecStart.
@@ -111,7 +112,7 @@ func normalize(spec model.ServiceSpec) (model.ServiceSpec, error) {
 	if spec.Listen == "" {
 		spec.Listen = DefaultListen
 	}
-	if len(spec.Args) == 0 && spec.Name == AgentName {
+	if len(spec.Args) == 0 && isAgent(spec.Name) {
 		spec.Args = AgentArgs
 	}
 	if len(spec.Args) == 0 {
@@ -120,20 +121,34 @@ func normalize(spec model.ServiceSpec) (model.ServiceSpec, error) {
 	return spec, nil
 }
 
+// isAgent reports whether name is the agent's service under the current or the legacy name.
+func isAgent(name string) bool { return brand.Current(name) == AgentName }
+
+// brandOf returns the slug and display name a service name was made with: the legacy ones
+// for a name brand.Legacy made (rename.md 2.2), else the current ones.
+func brandOf(name string) (slug, display string) {
+	if brand.Renamed() && strings.HasPrefix(name, brand.OldSlug()+"-") && !strings.HasPrefix(name, brand.Slug+"-") {
+		return brand.OldSlug(), brand.OldName()
+	}
+	return brand.Slug, brand.Name
+}
+
 // LaunchdLabel is the LaunchAgent label for a service name.
 func LaunchdLabel(name string) string {
-	if name == DefaultName {
-		return "com.switchyard.hub"
+	slug, _ := brandOf(name)
+	if name == slug+"-hub" {
+		return "com." + slug + ".hub"
 	}
-	return "com.switchyard." + name
+	return "com." + slug + "." + name
 }
 
 // WindowsTask is the Task Scheduler name for a service name.
 func WindowsTask(name string) string {
-	if name == DefaultName {
-		return "Switchyard Hub"
+	slug, display := brandOf(name)
+	if name == slug+"-hub" {
+		return display + " Hub"
 	}
-	return "Switchyard " + name
+	return display + " " + name
 }
 
 // WindowsXMLFile is the task definition's file name inside Env.StateDir.
@@ -221,7 +236,7 @@ func hasControl(s string) bool {
 
 // describe is the one-line description of a service in its unit, plist and task.
 func describe(name string) string {
-	if name == AgentName {
+	if isAgent(name) {
 		return "Switchyard agent (peers)"
 	}
 	return "Switchyard hub (merged mode)"
@@ -230,7 +245,7 @@ func describe(name string) string {
 // logName is the file launchd writes the service's stdout and stderr to, inside StateDir. The
 // agent writes its own rotated log (<state>/logs/agent.log), so launchd's gets another name.
 func logName(name string) string {
-	if name == AgentName {
+	if isAgent(name) {
 		return "agent.launchd.log"
 	}
 	return "hub.log"
@@ -241,7 +256,7 @@ func logName(name string) string {
 func SystemdUnit(e Env, spec model.ServiceSpec) string {
 	var b strings.Builder
 	b.WriteString("[Unit]\n")
-	agent := spec.Name == AgentName
+	agent := isAgent(spec.Name)
 	b.WriteString("Description=" + describe(spec.Name) + "\n")
 	b.WriteString("Documentation=https://github.com/mraj602/switchyard\n")
 	if !agent {
@@ -410,6 +425,13 @@ func (s *Service) Install(ctx context.Context, spec model.ServiceSpec) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	// A copy installed under the name before the rename would hold the port: stop and remove
+	// it first (rename.md 2.2).
+	if old := legacyOf(spec.Name); old != "" && s.installed(old) {
+		if err := s.Uninstall(ctx, old); err != nil {
+			return fmt.Errorf("service: remove %s from before the rename: %w", UnitName(s.Env.GOOS, old), err)
+		}
+	}
 	switch s.Env.GOOS {
 	case "linux":
 		return s.installSystemd(spec)
@@ -437,7 +459,7 @@ func (s *Service) installSystemd(spec model.ServiceSpec) error {
 	if e.Out != nil && e.User != "" {
 		if out, err := s.run("loginctl", "show-user", e.User, "--property=Linger"); err == nil && strings.Contains(string(out), "Linger=no") {
 			note := LingerNote(e.User)
-			if spec.Name == AgentName {
+			if isAgent(spec.Name) {
 				note = strings.Replace(note, "the hub", "the agent", 1)
 			}
 			e.printf("%s\n", note)
@@ -487,8 +509,13 @@ func (s *Service) Uninstall(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
+	if old := legacyOf(spec.Name); old != "" && s.installed(old) {
+		if err := s.Uninstall(ctx, old); err != nil {
+			return err
+		}
+	}
 	e := s.Env
-	p := UnitPath(e, spec)
+	p := InstalledPath(e, spec.Name)
 	rm := func(path string) error {
 		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return err
@@ -526,7 +553,8 @@ func (s *Service) Status(ctx context.Context, name string) (model.ServiceStatus,
 		return st, err
 	}
 	e := s.Env
-	_, statErr := os.Stat(UnitPath(e, spec))
+	spec.Name = Installed(e, spec.Name)
+	_, statErr := os.Stat(InstalledPath(e, spec.Name))
 	st.Installed = statErr == nil
 	switch e.GOOS {
 	case "linux":
@@ -551,6 +579,54 @@ func (s *Service) Status(ctx context.Context, name string) (model.ServiceStatus,
 		}
 	}
 	return st, nil
+}
+
+// ---- the name before a rename (rename.md 2.2) ---------------------------------------------------
+
+// InstalledPath is the unit, plist or task XML of the installed service name: UnitPath, or on
+// macOS the dev.<slug>.hub.plist that `sy setup --hub here` wrote before the rename when only that
+// one exists.
+func InstalledPath(e Env, name string) string {
+	p := UnitPath(e, model.ServiceSpec{Name: name})
+	if e.GOOS != "darwin" || exists(p) {
+		return p
+	}
+	if slug, _ := brandOf(name); name == slug+"-hub" {
+		if alt := filepath.Join(e.Home, "Library", "LaunchAgents", "dev."+slug+".hub.plist"); exists(alt) {
+			return alt
+		}
+	}
+	return p
+}
+
+// Installed returns the name the service is installed under: name, or its name from before
+// the rename when only that one has a unit file. Everything that finds an installed service
+// (Status, Start, Stop, Refresh, InstalledUnit) goes through it, so an older install keeps
+// working until Refresh or Install moves it to the new name.
+func Installed(e Env, name string) string {
+	if exists(InstalledPath(e, name)) {
+		return name
+	}
+	if old := legacyOf(name); old != "" && exists(InstalledPath(e, old)) {
+		return old
+	}
+	return name
+}
+
+// legacyOf is the service's name from before the rename: "" when there was none, or name is
+// not a current <slug>-<x> name.
+func legacyOf(name string) string {
+	if !brand.Renamed() || !strings.HasPrefix(name, brand.Slug+"-") {
+		return ""
+	}
+	return brand.OldSlug() + strings.TrimPrefix(name, brand.Slug)
+}
+
+func (s *Service) installed(name string) bool { return exists(InstalledPath(s.Env, name)) }
+
+func exists(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
 }
 
 // LingerNote is the one-line hint printed when LingerOff is set.

@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mraj602/switchyard/internal/brand"
 )
 
 // DefaultOwner and SignerWorkflow pin who built a release: attestations are checked against
@@ -37,7 +39,8 @@ type Attestation struct {
 	// GH is the gh executable ("" = look up "gh" on PATH).
 	GH string
 	// Owner defaults to DefaultOwner. The repository is <owner>/switchyard and the signer
-	// workflow <owner>/switchyard/.github/workflows/release.yml.
+	// workflow <owner>/switchyard/.github/workflows/release.yml (after a rename, the old
+	// repository name is accepted too).
 	Owner string
 	// Run runs the command (tests); nil runs it for real.
 	Run func(ctx context.Context, name string, args ...string) error
@@ -67,8 +70,6 @@ func VerifyAttestation(ctx context.Context, a Attestation, archive string) (veri
 	if owner == "" {
 		owner = DefaultOwner
 	}
-	args := []string{"attestation", "verify", archive, "--repo", owner + "/switchyard",
-		"--signer-workflow", owner + "/switchyard/" + SignerWorkflow}
 	run := a.Run
 	if run == nil {
 		run = func(ctx context.Context, name string, args ...string) error {
@@ -81,8 +82,22 @@ func VerifyAttestation(ctx context.Context, a Attestation, archive string) (veri
 			return nil
 		}
 	}
-	if err := run(ctx, gh, args...); err != nil {
-		return false, fail(ExitVerify, "attestation verification failed for %s; nothing installed (%v). If gh cannot reach GitHub or is not signed in, fix that, or skip the check with --no-attestation", filepath.Base(archive), err)
+	// A release built before a rename was attested by the repository under its old name
+	// (`sy update --version` to an older release); it is checked against that name too
+	// (rename.md 2.7).
+	repos := []string{owner + "/" + brand.Slug}
+	if brand.Renamed() {
+		repos = append(repos, owner+"/"+brand.OldSlug())
+	}
+	var verr error
+	for _, repo := range repos {
+		args := []string{"attestation", "verify", archive, "--repo", repo, "--signer-workflow", repo + "/" + SignerWorkflow}
+		if verr = run(ctx, gh, args...); verr == nil {
+			break
+		}
+	}
+	if verr != nil {
+		return false, fail(ExitVerify, "attestation verification failed for %s; nothing installed (%v). If gh cannot reach GitHub or is not signed in, fix that, or skip the check with --no-attestation", filepath.Base(archive), verr)
 	}
 	return true, nil
 }

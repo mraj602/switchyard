@@ -10,6 +10,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/mraj602/switchyard/internal/brand"
 	"github.com/mraj602/switchyard/internal/identity"
 	"github.com/mraj602/switchyard/internal/setup/detect"
 	"github.com/mraj602/switchyard/internal/setup/detect/detecttest"
@@ -362,5 +363,21 @@ func TestNoClaude(t *testing.T) {
 	}
 	if st.Claude.Path != "" {
 		t.Errorf("claude found: %+v", st.Claude)
+	}
+}
+
+// rename.md 2.4: plugins of the project's name before a rename are found apart from the
+// current ones.
+func TestLegacyPluginsDetected(t *testing.T) {
+	defer brand.SetLegacyForTest("oldname", "Oldname")()
+	h := detecttest.Fresh(t)
+	h.B.File(".claude/settings.json", `{"enabledPlugins":{"oldname@sy-local":true,"oldname-pane@sy-local":true,"oldname@off":false,"switchyard@sy-local":true}}`, 0o644)
+	h.B.File(".claude/skills/old/.claude-plugin/plugin.json", `{"name":"oldname"}`, 0o644)
+	tg := h.State().SettingsTargets[0]
+	if got := strings.Join(tg.LegacyPlugins, ","); got != "oldname-pane@sy-local,oldname@skills-dir,oldname@sy-local" {
+		t.Errorf("legacy: %s", got)
+	}
+	if got := strings.Join(tg.SwitchyardPlugins, ","); got != "switchyard@sy-local" {
+		t.Errorf("current: %s", got)
 	}
 }

@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mraj602/switchyard/internal/brand"
 	"github.com/mraj602/switchyard/internal/sshx"
 	"github.com/mraj602/switchyard/internal/update"
 )
@@ -81,19 +82,28 @@ func (r remote) script(ctx context.Context, s string, stdin io.Reader, args ...s
 // update: <remote state>/update), $2 the file name, $3 a unique suffix. The first writes
 // stdin to a temporary file and prints its SHA-256 with whatever tool the remote has; the
 // second moves it into place (atomic within the folder: running hooks keep the old inode).
-const (
-	destDir = `if [ "$1" = update ]; then case "$XDG_STATE_HOME" in /*) d=$XDG_STATE_HOME/switchyard/update;; *) d=$HOME/.local/state/switchyard/update;; esac; else d=.local/bin; fi; t=$d/.$2.$3.tmp`
+//
+// The update folder is in the remote's state folder: the current name's, or the one from
+// before a rename while only that exists (paths.md, docs/spec/rename.md 2.1), so the upload
+// never creates the new folder that would hide the remote's existing state.
+func destDir() string {
+	return `if [ "$1" = update ]; then case "$XDG_STATE_HOME" in /*) s=$XDG_STATE_HOME;; *) s=$HOME/.local/state;; esac; ` +
+		`d=$s/` + brand.Slug + `/update; ` +
+		`if [ -d "$s/` + brand.Slug + `" ]; then true; elif [ -d "$s/` + brand.OldSlug() + `" ]; then d=$s/` + brand.OldSlug() + `/update; fi; ` +
+		`else d=.local/bin; fi; t=$d/.$2.$3.tmp`
+}
 
-	writeScript = `set -e; ` + destDir + `; mkdir -p "$d"; umask 077; rm -f "$t"; cat > "$t"; if [ "$1" = bin ]; then chmod 0755 "$t"; fi; echo "path=$t"; ` +
+func writeScript() string {
+	return `set -e; ` + destDir() + `; mkdir -p "$d"; umask 077; rm -f "$t"; cat > "$t"; if [ "$1" = bin ]; then chmod 0755 "$t"; fi; echo "path=$t"; ` +
 		`if command -v sha256sum >/dev/null 2>&1; then echo "sha=$(sha256sum < "$t")"; ` +
 		`elif command -v shasum >/dev/null 2>&1; then echo "sha=$(shasum -a 256 < "$t")"; ` +
 		`elif command -v openssl >/dev/null 2>&1; then echo "sha=$(openssl dgst -sha256 -r < "$t")"; ` +
 		`else echo sha=none; fi`
+}
 
-	moveScript    = `set -e; ` + destDir + `; mv -f "$t" "$d/$2"; echo "path=$d/$2"`
-	discardScript = destDir + `; rm -f "$t"`
-	versionScript = destDir + `; "$t" version --short`
-)
+func moveScript() string    { return `set -e; ` + destDir() + `; mv -f "$t" "$d/$2"; echo "path=$d/$2"` }
+func discardScript() string { return destDir() + `; rm -f "$t"` }
+func versionScript() string { return destDir() + `; "$t" version --short` }
 
 // pushed is the outcome of a transfer.
 type pushed struct {
@@ -119,7 +129,7 @@ func (r remote) push(ctx context.Context, local, kind, name, wantVersion string)
 	}
 	defer f.Close()
 	suffix := strconv.Itoa(os.Getpid())
-	res, err := r.script(ctx, writeScript, f, kind, name, suffix)
+	res, err := r.script(ctx, writeScript(), f, kind, name, suffix)
 	if err != nil {
 		return pushed{}, err
 	}
@@ -134,19 +144,19 @@ func (r remote) push(ctx context.Context, local, kind, name, wantVersion string)
 		out.Verified = true
 	case got == "none":
 		if wantVersion == "" {
-			_, _ = r.script(ctx, discardScript, nil, kind, name, suffix)
+			_, _ = r.script(ctx, discardScript(), nil, kind, name, suffix)
 			return pushed{}, fmt.Errorf("%s has no SHA-256 tool (sha256sum, shasum or openssl), so the copy cannot be checked", r.host)
 		}
-		v, verr := r.script(ctx, versionScript, nil, kind, name, suffix)
+		v, verr := r.script(ctx, versionScript(), nil, kind, name, suffix)
 		if verr != nil || v.Exit != 0 || strings.TrimSpace(string(v.Stdout)) != wantVersion {
-			_, _ = r.script(ctx, discardScript, nil, kind, name, suffix)
+			_, _ = r.script(ctx, discardScript(), nil, kind, name, suffix)
 			return pushed{}, fmt.Errorf("the copied sy on %s does not print version %s", r.host, wantVersion)
 		}
 	default:
-		_, _ = r.script(ctx, discardScript, nil, kind, name, suffix)
+		_, _ = r.script(ctx, discardScript(), nil, kind, name, suffix)
 		return pushed{}, fmt.Errorf("the copy on %s has SHA-256 %s, not %s: nothing was replaced", r.host, short(got), short(sum))
 	}
-	mv, err := r.script(ctx, moveScript, nil, kind, name, suffix)
+	mv, err := r.script(ctx, moveScript(), nil, kind, name, suffix)
 	if err != nil {
 		return pushed{}, err
 	}

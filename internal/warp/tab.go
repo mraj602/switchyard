@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 	"unicode"
+
+	"github.com/mraj602/switchyard/internal/brand"
 )
 
 // Marker starts the first line of every tab config sy writes (T8). A file without it is
@@ -20,9 +22,32 @@ const Marker = "# sy-warp-tab v1 "
 
 // Prefix and Suffix make the file name of a tab config: switchyard-<label>.toml.
 const (
-	Prefix = "switchyard-"
+	Prefix = brand.Slug + "-"
 	Suffix = ".toml"
 )
+
+// legacyPrefix is the prefix tab configs had before a rename ("" when there was none):
+// those files are still read, opened and, when unchanged, moved away (docs/spec/rename.md).
+func legacyPrefix() string {
+	if !brand.Renamed() {
+		return ""
+	}
+	return brand.OldSlug() + "-"
+}
+
+// stemLabel returns the label of a tab config stem (file name without .toml), with either
+// prefix, and whether it carries the legacy one.
+func stemLabel(stem string) (label string, legacy bool) {
+	l, ok := strings.CutPrefix(stem, Prefix)
+	if lp := legacyPrefix(); !ok && lp != "" {
+		l, ok = strings.CutPrefix(stem, lp)
+		legacy = ok
+	}
+	if !ok || !labelRE.MatchString(l) {
+		return "", false
+	}
+	return l, legacy
+}
 
 var labelRE = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,23}$`)
 
@@ -46,15 +71,29 @@ func Stem(label string) string { return Prefix + label }
 
 // LabelOf returns the label of a tab config file name or path ("" if it is not one).
 func LabelOf(path string) string {
-	name := filepath.Base(strings.ReplaceAll(path, `\`, "/"))
-	if !strings.HasPrefix(name, Prefix) || !strings.HasSuffix(name, Suffix) {
-		return ""
-	}
-	l := strings.TrimSuffix(strings.TrimPrefix(name, Prefix), Suffix)
-	if !labelRE.MatchString(l) {
-		return ""
-	}
+	l, _ := stemLabel(stemOf(path))
 	return l
+}
+
+// stemOf is the file name of path without .toml ("" if it does not end in .toml).
+func stemOf(path string) string {
+	name := filepath.Base(strings.ReplaceAll(path, `\`, "/"))
+	if !strings.HasSuffix(name, Suffix) {
+		return ""
+	}
+	return strings.TrimSuffix(name, Suffix)
+}
+
+// IsLegacyTab reports whether path is a tab config named with the prefix from before a
+// rename.
+func IsLegacyTab(path string) bool {
+	l, legacy := stemLabel(stemOf(path))
+	return l != "" && legacy
+}
+
+// FileURI is the URI that opens the tab config file at path, whichever prefix it has.
+func FileURI(channel, path string) string {
+	return Scheme(channel) + "://tab_config/" + stemOf(path)
 }
 
 // IsTabPath reports whether path is a switchyard-<label>.toml inside a tab_configs folder.
@@ -70,11 +109,19 @@ func TabURI(channel, label string) string {
 	return Scheme(channel) + "://tab_config/" + Stem(label)
 }
 
-var tabURIRE = regexp.MustCompile(`^(warp|warppreview)://tab_config/switchyard-[a-z0-9][a-z0-9-]{0,23}$`)
+var tabURIRE = regexp.MustCompile(`^(?:warp|warppreview)://tab_config/([a-z0-9-]+)$`)
 
-// ValidTabURI reports whether u is exactly a TabURI (the second fixed URI pattern T8 lets
-// the opener open, after the focus allow-list of T7).
-func ValidTabURI(u string) bool { return len(u) <= 128 && tabURIRE.MatchString(u) }
+// ValidTabURI reports whether u is exactly a TabURI, or one for a tab config with the
+// legacy prefix (the second fixed URI pattern T8 lets the opener open, after the focus
+// allow-list of T7).
+func ValidTabURI(u string) bool {
+	m := tabURIRE.FindStringSubmatch(u)
+	if len(u) > 128 || m == nil {
+		return false
+	}
+	l, _ := stemLabel(m[1])
+	return l != ""
+}
 
 // Spec describes one tab config.
 type Spec struct {

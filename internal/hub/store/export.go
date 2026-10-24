@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mraj602/switchyard/internal/brand"
 	"github.com/mraj602/switchyard/internal/hub/hublock"
 )
 
@@ -126,7 +127,7 @@ func (s *Store) Unfreeze(ctx context.Context) (was bool, err error) {
 // ManifestFormat and ManifestKind identify a hub export (machines.md 8.1 step 4).
 const (
 	ManifestFormat = 1
-	ManifestKind   = "switchyard-hub-export"
+	ManifestKind   = brand.Slug + "-hub-export"
 )
 
 // Archive member names.
@@ -629,7 +630,8 @@ func unpack(path, passphrase, dir string) (Manifest, error) {
 	if !haveManifest {
 		return m, errors.New("not a hub export: no manifest.json")
 	}
-	if m.Format != ManifestFormat || m.Kind != ManifestKind {
+	// An export made before a rename carries the old name (rename.md 2.6).
+	if m.Format != ManifestFormat || (m.Kind != ManifestKind && m.Kind != brand.Legacy(ManifestKind)) || m.Kind == "" {
 		return m, fmt.Errorf("not a hub export this sy reads (format %d, kind %q)", m.Format, m.Kind)
 	}
 	listed := map[string]bool{}

@@ -24,7 +24,8 @@ docker compose exec hub sy hub backup  # lands in the hub-data volume under /dat
 ```
 
 Then copy the backup off the machine with your usual tool, or back up the whole Docker volume
-`switchyard_hub-data`. A cron job running `sy hub backup` once a day is enough for most setups.
+`switchyard_hub-data`. <!-- rename:keep -->
+A cron job running `sy hub backup` once a day is enough for most setups.
 
 Also keep, on the hub machine:
 

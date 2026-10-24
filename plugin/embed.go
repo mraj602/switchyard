@@ -6,14 +6,17 @@ package plugin
 import (
 	"embed"
 	"io/fs"
+
+	"github.com/mraj602/switchyard/internal/brand"
 )
 
-// Name is the plugin's name and its folder name under plugin/.
-const Name = "switchyard"
+// Name is the plugin's name and its folder name under plugin/ (the skills are /<Name>:setup
+// and so on).
+const Name = brand.Slug
 
 // PaneName is the pane mod's plugin name and folder name under plugin/. It is a separate
 // plugin so the early-access mod API can never break the recording hooks (T5, decision 4).
-const PaneName = "switchyard-pane"
+const PaneName = brand.Slug + "-pane"
 
 // The "all:" prefix is required: without it go:embed skips ".claude-plugin" (a dot folder),
 // and the plugin would have no plugin.json.

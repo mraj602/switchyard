@@ -389,7 +389,7 @@ func TestHasIncludeVariants(t *testing.T) {
 		"Include /home/other/.ssh/switchyard.conf\n":      false,
 		"Include switchyard.conf # added by sy earlier\n": true,
 	} {
-		if got := hasInclude([]byte(cfg), home); got != want {
+		if got := hasInclude([]byte(cfg), home, ForwardConf); got != want {
 			t.Errorf("hasInclude(%q) = %v, want %v", cfg, got, want)
 		}
 	}

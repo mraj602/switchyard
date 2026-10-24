@@ -50,7 +50,7 @@ leave `SY_BIND` out: the hub then listens on `127.0.0.1` of the server only, and
 HTTPS in front with `tailscale serve --bg 8787` (then use the `https://<name>.<tailnet>.ts.net`
 address below instead of `http://<name>.<tailnet>.ts.net:8787`).
 
-The data lives in the Docker volume `switchyard_hub-data` (`/data` in the container): the
+The data lives in the Docker volume `switchyard_hub-data` (`/data` in the container): the <!-- rename:keep -->
 database, backups made by `sy hub backup`, and the pull key (`/data/state/pull`, see D).
 Back that volume up.
 

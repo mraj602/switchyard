@@ -51,7 +51,7 @@ type relFiles map[string][]byte // request path -> body
 
 // add serves a version's linux/amd64 archive and SHA256SUMS under download/v<v>/ (and latest/).
 func (r relFiles) add(t *testing.T, version string, schema int, latest bool) {
-	arch := tgz(t, map[string][]byte{"sy": fakeBin(version, schema), "README.md": []byte("r")}, tar.TypeReg)
+	arch := tgz(t, map[string][]byte{BinaryName(goos): fakeBin(version, schema), "README.md": []byte("r")}, tar.TypeReg)
 	name := "sy_" + version + "_linux_amd64.tar.gz"
 	sums := []byte(sum(arch) + "  " + name + "\n" + strings.Repeat("0", 64) + "  sy_" + version + "_darwin_arm64.tar.gz\n")
 	dirs := []string{"/download/v" + version}
@@ -256,7 +256,7 @@ func TestHubSchemaIncompatibleRefused(t *testing.T) {
 
 func TestSmokeFailureAndWrongVersion(t *testing.T) {
 	o, exe, r, _ := setup(t, "0.0.0-e2e")
-	arch := tgz(t, map[string][]byte{"sy": fakeBin("0.0.9", 4)}, tar.TypeReg) // claims 0.0.1, says 0.0.9
+	arch := tgz(t, map[string][]byte{BinaryName(goos): fakeBin("0.0.9", 4)}, tar.TypeReg) // claims 0.0.1, says 0.0.9
 	name := "sy_0.0.1_linux_amd64.tar.gz"
 	r["/latest/download/"+name], r["/download/v0.0.1/"+name] = arch, arch
 	r["/latest/download/SHA256SUMS"] = []byte(sum(arch) + "  " + name + "\n")
@@ -265,7 +265,7 @@ func TestSmokeFailureAndWrongVersion(t *testing.T) {
 	if _, err := Apply(context.Background(), o); code(err) != ExitVerify {
 		t.Fatalf("got %v", err)
 	}
-	arch = tgz(t, map[string][]byte{"sy": []byte("not a program")}, tar.TypeReg)
+	arch = tgz(t, map[string][]byte{BinaryName(goos): []byte("not a program")}, tar.TypeReg)
 	r["/latest/download/"+name], r["/download/v0.0.1/"+name] = arch, arch
 	r["/latest/download/SHA256SUMS"] = []byte(sum(arch) + "  " + name + "\n")
 	r["/download/v0.0.1/SHA256SUMS"] = r["/latest/download/SHA256SUMS"]
@@ -389,7 +389,7 @@ func TestRedirectToPlainHTTPRefused(t *testing.T) {
 
 func TestFetchCacheAndOtherPlatform(t *testing.T) {
 	_, _, r, s := setup(t, "0.0.0")
-	arch := tgz(t, map[string][]byte{"sy": []byte("mach-o")}, tar.TypeReg)
+	arch := tgz(t, map[string][]byte{BinaryName(goos): []byte("mach-o")}, tar.TypeReg)
 	nm := "sy_0.5.0_darwin_arm64.tar.gz"
 	r["/latest/download/"+nm], r["/download/v0.5.0/"+nm] = arch, arch
 	r["/latest/download/SHA256SUMS"] = []byte(sum(arch) + "  " + nm + "\n")
@@ -427,7 +427,7 @@ func TestExtractRefusals(t *testing.T) {
 		"nested":  tgz(t, map[string][]byte{"bin/sy": []byte("x")}, tar.TypeReg),
 		"dotted":  tgz(t, map[string][]byte{"./sy": []byte("x")}, tar.TypeReg),
 		"missing": tgz(t, map[string][]byte{"README.md": []byte("x")}, tar.TypeReg),
-		"symlink": tgz(t, map[string][]byte{"sy": nil}, tar.TypeSymlink),
+		"symlink": tgz(t, map[string][]byte{BinaryName(goos): nil}, tar.TypeSymlink),
 		"notgz":   []byte("plain"),
 	} {
 		if _, _, err := Extract(mk(label+".tgz", data)); code(err) != ExitVerify {

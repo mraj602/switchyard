@@ -65,3 +65,26 @@ test('test hooks read and check their variables', () => {
   assert.equal(testHooks.syBin({ SY_BIN: '/opt/sy' }), '/opt/sy');
   assert.throws(() => testHooks.syBin({ SY_BIN: 'sy' }), /absolute/);
 });
+
+test('after a rename the old user-data folder moves to the new one (rename.md 2.9)', async () => {
+  const { legacyMove } = await import('./paths.js');
+  const fsFake = (have, fail = false) => {
+    const calls = [];
+    return {
+      calls,
+      existsSync: (p) => have.includes(p),
+      renameSync: (a, b) => { calls.push([a, b]); if (fail) throw new Error('EXDEV'); },
+    };
+  };
+  let f = fsFake(['/a/old']);
+  assert.equal(legacyMove('/a/new', '/a/old', f), '/a/new');
+  assert.deepEqual(f.calls, [['/a/old', '/a/new']]);
+  f = fsFake(['/a/old', '/a/new']);
+  assert.equal(legacyMove('/a/new', '/a/old', f), '/a/new');
+  assert.deepEqual(f.calls, []);
+  f = fsFake([]);
+  assert.equal(legacyMove('/a/new', '/a/old', f), '/a/new');
+  assert.equal(legacyMove('/a/new', '/a/old', fsFake(['/a/old'], true)), '/a/old');
+  assert.equal(legacyMove('/a/same', '/a/same', fsFake(['/a/same'])), '/a/same');
+  assert.equal(legacyMove('/a/new', '/a/old', undefined), '/a/new');
+});

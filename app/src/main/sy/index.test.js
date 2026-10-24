@@ -11,7 +11,7 @@ import { syExecFile, writeFakeSy } from '../../../test/fakes/hub.js';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'sy-wpc-'));
 const silent = { warn() {}, error() {}, debug() {}, info() {} };
-const INFO = JSON.stringify({ v: 1, sy: '0.6.0', machine: { id: 'm_1', name: 'laptop' }, hub: { url: 'http://127.0.0.1:8787', connected: true, reachable: true, version: '0.6.0', local: true, dial: null, service: 'running' }, admin: 'local', outbox: { pending: 0, last_error: null } });
+const INFO = JSON.stringify({ v: 1, 'sy': '0.6.0', machine: { id: 'm_1', name: 'laptop' }, hub: { url: 'http://127.0.0.1:8787', connected: true, reachable: true, version: '0.6.0', local: true, dial: null, service: 'running' }, admin: 'local', outbox: { pending: 0, last_error: null } });
 
 function make(dir, over = {}) {
   const fake = writeFakeSy(dir, { '--version': { stdout: 'sy 0.6.1\n' }, ...(over.map ?? {}) });

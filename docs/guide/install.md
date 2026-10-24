@@ -188,7 +188,8 @@ docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d --bui
 ```
 
 Run `sy` commands for the hub inside the container, for example
-`docker compose exec hub sy hub owner-link`. Data lives in the `switchyard_hub-data` volume.
+`docker compose exec hub sy hub owner-link`. Data lives in the
+`switchyard_hub-data` volume. <!-- rename:keep -->
 
 ### systemd user service, no Docker
 

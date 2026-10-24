@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mraj602/switchyard/internal/brand"
 	"github.com/mraj602/switchyard/internal/hub/auth"
 	"github.com/mraj602/switchyard/internal/hub/store"
 	"github.com/mraj602/switchyard/internal/record"
@@ -154,7 +155,9 @@ var (
 	machinePattern = regexp.MustCompile(`^m_[0-9A-HJKMNP-TV-Z]{26}$`)
 	// Claude Code session ids are UUIDs; the hub also builds shell commands from them.
 	sessionIDPattern = regexp.MustCompile(`^[0-9A-Za-z][0-9A-Za-z_-]{0,63}$`)
-	clientVersion    = regexp.MustCompile(`^sy/(\S+)$`)
+	// The client of the command's name before a rename still reports its version
+	// (docs/spec/rename.md 2.13).
+	clientVersion = regexp.MustCompile(`^(?:` + brand.CLI + `|` + brand.LegacyCLI + `)/(\S+)$`)
 )
 
 type batch struct {

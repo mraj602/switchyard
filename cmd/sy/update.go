@@ -198,7 +198,7 @@ func (e updateEnv) hubDBPaths() []string {
 		unitEnv[kv[0]] = kv[1]
 	}
 	if len(unitEnv) > 0 {
-		if d, err := paths.Resolve(paths.Env{GOOS: e.goos, Home: home, Getenv: func(k string) string { return unitEnv[k] }}); err == nil {
+		if d, err := paths.Resolve(paths.Env{GOOS: e.goos, Home: home, Getenv: func(k string) string { return legacyEnvLookup(unitEnv, k) }, Exists: paths.StatExists}); err == nil {
 			add(filepath.Join(d.Data.Path, "hub.db"))
 		}
 	}

@@ -20,6 +20,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/mraj602/switchyard/internal/brand"
 )
 
 // Exit codes of `sy update` (machines.md 7.3).
@@ -161,7 +163,9 @@ func get(ctx context.Context, c *http.Client, rawurl string, max int64, w io.Wri
 	return nil
 }
 
-var archiveNameRE = regexp.MustCompile(`^sy_(.+)_(linux|darwin|windows)_(amd64|arm64)\.(tar\.gz|zip)$`)
+// archiveNameRE matches the archives of the current command name and, in a release that also
+// carries them for older updaters, of the name before a rename (docs/spec/rename.md 2.13).
+var archiveNameRE = regexp.MustCompile(`^(?:` + brand.CLI + `|` + brand.LegacyCLI + `)_(.+)_(linux|darwin|windows)_(amd64|arm64)\.(tar\.gz|zip)$`)
 
 // ParseSums parses a SHA256SUMS file ("<hex>  <name>" or "<hex> *<name>").
 func ParseSums(raw []byte) ([]SumLine, error) {
@@ -383,9 +387,9 @@ func hashFile(p string) (string, error) {
 // BinaryName is the executable's file name on goos.
 func BinaryName(goos string) string {
 	if goos == "windows" {
-		return "sy.exe"
+		return brand.CLI + ".exe"
 	}
-	return "sy"
+	return brand.CLI
 }
 
 // Extract takes the single `sy` (`sy.exe` on Windows) entry out of a verified archive:

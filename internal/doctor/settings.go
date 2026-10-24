@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/mraj602/switchyard/internal/atomicfile"
+	"github.com/mraj602/switchyard/internal/brand"
 	"github.com/mraj602/switchyard/internal/identity"
 )
 
@@ -113,6 +114,25 @@ func (s settings) switchyardPlugin() string {
 	return ""
 }
 
+// legacyPlugin returns the enabled plugin key of the project's name before a rename, if any
+// (rename.md 2.4).
+func (s settings) legacyPlugin() string {
+	if !brand.Renamed() {
+		return ""
+	}
+	var keys []string
+	for k, on := range s.plugins {
+		if on && (k == brand.OldSlug() || strings.HasPrefix(k, brand.OldSlug()+"@") || strings.HasPrefix(k, brand.OldSlug()+"-pane@")) {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+	if len(keys) > 0 {
+		return keys[0]
+	}
+	return ""
+}
+
 func checkHooks(rep *Report, slot identity.Slot, s settings, err error) {
 	c := Check{Name: "hooks", Slot: slot.Name}
 	if err != nil {
@@ -128,6 +148,12 @@ func checkHooks(rep *Report, slot identity.Slot, s settings, err error) {
 	}
 	if p := s.switchyardPlugin(); p != "" {
 		c.Level, c.Detail = OK, "plugin "+p+" is enabled"
+		rep.add(c)
+		return
+	}
+	if p := s.legacyPlugin(); p != "" {
+		c.Level, c.Detail = Warn, "plugin "+p+" from before the rename is enabled"
+		c.Fix = "sy setup --yes replaces it with " + brand.Slug + "@" + brand.Marketplace
 		rep.add(c)
 		return
 	}

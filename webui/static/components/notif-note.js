@@ -14,9 +14,13 @@ export function meInApp(me) {
 // The desktop app marks its Hub view so the board knows it is there even signed out (no
 // /v1/me): a user agent token "SwitchyardDesktop/<version>" on the view's session, or
 // "?in=desktop" in the start URL (before the #). Pure: ua is navigator.userAgent, search
-// location.search.
+// location.search. An app from before a rename still sends the token with its old name
+// (docs/spec/rename.md 2.9).
+const UA_TOKEN = 'SwitchyardDesktop';
+const LEGACY_UA_TOKEN = 'SwitchyardDesktop'; // rename:keep
 export function markerInApp(ua, search) {
-  if (/\sSwitchyardDesktop\//.test(String(ua || ''))) return true;
+  const s = String(ua || '');
+  if ([UA_TOKEN, LEGACY_UA_TOKEN].some((t) => new RegExp(`\\s${t}/`).test(s))) return true;
   try { return new URLSearchParams(String(search || '')).get('in') === 'desktop'; } catch (_) { return false; }
 }
 

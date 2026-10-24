@@ -317,7 +317,7 @@ func (e *setupEnv) tabURI(label string) (string, error) {
 		}
 		for _, f := range found {
 			if f.Label == label && f.Marker {
-				uri := warp.TabURI(warp.ChannelOf(d), label)
+				uri := warp.FileURI(warp.ChannelOf(d), f.Path)
 				if !warp.ValidTabURI(uri) {
 					return "", fmt.Errorf("refusing %q", uri)
 				}

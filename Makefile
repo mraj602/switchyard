@@ -41,7 +41,7 @@ LDFLAGS  := -s -w \
 	-X github.com/mraj602/switchyard/internal/version.Commit=$(COMMIT)
 GOFILES   = $(shell git ls-files --cached --others --exclude-standard -- '*.go')
 
-.PHONY: all build test lint fmt spec-check fixtures check clean e2e-setup e2e-setup-fedora e2e-setup-ubuntu e2e-machines \
+.PHONY: all build test lint fmt spec-check fixtures check clean rename-test e2e-setup e2e-setup-fedora e2e-setup-ubuntu e2e-machines \
 	e2e-terminal e2e-android pane-check release-check app-deps app-test app-smoke app-dist app-e2e \
 	phone-deps phone-check phone-prebuild phone-android-debug phone-apk-release
 
@@ -181,3 +181,7 @@ pane-check:
 
 release-check:
 	scripts/ci/check-release-seams.sh
+
+# The one-shot rename tool (docs/spec/rename.md 5).
+rename-test:
+	python3 -m unittest discover -s scripts/rename

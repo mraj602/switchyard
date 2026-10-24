@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/mraj602/switchyard/internal/brand"
 	"github.com/mraj602/switchyard/internal/setup/model"
 )
 
@@ -291,6 +292,34 @@ func (p *planner) runAction(argv []string, as *fnode, touches []string, exists [
 }
 
 func (p *planner) planPlugin() error {
+	// The plugin and pane of the project's name before a rename are disabled first, while
+	// their folders are still in the marketplace; the current plugin is then installed or
+	// enabled below as for a folder that has none (rename.md 2.4).
+	seenL := map[string]bool{}
+	for _, n := range p.nodes {
+		t := p.finalTarget(n)
+		if seenL[t] {
+			continue
+		}
+		seenL[t] = true
+		ts := p.targetState(t)
+		if ts == nil {
+			continue
+		}
+		for _, id := range ts.LegacyPlugins {
+			if strings.HasSuffix(id, "@skills-dir") {
+				p.warn("%s has a plugin folder of the old name inside skills/ (%s); remove it by hand (it cannot be disabled)", p.tilde(t), id)
+				continue
+			}
+			if p.c.NoPlugin {
+				continue
+			}
+			p.warn("%s has %s from before the rename; disabling it (the current plugin replaces it)", p.tilde(t), id)
+			a := p.runAction([]string{"claude", "plugin", "disable", id, "--json"}, p.nodesOfTarget(t)[0], []string{t}, []bool{ts.Exists}, "", p.covers(t), "")
+			p.add(model.StepPlugin, a)
+		}
+	}
+
 	// Duplicates first (5.2): exactly one switchyard plugin per folder.
 	seen := map[string]bool{}
 	for _, n := range p.nodes {
@@ -429,6 +458,14 @@ func (p *planner) planPlugin() error {
 		enabledByInstall := ""
 		hasKnown := g.entry != nil && len(g.entry.Markets) > 0
 		hasInst := g.entry != nil && len(g.entry.Plugins) > 0
+		// The marketplace of the command's name before a rename points at the same folder,
+		// which now carries the current name: it is removed (with the old plugins it still
+		// lists) before the current one is added (rename.md 2.4).
+		if lm := brand.LegacyMarketplace(); lm != "" && g.entry != nil && contains(g.entry.Markets, lm) {
+			runs = append(runs, p.runAction([]string{"claude", "plugin", "marketplace", "remove", lm, "--json"}, g.owner,
+				[]string{ownerT, filepath.Join(g.root, "known_marketplaces.json"), filepath.Join(g.root, "installed_plugins.json")},
+				[]bool{p.targetExists(ownerT), true, hasInst}, g.root, nil, "marketplace from before the rename"))
+		}
 		if !installed {
 			if !known {
 				runs = append(runs, p.runAction([]string{"claude", "plugin", "marketplace", "add", p.marketplaceDir(), "--json"}, g.owner,

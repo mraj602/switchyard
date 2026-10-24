@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/mraj602/switchyard/internal/atomicfile"
+	"github.com/mraj602/switchyard/internal/brand"
 	"github.com/mraj602/switchyard/internal/setup/model"
 )
 
@@ -903,13 +904,34 @@ func dropLoneVersion(v any) any {
 // runPointers returns the pointers a `run` (claude plugin ...) may have changed in a file
 // (7.3: key-level for settings, entry-level for the two plugin registries); nil for others.
 func runPointers(path string) []string {
+	ids := []string{brand.Slug + "@" + brand.Marketplace}
+	mkts := []string{brand.Marketplace}
+	// A backup set made before a rename changed the plugin (and marketplace) of the old name
+	// (rename.md 2.4).
+	ids = append(ids, brand.LegacyPluginIDs()...)
+	if m := brand.LegacyMarketplace(); m != "" {
+		mkts = append(mkts, m)
+	}
+	var out []string
 	switch filepath.Base(path) {
 	case "settings.json":
-		return []string{"/enabledPlugins/switchyard@sy-local", "/extraKnownMarketplaces/sy-local"}
+		for _, id := range ids {
+			out = append(out, "/enabledPlugins/"+id)
+		}
+		for _, m := range mkts {
+			out = append(out, "/extraKnownMarketplaces/"+m)
+		}
+		return out
 	case "installed_plugins.json":
-		return []string{"/plugins/switchyard@sy-local", "/switchyard@sy-local"}
+		for _, id := range ids {
+			out = append(out, "/plugins/"+id, "/"+id)
+		}
+		return out
 	case "known_marketplaces.json":
-		return []string{"/sy-local"}
+		for _, m := range mkts {
+			out = append(out, "/"+m)
+		}
+		return out
 	}
 	return nil
 }

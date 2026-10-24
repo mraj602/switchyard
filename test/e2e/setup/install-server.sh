@@ -25,7 +25,7 @@ case $cmd in
 		mkdir -p "$3"
 		state=$(cd "$3" && pwd)
 		[ -f "$rel/SHA256SUMS" ] || die "$rel/SHA256SUMS missing"
-		ver=$(awk '/ sy_/ { n = $2; sub(/^sy_/, "", n); sub(/_(linux|darwin|windows)_.*/, "", n); print n; exit }' "$rel/SHA256SUMS")
+		ver=$(awk '$2 ~ /^[a-z]+_[^_]+_(linux|darwin|windows)_/ { n = $2; sub(/^[a-z]+_/, "", n); sub(/_(linux|darwin|windows)_.*/, "", n); print n; exit }' "$rel/SHA256SUMS")
 		[ -n "$ver" ] || die "cannot read the version from $rel/SHA256SUMS"
 		root=$state/root
 		rm -rf "$root"

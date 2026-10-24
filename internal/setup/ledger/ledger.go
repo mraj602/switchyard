@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/mraj602/switchyard/internal/atomicfile"
+	"github.com/mraj602/switchyard/internal/brand"
 	"github.com/mraj602/switchyard/internal/setup/model"
 )
 
@@ -54,7 +55,7 @@ func Write(stateDir string, l model.Ledger) error {
 }
 
 const (
-	pluginID  = "switchyard@sy-local"
+	pluginID  = brand.Slug + "@" + brand.Marketplace
 	envKey    = "/env/CLAUDE_CODE_PLUGIN_CACHE_DIR"
 	envObj    = "/env"
 	statusPtr = "/statusLine"
@@ -159,7 +160,7 @@ func updateRun(l *model.Ledger, a model.Action) {
 	}
 	isPlugin := false
 	for _, s := range a.Argv {
-		if s == pluginID || s == "sy-local" || strings.HasSuffix(s, "/marketplace") {
+		if s == pluginID || s == brand.Marketplace || strings.HasSuffix(s, "/marketplace") {
 			isPlugin = true
 		}
 	}
@@ -221,7 +222,8 @@ func Revert(prev model.Ledger, m model.Manifest) model.Ledger {
 		switch e.Op {
 		case model.OpRun:
 			for _, c := range e.Created {
-				if strings.Contains(c, "sy-local") {
+				// A backup set from before a rename names the old marketplace (rename.md 2.4).
+				if strings.Contains(c, brand.Marketplace) || (brand.LegacyMarketplace() != "" && strings.Contains(c, brand.LegacyMarketplace())) {
 					l.Plugin = nil
 					break
 				}

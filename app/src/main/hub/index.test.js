@@ -24,7 +24,7 @@ const TOKEN = 'sy_d_good';
 
 function info(hubUrl, over = {}) {
   return {
-    ok: true, v: 1, sy: '0.6.0', machine: { id: 'm_1', name: 'lap top' },
+    ok: true, v: 1, 'sy': '0.6.0', machine: { id: 'm_1', name: 'lap top' },
     hub: { url: hubUrl, connected: true, reachable: true, version: '0.6.0', local: true, dial: null, service: 'running', ...(over.hub ?? {}) },
     admin: 'local', outbox: { pending: 0, last_error: null }, ...Object.fromEntries(Object.entries(over).filter(([k]) => k !== 'hub')),
   };
@@ -1006,7 +1006,7 @@ test('plain http to another computer is flagged insecure; loopback and https are
 
 test('versions: sy’s is reported, and the release link opens the newer version’s page through openExternalSafe', async () => {
   const t = await harness({ clientVersion: '0.5.0' });
-  t.sy.state.info = info(t.hub.url, { sy: '0.6.1' });
+  t.sy.state.info = info(t.hub.url, { 'sy': '0.6.1' });
   await t.h.start();
   assert.equal(lastHub(t).sy_version, '0.6.1');
   assert.deepEqual(await t.handlers['app:open-release'](), { ok: true });

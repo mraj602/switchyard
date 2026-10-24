@@ -781,7 +781,27 @@ func (tp *tplanner) planTabs() error {
 			Pre: pres(preAbsent(w.Folder))})
 	}
 	tp.tabs = append(tp.tabs, writes...)
+	tp.legacyTabs()
 	return nil
+}
+
+// legacyTabs moves away the tab configs sy wrote under the name from before a rename
+// (docs/spec/rename.md 2.8): the new ones replace them. A file edited since is the person's.
+func (tp *tplanner) legacyTabs() {
+	for _, lt := range tp.led.Tabs {
+		if !warp.IsLegacyTab(lt.Path) {
+			continue
+		}
+		cur := tp.found(lt.Path)
+		switch {
+		case cur == nil:
+		case cur.SHA256 != lt.SHA256:
+			tp.warn("%s (from before the rename) was edited since sy wrote it: it is yours now and stays", tp.tilde(lt.Path))
+		default:
+			tp.tabs = append(tp.tabs, model.Action{Op: model.OpMoveToBackup, Path: lt.Path, Note: "tab config " + lt.Label + " from before the rename",
+				Pre: pres(model.Precondition{Path: lt.Path, State: model.PathState{Type: model.TypeFile, SHA256: lt.SHA256}})})
+		}
+	}
 }
 
 // ---- helpers -----------------------------------------------------------------------------

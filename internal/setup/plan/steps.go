@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mraj602/switchyard/internal/brand"
 	"github.com/mraj602/switchyard/internal/setup/launcher"
 	"github.com/mraj602/switchyard/internal/setup/model"
 	"github.com/mraj602/switchyard/internal/setup/statuswrap"
@@ -321,15 +322,19 @@ func (p *planner) planHub() error {
 	return nil
 }
 
+// serviceUnit is where internal/service installs the hub (service.UnitPath of DefaultName):
+// the plist is named after its label, com.<slug>.hub (before the rename the plan said
+// dev.<slug>.hub.plist, which `sy update` then did not find; service.InstalledPath still
+// reads it).
 func (p *planner) serviceUnit() (unit, name string) {
-	name = "switchyard-hub"
+	name = brand.Slug + "-hub"
 	switch p.st.OS {
 	case "darwin":
-		return filepath.Join(p.home, "Library", "LaunchAgents", "dev.switchyard.hub.plist"), name
+		return filepath.Join(p.home, "Library", "LaunchAgents", "com."+brand.Slug+".hub.plist"), name
 	case "windows":
 		return "", name
 	}
-	return filepath.Join(p.home, ".config", "systemd", "user", "switchyard-hub.service"), name
+	return filepath.Join(p.home, ".config", "systemd", "user", name+".service"), name
 }
 
 // --- logins -------------------------------------------------------------------------------

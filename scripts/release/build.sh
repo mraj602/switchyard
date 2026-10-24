@@ -36,6 +36,32 @@ sha256_of() {
 	fi
 }
 
+# The command's name before a rename (docs/spec/rename.md 2.13). While it differs, every
+# archive is also published under that name with the binary named so, for the updaters of
+# releases from before the rename, which look for <old>_<version>_<os>_<arch> holding <old>.
+LEGACY_CLI=sy # rename:keep
+
+# pack <archive> <stage> <files...>: tar.gz or zip of files in stage.
+pack() {
+	name=$1 stage=$2
+	shift 2
+	case $name in
+	*.zip)
+		if command -v zip >/dev/null 2>&1; then
+			(cd "$stage" && zip -q -X "$out/$name" "$@")
+		else
+			python3 -I - "$out/$name" "$stage" "$@" <<'PY'
+import sys, zipfile, os
+dst, stage, *files = sys.argv[1:]
+with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as z:
+    for f in files:
+        z.write(os.path.join(stage, f), f)
+PY
+		fi ;;
+	*) (cd "$stage" && tar -czf "$out/$name" "$@") ;;
+	esac
+}
+
 rm -rf "$out"
 mkdir -p "$out"
 work=$(mktemp -d)
@@ -58,26 +84,21 @@ for t in $targets; do
 		else echo "warning: $f missing from the repo, not added to the $t archive" >&2
 		fi
 	done
-	name=sy_${ver}_$t.$ext
-	if [ "$ext" = zip ]; then
-		if command -v zip >/dev/null 2>&1; then
-			(cd "$stage" && zip -q -X "$out/$name" "$@")
-		else
-			python3 -I - "$out/$name" "$stage" "$@" <<'PY'
-import sys, zipfile, os
-dst, stage, *files = sys.argv[1:]
-with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as z:
-    for f in files:
-        z.write(os.path.join(stage, f), f)
-PY
-		fi
-	else
-		(cd "$stage" && tar -czf "$out/$name" "$@")
+	pack "sy_${ver}_$t.$ext" "$stage" "$@"
+	if [ "$LEGACY_CLI" != sy ]; then
+		lstage=$work/legacy-$t
+		mkdir -p "$lstage"
+		lbin=$LEGACY_CLI
+		if [ "$os" = windows ]; then lbin=$LEGACY_CLI.exe; fi
+		cp "$stage/$bin" "$lstage/$lbin"
+		shift
+		for f in "$@"; do cp "$stage/$f" "$lstage/$f"; done
+		pack "${LEGACY_CLI}_${ver}_$t.$ext" "$lstage" "$lbin" "$@"
 	fi
 done
 
 : > "$out/SHA256SUMS"
-for f in "$out"/sy_*; do
+for f in "$out"/*_"$ver"_*; do
 	printf '%s  %s\n' "$(sha256_of "$f")" "$(basename "$f")" >> "$out/SHA256SUMS"
 done
 

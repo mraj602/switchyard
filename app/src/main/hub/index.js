@@ -282,7 +282,7 @@ export function create(deps) {
     }
     const hub = info.hub ?? {};
     reportedBySy = true;
-    state.sy_version = typeof info.sy === 'string' ? info.sy.slice(0, 64) : null;
+    state.sy_version = typeof info.sy === 'string' ? info.sy.slice(0, 64) : null; // rename:keep: a wire key older releases send too (rename.md 2.12)
     machineName = String(info.machine?.name ?? '');
     state.machine = machineName;
     const rawUrl = typeof hub.url === 'string' ? hub.url : null;
@@ -332,7 +332,7 @@ export function create(deps) {
     state.direct = true;
     if (info?.ok) machineName = String(info.machine?.name ?? machineName);
     state.machine = machineName;
-    state.sy_version = info?.ok && typeof info.sy === 'string' ? info.sy.slice(0, 64) : null;
+    state.sy_version = info?.ok && typeof info.sy === 'string' ? info.sy.slice(0, 64) : null; // rename:keep
     if (url !== state.url) dropHub();
     if (state.cert && state.cert.url !== url) state.cert = null;
     if (!auth) {

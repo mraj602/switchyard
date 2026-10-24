@@ -205,7 +205,8 @@ Client side (runs on every machine):
 | Package | Job | Depends on |
 | --- | --- | --- |
 | `internal/version` | Build version | — |
-| `internal/paths` | Config, state, data folders per OS | — |
+| `internal/brand` | The project's and the command's names, current and from before a rename; env migration (docs/spec/rename.md) | — (leaf) |
+| `internal/paths` | Config, state, data folders per OS (legacy folders after a rename) | brand |
 | `internal/config` | `config.toml` | paths |
 | `internal/record` | Envelope, seven kinds, ids, content rules | — |
 | `internal/outbox` | Local queue | record, paths |
@@ -222,9 +223,9 @@ Client side (runs on every machine):
 | `internal/machineinfo` | Builds and queues `machine_info` (reach, dial kind, backlog, held, direct push, timer) on change or every 6 h | client, config, directpush, identity, outbox, record, version |
 | `internal/sshx` | Runs the operator's `ssh` (`SY_SSH_COMMAND`), `ssh -G`, `known_hosts` reads; never disables host key checking | — |
 | `internal/machineadd` | `sy machine add/remove/repoint/rename`: probe, install, connect, forward blocks, pull authorization | sshx, update, client, config, identity, setup/{apply,backup,model}, atomicfile |
-| `internal/update` | `sy update`: release manifest, verified download, replace and rollback, post-update steps, `--machines` | — |
+| `internal/update` | `sy update`: release manifest, verified download, replace and rollback, post-update steps, `--machines` | brand |
 | `internal/doctor` | `sy doctor` (reach, held records, frozen hub, direct push, forward port; on the hub also push and pull-target checks, reading `hub.db` read-only with the SQLite driver, no hub package) | paths, config, identity, outbox, client, directpush, setup/ledger, setup/backup, share |
-| `internal/timer` | OS timer running `sy tick --quiet` every minute | — |
+| `internal/timer` | OS timer running `sy tick --quiet` every minute | brand |
 
 Setup side (`sy setup`, `sy account`, `sy uninstall`, `sy tick`):
 
@@ -233,7 +234,7 @@ Setup side (`sy setup`, `sy account`, `sy uninstall`, `sy tick`):
 | `internal/atomicfile` | Write-to-temp-then-rename file writes | — |
 | `internal/jsonedit` | Byte-preserving edits of `settings.json` and `.claude.json` | — |
 | `internal/claudecli` | The `claude` CLI contract: run as a folder, parse `--json`, goal-state outcomes | — |
-| `internal/service` | Hub service units (systemd user, launchd, Windows task), linger | setup/model, timer |
+| `internal/service` | Hub service units (systemd user, launchd, Windows task), linger | setup/model, timer, brand |
 | `internal/share` | Links between folders, MCP server sync, Windows synced copies (`share.Sync`) | setup/model, identity, jsonedit, atomicfile |
 | `internal/account` | Add, log in, unshare and remove an account folder | setup/model, claudecli |
 | `internal/setup/model` | State, Choices, Plan, Action, Ledger types; share items, palette | claudecli |

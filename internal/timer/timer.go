@@ -14,6 +14,8 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/mraj602/switchyard/internal/brand"
 )
 
 // Command is what the timer runs (arguments after the sy binary): `sy tick` (share sync,
@@ -22,10 +24,10 @@ var Command = []string{"tick", "--quiet"}
 
 // Names of the units and jobs.
 const (
-	SystemdName    = "switchyard-flush"
-	LaunchdLabel   = "com.switchyard.flush"
-	WindowsTask    = "Switchyard Flush"
-	WindowsXMLFile = "switchyard-flush.task.xml"
+	SystemdName    = brand.Slug + "-flush"
+	LaunchdLabel   = "com." + brand.Slug + ".flush"
+	WindowsTask    = brand.Name + " Flush"
+	WindowsXMLFile = SystemdName + ".task.xml"
 )
 
 // Runner runs an external command. Tests inject a recording fake so nothing real runs.
@@ -74,6 +76,9 @@ func (e Env) envPairs() [][2]string {
 type Result struct {
 	Files []string // files written
 	Notes []string // things the user should know (fallbacks, linger)
+	// Removed are the files of the timer installed under the name before a rename, which
+	// Install replaced (rename.md 2.3).
+	Removed []string
 }
 
 // SystemdDir is where the user units live.
@@ -277,6 +282,7 @@ func writeFile(path, content string) error {
 // reported in the returned error but the files stay, so the user can finish by hand.
 func Install(e Env) (Result, error) {
 	var res Result
+	res.Removed = removeLegacy(e)
 	switch e.GOOS {
 	case "linux":
 		return res, installSystemd(e, &res)
@@ -290,6 +296,7 @@ func Install(e Env) (Result, error) {
 
 // Uninstall disables the timer and removes its files. Missing pieces are not errors.
 func Uninstall(e Env) (removed []string, err error) {
+	removed = removeLegacy(e)
 	rm := func(p string) {
 		if os.Remove(p) == nil {
 			removed = append(removed, p)
@@ -314,6 +321,80 @@ func Uninstall(e Env) (removed []string, err error) {
 		e.printf("Remove the scheduled task with:\n  schtasks /Delete /TN \"%s\" /F\n", WindowsTask)
 	}
 	return removed, nil
+}
+
+// ---- the name before a rename (rename.md 2.3) ----------------------------------------------
+
+type legacyNames struct{ systemd, label, task, xml string }
+
+func legacy() (legacyNames, bool) {
+	if !brand.Renamed() {
+		return legacyNames{}, false
+	}
+	o := brand.OldSlug()
+	return legacyNames{o + "-flush", "com." + o + ".flush", brand.OldName() + " Flush", o + "-flush.task.xml"}, true
+}
+
+// LegacyUnit is the unit file (Linux, the .service with the environment), plist (macOS) or
+// task XML (Windows) of a timer installed under the project's name before a rename, or ""
+// when there is none.
+func LegacyUnit(e Env) string {
+	n, ok := legacy()
+	if !ok {
+		return ""
+	}
+	var p string
+	switch e.GOOS {
+	case "linux":
+		p = filepath.Join(SystemdDir(e), n.systemd+".service")
+		if !exists(p) && exists(filepath.Join(SystemdDir(e), n.systemd+".timer")) {
+			return filepath.Join(SystemdDir(e), n.systemd+".timer")
+		}
+	case "darwin":
+		p = filepath.Join(e.Home, "Library", "LaunchAgents", n.label+".plist")
+	case "windows":
+		p = filepath.Join(e.StateDir, n.xml)
+	default:
+		return ""
+	}
+	if !exists(p) {
+		return ""
+	}
+	return p
+}
+
+// removeLegacy disables the timer of the name before a rename and removes its files, so it
+// never runs next to the new one. On Windows the task itself is only named for the person to
+// delete, as Uninstall does.
+func removeLegacy(e Env) (removed []string) {
+	n, ok := legacy()
+	if !ok || LegacyUnit(e) == "" {
+		return nil
+	}
+	rm := func(p string) {
+		if os.Remove(p) == nil {
+			removed = append(removed, p)
+		}
+	}
+	switch e.GOOS {
+	case "linux":
+		_, _ = e.Runner.Run("systemctl", "--user", "disable", "--now", n.systemd+".timer")
+		rm(filepath.Join(SystemdDir(e), n.systemd+".timer"))
+		rm(filepath.Join(SystemdDir(e), n.systemd+".service"))
+		_, _ = e.Runner.Run("systemctl", "--user", "daemon-reload")
+	case "darwin":
+		_, _ = e.Runner.Run("launchctl", "bootout", fmt.Sprintf("gui/%d/%s", e.UID, n.label))
+		rm(filepath.Join(e.Home, "Library", "LaunchAgents", n.label+".plist"))
+	case "windows":
+		rm(filepath.Join(e.StateDir, n.xml))
+		e.printf("Remove the scheduled task from before the rename with:\n  schtasks /Delete /TN \"%s\" /F\n", n.task)
+	}
+	return removed
+}
+
+func exists(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
 }
 
 func installSystemd(e Env, res *Result) error {

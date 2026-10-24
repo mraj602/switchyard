@@ -5,6 +5,8 @@
 
 /** Basename of the app's own user-data folder under app.getPath('appData'). */
 export const USER_DATA_DIRNAME = 'switchyard-desktop';
+/** The user-data folder of the last release before a rename (docs/spec/rename.md 2.9). */
+export const LEGACY_USER_DATA_DIRNAME = 'switchyard-desktop'; // rename:keep
 /** Files the app owns in its user-data folder. */
 export const APP_STATE_FILE = 'app-state.json';
 export const HUB_TOKEN_FILE = 'hub-token.bin';
@@ -28,6 +30,8 @@ export const CLIENT_NAME = 'switchyard-desktop';
 
 /** Linux autostart and launcher entry name. */
 export const DESKTOP_ENTRY = 'switchyard-desktop.desktop';
+/** The entry name of the last release before a rename, removed when run at login is set. */
+export const LEGACY_DESKTOP_ENTRY = 'switchyard-desktop.desktop'; // rename:keep
 
 /** Command-line flags (C1). */
 export const FLAG_BACKGROUND = '--background';

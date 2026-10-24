@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/mraj602/switchyard/internal/brand"
 	"github.com/mraj602/switchyard/internal/version"
 )
 
@@ -78,6 +79,8 @@ func commands() map[string]command {
 }
 
 func main() {
+	// Variables of the command's name before a rename still apply (docs/spec/rename.md 2.13).
+	brand.MigrateEnv(os.Environ(), os.Setenv)
 	os.Exit(dispatch(os.Args[1:], os.Stdout, os.Stderr))
 }
 

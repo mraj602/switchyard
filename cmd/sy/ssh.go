@@ -145,7 +145,7 @@ func isSYForwardVar(kv, goos string) bool {
 // thisMachineID is this machine's id from <state>/identity ("" when it cannot be read or
 // created).
 func thisMachineID(env termenv.Env) string {
-	dirs, err := paths.Resolve(paths.Env{GOOS: env.GOOS, Home: env.Home, Getenv: env.Lookup})
+	dirs, err := paths.Resolve(paths.Env{GOOS: env.GOOS, Home: env.Home, Getenv: env.Lookup, Exists: paths.StatExists})
 	if err != nil {
 		return ""
 	}

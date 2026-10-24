@@ -11,6 +11,8 @@ package update
 import (
 	"context"
 	"net/http"
+
+	"github.com/mraj602/switchyard/internal/brand"
 )
 
 // DefaultBaseURL is the release source when neither SY_INSTALL_BASE_URL nor update.base_url
@@ -57,7 +59,7 @@ func (r Release) ArchiveName(goos, goarch string) string {
 	if goos == "windows" {
 		ext = ".zip"
 	}
-	return "sy_" + r.Version + "_" + goos + "_" + goarch + ext
+	return brand.CLI + "_" + r.Version + "_" + goos + "_" + goarch + ext
 }
 
 // Archive is a downloaded release archive whose SHA-256 matched its SHA256SUMS line. Nothing

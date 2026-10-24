@@ -53,6 +53,7 @@ func (s *Service) control(ctx context.Context, name string, start bool) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	spec.Name = Installed(s.Env, spec.Name)
 	st, err := s.Status(ctx, spec.Name)
 	if err != nil {
 		return err
@@ -89,7 +90,7 @@ func (s *Service) control(ctx context.Context, name string, start bool) error {
 		}
 		if _, err := s.run("launchctl", "kickstart", target); err != nil {
 			// A stopped agent was booted out, so it is not loaded: load it, then start it.
-			plist := UnitPath(e, spec)
+			plist := InstalledPath(e, spec.Name)
 			if out, berr := s.run("launchctl", "bootstrap", domain, plist); berr != nil {
 				return fail("launchctl bootstrap "+domain+" "+plist, berr, out)
 			}

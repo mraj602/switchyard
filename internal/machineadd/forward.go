@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/mraj602/switchyard/internal/atomicfile"
+	"github.com/mraj602/switchyard/internal/brand"
 	"github.com/mraj602/switchyard/internal/setup/apply"
 	"github.com/mraj602/switchyard/internal/setup/backup"
 	"github.com/mraj602/switchyard/internal/setup/model"
@@ -27,9 +28,28 @@ import (
 
 // Files in ~/.ssh.
 const (
-	ForwardConf = "switchyard.conf"
+	ForwardConf = brand.Slug + ".conf"
 	IncludeLine = "Include " + ForwardConf + "\n"
 )
+
+// forwardConf is the forward file's name in sshDir: ForwardConf, or the file of the project's
+// name before a rename while only that one exists, so its blocks and Include line keep being
+// found and edited in place (rename.md 2.5).
+func forwardConf(sshDir string) string {
+	old := brand.Legacy(ForwardConf)
+	if old == "" {
+		return ForwardConf
+	}
+	if _, err := os.Stat(filepath.Join(sshDir, ForwardConf)); err == nil {
+		return ForwardConf
+	}
+	if _, err := os.Stat(filepath.Join(sshDir, old)); err == nil {
+		return old
+	}
+	return ForwardConf
+}
+
+func includeLine(name string) string { return "Include " + name + "\n" }
 
 // Forward describes one machine's RemoteForward.
 type Forward struct {
@@ -151,7 +171,7 @@ func blockRange(content []byte, machine string) (int, int, bool) {
 // hasInclude reports whether cfg already includes switchyard.conf before its first Host or
 // Match line: `Include switchyard.conf`, quoted, with the full path, or through a glob
 // (`Include ~/.ssh/*.conf`, `Include *`), alone or among other patterns.
-func hasInclude(cfg []byte, home string) bool {
+func hasInclude(cfg []byte, home, name string) bool {
 	sshDir := filepath.ToSlash(filepath.Join(home, ".ssh"))
 	for _, l := range strings.Split(string(cfg), "\n") {
 		t := strings.TrimSpace(l)
@@ -170,7 +190,7 @@ func hasInclude(cfg []byte, home string) bool {
 			case !strings.HasPrefix(pat, "/") && !filepath.IsAbs(pat):
 				pat = sshDir + "/" + pat // relative patterns are relative to ~/.ssh
 			}
-			if ok, _ := path.Match(pat, sshDir+"/"+ForwardConf); ok {
+			if ok, _ := path.Match(pat, sshDir+"/"+name); ok {
 				return true
 			}
 		}
@@ -212,7 +232,8 @@ func splitConfigWords(line string) []string {
 // OwnedForward finds the block sy wrote for this machine in ~/.ssh/switchyard.conf and
 // returns its listening port or socket. Such a block is sy's own, never "adopted".
 func OwnedForward(home, machine string) (port int, socket string, ok bool) {
-	b, err := readOptional(filepath.Join(home, ".ssh", ForwardConf))
+	sshDir := filepath.Join(home, ".ssh")
+	b, err := readOptional(filepath.Join(sshDir, forwardConf(sshDir)))
 	if err != nil {
 		return 0, "", false
 	}
@@ -296,7 +317,8 @@ func WriteForward(home, stateDir string, f Forward, command string, now time.Tim
 		return ForwardResult{}, err
 	}
 	dir := filepath.Join(home, ".ssh")
-	conf, cfgPath := filepath.Join(dir, ForwardConf), filepath.Join(dir, "config")
+	name := forwardConf(dir)
+	conf, cfgPath := filepath.Join(dir, name), filepath.Join(dir, "config")
 	// The lock comes first: two adds at once must not both read the files and then each
 	// write its own block over the other's.
 	unlock, err := lockWait(stateDir)
@@ -323,8 +345,8 @@ func WriteForward(home, stateDir string, f Forward, command string, now time.Tim
 		newConf = append(newConf, block...)
 	}
 	newCfg := curCfg
-	if !hasInclude(curCfg, home) {
-		newCfg = append([]byte(IncludeLine), curCfg...)
+	if !hasInclude(curCfg, home, name) {
+		newCfg = append([]byte(includeLine(name)), curCfg...)
 	}
 	if bytes.Equal(newConf, curConf) && bytes.Equal(newCfg, curCfg) {
 		return ForwardResult{}, nil
@@ -355,7 +377,8 @@ func WriteForward(home, stateDir string, f Forward, command string, now time.Tim
 // (and the Include line and switchyard.conf when no block is left), journaled in a new set.
 func RemoveForward(home, stateDir string, machine, setID, command string, now time.Time) (bool, error) {
 	dir := filepath.Join(home, ".ssh")
-	conf, cfgPath := filepath.Join(dir, ForwardConf), filepath.Join(dir, "config")
+	name := forwardConf(dir)
+	conf, cfgPath := filepath.Join(dir, name), filepath.Join(dir, "config")
 	unlock, err := lockWait(stateDir)
 	if err != nil {
 		return false, err
@@ -381,8 +404,8 @@ func RemoveForward(home, stateDir string, machine, setID, command string, now ti
 	newConf := append(append([]byte(nil), curConf[:i]...), curConf[j:]...)
 	removeConf := len(bytes.TrimSpace(newConf)) == 0
 	newCfg := curCfg
-	if removeConf && bytes.HasPrefix(curCfg, []byte(IncludeLine)) {
-		newCfg = curCfg[len(IncludeLine):]
+	if inc := includeLine(name); removeConf && bytes.HasPrefix(curCfg, []byte(inc)) {
+		newCfg = curCfg[len(inc):]
 	}
 	_, err = journalLocked(stateDir, command, now, []string{cfgPath, conf}, func() error {
 		if removeConf {

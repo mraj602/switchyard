@@ -9,7 +9,7 @@
 GOLD=$SY_E2E_SRC/internal/setup/launcher/testdata/claude-2.sh.golden
 
 serve main "$RELEASE"
-VER=$(sed -n 's/^[0-9a-f]*  sy_\([^_]*\)_.*/\1/p' "$RELEASE/SHA256SUMS" | head -n 1)
+VER=$(sed -n 's/^[0-9a-f]*  [a-z]*_\([^_]*\)_.*/\1/p' "$RELEASE/SHA256SUMS" | head -n 1)
 
 # apply_s1 <name>: fresh home, install, snapshot, setup. Leaves $H and the snapshot in place.
 apply_s1() {

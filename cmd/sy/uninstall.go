@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mraj602/switchyard/internal/brand"
 	"github.com/mraj602/switchyard/internal/outbox"
 	"github.com/mraj602/switchyard/internal/service"
 	"github.com/mraj602/switchyard/internal/setup/apply"
@@ -368,7 +369,7 @@ func uninstall(ctx context.Context, e *setupEnv, f accountFlags, purge bool) err
 	p, _, tags, left := uninstallPlan(e, st, led)
 	steps := &model.UninstallSteps{Timer: led.Timer, Copies: led.Copies, Purge: purge}
 	if led.HubService != nil {
-		steps.HubService = led.HubService.Name
+		steps.HubService = brand.Current(led.HubService.Name) // Uninstall also removes the unit of the older name (rename.md 2.2)
 	}
 	if _, err := os.Stat(service.UnitPath(e.serviceEnv(), service.AgentSpec())); err == nil {
 		steps.AgentService = service.AgentName

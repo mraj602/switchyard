@@ -6,7 +6,7 @@
 . "$(dirname "$0")/../lib/common.sh"
 
 [ -d "$RELEASE" ] || skip_scenario "no release build in $RELEASE"
-VER=$(sed -n 's/^[0-9a-f]*  sy_\([^_]*\)_.*/\1/p' "$RELEASE/SHA256SUMS" | head -n 1)
+VER=$(sed -n 's/^[0-9a-f]*  [a-z]*_\([^_]*\)_.*/\1/p' "$RELEASE/SHA256SUMS" | head -n 1)
 note "release $VER"
 
 serve main "$RELEASE"

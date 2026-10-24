@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mraj602/switchyard/internal/brand"
 	"github.com/mraj602/switchyard/internal/setup/model"
 	"github.com/mraj602/switchyard/internal/setup/statuswrap"
 )
@@ -48,9 +49,13 @@ func (x *detector) detectPlugins() {
 			x.parseSettings(t)
 		}
 		t.Folders = append(t.Folders, f.Folder)
-		if x.hasSkillsDirPlugin(f.Dir) && !contains(t.SwitchyardPlugins, "switchyard@skills-dir") {
-			t.SwitchyardPlugins = append(t.SwitchyardPlugins, "switchyard@skills-dir")
+		if x.hasSkillsDirPlugin(f.Dir, brand.Slug) && !contains(t.SwitchyardPlugins, brand.Slug+"@skills-dir") {
+			t.SwitchyardPlugins = append(t.SwitchyardPlugins, brand.Slug+"@skills-dir")
 			sort.Strings(t.SwitchyardPlugins)
+		}
+		if brand.Renamed() && x.hasSkillsDirPlugin(f.Dir, brand.OldSlug()) && !contains(t.LegacyPlugins, brand.OldSlug()+"@skills-dir") {
+			t.LegacyPlugins = append(t.LegacyPlugins, brand.OldSlug()+"@skills-dir")
+			sort.Strings(t.LegacyPlugins)
 		}
 	}
 	for _, p := range order {
@@ -130,7 +135,7 @@ func contains(l []string, s string) bool {
 	return false
 }
 
-func (x *detector) hasSkillsDirPlugin(dir string) bool {
+func (x *detector) hasSkillsDirPlugin(dir, name string) bool {
 	skills := filepath.Join(dir, "skills")
 	ents, err := x.fsys.ReadDir(skills)
 	if err != nil {
@@ -138,7 +143,7 @@ func (x *detector) hasSkillsDirPlugin(dir string) bool {
 	}
 	for _, e := range ents {
 		var pj struct{ Name string }
-		if x.readJSONFile(filepath.Join(skills, e.Name(), ".claude-plugin", "plugin.json"), &pj) == nil && pj.Name == "switchyard" {
+		if x.readJSONFile(filepath.Join(skills, e.Name(), ".claude-plugin", "plugin.json"), &pj) == nil && pj.Name == name {
 			return true
 		}
 	}
@@ -173,11 +178,15 @@ func (x *detector) parseSettings(t *model.SettingsTarget) {
 		}
 		on, _ := v.(bool)
 		t.EnabledPlugins[id] = on
-		if on && strings.HasPrefix(id, "switchyard@") {
+		if on && strings.HasPrefix(id, brand.Slug+"@") {
 			t.SwitchyardPlugins = append(t.SwitchyardPlugins, id)
+		}
+		if on && isLegacyPlugin(id) {
+			t.LegacyPlugins = append(t.LegacyPlugins, id)
 		}
 	}
 	sort.Strings(t.SwitchyardPlugins)
+	sort.Strings(t.LegacyPlugins)
 	for n := range doc.ExtraMarkets {
 		t.ExtraMarketplaces = append(t.ExtraMarketplaces, n)
 	}
@@ -196,6 +205,16 @@ func (x *detector) parseSettings(t *model.SettingsTarget) {
 		sl.Ours = sl.Command != "" && statuswrap.IsOurs(sl.Command)
 		t.StatusLine = sl
 	}
+}
+
+// isLegacyPlugin reports whether id is the plugin or pane mod of the project's name before a
+// rename, from any marketplace (rename.md 2.4).
+func isLegacyPlugin(id string) bool {
+	if !brand.Renamed() {
+		return false
+	}
+	o := brand.OldSlug()
+	return strings.HasPrefix(id, o+"@") || strings.HasPrefix(id, o+"-pane@")
 }
 
 func itoa(i int) string { return strconv.Itoa(i) }

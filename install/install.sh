@@ -15,7 +15,20 @@
 set -eu
 
 OWNER=mraj602
-BASE=${SY_INSTALL_BASE_URL:-https://github.com/$OWNER/switchyard/releases}
+REPO=switchyard
+# The repository's name before a rename: releases from before it were attested under that name
+# (docs/spec/rename.md 2.7). Equal to REPO when there was no rename.
+LEGACY_REPO=switchyard # rename:keep
+# The command's name before a rename (rename.md 2.13): its variables still apply, and its
+# binary in the same folder becomes a link to the new one. Equal to sy when there was none.
+LEGACY_CLI=sy # rename:keep
+if [ "$LEGACY_CLI" != sy ]; then
+	for v in INSTALL_BASE_URL VERIFY_ATTESTATION; do
+		old=$(printf '%s' "$LEGACY_CLI" | tr '[:lower:]' '[:upper:]')_$v
+		eval "if [ -z \"\${SY_$v:-}\" ] && [ -n \"\${$old:-}\" ]; then SY_$v=\"\$$old\"; fi"
+	done
+fi
+BASE=${SY_INSTALL_BASE_URL:-https://github.com/$OWNER/$REPO/releases}
 BASE=${BASE%/}
 
 say() { printf '%s\n' "$*"; }
@@ -164,8 +177,10 @@ case ${SY_VERIFY_ATTESTATION:-} in
 	0) note="build attestation not checked (SY_VERIFY_ATTESTATION=0); the checksum shows the download is intact, not who built it" ;;
 	*)
 		if command -v gh >/dev/null 2>&1; then
-			gh attestation verify "$tmp/$archive" --repo "$OWNER/switchyard" \
-				--signer-workflow "$OWNER/switchyard/.github/workflows/release.yml" >/dev/null 2>&1 ||
+			{ gh attestation verify "$tmp/$archive" --repo "$OWNER/$REPO" \
+				--signer-workflow "$OWNER/$REPO/.github/workflows/release.yml" >/dev/null 2>&1 ||
+				{ [ "$LEGACY_REPO" != "$REPO" ] && gh attestation verify "$tmp/$archive" --repo "$OWNER/$LEGACY_REPO" \
+					--signer-workflow "$OWNER/$LEGACY_REPO/.github/workflows/release.yml" >/dev/null 2>&1; }; } ||
 				die 3 "attestation verification failed for $archive; nothing installed (gh must be signed in and reach github.com; SY_VERIFY_ATTESTATION=0 skips this check)"
 			proof="checksum ok, build attestation ok"
 		elif [ "${SY_VERIFY_ATTESTATION:-}" = 1 ]; then
@@ -186,6 +201,11 @@ cp "$tmp/sy" "$newfile"
 chmod 0755 "$newfile"
 mv -f "$newfile" "$bindir/sy"
 newfile=
+if [ "$LEGACY_CLI" != sy ] && [ -f "$bindir/$LEGACY_CLI" ] && [ ! -L "$bindir/$LEGACY_CLI" ]; then
+	# Hooks, units and authorized_keys lines written for the old name keep working.
+	ln -sf sy "$bindir/.$LEGACY_CLI.link" && mv -f "$bindir/.$LEGACY_CLI.link" "$bindir/$LEGACY_CLI" &&
+		say "$bindir/$LEGACY_CLI (from before the rename) now links to sy"
+fi
 
 # 8. Report. PATH is never edited: print the line to add.
 shown=$bindir

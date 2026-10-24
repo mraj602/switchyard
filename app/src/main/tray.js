@@ -54,7 +54,10 @@ export function create(deps) {
   // says otherwise; Windows follows the theme.
   function inkFolder() {
     if (platform === 'linux') {
-      const o = String((deps.env ?? process.env).SWITCHYARD_TRAY_ICON ?? '').trim().toLowerCase();
+      const env = deps.env ?? process.env;
+      // The variable's name from before a rename still works (docs/spec/rename.md 2.9).
+      const legacy = env.SWITCHYARD_TRAY_ICON; // rename:keep
+      const o = String(env.SWITCHYARD_TRAY_ICON ?? legacy ?? '').trim().toLowerCase();
       if (o === 'dark' || o === 'light') return o;
       return 'light';
     }

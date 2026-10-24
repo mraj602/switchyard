@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/mraj602/switchyard/internal/brand"
 	"github.com/mraj602/switchyard/internal/identity"
 	"github.com/mraj602/switchyard/internal/setup/model"
 	"github.com/mraj602/switchyard/internal/version"
@@ -34,8 +35,8 @@ var ErrPrimaryMismatch = errors.New("plan: primary differs from the one detect u
 
 // PluginID is the plugin sy installs through its own marketplace.
 const (
-	MarketplaceName = "sy-local"
-	PluginID        = "switchyard@sy-local"
+	MarketplaceName = brand.Marketplace
+	PluginID        = brand.Slug + "@" + brand.Marketplace
 )
 
 // Plan computes the plan with the running binary's version.

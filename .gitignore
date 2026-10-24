@@ -36,3 +36,4 @@ GoogleService-Info.plist
 # OS and editor litter
 .DS_Store
 *.log
+__pycache__/
