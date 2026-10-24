@@ -53,10 +53,6 @@ func (x *detector) detectPlugins() {
 			t.WatchyardPlugins = append(t.WatchyardPlugins, brand.Slug+"@skills-dir")
 			sort.Strings(t.WatchyardPlugins)
 		}
-		if brand.Renamed() && x.hasSkillsDirPlugin(f.Dir, brand.OldSlug()) && !contains(t.LegacyPlugins, brand.OldSlug()+"@skills-dir") {
-			t.LegacyPlugins = append(t.LegacyPlugins, brand.OldSlug()+"@skills-dir")
-			sort.Strings(t.LegacyPlugins)
-		}
 	}
 	for _, p := range order {
 		x.st.SettingsTargets = append(x.st.SettingsTargets, *targets[p])
@@ -181,12 +177,8 @@ func (x *detector) parseSettings(t *model.SettingsTarget) {
 		if on && strings.HasPrefix(id, brand.Slug+"@") {
 			t.WatchyardPlugins = append(t.WatchyardPlugins, id)
 		}
-		if on && isLegacyPlugin(id) {
-			t.LegacyPlugins = append(t.LegacyPlugins, id)
-		}
 	}
 	sort.Strings(t.WatchyardPlugins)
-	sort.Strings(t.LegacyPlugins)
 	for n := range doc.ExtraMarkets {
 		t.ExtraMarketplaces = append(t.ExtraMarketplaces, n)
 	}
@@ -205,16 +197,6 @@ func (x *detector) parseSettings(t *model.SettingsTarget) {
 		sl.Ours = sl.Command != "" && statuswrap.IsOurs(sl.Command)
 		t.StatusLine = sl
 	}
-}
-
-// isLegacyPlugin reports whether id is the plugin or pane mod of the project's name before a
-// rename, from any marketplace (rename.md 2.4).
-func isLegacyPlugin(id string) bool {
-	if !brand.Renamed() {
-		return false
-	}
-	o := brand.OldSlug()
-	return strings.HasPrefix(id, o+"@") || strings.HasPrefix(id, o+"-pane@")
 }
 
 func itoa(i int) string { return strconv.Itoa(i) }

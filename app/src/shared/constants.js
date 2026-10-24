@@ -5,8 +5,6 @@
 
 /** Basename of the app's own user-data folder under app.getPath('appData'). */
 export const USER_DATA_DIRNAME = 'watchyard-desktop';
-/** The user-data folder of the last release before a rename (docs/spec/rename.md 2.9). */
-export const LEGACY_USER_DATA_DIRNAME = 'switchyard-desktop'; // rename:keep
 /** Files the app owns in its user-data folder. */
 export const APP_STATE_FILE = 'app-state.json';
 export const HUB_TOKEN_FILE = 'hub-token.bin';
@@ -22,8 +20,6 @@ export const TAB_ID_RE = new RegExp(TAB_ID_PATTERN);
 export const TAB_PARTITION_PREFIX = 'persist:tab-';
 /** Partition of the hub view (C7). */
 export const HUB_PARTITION = 'persist:wy-hub';
-/** Legacy compat: the hub view's partition before the rename; its folder moves to HUB_PARTITION's (paths.js). */
-export const LEGACY_HUB_PARTITION = 'persist:sy-hub'; // rename:keep
 /** Account tab name: 1 to 24 characters. */
 export const TAB_NAME_MAX = 24;
 
@@ -32,8 +28,6 @@ export const CLIENT_NAME = 'watchyard-desktop';
 
 /** Linux autostart and launcher entry name. */
 export const DESKTOP_ENTRY = 'watchyard-desktop.desktop';
-/** The entry name of the last release before a rename, removed when run at login is set. */
-export const LEGACY_DESKTOP_ENTRY = 'switchyard-desktop.desktop'; // rename:keep
 
 /** Command-line flags (C1). */
 export const FLAG_BACKGROUND = '--background';

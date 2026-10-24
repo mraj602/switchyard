@@ -112,7 +112,7 @@ func normalize(spec model.ServiceSpec) (model.ServiceSpec, error) {
 	if spec.Listen == "" {
 		spec.Listen = DefaultListen
 	}
-	if len(spec.Args) == 0 && isAgent(spec.Name) {
+	if len(spec.Args) == 0 && spec.Name == AgentName {
 		spec.Args = AgentArgs
 	}
 	if len(spec.Args) == 0 {
@@ -121,34 +121,20 @@ func normalize(spec model.ServiceSpec) (model.ServiceSpec, error) {
 	return spec, nil
 }
 
-// isAgent reports whether name is the agent's service under the current or the legacy name.
-func isAgent(name string) bool { return brand.Current(name) == AgentName }
-
-// brandOf returns the slug and display name a service name was made with: the legacy ones
-// for a name brand.Legacy made (rename.md 2.2), else the current ones.
-func brandOf(name string) (slug, display string) {
-	if brand.Renamed() && strings.HasPrefix(name, brand.OldSlug()+"-") && !strings.HasPrefix(name, brand.Slug+"-") {
-		return brand.OldSlug(), brand.OldName()
-	}
-	return brand.Slug, brand.Name
-}
-
 // LaunchdLabel is the LaunchAgent label for a service name.
 func LaunchdLabel(name string) string {
-	slug, _ := brandOf(name)
-	if name == slug+"-hub" {
-		return "com." + slug + ".hub"
+	if name == DefaultName {
+		return "com." + brand.Slug + ".hub"
 	}
-	return "com." + slug + "." + name
+	return "com." + brand.Slug + "." + name
 }
 
 // WindowsTask is the Task Scheduler name for a service name.
 func WindowsTask(name string) string {
-	slug, display := brandOf(name)
-	if name == slug+"-hub" {
-		return display + " Hub"
+	if name == DefaultName {
+		return brand.Name + " Hub"
 	}
-	return display + " " + name
+	return brand.Name + " " + name
 }
 
 // WindowsXMLFile is the task definition's file name inside Env.StateDir.
@@ -236,7 +222,7 @@ func hasControl(s string) bool {
 
 // describe is the one-line description of a service in its unit, plist and task.
 func describe(name string) string {
-	if isAgent(name) {
+	if name == AgentName {
 		return "Watchyard agent (peers)"
 	}
 	return "Watchyard hub (merged mode)"
@@ -245,7 +231,7 @@ func describe(name string) string {
 // logName is the file launchd writes the service's stdout and stderr to, inside StateDir. The
 // agent writes its own rotated log (<state>/logs/agent.log), so launchd's gets another name.
 func logName(name string) string {
-	if isAgent(name) {
+	if name == AgentName {
 		return "agent.launchd.log"
 	}
 	return "hub.log"
@@ -256,7 +242,7 @@ func logName(name string) string {
 func SystemdUnit(e Env, spec model.ServiceSpec) string {
 	var b strings.Builder
 	b.WriteString("[Unit]\n")
-	agent := isAgent(spec.Name)
+	agent := spec.Name == AgentName
 	b.WriteString("Description=" + describe(spec.Name) + "\n")
 	b.WriteString("Documentation=https://github.com/mraj602/watchyard\n")
 	if !agent {
@@ -415,15 +401,6 @@ func (s *Service) run(name string, args ...string) ([]byte, error) {
 // Install writes the unit and starts the service. A failing service manager is reported in
 // the returned error but the file stays, so the person can finish by hand.
 func (s *Service) Install(ctx context.Context, spec model.ServiceSpec) error {
-	return s.install(ctx, spec, unitState{Enabled: true, Active: true})
-}
-
-// unitState is what a service manager holds for a unit: whether it starts by itself
-// (enabled, loaded) and whether it runs now. Install uses both; the move from the name
-// before the rename carries the old unit's state over (rename.md 2.2).
-type unitState struct{ Enabled, Active bool }
-
-func (s *Service) install(ctx context.Context, spec model.ServiceSpec, st unitState) error {
 	spec, err := normalize(spec)
 	if err != nil {
 		return err
@@ -434,41 +411,25 @@ func (s *Service) install(ctx context.Context, spec model.ServiceSpec, st unitSt
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	// A copy installed under the name before the rename would hold the port: stop and remove
-	// it first (rename.md 2.2).
-	if old := legacyOf(spec.Name); old != "" && s.installed(old) {
-		if err := s.Uninstall(ctx, old); err != nil {
-			return fmt.Errorf("service: remove %s from before the rename: %w", UnitName(s.Env.GOOS, old), err)
-		}
-	}
 	switch s.Env.GOOS {
 	case "linux":
-		return s.installSystemd(spec, st)
+		return s.installSystemd(spec)
 	case "darwin":
-		return s.installLaunchd(spec, st)
+		return s.installLaunchd(spec)
 	case "windows":
-		return s.installWindows(spec, st)
+		return s.installWindows(spec)
 	}
 	return fmt.Errorf("service: no user service support for %s; run `wy hub serve` from your own supervisor", s.Env.GOOS)
 }
 
-func (s *Service) installSystemd(spec model.ServiceSpec, st unitState) error {
+func (s *Service) installSystemd(spec model.ServiceSpec) error {
 	e := s.Env
 	p := UnitPath(e, spec)
 	if err := writeFile(p, []byte(SystemdUnit(e, spec)), 0o644); err != nil {
 		return err
 	}
 	unit := spec.Name + ".service"
-	cmds := [][]string{{"--user", "daemon-reload"}}
-	switch {
-	case st.Enabled && st.Active:
-		cmds = append(cmds, []string{"--user", "enable", "--now", unit})
-	case st.Enabled:
-		cmds = append(cmds, []string{"--user", "enable", unit})
-	case st.Active:
-		cmds = append(cmds, []string{"--user", "start", unit})
-	}
-	for _, args := range cmds {
+	for _, args := range [][]string{{"--user", "daemon-reload"}, {"--user", "enable", "--now", unit}} {
 		if out, err := s.run("systemctl", args...); err != nil {
 			return fmt.Errorf("systemctl %s: %v: %s\nThe unit file is %s; start the service later with:\n  systemctl --user enable --now %s",
 				strings.Join(args, " "), err, strings.TrimSpace(string(out)), p, unit)
@@ -477,7 +438,7 @@ func (s *Service) installSystemd(spec model.ServiceSpec, st unitState) error {
 	if e.Out != nil && e.User != "" {
 		if out, err := s.run("loginctl", "show-user", e.User, "--property=Linger"); err == nil && strings.Contains(string(out), "Linger=no") {
 			note := LingerNote(e.User)
-			if isAgent(spec.Name) {
+			if spec.Name == AgentName {
 				note = strings.Replace(note, "the hub", "the agent", 1)
 			}
 			e.printf("%s\n", note)
@@ -486,14 +447,11 @@ func (s *Service) installSystemd(spec model.ServiceSpec, st unitState) error {
 	return nil
 }
 
-func (s *Service) installLaunchd(spec model.ServiceSpec, st unitState) error {
+func (s *Service) installLaunchd(spec model.ServiceSpec) error {
 	e := s.Env
 	p := UnitPath(e, spec)
 	if err := writeFile(p, []byte(LaunchdPlist(e, spec)), 0o644); err != nil {
 		return err
-	}
-	if !st.Enabled && !st.Active {
-		return nil // the old agent was not loaded: the file is written, nothing is loaded
 	}
 	domain := fmt.Sprintf("gui/%d", e.UID)
 	_, _ = s.run("launchctl", "bootout", domain+"/"+LaunchdLabel(spec.Name)) // replace an older copy
@@ -504,7 +462,7 @@ func (s *Service) installLaunchd(spec model.ServiceSpec, st unitState) error {
 	return nil
 }
 
-func (s *Service) installWindows(spec model.ServiceSpec, st unitState) error {
+func (s *Service) installWindows(spec model.ServiceSpec) error {
 	e := s.Env
 	p := UnitPath(e, spec)
 	if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
@@ -518,15 +476,8 @@ func (s *Service) installWindows(spec model.ServiceSpec, st unitState) error {
 		return fmt.Errorf("schtasks /Create: %v: %s\nThe task file is %s; create it by hand with:\n  schtasks /Create /TN \"%s\" /XML \"%s\"",
 			err, strings.TrimSpace(string(out)), p, task, p)
 	}
-	if !st.Enabled {
-		if out, err := s.run("schtasks", "/Change", "/TN", task, "/DISABLE"); err != nil {
-			return fmt.Errorf("schtasks /Change /DISABLE: %v: %s", err, strings.TrimSpace(string(out)))
-		}
-	}
-	if st.Active {
-		if out, err := s.run("schtasks", "/Run", "/TN", task); err != nil {
-			return fmt.Errorf("schtasks /Run: %v: %s", err, strings.TrimSpace(string(out)))
-		}
+	if out, err := s.run("schtasks", "/Run", "/TN", task); err != nil {
+		return fmt.Errorf("schtasks /Run: %v: %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }
@@ -537,13 +488,8 @@ func (s *Service) Uninstall(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	if old := legacyOf(spec.Name); old != "" && s.installed(old) {
-		if err := s.Uninstall(ctx, old); err != nil {
-			return err
-		}
-	}
 	e := s.Env
-	p := InstalledPath(e, spec.Name)
+	p := UnitPath(e, spec)
 	rm := func(path string) error {
 		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return err
@@ -581,8 +527,7 @@ func (s *Service) Status(ctx context.Context, name string) (model.ServiceStatus,
 		return st, err
 	}
 	e := s.Env
-	spec.Name = Installed(e, spec.Name)
-	_, statErr := os.Stat(InstalledPath(e, spec.Name))
+	_, statErr := os.Stat(UnitPath(e, spec))
 	st.Installed = statErr == nil
 	switch e.GOOS {
 	case "linux":
@@ -609,88 +554,7 @@ func (s *Service) Status(ctx context.Context, name string) (model.ServiceStatus,
 	return st, nil
 }
 
-// ---- the name before a rename (rename.md 2.2) ---------------------------------------------------
-
-// InstalledPath is the unit, plist or task XML of the installed service name: UnitPath, or on
-// macOS the dev.<slug>.hub.plist that `wy setup --hub here` wrote before the rename when only that
-// one exists.
-func InstalledPath(e Env, name string) string {
-	p := UnitPath(e, model.ServiceSpec{Name: name})
-	if e.GOOS != "darwin" || exists(p) {
-		return p
-	}
-	if slug, _ := brandOf(name); name == slug+"-hub" {
-		if alt := filepath.Join(e.Home, "Library", "LaunchAgents", "dev."+slug+".hub.plist"); exists(alt) {
-			return alt
-		}
-	}
-	return p
-}
-
-// Installed returns the name the service is installed under: name, or its name from before
-// the rename when only that one has a unit file. Everything that finds an installed service
-// (Status, Start, Stop, Refresh, InstalledUnit) goes through it, so an older install keeps
-// working until Refresh or Install moves it to the new name.
-func Installed(e Env, name string) string {
-	if exists(InstalledPath(e, name)) {
-		return name
-	}
-	if old := legacyOf(name); old != "" && exists(InstalledPath(e, old)) {
-		return old
-	}
-	return name
-}
-
-// legacyOf is the service's name from before the rename: "" when there was none, or name is
-// not a current <slug>-<x> name.
-func legacyOf(name string) string {
-	if !brand.Renamed() || !strings.HasPrefix(name, brand.Slug+"-") {
-		return ""
-	}
-	return brand.OldSlug() + strings.TrimPrefix(name, brand.Slug)
-}
-
-func (s *Service) installed(name string) bool { return exists(InstalledPath(s.Env, name)) }
-
-func exists(p string) bool {
-	_, err := os.Stat(p)
-	return err == nil
-}
-
 // LingerNote is the one-line hint printed when LingerOff is set.
 func LingerNote(user string) string {
 	return "the hub stops when you log out; run `loginctl enable-linger " + user + "`"
-}
-
-// stateOf reads, before the unit is removed, whether the service installed as name is enabled
-// and running. An answer the service manager does not give (no systemctl, an error with no
-// output) counts as on, as an install without a previous unit would be.
-func (s *Service) stateOf(name string) unitState {
-	e := s.Env
-	st := unitState{Enabled: true, Active: true}
-	word := func(cmd string, args ...string) string {
-		out, _ := s.run(cmd, args...)
-		return strings.TrimSpace(string(out))
-	}
-	switch e.GOOS {
-	case "linux":
-		unit := name + ".service"
-		if w := word("systemctl", "--user", "is-enabled", unit); w != "" {
-			st.Enabled = strings.HasPrefix(w, "enabled") || w == "linked" || w == "alias"
-		}
-		if w := word("systemctl", "--user", "is-active", unit); w != "" {
-			st.Active = w == "active" || w == "activating" || w == "reloading"
-		}
-	case "darwin":
-		// A plist that is not loaded was booted out by hand: there is no enabled/active split.
-		if _, err := s.run("launchctl", "print", fmt.Sprintf("gui/%d/%s", e.UID, LaunchdLabel(name))); err != nil {
-			st = unitState{}
-		}
-	case "windows":
-		if w := word("schtasks", "/Query", "/TN", WindowsTask(name)); w != "" {
-			st.Enabled = !strings.Contains(w, "Disabled")
-			st.Active = strings.Contains(w, "Running")
-		}
-	}
-	return st
 }

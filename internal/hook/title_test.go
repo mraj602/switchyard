@@ -201,26 +201,26 @@ func TestTermHost(t *testing.T) {
 	const laptop = "m_01HZX3K9Q2M8R5T7V9WBCD4EFG"
 	const self = "m_01HZX3K9Q2M8R5T7V9WBCD4EFH"
 	env := func(m map[string]string) func(string) string { return func(k string) string { return m[k] } }
-	g := Term(env(map[string]string{"TERM_PROGRAM": "WarpTerminal", "LC_SY_HOST": laptop}), self)
+	g := Term(env(map[string]string{"TERM_PROGRAM": "WarpTerminal", "LC_WY_HOST": laptop}), self)
 	if g == nil || g.Host != laptop {
-		t.Fatalf("host from LC_SY_HOST: %+v", g)
+		t.Fatalf("host from LC_WY_HOST: %+v", g)
 	}
 	for _, v := range []string{self, "garbage", "m_short", strings.ToLower(laptop), laptop + "x", "m_" + strings.Repeat("U", 26), "../" + laptop, ""} {
-		g := Term(env(map[string]string{"TERM_PROGRAM": "WarpTerminal", "LC_SY_HOST": v}), self)
+		g := Term(env(map[string]string{"TERM_PROGRAM": "WarpTerminal", "LC_WY_HOST": v}), self)
 		if g == nil || g.Host != "" {
-			t.Errorf("LC_SY_HOST %q: %+v", v, g)
+			t.Errorf("LC_WY_HOST %q: %+v", v, g)
 		}
 	}
 }
 
-// End to end through Run: a hook on a server with LC_SY_HOST of another machine records
+// End to end through Run: a hook on a server with LC_WY_HOST of another machine records
 // term.host; its own id leaves it absent.
 func TestRunRecordsTermHost(t *testing.T) {
 	const laptop = "m_01HZX3K9Q2M8R5T7V9WBCD4EFG"
 	in, _ := os.ReadFile(filepath.Join(fixtures, "hooks", "by-event", "Stop.json"))
 
 	sb := newSandbox(t)
-	sb.env["LC_SY_HOST"] = laptop
+	sb.env["LC_WY_HOST"] = laptop
 	sb.run("Stop", in)
 	recs := sb.records()
 	if len(recs) != 1 || recs[0].Term == nil || recs[0].Term.Host != laptop {
@@ -230,7 +230,7 @@ func TestRunRecordsTermHost(t *testing.T) {
 	sb = newSandbox(t)
 	sb.run("Stop", in) // creates the machine id
 	own := sb.records()[0].Machine
-	sb.env["LC_SY_HOST"] = own
+	sb.env["LC_WY_HOST"] = own
 	sb.run("Stop", in)
 	var last *record.Record
 	for _, r := range sb.records() {

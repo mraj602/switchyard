@@ -71,7 +71,7 @@ Go side is in the standard library of Go 1.27: `crypto/ed25519`, `crypto/ecdh`,
 ```
 
 - `key = PBKDF2-HMAC-SHA256(passphrase bytes, salt, iter, 32)`; `ct = AES-256-GCM(key, nonce,
-  seed, aad = "sy-owner-v1\n" ‖ fp)`. The seed is the 32-byte Ed25519 seed
+  seed, aad = "wy-owner-v1\n" ‖ fp)`. The seed is the 32-byte Ed25519 seed
   (`ed25519.NewKeyFromSeed`).
 - **Why PBKDF2 and not scrypt or argon2id:** PBKDF2 is in the standard library
   (`crypto/pbkdf2`, Go 1.24+); scrypt and argon2id live only in `golang.org/x/crypto`, which
@@ -94,14 +94,10 @@ Go side is in the standard library of Go 1.27: `crypto/ed25519`, `crypto/ecdh`,
 printed code is a full backup of the key, not a second password:
 
 ```
-seed = HKDF-SHA256(secret = R, salt = "sy-owner-v1", info = "ed25519 seed", length = 32)
+seed = HKDF-SHA256(secret = R, salt = "wy-owner-v1", info = "ed25519 seed", length = 32)
 code = "WYR1-" + groups of 4 of base32(R) (52 characters, upper case) + "-" + check
-check = first 4 characters of base32(SHA-256("sy-recovery-v1" ‖ R))
+check = first 4 characters of base32(SHA-256("wy-recovery-v1" ‖ R))
 ```
-
-The labels `sy-owner-v1` and `sy-recovery-v1` keep the name from before the rename: they derive
-the key from a code people have written down (rename.md 2.12). A code printed before the rename
-starts `SYR1-` and is accepted like `WYR1-`.
 
 - Printed once, on the terminal only (refused when stdout is not a TTY), with: "Write this
   down and keep it offline. Anyone with it has your owner key. It replaces the passphrase
@@ -213,11 +209,11 @@ Every signed object has one shape, whatever its type:
 }
 ```
 
-- Each signature is Ed25519 over `"sy-doc-v1\n" ‖ type ‖ "\n" ‖ body bytes`. The body bytes are
+- Each signature is Ed25519 over `"wy-doc-v1\n" ‖ type ‖ "\n" ‖ body bytes`. The body bytes are
   signed **as they are** (no canonical JSON): a verifier checks the signature first, then
   decodes the body. Bodies are compact JSON written by `encoding/json`. `type` must be one of
   the table below before anything is verified. The prefix keeps documents apart from link
-  frames (`"sy-link-v1…"`, link.md 3, 4.3), and `type` keeps the document kinds apart, so no
+  frames (`"wy-link-v1…"`, link.md 3, 4.3), and `type` keeps the document kinds apart, so no
   signature made for one can be read as another.
 - A verifier requires **exactly** the signatures the table names for that type, each by a
   distinct `by`, and ignores none: an unexpected extra signature is a reject, not a pass.
@@ -487,7 +483,7 @@ Older web pages ignore the two parameters. The web app (pwa.md) does not use the
 ```
 k           = HMAC-SHA256(pair_pepper, "seal:" ‖ secret)[0:16]     (the 16 bytes behind the QR's k=)
 nonce       = 12 random bytes
-keys_sealed = b64u(nonce ‖ AES-128-GCM(key = k, nonce, plaintext = keys JSON, aad = "sy-reg-v1\n" ‖ secret))
+keys_sealed = b64u(nonce ‖ AES-128-GCM(key = k, nonce, plaintext = keys JSON, aad = "wy-reg-v1\n" ‖ secret))
 ```
 
 `k` is already a fresh pseudo-random key per code, so it is used directly (no extra KDF); the

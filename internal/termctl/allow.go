@@ -24,16 +24,13 @@ func ValidFocusURL(u string) bool {
 }
 
 // ValidTabConfigURL reports whether u opens a tab config file wy wrote
-// (`warp://tab_config/watchyard-<label>`, or the prefix from before a rename).
+// (`warp://tab_config/watchyard-<label>`).
 func ValidTabConfigURL(u string) bool {
 	m := tabConfigRe.FindStringSubmatch(u)
 	if len(u) > maxURL || m == nil {
 		return false
 	}
-	if strings.HasPrefix(m[1], brand.Slug+"-") && len(m[1]) > len(brand.Slug)+1 {
-		return true
-	}
-	return brand.Renamed() && strings.HasPrefix(m[1], brand.OldSlug()+"-") && len(m[1]) > len(brand.OldSlug())+1
+	return strings.HasPrefix(m[1], brand.Slug+"-") && len(m[1]) > len(brand.Slug)+1
 }
 
 // ValidRemoteURL reports whether u is a claude.ai link (a session's remote_url).

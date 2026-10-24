@@ -32,8 +32,6 @@ default applies. On Windows, `%LOCALAPPDATA%` is used if set and absolute, else
    tests and by running a second, throwaway `wy` next to the real one.
 3. The table above.
 
-`wy` never reads `SWITCHYARD_DATA`.
-
 `wy paths` prints the three folders and where each came from; `wy doctor` shows the
 same.
 

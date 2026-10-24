@@ -173,7 +173,7 @@ class FramesTest {
     val hello = Login.hello(c!!, "dev_X", 41, JSONObject().put("kind", "android"), signer)
     assertEquals("hello", hello.getString("t"))
     assertEquals(41, hello.getLong("last"))
-    val input = Codec.utf8("sy-link-v1 hello\n${hub.fp}\n$nonce\n1760518860\ndev_X\n41")
+    val input = Codec.utf8("wy-link-v1 hello\n${hub.fp}\n$nonce\n1760518860\ndev_X\n41")
     assertTrue(signer.verify(Codec.unb64u(hello.getString("sig"))!!, input))
   }
 
@@ -196,13 +196,12 @@ class FramesTest {
 
   @Test fun signedInputIsByteExact() {
     val got = Frames.signedInput("dev_1", "alert", 57, 1760540400, "wy-s-c41e", "queue", byteArrayOf(1, 2))
-    val want = Codec.cat(Codec.utf8("sy-link-v1\ndev_1\nalert\n57\n1760540400\nwy-s-c41e\nqueue\n"), byteArrayOf(1, 2))
+    val want = Codec.cat(Codec.utf8("wy-link-v1\ndev_1\nalert\n57\n1760540400\nwy-s-c41e\nqueue\n"), byteArrayOf(1, 2))
     assertEquals(Codec.hex(want), Codec.hex(got))
   }
 
-  // Legacy compat: a hub from before the rename accepts only sy-link.1, so the phone offers both, new first.
-  @Test fun offersBothSubprotocols() {
-    assertEquals("wy-link.1, sy-link.1", LinkClient.SUBPROTOCOLS) // rename:keep
+  @Test fun offersTheSubprotocol() {
+    assertEquals("wy-link.1", LinkClient.SUBPROTOCOL)
   }
 
   @Test fun connectionTapOpensNowNotSettings() {

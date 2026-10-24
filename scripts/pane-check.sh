@@ -65,7 +65,6 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/home" "$tmp/cwd"
 for v in $(env | sed -n 's/^\(XDG_[A-Za-z_]*\)=.*/\1/p; s/^\(WY_[A-Za-z_]*\)=.*/\1/p'); do unset "$v"; done
-for v in $(env | sed -n 's/^\(SY_[A-Za-z0-9_]*\)=.*/\1/p' | grep -v _E2E_); do unset "$v"; done # rename:keep: the old prefix, which the command still reads (rename.md 2.13)
 unset CLAUDE_CONFIG_DIR
 export HOME="$tmp/home" CLAUDE_CONFIG_DIR="$tmp/home/.claude" WY_HOME="$tmp/wy"
 

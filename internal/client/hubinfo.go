@@ -21,13 +21,10 @@ const HubFile = "hub.json"
 
 // BacklogHeader carries the number of records still queued locally (outbox.md 8).
 // BacklogOldestHeader carries the ts (RFC 3339) of the oldest unanswered record, sent with
-// it when more than one batch is queued. Legacy compat: each is also sent under its name from
-// before the rename, which is all a hub older than the rename reads (rename.md 2.12).
+// it when more than one batch is queued.
 const (
-	BacklogHeader             = "X-Wy-Backlog"
-	BacklogOldestHeader       = "X-Wy-Backlog-Oldest"
-	LegacyBacklogHeader       = "X-Sy-Backlog"        // rename:keep
-	LegacyBacklogOldestHeader = "X-Sy-Backlog-Oldest" // rename:keep
+	BacklogHeader       = "X-Wy-Backlog"
+	BacklogOldestHeader = "X-Wy-Backlog-Oldest"
 )
 
 // HubCache is the content of hub.json.
@@ -163,7 +160,6 @@ func (b *backlogOldest) wrap(c *Client) *Client {
 		if v := b.get(); v != "" && r.URL.Path == "/v1/ingest" {
 			r = r.Clone(r.Context())
 			r.Header.Set(BacklogOldestHeader, v)
-			r.Header.Set(LegacyBacklogOldestHeader, v)
 		}
 		return base.RoundTrip(r)
 	})

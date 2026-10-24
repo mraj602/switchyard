@@ -736,29 +736,3 @@ func TestAckPastExpiredRow(t *testing.T) {
 	// The expiry callback runs inside the ack's transaction: wait for the commit too.
 	waitFor(t, "the queue to empty", func() bool { return len(f.queued(p)) == 0 })
 }
-
-// Legacy compat: a device from before the rename offers only sy-link.1; the hub accepts it and
-// answers with it. A device that offers both gets wy-link.1.
-func TestLegacySubprotocol(t *testing.T) {
-	f := newFix(t)
-	for _, c := range []struct {
-		offer []string
-		want  string
-	}{
-		{[]string{link.LegacySubprotocol}, "sy-link.1"},
-		{[]string{link.LegacySubprotocol, link.Subprotocol}, "wy-link.1"},
-		{link.Subprotocols, "wy-link.1"},
-	} {
-		ctx, cancel := context.WithTimeout(f.ctx, 5*time.Second)
-		ws, _, err := websocket.Dial(ctx, f.wsURL(), &websocket.DialOptions{Subprotocols: c.offer})
-		if err != nil {
-			cancel()
-			t.Fatalf("offer %v: %v", c.offer, err)
-		}
-		if got := ws.Subprotocol(); got != c.want {
-			t.Errorf("offer %v: got %q, want %q", c.offer, got, c.want)
-		}
-		ws.CloseNow()
-		cancel()
-	}
-}

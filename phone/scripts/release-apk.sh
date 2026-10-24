@@ -31,14 +31,6 @@ prop() { # prop <file> <key>: the value after the first '=' of the last matching
   line="${line#"${line%%[![:space:]]*}"}"
   printf '%s' "${line%"${line##*[![:space:]]}"}"
 }
-# Signing variables named for the command before a rename still work (docs/spec/rename.md 2.13).
-cur=WY_
-old=SY_ # rename:keep
-if [ "$cur" != "$old" ]; then
-  for v in ANDROID_SIGNING_PROPERTIES ANDROID_KEYSTORE ANDROID_KEY_ALIAS ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_PASSWORD; do
-    eval "if [ -z \"\${$cur$v:-}\" ] && [ -n \"\${$old$v:-}\" ]; then $cur$v=\"\$$old$v\"; fi"
-  done
-fi
 if [ -n "${WY_ANDROID_SIGNING_PROPERTIES:-}" ]; then
   pf="$WY_ANDROID_SIGNING_PROPERTIES"
   [ -f "$pf" ] || die "WY_ANDROID_SIGNING_PROPERTIES is not a file"

@@ -109,8 +109,7 @@ func Build(o Options) (record.MachineInfoPayload, error) {
 	if goarch == "" {
 		goarch = runtime.GOARCH
 	}
-	// LegacySy: a hub older than the rename requires "sy" (legacy compat, record.md 4.8).
-	p := record.MachineInfoPayload{OS: goos, Arch: goarch, Wy: version.Version, LegacySy: version.Version, RecordV: record.MaxVersion,
+	p := record.MachineInfoPayload{OS: goos, Arch: goarch, Wy: version.Version, RecordV: record.MaxVersion,
 		Reach: Reach(o.Config), Dial: Dial(o.Config), Name: o.Name}
 
 	ob := outbox.New(o.outboxDir())

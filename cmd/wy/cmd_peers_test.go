@@ -60,7 +60,7 @@ func newPeersWorld(t *testing.T) *peersWorld { return newPeersWorldAt(t, "") }
 // matrix tests share it with the keys rig); with a state folder the unsigned test allow file
 // is not used and the matrix is the signed document in <state>/keys/matrix.json.
 func newPeersWorldAt(t *testing.T, state string) *peersWorld {
-	base, err := os.MkdirTemp("", "sypc")
+	base, err := os.MkdirTemp("", "wypc")
 	if err != nil {
 		t.Fatal(err)
 	}

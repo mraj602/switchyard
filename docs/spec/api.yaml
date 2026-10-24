@@ -1892,9 +1892,8 @@ components:
       in: cookie
       name: wy_session
       description: |
-        The web app's cookie (board login, phone pairing in cookie mode, owner session). The
-        hub also reads `sy_session`, the name before the rename, when `wy_session` is absent,
-        and logout clears both (rename.md 2.12). A cookie request that changes state must send `Content-Type: application/json` and, if
+        The web app's cookie (board login, phone pairing in cookie mode, owner session). A
+        cookie request that changes state must send `Content-Type: application/json` and, if
         it sends `Origin`, the hub's own origin (pairing.md 3.2).
 
   responses:
@@ -2279,7 +2278,7 @@ components:
         name: {type: string, description: "The owner's rename on the board, or the machine's own name once `wy machine rename` changes it (machine_info.name, record.md 4.8)."}
         os: {type: [string, "null"]}
         arch: {type: [string, "null"]}
-        wy_version: {type: [string, "null"], description: "The machine's wy version (stored in the column sy_version, rename.md 2.12)."}
+        wy_version: {type: [string, "null"], description: "The machine's wy version."}
         last_seen: {type: [string, "null"], format: date-time}
         last_record: {type: [string, "null"], format: date-time}
         backlog: {type: [integer, "null"]}
@@ -3069,7 +3068,7 @@ components:
 
     SignedDoc:
       type: object
-      description: "keys.md 4.1. Each signature is Ed25519 over \"sy-doc-v1\\n\" + type + \"\\n\" + body bytes. A verifier requires exactly the signers keys.md 4.1 names for the type, each `by` once."
+      description: "keys.md 4.1. Each signature is Ed25519 over \"wy-doc-v1\\n\" + type + \"\\n\" + body bytes. A verifier requires exactly the signers keys.md 4.1 names for the type, each `by` once."
       required: [type, body, sigs]
       properties:
         type: {type: string, enum: [owner_key, device_cert, matrix, revocations, peer_envelope, machine_accounts]}

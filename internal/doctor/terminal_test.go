@@ -366,7 +366,7 @@ func TestAcceptEnvNote(t *testing.T) {
 	}
 	env["SSH_CONNECTION"] = "1.2.3.4 5 6.7.8.9 22"
 	c := lvl(t, termRun(t, e, o, cfg, ""), "ssh env")
-	if c.Level != Warn || !strings.Contains(c.Fix, "AcceptEnv LC_SY_*") {
+	if c.Level != Warn || !strings.Contains(c.Fix, "AcceptEnv LC_WY_*") {
 		t.Errorf("warp over ssh without focus: %+v", c)
 	}
 	write(t, day, line(`"term":{"app":"warp","id":"abc","focus_url":"warp://session/0123456789abcdef0123456789abcdef"},`))

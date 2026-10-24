@@ -155,9 +155,7 @@ var (
 	machinePattern = regexp.MustCompile(`^m_[0-9A-HJKMNP-TV-Z]{26}$`)
 	// Claude Code session ids are UUIDs; the hub also builds shell commands from them.
 	sessionIDPattern = regexp.MustCompile(`^[0-9A-Za-z][0-9A-Za-z_-]{0,63}$`)
-	// The client of the command's name before a rename still reports its version
-	// (docs/spec/rename.md 2.13).
-	clientVersion = regexp.MustCompile(`^(?:` + brand.CLI + `|` + brand.LegacyCLI + `)/(\S+)$`)
+	clientVersion    = regexp.MustCompile(`^` + brand.CLI + `/(\S+)$`)
 )
 
 type batch struct {
@@ -451,12 +449,12 @@ func (g *Ingester) Handler() http.Handler {
 			return
 		}
 		var opt Options
-		if h := headerOrLegacy(r, "X-Wy-Backlog", "X-Sy-Backlog"); h != "" { // rename:keep
+		if h := r.Header.Get("X-Wy-Backlog"); h != "" {
 			if v, err := strconv.ParseInt(h, 10, 64); err == nil && v >= 0 {
 				opt.Backlog = &v
 			}
 		}
-		if h := headerOrLegacy(r, "X-Wy-Backlog-Oldest", "X-Sy-Backlog-Oldest"); h != "" { // rename:keep
+		if h := r.Header.Get("X-Wy-Backlog-Oldest"); h != "" {
 			if t, err := time.Parse(time.RFC3339Nano, h); err == nil {
 				opt.BacklogOldest = t.UnixMilli()
 			}
@@ -491,13 +489,4 @@ func (g *Ingester) Handler() http.Handler {
 		w.Header().Set("Cache-Control", "no-store")
 		_ = json.NewEncoder(w).Encode(reply)
 	})
-}
-
-// headerOrLegacy is header name, or legacy when name is absent. Legacy compat: a machine
-// older than the rename sends the backlog headers as X-Sy-* (rename.md 2.12).
-func headerOrLegacy(r *http.Request, name, legacy string) string {
-	if v := r.Header.Get(name); v != "" {
-		return v
-	}
-	return r.Header.Get(legacy)
 }

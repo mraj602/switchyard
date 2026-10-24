@@ -2,27 +2,27 @@
   "name": "owner_key-pending",
   "keys": {
     "hub": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w",
-    "owner": "z_1xUJjYPtzCNqg7A9X7RRnaOzlwUFDlIrBYrQLSxTA"
+    "owner": "gaqdkpG6seHWgNcMn7Bpq48Bvvotie4fPuFk5vhD1mU"
   },
   "fields": {
     "body": {
       "created_at": "2026-10-15T09:00:00.000Z",
       "hub": "gr2q7gf5lh6pzfdnurnkvput",
-      "pub": "z_1xUJjYPtzCNqg7A9X7RRnaOzlwUFDlIrBYrQLSxTA",
+      "pub": "gaqdkpG6seHWgNcMn7Bpq48Bvvotie4fPuFk5vhD1mU",
       "v": 1
     },
-    "body_text": "{\"v\":1,\"pub\":\"z_1xUJjYPtzCNqg7A9X7RRnaOzlwUFDlIrBYrQLSxTA\",\"hub\":\"gr2q7gf5lh6pzfdnurnkvput\",\"created_at\":\"2026-10-15T09:00:00.000Z\"}",
+    "body_text": "{\"v\":1,\"pub\":\"gaqdkpG6seHWgNcMn7Bpq48Bvvotie4fPuFk5vhD1mU\",\"hub\":\"gr2q7gf5lh6pzfdnurnkvput\",\"created_at\":\"2026-10-15T09:00:00.000Z\"}",
     "type": "owner_key"
   },
-  "signed_hex": "73792d646f632d76310a6f776e65725f6b65790a7b2276223a312c22707562223a227a5f3178554a6a5950747a434e7167374139583752526e614f7a6c775546446c4972425972514c53785441222c22687562223a2267723271376766356c6836707a66646e75726e6b76707574222c22637265617465645f6174223a22323032362d31302d31355430393a30303a30302e3030305a227d",
+  "signed_hex": "77792d646f632d76310a6f776e65725f6b65790a7b2276223a312c22707562223a22676171646b70473673654857674e634d6e3742707134384276766f74696534665075466b35766844316d55222c22687562223a2267723271376766356c6836707a66646e75726e6b76707574222c22637265617465645f6174223a22323032362d31302d31355430393a30303a30302e3030305a227d",
   "doc": {
     "type": "owner_key",
-    "body": "eyJ2IjoxLCJwdWIiOiJ6XzF4VUpqWVB0ekNOcWc3QTlYN1JSbmFPemx3VUZEbElyQllyUUxTeFRBIiwiaHViIjoiZ3IycTdnZjVsaDZwemZkbnVybmt2cHV0IiwiY3JlYXRlZF9hdCI6IjIwMjYtMTAtMTVUMDk6MDA6MDAuMDAwWiJ9",
+    "body": "eyJ2IjoxLCJwdWIiOiJnYXFka3BHNnNlSFdnTmNNbjdCcHE0OEJ2dm90aWU0ZlB1Rms1dmhEMW1VIiwiaHViIjoiZ3IycTdnZjVsaDZwemZkbnVybmt2cHV0IiwiY3JlYXRlZF9hdCI6IjIwMjYtMTAtMTVUMDk6MDA6MDAuMDAwWiJ9",
     "sigs": [
       {
         "by": "owner",
-        "fp": "l6vucuts5ofndvvrr72yj4lq",
-        "sig": "psvx1fS0REFzqhezqkJcCjK0oziC2fD1SkGjeZucnIdJ9H0QMBDlaew6fQXmao0scteO1UHNFAnikiFHvatbDg"
+        "fp": "jkcixg63pjjtgbrhaeiiisac",
+        "sig": "TMGAi-ZEvj3M3cAzyL2l_Tk_301QsxjI8O8VXOCYe8bH-wo7QDi7Rf569q4yH_u7xEqqbMYN0kYjfxw_KVthAg"
       }
     ]
   },
@@ -31,12 +31,12 @@
       "why": "body byte changed",
       "doc": {
         "type": "owner_key",
-        "body": "eyJ2IjoxLCJwdWIiOiJ6XzF4VUpqWVB0ekNOcWc3QTlYN1JSbmFPemx3VUZEbElyQllyUUxTeFRBIiwiaHViIjoiZnIycTdnZjVsaDZwemZkbnVybmt2cHV0IiwiY3JlYXRlZF9hdCI6IjIwMjYtMTAtMTVUMDk6MDA6MDAuMDAwWiJ9",
+        "body": "eyJ2IjoxLCJwdWIiOiJnYXFka3BHNnNlSFdnTmNNbjdCcHE0OEJ2dm90aWU0ZlB1Rms1dmhEMW1VIiwiaHViIjoiZnIycTdnZjVsaDZwemZkbnVybmt2cHV0IiwiY3JlYXRlZF9hdCI6IjIwMjYtMTAtMTVUMDk6MDA6MDAuMDAwWiJ9",
         "sigs": [
           {
             "by": "owner",
-            "fp": "l6vucuts5ofndvvrr72yj4lq",
-            "sig": "psvx1fS0REFzqhezqkJcCjK0oziC2fD1SkGjeZucnIdJ9H0QMBDlaew6fQXmao0scteO1UHNFAnikiFHvatbDg"
+            "fp": "jkcixg63pjjtgbrhaeiiisac",
+            "sig": "TMGAi-ZEvj3M3cAzyL2l_Tk_301QsxjI8O8VXOCYe8bH-wo7QDi7Rf569q4yH_u7xEqqbMYN0kYjfxw_KVthAg"
           }
         ]
       }
@@ -45,12 +45,12 @@
       "why": "by swapped",
       "doc": {
         "type": "owner_key",
-        "body": "eyJ2IjoxLCJwdWIiOiJ6XzF4VUpqWVB0ekNOcWc3QTlYN1JSbmFPemx3VUZEbElyQllyUUxTeFRBIiwiaHViIjoiZ3IycTdnZjVsaDZwemZkbnVybmt2cHV0IiwiY3JlYXRlZF9hdCI6IjIwMjYtMTAtMTVUMDk6MDA6MDAuMDAwWiJ9",
+        "body": "eyJ2IjoxLCJwdWIiOiJnYXFka3BHNnNlSFdnTmNNbjdCcHE0OEJ2dm90aWU0ZlB1Rms1dmhEMW1VIiwiaHViIjoiZ3IycTdnZjVsaDZwemZkbnVybmt2cHV0IiwiY3JlYXRlZF9hdCI6IjIwMjYtMTAtMTVUMDk6MDA6MDAuMDAwWiJ9",
         "sigs": [
           {
             "by": "hub",
-            "fp": "l6vucuts5ofndvvrr72yj4lq",
-            "sig": "psvx1fS0REFzqhezqkJcCjK0oziC2fD1SkGjeZucnIdJ9H0QMBDlaew6fQXmao0scteO1UHNFAnikiFHvatbDg"
+            "fp": "jkcixg63pjjtgbrhaeiiisac",
+            "sig": "TMGAi-ZEvj3M3cAzyL2l_Tk_301QsxjI8O8VXOCYe8bH-wo7QDi7Rf569q4yH_u7xEqqbMYN0kYjfxw_KVthAg"
           }
         ]
       }
@@ -59,7 +59,7 @@
       "why": "no signature",
       "doc": {
         "type": "owner_key",
-        "body": "eyJ2IjoxLCJwdWIiOiJ6XzF4VUpqWVB0ekNOcWc3QTlYN1JSbmFPemx3VUZEbElyQllyUUxTeFRBIiwiaHViIjoiZ3IycTdnZjVsaDZwemZkbnVybmt2cHV0IiwiY3JlYXRlZF9hdCI6IjIwMjYtMTAtMTVUMDk6MDA6MDAuMDAwWiJ9",
+        "body": "eyJ2IjoxLCJwdWIiOiJnYXFka3BHNnNlSFdnTmNNbjdCcHE0OEJ2dm90aWU0ZlB1Rms1dmhEMW1VIiwiaHViIjoiZ3IycTdnZjVsaDZwemZkbnVybmt2cHV0IiwiY3JlYXRlZF9hdCI6IjIwMjYtMTAtMTVUMDk6MDA6MDAuMDAwWiJ9",
         "sigs": []
       }
     },
@@ -67,17 +67,17 @@
       "why": "extra signature",
       "doc": {
         "type": "owner_key",
-        "body": "eyJ2IjoxLCJwdWIiOiJ6XzF4VUpqWVB0ekNOcWc3QTlYN1JSbmFPemx3VUZEbElyQllyUUxTeFRBIiwiaHViIjoiZ3IycTdnZjVsaDZwemZkbnVybmt2cHV0IiwiY3JlYXRlZF9hdCI6IjIwMjYtMTAtMTVUMDk6MDA6MDAuMDAwWiJ9",
+        "body": "eyJ2IjoxLCJwdWIiOiJnYXFka3BHNnNlSFdnTmNNbjdCcHE0OEJ2dm90aWU0ZlB1Rms1dmhEMW1VIiwiaHViIjoiZ3IycTdnZjVsaDZwemZkbnVybmt2cHV0IiwiY3JlYXRlZF9hdCI6IjIwMjYtMTAtMTVUMDk6MDA6MDAuMDAwWiJ9",
         "sigs": [
           {
             "by": "owner",
-            "fp": "l6vucuts5ofndvvrr72yj4lq",
-            "sig": "psvx1fS0REFzqhezqkJcCjK0oziC2fD1SkGjeZucnIdJ9H0QMBDlaew6fQXmao0scteO1UHNFAnikiFHvatbDg"
+            "fp": "jkcixg63pjjtgbrhaeiiisac",
+            "sig": "TMGAi-ZEvj3M3cAzyL2l_Tk_301QsxjI8O8VXOCYe8bH-wo7QDi7Rf569q4yH_u7xEqqbMYN0kYjfxw_KVthAg"
           },
           {
             "by": "device",
             "fp": "gr2q7gf5lh6pzfdnurnkvput",
-            "sig": "sWR2QKCefqb3LuyxZ35Uy1463Fb47BeDLjjthq0GISvdaRP6wdNmaebnTiR0VhKLEtzDzDLWM60syMzz6JS3Bg"
+            "sig": "vm8xsPArdDnSzmgu3C4Cp6eXmLbr5SiPBq6WXktS66CiNXadq8Y-AvTCtLkDPcZrAExydwfUCKh2HyXBtYYkAw"
           }
         ]
       }
@@ -86,12 +86,12 @@
       "why": "another type",
       "doc": {
         "type": "matrix",
-        "body": "eyJ2IjoxLCJwdWIiOiJ6XzF4VUpqWVB0ekNOcWc3QTlYN1JSbmFPemx3VUZEbElyQllyUUxTeFRBIiwiaHViIjoiZ3IycTdnZjVsaDZwemZkbnVybmt2cHV0IiwiY3JlYXRlZF9hdCI6IjIwMjYtMTAtMTVUMDk6MDA6MDAuMDAwWiJ9",
+        "body": "eyJ2IjoxLCJwdWIiOiJnYXFka3BHNnNlSFdnTmNNbjdCcHE0OEJ2dm90aWU0ZlB1Rms1dmhEMW1VIiwiaHViIjoiZ3IycTdnZjVsaDZwemZkbnVybmt2cHV0IiwiY3JlYXRlZF9hdCI6IjIwMjYtMTAtMTVUMDk6MDA6MDAuMDAwWiJ9",
         "sigs": [
           {
             "by": "owner",
-            "fp": "l6vucuts5ofndvvrr72yj4lq",
-            "sig": "psvx1fS0REFzqhezqkJcCjK0oziC2fD1SkGjeZucnIdJ9H0QMBDlaew6fQXmao0scteO1UHNFAnikiFHvatbDg"
+            "fp": "jkcixg63pjjtgbrhaeiiisac",
+            "sig": "TMGAi-ZEvj3M3cAzyL2l_Tk_301QsxjI8O8VXOCYe8bH-wo7QDi7Rf569q4yH_u7xEqqbMYN0kYjfxw_KVthAg"
           }
         ]
       }

@@ -80,9 +80,9 @@ func checkOurs(words []string) ([]string, bool) {
 	if i := strings.LastIndexAny(base, `/\`); i >= 0 {
 		base = base[i+1:]
 	}
-	// A wrapper written under the command's name before a rename is ours too (rename.md 2.13).
 	base = strings.TrimSuffix(base, ".exe")
-	if base != brand.CLI && base != brand.OldCLI() {
+	if base != brand.CLI {
+
 		return nil, false
 	}
 	if words[1] != "statusline" {

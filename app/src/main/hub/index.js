@@ -57,9 +57,9 @@ function certInfo(url, p, pinned) {
 }
 
 /** The messages the shell shows for a failed `wy desktop token`, by exit code (C4). */
-/** wy's own version from `wy desktop info`. Legacy compat: a wy from before the rename reports it as "sy" (rename.md 2.12). */
+/** wy's own version from `wy desktop info`. */
 export function cliVersion(info) {
-  const v = typeof info?.wy === 'string' ? info.wy : info?.sy; // rename:keep
+  const v = info?.wy;
   return typeof v === 'string' ? v.slice(0, 64) : null;
 }
 

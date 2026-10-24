@@ -22,7 +22,6 @@ set -eu
 for v in $(env | sed -n 's/^\([A-Za-z0-9_]*\)=.*/\1/p' | grep -E '^(CLAUDE[A-Za-z0-9_]*|WY_[A-Z_]*|XDG_[A-Z_]*|FAKE_[A-Z_]*)$'); do
 	[ "$v" = XDG_RUNTIME_DIR ] || unset "$v"
 done
-for v in $(env | sed -n 's/^\(SY_[A-Za-z0-9_]*\)=.*/\1/p' | grep -v _E2E_); do unset "$v"; done # rename:keep: the old prefix, which the command still reads (rename.md 2.13)
 here=$(cd "$(dirname "$0")" && pwd)
 src=$(cd "$here/../../.." && pwd)
 pattern=

@@ -23,10 +23,10 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE schema_version (
   version     INTEGER NOT NULL PRIMARY KEY,
   applied_at  INTEGER NOT NULL,
-  sy_version  TEXT    NOT NULL                      -- hub binary version that applied it
+  wy_version  TEXT    NOT NULL                      -- hub binary version that applied it
 ) STRICT;
 
-INSERT INTO schema_version (version, applied_at, sy_version)
+INSERT INTO schema_version (version, applied_at, wy_version)
 VALUES (1, CAST(unixepoch('subsec') * 1000 AS INTEGER), 'spec');
 
 -- Hub-wide settings that are not secrets (retention days, last-message policy, …).
@@ -90,7 +90,7 @@ CREATE TABLE machine (
   name          TEXT    NOT NULL,                    -- defaults to the hostname
   os            TEXT,                                -- linux, darwin, windows (GOOS)
   arch          TEXT,
-  sy_version    TEXT,
+  wy_version    TEXT,
   first_seen    INTEGER NOT NULL,
   last_seen     INTEGER,                             -- receive time of its newest record
   last_record   INTEGER,                             -- client ts of its newest record
@@ -150,7 +150,7 @@ CREATE TABLE device (
   name          TEXT    NOT NULL,
   machine_id    TEXT    REFERENCES machine(id),      -- required for machine and desktop
   token_hash    BLOB    NOT NULL UNIQUE CHECK (length(token_hash) = 32),  -- SHA-256 of the full token string
-  token_hint    TEXT    NOT NULL,                    -- 'sy_m_…k3Qz' (prefix + last 4) for display
+  token_hint    TEXT    NOT NULL,                    -- 'wy_m_…k3Qz' (prefix + last 4) for display
   scopes        TEXT    NOT NULL CHECK (json_valid(scopes)),              -- '["write"]'
   created_at    INTEGER NOT NULL,
   created_by    TEXT    NOT NULL,                    -- 'cli', 'pair:<code id>', 'setup'

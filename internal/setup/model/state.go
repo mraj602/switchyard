@@ -182,9 +182,6 @@ type SettingsTarget struct {
 	StatusLine     *StatusLine `json:"status_line,omitempty"`
 	// WatchyardPlugins are every enabled watchyard@* (and watchyard@skills-dir) id.
 	WatchyardPlugins []string `json:"watchyard_plugins,omitempty"`
-	// LegacyPlugins are the enabled plugin and pane ids of the project's name before a rename
-	// (<old>@*, <old>-pane@*, <old>@skills-dir); setup disables them (rename.md 2.4).
-	LegacyPlugins []string `json:"legacy_plugins,omitempty"`
 }
 
 // StatusLine is the settings statusLine object, reduced.

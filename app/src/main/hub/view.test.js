@@ -82,9 +82,8 @@ test('the view dropped while a re-login or a load awaits: no null dereference', 
   assert.equal(fake.callsOf('webContents.reload').length, 0);
 });
 
-// Legacy compat: a board session from before the rename lives in sy_session; the hub still reads it.
-test('a board cookie of either name counts as a session', async () => {
-  for (const name of ['wy_session', 'sy_session', 'other']) { // rename:keep
+test('only the board cookie counts as a session', async () => {
+  for (const name of ['wy_session', 'other']) {
     const { v, fake } = setup();
     await fake.electron.session.fromPartition('persist:wy-hub').cookies.set({ url: BASE, name, value: 'v' });
     assert.equal(await v.hasCookie(), name !== 'other', name);

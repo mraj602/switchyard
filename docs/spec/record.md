@@ -151,8 +151,8 @@ stored; its session is attributed later or shows as Unattributed.
 | --- | --- | --- | --- |
 | `app` | string | yes | Terminal program, lower case: `warp`, `ghostty`, `iterm`, `wezterm`, `kitty`, `vscode`, `windows-terminal`, `tmux`, `unknown`. From `TERM_PROGRAM`, `WARP_*`, `TMUX` and similar. |
 | `id` | string | no | The terminal's own pane or session id. Warp: `WARP_TERMINAL_SESSION_UUID`. |
-| `focus_url` | string | no | URL that brings this pane forward. Warp: `WARP_FOCUS_URL`. Over SSH: `LC_SY_FOCUS` passed from the laptop. |
-| `host` | string | no | Machine id of the machine whose terminal shows this pane, when it differs from `machine` (an SSH session shown in a laptop tab). Set by `wy hook` from `LC_SY_HOST`, which `wy ssh` sends (terminal.md T9). |
+| `focus_url` | string | no | URL that brings this pane forward. Warp: `WARP_FOCUS_URL`. Over SSH: `LC_WY_FOCUS` passed from the laptop. |
+| `host` | string | no | Machine id of the machine whose terminal shows this pane, when it differs from `machine` (an SSH session shown in a laptop tab). Set by `wy hook` from `LC_WY_HOST`, which `wy ssh` sends (terminal.md T9). |
 
 The hub serves `focus_url` only to readers on the machine named by `host` (or `machine` when
 `host` is absent). Phones never receive it.
@@ -513,7 +513,6 @@ leaves it out never renames the machine.
 | --- | --- | --- | --- |
 | `os`, `arch` | string | yes | `runtime.GOOS`, `runtime.GOARCH`. |
 | `wy` | string | yes | `wy` version. |
-| `sy` | string | no | The same version under the name before the rename. `wy` writes both, because a hub older than the rename requires `sy`; the hub reads `sy` when `wy` is absent (a machine older than the rename). Legacy compat, rename.md 2.12. |
 | `record_v` | integer | yes | Highest record `v` this `wy` writes. |
 | `reach` | string | yes | `direct`, `forward` or `pull` (`hub.reach`); `none` without a hub. |
 | `dial` | string | no | `tcp` or `unix` when `hub.dial` is set (never the address itself). |

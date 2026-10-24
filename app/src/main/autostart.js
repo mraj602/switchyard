@@ -1,10 +1,7 @@
 // Run at login (C1): Linux ~/.config/autostart/watchyard-desktop.desktop and
 // ~/.local/share/applications/watchyard-desktop.desktop; macOS and Windows
 // app.setLoginItemSettings with --background. Never reads or writes watchyard.desktop.
-// After a rename, the Linux entries of the old name are replaced by the current ones (the first
-// get() that finds only the old autostart entry rewrites it) and removed by every set()
-// (docs/spec/rename.md 2.9).
-import { DESKTOP_ENTRY, LEGACY_DESKTOP_ENTRY, FLAG_BACKGROUND, TEST_ENV } from '../shared/constants.js';
+import { DESKTOP_ENTRY, FLAG_BACKGROUND, TEST_ENV } from '../shared/constants.js';
 
 /**
  * @param {{electron: object, fs: typeof import('node:fs/promises'), path: object, platform: string, home: string,
@@ -25,10 +22,6 @@ export function create(deps) {
   const files = () => ({
     autostart: path.join(home, '.config', 'autostart', DESKTOP_ENTRY),
     launcher: path.join(home, '.local', 'share', 'applications', DESKTOP_ENTRY),
-  });
-  const legacyFiles = () => LEGACY_DESKTOP_ENTRY === DESKTOP_ENTRY ? null : ({
-    autostart: path.join(home, '.config', 'autostart', LEGACY_DESKTOP_ENTRY),
-    launcher: path.join(home, '.local', 'share', 'applications', LEGACY_DESKTOP_ENTRY),
   });
   const exists = async (f) => {
     try {
@@ -66,19 +59,13 @@ export function create(deps) {
     files,
     async get() {
       if (platform === 'linux') {
-        if (await exists(files().autostart)) return true;
-        const old = legacyFiles();
-        if (!old || !(await exists(old.autostart))) return false;
-        await api.set(true);
-        return true;
+        return exists(files().autostart);
       }
       return Boolean(app.getLoginItemSettings({ args: [FLAG_BACKGROUND] }).openAtLogin);
     },
     async set(on) {
       if (platform === 'linux') {
         const f = files();
-        const old = legacyFiles();
-        if (old) await Promise.all([fs.rm(old.autostart, { force: true }), fs.rm(old.launcher, { force: true })]);
         if (on) {
           await fs.mkdir(path.dirname(f.autostart), { recursive: true });
           await fs.writeFile(f.autostart, desktopEntry(true), { mode: 0o644 });

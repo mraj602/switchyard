@@ -41,10 +41,6 @@ docker compose logs hub
 docker compose exec hub wy hub owner-link   # sign in to the board as the owner
 ```
 
-An `.env` written before the rename sets `SY_BIND`, `SY_PORT`, `SY_PUBLIC_URL` and
-`SY_TRUSTED_PROXY`: the compose files still read them when the `WY_` name is not set
-(docs/spec/rename.md 2.11). Rename them in `.env` when convenient.
-
 The logs do not carry the first owner link. The hub writes it to `/data/first-owner-link.txt`
 (mode 0600, readable by the hub only) while it has no owner; `wy hub owner-link` makes a
 fresh one whenever you need it.

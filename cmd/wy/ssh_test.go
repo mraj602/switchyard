@@ -11,7 +11,7 @@ import (
 	"github.com/mraj602/watchyard/internal/termenv"
 )
 
-// fakeSSH writes a script that records its argv and the LC_SY_* variables to a file, and
+// fakeSSH writes a script that records its argv and the LC_WY_* variables to a file, and
 // exits with code.
 func fakeSSH(t *testing.T, code string) (script, out string) {
 	t.Helper()
@@ -21,7 +21,7 @@ func fakeSSH(t *testing.T, code string) (script, out string) {
 	dir := t.TempDir()
 	out = filepath.Join(dir, "calls")
 	script = filepath.Join(dir, "fake-ssh")
-	body := "#!/bin/sh\n{ for a in \"$@\"; do echo \"arg:$a\"; done; echo \"focus:$LC_SY_FOCUS\"; echo \"host:$LC_SY_HOST\"; } >> '" + out + "'\nexit " + code + "\n"
+	body := "#!/bin/sh\n{ for a in \"$@\"; do echo \"arg:$a\"; done; echo \"focus:$LC_WY_FOCUS\"; echo \"host:$LC_WY_HOST\"; } >> '" + out + "'\nexit " + code + "\n"
 	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -34,8 +34,8 @@ func runSSHWith(t *testing.T, vars map[string]string, args ...string) (int, stri
 	t.Setenv("HOME", home)
 	t.Setenv("WY_HOME", filepath.Join(home, "wy"))
 	t.Setenv("CLAUDE_CONFIG_DIR", "")
-	t.Setenv("LC_SY_FOCUS", "")
-	t.Setenv("LC_SY_HOST", "")
+	t.Setenv("LC_WY_FOCUS", "")
+	t.Setenv("LC_WY_HOST", "")
 	all := map[string]string{"WY_HOME": filepath.Join(home, "wy")}
 	for k, v := range vars {
 		all[k] = v
@@ -60,7 +60,7 @@ func TestSSHPassesOptionsFirstAndEnv(t *testing.T) {
 	}
 	b, _ := os.ReadFile(calls)
 	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
-	want := []string{"arg:-o", "arg:SendEnv=LC_SY_FOCUS", "arg:-o", "arg:SendEnv=LC_SY_HOST", "arg:gpu-box", "arg:-p", "arg:22", "focus:" + focusURL1}
+	want := []string{"arg:-o", "arg:SendEnv=LC_WY_FOCUS", "arg:-o", "arg:SendEnv=LC_WY_HOST", "arg:gpu-box", "arg:-p", "arg:22", "focus:" + focusURL1}
 	if len(lines) != len(want)+1 {
 		t.Fatalf("lines %q", lines)
 	}
@@ -77,7 +77,7 @@ func TestSSHPassesOptionsFirstAndEnv(t *testing.T) {
 func TestSSHNestedHopKeepsLCFocus(t *testing.T) {
 	script, calls := fakeSSH(t, "0")
 	other := "warp://session/ffffffffffffffffffffffffffffffff"
-	runSSHWith(t, map[string]string{"WY_SSH_COMMAND": script, "LC_SY_FOCUS": other, "WARP_FOCUS_URL": focusURL1}, "h")
+	runSSHWith(t, map[string]string{"WY_SSH_COMMAND": script, "LC_WY_FOCUS": other, "WARP_FOCUS_URL": focusURL1}, "h")
 	b, _ := os.ReadFile(calls)
 	if !strings.Contains(string(b), "focus:"+other+"\n") {
 		t.Errorf("nested hop: %s", b)
@@ -91,7 +91,7 @@ func TestSSHDoesNotForwardNonMatchingFocusURL(t *testing.T) {
 		code, _, _ := runSSHWith(t, map[string]string{"WY_SSH_COMMAND": script, "WARP_FOCUS_URL": bad}, "h")
 		b, _ := os.ReadFile(calls)
 		s := string(b)
-		if code != 0 || !strings.Contains(s, "focus:\n") || !strings.Contains(s, "host:\n") || !strings.Contains(s, "arg:SendEnv=LC_SY_FOCUS") {
+		if code != 0 || !strings.Contains(s, "focus:\n") || !strings.Contains(s, "host:\n") || !strings.Contains(s, "arg:SendEnv=LC_WY_FOCUS") {
 			t.Errorf("%q: exit %d, call %q", bad, code, s)
 		}
 	}
@@ -115,7 +115,7 @@ func TestSSHExitCodeAndMissingSSH(t *testing.T) {
 
 func TestSSHPrintConfigWritesNothing(t *testing.T) {
 	code, out, _ := runSSHWith(t, nil, "--print-config")
-	if code != 0 || !strings.Contains(out, "SendEnv LC_SY_FOCUS LC_SY_HOST") {
+	if code != 0 || !strings.Contains(out, "SendEnv LC_WY_FOCUS LC_WY_HOST") {
 		t.Errorf("exit %d: %q", code, out)
 	}
 	if _, err := os.Stat(filepath.Join(os.Getenv("HOME"), ".ssh")); err == nil {

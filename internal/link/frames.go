@@ -133,26 +133,26 @@ func lines(parts ...string) []byte {
 	return b
 }
 
-// The "sy-link-v1" labels below are frozen: devices and hubs from before the rename sign and
-// verify them, so changing them would break every link and its test vectors (rename.md 2.12).
+// The "wy-link-v1" labels below are part of the protocol: devices and hubs sign and verify
+// them, so changing them would break every link and its test vectors.
 
 // ChallengeInput is what the challenge signature covers (link.md 3.1).
 func ChallengeInput(hubFP, nonce string, exp int64) []byte {
-	return lines("sy-link-v1 challenge", hubFP, nonce, decimal(exp))
+	return lines("wy-link-v1 challenge", hubFP, nonce, decimal(exp))
 }
 
 // HelloInput is what the hello signature covers (link.md 3.2).
 func HelloInput(hubFP, nonce string, exp int64, device string, last int64) []byte {
-	return lines("sy-link-v1 hello", hubFP, nonce, decimal(exp), device, decimal(last))
+	return lines("wy-link-v1 hello", hubFP, nonce, decimal(exp), device, decimal(last))
 }
 
 // FrameInput is what a hub frame signature covers (link.md 4.3).
 func FrameInput(device, t string, seq, exp int64, tag, ctx string, payload []byte) []byte {
-	b := lines("sy-link-v1", device, t, decimal(seq), decimal(exp), tag, ctx, "")
+	b := lines("wy-link-v1", device, t, decimal(seq), decimal(exp), tag, ctx, "")
 	return append(b, payload...)
 }
 
-// Signer makes hub signatures over sy-link-v1 inputs (hubkeys.HubKey.SignLink).
+// Signer makes hub signatures over wy-link-v1 inputs (hubkeys.HubKey.SignLink).
 type Signer interface {
 	SignLink(input []byte) ([]byte, error)
 }

@@ -205,8 +205,8 @@ Client side (runs on every machine):
 | Package | Job | Depends on |
 | --- | --- | --- |
 | `internal/version` | Build version | — |
-| `internal/brand` | The project's and the command's names, current and from before a rename; env migration (docs/spec/rename.md) | — (leaf) |
-| `internal/paths` | Config, state, data folders per OS (legacy folders after a rename) | brand |
+| `internal/brand` | The project's and the command's names | — (leaf) |
+| `internal/paths` | Config, state, data folders per OS | brand |
 | `internal/config` | `config.toml` | paths |
 | `internal/record` | Envelope, seven kinds, ids, content rules | — |
 | `internal/outbox` | Local queue | record, paths |

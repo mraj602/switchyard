@@ -222,8 +222,7 @@ func Revert(prev model.Ledger, m model.Manifest) model.Ledger {
 		switch e.Op {
 		case model.OpRun:
 			for _, c := range e.Created {
-				// A backup set from before a rename names the old marketplace (rename.md 2.4).
-				if strings.Contains(c, brand.Marketplace) || (brand.LegacyMarketplace() != "" && strings.Contains(c, brand.LegacyMarketplace())) {
+				if strings.Contains(c, brand.Marketplace) {
 					l.Plugin = nil
 					break
 				}

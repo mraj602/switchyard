@@ -82,8 +82,8 @@ func runDisconnect(args []string, stdout, stderr io.Writer) error {
 	return disconnect(deps, args, stdout, stderr)
 }
 
-// tokenShape: wy_ tokens, and the sy_ ones made before the rename (legacy compat).
-var tokenShape = regexp.MustCompile(`^[ws]y_[mdpbo]_[0-9A-Za-z]{43}$`)
+// tokenShape: a wy_ token.
+var tokenShape = regexp.MustCompile(`^wy_[mdpbo]_[0-9A-Za-z]{43}$`)
 
 // pairSecretShape is a pairing secret (16 bytes, base64url, 22 characters; pairing.md 1); a
 // typed code is digits with optional separators.

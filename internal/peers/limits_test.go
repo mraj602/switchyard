@@ -30,7 +30,6 @@ func TestCheckText(t *testing.T) {
 		{"pem", "x -----BEGIN OPENSSH PRIVATE KEY----- y", CodeSecret},
 		{"pem rsa", "-----BEGIN RSA PRIVATE KEY-----", CodeSecret},
 		{"wy token", "token wy_m_4fQx0Lr2abcdefghijklmnopqrstuvwxyzABCDEF", CodeSecret},
-		{"legacy sy token", "token sy_m_4fQx0Lr2abcdefghijklmnopqrstuvwxyzABCDEF", CodeSecret},
 		{"anthropic key", "sk-ant-api03-abcdEFGH1234", CodeSecret},
 		{"aws", "id AKIAIOSFODNN7EXAMPLE here", CodeSecret},
 		{"github ghp", "ghp_" + strings.Repeat("a", 36), CodeSecret},

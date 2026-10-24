@@ -37,11 +37,9 @@ func SessionCookie(r *http.Request, token string, maxAge time.Duration) *http.Co
 		Secure: SecureRequest(r), MaxAge: int(maxAge.Seconds())}
 }
 
-// ClearCookie clears the wy_session cookie, and the legacy sy_session one (legacy compat).
+// ClearCookie clears the wy_session cookie.
 func ClearCookie(w http.ResponseWriter) {
-	for _, n := range []string{CookieName, LegacyCookieName} {
-		http.SetCookie(w, &http.Cookie{Name: n, Value: "", Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: -1})
-	}
+	http.SetCookie(w, &http.Cookie{Name: CookieName, Value: "", Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: -1})
 }
 
 // IsSessionDevice reports whether d is a cookie session that logout revokes: made by a

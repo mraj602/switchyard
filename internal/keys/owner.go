@@ -25,7 +25,7 @@ const (
 	MinPassphrase = 12
 	// maxIter bounds what a damaged or hostile file can make us compute.
 	maxIter   = 50_000_000
-	ownerAAD  = "sy-owner-v1\n" // frozen: changing it would make existing owner key files unreadable
+	ownerAAD  = "wy-owner-v1\n" // frozen: changing it would make existing owner key files unreadable
 	kdfPBKDF2 = "pbkdf2-sha256"
 )
 
@@ -74,7 +74,7 @@ func gcm(key []byte) (cipher.AEAD, error) {
 }
 
 // SealOwner seals an Ed25519 seed under pass: PBKDF2-HMAC-SHA256 (iter rounds, 16-byte salt)
-// then AES-256-GCM with aad "sy-owner-v1\n" ‖ fp, so a file whose pub or fp was changed does
+// then AES-256-GCM with aad "wy-owner-v1\n" ‖ fp, so a file whose pub or fp was changed does
 // not open. rnd nil = crypto/rand.
 func SealOwner(seed []byte, pass string, iter int, now time.Time, rnd io.Reader) (SealedOwner, error) {
 	if err := CheckPassphrase(pass); err != nil {
@@ -188,9 +188,9 @@ const (
 	recoveryPrefix = "WYR1-"
 	// frozen: recoverySalt and recoveryCheck derive the key and check of recovery codes already
 	// written down; changing them would invalidate those codes.
-	recoverySalt  = "sy-owner-v1"
+	recoverySalt  = "wy-owner-v1"
 	recoveryInfo  = "ed25519 seed"
-	recoveryCheck = "sy-recovery-v1"
+	recoveryCheck = "wy-recovery-v1"
 	recoveryChars = 52 // base32 of 32 bytes, unpadded
 )
 
@@ -201,7 +201,7 @@ func NewRecoverySecret(rnd io.Reader) ([32]byte, error) {
 	return r, err
 }
 
-// SeedFromRecovery is HKDF-SHA256(secret R, salt "sy-owner-v1", info "ed25519 seed", 32).
+// SeedFromRecovery is HKDF-SHA256(secret R, salt "wy-owner-v1", info "ed25519 seed", 32).
 func SeedFromRecovery(r [32]byte) ([]byte, error) {
 	return hkdf.Key(sha256.New, r[:], []byte(recoverySalt), recoveryInfo, ed25519.SeedSize)
 }
@@ -222,13 +222,12 @@ func RecoveryCode(r [32]byte) string {
 }
 
 // ParseRecoveryCode reads a recovery code typed back: any case, spaces and dashes ignored,
-// 0 read as O, 1 as I and 8 as B. A wrong check group is ErrRecoveryCheck. Codes printed
-// before the rename start SYR1- (legacy compat): same R, same check, still read.
+// 0 read as O, 1 as I and 8 as B. A wrong check group is ErrRecoveryCheck.
 func ParseRecoveryCode(s string) ([32]byte, error) {
 	var r [32]byte
 	s = strings.ToUpper(strings.NewReplacer(" ", "", "-", "", "\t", "").Replace(s))
 	switch s[:min(4, len(s))] {
-	case "WYR1", "WYRI", "SYR1", "SYRI": // SYR: legacy compat // rename:keep
+	case "WYR1", "WYRI":
 	default:
 		return r, ErrRecoveryCode
 	}

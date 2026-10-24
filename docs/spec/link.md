@@ -50,9 +50,7 @@ cannot, and tags are limited to `[A-Za-z0-9_:.-]{0,64}` (5.3).
   claim reply (`link.urls`, keys.md 7.3) and in `welcome`; it tries them in order. A machine
   (`wy agent run`) instead uses its configured `hub.url` (`http`→`ws`, `https`→`wss`, plus
   `/v1/link`) through `hub.dial` like every other `wy` call, and ignores `urls`.
-- **Subprotocol** `wy-link.1` (`Sec-WebSocket-Protocol`). The hub also accepts `sy-link.1`, the
-  name before the rename, and picks `wy-link.1` when both are offered; `wy` and the phone offer
-  both, new first, so they also reach an older hub (rename.md 2.12). The hub refuses others with
+- **Subprotocol** `wy-link.1` (`Sec-WebSocket-Protocol`). The hub refuses others with
   HTTP 426.
 - **Messages** are WebSocket text messages, one JSON object each, at most 1 MiB (the library's
   read limit; larger → close 4413). Binary messages → close 4400.
@@ -111,10 +109,7 @@ challenge login is what protects the link.
 {"t": "challenge", "v": 1, "hub": "<hub fp>", "nonce": "<b64u, 32 bytes>", "exp": 1760518860, "sig": "<b64u>"}
 ```
 
-The `sy-link-v1` labels in this file (challenge, hello, seal, frames) keep the name from before
-the rename: older hubs and devices sign and check them (rename.md 2.12).
-
-`sig` = hub Ed25519 over `"sy-link-v1 challenge\n" ‖ hub fp ‖ "\n" ‖ nonce ‖ "\n" ‖
+`sig` = hub Ed25519 over `"wy-link-v1 challenge\n" ‖ hub fp ‖ "\n" ‖ nonce ‖ "\n" ‖
 decimal(exp)`. `exp` is the hub's clock + 60 s. The device checks the signature against its
 pinned hub key (keys.md 3.5) and `hub` against the pinned fingerprint, and closes the
 connection (no `hello`) if either fails: it never signs a nonce for a hub it does not trust.
@@ -141,7 +136,7 @@ valid signature has used it.
 
 - `"exp"`: copied from the challenge.
 - `sig` = the device's sign key over
-  `"sy-link-v1 hello\n" ‖ hub fp ‖ "\n" ‖ nonce ‖ "\n" ‖ decimal(exp) ‖ "\n" ‖ device ‖ "\n" ‖ decimal(last)`:
+  `"wy-link-v1 hello\n" ‖ hub fp ‖ "\n" ‖ nonce ‖ "\n" ‖ decimal(exp) ‖ "\n" ‖ device ‖ "\n" ‖ decimal(last)`:
   Ed25519 (machines) or ECDSA P-256 SHA-256, DER (phones; keys.md 2). The signature binds the
   login to this hub's key, this device, this single-use nonce and its expiry; it carries no
   reusable secret.
@@ -244,7 +239,7 @@ key doing the ECDH (push.md 14.3).
 ```
 suite      = DHKEM(X25519, HKDF-SHA256) / HKDF-SHA256 / ChaCha20-Poly1305     (0x0020 / 0x0001 / 0x0003)
 pk         = hpke.NewDHKEMPublicKey(ecdh.X25519().NewPublicKey(box_pub))
-info       = "sy-link-v1 seal\n" ‖ device id ‖ "\n" ‖ t
+info       = "wy-link-v1 seal\n" ‖ device id ‖ "\n" ‖ t
 body       = hpke.Seal(pk, hpke.HKDFSHA256(), hpke.ChaCha20Poly1305(), info, plaintext)
            = enc (32 bytes) ‖ ciphertext (plaintext + 16)
 open       = hpke.Open(sk, hpke.HKDFSHA256(), hpke.ChaCha20Poly1305(), info, body)
@@ -260,7 +255,7 @@ same bytes.
 
 ```
 sig = Ed25519(hub key,
-  "sy-link-v1\n" ‖ device id ‖ "\n" ‖ t ‖ "\n" ‖ decimal(seq) ‖ "\n" ‖ decimal(exp) ‖ "\n" ‖
+  "wy-link-v1\n" ‖ device id ‖ "\n" ‖ t ‖ "\n" ‖ decimal(seq) ‖ "\n" ‖ decimal(exp) ‖ "\n" ‖
   tag ‖ "\n" ‖ ctx ‖ "\n" ‖ payload)
 ```
 

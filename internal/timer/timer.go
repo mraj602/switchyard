@@ -53,10 +53,6 @@ type Env struct {
 	Getenv   func(string) string
 	Runner   Runner
 	Out      io.Writer // hints and instructions
-	// KeepLegacyState makes Install give the timer of the current name the state the one of
-	// the old name had (enabled or not, running or not) when it replaces that one: the
-	// post-update move, rename.md 2.3. Otherwise Install enables and starts the timer.
-	KeepLegacyState bool
 }
 
 // passEnv are the folder overrides copied into the unit, so a timer started by the service
@@ -80,9 +76,6 @@ func (e Env) envPairs() [][2]string {
 type Result struct {
 	Files []string // files written
 	Notes []string // things the user should know (fallbacks, linger)
-	// Removed are the files of the timer installed under the name before a rename, which
-	// Install replaced (rename.md 2.3).
-	Removed []string
 }
 
 // SystemdDir is where the user units live.
@@ -286,16 +279,11 @@ func writeFile(path, content string) error {
 // reported in the returned error but the files stay, so the user can finish by hand.
 func Install(e Env) (Result, error) {
 	var res Result
-	st := state{Enabled: true, Active: true}
-	if e.KeepLegacyState {
-		st = legacyState(e)
-	}
-	res.Removed = removeLegacy(e)
 	switch e.GOOS {
 	case "linux":
-		return res, installSystemd(e, &res, st)
+		return res, installSystemd(e, &res)
 	case "darwin":
-		return res, installLaunchd(e, &res, st)
+		return res, installLaunchd(e, &res)
 	case "windows":
 		return res, installWindows(e, &res)
 	}
@@ -304,7 +292,6 @@ func Install(e Env) (Result, error) {
 
 // Uninstall disables the timer and removes its files. Missing pieces are not errors.
 func Uninstall(e Env) (removed []string, err error) {
-	removed = removeLegacy(e)
 	rm := func(p string) {
 		if os.Remove(p) == nil {
 			removed = append(removed, p)
@@ -331,112 +318,7 @@ func Uninstall(e Env) (removed []string, err error) {
 	return removed, nil
 }
 
-// ---- the name before a rename (rename.md 2.3) ----------------------------------------------
-
-type legacyNames struct{ systemd, label, task, xml string }
-
-func legacy() (legacyNames, bool) {
-	if !brand.Renamed() {
-		return legacyNames{}, false
-	}
-	o := brand.OldSlug()
-	return legacyNames{o + "-flush", "com." + o + ".flush", brand.OldName() + " Flush", o + "-flush.task.xml"}, true
-}
-
-// LegacyUnit is the unit file (Linux, the .service with the environment), plist (macOS) or
-// task XML (Windows) of a timer installed under the project's name before a rename, or ""
-// when there is none.
-func LegacyUnit(e Env) string {
-	n, ok := legacy()
-	if !ok {
-		return ""
-	}
-	var p string
-	switch e.GOOS {
-	case "linux":
-		p = filepath.Join(SystemdDir(e), n.systemd+".service")
-		if !exists(p) && exists(filepath.Join(SystemdDir(e), n.systemd+".timer")) {
-			return filepath.Join(SystemdDir(e), n.systemd+".timer")
-		}
-	case "darwin":
-		p = filepath.Join(e.Home, "Library", "LaunchAgents", n.label+".plist")
-	case "windows":
-		p = filepath.Join(e.StateDir, n.xml)
-	default:
-		return ""
-	}
-	if !exists(p) {
-		return ""
-	}
-	return p
-}
-
-// removeLegacy disables the timer of the name before a rename and removes its files, so it
-// never runs next to the new one. On Windows the task itself is only named for the person to
-// delete, as Uninstall does.
-func removeLegacy(e Env) (removed []string) {
-	n, ok := legacy()
-	if !ok || LegacyUnit(e) == "" {
-		return nil
-	}
-	rm := func(p string) {
-		if os.Remove(p) == nil {
-			removed = append(removed, p)
-		}
-	}
-	switch e.GOOS {
-	case "linux":
-		_, _ = e.Runner.Run("systemctl", "--user", "disable", "--now", n.systemd+".timer")
-		rm(filepath.Join(SystemdDir(e), n.systemd+".timer"))
-		rm(filepath.Join(SystemdDir(e), n.systemd+".service"))
-		_, _ = e.Runner.Run("systemctl", "--user", "daemon-reload")
-	case "darwin":
-		_, _ = e.Runner.Run("launchctl", "bootout", fmt.Sprintf("gui/%d/%s", e.UID, n.label))
-		rm(filepath.Join(e.Home, "Library", "LaunchAgents", n.label+".plist"))
-	case "windows":
-		rm(filepath.Join(e.StateDir, n.xml))
-		e.printf("Remove the scheduled task from before the rename with:\n  schtasks /Delete /TN \"%s\" /F\n", n.task)
-	}
-	return removed
-}
-
-func exists(p string) bool {
-	_, err := os.Stat(p)
-	return err == nil
-}
-
-// state is whether the timer starts by itself (enabled, loaded) and whether it runs now.
-type state struct{ Enabled, Active bool }
-
-// legacyState reads the state of the timer of the name before a rename; both on when there
-// is none or the service manager gives no answer.
-func legacyState(e Env) state {
-	st := state{Enabled: true, Active: true}
-	n, ok := legacy()
-	if !ok || LegacyUnit(e) == "" {
-		return st
-	}
-	word := func(args ...string) string {
-		out, _ := e.Runner.Run(args[0], args[1:]...)
-		return strings.TrimSpace(string(out))
-	}
-	switch e.GOOS {
-	case "linux":
-		if w := word("systemctl", "--user", "is-enabled", n.systemd+".timer"); w != "" {
-			st.Enabled = strings.HasPrefix(w, "enabled") || w == "linked" || w == "alias"
-		}
-		if w := word("systemctl", "--user", "is-active", n.systemd+".timer"); w != "" {
-			st.Active = w == "active" || w == "activating"
-		}
-	case "darwin":
-		if _, err := e.Runner.Run("launchctl", "print", fmt.Sprintf("gui/%d/%s", e.UID, n.label)); err != nil {
-			st = state{}
-		}
-	}
-	return st
-}
-
-func installSystemd(e Env, res *Result, st state) error {
+func installSystemd(e Env, res *Result) error {
 	dir := SystemdDir(e)
 	svc, tm := filepath.Join(dir, SystemdName+".service"), filepath.Join(dir, SystemdName+".timer")
 	if err := writeFile(svc, SystemdService(e)); err != nil {
@@ -446,16 +328,10 @@ func installSystemd(e Env, res *Result, st state) error {
 		return err
 	}
 	res.Files = append(res.Files, svc, tm)
-	cmds := [][]string{{"--user", "daemon-reload"}}
-	switch {
-	case st.Enabled && st.Active:
-		cmds = append(cmds, []string{"--user", "enable", "--now", SystemdName + ".timer"})
-	case st.Enabled:
-		cmds = append(cmds, []string{"--user", "enable", SystemdName + ".timer"})
-	case st.Active:
-		cmds = append(cmds, []string{"--user", "start", SystemdName + ".timer"})
-	}
-	for _, args := range cmds {
+	for _, args := range [][]string{
+		{"--user", "daemon-reload"},
+		{"--user", "enable", "--now", SystemdName + ".timer"},
+	} {
 		if out, err := e.Runner.Run("systemctl", args...); err != nil {
 			return fmt.Errorf("systemctl %s: %v: %s\nThe unit files are in %s; start the timer later with:\n  systemctl --user enable --now %s.timer\nOr, without systemd, run `wy tick --quiet` every minute from cron.",
 				strings.Join(args, " "), err, strings.TrimSpace(string(out)), dir, SystemdName)
@@ -475,15 +351,12 @@ func installSystemd(e Env, res *Result, st state) error {
 	return nil
 }
 
-func installLaunchd(e Env, res *Result, st state) error {
+func installLaunchd(e Env, res *Result) error {
 	p := LaunchAgentPath(e)
 	if err := writeFile(p, LaunchdPlist(e)); err != nil {
 		return err
 	}
 	res.Files = append(res.Files, p)
-	if !st.Enabled && !st.Active {
-		return nil // the old agent was not loaded: the file is written, nothing is loaded
-	}
 	domain := fmt.Sprintf("gui/%d", e.UID)
 	_, _ = e.Runner.Run("launchctl", "bootout", domain+"/"+LaunchdLabel) // replace an older copy
 	if out, err := e.Runner.Run("launchctl", "bootstrap", domain, p); err != nil {

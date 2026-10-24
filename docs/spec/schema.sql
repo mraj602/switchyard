@@ -32,10 +32,6 @@
 --   * `owner_id` is on the tables a future shared hub could partition.
 --     It is always 'owner' on a single-user hub.
 --   * Driver: modernc.org/sqlite (pure Go, no cgo). Needs SQLite >= 3.37 for STRICT.
---   * Names from before the rename stay (rename.md 2.12): the columns `sy_version` and
---     `pull_target.remote_sy`, and the `sy_`/`sy-` examples in comments inside a table, are
---     in the table text the migrations stored; renaming them is a migration an older hub
---     refuses to run on after a rollback. Code maps `sy_version` to `wy_version` in the API.
 --
 -- Groups: meta, identity, access, activity, usage, alerts, keys and link, peers.
 
@@ -46,10 +42,10 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE schema_version (
   version     INTEGER NOT NULL PRIMARY KEY,
   applied_at  INTEGER NOT NULL,
-  sy_version  TEXT    NOT NULL                      -- hub binary version that applied it
+  wy_version  TEXT    NOT NULL                      -- hub binary version that applied it
 ) STRICT;
 
-INSERT INTO schema_version (version, applied_at, sy_version)
+INSERT INTO schema_version (version, applied_at, wy_version)
 VALUES (14, CAST(unixepoch('subsec') * 1000 AS INTEGER), 'spec');
 
 -- Hub-wide settings that are not secrets (retention days, last-message policy, …).
@@ -119,7 +115,7 @@ CREATE TABLE machine (
   name          TEXT    NOT NULL,                    -- defaults to the hostname
   os            TEXT,                                -- linux, darwin, windows (GOOS)
   arch          TEXT,
-  sy_version    TEXT,
+  wy_version    TEXT,
   first_seen    INTEGER NOT NULL,
   last_seen     INTEGER,                             -- receive time of its newest record
   last_record   INTEGER,                             -- client ts of its newest record
@@ -182,7 +178,7 @@ CREATE TABLE device (
   name          TEXT    NOT NULL,
   machine_id    TEXT    REFERENCES machine(id),      -- required for machine and desktop
   token_hash    BLOB    NOT NULL UNIQUE CHECK (length(token_hash) = 32),  -- SHA-256 of the full token string
-  token_hint    TEXT    NOT NULL,                    -- 'sy_m_…k3Qz' (prefix + last 4) for display
+  token_hint    TEXT    NOT NULL,                    -- 'wy_m_…k3Qz' (prefix + last 4) for display
   scopes        TEXT    NOT NULL CHECK (json_valid(scopes)),              -- '["write"]'
   created_at    INTEGER NOT NULL,
   created_by    TEXT    NOT NULL,                    -- 'cli', 'pair:<code id>', 'setup'
@@ -239,7 +235,7 @@ CREATE TABLE push_target (
   id            TEXT    NOT NULL PRIMARY KEY,      -- 'pt_' + ULID
   kind          TEXT    NOT NULL REFERENCES channel(kind),
   device_id     TEXT    REFERENCES device(id),     -- NULL: an ntfy topic added by the owner for the hub
-  name          TEXT,                               -- "iPhone · Safari", "ntfy.sh/sy-4fQx…", "Pixel 9 · app"
+  name          TEXT,                               -- "iPhone · Safari", "ntfy.sh/wy-4fQx…", "Pixel 9 · app"
   endpoint      TEXT    NOT NULL,                   -- webpush: endpoint URL; ntfy: server URL + '/' + topic; link: 'link:' + device id
   keys          TEXT    CHECK (keys IS NULL OR json_valid(keys)),     -- webpush and link: {"p256dh": "…", "auth": "…"} base64url
   secret        TEXT,                               -- ntfy access token; never returned by the API
@@ -545,7 +541,7 @@ CREATE TABLE pull_target (
   port          INTEGER NOT NULL DEFAULT 22 CHECK (port BETWEEN 1 AND 65535),
   user          TEXT    NOT NULL,
   jump          TEXT,                                       -- ProxyJump, as typed
-  remote_sy     TEXT    NOT NULL DEFAULT '.local/bin/wy',   -- used only without a forced command
+  remote_wy     TEXT    NOT NULL DEFAULT '.local/bin/wy',   -- used only without a forced command
   host_keys     TEXT    NOT NULL CHECK (json_valid(host_keys)),  -- ["ssh-ed25519 AAAA…", …] pinned public keys
   interval_s    INTEGER NOT NULL DEFAULT 60 CHECK (interval_s BETWEEN 15 AND 3600),
   enabled       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),

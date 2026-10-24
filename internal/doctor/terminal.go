@@ -459,7 +459,7 @@ func checkWarpDetect(rep *Report, o Options, term *model.LedgerTerminal) {
 	u := o.Getenv("WARP_FOCUS_URL")
 	switch {
 	case u == "" && o.Getenv("SSH_CONNECTION") != "":
-		// Remote shell: the laptop's tab arrives as LC_SY_FOCUS instead (see checkAcceptEnv).
+		// Remote shell: the laptop's tab arrives as LC_WY_FOCUS instead (see checkAcceptEnv).
 	case !termctl.ValidFocusURL(u):
 		rep.add(Check{Name: "warp focus url", Level: Warn,
 			Detail: "WARP_FOCUS_URL is " + focusShown(u) + ", not warp://session/<32 hex>: Warp may have changed its focus URL format",
@@ -478,7 +478,7 @@ func focusShown(u string) string {
 }
 
 // checkAcceptEnv is risk 8 (report only, never written): on Fedora and RHEL sshd lists the
-// LC_ variables it accepts, so LC_SY_FOCUS and LC_SY_HOST sent by `wy ssh` are dropped. We
+// LC_ variables it accepts, so LC_WY_FOCUS and LC_WY_HOST sent by `wy ssh` are dropped. We
 // see it as a session of the last day, recorded in this outbox from Warp, that carries
 // neither term.focus_url nor term.host, while this shell is itself an SSH session (so the
 // check is silent on a laptop, and costs nothing there).
@@ -500,8 +500,8 @@ func checkAcceptEnv(rep *Report, o Options) {
 		return
 	}
 	rep.add(Check{Name: "ssh env", Level: Warn,
-		Detail: fmt.Sprintf("%d record(s) in the last day came from Warp over SSH without a focus URL or host: this server's sshd drops LC_SY_FOCUS and LC_SY_HOST", n),
-		Fix:    "add `AcceptEnv LC_SY_*` to /etc/ssh/sshd_config on this server (wy never writes it)"})
+		Detail: fmt.Sprintf("%d record(s) in the last day came from Warp over SSH without a focus URL or host: this server's sshd drops LC_WY_FOCUS and LC_WY_HOST", n),
+		Fix:    "add `AcceptEnv LC_WY_*` to /etc/ssh/sshd_config on this server (wy never writes it)"})
 }
 
 func lookup(o Options) func(string) (string, error) {

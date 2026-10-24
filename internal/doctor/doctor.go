@@ -81,9 +81,6 @@ type Options struct {
 	// HubListen is the hub's listen address for hints; "" = the installed hub service's
 	// --listen (service.InstalledListen). Tests set it.
 	HubListen string
-	// SystemUnitDir is where system-wide systemd units live (SystemUnitDir()); "" skips the
-	// check for units of the name before the rename.
-	SystemUnitDir string
 }
 
 func (o *Options) now() time.Time {
@@ -138,7 +135,6 @@ func Run(ctx context.Context, o Options) Report {
 	checkMachine(ctx, &rep, o, cfg)
 	checkPush(ctx, &rep, o, cfg)
 	checkTerminal(ctx, &rep, o, cfg, claudeVersion)
-	checkLegacySystemUnits(&rep, o.SystemUnitDir)
 	return rep
 }
 

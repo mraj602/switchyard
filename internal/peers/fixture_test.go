@@ -25,7 +25,7 @@ type fx struct {
 func newFx(t *testing.T) *fx {
 	t.Helper()
 	// A short base: Unix socket paths are limited to about 108 bytes.
-	base, err := os.MkdirTemp("", "syp")
+	base, err := os.MkdirTemp("", "wyp")
 	if err != nil {
 		t.Fatal(err)
 	}

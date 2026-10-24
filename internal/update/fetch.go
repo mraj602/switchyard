@@ -163,9 +163,8 @@ func get(ctx context.Context, c *http.Client, rawurl string, max int64, w io.Wri
 	return nil
 }
 
-// archiveNameRE matches the archives of the current command name and, in a release that also
-// carries them for older updaters, of the name before a rename (docs/spec/rename.md 2.13).
-var archiveNameRE = regexp.MustCompile(`^(?:` + brand.CLI + `|` + brand.LegacyCLI + `)_(.+)_(linux|darwin|windows)_(amd64|arm64)\.(tar\.gz|zip)$`)
+// archiveNameRE matches the release archives.
+var archiveNameRE = regexp.MustCompile(`^` + brand.CLI + `_(.+)_(linux|darwin|windows)_(amd64|arm64)\.(tar\.gz|zip)$`)
 
 // ParseSums parses a SHA256SUMS file ("<hex>  <name>" or "<hex> *<name>").
 func ParseSums(raw []byte) ([]SumLine, error) {

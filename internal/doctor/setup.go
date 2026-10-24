@@ -181,16 +181,13 @@ func setupRunning(stateDir string) bool {
 }
 
 func timerPresent(o Options) bool {
-	// The names before a rename count too: `wy update` moves that timer (rename.md 2.3).
-	for _, slug := range []string{brand.Slug, brand.OldSlug()} {
-		for _, p := range []string{
-			filepath.Join(o.Home, ".config", "systemd", "user", slug+"-flush.timer"),
-			filepath.Join(o.Home, "Library", "LaunchAgents", "com."+slug+".flush.plist"),
-			filepath.Join(o.Dirs.State.Path, slug+"-flush.task.xml"),
-		} {
-			if _, err := os.Stat(p); err == nil {
-				return true
-			}
+	for _, p := range []string{
+		filepath.Join(o.Home, ".config", "systemd", "user", brand.Slug+"-flush.timer"),
+		filepath.Join(o.Home, "Library", "LaunchAgents", "com."+brand.Slug+".flush.plist"),
+		filepath.Join(o.Dirs.State.Path, brand.Slug+"-flush.task.xml"),
+	} {
+		if _, err := os.Stat(p); err == nil {
+			return true
 		}
 	}
 	return false

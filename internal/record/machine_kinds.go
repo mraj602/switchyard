@@ -136,13 +136,9 @@ func (p *UpdateState) UnmarshalJSON(b []byte) error {
 
 // MachineInfoPayload is the payload of a machine_info record (record.md 4.8).
 type MachineInfoPayload struct {
-	OS   string `json:"os"`
-	Arch string `json:"arch"`
-	Wy   string `json:"wy"`
-	// LegacySy is the same version under "sy", the name before the rename (legacy compat):
-	// writers set both, because a hub older than the rename requires "sy"; readers take it
-	// when "wy" is missing (a machine older than the rename).
-	LegacySy      string          `json:"sy,omitempty"` // rename:keep
+	OS            string          `json:"os"`
+	Arch          string          `json:"arch"`
+	Wy            string          `json:"wy"`
 	RecordV       int             `json:"record_v"`
 	Reach         string          `json:"reach"`
 	Dial          string          `json:"dial,omitempty"` // "tcp" or "unix", never the address
@@ -168,9 +164,6 @@ func (p *MachineInfoPayload) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	*p = MachineInfoPayload(a)
-	if p.Wy == "" {
-		p.Wy = p.LegacySy
-	}
 	return nil
 }
 

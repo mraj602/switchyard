@@ -77,13 +77,8 @@ func NewToken(kind string) (string, error) {
 	return TokenPrefix + letter + "_" + string(digits), nil
 }
 
-// TokenPrefix starts every token the hub makes (tokens.md 1). LegacyTokenPrefix started the
-// tokens of releases before the rename; the hub stores only hashes of the full string, so
-// those tokens keep authenticating unchanged (rename.md 2.12).
-const (
-	TokenPrefix       = "wy_"
-	LegacyTokenPrefix = "sy_" // rename:keep: legacy compat, tokens issued before the rename
-)
+// TokenPrefix starts every token the hub makes (tokens.md 1).
+const TokenPrefix = "wy_"
 
 // Hash is SHA-256 of the full token string (tokens.md 2).
 func Hash(token string) []byte {
@@ -101,10 +96,9 @@ func OwnerHash(pepper []byte, token string) []byte {
 	return h.Sum(nil)
 }
 
-// IsOwnerToken reports whether a token has the wy_o_ prefix of an owner session (or the
-// sy_o_ prefix of one made before the rename: legacy compat).
+// IsOwnerToken reports whether a token has the wy_o_ prefix of an owner session.
 func IsOwnerToken(token string) bool {
-	return strings.HasPrefix(token, TokenPrefix+"o_") || strings.HasPrefix(token, LegacyTokenPrefix+"o_")
+	return strings.HasPrefix(token, TokenPrefix+"o_")
 }
 
 // Hint is the display form: kind prefix + "…" + last 4 characters.
@@ -115,10 +109,9 @@ func Hint(token string) string {
 	return token[:5] + "…" + token[len(token)-4:]
 }
 
-// LooksLikeToken checks the shape wy_<k>_<43 base62> (48 characters). The sy_ prefix of
-// tokens made before the rename is accepted too (legacy compat).
+// LooksLikeToken checks the shape wy_<k>_<43 base62> (48 characters).
 func LooksLikeToken(s string) bool {
-	if len(s) != 48 || !(strings.HasPrefix(s, TokenPrefix) || strings.HasPrefix(s, LegacyTokenPrefix)) || s[4] != '_' {
+	if len(s) != 48 || !strings.HasPrefix(s, TokenPrefix) || s[4] != '_' {
 		return false
 	}
 	for _, c := range s[5:] {

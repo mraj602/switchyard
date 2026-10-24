@@ -25,7 +25,6 @@ if [ "${WY_E2E_SYSTEMD:-}" = 1 ]; then SD_ENV="XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR
 for v in $(env | sed -n 's/^\([A-Za-z0-9_]*\)=.*/\1/p' | grep -E '^(CLAUDE[A-Za-z0-9_]*|WY_[A-Z_]*|XDG_[A-Z_]*|FAKE_[A-Z_]*)$'); do
 	case $v in WY_E2E_SRC|WY_E2E_OUT) ;; *) unset "$v" ;; esac
 done
-for v in $(env | sed -n 's/^\(SY_[A-Za-z0-9_]*\)=.*/\1/p' | grep -v _E2E_); do unset "$v"; done # rename:keep: the old prefix, which the command still reads (rename.md 2.13)
 E2E=$WY_E2E_SRC/test/e2e/setup
 RELEASE=$WY_E2E_OUT/release
 TOOLS=$WY_E2E_OUT/bin

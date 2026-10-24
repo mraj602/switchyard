@@ -102,29 +102,3 @@ test('darwin and win32: a login item with --background, nothing written to disk'
     assert.deepEqual(await fsp.readdir(home), []);
   }
 });
-
-test('linux: the entries from before a rename are replaced (rename.md 2.9)', async () => {
-  const { LEGACY_DESKTOP_ENTRY, DESKTOP_ENTRY } = await import('../shared/constants.js');
-  const legacy = 'oldname-desktop.desktop';
-  const { home, a } = await setup();
-  const name = LEGACY_DESKTOP_ENTRY === DESKTOP_ENTRY ? legacy : LEGACY_DESKTOP_ENTRY;
-  if (LEGACY_DESKTOP_ENTRY === DESKTOP_ENTRY) {
-    // Before any rename there is no old name: an unrelated entry is never read or touched.
-    await fsp.mkdir(path.join(home, '.config', 'autostart'), { recursive: true });
-    await fsp.writeFile(path.join(home, '.config', 'autostart', name), 'x');
-    assert.equal(await a.get(), false);
-    await a.set(true);
-    assert.equal(await fsp.readFile(path.join(home, '.config', 'autostart', name), 'utf8'), 'x');
-    return;
-  }
-  const old = path.join(home, '.config', 'autostart', name);
-  const oldLauncher = path.join(home, '.local', 'share', 'applications', name);
-  await fsp.mkdir(path.dirname(old), { recursive: true });
-  await fsp.mkdir(path.dirname(oldLauncher), { recursive: true });
-  await fsp.writeFile(old, 'old');
-  await fsp.writeFile(oldLauncher, 'old');
-  assert.equal(await a.get(), true);
-  await assert.rejects(fsp.access(old));
-  await assert.rejects(fsp.access(oldLauncher));
-  assert.match(await fsp.readFile(a.files().autostart, 'utf8'), /--background/);
-});

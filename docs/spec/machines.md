@@ -86,8 +86,6 @@ Host gpu-box
 # end wy-forward gpu-box
 ```
 
-- A block written before the rename (`# sy-forward v1` … `# end sy-forward`) is recognised the
-  same way, and replaced by a `wy-forward` block when the machine is added again (rename.md 2.12).
 - `Host` is exactly the host word the person typed in `wy machine add` (an alias from their own
   config works: OpenSSH merges every matching block, and `RemoteForward` accumulates).
 - The **target** (right side) is the hub as the operator reaches it: `127.0.0.1:8787` for a
@@ -245,8 +243,7 @@ restrict,command="/home/me/.local/bin/wy outbox drain --stdio" ssh-ed25519 AAAA�
   `cursor.json`, `flush.status.json`, `rejected.jsonl` and answered spill files.
 - `--pull-from <cidr,…>` adds `from="…"` (the hub's tailnet address, say).
 - The trailing comment `wy-pull:<target id>` is how `wy machine remove` and
-  `authorize-pull --remove` find the line; a line ending `sy-pull:<target id>` (written before
-  the rename) is found too, and replaced by the new form. The file is edited with the same atomic,
+  `authorize-pull --remove` find the line. The file is edited with the same atomic,
   backed-up write as setup (mode kept, `0600` if created, `~/.ssh` `0700`). A line with the
   same key and a different command is replaced; any other line is never touched.
 
@@ -318,7 +315,7 @@ unknown `t` is a protocol error.
    disabled or revoked, a frozen hub, a mismatch or such a bind; any other store error ends
    the session as a failed run and backs off.
 2. Count the `hello` as contact: machine heartbeat with `last_seen = now`, `backlog` and
-   `backlog_oldest` from `hello`, the version (column `sy_version`), `reach = 'pull'`, even when nothing follows.
+   `backlog_oldest` from `hello`, the version (column `wy_version`), `reach = 'pull'`, even when nothing follows.
 3. For each `batch`: ingest `{"v":1,"client":"wy/<hello.wy>","records":[…]}` with the pull
    device and `backlog` = the remote's `more`-adjusted count. Only **after** the ingest
    transaction committed, send `ack` with the ingest reply. A store error → `nack`, end the
@@ -474,8 +471,7 @@ idempotent: rerunning after a failure redoes only what is missing.
     reach only that machine's own sessions. Failures here do not undo the join; running the
     add again is idempotent (same keys, same pins).
 11. **Registry.** Write `{name, machine, ssh: host, reach, port?, pull_target?, os, arch,
-    wy_version, added_at, updated_at}` to `<state>/machines.json` (atomic, 0600). An entry
-    written before the rename has `sy_version`, which is read when `wy_version` is absent.
+    wy_version, added_at, updated_at}` to `<state>/machines.json` (atomic, 0600).
 
 Summary (screen `SetupDone` style): one line per step, then "gpu-box reports to
 https://hub.ts.net (direct). Next: `ssh gpu-box` and start Claude with `claude-2`."
@@ -658,7 +654,7 @@ skipped as stale. That is the only known duplicate path, and it needs a badly wr
 | `backlog` | integer \| null | Records still queued: `X-Wy-Backlog` or the drain `batch` count minus the batch's own records (they are answered by that ingest, so a flush that sent everything leaves 0), or drain `hello` |
 | `backlog_oldest` | time \| null | Ts of the oldest unanswered record: `X-Wy-Backlog-Oldest` (new, sent with `X-Wy-Backlog` when the backlog is more than one batch), drain `hello.oldest`, or `machine_info` |
 | `backlog_at` | time \| null | When `backlog` was reported |
-| `wy_version` | string \| null | Unchanged (column `sy_version`, rename.md 2.12) |
+| `wy_version` | string \| null | Unchanged |
 | `version_status` | `same` \| `older` \| `newer` \| `unknown` | `wy_version` compared with the hub's version: the same string (after a leading `v` and `+build` are dropped) is `same`, so two builds of one untagged commit (`104cd7f`) match; otherwise by semver (pre-release, commit names and `dev` → `unknown`; `dev` never matches itself) |
 | `record_v` | integer \| null | Highest record `v` the machine writes (`machine_info`) |
 | `held` | integer | Records the machine holds back because the hub is too old (7.2), from `machine_info`; 0 normally |
@@ -796,9 +792,7 @@ same way:
    the old inode). Windows: rename `wy.exe` to `wy.exe.old` (allowed while it runs), move the
    new file in; `wy.exe.old` is deleted by the next `wy` run that can.
 7. **After**, with the new binary (`wy update --post-update <old version>`, an internal step):
-   after a rename of the command, give the binary its current name and leave the old name as
-   a link to it (rename.md 2.13); move what an older release installed under the old project
-   name (rename.md 2.2 to 2.4); refresh the plugin marketplace and run `claude plugin marketplace update wy-local` and
+   refresh the plugin marketplace and run `claude plugin marketplace update wy-local` and
    `claude plugin update watchyard@wy-local` per plugin root (setup.md 5.2); rewrite the
    timer unit and the hub service unit if their content changed; restart the hub service if
    it is installed here (`internal/service`: systemd user unit, launchd agent, scheduled
@@ -877,17 +871,17 @@ wy hub export [--out <file>] [--moved-to <url>] [--no-freeze] [--encrypt] [--pas
    pull host keys are in `pull_target`.) `<state>/hub_sign.key` is required in the
    same way (keys.md 3.4: without it every device must pair again); it goes into the archive
    as `state/hub_sign.key` and step 5 of the import writes it back like the pepper.
-4. **Archive** (`.wyx`, `.syx` before the rename; any name is imported; mode 0600, folder 0700; default `<data>/exports/hub-<UTC time>.wyx`):
+4. **Archive** (`.wyx`; any name is imported; mode 0600, folder 0700; default `<data>/exports/hub-<UTC time>.wyx`):
    a gzip-compressed tar with `manifest.json`, `hub.db`, `state/pair_pepper`,
    `state/pull/id_ed25519`, `state/pull/id_ed25519.pub`. Manifest:
    `{"format": 1, "kind": "watchyard-hub-export", "wy": "0.5.0", "schema": 4, "exported_at",
    "frozen": true, "moved_to", "public_url", "counts": {"devices", "machines", "records",
    "sessions", "push_targets", "pull_targets"}, "files": [{"path", "size", "sha256"}]}`.
 5. `--encrypt`: the whole archive is encrypted with a passphrase read from the terminal twice
-   (or the first line of `--passphrase-file`; never an argument). Format: `SYXE` magic (frozen with `syxe1`, rename.md 2.12), `1`,
+   (or the first line of `--passphrase-file`; never an argument). Format: `WYXE` magic, `1`,
    KDF id `1` = PBKDF2-HMAC-SHA256 (`crypto/pbkdf2`), uint32 iterations (600 000), 16-byte
    salt, 8-byte nonce prefix; then chunks of up to 64 KiB, each `uint32 length ‖
-   AES-256-GCM(key, nonce = prefix ‖ uint32 index, aad = "syxe1" ‖ index ‖ last-flag)`.
+   AES-256-GCM(key, nonce = prefix ‖ uint32 index, aad = "wyxe1" ‖ index ‖ last-flag)`.
    Truncation fails on the missing last chunk. Standard library only.
 6. Print what it holds and that it is secret: "This file holds every device's token hash,
    the VAPID private key, ntfy access tokens, the pairing pepper and the pull key. Anyone with
@@ -981,7 +975,7 @@ CREATE TABLE pull_target (
   port          INTEGER NOT NULL DEFAULT 22 CHECK (port BETWEEN 1 AND 65535),
   user          TEXT    NOT NULL,
   jump          TEXT,                                       -- unused: ProxyJump is refused (the hop's host key cannot be pinned)
-  remote_sy     TEXT    NOT NULL DEFAULT '.local/bin/wy',   -- used only without a forced command
+  remote_wy     TEXT    NOT NULL DEFAULT '.local/bin/wy',   -- used only without a forced command
   host_keys     TEXT    NOT NULL CHECK (json_valid(host_keys)),  -- ["ssh-ed25519 AAAA…", …] pinned public keys
   interval_s    INTEGER NOT NULL DEFAULT 60 CHECK (interval_s BETWEEN 15 AND 3600),
   enabled       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),

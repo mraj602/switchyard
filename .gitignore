@@ -32,7 +32,6 @@ GoogleService-Info.plist
 *.apk
 *.aab
 *.wyx
-*.syx
 
 # OS and editor litter
 .DS_Store

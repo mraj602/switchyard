@@ -511,7 +511,7 @@ func (h *testHub) pairSSH(m *machine, c auth.Created, dk keys.DeviceKeys) {
 func (h *testHub) newMachineWith(pair func(*testHub, *machine, auth.Created, keys.DeviceKeys), name, id string, specs ...sessionSpec) *machine {
 	t := h.t
 	t.Helper()
-	base, err := os.MkdirTemp("", "sye") // short: Unix socket paths are limited
+	base, err := os.MkdirTemp("", "wye") // short: Unix socket paths are limited
 	if err != nil {
 		t.Fatal(err)
 	}

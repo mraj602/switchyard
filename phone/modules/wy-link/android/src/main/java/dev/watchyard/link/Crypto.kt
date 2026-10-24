@@ -185,12 +185,12 @@ object ClaimSeal {
     if (nonce.size != 12) throw CryptoException("bad_nonce", "nonce must be 12 bytes")
     val c = Cipher.getInstance("AES/GCM/NoPadding")
     c.init(Cipher.ENCRYPT_MODE, SecretKeySpec(k, "AES"), GCMParameterSpec(128, nonce))
-    c.updateAAD(Codec.utf8("sy-reg-v1\n$secret")) // frozen label: the hub opens it with this AAD (keys.md, rename.md 2.12)
+    c.updateAAD(Codec.utf8("wy-reg-v1\n$secret")) // the hub opens it with this AAD (keys.md 7.1)
     return Codec.b64u(Codec.cat(nonce, c.doFinal(plaintext)))
   }
 }
 
-/** keys.md 4.1: a document signature is Ed25519 over "sy-doc-v1\n" ‖ type ‖ "\n" ‖ body bytes (a frozen label, rename.md 2.12). */
+/** keys.md 4.1: a document signature is Ed25519 over "wy-doc-v1\n" ‖ type ‖ "\n" ‖ body bytes. */
 object Docs {
-  fun signedInput(type: String, body: ByteArray): ByteArray = Codec.cat(Codec.utf8("sy-doc-v1\n$type\n"), body)
+  fun signedInput(type: String, body: ByteArray): ByteArray = Codec.cat(Codec.utf8("wy-doc-v1\n$type\n"), body)
 }

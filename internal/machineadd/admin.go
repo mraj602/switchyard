@@ -345,24 +345,6 @@ type HubMachine struct {
 	LiveSession int     `json:"live_sessions"`
 }
 
-// UnmarshalJSON reads wy_version, or sy_version from a hub older than the rename (legacy
-// compat, rename.md 2.12).
-func (m *HubMachine) UnmarshalJSON(b []byte) error {
-	type plain HubMachine
-	var v struct {
-		plain
-		SyVersion *string `json:"sy_version"` // rename:keep: legacy compat
-	}
-	if err := json.Unmarshal(b, &v); err != nil {
-		return err
-	}
-	*m = HubMachine(v.plain)
-	if m.WyVersion == nil {
-		m.WyVersion = v.SyVersion
-	}
-	return nil
-}
-
 // SeenWithin reports whether last_seen is within d of now.
 func (m HubMachine) SeenWithin(now time.Time, d time.Duration) bool {
 	if m.LastSeen == nil {

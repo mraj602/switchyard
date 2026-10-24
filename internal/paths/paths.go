@@ -2,7 +2,7 @@
 // WY_CONFIG_DIR / WY_STATE_DIR / WY_DATA_DIR / WY_HOME overrides. No other package
 // builds paths from $HOME.
 //
-// Contract: docs/spec/paths.md (and rename.md 2.1 for the folders of an older name).
+// Contract: docs/spec/paths.md.
 //
 // Depends on: brand.
 package paths
@@ -39,20 +39,10 @@ type Dir struct {
 	Path   string
 	Source Source
 	Var    string // the environment variable behind Source, when there is one
-	// Legacy is set when the folder is the one of the project's name before a rename, kept
-	// because it exists and the new one does not (rename.md 2.1).
-	Legacy bool
 }
 
 // Describe renders the source for humans, e.g. "WY_STATE_DIR", "XDG_STATE_HOME" or "default".
 func (d Dir) Describe() string {
-	if d.Legacy {
-		return d.describe() + ", " + brand.OldSlug() + " folder from before the rename"
-	}
-	return d.describe()
-}
-
-func (d Dir) describe() string {
 	switch d.Source {
 	case SourceDirEnv, SourceXDG, SourceWYHome:
 		return d.Var
@@ -73,27 +63,17 @@ type Env struct {
 	GOOS   string
 	Home   string              // user home folder; may be empty if every folder is overridden
 	Getenv func(string) string // environment lookup; nil means an empty environment
-	// Exists reports whether a path exists. Resolve uses it only to find the folders of the
-	// project's name before a rename (rename.md 2.1); nil never finds them, so tests that do
-	// not set it stay pure.
-	Exists func(string) bool
 }
 
 // FromOS returns the Env of the running process. Home is left empty if it cannot be
 // found; Resolve only fails on that when it actually needs the home folder.
 func FromOS() Env {
 	home, _ := os.UserHomeDir()
-	return Env{GOOS: runtime.GOOS, Home: home, Getenv: os.Getenv, Exists: StatExists}
-}
-
-// StatExists is the real Env.Exists: os.Stat succeeds.
-func StatExists(p string) bool {
-	_, err := os.Stat(p)
-	return err == nil
+	return Env{GOOS: runtime.GOOS, Home: home, Getenv: os.Getenv}
 }
 
 // Resolve computes the three folders. Precedence per folder: WY_<ROLE>_DIR, then WY_HOME,
-// then the per-OS table of paths.md section 1. SWITCHYARD_DATA is never read.
+// then the per-OS table of paths.md section 1.
 func Resolve(e Env) (Dirs, error) {
 	get := e.Getenv
 	if get == nil {
@@ -114,7 +94,7 @@ func Resolve(e Env) (Dirs, error) {
 		if err != nil {
 			return Dirs{}, fmt.Errorf("%s folder: %w", r.name, err)
 		}
-		*r.out = legacyOr(e, win, r.name, dir)
+		*r.out = dir
 	}
 	return d, nil
 }
@@ -149,42 +129,6 @@ func resolveOne(e Env, get func(string) string, win bool, role, dirVar, xdgVar, 
 		return Dir{}, errors.New("home folder is unknown; set " + dirVar + " or WY_HOME")
 	}
 	return Dir{Path: join(false, e.Home, xdgDefault, app), Source: SourceDefault}, nil
-}
-
-// legacyOr returns the folder of the project's name before a rename instead of d when d is
-// a per-OS default (not an override), d does not exist, and the legacy folder does (for
-// config: holds config.toml, since an older Electron app may have left the folder behind).
-// Nothing is moved: an install keeps working in place (rename.md 2.1).
-func legacyOr(e Env, win bool, role string, d Dir) Dir {
-	if e.Exists == nil || !brand.Renamed() || (d.Source != SourceDefault && d.Source != SourceXDG) {
-		return d
-	}
-	s := sep(win)
-	var old string
-	if win {
-		suffix := s + appWin + s + role
-		if !strings.HasSuffix(d.Path, suffix) {
-			return d
-		}
-		old = strings.TrimSuffix(d.Path, suffix) + s + brand.OldName() + s + role
-	} else {
-		suffix := s + app
-		if !strings.HasSuffix(d.Path, suffix) {
-			return d
-		}
-		old = strings.TrimSuffix(d.Path, suffix) + s + brand.OldSlug()
-	}
-	marker := func(dir string) string {
-		if role == "config" {
-			return dir + s + "config.toml"
-		}
-		return dir
-	}
-	if e.Exists(marker(d.Path)) || !e.Exists(marker(old)) {
-		return d
-	}
-	d.Path, d.Legacy = old, true
-	return d
 }
 
 // The helpers below pick the path flavour from GOOS (not from the build) so Windows

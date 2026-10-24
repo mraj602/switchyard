@@ -136,9 +136,7 @@ func TestLogoutRevokesTheCookiesDeviceOnly(t *testing.T) {
 		if (err == ErrUnauthorized) != tc.revoke {
 			t.Errorf("%s: revoked=%v, want %v", name, err == ErrUnauthorized, tc.revoke)
 		}
-		// wy_session, and the legacy sy_session (rename.md 2.12).
-		if ck := rec.Result().Cookies(); len(ck) != 2 || ck[0].Name != "wy_session" || ck[0].MaxAge >= 0 ||
-			ck[1].Name != "sy_session" || ck[1].MaxAge >= 0 { // rename:keep
+		if ck := rec.Result().Cookies(); len(ck) != 1 || ck[0].Name != "wy_session" || ck[0].MaxAge >= 0 {
 			t.Errorf("%s: cookie not cleared", name)
 		}
 	}

@@ -76,11 +76,3 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
-
-# The package of the name before the rename: this one replaces it instead of installing
-# beside it (docs/spec/rename.md 2.9). rename:keep-begin
-deb:
-  fpm: ["--replaces=switchyard-desktop", "--conflicts=switchyard-desktop"]
-rpm:
-  fpm: ["--replaces=switchyard-desktop", "--conflicts=switchyard-desktop"]
-# rename:keep-end

@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mraj602/watchyard/internal/brand"
 	"github.com/mraj602/watchyard/internal/setup/model"
 )
 
@@ -19,12 +18,6 @@ type RefreshResult struct {
 	Installed bool // a unit file was found
 	Rewritten bool // its content changed for this binary and was written again
 	Restarted bool
-	// Enabled and Started say, after a move from the old name, what the new unit was left as:
-	// the state the old one had (rename.md 2.2). Unset without a move.
-	Enabled, Started bool
-	// Migrated names the unit from before the rename that was replaced by one under the
-	// current name, keeping its arguments and environment (rename.md 2.2).
-	Migrated string
 }
 
 // Refresh is `wy update`'s hub service step (machines.md 7.3 step 7): when the service is
@@ -41,10 +34,7 @@ func (s *Service) Refresh(ctx context.Context, name string) (RefreshResult, erro
 		return res, err
 	}
 	e := s.Env
-	if inst := Installed(e, spec.Name); inst != spec.Name {
-		return s.migrate(ctx, spec, inst)
-	}
-	p := InstalledPath(e, spec.Name)
+	p := UnitPath(e, spec)
 	cur, err := os.ReadFile(p)
 	if errors.Is(err, os.ErrNotExist) {
 		return res, nil
@@ -107,93 +97,6 @@ func (s *Service) Refresh(ctx context.Context, name string) (RefreshResult, erro
 		return res, fmt.Errorf("service: no user service support for %s", e.GOOS)
 	}
 	return res, nil
-}
-
-// migrate replaces the service installed as old (its name before the rename) with one named
-// spec.Name: the same arguments and environment, then the old one stopped and removed, then
-// the new one installed and started (rename.md 2.2).
-func (s *Service) migrate(ctx context.Context, spec model.ServiceSpec, old string) (RefreshResult, error) {
-	res := RefreshResult{Installed: true, Migrated: UnitName(s.Env.GOOS, old)}
-	args, env, ok := InstalledUnit(s.Env, old)
-	if s.Env.GOOS == "windows" {
-		args, ok = windowsTaskArgs(InstalledPath(s.Env, old))
-	}
-	if ok {
-		spec.Args = args
-	}
-	c := *s
-	st := s.stateOf(old)
-	if env != nil {
-		c.Env.Pairs, c.Env.PairsSet = currentEnvNames(env), true
-	}
-	if err := c.install(ctx, spec, st); err != nil { // install removes old first
-		return res, err
-	}
-	res.Rewritten, res.Restarted = true, st.Active
-	res.Enabled, res.Started = st.Enabled, st.Active
-	return res, nil
-}
-
-// currentEnvNames renames the variables of the command's old name (SY_HOME, ...) in a legacy
-// unit's environment to the current prefix (rename.md 2.13).
-func currentEnvNames(env [][2]string) [][2]string {
-	op := brand.OldEnvPrefix()
-	if op == "" {
-		return env
-	}
-	out := make([][2]string, 0, len(env))
-	for _, kv := range env {
-		if strings.HasPrefix(kv[0], op) {
-			kv[0] = brand.EnvPrefix + strings.TrimPrefix(kv[0], op)
-		}
-		out = append(out, kv)
-	}
-	return out
-}
-
-var taskArguments = regexp.MustCompile(`(?s)<Arguments>(.*?)</Arguments>`)
-
-// windowsTaskArgs reads the arguments of a task XML that WindowsTaskXML wrote (UTF-16LE),
-// undoing windowsArg.
-func windowsTaskArgs(path string) ([]string, bool) {
-	b, err := os.ReadFile(path)
-	if err != nil || len(b)%2 != 0 {
-		return nil, false
-	}
-	u := make([]rune, 0, len(b)/2)
-	for i := 0; i+1 < len(b); i += 2 {
-		u = append(u, rune(uint16(b[i])|uint16(b[i+1])<<8))
-	}
-	m := taskArguments.FindStringSubmatch(strings.TrimPrefix(string(u), "\ufeff"))
-	if m == nil {
-		return nil, false
-	}
-	var out []string
-	var cur strings.Builder
-	quoted, have := false, false
-	v := html.UnescapeString(m[1])
-	for i := 0; i < len(v); i++ {
-		c := v[i]
-		switch {
-		case c == '\\' && i+1 < len(v) && v[i+1] == '"':
-			cur.WriteByte('"')
-			i++
-		case c == '"':
-			quoted, have = !quoted, true
-		case c == ' ' && !quoted:
-			if have || cur.Len() > 0 {
-				out = append(out, cur.String())
-			}
-			cur.Reset()
-			have = false
-		default:
-			cur.WriteByte(c)
-		}
-	}
-	if have || cur.Len() > 0 {
-		out = append(out, cur.String())
-	}
-	return out, len(out) > 0
 }
 
 // systemdExecArgs returns the arguments after the program of the unit's ExecStart= line,
@@ -346,7 +249,7 @@ func InstalledUnit(e Env, name string) (args []string, env [][2]string, ok bool)
 	if err != nil {
 		return nil, nil, false
 	}
-	b, err := os.ReadFile(InstalledPath(e, Installed(e, spec.Name)))
+	b, err := os.ReadFile(UnitPath(e, spec))
 	if err != nil {
 		return nil, nil, false
 	}

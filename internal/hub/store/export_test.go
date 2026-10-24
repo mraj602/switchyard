@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -449,14 +448,3 @@ func TestFreezeUnfreeze(t *testing.T) {
 }
 
 func mustJSON(v any) []byte { b, _ := json.Marshal(v); return b }
-
-// Legacy compat (rename.md 2.6): an export made before the rename names its version "sy".
-func TestManifestLegacyVersionKey(t *testing.T) {
-	var m Manifest
-	if err := json.Unmarshal([]byte(`{"format":1,"kind":"switchyard-hub-export","sy":"0.9.0","schema":4}`), &m); err != nil || m.Wy != "0.9.0" || m.Schema != 4 {
-		t.Fatalf("legacy manifest: %+v %v", m, err)
-	}
-	if b, _ := json.Marshal(Manifest{Format: 1, Wy: "1.0.0"}); !strings.Contains(string(b), `"wy":"1.0.0"`) || strings.Contains(string(b), `"sy"`) {
-		t.Fatalf("written: %s", b)
-	}
-}

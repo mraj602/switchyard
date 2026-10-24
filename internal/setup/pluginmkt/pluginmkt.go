@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"slices"
 	"sort"
 	"strings"
 
@@ -40,16 +39,6 @@ const (
 	PaneName        = plugin.PaneName // "watchyard-pane"
 	PaneID          = PaneName + "@" + MarketplaceName
 )
-
-// LegacyIDs maps the wy-local plugin ids of the project's name before a rename (the plugin
-// and the pane mod) to the current ones; nil when there was no rename (rename.md 2.4).
-func LegacyIDs() map[string]string {
-	ids := brand.LegacyPluginIDs()
-	if ids == nil {
-		return nil
-	}
-	return map[string]string{ids[0]: PluginID, ids[1]: PaneID}
-}
 
 // Installer implements model.PluginInstaller on a claudecli.Runner. Source is the plugin tree
 // to write; nil means the embedded plugin.FS(). PaneSource is the pane mod's tree; nil means
@@ -422,51 +411,6 @@ func (i *Installer) Update(ctx context.Context, folder claudecli.Folder) error {
 	return check(res, err, "claude plugin update "+PluginID)
 }
 
-// RemoveLegacy uninstalls, from folder's plugin root, the wy-local plugins of the project's
-// name before a rename and returns the current ids that replace them (rename.md 2.4). Run it
-// before WriteMarketplace drops the old plugin folders, then InstallCurrent after.
-func (i *Installer) RemoveLegacy(ctx context.Context, folder claudecli.Folder) ([]string, error) {
-	legacy := LegacyIDs()
-	if legacy == nil {
-		return nil, nil
-	}
-	plugins, err := i.Runner.PluginList(ctx, folder)
-	if err != nil {
-		return nil, fmt.Errorf("claude plugin list: %w", err)
-	}
-	var out []string
-	for _, p := range plugins {
-		cur, ok := legacy[p.ID]
-		if !ok {
-			continue
-		}
-		// Each install goes with its own scope: one made from a project (the home folder is a
-		// project to Claude Code) is refused by the default user scope.
-		if e := i.uninstallInstall(ctx, folder, p); e != nil {
-			return out, e
-		}
-		out = append(out, cur)
-	}
-	// The marketplace of the command's old name points at the folder WriteMarketplace is about
-	// to rewrite under the current name.
-	if lm := brand.LegacyMarketplace(); lm != "" {
-		known, err := i.Runner.PluginMarketplaceList(ctx, folder)
-		if err != nil {
-			return out, fmt.Errorf("claude plugin marketplace list: %w", err)
-		}
-		for _, m := range known {
-			if m.Name == lm {
-				res, err := i.Runner.PluginMarketplaceRemove(ctx, folder, lm)
-				if e := check(res, err, "claude plugin marketplace remove "+lm); e != nil {
-					return out, e
-				}
-			}
-		}
-	}
-	sort.Strings(out)
-	return slices.Compact(out), nil // one id per plugin, however many scopes held it
-}
-
 // uninstallInstall removes one row of `claude plugin list`: with --scope and, for the project
 // and local scopes, the project folder as the working directory.
 func (i *Installer) uninstallInstall(ctx context.Context, folder claudecli.Folder, p claudecli.PluginInfo) error {
@@ -476,56 +420,6 @@ func (i *Installer) uninstallInstall(ctx context.Context, folder claudecli.Folde
 	}
 	res, err := i.Runner.PluginUninstallScoped(ctx, folder, p.ID, p.Scope, p.ProjectPath)
 	return check(res, err, "claude plugin uninstall "+p.ID+" --scope "+p.Scope)
-}
-
-// MissingCurrent returns the current plugin id when folder's plugin root has neither it nor a
-// legacy one installed: a move from the old name that uninstalled the legacy plugin and then
-// failed to install the current one (rename.md 2.4). Nil when there was no rename.
-func (i *Installer) MissingCurrent(ctx context.Context, folder claudecli.Folder) ([]string, error) {
-	legacy := LegacyIDs()
-	if legacy == nil {
-		return nil, nil
-	}
-	plugins, err := i.Runner.PluginList(ctx, folder)
-	if err != nil {
-		return nil, fmt.Errorf("claude plugin list: %w", err)
-	}
-	for _, p := range plugins {
-		if p.ID == PluginID || legacy[p.ID] == PluginID {
-			return nil, nil
-		}
-	}
-	return []string{PluginID}, nil
-}
-
-// InstallCurrent installs ids (from RemoveLegacy) from the rewritten marketplace at dir:
-// `claude plugin marketplace update wy-local` (`add <dir>` when this root does not know it
-// yet, after a rename of the command), then `claude plugin install <id>` for each.
-func (i *Installer) InstallCurrent(ctx context.Context, folder claudecli.Folder, dir string, ids []string) error {
-	known, err := i.Runner.PluginMarketplaceList(ctx, folder)
-	if err != nil {
-		return fmt.Errorf("claude plugin marketplace list: %w", err)
-	}
-	have := false
-	for _, m := range known {
-		have = have || m.Name == MarketplaceName
-	}
-	var res claudecli.Result
-	if have {
-		res, err = i.Runner.PluginMarketplaceUpdate(ctx, folder, MarketplaceName)
-	} else {
-		res, err = i.Runner.PluginMarketplaceAdd(ctx, folder, dir)
-	}
-	if e := check(res, err, "claude plugin marketplace update/add "+MarketplaceName); e != nil {
-		return e
-	}
-	for _, id := range ids {
-		res, err := i.Runner.PluginInstall(ctx, folder, id)
-		if e := check(res, err, "claude plugin install "+id); e != nil {
-			return e
-		}
-	}
-	return nil
 }
 
 // Enable implements model.PluginInstaller.

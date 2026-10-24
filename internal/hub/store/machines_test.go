@@ -20,7 +20,7 @@ type machineRow struct {
 func readMachine(t *testing.T, s *Store, id string) machineRow {
 	t.Helper()
 	var r machineRow
-	err := s.R().QueryRow(`SELECT reach, backlog, backlog_oldest, backlog_at, held, last_seen, sy_version FROM machine WHERE id = ?`, id).
+	err := s.R().QueryRow(`SELECT reach, backlog, backlog_oldest, backlog_at, held, last_seen, wy_version FROM machine WHERE id = ?`, id).
 		Scan(&r.reach, &r.backlog, &r.backlogOldest, &r.backlogAt, &r.held, &r.lastSeenMillis, &r.ver)
 	if err != nil {
 		t.Fatal(err)

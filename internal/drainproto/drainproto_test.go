@@ -212,18 +212,3 @@ func TestAckIDs(t *testing.T) {
 		t.Fatal(got)
 	}
 }
-
-// Legacy compat: a remote older than the rename sends its version as "sy"; the hub reads it.
-// A new remote writes "wy" only.
-func TestHelloLegacyVersionKey(t *testing.T) {
-	var h Hello
-	if err := json.Unmarshal([]byte(`{"proto":1,"machine":"m_x","sy":"0.9.0"}`), &h); err != nil || h.Wy != "0.9.0" {
-		t.Fatalf("legacy hello: %+v %v", h, err)
-	}
-	if err := json.Unmarshal([]byte(`{"proto":1,"machine":"m_x","wy":"1.0.0","sy":"0.9.0"}`), &h); err != nil || h.Wy != "1.0.0" {
-		t.Fatalf("hello with both: %+v %v", h, err)
-	}
-	if b, _ := json.Marshal(Hello{Proto: 1, Machine: "m_x", Wy: "1.0.0"}); !strings.Contains(string(b), `"wy":"1.0.0"`) || strings.Contains(string(b), `"sy"`) {
-		t.Fatalf("written: %s", b)
-	}
-}

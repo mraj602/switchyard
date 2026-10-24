@@ -19,13 +19,13 @@ import (
 )
 
 // `wy ssh <ssh args…>` (docs/spec/terminal.md T9): the real ssh with
-// `-o SendEnv=LC_SY_FOCUS -o SendEnv=LC_SY_HOST` first, so the server's sessions can be
+// `-o SendEnv=LC_WY_FOCUS -o SendEnv=LC_WY_HOST` first, so the server's sessions can be
 // focused in this laptop's tab. Nothing else is added to the person's arguments.
 
 const sshUsage = `usage: wy ssh <ssh arguments...>
        wy ssh --print-config
 
-Runs ssh (or WY_SSH_COMMAND) with -o SendEnv=LC_SY_FOCUS -o SendEnv=LC_SY_HOST put before
+Runs ssh (or WY_SSH_COMMAND) with -o SendEnv=LC_WY_FOCUS -o SendEnv=LC_WY_HOST put before
 your arguments, and passes this tab's Warp focus URL and this machine's id in those
 variables, so Claude Code sessions on the server can be focused from the board here.
 --print-config prints the SendEnv lines for your own ssh config (wy never writes it).
@@ -35,7 +35,7 @@ Exit code: ssh's own; 127 when there is no ssh.
 const sshPrintConfig = `# wy ssh passes these with -o on every call. To use them from plain ssh instead, add this
 # to ~/.ssh/config (wy never writes your ssh config):
 Host *
-    SendEnv LC_SY_FOCUS LC_SY_HOST
+    SendEnv LC_WY_FOCUS LC_WY_HOST
 # The server's sshd must accept them; AcceptEnv LC_* is the default on most distributions.
 `
 
@@ -71,7 +71,7 @@ func runSSH(args []string, stdout, stderr io.Writer) error {
 	}
 
 	argv := append([]string{}, prog[1:]...)
-	argv = append(argv, "-o", "SendEnv=LC_SY_FOCUS", "-o", "SendEnv=LC_SY_HOST")
+	argv = append(argv, "-o", "SendEnv=LC_WY_FOCUS", "-o", "SendEnv=LC_WY_HOST")
 	argv = append(argv, args...)
 
 	cmd := exec.Command(path, argv...)
@@ -95,8 +95,8 @@ func runSSH(args []string, stdout, stderr io.Writer) error {
 	return nil
 }
 
-// sshChildEnv is base with LC_SY_FOCUS and LC_SY_HOST replaced (T9): the focus URL is
-// LC_SY_FOCUS if set (a nested hop), else WARP_FOCUS_URL, kept only when it passes the T7
+// sshChildEnv is base with LC_WY_FOCUS and LC_WY_HOST replaced (T9): the focus URL is
+// LC_WY_FOCUS if set (a nested hop), else WARP_FOCUS_URL, kept only when it passes the T7
 // allow-list; the host is this machine's id. Without a usable focus URL neither is set (a
 // host id alone focuses nothing), and any inherited value is removed so a stale one is
 // never forwarded.
@@ -108,44 +108,44 @@ func sshChildEnv(base []string, env termenv.Env) []string {
 		}
 		out = append(out, kv)
 	}
-	// A nested hop (LC_SY_FOCUS inherited from the first ssh): the tab and its machine are
+	// A nested hop (LC_WY_FOCUS inherited from the first ssh): the tab and its machine are
 	// the first hop's. Forward both unchanged, never this intermediate machine's id, or the
 	// last server would believe the tab is on the middle one.
-	if inherited := env.Lookup("LC_SY_FOCUS"); inherited != "" && termctl.ValidFocusURL(inherited) {
-		if host := env.Lookup("LC_SY_HOST"); machineIDRe.MatchString(host) {
-			return append(out, "LC_SY_FOCUS="+inherited, "LC_SY_HOST="+host)
+	if inherited := env.Lookup("LC_WY_FOCUS"); inherited != "" && termctl.ValidFocusURL(inherited) {
+		if host := env.Lookup("LC_WY_HOST"); machineIDRe.MatchString(host) {
+			return append(out, "LC_WY_FOCUS="+inherited, "LC_WY_HOST="+host)
 		}
 	}
-	focus := env.Lookup("LC_SY_FOCUS")
+	focus := env.Lookup("LC_WY_FOCUS")
 	if focus == "" {
 		focus = env.Lookup("WARP_FOCUS_URL")
 	}
 	if !termctl.ValidFocusURL(focus) {
 		return out
 	}
-	out = append(out, "LC_SY_FOCUS="+focus)
+	out = append(out, "LC_WY_FOCUS="+focus)
 	if id := thisMachineID(env); id != "" {
-		out = append(out, "LC_SY_HOST="+id)
+		out = append(out, "LC_WY_HOST="+id)
 	}
 	return out
 }
 
 var machineIDRe = regexp.MustCompile(`^m_[0-9A-HJKMNP-TV-Z]{26}$`)
 
-// isLCForwardVar reports whether kv ("NAME=value") is LC_SY_FOCUS or LC_SY_HOST. Windows
+// isLCForwardVar reports whether kv ("NAME=value") is LC_WY_FOCUS or LC_WY_HOST. Windows
 // environment names are case-insensitive, so the match is too there.
 func isLCForwardVar(kv, goos string) bool {
 	name, _, _ := strings.Cut(kv, "=")
 	if goos == "windows" {
 		name = strings.ToUpper(name)
 	}
-	return name == "LC_SY_FOCUS" || name == "LC_SY_HOST"
+	return name == "LC_WY_FOCUS" || name == "LC_WY_HOST"
 }
 
 // thisMachineID is this machine's id from <state>/identity ("" when it cannot be read or
 // created).
 func thisMachineID(env termenv.Env) string {
-	dirs, err := paths.Resolve(paths.Env{GOOS: env.GOOS, Home: env.Home, Getenv: env.Lookup, Exists: paths.StatExists})
+	dirs, err := paths.Resolve(paths.Env{GOOS: env.GOOS, Home: env.Home, Getenv: env.Lookup})
 	if err != nil {
 		return ""
 	}

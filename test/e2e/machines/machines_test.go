@@ -26,7 +26,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/mraj602/watchyard/internal/brand"
 	"io"
 	"net"
 	"net/http"
@@ -128,7 +127,6 @@ func cleanEnv(home string) []string {
 	for _, kv := range os.Environ() {
 		k, _, _ := strings.Cut(kv, "=")
 		if strings.HasPrefix(k, "CLAUDE") || strings.HasPrefix(k, "WY_") || strings.HasPrefix(k, "XDG_") ||
-			(brand.OldEnvPrefix() != "" && strings.HasPrefix(k, brand.OldEnvPrefix())) ||
 			k == "HOME" || k == "TZ" || k == "NO_COLOR" || k == "SSH_AUTH_SOCK" {
 			continue
 		}

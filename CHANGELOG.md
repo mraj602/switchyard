@@ -6,13 +6,6 @@ All notable changes to Watchyard are recorded here. The format follows
 
 ## [Unreleased]
 
-### Fixed
-
-- The move from the Switchyard names (`wy update --post-update`) keeps the old units' state: a
-  disabled or stopped hub, agent or flush timer stays disabled or stopped instead of being
-  enabled and started, and a legacy plugin installed at project or local scope is uninstalled
-  with its own `--scope` and project folder instead of failing.
-
 ## [1.0.0] - 2026-10-24
 
 The first public version. Everything below is new.
@@ -80,23 +73,6 @@ The first public version. Everything below is new.
 - Desktop: account tabs send Chrome's reduced user agent (`Chrome/<major>.0.0.0`), as Chrome
   itself does, instead of the full build number. claude.ai's Claude Code section kept asking to
   verify the device again, because the string was unusual and changed with every Electron update.
-
-### Renamed from Switchyard (`sy`)
-
-- Every name is now Watchyard and `wy`: tokens (`wy_…`), the board cookie (`wy_session`), the
-  link subprotocol (`wy-link.1`), JSON version keys (`wy`, `wy_version`), recovery codes
-  (`WYR1-…`), file markers, ingest headers (`X-Wy-Backlog…`), encrypted exports (`.wyx`) and
-  internal names. Devices paired and files written by the first 1.0.0 build keep working: the
-  old forms are still accepted, and `wy` also sends what an older hub reads. Signed labels, two
-  database columns and the `LC_SY_*` SSH variables keep their old names on purpose
-  (docs/spec/rename.md 2.12).
-- Also carried over: `SY_*` environment variables (read as `WY_*`), Docker `.env` files with
-  `SY_*` names, a status line still wrapped by `sy`, `sy.old` for `wy update --rollback`, and
-  a plugin move that failed half-way. `wy doctor` names system units of the old name, which
-  are moved by hand (scripts/rename/RUNBOOK.md); on Windows the update prints the commands that
-  replace the old scheduled task.
-- The Docker volume is now `watchyard_hub-data`. A hub started with the first build keeps its
-  data in `switchyard_hub-data`: copy it once with the commands in docs/spec/rename.md 2.11.
 
 [Unreleased]: https://github.com/mraj602/watchyard/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/mraj602/watchyard/releases/tag/v1.0.0

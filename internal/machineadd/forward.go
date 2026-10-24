@@ -32,23 +32,6 @@ const (
 	IncludeLine = "Include " + ForwardConf + "\n"
 )
 
-// forwardConf is the forward file's name in sshDir: ForwardConf, or the file of the project's
-// name before a rename while only that one exists, so its blocks and Include line keep being
-// found and edited in place (rename.md 2.5).
-func forwardConf(sshDir string) string {
-	old := brand.Legacy(ForwardConf)
-	if old == "" {
-		return ForwardConf
-	}
-	if _, err := os.Stat(filepath.Join(sshDir, ForwardConf)); err == nil {
-		return ForwardConf
-	}
-	if _, err := os.Stat(filepath.Join(sshDir, old)); err == nil {
-		return old
-	}
-	return ForwardConf
-}
-
 func includeLine(name string) string { return "Include " + name + "\n" }
 
 // Forward describes one machine's RemoteForward.
@@ -148,21 +131,9 @@ func Adopted(c sshx.Config, target, socket string) (port int, ok bool) {
 	return 0, false
 }
 
-// forwardTags are the block markers: wy-forward, and the sy-forward of a block written before
-// the rename (legacy compat: still found and removed, never written).
-var forwardTags = []string{"wy-forward", "sy-forward"} // rename:keep
-
 // blockRange finds the block of a machine: its start, its end and whether it exists.
 func blockRange(content []byte, machine string) (int, int, bool) {
-	for _, tag := range forwardTags {
-		if i, end, ok := blockRangeTag(content, machine, tag); ok {
-			return i, end, true
-		}
-	}
-	return 0, 0, false
-}
-
-func blockRangeTag(content []byte, machine, tag string) (int, int, bool) {
+	tag := "wy-forward"
 	head := []byte("# " + tag + " v1 machine=" + machine + " ")
 	i := bytes.Index(content, head)
 	if i < 0 || (i > 0 && content[i-1] != '\n') {
@@ -246,7 +217,7 @@ func splitConfigWords(line string) []string {
 // returns its listening port or socket. Such a block is wy's own, never "adopted".
 func OwnedForward(home, machine string) (port int, socket string, ok bool) {
 	sshDir := filepath.Join(home, ".ssh")
-	b, err := readOptional(filepath.Join(sshDir, forwardConf(sshDir)))
+	b, err := readOptional(filepath.Join(sshDir, ForwardConf))
 	if err != nil {
 		return 0, "", false
 	}
@@ -330,7 +301,7 @@ func WriteForward(home, stateDir string, f Forward, command string, now time.Tim
 		return ForwardResult{}, err
 	}
 	dir := filepath.Join(home, ".ssh")
-	name := forwardConf(dir)
+	name := ForwardConf
 	conf, cfgPath := filepath.Join(dir, name), filepath.Join(dir, "config")
 	// The lock comes first: two adds at once must not both read the files and then each
 	// write its own block over the other's.
@@ -390,7 +361,7 @@ func WriteForward(home, stateDir string, f Forward, command string, now time.Tim
 // (and the Include line and watchyard.conf when no block is left), journaled in a new set.
 func RemoveForward(home, stateDir string, machine, setID, command string, now time.Time) (bool, error) {
 	dir := filepath.Join(home, ".ssh")
-	name := forwardConf(dir)
+	name := ForwardConf
 	conf, cfgPath := filepath.Join(dir, name), filepath.Join(dir, "config")
 	unlock, err := lockWait(stateDir)
 	if err != nil {

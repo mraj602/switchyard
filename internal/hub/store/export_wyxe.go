@@ -11,10 +11,10 @@ import (
 	"io"
 )
 
-// The SYXE container (machines.md 8.1 step 5): a passphrase-encrypted export, standard
+// The WYXE container (machines.md 8.1 step 5): a passphrase-encrypted export, standard
 // library only.
 //
-//	"SYXE" | 0x01 version | 0x01 KDF id | uint32 iterations | 16-byte salt | 8-byte nonce prefix
+//	"WYXE" | 0x01 version | 0x01 KDF id | uint32 iterations | 16-byte salt | 8-byte nonce prefix
 //	then chunks: uint32 length | AES-256-GCM ciphertext (plaintext up to 64 KiB, plus a 16-byte tag)
 //
 // Key: PBKDF2-HMAC-SHA256 (crypto/pbkdf2, standard library since Go 1.24) over the passphrase,
@@ -22,10 +22,10 @@ import (
 // project does not depend on, so PBKDF2 is the strongest
 // stock choice; the iteration count is in the header, so a later release can raise it.
 // Each chunk's nonce is the prefix plus its index (uint32, big endian) and its additional data
-// is "syxe1" plus the index plus a last-chunk flag, so chunks cannot be reordered, dropped or
+// is "wyxe1" plus the index plus a last-chunk flag, so chunks cannot be reordered, dropped or
 // duplicated and a truncated file fails for want of its last chunk.
 const (
-	wyxeMagic     = "SYXE" // frozen with "syxe1": an older hub must still import a newer export (rename.md 2.12)
+	wyxeMagic     = "WYXE"
 	wyxeVersion   = 1
 	wyxeKDFPBKDF2 = 1
 	wyxeIter      = 600_000
@@ -41,7 +41,7 @@ var ErrWrongPassphrase = errors.New("cannot decrypt the export: wrong passphrase
 
 func wyxeAAD(index uint32, last bool) []byte {
 	aad := make([]byte, 0, 10)
-	aad = append(aad, "syxe1"...) // frozen label (rename.md 2.12)
+	aad = append(aad, "wyxe1"...)
 	aad = binary.BigEndian.AppendUint32(aad, index)
 	if last {
 		return append(aad, 1)
@@ -143,7 +143,7 @@ func (e *wyxeWriter) Close() error {
 	return e.seal(true)
 }
 
-// wyxeReader decrypts a SYXE stream.
+// wyxeReader decrypts a WYXE stream.
 type wyxeReader struct {
 	r      io.Reader
 	aead   cipher.AEAD

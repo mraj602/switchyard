@@ -298,8 +298,7 @@ type = "terminal"
 commands = ["/home/u/.local/bin/claude-2"]
 ```
 
-- **Marker.** The first line marks the file as ours; `# sy-warp-tab v1`, written before the
-  rename, is recognised too (rename.md 2.12).
+- **Marker.** The first line marks the file as ours (`# wy-warp-tab v1`).
 - **Colour.** The seat colour (hub label/colour if paired, else `slots.colours`) maps to the
   nearest of `red, green, yellow, blue, magenta, cyan` by OKLab distance. `black` and `white`
   are never used. The seventh account repeats a colour.
@@ -316,13 +315,12 @@ commands = ["/home/u/.local/bin/claude-2"]
 ## T9. `wy ssh` and `term.host`
 
 - **Running ssh.** `wy ssh <args>` execs the `ssh` on `PATH` (or `WY_SSH_COMMAND`, as
-  `internal/sshx`), with `-o SendEnv=LC_SY_FOCUS -o SendEnv=LC_SY_HOST` put before the
-  person's args. Nothing else is added. The variable names keep the name from before the
-  rename: a server's `AcceptEnv LC_SY_*` would drop new ones (rename.md 2.12).
-- **Environment.** `LC_SY_FOCUS` = `LC_SY_FOCUS` if set (a nested hop), else
-  `WARP_FOCUS_URL`, kept only if it passes T7. `LC_SY_HOST` = this machine's id. With
+  `internal/sshx`), with `-o SendEnv=LC_WY_FOCUS -o SendEnv=LC_WY_HOST` put before the
+  person's args. Nothing else is added.
+- **Environment.** `LC_WY_FOCUS` = `LC_WY_FOCUS` if set (a nested hop), else
+  `WARP_FOCUS_URL`, kept only if it passes T7. `LC_WY_HOST` = this machine's id. With
   neither, it is plain `ssh`.
-- **Hook side.** `term.host` = `LC_SY_HOST` when it matches `^m_[0-9A-HJKMNP-TV-Z]{26}$` and
+- **Hook side.** `term.host` = `LC_WY_HOST` when it matches `^m_[0-9A-HJKMNP-TV-Z]{26}$` and
   differs from this machine's id. Otherwise it is absent. (record.md 3.3.)
 - **`wy ssh --print-config`** prints, but never writes, the `SendEnv` lines for people who
   prefer their own `ssh` alias. Writing `~/.ssh/config` for this is a non-goal.

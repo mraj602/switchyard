@@ -165,7 +165,7 @@ func TestHubKeyFile(t *testing.T) {
 	if _, err := a.SignLink(keys.DocInput(keys.TypeMatrix, []byte("{}"))); err == nil {
 		t.Fatal("SignLink signed a document input")
 	}
-	if _, err := a.SignLink([]byte("sy-link-v1\nx")); err != nil {
+	if _, err := a.SignLink([]byte("wy-link-v1\nx")); err != nil {
 		t.Fatal(err)
 	}
 }

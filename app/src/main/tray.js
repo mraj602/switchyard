@@ -55,9 +55,7 @@ export function create(deps) {
   function inkFolder() {
     if (platform === 'linux') {
       const env = deps.env ?? process.env;
-      // The variable's name from before a rename still works (docs/spec/rename.md 2.9).
-      const legacy = env.SWITCHYARD_TRAY_ICON; // rename:keep
-      const o = String(env.WATCHYARD_TRAY_ICON ?? legacy ?? '').trim().toLowerCase();
+      const o = String(env.WATCHYARD_TRAY_ICON ?? '').trim().toLowerCase();
       if (o === 'dark' || o === 'light') return o;
       return 'light';
     }

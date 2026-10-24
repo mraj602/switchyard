@@ -167,17 +167,3 @@ func TestBuildNeverLeaksTheDialAddressOrTopic(t *testing.T) {
 		t.Errorf("direct_push: %+v", p.DirectPush)
 	}
 }
-
-// Legacy compat: the version goes out as "wy" and, for a hub older than the rename (which
-// requires it), as "sy" too.
-func TestBuildWritesBothVersionKeys(t *testing.T) {
-	p, err := Build(Options{StateDir: t.TempDir(), Config: cfgWith("https://hub.example", config.ReachDirect, "")})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var m map[string]any
-	b, _ := json.Marshal(p)
-	if err := json.Unmarshal(b, &m); err != nil || m["wy"] == nil || m["wy"] != m["sy"] {
-		t.Fatalf("payload: %s", b)
-	}
-}

@@ -141,7 +141,7 @@ class LinkClient(
     opened = false
     nonce = null
     setState("connecting", "ws", store.lastError)
-    val req = Request.Builder().url(url).header("Sec-WebSocket-Protocol", SUBPROTOCOLS).build()
+    val req = Request.Builder().url(url).header("Sec-WebSocket-Protocol", SUBPROTOCOL).build()
     ws = wsHttp().newWebSocket(req, object : WebSocketListener() {
       override fun onOpen(webSocket: WebSocket, response: Response) = post(my) { opened = true }
       override fun onMessage(webSocket: WebSocket, text: String) = post(my) { onMessage(text) }
@@ -413,8 +413,6 @@ class LinkClient(
     /** The statuses [stopAll] leaves behind: only a start or the unpair's reset clears them. */
     val TERMINAL = setOf("revoked", "upgrade", "error")
     const val SUBPROTOCOL = "wy-link.1"
-    /** Legacy compat: a hub from before the rename accepts only sy-link.1 (link.md 2), so both are offered. */
-    const val SUBPROTOCOLS = "$SUBPROTOCOL, sy-link.1" // rename:keep
     const val ACK_MS = 500L
     const val ACK_EVERY = 16
     const val POLL_WS_RETRY_MS = 30 * 60_000L

@@ -161,7 +161,7 @@ type ManifestFile struct {
 type Manifest struct {
 	Format     int            `json:"format"`
 	Kind       string         `json:"kind"`
-	Wy         string         `json:"wy"` // "sy" in an export made before the rename
+	Wy         string         `json:"wy"`
 	Schema     int            `json:"schema"`
 	ExportedAt string         `json:"exported_at"`
 	Frozen     bool           `json:"frozen"`
@@ -169,24 +169,6 @@ type Manifest struct {
 	PublicURL  string         `json:"public_url"`
 	Counts     ExportCounts   `json:"counts"`
 	Files      []ManifestFile `json:"files"`
-}
-
-// UnmarshalJSON reads the version from "wy", or from "sy", which an export made before the
-// rename holds (legacy compat, rename.md 2.6).
-func (m *Manifest) UnmarshalJSON(b []byte) error {
-	type plain Manifest
-	var v struct {
-		plain
-		Sy string `json:"sy"` // rename:keep: legacy compat
-	}
-	if err := json.Unmarshal(b, &v); err != nil {
-		return err
-	}
-	*m = Manifest(v.plain)
-	if m.Wy == "" {
-		m.Wy = v.Sy
-	}
-	return nil
 }
 
 // ExportOptions configures Export.
@@ -519,7 +501,7 @@ func sweepStale(dir, prefix string) {
 // ErrNeedPassphrase means the file is encrypted and no passphrase was given.
 var ErrNeedPassphrase = errors.New("the export is encrypted: a passphrase is needed")
 
-// IsEncryptedExport reports whether the file starts with the SYXE magic.
+// IsEncryptedExport reports whether the file starts with the WYXE magic.
 func IsEncryptedExport(path string) (bool, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -648,8 +630,7 @@ func unpack(path, passphrase, dir string) (Manifest, error) {
 	if !haveManifest {
 		return m, errors.New("not a hub export: no manifest.json")
 	}
-	// An export made before a rename carries the old name (rename.md 2.6).
-	if m.Format != ManifestFormat || (m.Kind != ManifestKind && m.Kind != brand.Legacy(ManifestKind)) || m.Kind == "" {
+	if m.Format != ManifestFormat || m.Kind != ManifestKind {
 		return m, fmt.Errorf("not a hub export this wy reads (format %d, kind %q)", m.Format, m.Kind)
 	}
 	listed := map[string]bool{}

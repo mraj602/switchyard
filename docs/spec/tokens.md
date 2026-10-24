@@ -21,10 +21,6 @@ wy_<k>_<43 base62 characters>
 Example shape: `wy_m_4fQx0Lr2…` (48 characters in total). Base62 has no `-` or `_`, so a
 double click selects the whole token and the kind letter can always be parsed.
 
-Tokens made before the rename start `sy_` (`sy_o_` for an owner session). They keep working
-unchanged: the hub stores a hash of the whole token, and every check of the shape accepts
-both prefixes (rename.md 2.12). New tokens are always `wy_`.
-
 The kind letter is a hint for people and for `wy doctor`. The hub never trusts it: scopes
 come from the `device` row.
 

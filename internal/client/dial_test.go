@@ -71,7 +71,7 @@ func TestDialUnixSocketAndStaleRemoval(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("unix sockets: forward sockets are a Unix-remote feature")
 	}
-	dir, err := os.MkdirTemp("", "sydial") // short path: sun_path is ~104 bytes
+	dir, err := os.MkdirTemp("", "wydial") // short path: sun_path is ~104 bytes
 	if err != nil {
 		t.Fatal(err)
 	}

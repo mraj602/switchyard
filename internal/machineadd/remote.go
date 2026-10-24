@@ -82,14 +82,9 @@ func (r remote) script(ctx context.Context, s string, stdin io.Reader, args ...s
 // update: <remote state>/update), $2 the file name, $3 a unique suffix. The first writes
 // stdin to a temporary file and prints its SHA-256 with whatever tool the remote has; the
 // second moves it into place (atomic within the folder: running hooks keep the old inode).
-//
-// The update folder is in the remote's state folder: the current name's, or the one from
-// before a rename while only that exists (paths.md, docs/spec/rename.md 2.1), so the upload
-// never creates the new folder that would hide the remote's existing state.
 func destDir() string {
 	return `if [ "$1" = update ]; then case "$XDG_STATE_HOME" in /*) s=$XDG_STATE_HOME;; *) s=$HOME/.local/state;; esac; ` +
 		`d=$s/` + brand.Slug + `/update; ` +
-		`if [ -d "$s/` + brand.Slug + `" ]; then true; elif [ -d "$s/` + brand.OldSlug() + `" ]; then d=$s/` + brand.OldSlug() + `/update; fi; ` +
 		`else d=.local/bin; fi; t=$d/.$2.$3.tmp`
 }
 

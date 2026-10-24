@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 )
@@ -308,17 +307,5 @@ func TestUnimplementedStubs(t *testing.T) {
 	}
 	if _, err := (UnimplementedConnector{}).Connect(t.Context(), ConnectRequest{}); err != ErrNotImplemented {
 		t.Fatal(err)
-	}
-}
-
-// Legacy compat: a manifest written before the rename holds sy_version; it is read as
-// WyVersion. New manifests write wy_version.
-func TestManifestLegacyVersionKey(t *testing.T) {
-	var m Manifest
-	if err := json.Unmarshal([]byte(`{"v":1,"id":"x","sy_version":"0.9.0","entries":[]}`), &m); err != nil || m.WyVersion != "0.9.0" {
-		t.Fatalf("legacy manifest: %+v %v", m, err)
-	}
-	if b, _ := json.Marshal(Manifest{V: 1, WyVersion: "1.0.0"}); !strings.Contains(string(b), `"wy_version":"1.0.0"`) || strings.Contains(string(b), "sy_version") {
-		t.Fatalf("written: %s", b)
 	}
 }

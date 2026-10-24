@@ -156,7 +156,7 @@ Read-only. Collects a `State` (the planner's whole input):
    `statusLine`.
 5. **Launchers:**
    - executables named `claude-*` on `PATH` and in `~/.local/bin`; a file whose second-line
-     marker is `# wy-launcher v1` (or `# sy-launcher v1`, written before the rename) is ours;
+     marker is `# wy-launcher v1` is ours;
    - shell functions and aliases: one probe `"$SHELL" -ic 'for n in claude claude-2 ...; do
      type "$n"; done'` with stdin closed, `TERM=dumb` and a 3 s timeout, then a static scan
      of `~/.bashrc`, `~/.bash_profile`, `~/.profile`, `~/.zshrc`, `~/.config/fish/` for

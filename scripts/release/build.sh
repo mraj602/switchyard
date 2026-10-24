@@ -36,11 +36,6 @@ sha256_of() {
 	fi
 }
 
-# The command's name before a rename (docs/spec/rename.md 2.13). While it differs, every
-# archive is also published under that name with the binary named so, for the updaters of
-# releases from before the rename, which look for <old>_<version>_<os>_<arch> holding <old>.
-LEGACY_CLI=sy # rename:keep
-
 # pack <archive> <stage> <files...>: tar.gz or zip of files in stage.
 pack() {
 	name=$1 stage=$2
@@ -85,16 +80,6 @@ for t in $targets; do
 		fi
 	done
 	pack "wy_${ver}_$t.$ext" "$stage" "$@"
-	if [ "$LEGACY_CLI" != wy ]; then
-		lstage=$work/legacy-$t
-		mkdir -p "$lstage"
-		lbin=$LEGACY_CLI
-		if [ "$os" = windows ]; then lbin=$LEGACY_CLI.exe; fi
-		cp "$stage/$bin" "$lstage/$lbin"
-		shift
-		for f in "$@"; do cp "$stage/$f" "$lstage/$f"; done
-		pack "${LEGACY_CLI}_${ver}_$t.$ext" "$lstage" "$lbin" "$@"
-	fi
 done
 
 : > "$out/SHA256SUMS"

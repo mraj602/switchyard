@@ -189,7 +189,7 @@ func seedAt(t *testing.T, v int, path string, seed ...string) {
 		if _, err := db.Exec(m.SQL); err != nil {
 			t.Fatalf("%s: %v", m.Name, err)
 		}
-		if _, err := db.Exec(`INSERT OR REPLACE INTO schema_version (version, applied_at, sy_version) VALUES (?, 0, 'test')`, m.Version); err != nil {
+		if _, err := db.Exec(`INSERT OR REPLACE INTO schema_version (version, applied_at, wy_version) VALUES (?, 0, 'test')`, m.Version); err != nil {
 			t.Fatal(err)
 		}
 	}

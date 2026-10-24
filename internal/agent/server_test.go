@@ -44,7 +44,7 @@ type running struct {
 
 func start(t *testing.T, mod func(*Config)) *running {
 	t.Helper()
-	base, err := os.MkdirTemp("", "sya")
+	base, err := os.MkdirTemp("", "wya")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -327,7 +327,7 @@ func TestHookDoesNotImportAgent(t *testing.T) {
 
 // A socket another user listens on (a shared /tmp fallback taken first) gets nothing.
 func TestCallRefusesAnotherUsersSocket(t *testing.T) {
-	base, err := os.MkdirTemp("", "sya")
+	base, err := os.MkdirTemp("", "wya")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -376,7 +376,7 @@ func TestAcceptErrorEndsRun(t *testing.T) {
 		ln, err := listen(p)
 		return brokenListener{ln}, err
 	}
-	base, err := os.MkdirTemp("", "sya")
+	base, err := os.MkdirTemp("", "wya")
 	if err != nil {
 		t.Fatal(err)
 	}

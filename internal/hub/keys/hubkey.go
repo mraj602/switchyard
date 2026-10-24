@@ -146,12 +146,11 @@ func writeExclusive(path string, b []byte) error {
 func (k *HubKey) Sign(d *keys.Doc) error { return d.Sign(keys.ByHub, k.priv) }
 
 // SignLink signs a link input (the challenge, welcome and frames, link.md 3.1, 4.3), which
-// the link package builds. Anything not starting "sy-link-v1" is refused, so this can never
-// make a document signature (keys.md 4.1's domain separation). The label is frozen
-// (rename.md 2.12).
+// the link package builds. Anything not starting "wy-link-v1" is refused, so this can never
+// make a document signature (keys.md 4.1's domain separation).
 func (k *HubKey) SignLink(input []byte) ([]byte, error) {
-	if !bytes.HasPrefix(input, []byte("sy-link-v1")) {
-		return nil, errors.New("hub key: SignLink only signs sy-link-v1 inputs")
+	if !bytes.HasPrefix(input, []byte("wy-link-v1")) {
+		return nil, errors.New("hub key: SignLink only signs wy-link-v1 inputs")
 	}
 	return ed25519.Sign(k.priv, input), nil
 }

@@ -14,10 +14,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
-	"github.com/mraj602/watchyard/internal/brand"
 	"github.com/mraj602/watchyard/internal/claudecli"
 	"github.com/mraj602/watchyard/internal/doctor"
 	"github.com/mraj602/watchyard/internal/service"
@@ -33,7 +31,6 @@ var postUpdateEnv = func() (*setupEnv, error) { return newSetupEnv(io.Discard, i
 
 func init() {
 	for _, s := range []update.PostStep{
-		{Name: "command", Run: postUpdateCommand},
 		{Name: "plugin", Run: postUpdatePlugin},
 		{Name: "timer", Run: postUpdateTimer},
 		{Name: "hub service", Run: postUpdateService},
@@ -43,21 +40,6 @@ func init() {
 	} {
 		update.RegisterPostUpdate(s)
 	}
-}
-
-// postUpdateCommand gives the binary the command's current name after a rename and keeps the
-// old name as a link to it (rename.md 2.13). It runs first, so the steps after it write the
-// current path.
-func postUpdateCommand(_ context.Context, _ string) (string, error) {
-	exe, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-	did, err := update.MoveLegacyBinary(exe, runtime.GOOS)
-	if did == "" && err == nil {
-		return "nothing to do", nil
-	}
-	return did, err
 }
 
 // postUpdatePlugin rewrites <state>/plugin/marketplace for this version, then per plugin
@@ -84,63 +66,19 @@ func postUpdatePlugin(ctx context.Context, _ string) (string, error) {
 		mkt = filepath.Join(e.dirs.State.Path, "plugin", "marketplace")
 	}
 	inst := pluginmkt.New(e.runner)
-	// After a rename, the plugin (and pane) of the old name are uninstalled while their
-	// folders are still in the marketplace, and the current ones installed after the rewrite
-	// (rename.md 2.4).
-	var failed []string
-	moved := map[string][]string{}
-	for _, root := range led.Plugin.Roots {
-		ids, err := inst.RemoveLegacy(ctx, pluginRootOwner(e.home, root))
-		if err != nil {
-			failed = append(failed, root+": "+err.Error())
-		}
-		moved[root] = ids
-	}
-	if len(failed) > 0 {
-		// The marketplace is not rewritten while a root may still hold a plugin of the old name
-		// that points into it; a root already cleared gets the current plugin on the next run
-		// (MissingCurrent below).
-		return "", fmt.Errorf("%s (the marketplace was left as it was; run `%s update --post-update %s` again)",
-			strings.Join(failed, "; "), brand.CLI, version.Version)
-	}
 	if err := inst.WriteMarketplace(mkt, e.wy, version.Version); err != nil {
 		return "", fmt.Errorf("rewrite %s: %w", mkt, err)
 	}
-	nMoved := 0
+	var failed []string
 	for _, root := range led.Plugin.Roots {
-		owner := pluginRootOwner(e.home, root)
-		ids := moved[root]
-		var err error
-		if len(ids) == 0 {
-			// An earlier run removed the old plugin here but did not install the current one.
-			ids, err = inst.MissingCurrent(ctx, owner)
-		}
-		switch {
-		case err != nil:
-		case len(ids) > 0:
-			err = inst.InstallCurrent(ctx, owner, mkt, ids)
-			nMoved++
-		default:
-			err = inst.Update(ctx, owner)
-		}
-		if err != nil {
+		if err := inst.Update(ctx, pluginRootOwner(e.home, root)); err != nil {
 			failed = append(failed, root+": "+err.Error())
 		}
 	}
 	if len(failed) > 0 {
 		return "", errors.New(strings.Join(failed, "; "))
 	}
-	if nMoved > 0 && led.Plugin.ID != pluginmkt.PluginID {
-		led.Plugin.ID = pluginmkt.PluginID
-		if err := ledger.Write(e.dirs.State.Path, led); err != nil {
-			return "", err
-		}
-	}
-	s := fmt.Sprintf("%s %s in %d plugin root(s)", pluginmkt.PluginName, version.Version, len(led.Plugin.Roots))
-	if nMoved > 0 {
-		s += fmt.Sprintf(", moved from %s in %d", brand.LegacyPluginIDs()[0], nMoved)
-	}
-	return s, nil
+	return fmt.Sprintf("%s %s in %d plugin root(s)", pluginmkt.PluginName, version.Version, len(led.Plugin.Roots)), nil
 }
 
 // pluginRootOwner is the folder whose own plugins/ is root (setup.md 5.2 step 2); for
@@ -159,15 +97,10 @@ func postUpdateTimer(_ context.Context, _ string) (string, error) {
 	}
 	te := e.timerEnv()
 	te.Out = io.Discard
-	te.KeepLegacyState = true // a timer of the old name that was off stays off (rename.md 2.3)
 	// Keep the folder overrides the timer was installed with: this process (often a
-	// non-interactive ssh `wy update`) may not carry them. A timer from before a rename is
-	// replaced by Install with the same overrides (rename.md 2.3).
-	legacy := timer.LegacyUnit(te)
+	// non-interactive ssh `wy update`) may not carry them.
 	if inst := installedTimerEnv(e, te); inst != nil {
 		te.Getenv = inst
-	} else if g := unitEnv(e.goos, legacy); g != nil {
-		te.Getenv = g
 	}
 	want := map[string][]byte{}
 	switch e.goos {
@@ -177,19 +110,6 @@ func postUpdateTimer(_ context.Context, _ string) (string, error) {
 		want[filepath.Join(dir, timer.SystemdName+".timer")] = []byte(timer.SystemdTimer())
 	case "darwin":
 		want[timer.LaunchAgentPath(te)] = []byte(timer.LaunchdPlist(te))
-	case "windows":
-		if legacy == "" {
-			return "unchanged (windows)", nil
-		}
-		// The task of the old name keeps running the old command (a copy of wy, rename.md
-		// 2.13) until it is replaced by hand: wy never creates or deletes tasks itself, so
-		// the commands go in the summary instead of being dropped.
-		var out bytes.Buffer
-		te.Out = &out
-		if _, err := timer.Install(te); err != nil {
-			return "", err
-		}
-		return "task file moved to the current name; finish by hand: " + strings.Join(strings.Fields(out.String()), " "), nil
 	default:
 		return "unchanged (" + e.goos + ")", nil
 	}
@@ -205,17 +125,13 @@ func postUpdateTimer(_ context.Context, _ string) (string, error) {
 		}
 	}
 	switch {
-	case !installed && legacy == "":
+	case !installed:
 		return "no timer here", nil
-	case same && legacy == "":
+	case same:
 		return "unchanged", nil
 	}
-	res, err := timer.Install(te)
-	if err != nil {
+	if _, err := timer.Install(te); err != nil {
 		return "", err
-	}
-	if len(res.Removed) > 0 {
-		return "moved from " + filepath.Base(legacy) + " to the current name", nil
 	}
 	return "rewritten", nil
 }
@@ -236,19 +152,6 @@ func installedTimerEnv(e *setupEnv, te timer.Env) func(string) string {
 	return readUnitEnv(p, parse)
 }
 
-// unitEnv is installedTimerEnv for a given unit or plist (the legacy timer's); nil when there
-// is none or it cannot be read (Windows task XML holds no environment).
-func unitEnv(goos, p string) func(string) string {
-	if p == "" || goos == "windows" {
-		return nil
-	}
-	parse := service.SystemdEnv
-	if goos == "darwin" {
-		parse = service.LaunchdEnv
-	}
-	return readUnitEnv(p, parse)
-}
-
 func readUnitEnv(p string, parse func(string) [][2]string) func(string) string {
 	b, err := os.ReadFile(p)
 	if err != nil {
@@ -258,19 +161,7 @@ func readUnitEnv(p string, parse func(string) [][2]string) func(string) string {
 	for _, kv := range parse(string(b)) {
 		m[kv[0]] = kv[1]
 	}
-	return func(k string) string { return legacyEnvLookup(m, k) }
-}
-
-// legacyEnvLookup reads k from a unit's environment, or the same variable under the command's
-// name before a rename (rename.md 2.13).
-func legacyEnvLookup(m map[string]string, k string) string {
-	if v, ok := m[k]; ok {
-		return v
-	}
-	if op := brand.OldEnvPrefix(); op != "" && strings.HasPrefix(k, brand.EnvPrefix) {
-		return m[op+strings.TrimPrefix(k, brand.EnvPrefix)]
-	}
-	return ""
+	return func(k string) string { return m[k] }
 }
 
 // postUpdateService rewrites (if needed) and restarts the hub service when it is installed
@@ -282,8 +173,7 @@ func postUpdateService(ctx context.Context, _ string) (string, error) {
 	}
 	name := service.DefaultName
 	if led, err := ledger.Read(e.dirs.State.Path); err == nil && led.HubService != nil && led.HubService.Name != "" {
-		// A ledger from before a rename names the old unit; Refresh moves it (rename.md 2.2).
-		name = brand.Current(led.HubService.Name)
+		name = led.HubService.Name
 	}
 	se := e.serviceEnv()
 	se.Out = io.Discard
@@ -294,26 +184,10 @@ func postUpdateService(ctx context.Context, _ string) (string, error) {
 	switch {
 	case !res.Installed:
 		return "no hub service here", nil
-	case res.Migrated != "":
-		return "moved from " + res.Migrated + " to " + service.UnitName(e.goos, name) + movedState(res), nil
 	case res.Rewritten:
 		return "unit rewritten, restarted", nil
 	}
 	return "restarted", nil
-}
-
-// movedState says what a unit moved from the old name was left as: it keeps the old one's
-// state, so a disabled and stopped hub stays that way (rename.md 2.2).
-func movedState(res service.RefreshResult) string {
-	switch {
-	case res.Enabled && res.Started:
-		return ", restarted"
-	case res.Enabled:
-		return ", enabled, not started (the old one was stopped)"
-	case res.Started:
-		return ", started, not enabled (the old one was disabled)"
-	}
-	return ", left disabled and stopped (as the old one was)"
 }
 
 // postUpdateAgent rewrites (if needed) and restarts the peers agent when its unit exists, so it
@@ -331,9 +205,6 @@ func postUpdateAgent(ctx context.Context, _ string) (string, error) {
 	}
 	if !res.Installed {
 		return "no agent service here", nil
-	}
-	if res.Migrated != "" {
-		return "moved from " + res.Migrated + movedState(res), nil
 	}
 	return "restarted", nil
 }
@@ -356,13 +227,10 @@ func postUpdateDoctor(ctx context.Context, _ string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	rep := doctor.Run(ctx, doctor.Options{Home: e.home, Dirs: e.dirs, Getenv: e.getenv, Environ: os.Environ(), SystemUnitDir: doctor.SystemUnitDir()})
+	rep := doctor.Run(ctx, doctor.Options{Home: e.home, Dirs: e.dirs, Getenv: e.getenv, Environ: os.Environ()})
 	s := fmt.Sprintf("wy doctor: %d ok, %d warn, %d fail", rep.OK, rep.Warn, rep.Fail)
 	if rep.Warn > 0 || rep.Fail > 0 {
 		s += " (run wy doctor)"
-	}
-	if u := doctor.LegacySystemUnits(doctor.SystemUnitDir()); len(u) > 0 {
-		s += "; system units from before the rename, not moved: " + strings.Join(u, ", ") + " (RUNBOOK step 6)"
 	}
 	return s, nil
 }

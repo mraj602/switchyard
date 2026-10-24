@@ -505,27 +505,3 @@ func TestPostUpdateSteps(t *testing.T) {
 		t.Fatalf("%+v", rs)
 	}
 }
-
-// Legacy compat (rename.md 2.13): an `sy update` from before the rename kept sy.old next to
-// the binary; `wy update --rollback` swaps that in when there is no wy.old.
-func TestRollbackFindsLegacyOld(t *testing.T) {
-	dir := t.TempDir()
-	exe := filepath.Join(dir, "wy")
-	for _, n := range []string{"wy", "sy.old"} { // rename:keep
-		if err := os.WriteFile(filepath.Join(dir, n), []byte(n), 0o755); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if got := rollbackSource(exe); got != filepath.Join(dir, "sy.old") { // rename:keep
-		t.Fatalf("got %s", got)
-	}
-	if got := rollbackSource(filepath.Join(dir, "other")); got != filepath.Join(dir, "other.old") {
-		t.Fatalf("other name: %s", got)
-	}
-	if err := os.WriteFile(exe+".old", []byte("x"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if got := rollbackSource(exe); got != filepath.Join(dir, "wy.old") {
-		t.Fatalf("wy.old wins: %s", got)
-	}
-}

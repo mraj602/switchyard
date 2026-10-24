@@ -10,8 +10,6 @@ import { hubUrl } from './client.js';
 
 const LOGIN_ROUTE_RE = /^#\/(login|pair)(?:[/?]|$)/;
 const COOKIE = 'wy_session';
-// Legacy compat: the board's cookie before the rename (an owner session may still be in it); the hub reads both.
-const LEGACY_COOKIE = 'sy_session'; // rename:keep
 const HUB_VIEW_ID = 'hub';
 const LOGIN_WINDOW_MS = 30_000;
 const LOGIN_MAX_IN_WINDOW = 2;
@@ -124,11 +122,8 @@ export function createHubView(deps) {
     const base = deps.base();
     if (!base) return false;
     try {
-      for (const name of [COOKIE, LEGACY_COOKIE]) {
-        const list = await session().cookies.get({ url: `${base}/`, name });
-        if (list.some((c) => !c.expirationDate || c.expirationDate * 1000 > now())) return true;
-      }
-      return false;
+      const list = await session().cookies.get({ url: `${base}/`, name: COOKIE });
+      return list.some((c) => !c.expirationDate || c.expirationDate * 1000 > now());
     } catch {
       return false;
     }

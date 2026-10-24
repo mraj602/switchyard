@@ -32,7 +32,7 @@ func TestDrainHappyPath(t *testing.T) {
 	var reach, ver string
 	var backlog int64
 	var lastSeen int64
-	if err := e.st.R().QueryRow(`SELECT coalesce(reach,''), coalesce(sy_version,''), coalesce(backlog,-1), coalesce(last_seen,0) FROM machine WHERE id = ?`, machineID).
+	if err := e.st.R().QueryRow(`SELECT coalesce(reach,''), coalesce(wy_version,''), coalesce(backlog,-1), coalesce(last_seen,0) FROM machine WHERE id = ?`, machineID).
 		Scan(&reach, &ver, &backlog, &lastSeen); err != nil {
 		t.Fatal(err)
 	}

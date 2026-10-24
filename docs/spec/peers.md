@@ -676,7 +676,7 @@ What the design relies on, from Claude Code's documentation and the installed pr
 ### 8.2 Envelope (remote path)
 
 A signed document (keys.md 4.1) of type `peer_envelope`, signed by the **sending machine's
-device key** (`by: "device"`, Ed25519 over `"sy-doc-v1\npeer_envelope\n" ‖ body`):
+device key** (`by: "device"`, Ed25519 over `"wy-doc-v1\npeer_envelope\n" ‖ body`):
 
 ```json
 {
@@ -697,7 +697,7 @@ device key** (`by: "device"`, Ed25519 over `"sy-doc-v1\npeer_envelope\n" ‖ bod
 ```
 
 - `sealed` = HPKE (link.md 4.2's machine suite) to the **receiving machine's** box key from its
-  certificate, `info = "sy-peer-v1\n" ‖ msg ‖ "\n" ‖ from.device ‖ "\n" ‖ to.device`;
+  certificate, `info = "wy-peer-v1\n" ‖ msg ‖ "\n" ‖ from.device ‖ "\n" ‖ to.device`;
   plaintext `{"text": "…"}`. Only the receiving agent can open it: the hub, its database and
   its queue hold ciphertext. The sender takes that certificate from the hub's `peers` reply
   (`certs`, link.md 6.3) and seals only after checking it like 8.4 step 1 does (hub and owner

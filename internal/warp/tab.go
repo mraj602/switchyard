@@ -26,27 +26,13 @@ const (
 	Suffix = ".toml"
 )
 
-// legacyPrefix is the prefix tab configs had before a rename ("" when there was none):
-// those files are still read, opened and, when unchanged, moved away (docs/spec/rename.md).
-func legacyPrefix() string {
-	if !brand.Renamed() {
+// stemLabel returns the label of a tab config stem (file name without .toml), or "".
+func stemLabel(stem string) string {
+	l, ok := strings.CutPrefix(stem, Prefix)
+	if !ok || !labelRE.MatchString(l) {
 		return ""
 	}
-	return brand.OldSlug() + "-"
-}
-
-// stemLabel returns the label of a tab config stem (file name without .toml), with either
-// prefix, and whether it carries the legacy one.
-func stemLabel(stem string) (label string, legacy bool) {
-	l, ok := strings.CutPrefix(stem, Prefix)
-	if lp := legacyPrefix(); !ok && lp != "" {
-		l, ok = strings.CutPrefix(stem, lp)
-		legacy = ok
-	}
-	if !ok || !labelRE.MatchString(l) {
-		return "", false
-	}
-	return l, legacy
+	return l
 }
 
 var labelRE = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,23}$`)
@@ -71,8 +57,7 @@ func Stem(label string) string { return Prefix + label }
 
 // LabelOf returns the label of a tab config file name or path ("" if it is not one).
 func LabelOf(path string) string {
-	l, _ := stemLabel(stemOf(path))
-	return l
+	return stemLabel(stemOf(path))
 }
 
 // stemOf is the file name of path without .toml ("" if it does not end in .toml).
@@ -84,14 +69,7 @@ func stemOf(path string) string {
 	return strings.TrimSuffix(name, Suffix)
 }
 
-// IsLegacyTab reports whether path is a tab config named with the prefix from before a
-// rename.
-func IsLegacyTab(path string) bool {
-	l, legacy := stemLabel(stemOf(path))
-	return l != "" && legacy
-}
-
-// FileURI is the URI that opens the tab config file at path, whichever prefix it has.
+// FileURI is the URI that opens the tab config file at path.
 func FileURI(channel, path string) string {
 	return Scheme(channel) + "://tab_config/" + stemOf(path)
 }
@@ -111,16 +89,14 @@ func TabURI(channel, label string) string {
 
 var tabURIRE = regexp.MustCompile(`^(?:warp|warppreview)://tab_config/([a-z0-9-]+)$`)
 
-// ValidTabURI reports whether u is exactly a TabURI, or one for a tab config with the
-// legacy prefix (the second fixed URI pattern T8 lets the opener open, after the focus
-// allow-list of T7).
+// ValidTabURI reports whether u is exactly a TabURI (the second fixed URI pattern T8 lets
+// the opener open, after the focus allow-list of T7).
 func ValidTabURI(u string) bool {
 	m := tabURIRE.FindStringSubmatch(u)
 	if len(u) > 128 || m == nil {
 		return false
 	}
-	l, _ := stemLabel(m[1])
-	return l != ""
+	return stemLabel(m[1]) != ""
 }
 
 // Spec describes one tab config.
@@ -237,9 +213,8 @@ type Info struct {
 	Label string
 }
 
-// markerRE also matches the sy-warp-tab v1 marker of a tab config written before the rename
-// (legacy compat): it is still recognised as wy's, never written.
-var markerRE = regexp.MustCompile(`^# [ws]y-warp-tab v1 slot=(.*) label=([a-z0-9][a-z0-9-]{0,23}) \(`)
+// markerRE matches the marker line wy writes.
+var markerRE = regexp.MustCompile(`^# wy-warp-tab v1 slot=(.*) label=([a-z0-9][a-z0-9-]{0,23}) \(`)
 
 // ParseMarker reads the marker of a tab config (first line only).
 func ParseMarker(content []byte) (Info, bool) {

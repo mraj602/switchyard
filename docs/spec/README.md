@@ -25,7 +25,6 @@ goes here first, before any code..
 | [keys.md](keys.md) | Owner key (passphrase-sealed, recovery code), hub signing key, device keys and certificates, signed documents, revocations, QR seal, the signing guard, schema v7. |
 | [link.md](link.md) | `/v1/link`: challenge login, frames, sealing and signatures, the per-device durable queue, long-poll fallback, close codes. |
 | [peers.md](peers.md) | `wy agent`, the session directory, `wy peers`, inbox delivery, the account matrix, threads and the loop guard, limits, audit, kill switch, the skill, the lab experiments, schema v9. |
-| [rename.md](rename.md) | Changing the project's name: `internal/brand`, what existing installs keep and how each piece moves (folders, services, timer, plugin, SSH forward file, export, attestation, Warp tabs, desktop app, Docker volume, the command), the Android id, the tool. |
 
 Checks: `make spec-check` loads `schema.sql` into a temporary SQLite database and validates
 `api.yaml` as OpenAPI 3.1. CI runs the same checks.

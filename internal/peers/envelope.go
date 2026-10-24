@@ -60,11 +60,11 @@ type Envelope struct {
 	Sealed    string  `json:"sealed"`
 }
 
-// PeerSealInfo is HPKE's info for a peer body: "sy-peer-v1\n" ‖ msg ‖ "\n" ‖ from.device ‖
-// "\n" ‖ to.device (peers.md 8.2). The label is frozen: machines from before the rename
-// open these bodies.
+// PeerSealInfo is HPKE's info for a peer body: "wy-peer-v1\n" ‖ msg ‖ "\n" ‖ from.device ‖
+// "\n" ‖ to.device (peers.md 8.2). The label must not change: machines that are
+// not updated yet open these bodies.
 func PeerSealInfo(msg, fromDevice, toDevice string) []byte {
-	return []byte("sy-peer-v1\n" + msg + "\n" + fromDevice + "\n" + toDevice)
+	return []byte("wy-peer-v1\n" + msg + "\n" + fromDevice + "\n" + toDevice)
 }
 
 type sealedText struct {

@@ -17,7 +17,7 @@ import (
 func sockPath(t *testing.T, name string) string {
 	t.Helper()
 	// Unix socket paths are short (108 bytes): use a short temp dir, never the real cc-socks.
-	d, err := os.MkdirTemp("", "syp")
+	d, err := os.MkdirTemp("", "wyp")
 	if err != nil {
 		t.Fatal(err)
 	}

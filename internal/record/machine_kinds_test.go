@@ -57,26 +57,6 @@ func TestMachineInfoFixtureRoundTrip(t *testing.T) {
 	roundTrip(t, r)
 }
 
-// Legacy compat: a machine older than the rename sends the version only as "sy"; a new one
-// sends "wy" and, for a hub older than the rename, "sy" too.
-func TestMachineInfoLegacyVersionKey(t *testing.T) {
-	var p MachineInfoPayload
-	if err := json.Unmarshal([]byte(`{"os":"linux","arch":"amd64","sy":"0.9.0","record_v":1,"reach":"direct"}`), &p); err != nil {
-		t.Fatal(err)
-	}
-	if p.Wy != "0.9.0" || p.Validate() != nil || p.Extra["sy"] != nil {
-		t.Fatalf("legacy payload: %+v %v", p, p.Validate())
-	}
-	if err := json.Unmarshal([]byte(`{"os":"linux","arch":"amd64","wy":"1.0.0","record_v":1,"reach":"direct"}`), &p); err != nil || p.Wy != "1.0.0" || p.Validate() != nil {
-		t.Fatalf("new payload: %+v %v", p, err)
-	}
-	w := validInfo()
-	w.LegacySy = w.Wy
-	if b, _ := json.Marshal(w); !strings.Contains(string(b), `"wy":"0.5.0","sy":"0.5.0"`) {
-		t.Fatalf("written: %s", b)
-	}
-}
-
 func TestDirectPushFixtureRoundTrip(t *testing.T) {
 	r, in := fixtureRecord(t, "direct_push.json")
 	var p DirectPushPayload

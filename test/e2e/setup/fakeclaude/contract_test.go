@@ -223,7 +223,7 @@ func snapshot(t *testing.T, home string) map[string]string {
 			return nil
 		}
 		rel = filepath.ToSlash(rel)
-		if strings.HasPrefix(rel, "mkt") || strings.HasPrefix(rel, "sybin") {
+		if strings.HasPrefix(rel, "mkt") || strings.HasPrefix(rel, "wybin") {
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
@@ -285,7 +285,7 @@ func runScript(t *testing.T, bin string) []step {
 	}
 	// The marketplace is the one wy writes, so the contract covers what wy really installs.
 	mkt := r.p("mkt")
-	if err := pluginmkt.New(nil).WriteMarketplace(mkt, r.p("sybin/wy"), "0.0.1"); err != nil {
+	if err := pluginmkt.New(nil).WriteMarketplace(mkt, r.p("wybin/wy"), "0.0.1"); err != nil {
 		t.Fatal(err)
 	}
 	const id = "watchyard@wy-local"

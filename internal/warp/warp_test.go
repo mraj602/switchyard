@@ -206,18 +206,6 @@ func TestCheckAndMarker(t *testing.T) {
 	}
 }
 
-// Legacy compat: a tab config written before the rename starts with sy-warp-tab v1 and is
-// still wy's.
-func TestParseLegacyMarker(t *testing.T) {
-	info, ok := ParseMarker([]byte("# sy-warp-tab v1 slot=~/.claude-2 label=work (written by sy term warp on; sy term warp off removes it)\nname = \"x\"\n"))
-	if !ok || info.Slot != "~/.claude-2" || info.Label != "work" {
-		t.Errorf("legacy marker: %+v %v", info, ok)
-	}
-	if _, ok := ParseMarker([]byte("# xy-warp-tab v1 slot=~ label=x (\n")); ok {
-		t.Error("another prefix accepted")
-	}
-}
-
 func TestNamesAndURIs(t *testing.T) {
 	if FileName("work") != "watchyard-work.toml" || Stem("work") != "watchyard-work" {
 		t.Fatal("names")

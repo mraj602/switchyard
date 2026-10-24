@@ -46,23 +46,23 @@ object Frames {
     return Frame(t, seq, exp, tag, body, sig)
   }
 
-  // The "sy-link-v1" labels below are frozen: hubs and devices from before the rename sign and
-  // verify with them, and a signature over a new label would not verify there (rename.md 2.12).
+  // The "wy-link-v1" labels below are part of the protocol: the hub signs and verifies with
+  // them (link.md 4.3).
 
   /**
-   * link.md 4.3: "sy-link-v1\n" ‖ device ‖ "\n" ‖ t ‖ "\n" ‖ decimal(seq) ‖ "\n" ‖ decimal(exp) ‖ "\n" ‖
+   * link.md 4.3: "wy-link-v1\n" ‖ device ‖ "\n" ‖ t ‖ "\n" ‖ decimal(seq) ‖ "\n" ‖ decimal(exp) ‖ "\n" ‖
    * tag ‖ "\n" ‖ ctx ‖ "\n" ‖ payload.
    */
   fun signedInput(device: String, t: String, seq: Long, exp: Long, tag: String, ctx: String, payload: ByteArray): ByteArray =
-    Codec.cat(Codec.utf8("sy-link-v1\n$device\n$t\n${Codec.decimal(seq)}\n${Codec.decimal(exp)}\n$tag\n$ctx\n"), payload)
+    Codec.cat(Codec.utf8("wy-link-v1\n$device\n$t\n${Codec.decimal(seq)}\n${Codec.decimal(exp)}\n$tag\n$ctx\n"), payload)
 
   /** link.md 3.1. */
   fun challengeInput(hubFp: String, nonce: String, exp: Long): ByteArray =
-    Codec.lines("sy-link-v1 challenge", hubFp, nonce, Codec.decimal(exp))
+    Codec.lines("wy-link-v1 challenge", hubFp, nonce, Codec.decimal(exp))
 
   /** link.md 3.2. */
   fun helloInput(hubFp: String, nonce: String, exp: Long, device: String, last: Long): ByteArray =
-    Codec.lines("sy-link-v1 hello", hubFp, nonce, Codec.decimal(exp), device, Codec.decimal(last))
+    Codec.lines("wy-link-v1 hello", hubFp, nonce, Codec.decimal(exp), device, Codec.decimal(last))
 
   const val QUEUE_CTX = "queue"
 }

@@ -1019,11 +1019,9 @@ test('versions: wy’s is reported, and the release link opens the newer version
   await same.close();
 });
 
-// Legacy compat: a wy from before the rename reports its version as "sy" in `wy desktop info` (rename.md 2.12).
-test('cliVersion reads wy, and sy from a wy before the rename', () => {
+test('cliVersion reads wy', () => {
   assert.equal(cliVersion({ wy: '1.0.0' }), '1.0.0');
-  assert.equal(cliVersion({ sy: '0.9.0' }), '0.9.0'); // rename:keep
-  assert.equal(cliVersion({ wy: '1.0.0', sy: '0.9.0' }), '1.0.0'); // rename:keep
+  assert.equal(cliVersion({ other: '0.9.0' }), null);
   assert.equal(cliVersion({}), null);
   assert.equal(cliVersion(null), null);
   assert.equal(cliVersion({ wy: 'x'.repeat(100) }).length, 64);

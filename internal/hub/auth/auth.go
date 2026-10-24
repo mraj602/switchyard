@@ -15,20 +15,13 @@ import (
 	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
-// CookieName is the browser session cookie of the web board. LegacyCookieName is the one
-// releases before the rename set: still read (SessionCookieValue) and cleared, never set.
-const (
-	CookieName       = "wy_session"
-	LegacyCookieName = "sy_session" // rename:keep: legacy compat, cookies set before the rename
-)
+// CookieName is the browser session cookie of the web board.
+const CookieName = "wy_session"
 
-// SessionCookieValue is the board session cookie of r: wy_session, else the legacy
-// sy_session (legacy compat, rename.md 2.12).
+// SessionCookieValue is the board session cookie of r.
 func SessionCookieValue(r *http.Request) (string, bool) {
-	for _, n := range []string{CookieName, LegacyCookieName} {
-		if c, err := r.Cookie(n); err == nil && c.Value != "" {
-			return c.Value, true
-		}
+	if c, err := r.Cookie(CookieName); err == nil && c.Value != "" {
+		return c.Value, true
 	}
 	return "", false
 }

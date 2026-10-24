@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/mraj602/watchyard/internal/atomicfile"
-	"github.com/mraj602/watchyard/internal/brand"
 	"github.com/mraj602/watchyard/internal/identity"
 )
 
@@ -24,12 +23,9 @@ func lookPath(name string) (string, error) { return exec.LookPath(name) }
 var RequiredEvents = []string{"SessionStart", "UserPromptSubmit", "PermissionRequest", "Notification",
 	"PreToolUse", "Stop", "StopFailure", "SubagentStop", "SessionEnd", "PreCompact", "PermissionDenied"}
 
-// The commands match wy and sy, the command's name before the rename (legacy compat,
-// rename.md 2.13: sy is a link to wy, and `wy setup` rewrites such lines).
 var (
-	wyHookRe       = regexp.MustCompile(`(^|[\s/\\"'])[ws]y(\.exe)?["']?\s+hook(\s|$|["'])`)
-	wyStatuslineRe = regexp.MustCompile(`(^|[\s/\\"'])[ws]y(\.exe)?["']?\s+statusline(\s|$|["'])`)
-	syStatuslineRe = regexp.MustCompile(`(^|[\s/\\"'])sy(\.exe)?["']?\s+statusline(\s|$|["'])`) // rename:keep
+	wyHookRe       = regexp.MustCompile(`(^|[\s/\\"'])wy(\.exe)?["']?\s+hook(\s|$|["'])`)
+	wyStatuslineRe = regexp.MustCompile(`(^|[\s/\\"'])wy(\.exe)?["']?\s+statusline(\s|$|["'])`)
 )
 
 // settings is the part of a settings.json that doctor reads.
@@ -117,25 +113,6 @@ func (s settings) watchyardPlugin() string {
 	return ""
 }
 
-// legacyPlugin returns the enabled plugin key of the project's name before a rename, if any
-// (rename.md 2.4).
-func (s settings) legacyPlugin() string {
-	if !brand.Renamed() {
-		return ""
-	}
-	var keys []string
-	for k, on := range s.plugins {
-		if on && (k == brand.OldSlug() || strings.HasPrefix(k, brand.OldSlug()+"@") || strings.HasPrefix(k, brand.OldSlug()+"-pane@")) {
-			keys = append(keys, k)
-		}
-	}
-	sort.Strings(keys)
-	if len(keys) > 0 {
-		return keys[0]
-	}
-	return ""
-}
-
 func checkHooks(rep *Report, slot identity.Slot, s settings, err error) {
 	c := Check{Name: "hooks", Slot: slot.Name}
 	if err != nil {
@@ -151,12 +128,6 @@ func checkHooks(rep *Report, slot identity.Slot, s settings, err error) {
 	}
 	if p := s.watchyardPlugin(); p != "" {
 		c.Level, c.Detail = OK, "plugin "+p+" is enabled"
-		rep.add(c)
-		return
-	}
-	if p := s.legacyPlugin(); p != "" {
-		c.Level, c.Detail = Warn, "plugin "+p+" from before the rename is enabled"
-		c.Fix = "wy setup --yes replaces it with " + brand.Slug + "@" + brand.Marketplace
 		rep.add(c)
 		return
 	}
@@ -201,9 +172,6 @@ func checkStatusline(rep *Report, slot identity.Slot, s settings, err error) {
 	case !s.exists || !s.hasStat || strings.TrimSpace(s.status) == "":
 		c.Level, c.Detail = Warn, "no status line command"
 		c.Fix = "set statusLine.command to: wy statusline --wrap '<your old command>' (context % and limits come from it)"
-	case syStatuslineRe.MatchString(s.status):
-		c.Level, c.Detail = Warn, "wrapped by sy statusline, the command's name before the rename"
-		c.Fix = "run wy setup: it rewrites the command for wy (no second wrap)"
 	case wyStatuslineRe.MatchString(s.status):
 		c.Level, c.Detail = OK, "wrapped by wy statusline"
 	default:

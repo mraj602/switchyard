@@ -39,8 +39,7 @@ type Attestation struct {
 	// GH is the gh executable ("" = look up "gh" on PATH).
 	GH string
 	// Owner defaults to DefaultOwner. The repository is <owner>/watchyard and the signer
-	// workflow <owner>/watchyard/.github/workflows/release.yml (after a rename, the old
-	// repository name is accepted too).
+	// workflow <owner>/watchyard/.github/workflows/release.yml.
 	Owner string
 	// Run runs the command (tests); nil runs it for real.
 	Run func(ctx context.Context, name string, args ...string) error
@@ -82,21 +81,9 @@ func VerifyAttestation(ctx context.Context, a Attestation, archive string) (veri
 			return nil
 		}
 	}
-	// A release built before a rename was attested by the repository under its old name
-	// (`wy update --version` to an older release); it is checked against that name too
-	// (rename.md 2.7).
-	repos := []string{owner + "/" + brand.Slug}
-	if brand.Renamed() {
-		repos = append(repos, owner+"/"+brand.OldSlug())
-	}
-	var verr error
-	for _, repo := range repos {
-		args := []string{"attestation", "verify", archive, "--repo", repo, "--signer-workflow", repo + "/" + SignerWorkflow}
-		if verr = run(ctx, gh, args...); verr == nil {
-			break
-		}
-	}
-	if verr != nil {
+	repo := owner + "/" + brand.Slug
+	args := []string{"attestation", "verify", archive, "--repo", repo, "--signer-workflow", repo + "/" + SignerWorkflow}
+	if verr := run(ctx, gh, args...); verr != nil {
 		return false, fail(ExitVerify, "attestation verification failed for %s; nothing installed (%v). If gh cannot reach GitHub or is not signed in, fix that, or skip the check with --no-attestation", filepath.Base(archive), verr)
 	}
 	return true, nil
@@ -499,7 +486,7 @@ func Rollback(ctx context.Context, o Options) (Result, error) {
 		return Result{}, err
 	}
 	defer unlock()
-	old := rollbackSource(o.Exe)
+	old := o.Exe + ".old"
 	if _, err := os.Stat(old); err != nil {
 		return Result{}, fail(ExitFailed, "there is no %s to roll back to", old)
 	}
@@ -515,26 +502,6 @@ func Rollback(ctx context.Context, o Options) (Result, error) {
 		return Result{}, err
 	}
 	return Result{Status: "rolled_back", From: o.Current, To: got, Path: o.Exe, OldKept: old}, nil
-}
-
-// rollbackSource is <exe>.old, or, when there is none and exe has the command's current name,
-// the <old cli>.old an update from before the rename kept next to it (legacy compat,
-// rename.md 2.13). The binary that was running then becomes that file.
-func rollbackSource(exe string) string {
-	old := exe + ".old"
-	if _, err := os.Stat(old); err == nil || !brand.CLIRenamed() {
-		return old
-	}
-	base := filepath.Base(exe)
-	ext := strings.TrimPrefix(base, brand.CLI)
-	if ext == base || (ext != "" && ext != ".exe") {
-		return old
-	}
-	legacy := filepath.Join(filepath.Dir(exe), brand.OldCLI()+ext+".old")
-	if _, err := os.Stat(legacy); err == nil {
-		return legacy
-	}
-	return old
 }
 
 // ---- replacing the binary ----

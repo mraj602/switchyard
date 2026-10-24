@@ -323,9 +323,7 @@ func (p *planner) planHub() error {
 }
 
 // serviceUnit is where internal/service installs the hub (service.UnitPath of DefaultName):
-// the plist is named after its label, com.<slug>.hub (before the rename the plan said
-// dev.<slug>.hub.plist, which `wy update` then did not find; service.InstalledPath still
-// reads it).
+// the plist is named after its label, com.<slug>.hub.
 func (p *planner) serviceUnit() (unit, name string) {
 	name = brand.Slug + "-hub"
 	switch p.st.OS {

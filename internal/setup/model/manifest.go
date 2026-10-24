@@ -27,31 +27,13 @@ type Manifest struct {
 	V          int     `json:"v"` // 1
 	ID         string  `json:"id"`
 	Command    string  `json:"command"`
-	WyVersion  string  `json:"wy_version"` // sy_version in a manifest written before the rename
+	WyVersion  string  `json:"wy_version"`
 	Machine    string  `json:"machine"`
 	PlanID     string  `json:"plan_id"`
 	StartedAt  string  `json:"started_at"`            // TimeString
 	FinishedAt string  `json:"finished_at,omitempty"` // TimeString; empty while in progress
 	Status     string  `json:"status"`
 	Entries    []Entry `json:"entries"`
-}
-
-// UnmarshalJSON reads wy_version, or sy_version, which a manifest written before the rename
-// holds (legacy compat, rename.md 2.12).
-func (m *Manifest) UnmarshalJSON(b []byte) error {
-	type plain Manifest
-	var v struct {
-		plain
-		SyVersion string `json:"sy_version"` // rename:keep: legacy compat
-	}
-	if err := json.Unmarshal(b, &v); err != nil {
-		return err
-	}
-	*m = Manifest(v.plain)
-	if m.WyVersion == "" {
-		m.WyVersion = v.SyVersion
-	}
-	return nil
 }
 
 // Entry is one journaled action. Written with Phase "intent" (fsynced) before the action,

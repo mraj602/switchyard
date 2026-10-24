@@ -384,9 +384,9 @@ func TestTermVariants(t *testing.T) {
 	if Term(env(nil), "") != nil {
 		t.Error("empty env should give no term")
 	}
-	got := Term(env(map[string]string{"TERM_PROGRAM": "WarpTerminal", "WARP_FOCUS_URL": "warp://a", "LC_SY_FOCUS": "warp://laptop"}), "")
+	got := Term(env(map[string]string{"TERM_PROGRAM": "WarpTerminal", "WARP_FOCUS_URL": "warp://a", "LC_WY_FOCUS": "warp://laptop"}), "")
 	if got.App != "warp" || got.FocusURL != "warp://laptop" {
-		t.Errorf("LC_SY_FOCUS must win: %+v", got)
+		t.Errorf("LC_WY_FOCUS must win: %+v", got)
 	}
 	if g := Term(env(map[string]string{"TERM_PROGRAM": "iTerm.app"}), ""); g.App != "iterm" {
 		t.Errorf("%+v", g)
@@ -394,7 +394,7 @@ func TestTermVariants(t *testing.T) {
 	if g := Term(env(map[string]string{"TMUX": "/tmp/tmux-1000/default,1,0"}), ""); g.App != "tmux" {
 		t.Errorf("%+v", g)
 	}
-	if g := Term(env(map[string]string{"LC_SY_FOCUS": "x://y"}), ""); g.App != "unknown" || g.FocusURL != "x://y" {
+	if g := Term(env(map[string]string{"LC_WY_FOCUS": "x://y"}), ""); g.App != "unknown" || g.FocusURL != "x://y" {
 		t.Errorf("%+v", g)
 	}
 }

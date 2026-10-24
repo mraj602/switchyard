@@ -23,7 +23,6 @@
 
 import * as nodePath from 'node:path';
 import * as nodeFs from 'node:fs/promises';
-import * as nodeFsSync from 'node:fs';
 import * as nodeOs from 'node:os';
 import { fileURLToPath } from 'node:url';
 
@@ -140,7 +139,7 @@ export async function boot(electron, opts = {}) {
   const claudeOrigin = testHooks?.claudeOrigin?.(env) ?? null;
   const cadenceMs = testHooks?.cadenceMs?.(env) ?? null;
 
-  made.paths = m.paths.create({ app, path, env, testHooks, fsSync: opts.fsSync ?? (opts.fs ? undefined : nodeFsSync) });
+  made.paths = m.paths.create({ app, path, env, testHooks });
   made.security = m.security.create({ electron, log, env, testHooks, claudeOrigin });
   made.security.applyGlobal();
   made.protocol = m.protocol.create({ electron, fs, path, srcDir: SRC_DIR, log });

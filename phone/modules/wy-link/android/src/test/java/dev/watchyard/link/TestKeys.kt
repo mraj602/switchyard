@@ -46,7 +46,7 @@ fun ClaimSeal.open(k: ByteArray, secret: String, sealed: String): ByteArray {
   val b = Codec.unb64u(sealed)!!
   val c = Cipher.getInstance("AES/GCM/NoPadding")
   c.init(Cipher.DECRYPT_MODE, SecretKeySpec(k, "AES"), GCMParameterSpec(128, b.copyOfRange(0, 12)))
-  c.updateAAD(Codec.utf8("sy-reg-v1\n$secret"))
+  c.updateAAD(Codec.utf8("wy-reg-v1\n$secret"))
   return c.doFinal(b, 12, b.size - 12)
 }
 

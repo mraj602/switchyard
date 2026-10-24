@@ -305,7 +305,7 @@ type machineInfoFlags struct {
 // outer m would be shadowed there (every machine then counted every machine's sessions).
 func (s *Store) MachineList(ctx context.Context, q MachineQuery, now time.Time) ([]MachineView, error) {
 	args := liveArgs(now)
-	sqlq := `SELECT mc.id, mc.name, mc.os, mc.arch, mc.sy_version, coalesce(mc.last_seen, 0), coalesce(mc.last_record, 0), mc.backlog,
+	sqlq := `SELECT mc.id, mc.name, mc.os, mc.arch, mc.wy_version, coalesce(mc.last_seen, 0), coalesce(mc.last_record, 0), mc.backlog,
 		(SELECT count(*)` + sessionFrom + ` WHERE s.machine_id = mc.id AND ` + liveNowCondition + `),
 		(SELECT count(*)` + sessionFrom + ` WHERE s.machine_id = mc.id AND ` + sessionStateExpr + ` IN (` + activeStatesSQL + `)),
 		mc.reach, mc.record_v, mc.held, coalesce(mc.backlog_oldest, 0), coalesce(mc.backlog_at, 0), mc.info, coalesce(mc.removed_at, 0)

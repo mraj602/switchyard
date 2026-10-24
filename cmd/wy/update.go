@@ -198,7 +198,7 @@ func (e updateEnv) hubDBPaths() []string {
 		unitEnv[kv[0]] = kv[1]
 	}
 	if len(unitEnv) > 0 {
-		if d, err := paths.Resolve(paths.Env{GOOS: e.goos, Home: home, Getenv: func(k string) string { return legacyEnvLookup(unitEnv, k) }, Exists: paths.StatExists}); err == nil {
+		if d, err := paths.Resolve(paths.Env{GOOS: e.goos, Home: home, Getenv: func(k string) string { return unitEnv[k] }}); err == nil {
 			add(filepath.Join(d.Data.Path, "hub.db"))
 		}
 	}
@@ -217,7 +217,7 @@ func updateMain(ctx context.Context, e updateEnv, args []string, stdout, stderr 
 	fs.BoolVar(&f.allowDowngrade, "allow-downgrade", false, "allow a version older than the installed one")
 	fs.StringVar(&f.fromFile, "from-file", "", "install this archive (with --sums-file) instead of downloading")
 	fs.StringVar(&f.sumsFile, "sums-file", "", "the SHA256SUMS that lists --from-file")
-	fs.BoolVar(&f.rollback, "rollback", false, "swap the previous binary (wy.old, or sy.old from before the rename) back")
+	fs.BoolVar(&f.rollback, "rollback", false, "swap the previous binary (wy.old) back")
 	fs.StringVar(&f.machines, "machines", "", "also update every added machine: all or name,name")
 	fs.StringVar(&f.postUpdate, "post-update", "", "internal: run the steps after an update; the value is the old version")
 	if err := fs.Parse(args); err != nil {

@@ -434,8 +434,7 @@ account in a hidden or background start until the window is shown.
   main calls `session.fromPartition('persist:wy-hub').fetch(<hub>/v1/session/login, {method:
   'POST', body: {token}, headers: {'content-type': 'application/json'}})`. The cookie is then
   set in that partition, the token never enters the page, and the cookie is read-only
-  (api.yaml). A `sy_session` cookie from before the rename counts as a session too; the folder
-  of the partition `persist:sy-hub` is moved to `persist:wy-hub`'s at start (rename.md 2.9).
+  (api.yaml).
 - Owner sign-in: `wy desktop owner-link --json` → `loadURL(<link>)`. The board's `#/owner`
   route does the rest. When the 30-day owner session expires, the board drops back to its
   read cookie on the next login, and Settings shows "Sign in as owner".
@@ -510,8 +509,7 @@ account in a hidden or background start until the window is shown.
     closed, tray.
   - **Hub settings** links: Machines, Alerts and rules, Devices, Phone pairing, the hub's own
     Settings. Each opens the Hub view at its route (pwa.md 3).
-  - **About:** this app's version, wy's (`wy desktop info` → `wy`, or `sy` from a `wy` older than the
-    rename), the hub's, Electron,
+  - **About:** this app's version, wy's (`wy desktop info` → `wy`), the hub's, Electron,
     Chromium and the platform.
 - Update notice (`shared/version.js`): the app asks no update server and calls no third party.
   It compares its own version with wy's and the hub's (both already known from `wy desktop

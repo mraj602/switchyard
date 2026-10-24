@@ -99,14 +99,14 @@ func TestE5Focus(t *testing.T) {
 	}
 }
 
-// E6: focus over SSH. A gpu-box hook carries LC_SY_FOCUS (the laptop tab's URL, sent by
-// `wy ssh`) and LC_SY_HOST (the laptop's machine id). The laptop's board can focus the row,
+// E6: focus over SSH. A gpu-box hook carries LC_WY_FOCUS (the laptop tab's URL, sent by
+// `wy ssh`) and LC_WY_HOST (the laptop's machine id). The laptop's board can focus the row,
 // the gpu-box's cannot, and focus on the laptop opens the laptop URL.
 func TestE6FocusOverSSH(t *testing.T) {
 	f := newFleet(t)
 	const sid = "e6000000-0000-4000-8000-000000000001"
 	laptopID := f.l.machineID()
-	f.gpu.hook(with(f.gpu.slot(3), "LC_SY_FOCUS="+focusSSH, "LC_SY_HOST="+laptopID),
+	f.gpu.hook(with(f.gpu.slot(3), "LC_WY_FOCUS="+focusSSH, "LC_WY_HOST="+laptopID),
 		sid, "Stop", map[string]any{"last_assistant_message": "Trained it.\n\nShould I push the checkpoint?"})
 
 	v := f.l.boardView()
@@ -159,7 +159,7 @@ func TestE7HostileFocus(t *testing.T) {
 	}
 	// One more arrives as a gpu-box record that names the laptop as its host.
 	const viaGPU = "e7000000-0000-4000-8000-000000000005"
-	f.gpu.hook(with(f.gpu.slot(2), "LC_SY_FOCUS=file:///etc/passwd", "LC_SY_HOST="+laptopID), viaGPU, "UserPromptSubmit", map[string]any{"prompt": "go"})
+	f.gpu.hook(with(f.gpu.slot(2), "LC_WY_FOCUS=file:///etc/passwd", "LC_WY_HOST="+laptopID), viaGPU, "UserPromptSubmit", map[string]any{"prompt": "go"})
 	hostile[viaGPU] = "file:///etc/passwd (gpu-box)"
 
 	v := f.l.boardView()

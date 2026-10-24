@@ -52,8 +52,8 @@ var (
 	ErrVersion      = errors.New("unexpected document version")
 )
 
-// docPrefix keeps documents apart from link frames, which start "sy-link-v1" (link.md 4.3).
-const docPrefix = "sy-doc-v1\n" // frozen: changing it would invalidate every signed document
+// docPrefix keeps documents apart from link frames, which start "wy-link-v1" (link.md 4.3).
+const docPrefix = "wy-doc-v1\n" // frozen: changing it would invalidate every signed document
 
 // Sig is one signature of a document.
 type Sig struct {
@@ -70,7 +70,7 @@ type Doc struct {
 	Sigs []Sig  `json:"sigs"`
 }
 
-// DocInput is what a document signature covers: "sy-doc-v1\n" ‖ type ‖ "\n" ‖ body.
+// DocInput is what a document signature covers: "wy-doc-v1\n" ‖ type ‖ "\n" ‖ body.
 func DocInput(typ string, body []byte) []byte {
 	b := make([]byte, 0, len(docPrefix)+len(typ)+1+len(body))
 	b = append(b, docPrefix...)

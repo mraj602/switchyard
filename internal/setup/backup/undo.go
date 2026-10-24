@@ -904,34 +904,14 @@ func dropLoneVersion(v any) any {
 // runPointers returns the pointers a `run` (claude plugin ...) may have changed in a file
 // (7.3: key-level for settings, entry-level for the two plugin registries); nil for others.
 func runPointers(path string) []string {
-	ids := []string{brand.Slug + "@" + brand.Marketplace}
-	mkts := []string{brand.Marketplace}
-	// A backup set made before a rename changed the plugin (and marketplace) of the old name
-	// (rename.md 2.4).
-	ids = append(ids, brand.LegacyPluginIDs()...)
-	if m := brand.LegacyMarketplace(); m != "" {
-		mkts = append(mkts, m)
-	}
-	var out []string
+	id := brand.Slug + "@" + brand.Marketplace
 	switch filepath.Base(path) {
 	case "settings.json":
-		for _, id := range ids {
-			out = append(out, "/enabledPlugins/"+id)
-		}
-		for _, m := range mkts {
-			out = append(out, "/extraKnownMarketplaces/"+m)
-		}
-		return out
+		return []string{"/enabledPlugins/" + id, "/extraKnownMarketplaces/" + brand.Marketplace}
 	case "installed_plugins.json":
-		for _, id := range ids {
-			out = append(out, "/plugins/"+id, "/"+id)
-		}
-		return out
+		return []string{"/plugins/" + id, "/" + id}
 	case "known_marketplaces.json":
-		for _, m := range mkts {
-			out = append(out, "/"+m)
-		}
-		return out
+		return []string{"/" + brand.Marketplace}
 	}
 	return nil
 }

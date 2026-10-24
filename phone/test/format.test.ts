@@ -98,14 +98,11 @@ describe('planLabel', () => {
   });
 });
 
-// Legacy compat: a hub from before the rename sends a machine's wy version as sy_version (rename.md 2.12).
 describe('versionLine', () => {
   const { versionLine } = jest.requireActual('../src/lib/format') as typeof import('../src/lib/format');
   const m = { id: 'm_1', name: 'lap', version_status: 'same' } as unknown as import('../src/lib/format').MachineFull;
-  it('reads wy_version, and sy_version from an older hub', () => {
+  it('reads wy_version', () => {
     expect(versionLine({ ...m, wy_version: '1.0.0' }).text).toBe('1.0.0 · same as hub');
-    expect(versionLine({ ...m, sy_version: '0.9.0' }).text).toBe('0.9.0 · same as hub'); // rename:keep
-    expect(versionLine({ ...m, wy_version: '1.0.0', sy_version: '0.9.0' }).text).toBe('1.0.0 · same as hub'); // rename:keep
     expect(versionLine(m).text).toBe('not reported');
   });
 });

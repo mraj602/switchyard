@@ -22,13 +22,8 @@ import (
 // LegacyRestrict replaces `restrict` on OpenSSH before 7.2.
 const LegacyRestrict = "no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty,no-user-rc"
 
-// PullMarker is the comment that marks a target's line. LegacyPullMarker is the one lines
-// written before the rename carry: still found, replaced and removed, never written (legacy
-// compat).
+// PullMarker is the comment that marks a target's line.
 func PullMarker(target string) string { return "wy-pull:" + target }
-
-// LegacyPullMarker is the marker before the rename (legacy compat).
-func LegacyPullMarker(target string) string { return "sy-pull:" + target } // rename:keep
 
 var (
 	targetRe = regexp.MustCompile(`^pt_[0-9A-Za-z]{1,64}$`)
@@ -68,7 +63,7 @@ func PullKeyLine(pub, wy, target, from string, restrict bool) (line string, key 
 	comment := ""
 	if len(f) >= 3 {
 		c := strings.Join(f[2:], " ")
-		if !strings.HasPrefix(c, "wy-pull:") && !strings.HasPrefix(c, "sy-pull:") { // rename:keep: legacy compat
+		if !strings.HasPrefix(c, "wy-pull:") {
 			comment = " " + strings.Fields(c)[0]
 		}
 	}
@@ -77,16 +72,14 @@ func PullKeyLine(pub, wy, target, from string, restrict bool) (line string, key 
 }
 
 // lineMatches: the line holds key (anywhere as type+blob) or ends with the target's marker
-// (PullMarker, or LegacyPullMarker: legacy compat).
+// (PullMarker).
 func lineMatches(line, key, target string) bool {
 	t := strings.TrimSpace(line)
 	if t == "" || strings.HasPrefix(t, "#") {
 		return false
 	}
-	for _, marker := range []string{PullMarker(target), LegacyPullMarker(target)} {
-		if strings.HasSuffix(t, " "+marker) || t == marker {
-			return true
-		}
+	if marker := PullMarker(target); strings.HasSuffix(t, " "+marker) || t == marker {
+		return true
 	}
 	return key != "" && strings.Contains(" "+t+" ", " "+key+" ")
 }

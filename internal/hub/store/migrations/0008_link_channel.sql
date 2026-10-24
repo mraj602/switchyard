@@ -29,7 +29,7 @@ CREATE TABLE push_target (
   id            TEXT    NOT NULL PRIMARY KEY,      -- 'pt_' + ULID
   kind          TEXT    NOT NULL REFERENCES channel(kind),
   device_id     TEXT    REFERENCES device(id),     -- NULL: an ntfy topic added by the owner for the hub
-  name          TEXT,                               -- "iPhone · Safari", "ntfy.sh/sy-4fQx…", "Pixel 9 · app"
+  name          TEXT,                               -- "iPhone · Safari", "ntfy.sh/wy-4fQx…", "Pixel 9 · app"
   endpoint      TEXT    NOT NULL,                   -- webpush: endpoint URL; ntfy: server URL + '/' + topic; expo: token; link: 'link:' + device id
   keys          TEXT    CHECK (keys IS NULL OR json_valid(keys)),     -- webpush and link: {"p256dh": "…", "auth": "…"} base64url
   secret        TEXT,                               -- ntfy access token; never returned by the API

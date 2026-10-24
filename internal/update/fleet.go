@@ -10,8 +10,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/mraj602/watchyard/internal/brand"
 )
 
 // Fleet update (`wy update --machines`, machines.md 7.4). The operator runs it with the
@@ -211,14 +209,6 @@ func updateOne(ctx context.Context, o FleetOptions, m FleetMachine) FleetResult 
 	rctx, rcancel := context.WithTimeout(ctx, remoteRunTimeout)
 	defer rcancel()
 	out, exit, err := o.Remote.Run(rctx, m, argv)
-	if err == nil && exit == 127 && m.RemoteWy == "" && brand.CLIRenamed() {
-		// A machine still on a release from before the command's rename has only the old
-		// binary; it updates itself to this release, whose post-update step renames it
-		// (docs/spec/rename.md 2.13).
-		m.RemoteWy = ".local/bin/" + brand.OldCLI()
-		argv[0] = m.RemoteWy
-		out, exit, err = o.Remote.Run(rctx, m, argv)
-	}
 	if err != nil {
 		res.Outcome, res.Error = "failed", err.Error()
 		return res
@@ -236,12 +226,6 @@ func updateOne(ctx context.Context, o FleetOptions, m FleetMachine) FleetResult 
 		}
 		return res
 	case ExitDownload:
-		if brand.CLIRenamed() && m.RemoteWy == ".local/bin/"+brand.OldCLI() {
-			res.Outcome, res.Error = "failed", "push path: the machine still has "+brand.OldCLI()+
-				" from before the rename and cannot reach GitHub; run its update once with --from-file and the "+
-				brand.OldCLI()+"_ archive of this release (docs/spec/rename.md 2.13)"
-			return res
-		}
 		return pushUpdate(ctx, o, m, res)
 	}
 	res.Outcome, res.Error = "failed", failText(r, exit)

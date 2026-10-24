@@ -10,7 +10,6 @@ func TestPathsCommand(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("WY_HOME", home)
 	t.Setenv("WY_STATE_DIR", home+"/st")
-	t.Setenv("SWITCHYARD_DATA", "/ignored")
 	var out, errb bytes.Buffer
 	if code := dispatch([]string{"paths"}, &out, &errb); code != 0 {
 		t.Fatalf("exit %d: %s", code, errb.String())
@@ -24,9 +23,6 @@ func TestPathsCommand(t *testing.T) {
 		if !strings.Contains(out.String(), w) {
 			t.Errorf("missing %q in\n%s", w, out.String())
 		}
-	}
-	if strings.Contains(out.String(), "ignored") {
-		t.Error("SWITCHYARD_DATA leaked into wy paths")
 	}
 }
 

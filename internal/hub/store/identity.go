@@ -47,7 +47,7 @@ func (tx *Tx) MachineHeartbeat(h Heartbeat) error {
 		last_seen = max(coalesce(last_seen, 0), ?),
 		last_record = CASE WHEN ? > coalesce(last_record, 0) THEN ? ELSE last_record END,
 		backlog = coalesce(?, backlog),
-		sy_version = coalesce(?, sy_version),
+		wy_version = coalesce(?, wy_version),
 		reach = coalesce(?, reach),
 		backlog_oldest = CASE WHEN ? THEN ? ELSE backlog_oldest END,
 		backlog_at = CASE WHEN ? THEN ? ELSE backlog_at END

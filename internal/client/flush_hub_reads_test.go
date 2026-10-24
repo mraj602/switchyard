@@ -25,10 +25,8 @@ type vHub struct {
 	withHub bool
 	stored  []string
 	oldest  []string
-	// legacyOldest: the header under its name before the rename, for an older hub.
-	legacyOldest []string
-	health       int
-	srv          *httptest.Server
+	health  int
+	srv     *httptest.Server
 }
 
 func newVHub(t *testing.T, vmax int, withHub bool) *vHub {
@@ -47,7 +45,6 @@ func newVHub(t *testing.T, vmax int, withHub bool) *vHub {
 		}
 		_ = json.Unmarshal(raw, &b)
 		h.oldest = append(h.oldest, r.Header.Get("X-Wy-Backlog-Oldest"))
-		h.legacyOldest = append(h.legacyOldest, r.Header.Get("X-Sy-Backlog-Oldest")) // rename:keep
 		reply := map[string]any{"accepted": []string{}, "duplicates": []string{}, "rejected": []any{}}
 		var acc []string
 		for _, rec := range b.Records {
@@ -210,10 +207,6 @@ func TestFlushSendsBacklogOldestOnlyWithMoreThanOneBatch(t *testing.T) {
 	// Batches of 3, 3, 1: the first two have more behind them, the last does not.
 	if len(h.oldest) != 3 || h.oldest[0] != "2026-10-12T10:00:00.000Z" || h.oldest[1] != "2026-10-12T10:00:03.000Z" || h.oldest[2] != "" {
 		t.Fatalf("X-Wy-Backlog-Oldest per request: %q", h.oldest)
-	}
-	// Legacy compat: also sent as X-Sy-Backlog-Oldest.
-	if strings.Join(h.legacyOldest, ",") != strings.Join(h.oldest, ",") {
-		t.Fatalf("X-Sy-Backlog-Oldest per request: %q", h.legacyOldest)
 	}
 }
 

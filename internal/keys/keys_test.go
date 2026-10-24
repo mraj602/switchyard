@@ -64,17 +64,13 @@ func TestRecoveryCode(t *testing.T) {
 	if _, err := ParseRecoveryCode(string(body)); !errors.Is(err, ErrRecoveryCheck) {
 		t.Fatalf("typo: %v", err)
 	}
-	for _, bad := range []string{"", "SYR2-AAAA", code[:len(code)-1], "XX" + code, code + "Q"} {
+	for _, bad := range []string{"", "WYR2-AAAA", code[:len(code)-1], "XX" + code, code + "Q"} {
 		if _, err := ParseRecoveryCode(bad); err == nil {
 			t.Errorf("parsed %q", bad)
 		}
 	}
 	other := r
 	other[0] ^= 1
-	// Legacy compat: a code printed before the rename starts SYR1-; same R, same check group.
-	if got, err := ParseRecoveryCode("SYR1-" + strings.TrimPrefix(code, "WYR1-")); err != nil || got != r {
-		t.Fatalf("legacy SYR1 code: %v", err)
-	}
 	if RecoveryCode(other) == code {
 		t.Fatal("different R, same code")
 	}
@@ -293,7 +289,7 @@ func TestWrongHub(t *testing.T) {
 // linkFrameInput is link.md 4.3's signed input, built here by hand: the link package is not
 // this one, and the point is that the two domains never overlap.
 func linkFrameInput(device, typ string, seq, exp int64, tag, ctx string, payload []byte) []byte {
-	s := "sy-link-v1\n" + device + "\n" + typ + "\n" + strconv.FormatInt(seq, 10) + "\n" + strconv.FormatInt(exp, 10) + "\n" +
+	s := "wy-link-v1\n" + device + "\n" + typ + "\n" + strconv.FormatInt(seq, 10) + "\n" + strconv.FormatInt(exp, 10) + "\n" +
 		tag + "\n" + ctx + "\n"
 	return append([]byte(s), payload...)
 }
@@ -313,7 +309,7 @@ func TestDomainSeparation(t *testing.T) {
 	if ed25519.Verify(pubOf(hub), linkFrameInput("dev_A", "matrix", 1, 2, "matrix", "queue", mx), docSig) {
 		t.Error("document signature verifies as a frame")
 	}
-	if bytes.HasPrefix(DocInput(TypeMatrix, mx), []byte("sy-link-v1")) {
+	if bytes.HasPrefix(DocInput(TypeMatrix, mx), []byte("wy-link-v1")) {
 		t.Error("prefixes overlap")
 	}
 }

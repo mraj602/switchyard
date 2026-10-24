@@ -19,7 +19,7 @@ CREATE TABLE pull_target (
   port          INTEGER NOT NULL DEFAULT 22 CHECK (port BETWEEN 1 AND 65535),
   user          TEXT    NOT NULL,
   jump          TEXT,                                       -- ProxyJump, as typed
-  remote_sy     TEXT    NOT NULL DEFAULT '.local/bin/wy',   -- used only without a forced command
+  remote_wy     TEXT    NOT NULL DEFAULT '.local/bin/wy',   -- used only without a forced command
   host_keys     TEXT    NOT NULL CHECK (json_valid(host_keys)),  -- ["ssh-ed25519 AAAA…", …] pinned public keys
   interval_s    INTEGER NOT NULL DEFAULT 60 CHECK (interval_s BETWEEN 15 AND 3600),
   enabled       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),

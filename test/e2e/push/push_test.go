@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mraj602/watchyard/internal/brand"
 	"io"
 	"net"
 	"net/http"
@@ -102,7 +101,7 @@ func buildWy(t *testing.T) string {
 			return
 		}
 		root := filepath.Dir(strings.TrimSpace(string(out)))
-		if buildDir, buildErr = os.MkdirTemp("", "sye2e-bin"); buildErr != nil {
+		if buildDir, buildErr = os.MkdirTemp("", "wye2e-bin"); buildErr != nil {
 			return
 		}
 		bin := filepath.Join(buildDir, "wy")
@@ -127,7 +126,6 @@ func cleanEnv(home string) []string {
 	for _, kv := range os.Environ() {
 		k, _, _ := strings.Cut(kv, "=")
 		if strings.HasPrefix(k, "CLAUDE") || strings.HasPrefix(k, "WY_") || strings.HasPrefix(k, "XDG_") ||
-			(brand.OldEnvPrefix() != "" && strings.HasPrefix(k, brand.OldEnvPrefix())) ||
 			k == "HOME" || k == "TZ" || k == "NO_COLOR" {
 			continue
 		}
@@ -151,7 +149,7 @@ func newRig(t *testing.T) *rig {
 		t.Fatal(err)
 	}
 	// unix socket paths are limited to ~104 bytes: keep it short.
-	sockDir, err := os.MkdirTemp("", "sye2e")
+	sockDir, err := os.MkdirTemp("", "wye2e")
 	if err != nil {
 		t.Fatal(err)
 	}

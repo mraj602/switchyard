@@ -47,7 +47,7 @@ type PullTarget struct {
 	NextAt    int64
 }
 
-const pullCols = `id, name, coalesce(machine_id, ''), coalesce(device_id, ''), host, port, user, coalesce(jump, ''), remote_sy,
+const pullCols = `id, name, coalesce(machine_id, ''), coalesce(device_id, ''), host, port, user, coalesce(jump, ''), remote_wy,
 	host_keys, interval_s, enabled, state, created_at, coalesce(last_try_at, 0), coalesce(last_ok_at, 0),
 	coalesce(last_error, ''), fail_count, coalesce(next_at, 0)`
 
@@ -140,7 +140,7 @@ func (tx *Tx) NewPullDevice(targetID, machineID, name string) (string, error) {
 
 // AddPullTarget inserts a target. With t.MachineID set it also makes the pull device now;
 // otherwise the target binds on its first hello (BindPullTarget). ID, CreatedAt and the
-// defaults (port 22, interval 60, remote_sy .local/bin/wy) are filled in. ErrPullExists
+// defaults (port 22, interval 60, remote_wy .local/bin/wy) are filled in. ErrPullExists
 // when the name or machine is already used.
 func (s *Store) AddPullTarget(ctx context.Context, t PullTarget) (PullTarget, error) {
 	var out PullTarget
@@ -175,7 +175,7 @@ func (s *Store) AddPullTarget(ctx context.Context, t PullTarget) (PullTarget, er
 			t.DeviceID = dev
 		}
 		keys, _ := json.Marshal(t.HostKeys)
-		_, err := tx.exec(`INSERT INTO pull_target (id, name, machine_id, device_id, host, port, user, jump, remote_sy, host_keys,
+		_, err := tx.exec(`INSERT INTO pull_target (id, name, machine_id, device_id, host, port, user, jump, remote_wy, host_keys,
 			interval_s, enabled, state, created_at, next_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'new', ?, ?)`,
 			t.ID, t.Name, nullStr(t.MachineID), nullStr(t.DeviceID), t.Host, t.Port, t.User, nullStr(t.Jump), t.RemoteWy,
 			string(keys), t.IntervalS, t.CreatedAt, t.NextAt)
@@ -369,7 +369,7 @@ type PullHello struct {
 }
 
 // PullHeartbeat counts a hello as contact: last_seen = now, backlog and its age (cleared
-// when none), sy_version, reach = pull and the highest record v the machine writes. It
+// when none), wy_version, reach = pull and the highest record v the machine writes. It
 // never touches last_record.
 func (s *Store) PullHeartbeat(ctx context.Context, h PullHello) error {
 	return s.Write(ctx, func(tx *Tx) error {

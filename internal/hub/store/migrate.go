@@ -119,7 +119,7 @@ func (s *Store) migrate(ctx context.Context, opt Options) error {
 			if _, err := tx.exec(m.SQL); err != nil {
 				return fmt.Errorf("store: migration %s: %w", m.Name, err)
 			}
-			_, err := tx.exec(`INSERT OR REPLACE INTO schema_version (version, applied_at, sy_version) VALUES (?, ?, ?)`,
+			_, err := tx.exec(`INSERT OR REPLACE INTO schema_version (version, applied_at, wy_version) VALUES (?, ?, ?)`,
 				m.Version, tx.NowMS(), version.Version)
 			return err
 		})

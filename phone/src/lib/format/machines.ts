@@ -9,8 +9,6 @@ export type MachineFull = Machine & {
   backlog_oldest?: string | null;
   held?: number;
   wy_version?: string | null;
-  /** Legacy compat: a hub from before the rename sends wy_version as sy_version (rename.md 2.12). */
-  sy_version?: string | null; // rename:keep
   direct_push?: boolean;
   removed_at?: string | null;
   pull?: { interval_s?: number } | null;
@@ -47,7 +45,7 @@ export function backlogText(m: MachineFull, now: number, tz?: string): string {
 }
 
 export function versionLine(m: MachineFull, hubVersion?: string): { text: string; tone: Tone } {
-  const v = m.wy_version ?? m.sy_version; // rename:keep: legacy compat
+  const v = m.wy_version;
   if (!v) return { text: 'not reported', tone: 'muted' };
   if ((m.held ?? 0) > 0) return { text: `${v} · holding ${spaced(m.held as number)} records: hub too old`, tone: 'bad' };
   const hub = hubVersion ? ` hub ${hubVersion}` : ' the hub';
