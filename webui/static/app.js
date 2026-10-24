@@ -219,7 +219,7 @@ for (const a of document.querySelectorAll('a.skip')) {
     if (el) el.focus();
   });
 }
-window.addEventListener('sy-rerender', render);
+window.addEventListener('wy-rerender', render);
 // "5 min ago" labels move even when no data arrives.
 setInterval(() => { if (authed) render(); }, 30e3);
 // A pending alert's "notifies in 40 s" counts down between redraws.
@@ -240,4 +240,4 @@ initPwa();
 boot();
 
 // Exposed for the smoke test and debugging.
-window.__sy = { store, getJSON, pwa };
+window.__wy = { store, getJSON, pwa };

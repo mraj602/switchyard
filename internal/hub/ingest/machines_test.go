@@ -72,7 +72,7 @@ func info(t *testing.T, machine string, at time.Time, reach string, held int64) 
 	t.Helper()
 	oldest := at.Add(-time.Hour).Format(time.RFC3339Nano)
 	r, err := record.NewMachineInfo(record.Meta{Machine: machine, Client: "wy/0.5.0", Now: at}, record.MachineInfoPayload{
-		OS: "linux", Arch: "amd64", Sy: "0.5.0", RecordV: 1, Reach: reach,
+		OS: "linux", Arch: "amd64", Wy: "0.5.0", RecordV: 1, Reach: reach,
 		Outbox:     record.OutboxHealth{Held: held, OldestUnflushed: &oldest},
 		DirectPush: record.DirectPushState{Enabled: true, ServerHost: "ntfy.sh", Private: true},
 	})
@@ -368,7 +368,7 @@ func TestContact(t *testing.T) {
 	var got ingest.Changes
 	f.ing.OnChange = func(ch ingest.Changes) { got = ch }
 	n := int64(12)
-	if err := f.ing.Contact(f.ctx, d, ingest.Contact{Backlog: &n, BacklogOldest: t0.Add(-time.Minute).UnixMilli(), Reach: "pull", SyVersion: "0.4.0"}); err != nil {
+	if err := f.ing.Contact(f.ctx, d, ingest.Contact{Backlog: &n, BacklogOldest: t0.Add(-time.Minute).UnixMilli(), Reach: "pull", WyVersion: "0.4.0"}); err != nil {
 		t.Fatal(err)
 	}
 	if !got.Machines[m] {

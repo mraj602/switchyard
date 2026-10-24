@@ -42,7 +42,7 @@ export interface HubApi {
    */
   autoCountdown?: { on: boolean; set(on: boolean): Promise<void> };
   /**
-   * The sy-link module (Android, push.md 14.8): Settings → Notifications (P6.7). Absent: iOS or a
+   * The wy-link module (Android, push.md 14.8): Settings → Notifications (P6.7). Absent: iOS or a
    * build without the module.
    */
   link?: LinkLike;

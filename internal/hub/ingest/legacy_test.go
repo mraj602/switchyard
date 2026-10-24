@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"net/http/httptest"
 	"testing"
 
 	"github.com/mraj602/watchyard/internal/brand"
@@ -15,5 +16,18 @@ func TestClientVersionAcceptsLegacyCLI(t *testing.T) {
 	}
 	if clientVersion.MatchString("other/1.0") {
 		t.Error("other client")
+	}
+}
+
+// Legacy compat: a machine older than the rename sends X-Sy-Backlog(-Oldest); the new names win.
+func TestBacklogHeadersLegacy(t *testing.T) {
+	r := httptest.NewRequest("POST", "/v1/ingest", nil)
+	r.Header.Set("X-Sy-Backlog", "7")                                         // rename:keep
+	if got := headerOrLegacy(r, "X-Wy-Backlog", "X-Sy-Backlog"); got != "7" { // rename:keep
+		t.Errorf("legacy only: %q", got)
+	}
+	r.Header.Set("X-Wy-Backlog", "9")
+	if got := headerOrLegacy(r, "X-Wy-Backlog", "X-Sy-Backlog"); got != "9" { // rename:keep
+		t.Errorf("both: %q", got)
 	}
 }

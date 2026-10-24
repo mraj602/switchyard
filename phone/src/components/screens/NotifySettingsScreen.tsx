@@ -1,4 +1,4 @@
-// Settings → Notifications (phone.md P6.7, N1): the sy-link module's switch and state, the
+// Settings → Notifications (phone.md P6.7, N1): the wy-link module's switch and state, the
 // battery check with the maker guide, the permission, the verification state, the ping
 // interval, the test notification and the Web Push backup.
 import { useCallback, useEffect, useState } from 'react';
@@ -68,7 +68,7 @@ export default function NotifySettingsScreen() {
     try {
       await f();
     } catch (e) {
-      toast.show(`${what}: ${e instanceof Error ? e.message.replace(/^sy-link: /, '') : 'failed'}`);
+      toast.show(`${what}: ${e instanceof Error ? e.message.replace(/^wy-link: /, '') : 'failed'}`);
     }
     await reload();
   };

@@ -4,7 +4,7 @@ const fs = require('fs');
 const [svg, size, png] = process.argv.slice(2);
 (async () => {
   const b = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'],
-    env: { ...process.env, DBUS_SESSION_BUS_ADDRESS: 'unix:path=/nonexistent/sy-no-bus' } }); // no desktop session bus
+    env: { ...process.env, DBUS_SESSION_BUS_ADDRESS: 'unix:path=/nonexistent/wy-no-bus' } }); // no desktop session bus
   const p = await b.newPage();
   await p.setViewport({ width: +size, height: +size });
   const data = fs.readFileSync(svg).toString('base64');

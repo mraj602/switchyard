@@ -8,7 +8,7 @@
 [ -x "$TOOLS/claude" ] || skip_scenario "no fake claude in $TOOLS"
 
 H=$(new_home laptop laptop)
-install_sy "$H"
+install_wy "$H"
 snap "$H" "$WY_E2E_TMP/before.json" -claude-json
 P=$H/.claude
 for f in $P/settings.json $P/plugins/installed_plugins.json $P/plugins/known_marketplaces.json $H/bin/claude-launch $H/.bashrc; do

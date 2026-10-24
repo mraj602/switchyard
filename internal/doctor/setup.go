@@ -22,9 +22,9 @@ import (
 	"github.com/mraj602/watchyard/internal/share"
 )
 
-// syPathRe finds the absolute wy path baked into a generated hook command:
+// wyPathRe finds the absolute wy path baked into a generated hook command:
 // `[ -x '/home/u/.local/bin/wy' ] && ...`.
-var syPathRe = regexp.MustCompile(`\[ -x '([^']+)' \]`)
+var wyPathRe = regexp.MustCompile(`\[ -x '([^']+)' \]`)
 
 func checkSetup(rep *Report, o Options, cfg config.Config, slots []identity.Slot) {
 	st := o.Dirs.State.Path
@@ -59,7 +59,7 @@ func checkSetup(rep *Report, o Options, cfg config.Config, slots []identity.Slot
 			rep.add(Check{Name: "plugin", Level: Fail, Detail: "the wy-local marketplace folder is missing (" + led.Plugin.Marketplace + ")",
 				Fix: "wy setup --yes writes it again"})
 		default:
-			if m := syPathRe.FindSubmatch(b); m != nil {
+			if m := wyPathRe.FindSubmatch(b); m != nil {
 				p := string(m[1])
 				if _, err := os.Stat(p); err != nil {
 					rep.add(Check{Name: "plugin", Level: Fail, Detail: "hooks call " + p + ", which does not exist",

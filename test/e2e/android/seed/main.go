@@ -5,7 +5,7 @@
 // `wy hook` / `wy statusline` would, with no Claude Code involved. It only talks HTTP to the hub
 // it is given; never point it at a real hub.
 //
-//	seed -hub http://127.0.0.1:18787 -m m_A=sy_m_... -m m_B=sy_m_... [-only sessions|limits|tokens|info]
+//	seed -hub http://127.0.0.1:18787 -m m_A=wy_m_... -m m_B=wy_m_... [-only sessions|limits|tokens|info]
 //
 // The first -m is "laptop", the second "gpu-box". Session ids are fixed (c41e5eed-...-0000000000NN),
 // so a second run moves the same sessions instead of adding new ones.
@@ -193,7 +193,7 @@ func main() {
 	if on("info") {
 		for i, m := range machines {
 			r, err := record.NewMachineInfo(meta(m, nil, now), record.MachineInfoPayload{
-				OS: []string{"linux", "linux"}[i%2], Arch: []string{"amd64", "arm64"}[i%2], Sy: "0.8.0", RecordV: 1,
+				OS: []string{"linux", "linux"}[i%2], Arch: []string{"amd64", "arm64"}[i%2], Wy: "0.8.0", RecordV: 1,
 				Reach: record.ReachDirect, Name: m.name, ClaudeVersion: "2.3.1"})
 			if err != nil {
 				fail(err)

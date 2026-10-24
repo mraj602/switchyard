@@ -190,15 +190,15 @@ func Tag(a model.Alert) string {
 	}
 	switch {
 	case IsSessionTrigger(a.Trigger):
-		return "sy-s-" + deref(a.Session)
+		return "wy-s-" + deref(a.Session)
 	case a.Trigger == model.TriggerReset:
-		return "sy-r-" + deref(a.Seat) + "-" + deref(a.WindowKey)
+		return "wy-r-" + deref(a.Seat) + "-" + deref(a.WindowKey)
 	case IsWindowTrigger(a.Trigger):
-		return "sy-l-" + deref(a.Seat) + "-" + deref(a.WindowKey)
+		return "wy-l-" + deref(a.Seat) + "-" + deref(a.WindowKey)
 	case a.Trigger == model.TriggerMachineSilent:
-		return "sy-m-" + deref(a.Machine)
+		return "wy-m-" + deref(a.Machine)
 	}
-	return "sy-" + a.ID
+	return "wy-" + a.ID
 }
 
 // privateText is the neutral wording of a private push (push.md 5.5).
@@ -360,7 +360,7 @@ func RenderSummary(alerts []model.Alert, o TextOptions) Text {
 			allSessions = false
 		}
 	}
-	out := Text{URL: "/#/", Tag: "sy-summary"}
+	out := Text{URL: "/#/", Tag: "wy-summary"}
 	if allSessions {
 		out.Title = fmt.Sprintf("%d sessions need you", n)
 	} else {

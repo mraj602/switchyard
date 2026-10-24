@@ -18,7 +18,7 @@ func TestHealthAndReplyCarryVersionFields(t *testing.T) {
 		_, _ = w.Write([]byte(reply))
 	}))
 	defer srv.Close()
-	c := New(srv.URL, "sy_m_x")
+	c := New(srv.URL, "wy_m_x")
 	ctx := context.Background()
 
 	// An older hub says nothing: it reads record v 1.

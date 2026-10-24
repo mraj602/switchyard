@@ -34,7 +34,7 @@ describe('validators reject what the contract forbids', () => {
     trigger: 'asked',
     title: 'work · api · asked a question',
     body: 'Should I also update the migration?',
-    tag: 'sy-s-sess_01JA3B7Q',
+    tag: 'wy-s-sess_01JA3B7Q',
     url: '/#/sessions/sess_01JA3B7Q?alert=al_01JA3B7Q0001',
     remote_url: 'https://claude.ai/code/session_01JA3B7Q',
     tap: 'auto',

@@ -161,7 +161,7 @@ type Summary struct {
 	Port      int      `json:"port,omitempty"`
 	OS        string   `json:"os"`
 	Arch      string   `json:"arch"`
-	Sy        string   `json:"sy"`
+	Wy        string   `json:"wy"`
 	DevBuild  bool     `json:"dev_build,omitempty"`
 	Logins    []string `json:"logins,omitempty"` // commands left to run
 	Verified  bool     `json:"verified"`
@@ -373,21 +373,21 @@ func (a *adder) probe(ctx context.Context) error {
 		a.sum.Arch = "arm64"
 	}
 	state := "wy not installed"
-	if p.Sy != "" {
-		state = "wy " + p.Sy
+	if p.Wy != "" {
+		state = "wy " + p.Wy
 	}
 	claude := "claude not found on the login PATH"
 	if p.Claude != "" {
 		claude = "claude " + strings.TrimSpace(strings.TrimSuffix(p.ClaudeVersion, "(Claude Code)"))
 	}
 	a.e.emit("probe", "ok", fmt.Sprintf("probed %s: %s/%s, %s, %s", a.o.Host, a.sum.OS, a.sum.Arch, state, claude),
-		map[string]any{"sy": p.Sy, "claude": p.Claude != "", "host_keys": len(p.HostKeys)})
+		map[string]any{"wy": p.Wy, "claude": p.Claude != "", "host_keys": len(p.HostKeys)})
 	return nil
 }
 
 // probeNew runs `wy machine probe --json` with the installed wy (step 2, second half).
 func (a *adder) probeNew(ctx context.Context) error {
-	words := []string{RemoteSy, "machine", "probe", "--json", "--ports", fmt.Sprintf("%d-%d", FirstForwardPort, LastForwardPort)}
+	words := []string{RemoteWy, "machine", "probe", "--json", "--ports", fmt.Sprintf("%d-%d", FirstForwardPort, LastForwardPort)}
 	if u := a.candidateURL(); u != "" {
 		if err := sshx.CheckWord(u); err != nil {
 			return exitf(ExitUsage, "--hub-url: %v", err)
@@ -528,8 +528,8 @@ func (a *adder) binary(ctx context.Context) error {
 		if !isRelease(want) {
 			return exitf(ExitUsage, "this wy is %q, not a release, and %s is %s/%s: pass --version <release> or --binary <file>", want, a.o.Host, a.sum.OS, a.sum.Arch)
 		}
-		if a.pre.Sy == want {
-			a.sum.Sy = want
+		if a.pre.Wy == want {
+			a.sum.Wy = want
 			a.e.emit("binary", "skip", fmt.Sprintf("%s already runs wy %s", a.o.Host, want), nil)
 			return nil
 		}
@@ -555,8 +555,8 @@ func (a *adder) binary(ctx context.Context) error {
 			return err
 		}
 	}
-	if a.pre.SySHA256 != "" && a.pre.SySHA256 == sum {
-		a.sum.Sy = a.pre.Sy
+	if a.pre.WySHA256 != "" && a.pre.WySHA256 == sum {
+		a.sum.Wy = a.pre.Wy
 		a.e.emit("binary", "skip", fmt.Sprintf("%s already has this wy (%s)", a.o.Host, short(sum)), nil)
 		return nil
 	}
@@ -568,7 +568,7 @@ func (a *adder) binary(ctx context.Context) error {
 	if err != nil {
 		return exitf(ExitFailed, "%v", err)
 	}
-	a.sum.Sy = want
+	a.sum.Wy = want
 	note := "checksum matched on the remote"
 	if !p.Verified {
 		note = "no hash tool on the remote: checked the version instead"
@@ -863,7 +863,7 @@ func (a *adder) checkPortHolder(ctx context.Context) error {
 	if err != nil {
 		return exitf(ExitFailed, "port %d on %s is already taken, and this machine's hub did not answer /health, so the holder cannot be checked: %v", a.fw.Port, a.o.Host, err)
 	}
-	res, err := a.r.run(ctx, []string{RemoteSy, "machine", "probe", "--json", "--hub-url", url}, nil)
+	res, err := a.r.run(ctx, []string{RemoteWy, "machine", "probe", "--json", "--hub-url", url}, nil)
 	if err != nil {
 		return exitf(ExitFailed, "%v", err)
 	}
@@ -887,7 +887,7 @@ func (a *adder) operatorHealth(ctx context.Context) (client.Health, error) {
 // --- 6. setup on the remote -----------------------------------------------------------
 
 func (a *adder) setupWords(cred credential) ([]string, error) {
-	w := []string{RemoteSy, "setup", "--yes", "--json", "--login", "never"}
+	w := []string{RemoteWy, "setup", "--yes", "--json", "--login", "never"}
 	switch {
 	case a.sum.Reach == ReachPull:
 		w = append(w, "--hub", "pull")
@@ -949,7 +949,7 @@ func (a *adder) setup(ctx context.Context, cred credential) (setupReply, error) 
 	}
 	a.e.emit("setup", "ok", fmt.Sprintf("wy setup ran on %s (%s)", a.o.Host, a.sum.Reach), nil)
 	if a.sum.Reach == ReachPull {
-		aw := []string{RemoteSy, "machine", "authorize-pull", "--key-stdin", "--target", a.sum.PullID}
+		aw := []string{RemoteWy, "machine", "authorize-pull", "--key-stdin", "--target", a.sum.PullID}
 		if a.o.PullFrom != "" {
 			aw = append(aw, "--from", a.o.PullFrom)
 		}
@@ -1054,7 +1054,7 @@ func (a *adder) logins(ctx context.Context, rep setupReply) {
 			a.sum.Logins = append(a.sum.Logins, cmd)
 			continue
 		}
-		code, err := a.e.SSH.RunTTY(ctx, sshx.Call{Host: a.o.Host, Remote: []string{RemoteSy, "account", "login", n.Folder}})
+		code, err := a.e.SSH.RunTTY(ctx, sshx.Call{Host: a.o.Host, Remote: []string{RemoteWy, "account", "login", n.Folder}})
 		if err != nil || code != 0 {
 			a.warn("login", fmt.Sprintf("logging in %s on %s did not finish; run: %s", n.Folder, a.o.Host, cmd))
 			a.sum.Logins = append(a.sum.Logins, cmd)
@@ -1071,7 +1071,7 @@ func (a *adder) logins(ctx context.Context, rep setupReply) {
 // pasted into the operator's shell: ~ stays literal for the remote wy (an unquoted one would
 // expand here), and a folder name that is not a plain word is quoted for both shells.
 func LoginCommand(host, folder string) string {
-	words := []string{RemoteSy, "account", "login", folder}
+	words := []string{RemoteWy, "account", "login", folder}
 	if sshx.CheckWord(folder) == nil {
 		q := make([]string, len(words))
 		for i, w := range words {
@@ -1109,7 +1109,7 @@ func (a *adder) directPush(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	w := []string{RemoteSy, "direct-push", "on", "--server", server, "--private=" + strconv.FormatBool(private), "--secret-stdin"}
+	w := []string{RemoteWy, "direct-push", "on", "--server", server, "--private=" + strconv.FormatBool(private), "--secret-stdin"}
 	res, err := a.r.run(ctx, w, secret)
 	if err != nil {
 		return err
@@ -1130,7 +1130,7 @@ func (a *adder) saveRegistry(ctx context.Context, done bool) error {
 		return nil
 	}
 	e := Entry{Name: a.sum.Name, Machine: a.sum.Machine, SSH: a.o.Host, Reach: a.sum.Reach, OS: a.sum.OS, Arch: a.sum.Arch,
-		SyVersion: a.sum.Sy, HubURL: a.sum.HubURL, PullTarget: a.sum.PullID, Hub: a.old.Hub,
+		WyVersion: a.sum.Wy, HubURL: a.sum.HubURL, PullTarget: a.sum.PullID, Hub: a.old.Hub,
 		ForwardSet: a.old.ForwardSet, ForwardAdopted: a.old.ForwardAdopted}
 	if a.fw != nil {
 		e.Port, e.Socket, e.ForwardTarget = a.fw.Port, a.fw.Socket, a.fw.Target
@@ -1162,7 +1162,7 @@ func (a *adder) saveRegistry(ctx context.Context, done bool) error {
 // target from the hub; true only when both succeeded.
 func (a *adder) dropPull(ctx context.Context, target string) bool {
 	ok := true
-	out, err := a.r.run(ctx, []string{RemoteSy, "machine", "authorize-pull", "--remove", "--target", target}, nil)
+	out, err := a.r.run(ctx, []string{RemoteWy, "machine", "authorize-pull", "--remove", "--target", target}, nil)
 	switch {
 	case err != nil:
 		a.warn("pull", fmt.Sprintf("could not remove the hub's key from %s: %v", a.o.Host, err))

@@ -28,7 +28,7 @@ here add three things tokens cannot give:
 | **Hub signing key** | Ed25519 | `wy hub serve` at first start | `<state>/hub_sign.key` on the hub machine, **not** in the database (3.4) | Signs every link frame, every device certificate, the link challenge, the confirmation of the owner key (3.3), hub-made matrix and revocation documents |
 | **Machine device keys** | Ed25519 (sign) + X25519 (box) | `wy` on the machine, at pairing (`wy connect --code`) or `wy agent enable` | `<state>/keys/device.json` | Link login; signing peer envelopes; opening frames and peer bodies sealed to it |
 | **Desktop device keys** | as machine | the bundled `wy` of the desktop app (desktop.md C11), in the same state folder as the machine | as machine | as machine |
-| **Phone device keys** | P-256 sign + P-256 key agreement, plus a 16-byte auth secret | The Android app's `sy-link` module at pairing (push.md 14) | Android Keystore, non-exportable (`sy_link_sign`, `sy_link_agree`); the auth secret in the module's private storage (push.md 14.3) | Link login; opening RFC 8291 frames (push.md 13) |
+| **Phone device keys** | P-256 sign + P-256 key agreement, plus a 16-byte auth secret | The Android app's `wy-link` module at pairing (push.md 14) | Android Keystore, non-exportable (`wy_link_sign`, `wy_link_agree`); the auth secret in the module's private storage (push.md 14.3) | Link login; opening RFC 8291 frames (push.md 13) |
 | Browsers, owner sessions | none | — | — | Cookies only, as today (pairing.md 3.2, 4) |
 
 Random bytes always come from `crypto/rand` (Go) or `SecureRandom` (Android). Everything on the
@@ -95,9 +95,13 @@ printed code is a full backup of the key, not a second password:
 
 ```
 seed = HKDF-SHA256(secret = R, salt = "sy-owner-v1", info = "ed25519 seed", length = 32)
-code = "SYR1-" + groups of 4 of base32(R) (52 characters, upper case) + "-" + check
+code = "WYR1-" + groups of 4 of base32(R) (52 characters, upper case) + "-" + check
 check = first 4 characters of base32(SHA-256("sy-recovery-v1" ‖ R))
 ```
+
+The labels `sy-owner-v1` and `sy-recovery-v1` keep the name from before the rename: they derive
+the key from a code people have written down (rename.md 2.12). A code printed before the rename
+starts `SYR1-` and is accepted like `WYR1-`.
 
 - Printed once, on the terminal only (refused when stdout is not a TTY), with: "Write this
   down and keep it offline. Anyone with it has your owner key. It replaces the passphrase

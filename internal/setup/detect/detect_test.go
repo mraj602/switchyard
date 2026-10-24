@@ -177,7 +177,7 @@ func TestFresh(t *testing.T) {
 	if st.MCP.HandMade || len(st.Launchers) != 0 {
 		t.Errorf("mcp/launchers: %+v %+v", st.MCP, st.Launchers)
 	}
-	if st.Share.Primary != "" || st.StateDir == "" || st.Sy == "" {
+	if st.Share.Primary != "" || st.StateDir == "" || st.Wy == "" {
 		t.Errorf("%+v", st)
 	}
 }
@@ -282,7 +282,7 @@ func TestLauncherFilesAndOurs(t *testing.T) {
 	h := detecttest.Fresh(t)
 	h.B.File(".claude-2/.claude.json", `{}`, 0o600)
 	h.B.File(".claude-3/.claude.json", `{}`, 0o600)
-	h.B.File(".local/bin/claude-2", "#!/bin/sh\n# sy-launcher v1 slot=~/.claude-2 label=work\nexec claude\n", 0o755)
+	h.B.File(".local/bin/claude-2", "#!/bin/sh\n# wy-launcher v1 slot=~/.claude-2 label=work\nexec claude\n", 0o755)
 	h.B.File(".local/bin/claude-3", "#!/bin/sh\nCLAUDE_CONFIG_DIR=$HOME/.claude-3 exec claude \"$@\"\n", 0o755)
 	h.B.File(".local/bin/claude-notexec", "x", 0o644)
 	st := h.State()

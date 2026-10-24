@@ -499,7 +499,7 @@ func (p *planner) planPlugin() error {
 	}
 	if needTree {
 		dir := p.marketplaceDir()
-		sum := sha256.Sum256([]byte(MarketplaceName + "\x00" + p.opt.Version + "\x00" + p.st.Sy))
+		sum := sha256.Sum256([]byte(MarketplaceName + "\x00" + p.opt.Version + "\x00" + p.st.Wy))
 		pre := preAbsent(dir)
 		if p.st.Ledger != nil && p.st.Ledger.Plugin != nil && p.st.Ledger.Plugin.Marketplace != "" {
 			pre = preType(dir, model.TypeDir)

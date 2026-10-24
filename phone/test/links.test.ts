@@ -179,7 +179,7 @@ describe('nativeIntentToHref (+native-intent)', () => {
   });
 });
 
-describe('links the native sy-link notifications carry (Payloads.appLink / CONNECTION_TAP)', () => {
+describe('links the native wy-link notifications carry (Payloads.appLink / CONNECTION_TAP)', () => {
   it.each<[string, string]>([
     ['watchyard://now', '/'],
     ['/now', '/'],

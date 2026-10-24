@@ -34,7 +34,7 @@ func fakeClaudeDir(t *testing.T) string {
 		t.Skip("the setup end-to-end tests run on unix")
 	}
 	fakeOnce.Do(func() {
-		dir, err := os.MkdirTemp("", "sy-fakeclaude-")
+		dir, err := os.MkdirTemp("", "wy-fakeclaude-")
 		if err != nil {
 			fakeErr = err
 			return
@@ -53,7 +53,7 @@ func fakeClaudeDir(t *testing.T) string {
 }
 
 type setupHome struct {
-	root, syHome string
+	root, wyHome string
 	env          []string
 }
 
@@ -69,15 +69,15 @@ func newSetupHome(t *testing.T, h *detecttest.Home) *setupHome {
 	if err := os.WriteFile(h.Abs(".local/bin/claude"), b, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	sh := &setupHome{root: h.Root, syHome: t.TempDir()}
+	sh := &setupHome{root: h.Root, wyHome: t.TempDir()}
 	sh.env = []string{
 		"PATH=" + fake + ":/usr/bin:/bin",
 		"HOME=" + h.Root,
-		"WY_HOME=" + sh.syHome,
+		"WY_HOME=" + sh.wyHome,
 		"WY_NO_SPAWN=1",
 		"SHELL=/bin/sh",
 		"TERM=dumb",
-		"FAKE_CLAUDE_LOG=" + filepath.Join(sh.syHome, "claude.log"),
+		"FAKE_CLAUDE_LOG=" + filepath.Join(sh.wyHome, "claude.log"),
 	}
 	return sh
 }
@@ -85,7 +85,7 @@ func newSetupHome(t *testing.T, h *detecttest.Home) *setupHome {
 // wy runs the binary and returns stdout, stderr and the exit code.
 func (s *setupHome) wy(t *testing.T, stdin string, args ...string) (string, string, int) {
 	t.Helper()
-	cmd := exec.Command(syBin, args...)
+	cmd := exec.Command(wyBin, args...)
 	cmd.Env = s.env
 	cmd.Dir = s.root
 	cmd.Stdin = strings.NewReader(stdin)
@@ -103,7 +103,7 @@ func (s *setupHome) wy(t *testing.T, stdin string, args ...string) (string, stri
 	return o.String(), e.String(), code
 }
 
-func (s *setupHome) mustSy(t *testing.T, args ...string) string {
+func (s *setupHome) mustWy(t *testing.T, args ...string) string {
 	t.Helper()
 	out, errOut, code := s.wy(t, "", args...)
 	if code != 0 {
@@ -141,7 +141,7 @@ func parsePlan(t *testing.T, out string) planJSON {
 
 func TestSetupDetectJSON(t *testing.T) {
 	s := newSetupHome(t, detecttest.Laptop(t))
-	out := s.mustSy(t, "setup", "--detect", "--json")
+	out := s.mustWy(t, "setup", "--detect", "--json")
 	var st struct {
 		V       int `json:"v"`
 		Folders []struct {
@@ -158,7 +158,7 @@ func TestSetupDetectJSON(t *testing.T) {
 		t.Fatal("detect printed a secret")
 	}
 	// Plain text works too.
-	if txt := s.mustSy(t, "setup", "--detect"); !strings.Contains(txt, ".claude-7") {
+	if txt := s.mustWy(t, "setup", "--detect"); !strings.Contains(txt, ".claude-7") {
 		t.Fatalf("detect text misses ~/.claude-7:\n%s", txt)
 	}
 }
@@ -169,7 +169,7 @@ func TestSetupLaptopDryRunApplyUndo(t *testing.T) {
 	before := testtree.Take(t, s.root, snapOpts)
 
 	// setup.md 11: five actions, no links changed.
-	out := s.mustSy(t, "setup", "--dry-run", "--json", "--hub", "later")
+	out := s.mustWy(t, "setup", "--dry-run", "--json", "--hub", "later")
 	p := parsePlan(t, out)
 	var ops []string
 	for _, a := range p.Actions {
@@ -201,7 +201,7 @@ func TestSetupLaptopDryRunApplyUndo(t *testing.T) {
 	testtree.Equal(t, before, testtree.Take(t, s.root, snapOpts))
 
 	// Apply with the id we were shown.
-	s.mustSy(t, "setup", "--yes", "--hub", "later", "--expect-plan", p.PlanID)
+	s.mustWy(t, "setup", "--yes", "--hub", "later", "--expect-plan", p.PlanID)
 	for _, a := range p.Actions {
 		if a.Op == "write_tree" {
 			if _, err := os.Stat(a.Path); err != nil {
@@ -230,20 +230,20 @@ func TestSetupLaptopDryRunApplyUndo(t *testing.T) {
 	}
 
 	// A second run has nothing to do.
-	out = s.mustSy(t, "setup", "--dry-run", "--json", "--hub", "later")
+	out = s.mustWy(t, "setup", "--dry-run", "--json", "--hub", "later")
 	if p2 := parsePlan(t, out); len(p2.Actions) != 0 {
 		t.Fatalf("second plan not empty:\n%s", out)
 	}
-	if out := s.mustSy(t, "setup", "--yes", "--hub", "later"); !strings.Contains(out, "0 changes") {
+	if out := s.mustWy(t, "setup", "--yes", "--hub", "later"); !strings.Contains(out, "0 changes") {
 		t.Fatalf("second apply: %q", out)
 	}
 
 	// Undo restores the tree byte for byte.
-	list := s.mustSy(t, "setup", "--undo-list", "--json")
+	list := s.mustWy(t, "setup", "--undo-list", "--json")
 	if !strings.Contains(list, `"sets"`) {
 		t.Fatalf("undo-list: %s", list)
 	}
-	s.mustSy(t, "setup", "--undo", "--yes")
+	s.mustWy(t, "setup", "--undo", "--yes")
 	testtree.Equal(t, before, testtree.Take(t, s.root, snapOpts))
 }
 
@@ -273,13 +273,13 @@ func TestSetupClaudeMissingExits7(t *testing.T) {
 func TestAccountAddCreatesNextFolder(t *testing.T) {
 	h := detecttest.Laptop(t)
 	s := newSetupHome(t, h)
-	s.mustSy(t, "setup", "--yes", "--hub", "later")
+	s.mustWy(t, "setup", "--yes", "--hub", "later")
 
-	out := s.mustSy(t, "account", "list", "--json")
+	out := s.mustWy(t, "account", "list", "--json")
 	if !strings.Contains(out, ".claude-7") {
 		t.Fatalf("account list: %s", out)
 	}
-	s.mustSy(t, "account", "add", "work", "--yes")
+	s.mustWy(t, "account", "add", "work", "--yes")
 	dir := h.Abs(".claude-8")
 	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
 		t.Fatalf("~/.claude-8 not created: %v", err)
@@ -288,7 +288,7 @@ func TestAccountAddCreatesNextFolder(t *testing.T) {
 	if err != nil || fi.Mode()&os.ModeSymlink == 0 {
 		t.Fatalf("~/.claude-8/settings.json is not a link: %v", err)
 	}
-	cfg, err := os.ReadFile(filepath.Join(s.syHome, "config", "config.toml"))
+	cfg, err := os.ReadFile(filepath.Join(s.wyHome, "config", "config.toml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,15 +300,15 @@ func TestAccountAddCreatesNextFolder(t *testing.T) {
 func TestUninstallAfterSetupAndTick(t *testing.T) {
 	h := detecttest.Laptop(t)
 	s := newSetupHome(t, h)
-	s.mustSy(t, "setup", "--yes", "--hub", "later")
+	s.mustWy(t, "setup", "--yes", "--hub", "later")
 	if _, errOut, code := s.wy(t, "", "tick"); code != 0 {
 		t.Fatalf("wy tick: exit %d\n%s", code, errOut)
 	}
-	out := s.mustSy(t, "uninstall", "--dry-run", "--json")
+	out := s.mustWy(t, "uninstall", "--dry-run", "--json")
 	if !strings.Contains(out, "uninstall") {
 		t.Fatalf("uninstall plan: %s", out)
 	}
-	s.mustSy(t, "uninstall", "--yes")
+	s.mustWy(t, "uninstall", "--yes")
 	settings, err := os.ReadFile(h.Abs(".claude/settings.json"))
 	if err != nil {
 		t.Fatal(err)

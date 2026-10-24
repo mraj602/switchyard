@@ -37,7 +37,7 @@ func TestBoardConnectThroughLocalHub(t *testing.T) {
 		t.Fatalf("output %q: %v", out, err)
 	}
 	tok, err := board.LoadToken(d.State.Path, hub.URL)
-	if err != nil || !strings.HasPrefix(tok.Token, "sy_d_") || tok.Device != got.Device {
+	if err != nil || !strings.HasPrefix(tok.Token, "wy_d_") || tok.Device != got.Device {
 		t.Fatalf("token file: %+v %v", tok, err)
 	}
 	if strings.Contains(out+errb, tok.Token) {
@@ -56,7 +56,7 @@ func TestBoardConnectThroughLocalHub(t *testing.T) {
 
 	// The human form never shows it either.
 	code, out, errb = runBoardConnectCmd(t, "", "connect")
-	if code != 0 || strings.Contains(out+errb, "sy_d_") || !strings.Contains(out, "board token saved") {
+	if code != 0 || strings.Contains(out+errb, "wy_d_") || !strings.Contains(out, "board token saved") {
 		t.Errorf("plain connect: %d %q %q", code, out, errb)
 	}
 
@@ -141,7 +141,7 @@ func TestBoardConnectTokenNeverInArgvEnvOrOutput(t *testing.T) {
 	bin := t.TempDir()
 	rec := filepath.Join(bin, "record.txt")
 	script := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> " + rec + "\nenv >> " + rec + "\ncase \"$*\" in\n" +
-		"  *token*create*) echo '{\"device\":\"dev_77\",\"token\":\"sy_d_BOARDSECRETBOARDSECRETBOARDSECRETBOARDSECRET1\",\"scopes\":[\"read\"]}' ;;\n" +
+		"  *token*create*) echo '{\"device\":\"dev_77\",\"token\":\"wy_d_BOARDSECRETBOARDSECRETBOARDSECRETBOARDSECRET1\",\"scopes\":[\"read\"]}' ;;\n" +
 		"esac\n"
 	if err := os.WriteFile(filepath.Join(bin, "ssh"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
@@ -170,7 +170,7 @@ func TestBoardConnectTokenNeverInArgvEnvOrOutput(t *testing.T) {
 		t.Errorf("the device name is not terminal-<machine>: %s", seen)
 	}
 	tok, err := board.LoadToken(d.State.Path, "https://hub.example.ts.net")
-	if err != nil || !strings.HasPrefix(tok.Token, "sy_d_BOARDSECRET") {
+	if err != nil || !strings.HasPrefix(tok.Token, "wy_d_BOARDSECRET") {
 		t.Fatalf("token file: %v %v", tok, err)
 	}
 }

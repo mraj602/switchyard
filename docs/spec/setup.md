@@ -156,7 +156,7 @@ Read-only. Collects a `State` (the planner's whole input):
    `statusLine`.
 5. **Launchers:**
    - executables named `claude-*` on `PATH` and in `~/.local/bin`; a file whose second-line
-     marker is `# sy-launcher v1` is ours;
+     marker is `# wy-launcher v1` (or `# sy-launcher v1`, written before the rename) is ours;
    - shell functions and aliases: one probe `"$SHELL" -ic 'for n in claude claude-2 ...; do
      type "$n"; done'` with stdin closed, `TERM=dumb` and a 3 s timeout, then a static scan
      of `~/.bashrc`, `~/.bash_profile`, `~/.profile`, `~/.zshrc`, `~/.config/fish/` for
@@ -702,7 +702,7 @@ The backup folder is mode 0700 and lives only in `<state>` (never synced, never 
   "v": 1,
   "id": "20261012T173000Z",
   "command": "wy setup --yes --hub later",
-  "sy_version": "0.3.0",
+  "wy_version": "0.3.0",
   "machine": "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K",
   "plan_id": "p_9c41e0a7d2b3",
   "started_at": "2026-10-12T17:30:00.120Z",
@@ -872,7 +872,7 @@ Written only for folders with no launcher of any kind (step 1, 5). Never for `~/
 
 ```sh
 #!/bin/sh
-# sy-launcher v1 slot=~/.claude-2 label=work
+# wy-launcher v1 slot=~/.claude-2 label=work
 # Claude Code as ~/.claude-2. Written by wy setup; wy uninstall removes it.
 CLAUDE_CONFIG_DIR="$HOME/.claude-2"
 export CLAUDE_CONFIG_DIR

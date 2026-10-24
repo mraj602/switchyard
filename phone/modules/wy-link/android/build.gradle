@@ -1,0 +1,42 @@
+// wy-link: the Android link client (docs/spec/push.md 14). A local Expo module, autolinked from
+// phone/modules. Dependencies are exactly 14.1's: OkHttp (the version React Native ships),
+// androidx.work (forced to 2.8.1 app-wide by plugins/with-wy-native.js), androidx.core and
+// Tink for Ed25519 verification only. ECDH, HKDF and AES-GCM come from the platform.
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'dev.watchyard'
+version = '0.1.0'
+
+// The Go side's shared goldens (link.md 10). The JVM tests read every *.json there when the
+// directory exists and skip those cases otherwise (push.md 14.10).
+def repoRoot = file("${projectDir}/../../../..")
+def linkVectors = new File(repoRoot, 'internal/link/testdata')
+def webpushVectors = new File(repoRoot, 'internal/hub/push/webpush/testdata')
+
+android {
+  namespace 'dev.watchyard.link'
+  defaultConfig {
+    versionCode 1
+    versionName '0.1.0'
+  }
+  testOptions {
+    unitTests.all {
+      systemProperty 'wy.linkVectors', linkVectors.absolutePath
+      systemProperty 'wy.webpushVectors', webpushVectors.absolutePath
+    }
+  }
+}
+
+dependencies {
+  implementation 'com.squareup.okhttp3:okhttp:4.9.2'
+  implementation 'androidx.work:work-runtime:2.8.1'
+  implementation 'androidx.core:core-ktx:1.17.0'
+  implementation 'com.google.crypto.tink:tink-android:1.15.0'
+
+  testImplementation 'junit:junit:4.13.2'
+  // android.jar's org.json is a stub in JVM tests; the platform's runs on the phone.
+  testImplementation 'org.json:json:20240303'
+}

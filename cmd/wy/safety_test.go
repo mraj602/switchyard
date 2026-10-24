@@ -20,15 +20,15 @@ import (
 	"github.com/mraj602/watchyard/internal/share"
 )
 
-func (s *setupHome) state() string { return filepath.Join(s.syHome, "state") }
+func (s *setupHome) state() string { return filepath.Join(s.wyHome, "state") }
 
 // `account remove --unshare` makes independent copies; `wy tick` never copies a
 // copy's edits over the primary.
 func TestUnshareThenTickLeavesPrimary(t *testing.T) {
 	h := detecttest.Laptop(t)
 	s := newSetupHome(t, h)
-	s.mustSy(t, "setup", "--yes", "--hub", "later")
-	s.mustSy(t, "account", "remove", "~/.claude-2", "--unshare", "--yes")
+	s.mustWy(t, "setup", "--yes", "--hub", "later")
+	s.mustWy(t, "account", "remove", "~/.claude-2", "--unshare", "--yes")
 	if g, _ := share.LoadCopies(s.state()); len(g) != 0 {
 		t.Fatalf("unshare registered synced copies: %+v", g)
 	}
@@ -50,8 +50,8 @@ func TestUnshareThenTickLeavesPrimary(t *testing.T) {
 func TestUndoOfUnshareKeepsNewWork(t *testing.T) {
 	h := detecttest.Laptop(t)
 	s := newSetupHome(t, h)
-	s.mustSy(t, "setup", "--yes", "--hub", "later")
-	s.mustSy(t, "account", "remove", "~/.claude-2", "--unshare", "--yes")
+	s.mustWy(t, "setup", "--yes", "--hub", "later")
+	s.mustWy(t, "account", "remove", "~/.claude-2", "--unshare", "--yes")
 	work := h.Abs(".claude-2/skills/my-new-work.md")
 	if err := os.WriteFile(work, []byte("precious"), 0o644); err != nil {
 		t.Fatal(err)
@@ -74,7 +74,7 @@ func TestUndoOfUnshareKeepsNewWork(t *testing.T) {
 func TestInProgressSetIsNotUndoneWhileLocked(t *testing.T) {
 	h := detecttest.Laptop(t)
 	s := newSetupHome(t, h)
-	s.mustSy(t, "setup", "--yes", "--hub", "later")
+	s.mustWy(t, "setup", "--yes", "--hub", "later")
 	ents, _ := os.ReadDir(filepath.Join(s.state(), "backup"))
 	if len(ents) == 0 {
 		t.Fatal("no sets")
@@ -109,7 +109,7 @@ func TestInProgressSetIsNotUndoneWhileLocked(t *testing.T) {
 	}
 	unlock()
 	// lock free: now it is an interrupted run, and --yes undoes it
-	s.mustSy(t, "setup", "--yes", "--hub", "later")
+	s.mustWy(t, "setup", "--yes", "--hub", "later")
 	if st, _ := os.ReadFile(h.Abs(".claude/settings.json")); !strings.Contains(string(st), "watchyard@wy-local") {
 		t.Fatal("setup after recovery did not apply")
 	}
@@ -163,7 +163,7 @@ func TestTickSkipsShareWhileLocked(t *testing.T) {
 func TestUninstallAsksBeforeRemovingTimerAndService(t *testing.T) {
 	h := detecttest.Laptop(t)
 	s := newSetupHome(t, h)
-	led := model.Ledger{V: 1, Timer: true, HubService: &model.LedgerService{Name: "sy-hub", Unit: "x"}}
+	led := model.Ledger{V: 1, Timer: true, HubService: &model.LedgerService{Name: "wy-hub", Unit: "x"}}
 	if err := ledger.Write(s.state(), led); err != nil {
 		t.Fatal(err)
 	}
@@ -171,10 +171,10 @@ func TestUninstallAsksBeforeRemovingTimerAndService(t *testing.T) {
 	var r struct {
 		Uninstall model.UninstallSteps `json:"uninstall"`
 	}
-	if code != 0 || json.Unmarshal([]byte(out), &r) != nil || !r.Uninstall.Timer || r.Uninstall.HubService != "sy-hub" {
+	if code != 0 || json.Unmarshal([]byte(out), &r) != nil || !r.Uninstall.Timer || r.Uninstall.HubService != "wy-hub" {
 		t.Fatalf("exit %d: %s", code, out)
 	}
-	if out, _, _ := s.wy(t, "", "uninstall", "--dry-run"); !strings.Contains(out, "flush timer") || !strings.Contains(out, "hub service sy-hub") {
+	if out, _, _ := s.wy(t, "", "uninstall", "--dry-run"); !strings.Contains(out, "flush timer") || !strings.Contains(out, "hub service wy-hub") {
 		t.Fatalf("plan text: %s", out)
 	}
 	if _, _, code := s.wy(t, "", "uninstall"); code != exitNeedsPerson {
@@ -212,7 +212,7 @@ func TestUninstallKeepsRecordsOfWhatItLeft(t *testing.T) {
 func TestAccountRemoveRefusesUnreadableLedger(t *testing.T) {
 	h := detecttest.Laptop(t)
 	s := newSetupHome(t, h)
-	s.mustSy(t, "setup", "--yes", "--hub", "later")
+	s.mustWy(t, "setup", "--yes", "--hub", "later")
 	bad := []byte("{not json")
 	if err := os.WriteFile(ledger.Path(s.state()), bad, 0o600); err != nil {
 		t.Fatal(err)
@@ -230,7 +230,7 @@ func TestAccountRemoveRefusesUnreadableLedger(t *testing.T) {
 func TestAccountRemoveForgetsTheFolderCopies(t *testing.T) {
 	h := detecttest.Laptop(t)
 	s := newSetupHome(t, h)
-	s.mustSy(t, "setup", "--yes", "--hub", "later")
+	s.mustWy(t, "setup", "--yes", "--hub", "later")
 	c2, c3 := h.Abs(".claude-2/keybindings.json"), h.Abs(".claude-3/keybindings.json")
 	led, err := ledger.Read(s.state())
 	if err != nil {
@@ -248,7 +248,7 @@ func TestAccountRemoveForgetsTheFolderCopies(t *testing.T) {
 	if err := os.WriteFile(cj, []byte(g), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	s.mustSy(t, "account", "remove", "~/.claude-2", "--yes")
+	s.mustWy(t, "account", "remove", "~/.claude-2", "--yes")
 	if got, _ := ledger.Read(s.state()); len(got.Copies) != 1 || got.Copies[0] != c3 {
 		t.Fatalf("ledger copies: %v", got.Copies)
 	}

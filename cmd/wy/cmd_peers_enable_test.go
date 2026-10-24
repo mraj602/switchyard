@@ -20,7 +20,7 @@ func TestPeersEnableDisable(t *testing.T) {
 	t.Cleanup(func() { agentServiceEnv = old })
 	agentServiceEnv = fakeServiceEnv(t, &recorder{})
 
-	code, out, errs := runSyArgs("peers", "enable")
+	code, out, errs := runWyArgs("peers", "enable")
 	if code != 0 || !strings.Contains(out, "peers are enabled") || !strings.Contains(out, "matrix v1 (hub)") {
 		t.Fatalf("enable: %d %q %q", code, out, errs)
 	}
@@ -29,20 +29,20 @@ func TestPeersEnableDisable(t *testing.T) {
 		t.Fatalf("stored matrix %+v %v", s, err)
 	}
 	// Again: the same version is not an error.
-	if code, out, errs = runSyArgs("peers", "enable"); code != 0 {
+	if code, out, errs = runWyArgs("peers", "enable"); code != 0 {
 		t.Fatalf("second enable: %d %q %q", code, out, errs)
 	}
-	if code, out, errs = runSyArgs("peers", "disable"); code != 0 || !strings.Contains(out, "peers are disabled") {
+	if code, out, errs = runWyArgs("peers", "disable"); code != 0 || !strings.Contains(out, "peers are disabled") {
 		t.Fatalf("disable: %d %q %q", code, out, errs)
 	}
 	// Status and audit work with no agent and no session: local log only.
-	if code, out, _ = runSyArgs("peers", "status"); code != 0 || !strings.Contains(out, "matrix v1") || !strings.Contains(out, "no messages yet") {
+	if code, out, _ = runWyArgs("peers", "status"); code != 0 || !strings.Contains(out, "matrix v1") || !strings.Contains(out, "no messages yet") {
 		t.Fatalf("status: %d %q", code, out)
 	}
-	if code, _, _ = runSyArgs("peers", "audit", "--since", "7d"); code != 0 {
+	if code, _, _ = runWyArgs("peers", "audit", "--since", "7d"); code != 0 {
 		t.Fatalf("audit: %d", code)
 	}
-	if code, _, _ = runSyArgs("peers", "audit", "--since", "soon"); code != 2 {
+	if code, _, _ = runWyArgs("peers", "audit", "--since", "soon"); code != 2 {
 		t.Fatalf("audit bad --since: %d", code)
 	}
 }

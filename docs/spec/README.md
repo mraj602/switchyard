@@ -14,7 +14,7 @@ goes here first, before any code..
 | [outbox.md](outbox.md) | The local outbox: files, concurrent writers, cursor, cap, crash safety. |
 | [paths.md](paths.md) | Config, state and data folders per OS; `config.toml`. |
 | [pairing.md](pairing.md) | Pairing codes and QR, claim, rate limits, owner sessions, devices and revoke. |
-| [push.md](push.md) | Alert rules, scheduler, delivery, Web Push (VAPID, RFC 8291), ntfy, action tokens, schema v3; section 12 is a tombstone for the removed Expo channel (schema v11); the link channel, widget refresh frames, schema v8 (section 13) and the Android `sy-link` module (section 14). |
+| [push.md](push.md) | Alert rules, scheduler, delivery, Web Push (VAPID, RFC 8291), ntfy, action tokens, schema v3; section 12 is a tombstone for the removed Expo channel (schema v11); the link channel, widget refresh frames, schema v8 (section 13) and the Android `wy-link` module (section 14). |
 | [pwa.md](pwa.md) | The installable web app: manifest, icons, service worker, offline, install and notification flows. |
 | [setup.md](setup.md) | Install scripts, `wy setup`, sharing, plugin install, backups and undo, accounts, uninstall. |
 | [machines.md](machines.md) | `wy machine add`, reach modes (direct, SSH forward, hub pull) and the drain protocol, direct ntfy, the Machines screen, versions and `wy update`, hub export/import, schema v4. |

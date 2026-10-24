@@ -1,7 +1,7 @@
-// claude.ai account tabs (phone.md P17): the sy-tabs module behind one small hook, and "Open in
+// claude.ai account tabs (phone.md P17): the wy-tabs module behind one small hook, and "Open in
 // Claude" routed by src/lib/tabs (the seat's tab, else the browser).
 import { useEffect, useState } from 'react';
-import * as SyTabs from '../../modules/sy-tabs';
+import * as WyTabs from '../../modules/wy-tabs';
 import { openTarget } from '../lib/tabs';
 import { openRemote } from './links';
 import { go } from './nav';
@@ -11,14 +11,14 @@ let supported: Promise<boolean> | null = null;
 
 /** Whether this phone can keep one sign-in per tab (asked once per run). */
 export function tabsSupported(): Promise<boolean> {
-  supported ??= SyTabs.available ? SyTabs.isSupported().catch(() => false) : Promise.resolve(false);
+  supported ??= WyTabs.available ? WyTabs.isSupported().catch(() => false) : Promise.resolve(false);
   return supported;
 }
 
 /** Seat ids that have a claude.ai tab profile on this phone (empty where tabs are unsupported). */
 export async function tabProfiles(): Promise<string[]> {
-  if (!SyTabs.available || !(await tabsSupported())) return [];
-  return SyTabs.listProfiles().catch(() => []);
+  if (!WyTabs.available || !(await tabsSupported())) return [];
+  return WyTabs.listProfiles().catch(() => []);
 }
 
 /**
@@ -27,7 +27,7 @@ export async function tabProfiles(): Promise<string[]> {
  */
 export async function clearAllTabs(): Promise<number> {
   const ids = await tabProfiles();
-  const results = await Promise.allSettled(ids.map((id) => SyTabs.deleteProfile(id)));
+  const results = await Promise.allSettled(ids.map((id) => WyTabs.deleteProfile(id)));
   // What a cleared tab showed goes with it (P17.7).
   await Promise.all(ids.filter((_, i) => results[i]!.status === 'fulfilled').map((id) => forgetMemo(id)));
   if (ids.length) profilesChanged();

@@ -8,7 +8,7 @@
 [ -x "$TOOLS/claude" ] || skip_scenario "no fake claude in $TOOLS"
 
 H=$(new_home conflicts conflicts)
-install_sy "$H"
+install_wy "$H"
 P=$H/.claude
 snap "$H" "$WY_E2E_TMP/before.json" -claude-json
 cp "$P/CLAUDE.md" "$WY_E2E_TMP/primary.CLAUDE.md"

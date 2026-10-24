@@ -78,6 +78,11 @@ the old prefix renamed, 2.13), install the unit of the current name for the curr
 start it and remove the old one. `Install` removes a legacy unit first; `Uninstall` removes
 both. The setup ledger may still name the legacy service; it is read through `brand.Current`.
 
+The old unit is removed before the new one starts: both would listen on the same address.
+System-wide units (a hub in `/etc/systemd/system`, a backup timer someone wrote) are not
+managed by `wy`; `wy doctor` and the post-update summary name every system unit that starts
+with `<old slug>-` or `<old cli>-`, and the runbook moves them by hand.
+
 On macOS the planner wrote `dev.<slug>.hub.plist` while the service code looked for
 `com.<slug>.hub.plist`. Both are now read; new installs write `com.<slug>.hub.plist`.
 
@@ -97,7 +102,10 @@ settings file; the plan disables the legacy ids, removes the marketplace `<old c
 from each plugin root that knows it (its folder is the same `<state>/plugin/marketplace`,
 now carrying the new name), adds `<cli>-local` and installs the current plugin, with a
 warning. The post-update step does the same in every plugin root the ledger records and
-updates the ledger. `wy setup --undo` restores the legacy pointers. `wy doctor` warns while a
+updates the ledger. When removing an old plugin fails in any root, it rewrites nothing and asks for the
+step to be run again; a root left with neither plugin (the install failed after the removal)
+gets the current plugin installed on the next run, not updated. A pane lost that way comes
+back with `wy setup`. `wy setup --undo` restores the legacy pointers. `wy doctor` warns while a
 legacy plugin is enabled. Slash commands follow the plugin name (`/watchyard:setup`).
 
 ### 2.5 SSH forward file
@@ -108,7 +116,8 @@ written next to it.
 
 ### 2.6 Hub export
 
-The export manifest kind is `<slug>-hub-export`. Import accepts the legacy kind too.
+The export manifest kind is `<slug>-hub-export`, with the version under `wy`. Import accepts the
+legacy kind, and the version under `sy`, too.
 
 ### 2.7 Release attestation
 
@@ -131,10 +140,14 @@ person's and stays, with a warning.
 ### 2.9 Desktop app
 
 - User data: `<appData>/<slug>-desktop`. On the first start that finds only
-  `<appData>/<old>-desktop`, the folder is renamed to the new name (the app is not running
-  then); if the rename fails the old folder is used.
+  `<appData>/<old>-desktop`, the folder is renamed to the new name; if the rename fails the old
+  folder is used. While the old app still runs (its `SingletonLock` in that folder names a live
+  process on this host; Linux and macOS) the folder is used as it is and moved on a later start.
 - Run at login on Linux: the first `get()` that finds only `<old>-desktop.desktop` in
   `~/.config/autostart` writes the current entries; every `set()` removes the legacy ones.
+- The hub view's partition folder `Partitions/sy-hub` is renamed to `Partitions/wy-hub` the
+  same way, so the board and owner sessions in it survive; if that fails the view signs in
+  again (an owner session has to be made again).
 - `<OLD>_TRAY_ICON` is read when `<NEW>_TRAY_ICON` is not set.
 - The board recognises the user agent token `<Old>Desktop/` of an app not yet updated.
 - The command is found as `wy`; an old `sy` on PATH is a link to it after the update (2.13).
@@ -165,24 +178,74 @@ apps never both answer a link.
 `deploy/docker-compose.yml` names the volume `switchyard_hub-data` explicitly, so the hub's
 data stays in the same volume under any project name. The project, image and container names
 change: stop the old project (`docker compose -p switchyard down`, which keeps volumes) before
-starting the new one.
+starting the new one. The compose files read `SY_BIND`, `SY_PORT`, `SY_PUBLIC_URL` and
+`SY_TRUSTED_PROXY` from an older `.env` when the `WY_` name is not set
+(`${WY_BIND:-${SY_BIND:-…}}`).
 
-### 2.12 Unchanged on purpose
+### 2.12 Old formats
 
-Formats that existing installs have stored or that older releases send:
+The tool leaves alone the formats that existing installs have stored or that older releases
+send (`sy_`, `sy-<word>`, JSON keys named `sy`); a hand pass after it renames them by these
+rules. Code that reads an old form says so with a short legacy-compat comment, and each one
+has a unit test.
 
-- Token prefixes `sy_<kind>_` (hashed on the hub, held by every device) and the cookie
-  `sy_session`.
-- Signed-protocol labels (`sy-link-v1`, `sy-doc-v1`, `sy-owner-v1`, `sy-reg-v1`,
-  `sy-peer-v1`, ...): they are inside signatures, sealed keys and certificates.
-- File markers written into the person's files (`sy-launcher v1`, `sy-warp-tab v1`, ...):
-  they are how a file is recognised as ours.
-- JSON keys named `sy` (the version in `machine_info`, the drain hello, link frames, the
-  hub export manifest, the desktop command's output).
-- Internal module names with an `sy-` prefix (`phone/modules/sy-link`, ...) and identifiers
-  such as `SyLinkModule`: invisible to users.
-- `SWITCHYARD_DATA`, which the command asserts it never reads (paths.md).
-- The release signing certificate pin.
+**Written new, old still read.** A new release writes only the new form unless noted; every
+reader accepts both, so paired devices and stored files keep working:
+
+- Tokens: new ones are `wy_<kind>_…`. A device paired before keeps its `sy_<kind>_…` token:
+  the hub stores a hash of the whole string, so it authenticates unchanged, `sy_o_` is still
+  an owner token, and `wy connect`, the peers secret scan and the setup log redaction accept
+  both shapes (tokens.md).
+- The board cookie is `wy_session`; the hub also reads `sy_session` (when `wy_session` is
+  absent) and logout clears both. The desktop app counts either as a board session.
+- Link subprotocol `wy-link.1`: the hub accepts `wy-link.1` and `sy-link.1` and prefers the
+  new one; `wy` and the phone offer both, new first, so they also reach an older hub (link.md 2).
+- JSON version keys named `wy`, read from `sy` when `wy` is absent: the drain hello, the hub
+  export manifest (2.6), `wy desktop info` (read by the desktop app), the link frame
+  `client.wy`. `machine_info` carries the version under both `wy` and `sy`, because a hub
+  older than the rename requires `sy` (record.md 4.8).
+- `wy_version` in the API (machines, overview), the setup manifest, `<state>/machines.json`
+  and `hub-admin` answers; `sy_version` is read where an older writer may have left it. The
+  phone reads `sy_version` from an older hub.
+- Recovery codes are printed `WYR1-…`; `SYR1-…` (and the `I`-for-`1` misreading of either)
+  is still accepted. The salt and check that derive the key are unchanged (keys.md 5).
+- File markers: `wy-launcher v1`, `# wy-warp-tab v1`, `# wy-forward v1` blocks and the
+  `wy-pull:<id>` comment in `authorized_keys`. The `sy-` ones are still recognised as ours,
+  and are replaced when the file is next written.
+- The ingest headers `X-Wy-Backlog` and `X-Wy-Backlog-Oldest`: `wy` sends them under the old
+  names too, which is all an older hub reads; the hub prefers the new ones (outbox.md 8).
+- Encrypted hub exports are named `.wyx` (`.syx` before); import takes any name. The container
+  inside keeps its `SYXE` magic and `syxe1` chunk label (frozen, below).
+- The desktop hub view's partition is `persist:wy-hub`; the folder `Partitions/sy-hub` moves
+  to it at start (2.9).
+
+**Renamed outright.** Values nothing older reads back: push notification tags
+(`wy-s-…`), the ntfy topic prefix of new topics (existing topics are stored and kept), the
+pull SSH host alias (its config is written for every pull), the link nonce label (a key of
+the running process), the web board's cache and local-storage names (old caches are
+deleted by the service worker; the stored owner-session hint and open account rows are
+conveniences and start empty once), Android-internal names (a new app, 2.10), and internal
+identifiers and modules everywhere.
+
+**Frozen.** These keep the old name, each with a one-line comment where it is used:
+
+- Signed and sealed labels `sy-link-v1` (challenge, hello, frames, seal), `sy-doc-v1`,
+  `sy-owner-v1`, `sy-recovery-v1`, `sy-reg-v1`, `sy-peer-v1`. They are inside signatures,
+  sealed keys and key derivations that older hubs, phones and machines produce or check. A
+  new label would need every verifier to try both and every signer to know which one its
+  peer verifies; for hub-signed items that peer may be an older device, so the new label
+  could not be used safely. The derivation inputs (owner key, recovery check) must never
+  change, or existing keys would not be found again.
+- The encrypted export container's `SYXE` magic and `syxe1` chunk label: an older hub must
+  still import an export made by a newer one (machines.md 8.1).
+- The database columns `schema_version.sy_version` and `pull_target.remote_sy`, and the
+  `sy_`/`sy-` examples in comments of `schema.sql`: renaming them needs a migration, and an
+  older hub refuses a database with a newer schema, which would break the rollback of the
+  runbook. Code calls them `WyVersion` and `RemoteWy`, and the API says `wy_version`.
+- The SSH environment variables `LC_SY_FOCUS` and `LC_SY_HOST` (terminal.md): a server's
+  `AcceptEnv LC_SY_*`, which `wy doctor` asked people to add, would drop new names.
+- `SWITCHYARD_DATA`, which the command asserts it never reads (paths.md), the Docker volume
+  `switchyard_hub-data` (2.11), and the release signing certificate pin.
 - With `--version` (a rename in a new release), CHANGELOG history, tags and links to earlier
   releases. With `--reissue` (this rename) the whole CHANGELOG is rewritten, because its
   releases are published again under the new name.

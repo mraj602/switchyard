@@ -96,7 +96,7 @@ func frameFields(f Frame, device, ctx string, payload []byte) map[string]any {
 // alertPlain is the alert-phone plaintext: push.md 6.5's payload plus origin (13.2).
 const alertPlain = `{"v":1,"type":"alert","alert":"al_01JA3B0000000000000000000","alerts":["al_01JA3B0000000000000000000"],` +
 	`"trigger":"asked","title":"work · api · asked a question","body":"Should I also update the migration?",` +
-	`"tag":"sy-s-c41e0000","url":"/#/sessions/c41e0000?alert=al_01JA3B0000000000000000000","tap":"auto",` +
+	`"tag":"wy-s-c41e0000","url":"/#/sessions/c41e0000?alert=al_01JA3B0000000000000000000","tap":"auto",` +
 	`"session":"c41e0000","needs_you":1,"private":false,"ts":"2026-10-15T09:00:00.000Z","origin":"https://hub.example.ts.net"}`
 
 // build makes every vector from the fixed inputs. Randomised parts (the phone's ECDSA hello,
@@ -137,7 +137,7 @@ func build(t *testing.T) []vector {
 		Frame: mustJSON(t, bc)})
 
 	// hello-machine (Ed25519 is deterministic)
-	h := SignHelloEd25519(machine, c, machineDev, 41, Client{Kind: "agent", Sy: "0.9.0", OS: "linux", PingS: 180}, &Known{Matrix: 3, Revocations: 2})
+	h := SignHelloEd25519(machine, c, machineDev, 41, Client{Kind: "agent", Wy: "0.9.0", OS: "linux", PingS: 180}, &Known{Matrix: 3, Revocations: 2})
 	out = append(out, vector{Name: "hello-machine",
 		Keys:      with(map[string]string{"device": machineDev, "sign_ed25519": keys.B64(machine.Public().(ed25519.PublicKey))}),
 		Fields:    map[string]any{"hub": hubFP, "nonce": nonce, "exp": chalExp, "device": machineDev, "last": 41},
@@ -178,7 +178,7 @@ func build(t *testing.T) []vector {
 	}
 	phoneKeys := with(map[string]string{"device": phoneDev, "ua_private": rfcUAPrivate, "ua_public": rfcUAPublic, "auth": rfcAuth,
 		"as_private": rfcASPrivate, "salt": rfcSalt})
-	al, _ := SignFrame(hs, phoneDev, TypeAlert, 57, alertExp, "sy-s-c41e0000", CtxQueue, sealed)
+	al, _ := SignFrame(hs, phoneDev, TypeAlert, 57, alertExp, "wy-s-c41e0000", CtxQueue, sealed)
 	af := frameFields(al, phoneDev, CtxQueue, sealed)
 	af["plaintext"] = alertPlain
 	out = append(out, vector{Name: "alert-phone", Keys: phoneKeys, Fields: af,
@@ -198,7 +198,7 @@ func build(t *testing.T) []vector {
 	f.Exp++
 	bad("bad-alert-exp", f, af)
 	f = al
-	f.Tag = "sy-s-c41e0001"
+	f.Tag = "wy-s-c41e0001"
 	bad("bad-alert-tag", f, af)
 	f = al
 	body := append([]byte(nil), sealed...)
@@ -212,7 +212,7 @@ func build(t *testing.T) []vector {
 	bad("bad-alert-sig", f, af)
 	other := frameFields(al, otherDev, CtxQueue, sealed)
 	bad("bad-device", al, other)
-	z, _ := SignFrame(hs, phoneDev, TypeAlert, 0, alertExp, "sy-s-c41e0000", CtxQueue, sealed)
+	z, _ := SignFrame(hs, phoneDev, TypeAlert, 0, alertExp, "wy-s-c41e0000", CtxQueue, sealed)
 	bad("bad-seq0", z, frameFields(z, phoneDev, CtxQueue, sealed))
 	big1, _ := SignFrame(hs, phoneDev, TypeAlert, 1_000_000_000, alertExp, "", CtxQueue, sealed)
 	sig = ub(t, big1.Sig)

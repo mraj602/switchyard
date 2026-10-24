@@ -50,7 +50,7 @@ export function backlogText(m, now, f) {
 
 // The version line: {text, cls} with cls '' | 'warn' | 'bad'.
 export function versionLine(m, hubVersion) {
-  const v = m.sy_version;
+  const v = m.wy_version;
   const out = (version, note, cls) => ({ text: note ? `${version} · ${note}` : version, version, note, cls });
   if (!v) return out('not reported', '', '');
   if (m.held > 0) return out(v, `holding ${grouped(m.held)} updates because the hub is too old for them`, 'bad');

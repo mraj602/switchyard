@@ -7,7 +7,7 @@ import (
 )
 
 // SealInfo is HPKE's info for a machine's queued body (link.md 4.2): it binds the body to the
-// device and the frame type.
+// device and the frame type. The label is frozen (older devices open these bodies).
 func SealInfo(device, t string) []byte { return lines("sy-link-v1 seal", device, t) }
 
 // SealMachine seals a queued body to a machine's X25519 box key (link.md 4.2): HPKE base

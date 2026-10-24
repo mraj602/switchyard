@@ -67,7 +67,7 @@ func Remove(ctx context.Context, name string, o RemoveOptions, e *ManageEnv) (Re
 	if !ok {
 		return RemoveResult{}, exitf(ExitUsage, "%s is not in %s (wy machine list)", name, RegistryPath(e.StateDir))
 	}
-	res := RemoveResult{Name: ent.Name, Next: fmt.Sprintf("ssh %s %s uninstall", ent.SSH, RemoteSy)}
+	res := RemoveResult{Name: ent.Name, Next: fmt.Sprintf("ssh %s %s uninstall", ent.SSH, RemoteWy)}
 	warn := func(s string) {
 		res.Warnings = append(res.Warnings, s)
 		e.emit("remove", "warn", s)
@@ -86,7 +86,7 @@ func Remove(ctx context.Context, name string, o RemoveOptions, e *ManageEnv) (Re
 	}
 	if ent.PullTarget != "" && !o.KeepRemote && e.SSH != nil {
 		r := remote{ssh: e.SSH, host: ent.SSH}
-		out, err := r.run(ctx, []string{RemoteSy, "machine", "authorize-pull", "--remove", "--target", ent.PullTarget}, nil)
+		out, err := r.run(ctx, []string{RemoteWy, "machine", "authorize-pull", "--remove", "--target", ent.PullTarget}, nil)
 		switch {
 		case err != nil:
 			warn(fmt.Sprintf("could not remove the hub's key from %s: %v", ent.SSH, err))
@@ -212,7 +212,7 @@ func Repoint(ctx context.Context, url string, which []string, e *ManageEnv) ([]R
 // passed again and not left to the remote's own config.
 func repointOne(ctx context.Context, url string, ent Entry, e *ManageEnv) (Entry, error) {
 	r := remote{ssh: e.SSH, host: ent.SSH}
-	words := []string{RemoteSy, "connect", url, "--keep-token"}
+	words := []string{RemoteWy, "connect", url, "--keep-token"}
 	upd := ent
 	var oldBlock *Forward
 	if ent.Reach == ReachForward {

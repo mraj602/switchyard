@@ -2,7 +2,7 @@
 // session into "asked" (needs you), answers it, or ends it, with no Claude Code involved. It
 // only talks HTTP to the hub it is given.
 //
-//	fakemachine -hub http://127.0.0.1:18787 -token sy_m_... -machine m_x -session <uuid> ask|answer|tokens
+//	fakemachine -hub http://127.0.0.1:18787 -token wy_m_... -machine m_x -session <uuid> ask|answer|tokens
 //
 // tokens posts one token_rows record for the session (1M in, 100k out of claude-sonnet-5: $3.00).
 package main

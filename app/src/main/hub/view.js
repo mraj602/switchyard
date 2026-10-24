@@ -1,4 +1,4 @@
-// The hub view (C7): a WebContentsView in the session `persist:sy-hub`, created when first
+// The hub view (C7): a WebContentsView in the session `persist:wy-hub`, created when first
 // needed and kept afterwards. The board is signed in by main: before the first load (when the
 // partition holds no read cookie) and whenever the view lands on `#/login` or `#/pair`, main posts
 // the desktop token to `<hub>/v1/session/login` through that partition's own session, so the
@@ -9,7 +9,9 @@ import { HUB_PARTITION } from '../../shared/constants.js';
 import { hubUrl } from './client.js';
 
 const LOGIN_ROUTE_RE = /^#\/(login|pair)(?:[/?]|$)/;
-const COOKIE = 'sy_session';
+const COOKIE = 'wy_session';
+// Legacy compat: the board's cookie before the rename (an owner session may still be in it); the hub reads both.
+const LEGACY_COOKIE = 'sy_session'; // rename:keep
 const HUB_VIEW_ID = 'hub';
 const LOGIN_WINDOW_MS = 30_000;
 const LOGIN_MAX_IN_WINDOW = 2;
@@ -122,8 +124,11 @@ export function createHubView(deps) {
     const base = deps.base();
     if (!base) return false;
     try {
-      const list = await session().cookies.get({ url: `${base}/`, name: COOKIE });
-      return list.some((c) => !c.expirationDate || c.expirationDate * 1000 > now());
+      for (const name of [COOKIE, LEGACY_COOKIE]) {
+        const list = await session().cookies.get({ url: `${base}/`, name });
+        if (list.some((c) => !c.expirationDate || c.expirationDate * 1000 > now())) return true;
+      }
+      return false;
     } catch {
       return false;
     }

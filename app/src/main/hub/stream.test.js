@@ -22,7 +22,7 @@ beforeEach(async () => {
 
 function mk(over = {}) {
   const got = { events: [], resets: 0, unauthorized: [], conn: [] };
-  let token = 'sy_d_good';
+  let token = 'wy_d_good';
   const s = createStream({
     fetch: globalThis.fetch, getAuth: () => ({ url: hub.url, token }), retryMs: [20, 40, 80], log: silent,
     onEvent: (type, data, id) => got.events.push({ type, data, id }),
@@ -62,7 +62,7 @@ test('a cut stream reconnects with Last-Event-ID', async () => {
   const second = hub.requestsTo('/v1/stream')[1];
   assert.equal(second.headers['last-event-id'], String(id));
   assert.equal(hub.requestsTo('/v1/stream')[0].headers['last-event-id'], undefined);
-  assert.equal(second.headers.authorization, 'Bearer sy_d_good');
+  assert.equal(second.headers.authorization, 'Bearer wy_d_good');
   await until(() => got.conn.includes(false) && got.conn.at(-1) === true);
   s.stop();
 });
@@ -98,7 +98,7 @@ test('a server retry: field sets the next delay; the backoff grows 20, 40, 80 an
 test('connection failures back off (1, 2, 4 … up to the cap) when the hub is down', async () => {
   const delays = [];
   const timers = { setTimeout: (fn, ms) => { delays.push(ms); return setTimeout(fn, 1); }, clearTimeout };
-  const { s } = mk({ timers, retryMs: [1000, 2000, 4000], getAuth: () => ({ url: 'http://127.0.0.1:1', token: 'sy_d_good' }) });
+  const { s } = mk({ timers, retryMs: [1000, 2000, 4000], getAuth: () => ({ url: 'http://127.0.0.1:1', token: 'wy_d_good' }) });
   s.start();
   await until(() => delays.filter((d) => d >= 1000).length >= 5);
   s.stop();

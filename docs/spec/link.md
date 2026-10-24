@@ -7,7 +7,7 @@ documents: [keys.md](keys.md). What travels on it: alerts (push.md 13), peer mes
 Unofficial; not affiliated with Anthropic.
 
 The link is the one path from the hub **to** a device that is not a browser: the Android app's
-`SyLinkService` and `wy agent` on each machine. `/v1/stream` stays the viewers' SSE
+`WyLinkService` and `wy agent` on each machine. `/v1/stream` stays the viewers' SSE
 (api.md); nothing here changes it. Devices still call the HTTP API with their bearer for
 everything else.
 
@@ -29,7 +29,7 @@ hub ── link_queue(device) ── /v1/link (WebSocket, or /v1/link/poll) ─�
 
 **Honest limits.** Someone who can **write** the database can still delete queued rows or set
 `delivery.delivered_at` (loss and a false delivery log, never a forged frame), and can mint
-tokens other than owner sessions (tokens.md 2 peppers only `sy_o_` hashes), so not the
+tokens other than owner sessions (tokens.md 2 peppers only `wy_o_` hashes), so not the
 owner-session rights of keys.md 5.4. TLS is the only
 channel binding: a party that terminates TLS between the device and the hub can relay a live
 login, then drop frames, inject device→hub frames (acks, actions, `peer_result`) and read the
@@ -50,7 +50,10 @@ cannot, and tags are limited to `[A-Za-z0-9_:.-]{0,64}` (5.3).
   claim reply (`link.urls`, keys.md 7.3) and in `welcome`; it tries them in order. A machine
   (`wy agent run`) instead uses its configured `hub.url` (`http`→`ws`, `https`→`wss`, plus
   `/v1/link`) through `hub.dial` like every other `wy` call, and ignores `urls`.
-- **Subprotocol** `sy-link.1` (`Sec-WebSocket-Protocol`). The hub refuses others with HTTP 426.
+- **Subprotocol** `wy-link.1` (`Sec-WebSocket-Protocol`). The hub also accepts `sy-link.1`, the
+  name before the rename, and picks `wy-link.1` when both are offered; `wy` and the phone offer
+  both, new first, so they also reach an older hub (rename.md 2.12). The hub refuses others with
+  HTTP 426.
 - **Messages** are WebSocket text messages, one JSON object each, at most 1 MiB (the library's
   read limit; larger → close 4413). Binary messages → close 4400.
 - **Library.** `github.com/coder/websocket` (ISC, no dependencies of its own), the newest
@@ -108,6 +111,9 @@ challenge login is what protects the link.
 {"t": "challenge", "v": 1, "hub": "<hub fp>", "nonce": "<b64u, 32 bytes>", "exp": 1760518860, "sig": "<b64u>"}
 ```
 
+The `sy-link-v1` labels in this file (challenge, hello, seal, frames) keep the name from before
+the rename: older hubs and devices sign and check them (rename.md 2.12).
+
 `sig` = hub Ed25519 over `"sy-link-v1 challenge\n" ‖ hub fp ‖ "\n" ‖ nonce ‖ "\n" ‖
 decimal(exp)`. `exp` is the hub's clock + 60 s. The device checks the signature against its
 pinned hub key (keys.md 3.5) and `hub` against the pinned fingerprint, and closes the
@@ -140,7 +146,7 @@ valid signature has used it.
   login to this hub's key, this device, this single-use nonce and its expiry; it carries no
   reusable secret.
 - `last`: the highest `seq` the device has processed (its own durable copy, 6.1).
-- `client.kind`: `android` or `agent`; `wy` sends `{"kind":"agent","sy":"0.9.0","os":"linux"}`. `client.ping_s` (optional): the device's own ping interval (2).
+- `client.kind`: `android` or `agent`; `wy` sends `{"kind":"agent","wy":"0.9.0","os":"linux"}`. `client.ping_s` (optional): the device's own ping interval (2).
 - `known`: the newest matrix and revocation versions the device holds (machines only).
 
 The hub, in order:
@@ -204,7 +210,7 @@ within the in-flight window (5.6). When `known` is behind, the hub queues the cu
 Every frame after login is one JSON object:
 
 ```json
-{"t": "alert", "seq": 57, "exp": 1760540400, "tag": "sy-s-c41e…", "body": "<b64u>", "sig": "<b64u>"}
+{"t": "alert", "seq": 57, "exp": 1760540400, "tag": "wy-s-c41e…", "body": "<b64u>", "sig": "<b64u>"}
 ```
 
 Hub→device frames always have these six fields (`tag` may be `""`), and their content is
@@ -230,7 +236,7 @@ The plaintext of a queued body is the type's JSON (6). Sealing depends on the de
 `box_pub` as `ua_public` and its 16-byte auth secret (registered with the keys, push.md 13.7) as
 `auth_secret`. The body is the RFC 8188 `aes128gcm` record (salt ‖ rs ‖ idlen ‖ as_public ‖
 ciphertext). The record limit (3 993 bytes of plaintext) applies; 6's bodies stay under 3 000
-bytes, as for Web Push. The phone decrypts with the same steps, its Keystore `sy_link_agree`
+bytes, as for Web Push. The phone decrypts with the same steps, its Keystore `wy_link_agree`
 key doing the ECDH (push.md 14.3).
 
 **Machines (`x25519`): HPKE** (RFC 9180, Go `crypto/hpke`, base mode, single shot):
@@ -306,7 +312,7 @@ inserting the new one. The device sees a gap in `seq`, which is normal. Tags mat
 
 | Type | Tag |
 | --- | --- |
-| `alert` | the push tag (push.md 6.5: `sy-s-<session>`, `sy-l-…`, `sy-m-…`, `sy-summary`, `sy-test`) |
+| `alert` | the push tag (push.md 6.5: `wy-s-<session>`, `wy-l-…`, `wy-m-…`, `wy-summary`, `wy-test`) |
 | `alert` dismissals | the same tag as the alert they clear |
 | `refresh` | `refresh` (only the newest snapshot matters) |
 | `matrix`, `revoke` | `matrix`, `revoke` (the newest version contains everything) |

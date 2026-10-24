@@ -88,7 +88,7 @@ wy outbox stat
 plus the failing command's output, the relevant log lines, `claude --version`, and for the
 apps their version and your OS or Android version.
 
-Read everything before you paste it. Never paste a device token (`sy_...`), a pairing code or
+Read everything before you paste it. Never paste a device token (`wy_...`), a pairing code or
 secret, an owner link, your owner passphrase or recovery code, `.credentials.json`, or anything
 from `sessions/*.key`. `wy doctor` output holds no tokens.
 

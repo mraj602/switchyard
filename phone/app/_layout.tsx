@@ -6,7 +6,7 @@
 // HubProvider (the one source of truth), the glue that derives the screens' HubApi from it,
 // and the gate: unpaired (including a 401 on any call) goes to Pair.
 import * as Linking from 'expo-linking';
-import * as Notifications from '../modules/sy-notify';
+import * as Notifications from '../modules/wy-notify';
 import { router, Stack, useSegments } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { StatusBar, useColorScheme } from 'react-native';
@@ -20,12 +20,12 @@ import type { ProviderDeps } from '../src/state';
 import { getAppInfo, systemAppState, systemCache, systemClock, systemFetch, systemLink, systemSecureHub } from '../src/state/platform';
 import { registerAndroidWidgets } from '../widgets/android/task-handler';
 
-const g = globalThis as { __syNotifInit?: boolean; __syGlue?: Glue };
-if (!g.__syNotifInit || !g.__syGlue) {
-  g.__syNotifInit = true; // Fast Refresh re-evaluates modules: register once
+const g = globalThis as { __wyNotifInit?: boolean; __wyGlue?: Glue };
+if (!g.__wyNotifInit || !g.__wyGlue) {
+  g.__wyNotifInit = true; // Fast Refresh re-evaluates modules: register once
   registerAndroidWidgets();
   const glue = createGlue(systemGluePlatform(getAppInfo()));
-  g.__syGlue = glue;
+  g.__wyGlue = glue;
   installStateHooks(glue);
   initNotifications({
     notifications: Notifications,
@@ -38,7 +38,7 @@ if (!g.__syNotifInit || !g.__syGlue) {
     probe: bridge.probe,
   });
 }
-const glue: Glue = g.__syGlue!;
+const glue: Glue = g.__wyGlue!;
 // The saved colour scheme (Settings, Appearance) before the first screen paints, as far as it can.
 void loadTheme(systemCache);
 

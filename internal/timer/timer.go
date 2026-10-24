@@ -48,7 +48,7 @@ type Env struct {
 	Home     string
 	UID      int
 	User     string
-	SyPath   string // absolute path of the wy binary the timer runs
+	WyPath   string // absolute path of the wy binary the timer runs
 	StateDir string // for logs and the Windows XML
 	Getenv   func(string) string
 	Runner   Runner
@@ -152,7 +152,7 @@ func SystemdService(e Env) string {
 	for _, kv := range e.envPairs() {
 		fmt.Fprintf(&b, "Environment=%s\n", systemdEnvQuote(kv[0]+"="+kv[1]))
 	}
-	args := []string{systemdQuote(e.SyPath)}
+	args := []string{systemdQuote(e.WyPath)}
 	for _, a := range Command {
 		args = append(args, systemdQuote(a))
 	}
@@ -191,7 +191,7 @@ func LaunchdPlist(e Env) string {
 	<string>` + LaunchdLabel + `</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>` + xmlEscape(e.SyPath) + `</string>
+		<string>` + xmlEscape(e.WyPath) + `</string>
 `)
 	for _, a := range Command {
 		b.WriteString("\t\t<string>" + xmlEscape(a) + "</string>\n")
@@ -255,7 +255,7 @@ func WindowsTaskXML(e Env) string {
   </Settings>
   <Actions Context="Author">
     <Exec>
-      <Command>` + xmlEscape(e.SyPath) + `</Command>
+      <Command>` + xmlEscape(e.WyPath) + `</Command>
       <Arguments>` + xmlEscape(args) + `</Arguments>
     </Exec>
   </Actions>

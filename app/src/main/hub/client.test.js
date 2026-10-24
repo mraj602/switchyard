@@ -5,14 +5,14 @@ import { startFakeHub } from '../../../test/fakes/hub.js';
 
 const hub = await startFakeHub({ overview: { seats: [], needs_you: [], machines: [], counts: { needs_you: 2 } } });
 after(() => hub.close());
-const mk = (over = {}) => createClient({ fetch: globalThis.fetch, getAuth: () => ({ url: hub.url, token: 'sy_d_good' }), ...over });
+const mk = (over = {}) => createClient({ fetch: globalThis.fetch, getAuth: () => ({ url: hub.url, token: 'wy_d_good' }), ...over });
 
 test('GET with a bearer token and JSON parsing', async () => {
   const r = await mk().get('/v1/overview');
   assert.equal(r.ok, true);
   assert.equal(r.data.counts.needs_you, 2);
   const req = hub.requestsTo('/v1/overview').at(-1);
-  assert.equal(req.headers.authorization, 'Bearer sy_d_good');
+  assert.equal(req.headers.authorization, 'Bearer wy_d_good');
 });
 
 test('errors carry status and message, 401 is reported', async () => {
@@ -38,10 +38,10 @@ test('redirects are not followed', async () => {
 });
 
 test('a reply over the cap is refused', async () => {
-  const c = createClient({ fetch: globalThis.fetch, getAuth: () => ({ url: hub.url, token: 'sy_d_good' }), maxBytes: 1024 });
+  const c = createClient({ fetch: globalThis.fetch, getAuth: () => ({ url: hub.url, token: 'wy_d_good' }), maxBytes: 1024 });
   const small = await c.request('GET', '/v1/overview');
   assert.equal(small.ok, true);
-  const big = await createClient({ fetch: async (u, i) => globalThis.fetch(u.replace('/v1/nothing', '/big'), i), getAuth: () => ({ url: hub.url, token: 'sy_d_good' }), maxBytes: 1024 * 1024 }).get('/v1/nothing');
+  const big = await createClient({ fetch: async (u, i) => globalThis.fetch(u.replace('/v1/nothing', '/big'), i), getAuth: () => ({ url: hub.url, token: 'wy_d_good' }), maxBytes: 1024 * 1024 }).get('/v1/nothing');
   assert.equal(big.ok, false);
   assert.match(big.error, /too large/);
 });
@@ -77,6 +77,6 @@ test('plain http: loopback, or a URL wy reported', async () => {
   const c = createClient({ fetch: async () => { called = true; return new Response('{}'); }, getAuth: () => ({ url: 'http://192.168.1.5:8787', token: 't' }) });
   assert.equal((await c.get('/v1/overview')).ok, false);
   assert.equal(called, false, 'nothing is sent over plain http to a LAN host');
-  const lan = createClient({ fetch: async () => new Response('{"ok":1}'), getAuth: () => ({ url: 'http://192.168.1.5:8787', token: 't' }), reportedBySy: () => true });
+  const lan = createClient({ fetch: async () => new Response('{"ok":1}'), getAuth: () => ({ url: 'http://192.168.1.5:8787', token: 't' }), reportedByWy: () => true });
   assert.equal((await lan.get('/v1/overview')).ok, true);
 });

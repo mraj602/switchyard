@@ -15,13 +15,13 @@ import (
 	"github.com/mraj602/watchyard/internal/sshx/sshxtest"
 )
 
-// syBin is the wy binary built once for the tests that run the real executable.
-var syBin string
+// wyBin is the wy binary built once for the tests that run the real executable.
+var wyBin string
 
 func TestMain(m *testing.M) {
 	sshxtest.Main() // the test binary is also the fake ssh of the machine tests
 	cleanup := isolateHome()
-	dir, err := os.MkdirTemp("", "sy-bin-")
+	dir, err := os.MkdirTemp("", "wy-bin-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -30,8 +30,8 @@ func TestMain(m *testing.M) {
 	if runtime.GOOS == "windows" {
 		name = "wy.exe"
 	}
-	syBin = filepath.Join(dir, name)
-	build := exec.Command("go", "build", "-o", syBin, ".")
+	wyBin = filepath.Join(dir, name)
+	build := exec.Command("go", "build", "-o", wyBin, ".")
 	if out, err := build.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "build wy: %v\n%s", err, out)
 		os.RemoveAll(dir)
@@ -54,7 +54,7 @@ func isolateHome() func() {
 			}
 		}
 	}
-	home, err := os.MkdirTemp("", "sy-home-")
+	home, err := os.MkdirTemp("", "wy-home-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -101,9 +101,9 @@ func sandboxEnv(t *testing.T) (env []string, home string) {
 	return env, home
 }
 
-func runSy(t *testing.T, env []string, stdin string, args ...string) (stdout, stderr []byte, d time.Duration) {
+func runWy(t *testing.T, env []string, stdin string, args ...string) (stdout, stderr []byte, d time.Duration) {
 	t.Helper()
-	cmd := exec.Command(syBin, args...)
+	cmd := exec.Command(wyBin, args...)
 	cmd.Env = env
 	cmd.Stdin = strings.NewReader(stdin)
 	var o, e bytes.Buffer
@@ -142,11 +142,11 @@ func TestHookBinaryLatency(t *testing.T) {
 	}
 	const n = 100
 	// Warm-up: creates machine.json and the identity cache like a first run would.
-	runSy(t, env, string(payload), "hook", "PostToolUse")
+	runWy(t, env, string(payload), "hook", "PostToolUse")
 
 	ds := make([]time.Duration, 0, n)
 	for i := 0; i < n; i++ {
-		out, errOut, d := runSy(t, env, string(payload), "hook", "PostToolUse")
+		out, errOut, d := runWy(t, env, string(payload), "hook", "PostToolUse")
 		if len(out) != 0 || len(errOut) != 0 {
 			t.Fatalf("hook printed: stdout %q stderr %q", out, errOut)
 		}
@@ -180,7 +180,7 @@ func TestHookBinaryReadOnlyOutbox(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.Chmod(ob, 0o700)
-	out, errOut, _ := runSy(t, env, `{"hook_event_name":"Stop","session_id":"s"}`, "hook", "Stop")
+	out, errOut, _ := runWy(t, env, `{"hook_event_name":"Stop","session_id":"s"}`, "hook", "Stop")
 	if len(out) != 0 || len(errOut) != 0 {
 		t.Fatalf("stdout %q stderr %q", out, errOut)
 	}
@@ -192,7 +192,7 @@ func TestHookBinaryReadOnlyOutbox(t *testing.T) {
 
 func TestHookBinaryGarbageStdin(t *testing.T) {
 	env, _ := sandboxEnv(t)
-	out, errOut, _ := runSy(t, env, "\x00\x01 not json", "hook")
+	out, errOut, _ := runWy(t, env, "\x00\x01 not json", "hook")
 	if len(out) != 0 || len(errOut) != 0 {
 		t.Fatalf("stdout %q stderr %q", out, errOut)
 	}
@@ -200,7 +200,7 @@ func TestHookBinaryGarbageStdin(t *testing.T) {
 
 func TestFlushQuietWithoutHubIsSilent(t *testing.T) {
 	env, _ := sandboxEnv(t)
-	out, errOut, _ := runSy(t, env, "", "flush", "--quiet")
+	out, errOut, _ := runWy(t, env, "", "flush", "--quiet")
 	if len(out)+len(errOut) != 0 {
 		t.Fatalf("flush printed %q %q", out, errOut)
 	}
@@ -215,7 +215,7 @@ func TestStatuslineBinaryWrap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, _, _ := runSy(t, env, string(in), "statusline", "--wrap", `printf 'hello %s' "$(cat | head -c 5)"`)
+	out, _, _ := runWy(t, env, string(in), "statusline", "--wrap", `printf 'hello %s' "$(cat | head -c 5)"`)
 	if !strings.HasPrefix(string(out), "hello {\n  ") && !strings.HasPrefix(string(out), "hello {") {
 		t.Fatalf("wrapped output lost: %q", out)
 	}

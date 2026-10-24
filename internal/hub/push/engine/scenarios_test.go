@@ -416,7 +416,7 @@ func TestRow23Batch(t *testing.T) {
 	h.advanceTo(2 * time.Minute)
 	got := h.expectSends(1)
 	p := got[0].Msg.Payload
-	if p.Type != model.TypeSummary || p.Title != "3 sessions need you" || len(p.Alerts) != 3 || p.Tag != "sy-summary" || p.URL != "/#/" {
+	if p.Type != model.TypeSummary || p.Title != "3 sessions need you" || len(p.Alerts) != 3 || p.Tag != "wy-summary" || p.URL != "/#/" {
 		t.Fatalf("%+v", p)
 	}
 	batches := map[string]bool{}
@@ -706,7 +706,7 @@ func TestRow38Private(t *testing.T) {
 func TestNtfyTargetPrivateOnNtfySh(t *testing.T) {
 	h := newHarness(t, noTarget())
 	h.addTarget("", model.KindNtfy, "")
-	h.exec(`UPDATE push_target SET endpoint = 'https://ntfy.sh/sy-abc'`)
+	h.exec(`UPDATE push_target SET endpoint = 'https://ntfy.sh/wy-abc'`)
 	h.askQ(s1, 0)
 	h.advanceTo(time.Minute)
 	got := h.nf.sends()

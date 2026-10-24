@@ -11,7 +11,7 @@ ARGS="--yes --json --add work:amber,client --hub later"
 
 # ---- a. FAKE_CLAUDE_FAIL=install ----
 H=$(new_home fail fresh)
-install_sy "$H"
+install_wy "$H"
 snap "$H" "$WY_E2E_TMP/a.before.json" -claude-json
 WY_E2E_ENV="FAKE_CLAUDE_FAIL=install"
 # shellcheck disable=SC2086
@@ -29,7 +29,7 @@ assert_no_file "$H/.local/bin/claude-2" "launcher after the rollback"
 # it by a regular file when it writes. The link guard must notice, restore the link with
 # its raw target, and roll back.
 H=$(new_home break fresh)
-install_sy "$H"
+install_wy "$H"
 mkdir -p "$H/dotfiles"
 mv "$H/.claude/settings.json" "$H/dotfiles/settings.json"
 ln -s ../dotfiles/settings.json "$H/.claude/settings.json"
@@ -47,7 +47,7 @@ assert_eq "set is rolled-back" rolled-back "$(jget "$OUT" 'd["sets"][0]["status"
 # ---- c. kill -9 mid-apply ----
 # uninterrupted reference first, same home path, so the two final states can be compared.
 H=$(new_home kill fresh)
-install_sy "$H"
+install_wy "$H"
 snap "$H" "$WY_E2E_TMP/c.before.json" -claude-json
 # shellcheck disable=SC2086
 wy setup $ARGS
@@ -57,12 +57,12 @@ cp "$H/.claude/settings.json" "$WY_E2E_TMP/c.ref.settings.json"
 rm -rf "$WY_E2E_TMP/kill"
 
 H=$(new_home kill fresh)
-install_sy "$H"
+install_wy "$H"
 : > "$FAKE_LOG"
 mkdir -p "$WY_E2E_TMP/tmp"
 WY_E2E_ENV="FAKE_CLAUDE_SLOW=3000"
 # shellcheck disable=SC2086
-sy_bg "$WY_E2E_TMP/wy.pid" "$WY_E2E_TMP/killed.out" setup $ARGS
+wy_bg "$WY_E2E_TMP/wy.pid" "$WY_E2E_TMP/killed.out" setup $ARGS
 WY_E2E_ENV=
 i=0
 until grep -q '"marketplace","add"' "$FAKE_LOG" 2>/dev/null; do

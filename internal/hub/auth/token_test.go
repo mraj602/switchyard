@@ -6,7 +6,7 @@ import (
 )
 
 func TestTokenShape(t *testing.T) {
-	for kind, prefix := range map[string]string{"machine": "sy_m_", "desktop": "sy_d_", "phone": "sy_p_"} {
+	for kind, prefix := range map[string]string{"machine": "wy_m_", "desktop": "wy_d_", "phone": "wy_p_"} {
 		seen := map[string]bool{}
 		for i := 0; i < 200; i++ {
 			tok, err := NewToken(kind)
@@ -25,7 +25,7 @@ func TestTokenShape(t *testing.T) {
 	if _, err := NewToken("satellite"); err == nil {
 		t.Error("unknown kind accepted")
 	}
-	for _, bad := range []string{"", "sy_m_short", "sy_m_" + strings.Repeat("-", 43), "xx_m_" + strings.Repeat("a", 43)} {
+	for _, bad := range []string{"", "wy_m_short", "wy_m_" + strings.Repeat("-", 43), "xx_m_" + strings.Repeat("a", 43)} {
 		if LooksLikeToken(bad) {
 			t.Errorf("LooksLikeToken(%q)", bad)
 		}
@@ -34,7 +34,7 @@ func TestTokenShape(t *testing.T) {
 	if len(Hash(tok)) != 32 || string(Hash(tok)) == tok {
 		t.Error("hash")
 	}
-	if h := Hint(tok); !strings.HasPrefix(h, "sy_p_") || !strings.HasSuffix(h, tok[len(tok)-4:]) || len(h) > 15 {
+	if h := Hint(tok); !strings.HasPrefix(h, "wy_p_") || !strings.HasSuffix(h, tok[len(tok)-4:]) || len(h) > 15 {
 		t.Errorf("hint %q", h)
 	}
 }

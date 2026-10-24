@@ -46,7 +46,7 @@ const delayOptions = (cur) => [...new Set([...DELAYS, cur])].sort((a, b) => a - 
 const OUTCOME = { fired: 'notified', seen: 'seen', snoozed: 'snoozed', cancelled: 'cancelled', closed: 'closed', pending: 'waiting', skipped: 'not sent' };
 
 const state = { rules: null, settings: null, self: null, alerts: null, devices: null, error: null, loaded: false };
-const again = () => window.dispatchEvent(new Event('sy-rerender'));
+const again = () => window.dispatchEvent(new Event('wy-rerender'));
 
 export async function load() {
   state.error = null;

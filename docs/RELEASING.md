@@ -59,7 +59,7 @@ and reinstall. Treat the key like the master key of the project.
    variables each time (see `phone/README.md`):
 
    ```properties
-   # ~/secrets/sy-signing.properties  (chmod 600)
+   # ~/secrets/wy-signing.properties  (chmod 600)
    storeFile=/home/you/secrets/watchyard-release.jks
    keyAlias=watchyard
    ```

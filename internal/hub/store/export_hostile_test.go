@@ -19,7 +19,7 @@ func hostileArchive(t *testing.T, mutate func(db *sql.DB)) string {
 	t.Helper()
 	ctx := context.Background()
 	src := openTest(t, t.TempDir())
-	out := filepath.Join(t.TempDir(), "x.syx")
+	out := filepath.Join(t.TempDir(), "x.wyx")
 	if _, err := src.Export(ctx, ExportOptions{Out: out, NoFreeze: true}); err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func hostileArchive(t *testing.T, mutate func(db *sql.DB)) string {
 	if err := writeMembers(&buf, []member{{name: memberManifest, data: mustJSON(m)}, {name: memberDB, path: dbPath}}); err != nil {
 		t.Fatal(err)
 	}
-	p := filepath.Join(t.TempDir(), "hostile.syx")
+	p := filepath.Join(t.TempDir(), "hostile.wyx")
 	if err := os.WriteFile(p, buf.Bytes(), 0o600); err != nil {
 		t.Fatal(err)
 	}

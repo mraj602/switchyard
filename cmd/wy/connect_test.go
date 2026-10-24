@@ -22,7 +22,7 @@ import (
 	"github.com/mraj602/watchyard/internal/timer"
 )
 
-const goodToken = "sy_m_0123456789abcdefghijklmnopqrstuvwxyzABCDEFG"
+const goodToken = "wy_m_0123456789abcdefghijklmnopqrstuvwxyzABCDEFG"
 
 type cmdHub struct {
 	mu     sync.Mutex
@@ -105,7 +105,7 @@ func sandbox(t *testing.T) (connectDeps, *recRunner, string) {
 	return connectDeps{
 		dirs:   d,
 		budget: 5 * time.Second,
-		timer: timer.Env{GOOS: "linux", Home: home, UID: 1000, User: "tester", SyPath: "/usr/local/bin/wy",
+		timer: timer.Env{GOOS: "linux", Home: home, UID: 1000, User: "tester", WyPath: "/usr/local/bin/wy",
 			StateDir: d.State.Path, Getenv: func(string) string { return "" }, Runner: r},
 	}, r, home
 }
@@ -248,7 +248,7 @@ func TestConnectRefusals(t *testing.T) {
 	ctx := context.Background()
 
 	// Wrong token: nothing is stored, no timer.
-	err := connect(ctx, deps, []string{hub.srv.URL, "--token", "sy_m_wrong", "--insecure-lan"}, &out, &errb)
+	err := connect(ctx, deps, []string{hub.srv.URL, "--token", "wy_m_wrong", "--insecure-lan"}, &out, &errb)
 	if err == nil || !strings.Contains(err.Error(), "rejected") {
 		t.Fatalf("bad token: %v", err)
 	}

@@ -36,7 +36,7 @@ const manifestName = "manifest.json"
 // Header is the run description written into a new set's manifest.
 type Header struct {
 	Command   string
-	SyVersion string
+	WyVersion string
 	Machine   string
 	PlanID    string
 }
@@ -81,7 +81,7 @@ func Create(stateDir string, h Header, now time.Time) (*Set, error) {
 		}
 	}
 	s.m = model.Manifest{
-		V: 1, ID: id, Command: h.Command, SyVersion: h.SyVersion, Machine: h.Machine,
+		V: 1, ID: id, Command: h.Command, WyVersion: h.WyVersion, Machine: h.Machine,
 		PlanID: h.PlanID, StartedAt: model.TimeString(now), Status: model.StatusInProgress,
 		Entries: []model.Entry{},
 	}

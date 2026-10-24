@@ -24,7 +24,7 @@ func TestSessionTransientStoreErrorIsAFailureNotARefusal(t *testing.T) {
 	r1, w1 := io.Pipe()
 	r2, w2 := io.Pipe()
 	go func() {
-		_ = drainproto.NewWriter(w1).Write(drainproto.Hello{Proto: drainproto.Proto, Machine: machineID, Name: "gpu-box", Sy: "0.5.0", RecordV: 1})
+		_ = drainproto.NewWriter(w1).Write(drainproto.Hello{Proto: drainproto.Proto, Machine: machineID, Name: "gpu-box", Wy: "0.5.0", RecordV: 1})
 	}()
 	go io.Copy(io.Discard, r2)
 	sess := &pull.Session{Store: e.st, Ingester: e.ing, HelloTimeout: 2 * time.Second, BatchTimeout: time.Second}

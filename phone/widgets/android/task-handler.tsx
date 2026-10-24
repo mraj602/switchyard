@@ -22,21 +22,21 @@ import { dropRingSeat, dropWindowChoice, nextRefreshAt, ringSeat, setWindowChoic
 import { getAppInfo, systemLink, systemWidgetAlarm } from '../../src/state/platform';
 import { TOGGLE_ACTION } from './Brand';
 import { RingConfig } from './RingConfig';
-import { SyLimits } from './SyLimits';
-import { SyMachines } from './SyMachines';
-import { SyNeeds } from './SyNeeds';
-import { SyNextReset } from './SyNextReset';
-import { SyRing } from './SyRing';
-import { SySessions } from './SySessions';
+import { WyLimits } from './WyLimits';
+import { WyMachines } from './WyMachines';
+import { WyNeeds } from './WyNeeds';
+import { WyNextReset } from './WyNextReset';
+import { WyRing } from './WyRing';
+import { WySessions } from './WySessions';
 
-export const ANDROID_WIDGET_NAMES = ['SyLimits', 'SySessions', 'SyNeeds', 'SyRing', 'SyNextReset', 'SyMachines'] as const;
+export const ANDROID_WIDGET_NAMES = ['WyLimits', 'WySessions', 'WyNeeds', 'WyRing', 'WyNextReset', 'WyMachines'] as const;
 type Name = (typeof ANDROID_WIDGET_NAMES)[number];
 
 export interface HandlerDeps {
   store: KVStore;
   now: () => number;
   tz?: string;
-  /** The link's newest `refresh` frame (push.md 13.5), when the sy-link module is there. */
+  /** The link's newest `refresh` frame (push.md 13.5), when the wy-link module is there. */
   linkRefresh?: () => Promise<LinkRefresh | null>;
   /** Asks the native side to redraw the widgets at this time (epoch ms; 0 cancels): the reset alarm. */
   alarm?: (atMs: number) => Promise<void>;
@@ -72,22 +72,22 @@ async function current(d: HandlerDeps): Promise<WidgetSnapshot | null> {
 }
 
 async function tree(name: string, snapshot: WidgetSnapshot | null, d: HandlerDeps, info?: Pick<WidgetInfo, 'height' | 'width' | 'widgetId'>) {
-  const seat = name === 'SyRing' && info ? await ringSeat(d.store, info.widgetId) : undefined;
-  const win = (name === 'SyRing' || name === 'SyLimits') && info ? await windowChoice(d.store, info.widgetId) : undefined;
+  const seat = name === 'WyRing' && info ? await ringSeat(d.store, info.widgetId) : undefined;
+  const win = (name === 'WyRing' || name === 'WyLimits') && info ? await windowChoice(d.store, info.widgetId) : undefined;
   const props = androidProps(snapshot, d.now(), d.tz, info?.height, info?.width, seat, win);
   switch (name) {
-    case 'SyLimits':
-      return <SyLimits {...props} />;
-    case 'SyNeeds':
-      return <SyNeeds {...props} />;
-    case 'SyRing':
-      return <SyRing {...props} />;
-    case 'SyNextReset':
-      return <SyNextReset {...props} />;
-    case 'SyMachines':
-      return <SyMachines {...props} />;
+    case 'WyLimits':
+      return <WyLimits {...props} />;
+    case 'WyNeeds':
+      return <WyNeeds {...props} />;
+    case 'WyRing':
+      return <WyRing {...props} />;
+    case 'WyNextReset':
+      return <WyNextReset {...props} />;
+    case 'WyMachines':
+      return <WyMachines {...props} />;
     default:
-      return <SySessions {...props} />;
+      return <WySessions {...props} />;
   }
 }
 
@@ -119,8 +119,8 @@ export function createTaskHandler(deps: Partial<HandlerDeps> = {}) {
         return;
       }
       case 'WIDGET_DELETED':
-        if (name === 'SyRing') await dropRingSeat(d.store, props.widgetInfo.widgetId);
-        if (name === 'SyRing' || name === 'SyLimits') await dropWindowChoice(d.store, props.widgetInfo.widgetId);
+        if (name === 'WyRing') await dropRingSeat(d.store, props.widgetInfo.widgetId);
+        if (name === 'WyRing' || name === 'WyLimits') await dropWindowChoice(d.store, props.widgetInfo.widgetId);
         return;
       case 'WIDGET_CLICK': {
         // The 5 h | 7 d toggle: keep the choice for this widget and redraw; the app stays closed.

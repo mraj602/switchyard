@@ -15,7 +15,7 @@
 H=$SD_HOME
 [ -z "$(ls -A "$H/.claude" 2>/dev/null)" ] || skip_scenario "$H/.claude exists: not a throwaway container home"
 "$E2E/homes/fresh.sh" "$H"
-install_sy "$H"
+install_wy "$H"
 LINGER=$(loginctl show-user "$(id -un)" -p Linger 2>/dev/null | cut -d= -f2)
 note "linger is '$LINGER' for $(id -un)"
 

@@ -20,7 +20,7 @@ func askedMsg() model.Message {
 		Payload: model.Payload{
 			V: 1, Type: model.TypeAlert, Alert: "al_01JA3B", Alerts: []string{"al_01JA3B"}, Trigger: model.TriggerAsked,
 			Title: "work · api · asked a question", Body: "Should I also update the migration?",
-			Tag: "sy-s-c41e", URL: "/#/sessions/c41e?alert=al_01JA3B", RemoteURL: "https://claude.ai/code/session_x",
+			Tag: "wy-s-c41e", URL: "/#/sessions/c41e?alert=al_01JA3B", RemoteURL: "https://claude.ai/code/session_x",
 			Tap: "auto", Session: "c41e", NeedsYou: 3, Actions: &model.Actions{Snooze: "a1.snz", Seen: "a1.seen"},
 		},
 		Priority: 4, HubURL: hub + "/",
@@ -28,9 +28,9 @@ func askedMsg() model.Message {
 }
 
 func TestBuildMatchesSpec72(t *testing.T) {
-	got := ntfy.Build(askedMsg(), ntfy.BuildOptions{Topic: "sy-4fQx0Lr2", SnoozeMin: 15})
+	got := ntfy.Build(askedMsg(), ntfy.BuildOptions{Topic: "wy-4fQx0Lr2", SnoozeMin: 15})
 	b, _ := json.Marshal(got)
-	want := `{"topic":"sy-4fQx0Lr2","title":"work · api · asked a question","message":"Should I also update the migration?",` +
+	want := `{"topic":"wy-4fQx0Lr2","title":"work · api · asked a question","message":"Should I also update the migration?",` +
 		`"priority":4,"tags":["question"],"click":"https://hub.example.ts.net/#/sessions/c41e?alert=al_01JA3B",` +
 		`"actions":[` +
 		`{"action":"view","label":"Open in Claude","url":"https://claude.ai/code/session_x","clear":true},` +
@@ -117,7 +117,7 @@ func TestBuildVariants(t *testing.T) {
 func TestMarshalCutsBodyFirstAndAtRuneBoundaries(t *testing.T) {
 	m := askedMsg()
 	m.Payload.Body = strings.Repeat("é", 6000)
-	b, err := ntfy.Marshal(ntfy.Build(m, ntfy.BuildOptions{Topic: "sy-x"}))
+	b, err := ntfy.Marshal(ntfy.Build(m, ntfy.BuildOptions{Topic: "wy-x"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,13 +132,13 @@ func TestMarshalCutsBodyFirstAndAtRuneBoundaries(t *testing.T) {
 	// Then the title, when the body is gone and it is still too long.
 	m.Payload.Body = "short"
 	m.Payload.Title = strings.Repeat("T", 5000)
-	b, err = ntfy.Marshal(ntfy.Build(m, ntfy.BuildOptions{Topic: "sy-x"}))
+	b, err = ntfy.Marshal(ntfy.Build(m, ntfy.BuildOptions{Topic: "wy-x"}))
 	if err != nil || len(b) > ntfy.MaxMessageBytes {
 		t.Fatalf("%d %v", len(b), err)
 	}
 	// Small messages are untouched.
 	m = askedMsg()
-	b, _ = ntfy.Marshal(ntfy.Build(m, ntfy.BuildOptions{Topic: "sy-x"}))
+	b, _ = ntfy.Marshal(ntfy.Build(m, ntfy.BuildOptions{Topic: "wy-x"}))
 	if !strings.Contains(string(b), `"message":"Should I also update the migration?"`) {
 		t.Fatal(string(b))
 	}
@@ -151,7 +151,7 @@ func TestTopics(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(tp) != 27 || !strings.HasPrefix(tp, "sy-") || !ntfy.ValidTopic(tp) || strings.ContainsAny(tp[3:], "-_") {
+		if len(tp) != 27 || !strings.HasPrefix(tp, "wy-") || !ntfy.ValidTopic(tp) || strings.ContainsAny(tp[3:], "-_") {
 			t.Fatalf("bad topic %q", tp)
 		}
 		if seen[tp] {
@@ -159,7 +159,7 @@ func TestTopics(t *testing.T) {
 		}
 		seen[tp] = true
 	}
-	for _, ok := range []string{"a", "sy-x_Y", strings.Repeat("a", 64)} {
+	for _, ok := range []string{"a", "wy-x_Y", strings.Repeat("a", 64)} {
 		if !ntfy.ValidTopic(ok) {
 			t.Errorf("%q rejected", ok)
 		}
@@ -187,8 +187,8 @@ func TestCheckServer(t *testing.T) {
 			t.Errorf("%q accepted", bad)
 		}
 	}
-	s, tp := ntfy.SplitEndpoint(ntfy.JoinEndpoint("https://ntfy.example.com/sub/", "sy-abc"))
-	if s != "https://ntfy.example.com/sub" || tp != "sy-abc" {
+	s, tp := ntfy.SplitEndpoint(ntfy.JoinEndpoint("https://ntfy.example.com/sub/", "wy-abc"))
+	if s != "https://ntfy.example.com/sub" || tp != "wy-abc" {
 		t.Fatal(s, tp)
 	}
 	if !ntfy.IsPublicServer("https://ntfy.sh") || !ntfy.IsPublicServer("https://NTFY.sh/") || ntfy.IsPublicServer("https://ntfy.example.com") {
@@ -197,7 +197,7 @@ func TestCheckServer(t *testing.T) {
 }
 
 func target(srv *ntfytest.Server, token string) model.Target {
-	return model.Target{ID: "pt_1", Kind: model.KindNtfy, Endpoint: ntfy.JoinEndpoint(srv.URL(), "sy-topic123"), Secret: token, Enabled: true}
+	return model.Target{ID: "pt_1", Kind: model.KindNtfy, Endpoint: ntfy.JoinEndpoint(srv.URL(), "wy-topic123"), Secret: token, Enabled: true}
 }
 
 func TestSendPublishesToStub(t *testing.T) {
@@ -214,7 +214,7 @@ func TestSendPublishesToStub(t *testing.T) {
 		t.Fatalf("%+v", got)
 	}
 	g := got[0]
-	if g.Header.Get("Authorization") != "Bearer tk_secret" || g.Msg.Topic != "sy-topic123" || g.Msg.Priority != 4 ||
+	if g.Header.Get("Authorization") != "Bearer tk_secret" || g.Msg.Topic != "wy-topic123" || g.Msg.Priority != 4 ||
 		g.Msg.Title != "work · api · asked a question" || g.Msg.Tags[0] != "question" ||
 		g.Msg.Click != hub+"/#/sessions/c41e?alert=al_01JA3B" || len(g.Msg.Actions) != 3 ||
 		g.Msg.Actions[1].Label != "Snooze 15 min" || g.Msg.Actions[1].Method != "POST" || g.Msg.Actions[2].URL != hub+"/v1/actions/a1.seen" {
@@ -358,7 +358,7 @@ func TestStubPollReturnsWhatWasPublished(t *testing.T) {
 	srv := ntfytest.New()
 	defer srv.Close()
 	ntfy.New(ntfy.Options{}).Send(context.Background(), target(srv, ""), askedMsg())
-	resp, err := http.Get(srv.URL() + "/sy-topic123/json?poll=1")
+	resp, err := http.Get(srv.URL() + "/wy-topic123/json?poll=1")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -3,7 +3,7 @@
 // screen can say it without opening any tab; local to this install, never sent to the hub.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
-import * as SyTabs from '../../modules/sy-tabs';
+import * as WyTabs from '../../modules/wy-tabs';
 import { TAB_MEMO_KEY } from '../contract/constants';
 import { readMemos, type TabMemo, type TabMemos } from '../lib/tabs';
 
@@ -110,7 +110,7 @@ export function useTabProfiles(supported: boolean | null): string[] | null {
   useEffect(() => {
     if (!supported) return;
     let live = true;
-    SyTabs.listProfiles().then(
+    WyTabs.listProfiles().then(
       (p) => live && setProfiles(p),
       () => live && setProfiles([]),
     );
@@ -149,7 +149,7 @@ export async function setHintDismissed(seat: string, on: boolean): Promise<void>
 
 /** Sign out a seat's tab (deletes its profile) and forget what it showed. */
 export async function signOutTab(seat: string): Promise<boolean> {
-  const ok = await SyTabs.deleteProfile(seat);
+  const ok = await WyTabs.deleteProfile(seat);
   await forgetMemo(seat);
   await setHintDismissed(seat, false); // a fresh sign-in gets its hint again
   profilesChanged();
@@ -158,7 +158,7 @@ export async function signOutTab(seat: string): Promise<boolean> {
 
 /** "Use this tab for <other> instead": the profile, and its memo, become `to`'s. */
 export async function giveTab(from: string, to: string): Promise<boolean> {
-  const ok = await SyTabs.moveProfile(from, to);
+  const ok = await WyTabs.moveProfile(from, to);
   await moveMemo(from, to);
   profilesChanged();
   return ok;

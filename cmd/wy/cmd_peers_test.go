@@ -125,7 +125,7 @@ func newPeersWorldAt(t *testing.T, state string) *peersWorld {
 	return w
 }
 
-func runPeersSy(args ...string) (code int, out, errs string) {
+func runPeersWy(args ...string) (code int, out, errs string) {
 	var o, e bytes.Buffer
 	code = dispatch(args, &o, &e)
 	return code, o.String(), e.String()
@@ -133,7 +133,7 @@ func runPeersSy(args ...string) (code int, out, errs string) {
 
 func TestPeersSendCLI(t *testing.T) {
 	w := newPeersWorld(t)
-	code, out, errs := runPeersSy("peers", "send", "worker", "please run", "the tests")
+	code, out, errs := runPeersWy("peers", "send", "worker", "please run", "the tests")
 	if code != 0 || !strings.HasPrefix(out, "delivered to worker@personal.laptop (msg ") || errs != "" {
 		t.Fatalf("code %d out %q err %q", code, out, errs)
 	}
@@ -146,7 +146,7 @@ func TestPeersSendCLI(t *testing.T) {
 	}
 
 	// Flags after the positionals, and --stdin with a heredoc-style body.
-	code, out, _ = runPeersSy("peers", "send", "@worker", "second", "--wait", "5", "--ttl", "30m")
+	code, out, _ = runPeersWy("peers", "send", "@worker", "second", "--wait", "5", "--ttl", "30m")
 	if code != 0 {
 		t.Fatalf("flags after positionals: %d %s", code, out)
 	}
@@ -159,7 +159,7 @@ func TestPeersSendStdin(t *testing.T) {
 	os.Stdin = r
 	defer func() { os.Stdin = old }()
 	go func() { wr.WriteString("line one\nwith \"quotes\" and $HOME and `ticks`\n"); wr.Close() }()
-	code, out, errs := runPeersSy("peers", "send", "worker", "--stdin")
+	code, out, errs := runPeersWy("peers", "send", "worker", "--stdin")
 	if code != 0 {
 		t.Fatalf("%d %q %q", code, out, errs)
 	}
@@ -177,7 +177,7 @@ func sendStdin(t *testing.T, to, text string) (int, string, string) {
 	os.Stdin = r
 	defer func() { os.Stdin = old; r.Close() }()
 	go func() { wr.WriteString(text); wr.Close() }()
-	return runPeersSy("peers", "send", to, "--stdin")
+	return runPeersWy("peers", "send", to, "--stdin")
 }
 
 // --stdin takes 64 KiB of multi-byte text whole, refuses more as too_big (exit 6) even when
@@ -217,34 +217,34 @@ func TestPeersSendExitCodes(t *testing.T) {
 	// Not allowed: exit 5, one line on stdout.
 	allow := filepath.Join(w.base, "allow.json")
 	peersWriteFile(t, allow, `{"same_account":true,"allow":[["acc-personal","acc-work"]]}`)
-	code, out, _ := runPeersSy("peers", "send", "worker", "hi")
+	code, out, _ := runPeersWy("peers", "send", "worker", "hi")
 	if code != 5 || !strings.HasPrefix(out, "not delivered: the matrix does not allow work → personal. Ask the owner to change it; do not retry.") || strings.Count(out, "\n") != 1 {
 		t.Errorf("not_allowed: %d %q", code, out)
 	}
 	// Limits: exit 6.
 	peersWriteFile(t, allow, `{"allow":[["acc-work","acc-personal"]]}`)
-	if code, out, _ = runPeersSy("peers", "send", "worker", "ghp_"+strings.Repeat("a", 36)); code != 6 {
+	if code, out, _ = runPeersWy("peers", "send", "worker", "ghp_"+strings.Repeat("a", 36)); code != 6 {
 		t.Errorf("secret: %d %q", code, out)
 	}
 	// Unknown target: 7.
-	if code, out, _ = runPeersSy("peers", "send", "nobody", "hi"); code != 7 {
+	if code, out, _ = runPeersWy("peers", "send", "nobody", "hi"); code != 7 {
 		t.Errorf("unknown: %d %q", code, out)
 	}
 	// Usage: 2.
 	for _, a := range [][]string{{"peers", "send"}, {"peers", "send", "worker"}, {"peers", "send", "worker", "x", "--wait", "99"}, {"peers", "send", "worker", "x", "--ttl", "10s"}, {"peers", "nonsense"}} {
-		if code, _, _ = runPeersSy(a...); code != 2 {
+		if code, _, _ = runPeersWy(a...); code != 2 {
 			t.Errorf("%v: exit %d, want 2", a, code)
 		}
 	}
 	// Not inside a session: 4, on stderr.
 	w.startPID = 700
-	code, out, errs := runPeersSy("peers", "send", "worker", "hi")
+	code, out, errs := runPeersWy("peers", "send", "worker", "hi")
 	if code != 4 || out != "" || !strings.Contains(errs, "only inside a Claude Code session") {
 		t.Errorf("terminal send: %d %q %q", code, out, errs)
 	}
 	// Not enabled: 5.
 	w.startPID, w.enabled = 501, false
-	if code, out, _ = runPeersSy("peers", "send", "worker", "hi"); code != 5 || !strings.Contains(out, "not enabled") || !strings.Contains(out, "wy peers enable.") {
+	if code, out, _ = runPeersWy("peers", "send", "worker", "hi"); code != 5 || !strings.Contains(out, "not enabled") || !strings.Contains(out, "wy peers enable.") {
 		t.Errorf("disabled: %d %q", code, out)
 	}
 	if len(w.b.All()) != 0 {
@@ -255,36 +255,36 @@ func TestPeersSendExitCodes(t *testing.T) {
 func TestPeersOffOn(t *testing.T) {
 	w := newPeersWorld(t)
 	w.startPID = 700 // a terminal
-	if code, _, _ := runPeersSy("peers", "off"); code != 0 {
+	if code, _, _ := runPeersWy("peers", "off"); code != 0 {
 		t.Fatal(code)
 	}
 	w.startPID = 501
-	if code, out, _ := runPeersSy("peers", "send", "worker", "hi"); code != 5 || !strings.Contains(out, "off on this machine") {
+	if code, out, _ := runPeersWy("peers", "send", "worker", "hi"); code != 5 || !strings.Contains(out, "off on this machine") {
 		t.Errorf("off: %d %q", code, out)
 	}
 	// Inside a session neither switch works (peers.md 2.3: terminal only); in particular a
 	// session cannot turn the machine's messaging back on.
 	for _, sub := range []string{"on", "off"} {
-		if code, _, errs := runPeersSy("peers", sub); code != 4 || !strings.Contains(errs, "at a terminal") {
+		if code, _, errs := runPeersWy("peers", sub); code != 4 || !strings.Contains(errs, "at a terminal") {
 			t.Errorf("%s inside a session: %d %q", sub, code, errs)
 		}
 	}
-	if code, _, _ := runPeersSy("peers", "send", "worker", "hi"); code != 5 {
+	if code, _, _ := runPeersWy("peers", "send", "worker", "hi"); code != 5 {
 		t.Errorf("still off after a session's on: %d", code)
 	}
 	w.startPID = 700
-	if code, _, _ := runPeersSy("peers", "on"); code != 0 {
+	if code, _, _ := runPeersWy("peers", "on"); code != 0 {
 		t.Fatal(code)
 	}
 	w.startPID = 501
-	if code, _, _ := runPeersSy("peers", "send", "worker", "hi"); code != 0 {
+	if code, _, _ := runPeersWy("peers", "send", "worker", "hi"); code != 0 {
 		t.Errorf("after on: %d", code)
 	}
 }
 
 func TestPeersListCLI(t *testing.T) {
 	w := newPeersWorld(t)
-	code, out, errs := runPeersSy("peers", "list", "--json")
+	code, out, errs := runPeersWy("peers", "list", "--json")
 	if code != 0 || errs != "" {
 		t.Fatalf("%d %q", code, errs)
 	}
@@ -292,16 +292,16 @@ func TestPeersListCLI(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &got); err != nil || len(got) != 1 || got[0].Handle != "worker@personal.laptop" || got[0].Can != "start" {
 		t.Fatalf("%v %s", err, out)
 	}
-	code, out, _ = runPeersSy("peers", "list")
+	code, out, _ = runPeersWy("peers", "list")
 	if code != 0 || !strings.Contains(out, "HANDLE") || !strings.Contains(out, "worker@personal.laptop") || !strings.Contains(out, "start") {
 		t.Errorf("table: %d %q", code, out)
 	}
 	// A terminal needs --all.
 	w.startPID = 700
-	if code, _, errs = runPeersSy("peers", "list"); code != 4 || !strings.Contains(errs, "--all") {
+	if code, _, errs = runPeersWy("peers", "list"); code != 4 || !strings.Contains(errs, "--all") {
 		t.Errorf("terminal list: %d %q", code, errs)
 	}
-	code, out, _ = runPeersSy("peers", "list", "--all", "--json")
+	code, out, _ = runPeersWy("peers", "list", "--all", "--json")
 	var all []peerspkg.ListEntry
 	if code != 0 || json.Unmarshal([]byte(out), &all) != nil || len(all) != 2 || all[0].Can != "none" {
 		t.Errorf("terminal --all: %d %s", code, out)
@@ -309,11 +309,11 @@ func TestPeersListCLI(t *testing.T) {
 	// No matrix: the filtered list is empty and says why.
 	t.Setenv(peerspkg.TestAllowEnv, filepath.Join(w.base, "nope.json"))
 	w.startPID = 501
-	code, out, _ = runPeersSy("peers", "list")
+	code, out, _ = runPeersWy("peers", "list")
 	if code != 0 || !strings.Contains(out, "matrix is not configured") {
 		t.Errorf("no matrix: %d %q", code, out)
 	}
-	code, out, _ = runPeersSy("peers", "list", "--json")
+	code, out, _ = runPeersWy("peers", "list", "--json")
 	if strings.TrimSpace(out) != "[]" {
 		t.Errorf("empty json: %q", out)
 	}

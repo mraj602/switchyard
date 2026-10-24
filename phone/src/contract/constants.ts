@@ -45,23 +45,23 @@ export const LOCAL_PREFS_KEY = 'wy.local.v1';
 export const TAB_MEMO_KEY = 'wy.tabs.v1';
 
 /** Notification category with Open, Snooze and Seen (P6.2). No '-' or ':' (an Expo rule). */
-export const ALERT_CATEGORY = 'sy_alert';
+export const ALERT_CATEGORY = 'wy_alert';
 
 /** Action identifiers of ALERT_CATEGORY. */
 export const ACTION_OPEN = 'open';
 export const ACTION_SNOOZE = 'snooze';
 export const ACTION_SEEN = 'seen';
 
-/** Android channels (P6.1), in creation order. Importance names are the keys of NotificationManager's IMPORTANCE_* (modules/sy-notify AndroidImportance). */
+/** Android channels (P6.1), in creation order. Importance names are the keys of NotificationManager's IMPORTANCE_* (modules/wy-notify AndroidImportance). */
 export const ANDROID_CHANNELS: readonly {
   id: AndroidChannelId;
   name: string;
   importance: 'HIGH' | 'DEFAULT' | 'LOW';
 }[] = [
-  { id: 'sy_needs_you', name: 'Needs you', importance: 'HIGH' },
-  { id: 'sy_limits', name: 'Limits', importance: 'DEFAULT' },
-  { id: 'sy_machines', name: 'Machines', importance: 'LOW' },
-  { id: 'sy_test', name: 'Test', importance: 'DEFAULT' },
+  { id: 'wy_needs_you', name: 'Needs you', importance: 'HIGH' },
+  { id: 'wy_limits', name: 'Limits', importance: 'DEFAULT' },
+  { id: 'wy_machines', name: 'Machines', importance: 'LOW' },
+  { id: 'wy_test', name: 'Test', importance: 'DEFAULT' },
 ];
 
 /** Foreground poll period (P5). */

@@ -1,6 +1,6 @@
-// Resolution of the `wy` binary (C11): WY_BIN (unpackaged only, given as deps.syBin), else
+// Resolution of the `wy` binary (C11): WY_BIN (unpackaged only, given as deps.wyBin), else
 // `wy` on PATH and then ~/.local/bin/wy (%USERPROFILE%\.local\bin\wy.exe) when `wy --version`
-// is at least minSy, else the bundled copy at <resourcesPath>/wy/wy[.exe]. The bundled copy is
+// is at least minWy, else the bundled copy at <resourcesPath>/wy/wy[.exe]. The bundled copy is
 // never installed onto PATH.
 
 /** Parse the first x.y.z in text; null when none. */
@@ -19,7 +19,7 @@ export function versionAtLeast(a, b) {
 
 /**
  * @param {{env: object, fs: object, path: object, platform: string, resourcesPath?: string,
- *          minSy: string, syBin?: string|null,
+ *          minWy: string, wyBin?: string|null,
  *          version: (bin: string) => Promise<string|null>}} deps
  *   version: runs `<bin> --version` and returns its stdout, or null on failure
  * @returns {Promise<{bin: string, source: 'env'|'path'|'local'|'bundled', version: string|null}|null>}
@@ -28,7 +28,7 @@ export async function resolve(deps) {
   const { env, fs, path, platform } = deps;
   const win = platform === 'win32';
   const exe = win ? 'wy.exe' : 'wy';
-  const min = parseVersion(deps.minSy) ?? [0, 0, 0];
+  const min = parseVersion(deps.minWy) ?? [0, 0, 0];
   const isFile = async (p) => {
     try {
       return (await fs.stat(p)).isFile();
@@ -37,8 +37,8 @@ export async function resolve(deps) {
     }
   };
 
-  if (deps.syBin) {
-    return (await isFile(deps.syBin)) ? { bin: deps.syBin, source: 'env', version: null } : null;
+  if (deps.wyBin) {
+    return (await isFile(deps.wyBin)) ? { bin: deps.wyBin, source: 'env', version: null } : null;
   }
 
   const candidates = [];

@@ -217,5 +217,7 @@ Pull mode also adds to `flush.status.json`: `last_contact` (the last successful 
 ingest reply, a `200` `/health`, or a drain `start`; a `401`/`403`/`5xx` is not contact, since
 the hub is not taking this machine's records), `held` and
 `hub_too_old` (machines.md 7.2), `via` (`push` or `pull`), and `pull_refused` (3.5 `refuse`
-code). The flusher sends `X-Sy-Backlog-Oldest` (the `ts` of the oldest unanswered record)
-with `X-Sy-Backlog` whenever the backlog is more than one batch.
+code). The flusher sends `X-Wy-Backlog-Oldest` (the `ts` of the oldest unanswered record)
+with `X-Wy-Backlog` whenever the backlog is more than one batch.
+Each is also sent under its name from before the rename (`X-Sy-Backlog`, `X-Sy-Backlog-Oldest`),
+all a hub older than the rename reads; the hub reads the new name, else the old one (rename.md 2.12).

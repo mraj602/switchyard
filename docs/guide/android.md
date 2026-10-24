@@ -137,7 +137,7 @@ The APK contains no proprietary code, so it can go to F-Droid or IzzyOnDroid (no
 submitted yet):
 
 - **No Google libraries.** No Firebase (notifications come over the app's own link and are
-  posted by its own `sy-link` and `sy-notify` modules), no Google Play services and no ML Kit
+  posted by its own `wy-link` and `wy-notify` modules), no Google Play services and no ML Kit
   (the QR scanner is ZXing, through `zxing-android-embedded`, Apache-2.0), and no Play Install
   Referrer. `phone/scripts/check-no-google.mjs` enforces it: CI fails when
   `com.google.firebase`, `com.google.android.gms`, `com.google.mlkit` or another closed
@@ -257,7 +257,7 @@ link. They show reset times as clock times, not a ticking countdown.
 | Next reset | 2×1 | The soonest reset across all accounts |
 | Machines | 4×1 | Each machine, online or silent, with live session counts |
 
-![Limits widget](../../phone/assets/widget-previews/sy-limits.png)
+![Limits widget](../../phone/assets/widget-previews/wy-limits.png)
 
 In private mode the widgets show counts but no project names.
 

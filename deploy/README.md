@@ -41,6 +41,10 @@ docker compose logs hub
 docker compose exec hub wy hub owner-link   # sign in to the board as the owner
 ```
 
+An `.env` written before the rename sets `SY_BIND`, `SY_PORT`, `SY_PUBLIC_URL` and
+`SY_TRUSTED_PROXY`: the compose files still read them when the `WY_` name is not set
+(docs/spec/rename.md 2.11). Rename them in `.env` when convenient.
+
 The logs do not carry the first owner link. The hub writes it to `/data/first-owner-link.txt`
 (mode 0600, readable by the hub only) while it has no owner; `wy hub owner-link` makes a
 fresh one whenever you need it.
@@ -66,7 +70,7 @@ Then, on the **server**, in `deploy/`:
 
 ```sh
 docker compose exec hub wy hub token create --kind machine --name laptop --machine m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K
-# prints the token once: sy_m_...   (copy it now; the hub only stores a hash)
+# prints the token once: wy_m_...   (copy it now; the hub only stores a hash)
 
 docker compose exec hub wy hub token list
 docker compose exec hub wy hub token revoke laptop        # a lost or retired machine
@@ -82,7 +86,7 @@ server `docker compose exec hub wy hub pair --kind machine` prints a one-time co
 ```sh
 # Use the server's full Tailscale name (hub-server.<tailnet>.ts.net) or its 100.x address.
 # A short name like "hub-server" is refused over plain http; --insecure-lan allows it.
-wy connect http://hub-server.<tailnet>.ts.net:8787 --token sy_m_...
+wy connect http://hub-server.<tailnet>.ts.net:8787 --token wy_m_...
 # or keep the token out of your shell history:
 printf '%s\n' "$TOKEN" | wy connect http://hub-server.<tailnet>.ts.net:8787 --token-stdin
 ```
@@ -149,7 +153,7 @@ curl -s http://127.0.0.1:8787/health
 wy hub token create --kind machine --name "$(hostname -s)" --machine "$(wy machine | cut -d' ' -f1)"
 
 # 4. Connect this machine to its own hub.
-wy connect http://127.0.0.1:8787 --token sy_m_...
+wy connect http://127.0.0.1:8787 --token wy_m_...
 
 # 5. Optional: keep the hub (and the timer) running when you are logged out.
 loginctl enable-linger "$USER"
@@ -287,13 +291,13 @@ on the new host, and point the machines at the new address (machines.md 8):
 # Old hub: freeze it and write an archive. Ingest answers 503 from now on; machines keep
 # their records until they are re-pointed.
 docker compose exec -it hub wy hub export --moved-to https://new.<tailnet>.ts.net --encrypt \
-  --out /data/exports/hub.syx
-docker compose cp hub:/data/exports/hub.syx .
+  --out /data/exports/hub.wyx
+docker compose cp hub:/data/exports/hub.wyx .
 
 # New hub (same deploy folder, a fresh volume; the hub not started yet):
 docker compose create
-docker compose cp hub.syx hub:/data/hub.syx
-docker compose run --rm -it hub hub import /data/hub.syx --public-url https://new.<tailnet>.ts.net
+docker compose cp hub.wyx hub:/data/hub.wyx
+docker compose run --rm -it hub hub import /data/hub.wyx --public-url https://new.<tailnet>.ts.net
 docker compose up -d
 ```
 

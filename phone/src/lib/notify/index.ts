@@ -1,5 +1,5 @@
 // Notifications (phone.md P6).
-// Pure: takes a Notifications-shaped object (modules/sy-notify on Android; the names are the ones
+// Pure: takes a Notifications-shaped object (modules/wy-notify on Android; the names are the ones
 // expo-notifications used, so this stays platform-neutral), fetch
 // and a clock. No token, title, body or response body ever reaches an error or a log (hard
 // rule 3): failures are reported as states and status codes only.
@@ -31,7 +31,7 @@ export const DEFAULT_ACTION = 'expo.modules.notifications.actions.DEFAULT';
 /** Android's NotificationManager.IMPORTANCE_* values, used when the adapter passes none. */
 const IMPORTANCE_FALLBACK: Record<string, number> = { LOW: 2, DEFAULT: 3, HIGH: 4 };
 
-/** The notifications surface the app uses: modules/sy-notify (a recording fake in test/setup.ts). */
+/** The notifications surface the app uses: modules/wy-notify (a recording fake in test/setup.ts). */
 export interface NotificationsLike {
   /** The module's AndroidImportance enum; pass the module itself and it is there. */
   AndroidImportance?: Record<string, number>;
@@ -102,7 +102,7 @@ export async function setupChannels(n: NotificationsLike, platform: 'ios' | 'and
   }
 }
 
-/** Creates the P6.1 channels (Android) and the sy_alert category with snoozeMin's title. */
+/** Creates the P6.1 channels (Android) and the wy_alert category with snoozeMin's title. */
 export async function setupChannelsAndCategories(
   n: NotificationsLike,
   platform: 'ios' | 'android',

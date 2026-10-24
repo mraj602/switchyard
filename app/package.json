@@ -19,7 +19,7 @@
     "node": ">=22"
   },
   "watchyard": {
-    "minSy": "0.6.0"
+    "minWy": "0.6.0"
   },
   "scripts": {
     "start": "electron .",

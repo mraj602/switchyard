@@ -51,7 +51,7 @@ type rig struct {
 	home    string // operator HOME
 	env     []string
 	wy      string // wy for this machine (the hub and the operator)
-	syLinux string // wy for the container (linux/amd64), installed with --binary
+	wyLinux string // wy for the container (linux/amd64), installed with --binary
 	sshCfg  string
 	sshPort string
 	cname   string
@@ -185,9 +185,9 @@ func newRig(t *testing.T) *rig {
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	r.syLinux = filepath.Join(bin, "sy-linux-amd64")
-	goBuild(t, root, "linux", "amd64", r.syLinux, "./cmd/wy")
-	r.wy = r.syLinux
+	r.wyLinux = filepath.Join(bin, "wy-linux-amd64")
+	goBuild(t, root, "linux", "amd64", r.wyLinux, "./cmd/wy")
+	r.wy = r.wyLinux
 	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
 		r.wy = filepath.Join(bin, "wy")
 		goBuild(t, root, runtime.GOOS, runtime.GOARCH, r.wy, "./cmd/wy")
@@ -211,7 +211,7 @@ func newRig(t *testing.T) *rig {
 		t.Fatal(err)
 	}
 	key := filepath.Join(sshDir, "id_ed25519")
-	if _, errb, code := runCmd(os.Environ(), "", "ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "sy-e2e", "-f", key); code != 0 {
+	if _, errb, code := runCmd(os.Environ(), "", "ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "wy-e2e", "-f", key); code != 0 {
 		t.Fatalf("ssh-keygen: %s", errb)
 	}
 	pub, _ := os.ReadFile(key + ".pub")
@@ -222,8 +222,8 @@ func newRig(t *testing.T) *rig {
 	suffix := make([]byte, 4)
 	_, _ = rand.Read(suffix)
 	id := hex.EncodeToString(suffix)
-	image := "sy-e2e-sshd:" + id
-	r.cname = "sy-e2e-srv-" + id
+	image := "wy-e2e-sshd:" + id
+	r.cname = "wy-e2e-srv-" + id
 	t.Cleanup(func() {
 		// Even on failure: the container and the image go.
 		_ = exec.Command(r.rt, "rm", "-f", r.cname).Run()
@@ -348,9 +348,9 @@ func (r *rig) startHub() {
 	}
 }
 
-// syLocal runs the operator's wy; the test fails on a non-zero exit unless want says
+// wyLocal runs the operator's wy; the test fails on a non-zero exit unless want says
 // otherwise.
-func (r *rig) syLocal(stdin string, args ...string) (string, string) {
+func (r *rig) wyLocal(stdin string, args ...string) (string, string) {
 	r.t.Helper()
 	out, errb, code := runCmd(r.env, stdin, r.wy, args...)
 	if code != 0 {
@@ -381,8 +381,8 @@ func TestPullRoundTrip(t *testing.T) {
 
 	// 1. One command sets the server up; the hub is local, so --hub-admin local is implied by
 	// hub.db existing, but the test passes it to be explicit.
-	out, errb := r.syLocal("", "machine", "add", "srv", "--name", "srv1", "--reach", "pull",
-		"--hub-admin", "local", "--binary", r.syLinux, "--yes", "--json")
+	out, errb := r.wyLocal("", "machine", "add", "srv", "--name", "srv1", "--reach", "pull",
+		"--hub-admin", "local", "--binary", r.wyLinux, "--yes", "--json")
 	var sum struct {
 		Machine  string `json:"machine"`
 		Reach    string `json:"reach"`
@@ -411,7 +411,7 @@ func TestPullRoundTrip(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("remote sha256sum: exit %d", code)
 	}
-	if got, want := strings.Fields(shaOut)[0], sha256File(t, r.syLinux); got != want {
+	if got, want := strings.Fields(shaOut)[0], sha256File(t, r.wyLinux); got != want {
 		t.Errorf("remote wy sha256 %s, want %s", got, want)
 	}
 
@@ -419,19 +419,19 @@ func TestPullRoundTrip(t *testing.T) {
 	ak, _, _ := r.ssh("", "cat", ".ssh/authorized_keys")
 	var pullLines []string
 	for _, ln := range strings.Split(ak, "\n") {
-		if strings.Contains(ln, "sy-pull:") {
+		if strings.Contains(ln, "wy-pull:") {
 			pullLines = append(pullLines, ln)
 		}
 	}
 	if len(pullLines) != 1 {
-		t.Fatalf("want exactly one sy-pull line in authorized_keys, got %d:\n%s", len(pullLines), ak)
+		t.Fatalf("want exactly one wy-pull line in authorized_keys, got %d:\n%s", len(pullLines), ak)
 	}
 	line := pullLines[0]
 	if !strings.HasPrefix(line, "restrict,") || !strings.Contains(line, `command="`) ||
-		!strings.Contains(line, "/wy outbox drain --stdio") || !strings.HasSuffix(line, "sy-pull:"+sum.PullID) {
+		!strings.Contains(line, "/wy outbox drain --stdio") || !strings.HasSuffix(line, "wy-pull:"+sum.PullID) {
 		t.Errorf("authorized_keys line is not the restricted drain line for %s:\n%s", sum.PullID, line)
 	}
-	if !strings.Contains(ak, "sy-e2e") {
+	if !strings.Contains(ak, "wy-e2e") {
 		t.Errorf("the test key vanished from authorized_keys:\n%s", ak)
 	}
 
@@ -467,9 +467,9 @@ func TestPullRoundTrip(t *testing.T) {
 	if _, errb, code := r.ssh(recs.String(), ".local/bin/wy", "outbox", "append"); code != 0 {
 		t.Fatalf("remote wy outbox append: exit %d: %s", code, errb)
 	}
-	r.syLocal("", "hub", "pull", "run", sum.PullName, "--wait")
+	r.wyLocal("", "hub", "pull", "run", sum.PullName, "--wait")
 
-	tok, _ := r.syLocal("", "hub", "token", "create", "--kind", "desktop", "--machine", sum.Machine, "--name", "e2e-reader", "--json")
+	tok, _ := r.wyLocal("", "hub", "token", "create", "--kind", "desktop", "--machine", sum.Machine, "--name", "e2e-reader", "--json")
 	var tk struct {
 		Token string `json:"token"`
 	}
@@ -493,13 +493,13 @@ func TestPullRoundTrip(t *testing.T) {
 		if len(got) >= len(sessions) || time.Now().After(deadline) {
 			break
 		}
-		r.syLocal("", "hub", "pull", "run", sum.PullName, "--wait")
+		r.wyLocal("", "hub", "pull", "run", sum.PullName, "--wait")
 	}
 	if len(got) != len(sessions) {
-		list, _ := r.syLocal("", "hub", "pull", "list")
+		list, _ := r.wyLocal("", "hub", "pull", "list")
 		t.Fatalf("hub sees sessions %v, want %d from the pull\npull list:\n%s", got, len(sessions), list)
 	}
-	mj, _ := r.syLocal("", "hub", "machine", "show", sum.Machine, "--json")
+	mj, _ := r.wyLocal("", "hub", "machine", "show", sum.Machine, "--json")
 	var m struct {
 		Reach *string `json:"reach"`
 		Pull  *struct {
@@ -517,15 +517,15 @@ func TestPullRoundTrip(t *testing.T) {
 	}
 
 	// 5. Remove: the authorized_keys line and the pull target are gone, the test key stays.
-	r.syLocal("", "machine", "remove", "srv1")
+	r.wyLocal("", "machine", "remove", "srv1")
 	ak, _, _ = r.ssh("", "cat", ".ssh/authorized_keys")
-	if strings.Contains(ak, "sy-pull:") {
+	if strings.Contains(ak, "wy-pull:") {
 		t.Errorf("the hub's line is still in authorized_keys after remove:\n%s", ak)
 	}
-	if !strings.Contains(ak, "sy-e2e") {
+	if !strings.Contains(ak, "wy-e2e") {
 		t.Errorf("remove took the test key out of authorized_keys:\n%s", ak)
 	}
-	list, _ := r.syLocal("", "hub", "pull", "list", "--json")
+	list, _ := r.wyLocal("", "hub", "pull", "list", "--json")
 	if strings.Contains(list, sum.PullID) {
 		t.Errorf("pull target %s still listed after remove:\n%s", sum.PullID, list)
 	}
@@ -541,9 +541,9 @@ func TestPullRoundTrip(t *testing.T) {
 // with its own token through the forward and finds its keys registered.
 func TestForwardAddRegistersLinkKeys(t *testing.T) {
 	r := newRig(t)
-	r.syLocal("", "config", "set", "hub.url", r.hubBase)
-	out, errb := r.syLocal("", "machine", "add", "srv", "--name", "srv2", "--reach", "forward",
-		"--hub-admin", "local", "--binary", r.syLinux, "--yes", "--json")
+	r.wyLocal("", "config", "set", "hub.url", r.hubBase)
+	out, errb := r.wyLocal("", "machine", "add", "srv", "--name", "srv2", "--reach", "forward",
+		"--hub-admin", "local", "--binary", r.wyLinux, "--yes", "--json")
 	var sum struct {
 		Machine  string `json:"machine"`
 		Reach    string `json:"reach"`
@@ -578,7 +578,7 @@ func TestForwardAddRegistersLinkKeys(t *testing.T) {
 	}
 
 	// The hub's view: the device's certificate is reg ssh with the server's keys.
-	hk, _ := r.syLocal("", "hub", "keys", "show", "--json")
+	hk, _ := r.wyLocal("", "hub", "keys", "show", "--json")
 	var show struct {
 		HubKey struct {
 			FP string `json:"fp"`
@@ -587,7 +587,7 @@ func TestForwardAddRegistersLinkKeys(t *testing.T) {
 	if err := json.Unmarshal([]byte(hk), &show); err != nil || show.HubKey.FP == "" {
 		t.Fatalf("hub keys show: %s %v", hk, err)
 	}
-	tok, _ := r.syLocal("", "hub", "token", "create", "--kind", "desktop", "--machine", sum.Machine, "--name", "e2e-keys", "--json")
+	tok, _ := r.wyLocal("", "hub", "token", "create", "--kind", "desktop", "--machine", sum.Machine, "--name", "e2e-keys", "--json")
 	var tk struct {
 		Token string `json:"token"`
 	}
@@ -646,8 +646,8 @@ func TestForwardAddRegistersLinkKeys(t *testing.T) {
 	}
 
 	// Again: idempotent, the same device and keys.
-	out, errb = r.syLocal("", "machine", "add", "srv", "--name", "srv2", "--reach", "forward",
-		"--hub-admin", "local", "--binary", r.syLinux, "--yes", "--json")
+	out, errb = r.wyLocal("", "machine", "add", "srv", "--name", "srv2", "--reach", "forward",
+		"--hub-admin", "local", "--binary", r.wyLinux, "--yes", "--json")
 	if !strings.Contains(out, sum.Keys.SignFP) {
 		t.Errorf("rerun registered other keys:\n%s%s", out, errb)
 	}

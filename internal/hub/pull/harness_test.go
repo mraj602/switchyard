@@ -176,7 +176,7 @@ func (e *env) session(f faults, mutate func(*pull.Session, *client.DrainOptions)
 	r2, w2 := io.Pipe() // hub -> remote
 	sess := &pull.Session{Store: e.st, Ingester: e.ing, HubVersion: "0.5.0", Now: e.clk.Now, MaxRecords: 100,
 		HelloTimeout: 60 * time.Second, BatchTimeout: 60 * time.Second, Hook: f.hub}
-	dopts := client.DrainOptions{Outbox: e.ob, Machine: machineID, Name: "gpu-box", SyVersion: "0.5.0", Now: e.clk.Now,
+	dopts := client.DrainOptions{Outbox: e.ob, Machine: machineID, Name: "gpu-box", WyVersion: "0.5.0", Now: e.clk.Now,
 		StartTimeout: 60 * time.Second, AckTimeout: 60 * time.Second, Hook: f.remote}
 	if mutate != nil {
 		mutate(sess, &dopts)

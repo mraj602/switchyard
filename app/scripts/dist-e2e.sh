@@ -5,7 +5,7 @@
 # builds (npm run dist, CI's package job) never pass this flag, and their app exits 1 when
 # started with a remote debugging switch. Never signed, never published.
 #
-# Run from app/ after `node scripts/fetch-sy.mjs auto auto` (the bundled wy).
+# Run from app/ after `node scripts/fetch-wy.mjs auto auto` (the bundled wy).
 set -eu
 cd "$(dirname "$0")/.."
 export CSC_IDENTITY_AUTO_DISCOVERY=false

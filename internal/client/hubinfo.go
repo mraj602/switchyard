@@ -19,9 +19,16 @@ import (
 // /health check (RefreshHub, run by `wy tick` every 6 hours), and read by the flusher.
 const HubFile = "hub.json"
 
+// BacklogHeader carries the number of records still queued locally (outbox.md 8).
 // BacklogOldestHeader carries the ts (RFC 3339) of the oldest unanswered record, sent with
-// X-Sy-Backlog when more than one batch is queued (outbox.md 8).
-const BacklogOldestHeader = "X-Sy-Backlog-Oldest"
+// it when more than one batch is queued. Legacy compat: each is also sent under its name from
+// before the rename, which is all a hub older than the rename reads (rename.md 2.12).
+const (
+	BacklogHeader             = "X-Wy-Backlog"
+	BacklogOldestHeader       = "X-Wy-Backlog-Oldest"
+	LegacyBacklogHeader       = "X-Sy-Backlog"        // rename:keep
+	LegacyBacklogOldestHeader = "X-Sy-Backlog-Oldest" // rename:keep
+)
 
 // HubCache is the content of hub.json.
 type HubCache struct {
@@ -107,7 +114,7 @@ func sameHub(a, b string) bool {
 	return strings.EqualFold(strings.TrimRight(a, "/"), strings.TrimRight(b, "/"))
 }
 
-// backlogOldest adds X-Sy-Backlog-Oldest to the flusher's ingest requests. Client.Ingest
+// backlogOldest adds the backlog-oldest headers to the flusher's ingest requests. Client.Ingest
 // has no option for it, so the flusher sends through a copy of the client whose transport
 // stamps the header (the value is set before each request; requests are sequential).
 type backlogOldest struct {
@@ -156,6 +163,7 @@ func (b *backlogOldest) wrap(c *Client) *Client {
 		if v := b.get(); v != "" && r.URL.Path == "/v1/ingest" {
 			r = r.Clone(r.Context())
 			r.Header.Set(BacklogOldestHeader, v)
+			r.Header.Set(LegacyBacklogOldestHeader, v)
 		}
 		return base.RoundTrip(r)
 	})

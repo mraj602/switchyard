@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { create, pairError, FORBIDDEN_ERROR } from './index.js';
+import { create, cliVersion, pairError, FORBIDDEN_ERROR } from './index.js';
 import { createBus } from '../bus.js';
 import { fakeElectron } from '../../../test/fakes/electron.js';
 import { startFakeHub } from '../../../test/fakes/hub.js';
@@ -20,11 +20,11 @@ const until = async (fn, ms = 3000) => {
   }
 };
 const SEAT = { id: 'seat_01HZZZZZZZZZZZZZZZZZZZZZZZ', account: 'acc-1', org: 'org-1', label: 'work' };
-const TOKEN = 'sy_d_good';
+const TOKEN = 'wy_d_good';
 
 function info(hubUrl, over = {}) {
   return {
-    ok: true, v: 1, 'sy': '0.6.0', machine: { id: 'm_1', name: 'lap top' },
+    ok: true, v: 1, wy: '0.6.0', machine: { id: 'm_1', name: 'lap top' },
     hub: { url: hubUrl, connected: true, reachable: true, version: '0.6.0', local: true, dial: null, service: 'running', ...(over.hub ?? {}) },
     admin: 'local', outbox: { pending: 0, last_error: null }, ...Object.fromEntries(Object.entries(over).filter(([k]) => k !== 'hub')),
   };
@@ -32,7 +32,7 @@ function info(hubUrl, over = {}) {
 
 async function harness(opts = {}) {
   const hub = await startFakeHub(opts.hubData);
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-hubtest-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wy-hubtest-'));
   const tokenFile = path.join(dir, 'hub-token.bin');
   const bus = createBus({ onError: (e) => { throw e; } });
   const handlers = {};
@@ -94,9 +94,9 @@ const lastHub = (t) => t.events.hub.at(-1);
 
 test('no wy: the status says so and nothing else happens', async () => {
   const t = await harness();
-  t.wy.state.info = { ok: false, exit: -1, error: 'wy not found', code: 'no_sy' };
+  t.wy.state.info = { ok: false, exit: -1, error: 'wy not found', code: 'no_wy' };
   await t.h.start();
-  assert.equal(lastHub(t).status, 'no_sy');
+  assert.equal(lastHub(t).status, 'no_wy');
   assert.equal(lastHub(t).connected, false);
   assert.equal((await t.handlers['hub:pair']({})).ok, false);
   assert.equal(t.hub.requests.length, 0);
@@ -366,7 +366,7 @@ test('after stop, an info refresh (a late poll or hub:service) starts no stream 
 
 // ---- the hub view
 
-test('route: the view is made in persist:sy-hub, guarded, signed in through the partition, then loaded', async () => {
+test('route: the view is made in persist:wy-hub, guarded, signed in through the partition, then loaded', async () => {
   const t = await harness();
   await t.h.start();
   await t.handlers['hub:pair']({});
@@ -374,7 +374,7 @@ test('route: the view is made in persist:sy-hub, guarded, signed in through the 
   const add = t.winCalls.find((c) => c[0] === 'addView');
   assert.deepEqual(add.slice(0, 3), ['addView', 'hub', 'hub']);
   const view = add[3];
-  assert.equal(view.options.webPreferences.partition, 'persist:sy-hub');
+  assert.equal(view.options.webPreferences.partition, 'persist:wy-hub');
   assert.equal(view.options.webPreferences.kind, 'hub');
   assert.equal(t.guards.length, 1);
   assert.equal(t.guards[0].kind, 'hub');
@@ -382,7 +382,7 @@ test('route: the view is made in persist:sy-hub, guarded, signed in through the 
   assert.deepEqual(t.guardedSessions.map((g) => g.kind), ['hub']);
   const fetches = t.fake.callsOf('session.fetch');
   assert.equal(fetches.length, 1);
-  assert.equal(fetches[0][0], 'persist:sy-hub');
+  assert.equal(fetches[0][0], 'persist:wy-hub');
   assert.equal(fetches[0][1], `${t.hub.url}/v1/session/login`);
   assert.deepEqual(JSON.parse(fetches[0][2].body), { token: TOKEN });
   assert.deepEqual(t.fake.callsOf('webContents.loadURL').at(-1).slice(1, 2), [`${t.hub.url}/#/sessions/c1`]);
@@ -484,7 +484,7 @@ test('seat:update goes through the owner cookie (PATCH), never the desktop token
   assert.deepEqual(t.hub.log.at(-1), { patch: SEAT.id, body: { label: 'home', colour: null } });
   const patch = t.hub.requests.filter((r) => r.method === 'PATCH').at(-1);
   assert.equal(patch.headers.authorization, undefined, 'no bearer token on the owner call');
-  assert.ok(patch.headers.cookie.includes('sy_session'));
+  assert.ok(patch.headers.cookie.includes('wy_session'));
   assert.equal((await t.handlers['seat:update']({ seat: SEAT.id })).ok, false);
   await t.close();
 });
@@ -496,7 +496,7 @@ test('one board session: no new login while the cookie is there, and the cookie 
   await t.handlers['hub:route']({ route: '#/' });
   const logins = () => t.fake.callsOf('session.fetch').filter((c) => c[1].endsWith('/v1/session/login')).length;
   assert.equal(logins(), 1);
-  const flushes = () => t.fake.callsOf('cookies.flushStore').filter((c) => c[0] === 'persist:sy-hub').length;
+  const flushes = () => t.fake.callsOf('cookies.flushStore').filter((c) => c[0] === 'persist:wy-hub').length;
   assert.ok(flushes() >= 1, 'the new cookie is written at once');
   // a seat edit without owner rights used to log in again (a new board session each time)
   await t.handlers['seat:update']({ seat: SEAT.id, label: 'x' });
@@ -552,7 +552,7 @@ test('the board cookie revoked but the token good: a stale cookie in the jar is 
   await t.h.start();
   await t.handlers['hub:pair']({});
   // a revoked board session: the cookie is still there, the hub no longer knows it
-  await t.fake.electron.session.fromPartition('persist:sy-hub').cookies.set({ url: t.hub.url, name: 'sy_session', value: 'revoked' });
+  await t.fake.electron.session.fromPartition('persist:wy-hub').cookies.set({ url: t.hub.url, name: 'wy_session', value: 'revoked' });
   const before = loginCount(t);
   await t.handlers['hub:route']({ route: '#/' });
   assert.equal(loginCount(t), before + 1, 'logged in again although a cookie was present');
@@ -695,10 +695,10 @@ test('pairError: exit 1 shows wy\'s own message; exit 4 without a code is not ca
 
 // ---- direct mode (no wy): the app connects, pairs, uploads and unpairs by itself
 
-const NO_SY = { ok: false, code: 'no_sy', error: 'wy was not found' };
+const NO_WY = { ok: false, code: 'no_wy', error: 'wy was not found' };
 const directHarness = async (opts) => {
   const t = await harness(opts);
-  t.wy.state.info = NO_SY;
+  t.wy.state.info = NO_WY;
   return t;
 };
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -706,7 +706,7 @@ const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 test('direct: without wy the Hub tab says no hub; Connect checks the address, remembers it and pairs with the code', async () => {
   const t = await directHarness();
   await t.h.start();
-  assert.equal(lastHub(t).status, 'no_sy');
+  assert.equal(lastHub(t).status, 'no_wy');
   const r = await t.handlers['hub:connect']({ url: t.hub.url, code: '123-456' });
   assert.deepEqual(r, { ok: true });
   assert.equal(lastHub(t).status, 'ok');
@@ -754,7 +754,7 @@ test('direct: a bad address is refused before anything is saved', async () => {
   assert.match((await t.handlers['hub:connect']({ url: 'http://hub.example.com' })).error, /https/);
   assert.match((await t.handlers['hub:connect']({ url: 'http://127.0.0.1:9' })).error, /No hub answered/);
   assert.equal(fs.existsSync(path.join(t.dir, 'direct.json')) && readJson(path.join(t.dir, 'direct.json')).url, null);
-  assert.equal(lastHub(t).status, 'no_sy');
+  assert.equal(lastHub(t).status, 'no_wy');
   await t.close();
 });
 
@@ -843,7 +843,7 @@ test('direct unpair with forget drops the remembered address too: back to the Co
   await t.handlers['hub:connect']({ url: t.hub.url, code: '123456' });
   await t.handlers['hub:unpair']({ forget: true });
   assert.equal(readJson(path.join(t.dir, 'direct.json')).url, null);
-  assert.equal(lastHub(t).status, 'no_sy');
+  assert.equal(lastHub(t).status, 'no_wy');
   await t.close();
 });
 
@@ -936,7 +936,7 @@ test('a hub never seen reachable is reported unreachable at once', async () => {
 // ---- the certificate of an https hub (C6): trust on first use, pinned, refused when it changes
 
 const NO_OPENSSL = haveOpenssl() ? false : 'the openssl CLI is not installed';
-const certDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-hubcert-'));
+const certDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wy-hubcert-'));
 const certs = NO_OPENSSL ? {} : { a: makeCert(certDir, 'a'), b: makeCert(certDir, 'b') };
 
 test('direct: a self-signed https hub is pinned once the person confirms its fingerprint; a changed certificate is refused until re-pinned', { skip: NO_OPENSSL }, async () => {
@@ -964,7 +964,7 @@ test('direct: a self-signed https hub is pinned once the person confirms its fin
   assert.equal(lastHub(t).pinned, true);
   assert.equal(lastHub(t).insecure, false);
   await until(() => t.hub.streamCount() === 1);
-  assert.ok(front.requests.some((q) => q.url === '/v1/stream' && q.headers.authorization === 'Bearer sy_d_good'), 'the token goes over the pinned TLS');
+  assert.ok(front.requests.some((q) => q.url === '/v1/stream' && q.headers.authorization === 'Bearer wy_d_good'), 'the token goes over the pinned TLS');
 
   // The certificate changes: nothing is sent, the state says so and the board is hidden.
   front.use(certs.b);
@@ -1006,9 +1006,9 @@ test('plain http to another computer is flagged insecure; loopback and https are
 
 test('versions: wy’s is reported, and the release link opens the newer version’s page through openExternalSafe', async () => {
   const t = await harness({ clientVersion: '0.5.0' });
-  t.wy.state.info = info(t.hub.url, { 'sy': '0.6.1' });
+  t.wy.state.info = info(t.hub.url, { wy: '0.6.1' });
   await t.h.start();
-  assert.equal(lastHub(t).sy_version, '0.6.1');
+  assert.equal(lastHub(t).wy_version, '0.6.1');
   assert.deepEqual(await t.handlers['app:open-release'](), { ok: true });
   assert.deepEqual(t.opened, ['https://github.com/mraj602/watchyard/releases/tag/v0.6.1']);
   await t.close();
@@ -1017,4 +1017,14 @@ test('versions: wy’s is reported, and the release link opens the newer version
   await same.handlers['app:open-release']();
   assert.deepEqual(same.opened, ['https://github.com/mraj602/watchyard/releases']);
   await same.close();
+});
+
+// Legacy compat: a wy from before the rename reports its version as "sy" in `wy desktop info` (rename.md 2.12).
+test('cliVersion reads wy, and sy from a wy before the rename', () => {
+  assert.equal(cliVersion({ wy: '1.0.0' }), '1.0.0');
+  assert.equal(cliVersion({ sy: '0.9.0' }), '0.9.0'); // rename:keep
+  assert.equal(cliVersion({ wy: '1.0.0', sy: '0.9.0' }), '1.0.0'); // rename:keep
+  assert.equal(cliVersion({}), null);
+  assert.equal(cliVersion(null), null);
+  assert.equal(cliVersion({ wy: 'x'.repeat(100) }).length, 64);
 });

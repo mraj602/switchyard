@@ -8,7 +8,7 @@
 # It runs, in order:
 #   1. claude plugin validate --json: no errors, and no refusal.
 #   2. The allowed surface: the hooks and `$` calls validate reports for the mod must be inside
-#      T5's list, and every process.run/spawn in the source must name SY as argv[0].
+#      T5's list, and every process.run/spawn in the source must name WY as argv[0].
 #   3. tsc -p over the mod, when the claude-code types are there (see below).
 #   4. claude plugin test.
 #
@@ -161,7 +161,7 @@ for c in report.get("contents") or []:
 if hook_notes == 0 or call_notes == 0:
     errs.append("validate's report has no 'hooks:' or 'calls:' line to check (Claude Code changed its report?)")
 
-# Every process.run / process.spawn names SY as argv[0].
+# Every process.run / process.spawn names WY as argv[0].
 import glob, os
 for path in glob.glob(os.path.join(mod, "hooks", "**", "*"), recursive=True):
     if not re.search(r"\.(tsx?|jsx?|mjs|cjs|mts|cts)$", path) or re.search(r"\.test\.", path):
@@ -171,15 +171,15 @@ for path in glob.glob(os.path.join(mod, "hooks", "**", "*"), recursive=True):
     src = re.sub(r"/\*.*?\*/", " ", src, flags=re.S)
     src = re.sub(r"(?m)(^|\s)//.*$", " ", src)
     # Conservative rule: the word "process" may appear only as a direct
-    # $.process.run([SY, ...) or $.process.spawn({ argv: [SY, ...). An alias
+    # $.process.run([WY, ...) or $.process.spawn({ argv: [WY, ...). An alias
     # (const p = $.process; p.run(...)), a destructure, $['process'] or any other mention
     # is refused, as is any computed access on $ (it could name process without the word).
-    good = len(re.findall(r"\$\.process\.run\(\s*\[\s*SY\s*[,\]]", src)) + \
-        len(re.findall(r"\$\.process\.spawn\(\s*\{\s*argv\s*:\s*\[\s*SY\s*[,\]]", src))
+    good = len(re.findall(r"\$\.process\.run\(\s*\[\s*WY\s*[,\]]", src)) + \
+        len(re.findall(r"\$\.process\.spawn\(\s*\{\s*argv\s*:\s*\[\s*WY\s*[,\]]", src))
     total = len(re.findall(r"\bprocess\b", src))
     rel = os.path.relpath(path, mod)
     if total != good:
-        errs.append("%s: %d process reference(s), %d of them a direct $.process.run/spawn with SY as argv[0]" % (rel, total, good))
+        errs.append("%s: %d process reference(s), %d of them a direct $.process.run/spawn with WY as argv[0]" % (rel, total, good))
     if re.search(r"\$\s*\??\.?\s*\[", src):
         errs.append("%s: computed access on $ (e.g. $['process']) is not allowed" % rel)
 

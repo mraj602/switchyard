@@ -286,7 +286,7 @@ func build(t *testing.T, seed int64) *world {
 func contents(a model.Action) ([]byte, error) { return []byte("content of " + a.Path + "\n"), nil }
 
 func (w *world) opts() apply.Options {
-	return apply.Options{StateDir: w.state, Command: "test", SyVersion: "0.3.0", Machine: "m", SyPath: "/bin/wy"}
+	return apply.Options{StateDir: w.state, Command: "test", WyVersion: "0.3.0", Machine: "m", WyPath: "/bin/wy"}
 }
 
 func (w *world) deps() apply.Deps {

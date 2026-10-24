@@ -8,7 +8,7 @@
 # What runs, in order (each line below is one or more PASS/FAIL checks):
 #   1  install + grant POST_NOTIFICATIONS; the app starts (bundled JS, no Metro)
 #   2  pairing through the watchyard://pair deep link with the QR's h and k (the QR path, the seal)
-#   3  sy-link service: foreground service up, hub sees the link, persistent notification
+#   3  wy-link service: foreground service up, hub sees the link, persistent notification
 #   4  an "asked" alert (fake machine -> hub ingest -> alert engine -> link -> notification) with
 #      Open / Snooze / Seen; Seen; the hub's "send test notification"; Snooze
 #   5  hub restart: reconnect, then a new alert
@@ -66,7 +66,7 @@ emulator -list-avds 2>/dev/null | grep -qx "$AVD" || skip "no AVD named $AVD (se
 [ -r /dev/kvm ] && [ -w /dev/kvm ] || skip "no usable /dev/kvm (the emulator would be unusably slow)"
 
 # ---------------------------------------------------------------- state and cleanup
-T="$(mktemp -d "${TMPDIR:-/tmp}/sy-e2e-android.XXXXXX")"
+T="$(mktemp -d "${TMPDIR:-/tmp}/wy-e2e-android.XXXXXX")"
 mkdir -p "$T"/home "$T"/cfg "$T"/data "$T"/state "$T"/cache "$T"/bin
 SER=""
 EMU_PID=""
@@ -160,12 +160,12 @@ wait_boot() {
 # Every wy call runs with a scrubbed environment: a temp HOME and XDG dirs, nothing of the caller's.
 HENV=(env -i PATH="$PATH" HOME="$T/home" TZ=UTC NO_COLOR=1 XDG_CONFIG_HOME="$T/cfg" XDG_DATA_HOME="$T/data"
   XDG_STATE_HOME="$T/state" XDG_CACHE_HOME="$T/cache")
-hsy() { "${HENV[@]}" "$SY" "$@"; }
+hwy() { "${HENV[@]}" "$WY" "$@"; }
 free_port() { python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])'; }
 hub_up() { curl -fsS "http://127.0.0.1:$PORT/health" >/dev/null 2>&1; }
 hub_start() {
-  # not through hsy(): $! must be the hub itself (env execs wy), so SIGINT reaches it
-  "${HENV[@]}" "$SY" hub serve --listen "127.0.0.1:$PORT" --no-app-mirror >>"$T/hub.log" 2>&1 &
+  # not through hwy(): $! must be the hub itself (env execs wy), so SIGINT reaches it
+  "${HENV[@]}" "$WY" hub serve --listen "127.0.0.1:$PORT" --no-app-mirror >>"$T/hub.log" 2>&1 &
   HUB_PID=$!
   wait_until 30 hub_up
 }
@@ -180,7 +180,7 @@ hub_origin() { echo "http://127.0.0.1:$PORT"; }
 COOKIE=""
 owner_login() {
   local sec
-  sec="$(hsy hub owner-link --url "$(hub_origin)" --insecure --json | python3 -I "$LIB" json secret)"
+  sec="$(hwy hub owner-link --url "$(hub_origin)" --insecure --json | python3 -I "$LIB" json secret)"
   COOKIE="$(curl -s -i -X POST "$(hub_origin)/v1/session/owner" -H 'Content-Type: application/json' \
     -H "Origin: $(hub_origin)" -d "{\"secret\":\"$sec\"}" | tr -d '\r' | sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' | head -1)"
   [ -n "$COOKIE" ]
@@ -205,10 +205,10 @@ sid() { printf 'c41e0000-0000-4000-8000-%012d' "$1"; }
 # ---------------------------------------------------------------- the phone
 notes() { adbx shell dumpsys notification --noredact 2>/dev/null | python3 -I "$LIB" notes "$PKG"; }
 note_posted() { notes | awk -F'\t' -v ch="$1" -v t="$2" '$1 == ch && index($3 t, t) {f=1} END {exit !f}'; }
-alert_posted() { notes | awk -F'\t' '$1 == "sy_needs_you" && index($2, "asked a question") {f=1} END {exit !f}'; }
-alert_count() { notes | awk -F'\t' '$1 == "sy_needs_you" && index($2, "asked a question") {n++} END {print n+0}'; }
-conn_text() { notes | awk -F'\t' '$1 == "sy_connection" {print $3}'; }
-svc_up() { adbx shell dumpsys activity services "$PKG" 2>/dev/null | grep -q 'SyLinkService'; }
+alert_posted() { notes | awk -F'\t' '$1 == "wy_needs_you" && index($2, "asked a question") {f=1} END {exit !f}'; }
+alert_count() { notes | awk -F'\t' '$1 == "wy_needs_you" && index($2, "asked a question") {n++} END {print n+0}'; }
+conn_text() { notes | awk -F'\t' '$1 == "wy_connection" {print $3}'; }
+svc_up() { adbx shell dumpsys activity services "$PKG" 2>/dev/null | grep -q 'WyLinkService'; }
 svc_fg() { adbx shell dumpsys activity services "$PKG" 2>/dev/null | grep -q 'isForeground=true'; }
 svc_down() { ! svc_up; }
 alerts_are() { [ "$(alert_count)" = "$1" ]; }
@@ -219,7 +219,7 @@ app_pid() { adbx shell pidof "$PKG" 2>/dev/null | tr -d '\r'; }
 ui_dump() {
   local i
   for i in 1 2 3; do
-    if adbx shell uiautomator dump /sdcard/sy-ui.xml >/dev/null 2>&1 && adbx exec-out cat /sdcard/sy-ui.xml >"$T/ui.xml" 2>/dev/null && [ -s "$T/ui.xml" ]; then
+    if adbx shell uiautomator dump /sdcard/wy-ui.xml >/dev/null 2>&1 && adbx exec-out cat /sdcard/wy-ui.xml >"$T/ui.xml" 2>/dev/null && [ -s "$T/ui.xml" ]; then
       # A loaded emulator can raise "System UI isn't responding" over the app: wait it out.
       grep -q "isn&apos;t responding\|isn't responding" "$T/ui.xml" || return 0
       adbx shell input tap $(python3 -I "$LIB" tap Wait <"$T/ui.xml") 2>/dev/null
@@ -258,7 +258,7 @@ save_diag() { # save_diag TAG: logcat and the screen, for a failure
 }
 
 # ================================================================ build what the test needs
-SY="$ROOT/dist/wy"
+WY="$ROOT/dist/wy"
 echo "== build wy and the fake machine"
 (cd "$ROOT" && make build >"$T/build.log" 2>&1) || { cat "$T/build.log"; die "make build failed"; }
 (cd "$ROOT" && go build -o "$T/bin/fakemachine" ./test/e2e/android/fakemachine) || die "building fakemachine failed"
@@ -277,7 +277,7 @@ owner_login || die "owner sign-in failed"
 # The alert engine waits 60 s before an "asked" push: this test does not.
 api PUT /v1/rules/rule_asked '{"delay_s":0}' >/dev/null
 api PUT /v1/push/settings '{"flood":{"max":100,"per_s":600}}' >/dev/null
-MTOKEN="$(hsy hub token create --kind machine --name e2e-laptop --machine "$MACHINE" --json | python3 -I "$LIB" json token)"
+MTOKEN="$(hwy hub token create --kind machine --name e2e-laptop --machine "$MACHINE" --json | python3 -I "$LIB" json token)"
 [ -n "$MTOKEN" ] || die "no machine token"
 
 # ================================================================ emulator
@@ -300,7 +300,7 @@ if check "1.2 the app starts and shows the Pair screen (bundled JS)" 60 ui_has "
 echo "== 2  pairing through watchyard://pair (the QR's secret, code, h and k)"
 pair_by_link() {
   local json url q
-  json="$(hsy hub pair --kind phone --url "http://10.0.2.2:$PORT" --insecure --json)" || return 1
+  json="$(hwy hub pair --kind phone --url "http://10.0.2.2:$PORT" --insecure --json)" || return 1
   url="$(printf '%s' "$json" | python3 -I "$LIB" json url)"
   q="${url#*#/pair?}"
   adbx shell "am start -a android.intent.action.VIEW -d 'watchyard://pair?u=http%3A%2F%2F10.0.2.2%3A$PORT&$q' $PKG" >/dev/null 2>&1
@@ -332,8 +332,8 @@ TARGET="$(phone_field targets.0.id)"
 [ -n "$PHONE_ID" ] || { save_diag pair; exit 1; }
 
 # ================================================================ 3 the link
-echo "== 3  the sy-link service"
-check "3.1 SyLinkService is running as a foreground service" 30 svc_fg
+echo "== 3  the wy-link service"
+check "3.1 WyLinkService is running as a foreground service" 30 svc_fg
 check "3.2 the hub reports the phone's link connected" 30 link_connected
 check "3.3 the persistent notification says Connected to hub" 20 conn_starts "Connected to hub"
 grep -q "link login $PHONE_ID" "$T/hub.log" && pass "3.4 the hub log has the link login" || fail "3.4 the hub log has the link login"
@@ -343,15 +343,15 @@ if phase_on 4; then
   echo "== 4  alerts, Seen, test notification, Snooze"
   S1="$(sid 1)"
   ask "$S1"
-  check "4.1 an asked alert becomes a notification on sy_needs_you" 30 alert_posted
-  acts="$(notes | awk -F'\t' '$1 == "sy_needs_you" && index($2, "asked a question") {print $4; exit}')"
+  check "4.1 an asked alert becomes a notification on wy_needs_you" 30 alert_posted
+  acts="$(notes | awk -F'\t' '$1 == "wy_needs_you" && index($2, "asked a question") {print $4; exit}')"
   [ "$acts" = "Open,Snooze 15 min,Seen" ] && pass "4.2 it carries Open, Snooze 15 min and Seen" || fail "4.2 it carries Open, Snooze 15 min and Seen" "actions=$acts"
   [ "$(alert_field "$S1" deliveries.0.kind)" = link ] && pass "4.3 the hub delivery log says kind link" || fail "4.3 the hub delivery log says kind link"
   shade_tap "Seen"
   check "4.4 Seen: the hub marks the alert seen" 20 alert_is "$S1" status seen
   check "4.5 Seen: the notification is gone" 15 alerts_are 0
   api POST "/v1/push/targets/$TARGET/test" '{}' >"$T/test-push.json"
-  check "4.6 the hub's send-test-notification arrives on sy_test" 20 note_posted sy_test "Test push from your hub"
+  check "4.6 the hub's send-test-notification arrives on wy_test" 20 note_posted wy_test "Test push from your hub"
   S2="$(sid 2)"
   ask "$S2"
   check "4.7 a second alert arrives" 30 alert_posted
@@ -438,7 +438,7 @@ if phase_on 9; then
   sleep 15
   wait_boot 300 && pass "9.1 the emulator rebooted" || fail "9.1 the emulator rebooted"
   svc_down && note "service not up yet at boot_completed (BOOT_COMPLETED comes after the user unlocks)"
-  check "9.2 BOOT_COMPLETED restarts SyLinkService without opening the app" 240 svc_fg
+  check "9.2 BOOT_COMPLETED restarts WyLinkService without opening the app" 240 svc_fg
   check "9.3 the link reconnects" 90 link_connected
   S6="$(sid 6)"
   ask "$S6"
@@ -453,7 +453,7 @@ if phase_on 10; then
   sleep 3
   api DELETE "/v1/devices/$PHONE_ID" >/dev/null
   check "10.1 the hub revoked: the service stops (4403)" 30 svc_down
-  check "10.2 the notification says the phone was removed" 20 note_posted sy_needs_you "This phone was removed from the hub" || {
+  check "10.2 the notification says the phone was removed" 20 note_posted wy_needs_you "This phone was removed from the hub" || {
     adbx shell dumpsys notification --noredact >"$T/notifications-revoke.txt" 2>&1
     save_diag removed
   }
@@ -467,7 +467,7 @@ if phase_on 10; then
   tap_pair
   check "10.6 the new device connects" 60 link_connected
   PHONE_ID="$(phone_field id)"
-  hsy hub token revoke "$PHONE_ID" --yes >/dev/null
+  hwy hub token revoke "$PHONE_ID" --yes >/dev/null
   # The CLI writes the database; the running hub notices at its next sweep (link.md 7, once a
   # minute) or when the phone's next request answers 401.
   check "10.7 CLI revoke: the service stops within the sweep" 120 svc_down
@@ -570,9 +570,9 @@ if phase_on 11; then
   # ---- profiles, in Settings
   open_settings || save_diag settings
   scroll_to "id=tabrow-$SEAT_A" || save_diag profiles
-  if profiles_has "$SEAT_A"; then pass "11.11 profile sy-tab-<A> exists (Settings > Claude tabs lists it)"; else fail "11.11 profile sy-tab-<A> exists"; fi
+  if profiles_has "$SEAT_A"; then pass "11.11 profile wy-tab-<A> exists (Settings > Claude tabs lists it)"; else fail "11.11 profile wy-tab-<A> exists"; fi
   scroll_to "id=tabrow-$SEAT_B"
-  if profiles_has "$SEAT_B"; then pass "11.12 profile sy-tab-<B> exists, separate from A"; else fail "11.12 profile sy-tab-<B> exists, separate from A"; fi
+  if profiles_has "$SEAT_B"; then pass "11.12 profile wy-tab-<B> exists, separate from A"; else fail "11.12 profile wy-tab-<B> exists, separate from A"; fi
   adbx shell input keyevent KEYCODE_BACK
   adbx shell input keyevent KEYCODE_BACK
 
@@ -594,7 +594,7 @@ if phase_on 11; then
   ui_tap "Sign out" || ui_tap "SIGN OUT"
   sleep 1
   for toast in "Signed out" "Close the tab first, then try again" "Could not clear the tab"; do ui_has "$toast" && note "the app says: $toast"; done
-  check "11.16 sign out (A) removes profile sy-tab-<A>" 20 profiles_not "$SEAT_A" || save_diag signout
+  check "11.16 sign out (A) removes profile wy-tab-<A>" 20 profiles_not "$SEAT_A" || save_diag signout
   scroll_to "id=tabrow-$SEAT_B"
   profiles_has "$SEAT_B" && pass "11.17 B's profile is untouched" || fail "11.17 B's profile is untouched"
   adbx shell input keyevent KEYCODE_BACK

@@ -16,7 +16,7 @@ test('S13 top bar overflow and pairing progress', { timeout: 3 * 60_000 }, async
   const sb = sandbox('s13');
   const out = process.env.WY_TABS_SHOTS || outDir(sb.root);
   fs.mkdirSync(out, { recursive: true });
-  const run = await launch(sb, { env: { WY_BIN: path.join(sb.root, 'no-such-sy') } });
+  const run = await launch(sb, { env: { WY_BIN: path.join(sb.root, 'no-such-wy') } });
   t.after(async () => {
     await run.close();
     if (!process.env.WY_SMOKE_KEEP) sb.cleanup();

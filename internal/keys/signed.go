@@ -53,7 +53,7 @@ var (
 )
 
 // docPrefix keeps documents apart from link frames, which start "sy-link-v1" (link.md 4.3).
-const docPrefix = "sy-doc-v1\n"
+const docPrefix = "sy-doc-v1\n" // frozen: changing it would invalidate every signed document
 
 // Sig is one signature of a document.
 type Sig struct {

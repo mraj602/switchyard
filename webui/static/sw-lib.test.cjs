@@ -13,7 +13,7 @@ const read = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8');
 function loadLib() {
   const ctx = vm.createContext({ URL, console });
   vm.runInContext(read('sw-lib.js'), ctx, { filename: 'sw-lib.js' });
-  return ctx.SyLib;
+  return ctx.WyLib;
 }
 const L = loadLib();
 // Objects made inside the vm have another Object prototype; compare them as plain JSON.
@@ -21,7 +21,7 @@ const deq = (a, b) => assert.deepEqual(JSON.parse(JSON.stringify(a === undefined
 
 const payload = (over) => ({
   v: 1, type: 'alert', alert: 'al_1', trigger: 'asked', title: 'work · api · asked a question',
-  body: 'Should I?', tag: 'sy-s-1', url: '/#/sessions/1?alert=al_1', remote_url: 'https://claude.ai/code/session_x',
+  body: 'Should I?', tag: 'wy-s-1', url: '/#/sessions/1?alert=al_1', remote_url: 'https://claude.ai/code/session_x',
   tap: 'auto', session: '1', needs_you: 3, actions: { snooze: 'a1.aaa.bbb', seen: 'a1.ccc.ddd' }, private: false,
   ts: '2026-10-12T14:04:01.000Z', ...over,
 });
@@ -69,7 +69,7 @@ test('parsePayload falls back to a generic notice', () => {
 test('parsePayload keeps a good payload and repairs bad fields', () => {
   const good = L.parsePayload(JSON.stringify(payload()));
   assert.equal(good.title, 'work · api · asked a question');
-  assert.equal(good.tag, 'sy-s-1');
+  assert.equal(good.tag, 'wy-s-1');
   assert.equal(good.needs_you, 3);
   const bad = L.parsePayload(JSON.stringify({ title: '', body: 5, tag: '', url: 'http://x', tap: 'bogus', actions: 'x' }));
   assert.equal(bad.title, 'Watchyard · something needs you');
@@ -81,7 +81,7 @@ test('parsePayload keeps a good payload and repairs bad fields', () => {
 
 test('notificationOptions: actions only when the payload has tokens', () => {
   const o = L.notificationOptions(L.parsePayload(JSON.stringify(payload())));
-  assert.equal(o.tag, 'sy-s-1');
+  assert.equal(o.tag, 'wy-s-1');
   assert.equal(o.renotify, true);
   assert.equal(o.timestamp, Date.parse('2026-10-12T14:04:01.000Z'));
   deq(o.actions.map((a) => a.action), ['snooze', 'seen']);
@@ -127,10 +127,10 @@ test('sessionsToEvict keeps the newest 20 session details only', () => {
 });
 
 test('cache names', () => {
-  assert.equal(L.shellCacheName('abc'), 'sy-shell-abc');
-  assert.equal(L.isCurrentCache('sy-shell-abc', 'abc'), true);
-  assert.equal(L.isCurrentCache('sy-shell-old', 'abc'), false);
-  assert.equal(L.isCurrentCache('sy-data', 'abc'), true);
+  assert.equal(L.shellCacheName('abc'), 'wy-shell-abc');
+  assert.equal(L.isCurrentCache('wy-shell-abc', 'abc'), true);
+  assert.equal(L.isCurrentCache('wy-shell-old', 'abc'), false);
+  assert.equal(L.isCurrentCache('wy-data', 'abc'), true);
   assert.equal(L.isNavigation('https://h/'), true);
   assert.equal(L.isNavigation('https://h/index.html'), true);
   assert.equal(L.isNavigation('https://h/app.js'), false);

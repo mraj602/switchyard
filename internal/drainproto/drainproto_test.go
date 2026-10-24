@@ -33,7 +33,7 @@ func TestFramesRoundTrip(t *testing.T) {
 	oldest := "2026-10-11T12:02:00.000Z"
 	cases := []Frame{
 		Busy{},
-		Hello{Proto: Proto, Machine: "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K", Name: "gpu-box", Sy: "0.5.0", OS: "linux", Arch: "arm64", RecordV: 1, Backlog: 1240, Oldest: &oldest},
+		Hello{Proto: Proto, Machine: "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K", Name: "gpu-box", Wy: "0.5.0", OS: "linux", Arch: "arm64", RecordV: 1, Backlog: 1240, Oldest: &oldest},
 		Hello{Proto: Proto, Machine: "m_x", Backlog: 0}, // oldest null
 		Start{Proto: Proto, Hub: "0.5.0", RecordVMax: 1, MaxRecords: 500, MaxBytes: 4 << 20, BudgetS: 30},
 		Refuse{Code: RefuseFrozen, Message: "hub is frozen for a move"},
@@ -210,5 +210,20 @@ func TestAckIDs(t *testing.T) {
 	a := Ack{Seq: 1, Accepted: []string{"a"}, Duplicates: []string{"b"}, Rejected: []Rejected{{ID: "c"}}}
 	if got := strings.Join(a.IDs(), ","); got != "a,b,c" {
 		t.Fatal(got)
+	}
+}
+
+// Legacy compat: a remote older than the rename sends its version as "sy"; the hub reads it.
+// A new remote writes "wy" only.
+func TestHelloLegacyVersionKey(t *testing.T) {
+	var h Hello
+	if err := json.Unmarshal([]byte(`{"proto":1,"machine":"m_x","sy":"0.9.0"}`), &h); err != nil || h.Wy != "0.9.0" {
+		t.Fatalf("legacy hello: %+v %v", h, err)
+	}
+	if err := json.Unmarshal([]byte(`{"proto":1,"machine":"m_x","wy":"1.0.0","sy":"0.9.0"}`), &h); err != nil || h.Wy != "1.0.0" {
+		t.Fatalf("hello with both: %+v %v", h, err)
+	}
+	if b, _ := json.Marshal(Hello{Proto: 1, Machine: "m_x", Wy: "1.0.0"}); !strings.Contains(string(b), `"wy":"1.0.0"`) || strings.Contains(string(b), `"sy"`) {
+		t.Fatalf("written: %s", b)
 	}
 }

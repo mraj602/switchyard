@@ -24,9 +24,12 @@ func lookPath(name string) (string, error) { return exec.LookPath(name) }
 var RequiredEvents = []string{"SessionStart", "UserPromptSubmit", "PermissionRequest", "Notification",
 	"PreToolUse", "Stop", "StopFailure", "SubagentStop", "SessionEnd", "PreCompact", "PermissionDenied"}
 
+// The commands match wy and sy, the command's name before the rename (legacy compat,
+// rename.md 2.13: sy is a link to wy, and `wy setup` rewrites such lines).
 var (
-	syHookRe       = regexp.MustCompile(`(^|[\s/\\"'])wy(\.exe)?["']?\s+hook(\s|$|["'])`)
-	syStatuslineRe = regexp.MustCompile(`(^|[\s/\\"'])wy(\.exe)?["']?\s+statusline(\s|$|["'])`)
+	wyHookRe       = regexp.MustCompile(`(^|[\s/\\"'])[ws]y(\.exe)?["']?\s+hook(\s|$|["'])`)
+	wyStatuslineRe = regexp.MustCompile(`(^|[\s/\\"'])[ws]y(\.exe)?["']?\s+statusline(\s|$|["'])`)
+	syStatuslineRe = regexp.MustCompile(`(^|[\s/\\"'])sy(\.exe)?["']?\s+statusline(\s|$|["'])`) // rename:keep
 )
 
 // settings is the part of a settings.json that doctor reads.
@@ -161,7 +164,7 @@ func checkHooks(rep *Report, slot identity.Slot, s settings, err error) {
 	for _, ev := range RequiredEvents {
 		found := false
 		for _, cmd := range s.hooks[ev] {
-			if syHookRe.MatchString(cmd) {
+			if wyHookRe.MatchString(cmd) {
 				found = true
 				break
 			}
@@ -199,6 +202,9 @@ func checkStatusline(rep *Report, slot identity.Slot, s settings, err error) {
 		c.Level, c.Detail = Warn, "no status line command"
 		c.Fix = "set statusLine.command to: wy statusline --wrap '<your old command>' (context % and limits come from it)"
 	case syStatuslineRe.MatchString(s.status):
+		c.Level, c.Detail = Warn, "wrapped by sy statusline, the command's name before the rename"
+		c.Fix = "run wy setup: it rewrites the command for wy (no second wrap)"
+	case wyStatuslineRe.MatchString(s.status):
 		c.Level, c.Detail = OK, "wrapped by wy statusline"
 	default:
 		c.Level, c.Detail = Warn, "status line does not run wy statusline"

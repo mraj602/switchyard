@@ -168,13 +168,13 @@ func (e *setupEnv) timerEnv() timer.Env {
 	if u, err := user.Current(); err == nil {
 		uname = u.Username
 	}
-	return timer.Env{GOOS: e.goos, Home: e.home, UID: os.Getuid(), User: uname, SyPath: e.wy,
+	return timer.Env{GOOS: e.goos, Home: e.home, UID: os.Getuid(), User: uname, WyPath: e.wy,
 		StateDir: e.dirs.State.Path, Getenv: e.getenv, Runner: timer.ExecRunner{}, Out: e.stderr}
 }
 
 func (e *setupEnv) serviceEnv() service.Env {
 	t := e.timerEnv()
-	return service.Env{GOOS: t.GOOS, Home: t.Home, UID: t.UID, User: t.User, SyPath: t.SyPath,
+	return service.Env{GOOS: t.GOOS, Home: t.Home, UID: t.UID, User: t.User, WyPath: t.WyPath,
 		StateDir: t.StateDir, Getenv: t.Getenv, Runner: t.Runner, Out: e.stderr}
 }
 
@@ -232,7 +232,7 @@ func (missingClaude) Agents(context.Context, claudecli.Folder) ([]claudecli.Agen
 func (e *setupEnv) detectDeps(primary string) detect.Deps {
 	return detect.Deps{
 		Home: e.home, GOOS: e.goos, Getenv: e.getenv, Claude: e.runner,
-		ConfigDir: e.dirs.Config.Path, StateDir: e.dirs.State.Path, Sy: e.wy, Primary: primary,
+		ConfigDir: e.dirs.Config.Path, StateDir: e.dirs.State.Path, Wy: e.wy, Primary: primary,
 		HubProbe: e.hubProbe,
 	}
 }
@@ -307,10 +307,10 @@ func healthCheck(ctx context.Context, url string, d time.Duration) error {
 
 // ---- apply collaborators ------------------------------------------------------------------
 
-// syConnector implements model.Connector on `wy connect` (connect.go) and `wy hub token`.
-type syConnector struct{ e *setupEnv }
+// wyConnector implements model.Connector on `wy connect` (connect.go) and `wy hub token`.
+type wyConnector struct{ e *setupEnv }
 
-func (c syConnector) Connect(ctx context.Context, req model.ConnectRequest) (model.ConnectResult, error) {
+func (c wyConnector) Connect(ctx context.Context, req model.ConnectRequest) (model.ConnectResult, error) {
 	if req.Pull {
 		return c.connectPull()
 	}
@@ -343,7 +343,7 @@ func (c syConnector) Connect(ctx context.Context, req model.ConnectRequest) (mod
 // connectPull is `wy setup --hub pull` (machines.md 3.4): hub.reach = "pull", no hub.url
 // (records leave only through `wy outbox drain --stdio` when the hub calls), no token, and
 // the timer for the local work (scan, agents, share sync).
-func (c syConnector) connectPull() (model.ConnectResult, error) {
+func (c wyConnector) connectPull() (model.ConnectResult, error) {
 	f, err := config.Load(c.e.dirs.Config.Path)
 	if err != nil {
 		return model.ConnectResult{}, err
@@ -370,7 +370,7 @@ func (c syConnector) connectPull() (model.ConnectResult, error) {
 	return model.ConnectResult{Healthy: true, Timer: timerOn, Message: "pulled over SSH"}, nil
 }
 
-func (c syConnector) MintMachineToken(ctx context.Context, machine string) (string, error) {
+func (c wyConnector) MintMachineToken(ctx context.Context, machine string) (string, error) {
 	host, _ := os.Hostname()
 	if host == "" {
 		host = "this-machine"
@@ -388,7 +388,7 @@ func (c syConnector) MintMachineToken(ctx context.Context, machine string) (stri
 	return r.Token, nil
 }
 
-func (c syConnector) WaitHealthy(ctx context.Context, url string, seconds int) error {
+func (c wyConnector) WaitHealthy(ctx context.Context, url string, seconds int) error {
 	deadline := time.Now().Add(time.Duration(seconds) * time.Second)
 	for {
 		err := healthCheck(ctx, url, 2*time.Second)
@@ -492,7 +492,7 @@ func (e *setupEnv) applyDeps(st model.State, p model.Plan) apply.Deps {
 		Sharer:      share.New(e.dirs.State.Path),
 		Plugins:     pluginmkt.New(e.runner),
 		Service:     service.New(e.serviceEnv()),
-		Connector:   syConnector{e: e},
+		Connector:   wyConnector{e: e},
 		Exec:        apply.OSExec{Dir: e.dirs.State.Path, Claude: e.claude},
 		Contents:    e.contentsFor(st, p),
 		ConfigSet:   e.configSet,
@@ -522,8 +522,8 @@ func (e *setupEnv) applyOptions(st model.State, command string) (apply.Options, 
 		return apply.Options{}, err
 	}
 	return apply.Options{
-		StateDir: e.dirs.State.Path, Command: command, SyVersion: version.Version, Machine: m.ID,
-		SyPath: e.wy, Links: st.Links, MCPFiles: mcpFiles(st), ConfigPath: e.configPath(),
+		StateDir: e.dirs.State.Path, Command: command, WyVersion: version.Version, Machine: m.ID,
+		WyPath: e.wy, Links: st.Links, MCPFiles: mcpFiles(st), ConfigPath: e.configPath(),
 		LockHeld: e.lockHeld,
 	}, nil
 }

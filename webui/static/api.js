@@ -15,7 +15,7 @@ let lastReason = '';
 export const authReason = () => lastReason;
 
 // The service worker answers a read from its copy when the hub cannot be reached and marks
-// it with X-Sy-Cached-At. The store listens: a number means "showing data from then", null
+// it with X-Wy-Cached-At. The store listens: a number means "showing data from then", null
 // means the hub answered live.
 let onCached = () => {};
 export const setCachedHandler = (fn) => { onCached = fn; };
@@ -61,7 +61,7 @@ async function request(path, init, opts = {}) {
     throw err;
   }
   if (!init || !init.method || init.method === 'GET') {
-    const cached = res.headers.get('X-Sy-Cached-At');
+    const cached = res.headers.get('X-Wy-Cached-At');
     onCached(cached ? Number(cached) : null);
   }
   return res.status === 204 ? null : res.json();

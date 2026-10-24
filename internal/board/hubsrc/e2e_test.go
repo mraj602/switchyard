@@ -62,7 +62,7 @@ type rig struct {
 	me     string // this machine's id
 }
 
-func buildSy(t *testing.T, dir string) string {
+func buildWy(t *testing.T, dir string) string {
 	t.Helper()
 	out, err := exec.Command("go", "env", "GOMOD").Output()
 	if err != nil {
@@ -101,7 +101,7 @@ func newRig(t *testing.T) *rig {
 	if err := os.MkdirAll(filepath.Join(tmp, "home"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	r := &rig{t: t, wy: buildSy(t, tmp), env: cleanEnv(tmp), state: filepath.Join(tmp, "wy", "state")}
+	r := &rig{t: t, wy: buildWy(t, tmp), env: cleanEnv(tmp), state: filepath.Join(tmp, "wy", "state")}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)

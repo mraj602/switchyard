@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {
-  sandbox, syBinary, startHub, launch, main, inTab, tabUrl, shellState, waitFor, sleep, freshFixture, outboxRecords, outDir,
+  sandbox, wyBinary, startHub, launch, main, inTab, tabUrl, shellState, waitFor, sleep, freshFixture, outboxRecords, outDir,
 } from './harness.mjs';
 import { startFakeClaude, uuidOf, USAGE_DIR } from '../fakes/claude/server.js';
 import { FUNCTIONS } from '../../src/shared/ipc.js';
@@ -22,7 +22,7 @@ const ACCEPT = 'Read usage for this account';
 test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) => {
   const sb = sandbox('smoke');
   const out = outDir(sb.root);
-  const bin = syBinary(sb.root);
+  const bin = wyBinary(sb.root);
   const hub = await startHub(sb, bin);
   const fixture = freshFixture(sb.root, { five: 42, week: 61 });
   const claude = await startFakeClaude({ fixtures: [path.relative(USAGE_DIR, fixture)] });
@@ -77,7 +77,7 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
     // basic_text (no keyring in the sandbox): the file is written with mode 0600 and Settings warns.
     const st = fs.statSync(path.join(sb.userData, 'hub-token.bin'));
     if (process.platform !== 'win32') assert.equal(st.mode & 0o777, 0o600);
-    assert.doesNotMatch(fs.readFileSync(path.join(sb.userData, 'hub-token.bin'), 'latin1'), /sy_d_/);
+    assert.doesNotMatch(fs.readFileSync(path.join(sb.userData, 'hub-token.bin'), 'latin1'), /wy_d_/);
     if (process.platform === 'linux') assert.equal((await shellState(run.shell)).settings.storage_backend, 'basic_text');
   });
 
@@ -254,15 +254,15 @@ test('Electron smoke S1–S11, S14, S15', { timeout: 15 * 60_000 }, async (t) =>
     await waitFor(() => main(run.app, (m, e, url) => m.hub.view()?.webContents.getURL().startsWith(url) && !m.hub.view().webContents.isLoading(), hub.url), 20_000, 'the hub view page');
     const leaks = await hubPage(() => {
       const all = [document.cookie, JSON.stringify({ ...localStorage }), JSON.stringify({ ...sessionStorage }), document.documentElement.outerHTML].join('\n');
-      return /sy_d_[A-Za-z0-9]{10,}/.test(all);
+      return /wy_d_[A-Za-z0-9]{10,}/.test(all);
     });
     assert.equal(leaks, false, 'the desktop token is never in the page');
-    const me0 = await main(run.app, async (m, e, url) => (await e.session.fromPartition('persist:sy-hub').fetch(`${url}/v1/me`)).json(), hub.url);
+    const me0 = await main(run.app, async (m, e, url) => (await e.session.fromPartition('persist:wy-hub').fetch(`${url}/v1/me`)).json(), hub.url);
     assert.equal(me0.owner ?? false, false);
     const r = await run.shell.evaluate(() => window.wy.ownerSignIn({}));
     assert.equal(r.ok, true, JSON.stringify(r));
-    await waitFor(async () => (await main(run.app, async (m, e, url) => (await e.session.fromPartition('persist:sy-hub').fetch(`${url}/v1/me`)).json(), hub.url)).owner === true,
-      20_000, 'an owner session in persist:sy-hub');
+    await waitFor(async () => (await main(run.app, async (m, e, url) => (await e.session.fromPartition('persist:wy-hub').fetch(`${url}/v1/me`)).json(), hub.url)).owner === true,
+      20_000, 'an owner session in persist:wy-hub');
     await waitFor(async () => (await shellState(run.shell)).hub.owner === true, 10_000, 'ShellState hub.owner');
     const work = await waitFor(async () => (await tabOf(ids.work))?.seat, 10_000, 'the work tab knows its seat');
     assert.equal(work, ids.seat);

@@ -23,11 +23,11 @@ var corpus = []string{
 	"/bin/wy statusline --wrap",
 }
 
-const syPath = "/home/u/.local/bin/wy"
+const wyPath = "/home/u/.local/bin/wy"
 
 func TestRoundTrip(t *testing.T) {
 	for _, c := range corpus {
-		w := Wrap(c, syPath)
+		w := Wrap(c, wyPath)
 		got, ok := Unwrap(w)
 		if !ok || got != c {
 			t.Errorf("Unwrap(Wrap(%q)) = %q, %v (wrapped %q)", c, got, ok, w)
@@ -35,26 +35,26 @@ func TestRoundTrip(t *testing.T) {
 		if !IsOurs(w) {
 			t.Errorf("IsOurs(%q) = false", w)
 		}
-		if again := Wrap(w, syPath); again != w {
+		if again := Wrap(w, wyPath); again != w {
 			t.Errorf("Wrap not idempotent for %q: %q != %q", c, again, w)
 		}
 	}
 }
 
 func TestWrapShapes(t *testing.T) {
-	if got := Wrap("", syPath); got != syPath+" statusline" {
+	if got := Wrap("", wyPath); got != wyPath+" statusline" {
 		t.Errorf("empty: %q", got)
 	}
-	want := syPath + ` statusline --wrap 'bash /h/s.sh'`
-	if got := Wrap("bash /h/s.sh", syPath); got != want {
+	want := wyPath + ` statusline --wrap 'bash /h/s.sh'`
+	if got := Wrap("bash /h/s.sh", wyPath); got != want {
 		t.Errorf("got %q want %q", got, want)
 	}
-	if got := Wrap("echo 'a'", syPath); got != syPath+` statusline --wrap 'echo '\''a'\'''` {
+	if got := Wrap("echo 'a'", wyPath); got != wyPath+` statusline --wrap 'echo '\''a'\'''` {
 		t.Errorf("quote: %q", got)
 	}
 }
 
-func TestDifferentSyPathUpdatedNotNested(t *testing.T) {
+func TestDifferentWyPathUpdatedNotNested(t *testing.T) {
 	old := Wrap("bash x.sh", "/old/bin/wy")
 	got := Wrap(old, "/new/bin/wy")
 	if got != "/new/bin/wy statusline --wrap 'bash x.sh'" {
@@ -68,7 +68,7 @@ func TestDifferentSyPathUpdatedNotNested(t *testing.T) {
 	}
 }
 
-func TestSyPathWithSpaces(t *testing.T) {
+func TestWyPathWithSpaces(t *testing.T) {
 	p := "/home/my user/.local/bin/wy"
 	w := Wrap("echo hi", p)
 	if w != `'/home/my user/.local/bin/wy' statusline --wrap 'echo hi'` {

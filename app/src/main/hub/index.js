@@ -1,6 +1,6 @@
 // Hub connection and view (C6, C7): the desktop token (safeStorage, bound to the hub URL),
 // the client, the stream, overview and needs-you count, the hub WebContentsView in
-// persist:sy-hub with the cookie login, owner sign-in, hub:route, the claude.ai handoff,
+// persist:wy-hub with the cookie login, owner sign-in, hub:route, the claude.ai handoff,
 // seat:update, the certificate pin of an https hub (pin.js), the update notice's release link,
 // and the hub:* and accounts:* handlers.
 //
@@ -57,6 +57,12 @@ function certInfo(url, p, pinned) {
 }
 
 /** The messages the shell shows for a failed `wy desktop token`, by exit code (C4). */
+/** wy's own version from `wy desktop info`. Legacy compat: a wy from before the rename reports it as "sy" (rename.md 2.12). */
+export function cliVersion(info) {
+  const v = typeof info?.wy === 'string' ? info.wy : info?.sy; // rename:keep
+  return typeof v === 'string' ? v.slice(0, 64) : null;
+}
+
 export function pairError(r, hadCode) {
   switch (r.exit) {
     case 2:
@@ -106,9 +112,9 @@ export function create(deps) {
 
   const state = {
     url: null, connected: false, reachable: false, paired: false, owner: false, version: null, local: false,
-    service: null, admin: null, needs_you: 0, status: 'no_sy', storage_backend: tokens.backend(), error: null,
+    service: null, admin: null, needs_you: 0, status: 'no_wy', storage_backend: tokens.backend(), error: null,
     removed: false, board_blocked: false, direct: false, owner_until: null, last_seen: null, machine: '',
-    cert: null, insecure: false, pinned: false, sy_version: null,
+    cert: null, insecure: false, pinned: false, wy_version: null,
   };
   let auth = null; // {url, device, token}: in memory, never in the state
   // Bumped at every change of auth (pairing, drop, 401): a token load that started before a
@@ -119,7 +125,7 @@ export function create(deps) {
     authGen++;
   };
   let seats = [];
-  let reportedBySy = false;
+  let reportedByWy = false;
   let started = false;
   let stopped = false; // stop(): shutting down; no info refresh, stream or overview starts again
   let infoTimer = null;
@@ -149,14 +155,14 @@ export function create(deps) {
 
   // The app dials the hub itself (direct) when there is no wy or wy has no hub: the address was
   // checked by direct.check (https, or a local network), so plain http is allowed like for wy.
-  const allowHttp = () => reportedBySy || state.direct;
+  const allowHttp = () => reportedByWy || state.direct;
   // Every request of the app's own to the hub: a pinned https origin accepts exactly its pinned
   // certificate (pin.js), any other URL is the normal fetch with normal validation.
   const probe = deps.probeCertificate ?? probeCertificate;
   const hubFetch = createPinnedFetch({
     fetch: deps.fetch, getPin: (origin) => direct.pinFor(origin), onCertError: (origin) => certTrouble(origin), https: deps.https, tls: deps.tls,
   });
-  const client = createClient({ fetch: hubFetch, getAuth: () => auth, reportedBySy: allowHttp });
+  const client = createClient({ fetch: hubFetch, getAuth: () => auth, reportedByWy: allowHttp });
   const direct = createDirect({
     fs: deps.fs, path: deps.path, file: deps.directFile ?? deps.path.join(deps.path.dirname(deps.tokenFile), 'direct.json'),
     fetch: hubFetch, log, clientName: CLIENT_NAME, version: deps.clientVersion ?? '0.0.0', timers,
@@ -231,7 +237,7 @@ export function create(deps) {
 
   // ---- status
 
-  let mode = 'no_sy'; // 'no_sy' | 'dial' | null: what wy reported before any hub logic applies
+  let mode = 'no_wy'; // 'no_wy' | 'dial' | null: what wy reported before any hub logic applies
   let unreachableStreak = 0;
 
   /**
@@ -267,22 +273,22 @@ export function create(deps) {
     await direct.load();
     // wy (when there is one) wins; without wy, or with a wy that has no hub, the app uses the
     // hub address it remembers itself.
-    const syHasHub = info.ok && typeof info.hub?.url === 'string' && info.hub.url !== '' && !!info.hub.connected;
-    if (!syHasHub && direct.url()) return refreshDirect(info);
+    const wyHasHub = info.ok && typeof info.hub?.url === 'string' && info.hub.url !== '' && !!info.hub.connected;
+    if (!wyHasHub && direct.url()) return refreshDirect(info);
     state.direct = false;
     if (!info.ok) {
-      mode = info.code === 'no_sy' ? 'no_sy' : null;
+      mode = info.code === 'no_wy' ? 'no_wy' : null;
       dropHub();
       set({
         url: null, connected: false, reachable: false, paired: false, local: false, service: null, admin: null, version: null,
-        error: mode === 'no_sy' ? 'wy was not found' : info.error ?? 'wy desktop info failed',
+        error: mode === 'no_wy' ? 'wy was not found' : info.error ?? 'wy desktop info failed',
       });
       set({ status: statusFor() });
       return;
     }
     const hub = info.hub ?? {};
-    reportedBySy = true;
-    state.sy_version = typeof info.sy === 'string' ? info.sy.slice(0, 64) : null; // rename:keep: a wire key older releases send too (rename.md 2.12)
+    reportedByWy = true;
+    state.wy_version = cliVersion(info);
     machineName = String(info.machine?.name ?? '');
     state.machine = machineName;
     const rawUrl = typeof hub.url === 'string' ? hub.url : null;
@@ -332,7 +338,7 @@ export function create(deps) {
     state.direct = true;
     if (info?.ok) machineName = String(info.machine?.name ?? machineName);
     state.machine = machineName;
-    state.sy_version = info?.ok && typeof info.sy === 'string' ? info.sy.slice(0, 64) : null; // rename:keep
+    state.wy_version = info?.ok ? cliVersion(info) : null;
     if (url !== state.url) dropHub();
     if (state.cert && state.cert.url !== url) state.cert = null;
     if (!auth) {
@@ -408,7 +414,7 @@ export function create(deps) {
   const stream = createStream({
     fetch: hubFetch,
     getAuth: () => auth,
-    reportedBySy: allowHttp,
+    reportedByWy: allowHttp,
     timers,
     log,
     ...(deps.streamOptions ?? {}),
@@ -562,7 +568,7 @@ export function create(deps) {
 
   // ---- handlers
 
-  const ready = () => state.connected && state.url && state.status !== 'dial' && state.status !== 'no_sy';
+  const ready = () => state.connected && state.url && state.status !== 'dial' && state.status !== 'no_wy';
 
   async function pair(args = {}) {
     await refreshInfo();
@@ -574,7 +580,7 @@ export function create(deps) {
       if (!r.ok) return { ok: false, error: r.error };
       return finishPair(r.device, r.token);
     }
-    if (state.status === 'no_sy') return { ok: false, error: 'wy was not found. Install it, then run wy setup.' };
+    if (state.status === 'no_wy') return { ok: false, error: 'wy was not found. Install it, then run wy setup.' };
     if (state.status === 'dial') return { ok: false, error: state.error };
     if (!ready()) return { ok: false, error: 'wy is not connected to a hub. Run wy setup.' };
     const r = await wy.token({ code, name: tokenName() });
@@ -703,7 +709,7 @@ export function create(deps) {
 
   /** Open the release page of the update notice (or the release list) in the system browser. */
   async function openRelease() {
-    const n = updateNotice({ app: deps.clientVersion, hub: state.version, wy: state.sy_version });
+    const n = updateNotice({ app: deps.clientVersion, hub: state.version, wy: state.wy_version });
     const ok = await deps.security.openExternalSafe(n?.kind === 'update' ? n.url : releaseUrl(null));
     return { ok };
   }

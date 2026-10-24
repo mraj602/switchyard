@@ -41,7 +41,7 @@ def machines():
         b+=f'<div class="row" style="flex:1;align-items:center"><div style="width:7px;height:7px;border-radius:4px;background:{ON if o else OFF};margin-right:5px"></div><b style="font-size:12px">{n}</b><span style="font-size:10px;color:{DIM if o else OFF};white-space:pre"> {t}</span></div>'
     b+='</div>'
     return card(300,64,b)
-W={'sy-limits':limits(),'sy-sessions':sessions(),'sy-needs':needs(),'sy-ring':ringw(),'sy-next-reset':nextr(),'sy-machines':machines()}
+W={'wy-limits':limits(),'wy-sessions':sessions(),'wy-needs':needs(),'wy-ring':ringw(),'wy-next-reset':nextr(),'wy-machines':machines()}
 CSS=f'html,body{{margin:0;background:transparent}}body{{font-family:Roboto,"DejaVu Sans",sans-serif;color:{FG}}}.row{{display:flex;flex-direction:row}}.card{{box-sizing:border-box;background:{BG};border-radius:16px;overflow:hidden}}b{{font-weight:bold}}'
 for name,(w,h,html) in W.items():
     p=os.path.join(WORK,name+'.html')

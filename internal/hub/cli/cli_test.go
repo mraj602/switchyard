@@ -56,7 +56,7 @@ func TestTokenLifecycleBackupPrune(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &c); err != nil {
 		t.Fatal(out, err)
 	}
-	if !auth.LooksLikeToken(c.Token) || !strings.HasPrefix(c.Token, "sy_p_") {
+	if !auth.LooksLikeToken(c.Token) || !strings.HasPrefix(c.Token, "wy_p_") {
 		t.Fatalf("token %q", c.Token)
 	}
 	if out, err := run(t, "token", "create", "--kind", "machine", "--name", "laptop", "--db", db); err == nil {

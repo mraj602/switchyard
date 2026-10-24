@@ -11,7 +11,7 @@ import { DARK } from '../../src/components/theme';
 import type { WidgetSnapshot } from '../../src/contract/snapshot';
 import { androidProps, readSnapshot } from '../../src/lib/widget';
 import { ringSeat, setRingSeat } from '../../src/lib/widget/extra';
-import { SyRing } from './SyRing';
+import { WyRing } from './WyRing';
 
 const nowMs = (): number => Date.now();
 
@@ -29,7 +29,7 @@ export function RingConfig({ widgetInfo, renderWidget, setResult }: WidgetConfig
 
   const pick = async (id: string) => {
     await setRingSeat(AsyncStorage, widgetInfo.widgetId, id);
-    renderWidget(<SyRing {...androidProps(snap ?? null, nowMs(), undefined, widgetInfo.height, widgetInfo.width, id)} />);
+    renderWidget(<WyRing {...androidProps(snap ?? null, nowMs(), undefined, widgetInfo.height, widgetInfo.width, id)} />);
     setResult('ok');
   };
 

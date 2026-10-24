@@ -52,7 +52,7 @@ func homeSnap(t *testing.T, h *detecttest.Home) testtree.Snap {
 }
 
 func homeOpts(h *detecttest.Home) apply.Options {
-	return apply.Options{StateDir: h.Abs(".local/state/watchyard"), Command: "t", SyVersion: "0.3.0", Machine: "m"}
+	return apply.Options{StateDir: h.Abs(".local/state/watchyard"), Command: "t", WyVersion: "0.3.0", Machine: "m"}
 }
 
 func readFile(t *testing.T, p string) string {

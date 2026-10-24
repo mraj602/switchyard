@@ -3,7 +3,7 @@ import type { FakeFetch } from '../../../test/hubfake';
 import { createHubClient, errorText, flushPendingRevokes, HubError, movedOrigin, normalizeOrigin, OWNER_ONLY, revokeDevice } from './index';
 import type { HubClient } from './index';
 
-const BODY_SECRET = 'LEAKED-BODY-TEXT-sy_p_ZZZ';
+const BODY_SECRET = 'LEAKED-BODY-TEXT-wy_p_ZZZ';
 
 function client(f: FakeFetch, onUnauthorized?: () => void, clock = manualClock()): HubClient {
   return createHubClient({ origin: ORIGIN, token: TOKEN, fetch: f, clock, onUnauthorized });
@@ -273,7 +273,7 @@ describe('errors never carry the token or a body (phone.md P3)', () => {
       expect(err).toBeInstanceOf(HubError);
       const dump = [err.message, err.stack ?? '', JSON.stringify(err), String(err), (err as HubError).path].join('\n');
       expect(dump).not.toContain(TOKEN);
-      expect(dump).not.toContain('sy_p_');
+      expect(dump).not.toContain('wy_p_');
       expect(dump).not.toContain('LEAKED');
       expect(dump).not.toContain('Bearer');
     });

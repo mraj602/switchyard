@@ -16,8 +16,16 @@ import (
 	"slices"
 )
 
-// Subprotocol is the WebSocket subprotocol (link.md 2).
-const Subprotocol = "sy-link.1"
+// Subprotocol is the WebSocket subprotocol (link.md 2). LegacySubprotocol is the name
+// releases before the rename offer and accept (legacy compat): the hub accepts either, and a
+// client offers both, the new one first, so it can still reach a hub not yet updated.
+const (
+	Subprotocol       = "wy-link.1"
+	LegacySubprotocol = "sy-link.1" // rename:keep: legacy compat, the name before the rename
+)
+
+// Subprotocols is what a client offers and the hub accepts, in order of preference.
+var Subprotocols = []string{Subprotocol, LegacySubprotocol}
 
 // MaxMessage is the largest WebSocket message either side reads (link.md 2).
 const MaxMessage = 1 << 20

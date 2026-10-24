@@ -2,7 +2,7 @@
 // (setup.md 8.3), parses their marker, and hashes them so "still ours" can be told later.
 //
 // A Unix launcher is a /bin/sh script, a Windows one a .cmd file. The second line of both is
-// the marker `# sy-launcher v1 slot=<folder> label=<label>` (`rem` instead of `#` in a .cmd).
+// the marker `# wy-launcher v1 slot=<folder> label=<label>` (`rem` instead of `#` in a .cmd).
 // The plugin root is not set here: it comes from settings (5.2).
 //
 // Depends on: nothing.
@@ -19,7 +19,12 @@ import (
 )
 
 // Marker is the text that identifies a launcher as ours (second line of the file).
-const Marker = "sy-launcher v1"
+// LegacyMarker is the one launchers written before the rename carry: still recognised, never
+// written (legacy compat).
+const (
+	Marker       = "wy-launcher v1"
+	LegacyMarker = "sy-launcher v1" // rename:keep: legacy compat
+)
 
 // Spec describes one launcher.
 type Spec struct {
@@ -155,7 +160,8 @@ type Info struct {
 }
 
 // ParseMarker reads the marker from the second line of content. ok is false when the second
-// line is not a sy-launcher v1 marker.
+// line is not a wy-launcher v1 marker (or the sy-launcher v1 one of a launcher written before
+// the rename: legacy compat).
 func ParseMarker(content []byte) (Info, bool) {
 	lines := strings.SplitN(strings.ReplaceAll(string(content), "\r\n", "\n"), "\n", 3)
 	if len(lines) < 2 {
@@ -171,6 +177,9 @@ func ParseMarker(content []byte) (Info, bool) {
 		return Info{}, false
 	}
 	rest, ok := strings.CutPrefix(l, Marker)
+	if !ok {
+		rest, ok = strings.CutPrefix(l, LegacyMarker)
+	}
 	if !ok || (rest != "" && rest[0] != ' ') {
 		return Info{}, false
 	}

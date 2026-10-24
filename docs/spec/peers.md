@@ -101,7 +101,7 @@ sizes and statuses, never text.
 
 ### 2.3 Control socket
 
-`<state>/agent/agent.sock` on macOS. A unix socket path binds only up to 103 bytes on macOS (107 on Linux), so when that path is longer, both the agent and its clients use `$TMPDIR/sy-<uid>/agent.sock` instead (`/tmp/sy-<uid>/agent.sock` when that is still too long; folder 0700, checked by the agent). JSON lines, one request and one reply per connection:
+`<state>/agent/agent.sock` on macOS. A unix socket path binds only up to 103 bytes on macOS (107 on Linux), so when that path is longer, both the agent and its clients use `$TMPDIR/wy-<uid>/agent.sock` instead (`/tmp/wy-<uid>/agent.sock` when that is still too long; folder 0700, checked by the agent). JSON lines, one request and one reply per connection:
 
 | `op` | Request | Reply |
 | --- | --- | --- |
@@ -963,17 +963,17 @@ Specified here; it is written together with the commands it calls.
 
 ### 13.1 Rules (hard)
 
-- **Throwaway sessions only.** Start every lab session yourself, in `/tmp/sy-lab/work`, named
-  `lab-…`, with `--messaging-socket-path /tmp/sy-lab/socks/<x>.sock`. Never connect to, write
+- **Throwaway sessions only.** Start every lab session yourself, in `/tmp/wy-lab/work`, named
+  `lab-…`, with `--messaging-socket-path /tmp/wy-lab/socks/<x>.sock`. Never connect to, write
   to or list for posting any socket in the real `cc-socks` folder, and never post to a session
   you did not start for the lab.
 - Every post goes through `lab-post <socket> <file>`, a script that refuses unless the socket is
-  under `/tmp/sy-lab/socks/`, the registry entry for that pid has a name starting with `lab-`,
-  and its `cwd` is `/tmp/sy-lab/work`.
+  under `/tmp/wy-lab/socks/`, the registry entry for that pid has a name starting with `lab-`,
+  and its `cwd` is `/tmp/wy-lab/work`.
 - Never open `sessions/*.key` or `.credentials.json`. Read registry JSON files of lab
   sessions only.
 - The lab is run by you, not by an automated session, and never in a session that matters.
-- Cleanup: exit the lab sessions, `rm -rf /tmp/sy-lab`.
+- Cleanup: exit the lab sessions, `rm -rf /tmp/wy-lab`.
 
 ### 13.2 Setup and experiments
 
@@ -982,8 +982,8 @@ Two config folders logged in to **different** accounts (`CLAUDE_CONFIG_DIR=<fold
 `--debug` for the gate's log lines:
 
 ```
-lab-a: CLAUDE_CONFIG_DIR=<A> claude --name lab-a --debug --messaging-socket-path /tmp/sy-lab/socks/a.sock
-lab-b: CLAUDE_CONFIG_DIR=<B> claude --name lab-b --debug --permission-mode bypassPermissions --messaging-socket-path /tmp/sy-lab/socks/b.sock
+lab-a: CLAUDE_CONFIG_DIR=<A> claude --name lab-a --debug --messaging-socket-path /tmp/wy-lab/socks/a.sock
+lab-b: CLAUDE_CONFIG_DIR=<B> claude --name lab-b --debug --permission-mode bypassPermissions --messaging-socket-path /tmp/wy-lab/socks/b.sock
 ```
 
 Record per experiment: outcome (admitted, held with dialog, refused, dropped), the debug
@@ -994,16 +994,16 @@ captured on reply sockets.
 | --- | --- | --- | --- |
 | E1 | Plain `user` frame from a terminal to lab-a (prompting) | Admitted | Framing |
 | E2 | The same to lab-b (bypass), no wrapper | Held (no mode asserted) | Gate parity |
-| E3 | To lab-b, canonical wrapper, `from-mode="bypass"`, `from` = `/tmp/sy-lab/reply/r1.sock` | Admitted | **Honest mode (8.5)** |
+| E3 | To lab-b, canonical wrapper, `from-mode="bypass"`, `from` = `/tmp/wy-lab/reply/r1.sock` | Admitted | **Honest mode (8.5)** |
 | E4 | To lab-b, `from-mode="prompting"` | Held (mode mismatch) | Honest mode is honest |
 | E5 | To lab-b, E3 with `session_id` of another session | Dropped | `session_id` guard |
 | E6 | E3 sent by a detached (`setsid`) process | Admitted (mode decides, not ancestry) | The agent need not be a child |
 | E7 | E3 with `hop-chain` of 3 tokens; then 30 entries | Admitted; then dropped (runaway) | Hop carrying |
-| E8 | A stdio MCP server in `/tmp/sy-lab/work/.mcp.json` posting to its parent's socket | Admitted in bypass | Fallback B (courier) |
+| E8 | A stdio MCP server in `/tmp/wy-lab/work/.mcp.json` posting to its parent's socket | Admitted in bypass | Fallback B (courier) |
 | E9 | `/peers` in lab-a and lab-b | Neither lists the other | Discovery is per folder |
 | E10 | After E3, ask lab-b to reply to the sender; listen on `r1.sock` | A frame arrives: the **golden wrapper** for the Go builder | Reply via `SendMessage` outside `cc-socks` (8.6) |
 | E11 | E2 with `from` = a 16-hex-named socket in the lab socket folder, the listener being the poster; deny the dialog | `held` then `denied` receipts arrive | Receipts (8.6) |
-| E12 | A scratch `UserPromptSubmit` hook (in `/tmp/sy-lab/work/.claude/settings.json`) that logs its payload's first 40 characters; deliver a message to idle lab-a | Note whether it fires and what `prompt` starts with | Human prompt detection (2.4) |
+| E12 | A scratch `UserPromptSubmit` hook (in `/tmp/wy-lab/work/.claude/settings.json`) that logs its payload's first 40 characters; deliver a message to idle lab-a | Note whether it fires and what `prompt` starts with | Human prompt detection (2.4) |
 | E13 | 35 quick posts to lab-a; the same body twice within 30 s | Drops after about 30; duplicate dropped | Native limits (9.2) |
 | E14 | A third lab session in bypass with `--settings '{"crossSessionInbound":"accept"}'`; E2 | Admitted | Fallback A |
 | E15 | `claude -p --permission-mode bypassPermissions …` lab session; E3 and E2 | E3 admitted; E2 held, then expired after the dialog timeout | Headless targets |

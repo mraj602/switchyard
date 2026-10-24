@@ -106,7 +106,7 @@ function startAppImage(appImage, sb, { env = {}, args = [] } = {}) {
 }
 
 /** A PATH with no `wy` on it (the bundled copy must be the one found). */
-function pathWithoutSy() {
+function pathWithoutWy() {
   return (process.env.PATH ?? '/usr/bin:/bin')
     .split(path.delimiter)
     .filter((d) => d && !fs.existsSync(path.join(d, 'wy')))
@@ -120,7 +120,7 @@ function pathWithoutSy() {
 function appEnv(sb) {
   const tmp = path.join(sb.root, 'tmp');
   fs.mkdirSync(tmp, { recursive: true });
-  return { PATH: pathWithoutSy(), APPIMAGE_EXTRACT_AND_RUN: '1', TMPDIR: tmp };
+  return { PATH: pathWithoutWy(), APPIMAGE_EXTRACT_AND_RUN: '1', TMPDIR: tmp };
 }
 
 const appImage = findAppImage();
@@ -160,7 +160,7 @@ test('packaged AppImage: asar, fuses, bundled wy, connect and pair', { skip, tim
     // The e2e build's allowance for --remote-debugging-port; the rest of package.json is kept.
     const pkg = JSON.parse(asarRead(path.join(root, 'resources', 'app.asar'), '/package.json'));
     assert.equal(pkg.watchyard?.allowCdp, true, 'not the e2e build (scripts/dist-e2e.sh): CDP would be refused');
-    assert.equal(pkg.watchyard?.minSy, '0.6.0');
+    assert.equal(pkg.watchyard?.minWy, '0.6.0');
     assert.ok(fs.statSync(bundled).mode & 0o111, 'the bundled wy is executable');
     const v = spawnSync(bundled, ['--version'], { env: sb.env, encoding: 'utf8' });
     assert.equal(v.status, 0, v.stderr);
@@ -240,7 +240,7 @@ test('packaged AppImage: asar, fuses, bundled wy, connect and pair', { skip, tim
     assert.equal(me.body.owner, false);
     const seen = await board.evaluate(() => [document.cookie, JSON.stringify({ ...localStorage, ...sessionStorage })]);
     assert.equal(seen[0], '', 'the session cookie is not readable by the page');
-    assert.ok(!/sy_[a-z]_/.test(seen[1]), 'no token in the page storage');
+    assert.ok(!/wy_[a-z]_/.test(seen[1]), 'no token in the page storage');
     await board.screenshot({ path: path.join(out, 'e2e-hub.png') });
     assert.deepEqual(errors.filter((e) => !/fonts\.(googleapis|gstatic)/.test(e)), [], 'no console errors in the shell');
   });

@@ -88,7 +88,7 @@ assert_eq "set $BAK is undone" undone "$(jget "$OUT" 'd["sets"][0]["status"]')"
 # ---- S1b: a login in ~/.claude-2 before undo ----
 apply_s1 s1b
 printf 'b@example.com\n' > "$WY_E2E_TMP/email"
-sy_in "$WY_E2E_TMP/email" account login "$H/.claude-2"
+wy_in "$WY_E2E_TMP/email" account login "$H/.claude-2"
 assert_rc "account login ~/.claude-2" 0 $rc
 wy setup --undo --yes
 assert_rc "undo with a login in ~/.claude-2" 0 $rc

@@ -78,7 +78,7 @@ func (s *syncBuf) String() string {
 
 var (
 	buildOnce sync.Once
-	builtSy   string
+	builtWy   string
 	buildErr  error
 	buildDir  string
 )
@@ -92,8 +92,8 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// buildSy builds wy with the fakeclock tag once per test binary.
-func buildSy(t *testing.T) string {
+// buildWy builds wy with the fakeclock tag once per test binary.
+func buildWy(t *testing.T) string {
 	t.Helper()
 	buildOnce.Do(func() {
 		out, err := exec.Command("go", "env", "GOMOD").Output()
@@ -112,12 +112,12 @@ func buildSy(t *testing.T) string {
 			buildErr = fmt.Errorf("%v\n%s", err, b)
 			return
 		}
-		builtSy = bin
+		builtWy = bin
 	})
 	if buildErr != nil {
 		t.Fatalf("build wy: %v", buildErr)
 	}
-	return builtSy
+	return builtWy
 }
 
 // cleanEnv is the parent's environment without anything that could point wy or Claude
@@ -145,7 +145,7 @@ func newRig(t *testing.T) *rig {
 		t.Skip("the fake clock control socket is a unix socket")
 	}
 	tmp := t.TempDir()
-	r := &rig{t: t, wy: buildSy(t), hubLog: &syncBuf{}}
+	r := &rig{t: t, wy: buildWy(t), hubLog: &syncBuf{}}
 	home := filepath.Join(tmp, "home")
 	if err := os.MkdirAll(home, 0o700); err != nil {
 		t.Fatal(err)
@@ -397,8 +397,8 @@ func pushScenario(t *testing.T, r *rig) {
 	_, hdr, b := r.call("POST", "/v1/session/owner", "", map[string]any{"secret": link.Secret})
 	var owner string
 	for _, c := range (&http.Response{Header: hdr}).Cookies() {
-		if c.Name == "sy_session" {
-			owner = "Cookie sy_session=" + c.Value
+		if c.Name == "wy_session" {
+			owner = "Cookie wy_session=" + c.Value
 		}
 	}
 	if owner == "" {
@@ -438,7 +438,7 @@ func pushScenario(t *testing.T, r *rig) {
 	r.must(201, "POST", "/v1/push/targets", phone, map[string]any{"kind": "webpush", "endpoint": endpoint,
 		"keys": map[string]string{"p256dh": sub.P256dh, "auth": sub.Auth}, "name": "Pixel"})
 	// The ntfy stub is on loopback, which only the owner may register (push.md 7.1).
-	r.must(201, "POST", "/v1/push/targets", owner, map[string]any{"kind": "ntfy", "server": r.nf.URL(), "topic": "sy-e2e-topic"})
+	r.must(201, "POST", "/v1/push/targets", owner, map[string]any{"kind": "ntfy", "server": r.nf.URL(), "topic": "wy-e2e-topic"})
 	// ---- a machine token from the hub's shell.
 	r.machine = "m_" + record.NewID(time.Now())
 	var tok struct{ Token string }
@@ -461,7 +461,7 @@ func pushScenario(t *testing.T, r *rig) {
 		t.Errorf("pushed after %s", d)
 	}
 	for k, want := range map[string]any{"v": 1.0, "type": "alert", "trigger": "asked", "session": s1,
-		"tag": "sy-s-" + s1, "body": "Should I also update the migration?", "private": false} {
+		"tag": "wy-s-" + s1, "body": "Should I also update the migration?", "private": false} {
 		if p[k] != want {
 			t.Errorf("payload %s = %v, want %v", k, p[k], want)
 		}
@@ -481,7 +481,7 @@ func pushScenario(t *testing.T, r *rig) {
 			t.Errorf("payload has no %s", k)
 		}
 	}
-	if m := r.nf.Requests()[0].Msg; m.Topic != "sy-e2e-topic" || !strings.Contains(m.Message, "update the migration") {
+	if m := r.nf.Requests()[0].Msg; m.Topic != "wy-e2e-topic" || !strings.Contains(m.Message, "update the migration") {
 		t.Errorf("ntfy message %+v", m)
 	}
 	nWP, nNF := 1, 1

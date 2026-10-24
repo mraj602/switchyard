@@ -32,7 +32,7 @@ TOOLS=$WY_E2E_OUT/bin
 SCENARIO=${SCENARIO:-$(basename "$0" .sh)}
 
 # pwd -P: the physical path (macOS TMPDIR lives behind the /var symlink), so the paths wy prints and the paths the scenarios build agree.
-WY_E2E_TMP=$(cd "$(mktemp -d "${TMPDIR:-/tmp}/sy-e2e.XXXXXX")" && pwd -P)
+WY_E2E_TMP=$(cd "$(mktemp -d "${TMPDIR:-/tmp}/wy-e2e.XXXXXX")" && pwd -P)
 SERVERS=
 cleanup() {
 	for s in $SERVERS; do "$E2E/install-server.sh" stop "$s" 2>/dev/null || true; done
@@ -143,9 +143,9 @@ in_home() { # <command...>
 		LANG="${LANG:-C}" TMPDIR="$WY_E2E_TMP/tmp" FAKE_CLAUDE_LOG="$FAKE_LOG" $SD_ENV ${WY_E2E_ENV:-} "$@" )
 }
 
-# sy_bg <pid file> <out file> <args...>: start $H's wy in the background; the pid file gets the
+# wy_bg <pid file> <out file> <args...>: start $H's wy in the background; the pid file gets the
 # pid of wy itself (the subshell execs, so it is the same process), for kill -9.
-sy_bg() {
+wy_bg() {
 	pf=$1; of=$2; shift 2
 	mkdir -p "$WY_E2E_TMP/tmp"
 	# shellcheck disable=SC2086
@@ -157,11 +157,11 @@ sy_bg() {
 
 # wy <args...>: run $H's wy; stdout to $OUT, stderr to $ERR, exit code in $rc.
 wy() { rc=0; in_home wy "$@" >"$OUT" 2>"$ERR" </dev/null || rc=$?; }
-# sy_in <stdin file> <args...>
-sy_in() { f=$1; shift; rc=0; in_home wy "$@" >"$OUT" 2>"$ERR" <"$f" || rc=$?; }
+# wy_in <stdin file> <args...>
+wy_in() { f=$1; shift; rc=0; in_home wy "$@" >"$OUT" 2>"$ERR" <"$f" || rc=$?; }
 
-# install_sy <home>: the built wy into <home>/.local/bin (what install.sh would do).
-install_sy() {
+# install_wy <home>: the built wy into <home>/.local/bin (what install.sh would do).
+install_wy() {
 	mkdir -p "$1/.local/bin"
 	tar -xzf "$(ls "$RELEASE"/wy_*_"$(go_os)"_"$(go_arch)".tar.gz | head -n 1)" -C "$1/.local/bin" wy
 	chmod 0755 "$1/.local/bin/wy"

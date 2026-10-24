@@ -5,7 +5,7 @@ import type { StoredHub } from './index';
 
 const hub: StoredHub = {
   origin: 'https://hub.test.ts.net',
-  token: 'sy_p_TOKEN',
+  token: 'wy_p_TOKEN',
   device: 'dev_phone',
   name: 'Pixel · app',
   paired_at: '2026-10-13T12:00:00.000Z',

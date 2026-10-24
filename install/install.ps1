@@ -18,7 +18,7 @@ param(
     [string[]]$SetupArgs = @()
 )
 
-function Install-Sy {
+function Install-Wy {
     param([string]$Version, [string]$BinDir, [bool]$NoSetup, [string[]]$SetupArgs)
 
     $ErrorActionPreference = 'Stop'
@@ -70,7 +70,7 @@ function Install-Sy {
     try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]12288 } catch { }
     $ProgressPreference = 'SilentlyContinue'
 
-    $tmp = Join-Path ([IO.Path]::GetTempPath()) ("sy-install-" + [Guid]::NewGuid().ToString('N'))
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ("wy-install-" + [Guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $tmp | Out-Null
     try {
         try {
@@ -193,7 +193,7 @@ function Install-Sy {
     return 0
 }
 
-$code = Install-Sy -Version $Version -BinDir $BinDir -NoSetup ([bool]$NoSetup) -SetupArgs $SetupArgs
+$code = Install-Wy -Version $Version -BinDir $BinDir -NoSetup ([bool]$NoSetup) -SetupArgs $SetupArgs
 $global:LASTEXITCODE = $code
 # `exit` would close the caller's session when this text is run through iex; only exit when
 # it runs as a script file.

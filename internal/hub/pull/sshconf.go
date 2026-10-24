@@ -22,7 +22,7 @@ const (
 var (
 	hostRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,252}$`)
 	userRe = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9._-]{0,63}$`)
-	syRe   = regexp.MustCompile(`^[A-Za-z0-9._/~-]{1,200}$`)
+	wyRe   = regexp.MustCompile(`^[A-Za-z0-9._/~-]{1,200}$`)
 )
 
 // ValidateTarget checks the fields that go into ssh_config, so a value can never add an
@@ -40,14 +40,14 @@ func ValidateTarget(t store.PullTarget) error {
 		// A ProxyJump host would be reached with ssh's own defaults (no pinned key, the
 		// person's known_hosts, a prompt): the pinned-host-key guarantee would stop at the hop.
 		return fmt.Errorf("ProxyJump (%q) is not supported: the jump host's key cannot be pinned; reach the server directly (a tailnet address) instead", t.Jump)
-	case t.RemoteSy != "" && !syRe.MatchString(t.RemoteSy):
-		return fmt.Errorf("bad remote wy path %q", t.RemoteSy)
+	case t.RemoteWy != "" && !wyRe.MatchString(t.RemoteWy):
+		return fmt.Errorf("bad remote wy path %q", t.RemoteWy)
 	}
 	return nil
 }
 
 // Alias is the ssh Host (and HostKeyAlias) of a target.
-func Alias(t store.PullTarget) string { return "sy-" + t.ID }
+func Alias(t store.PullTarget) string { return "wy-" + t.ID }
 
 // WriteConfig writes <dir>/ssh_config and <dir>/known_hosts (0600) from the targets
 // (machines.md 3.4): one Host block per target with the fixed option set, and one
@@ -109,7 +109,7 @@ func quotePath(p string) string {
 // SSHArgs is the argv of one run (after the ssh program): the generated config, no
 // terminal, the target's alias and the remote command (ignored under a forced command).
 func SSHArgs(dir string, t store.PullTarget) []string {
-	remote := t.RemoteSy
+	remote := t.RemoteWy
 	if remote == "" {
 		remote = ".local/bin/wy"
 	}

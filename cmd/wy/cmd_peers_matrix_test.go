@@ -67,7 +67,7 @@ func newMatrixWorld(t *testing.T) *matrixWorld {
 func (m *matrixWorld) wy(answers []string, args ...string) (code int, out, errs string) {
 	m.t.Helper()
 	m.rig.tty.answers = answers
-	code, out, errs = runPeersSy(append([]string{"peers"}, args...)...)
+	code, out, errs = runPeersWy(append([]string{"peers"}, args...)...)
 	if len(m.rig.tty.answers) != 0 {
 		m.t.Errorf("%v: unused answers %q", args, m.rig.tty.answers)
 	}

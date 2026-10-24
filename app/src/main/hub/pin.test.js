@@ -13,7 +13,7 @@ import { createDirect } from './direct.js';
 import { haveOpenssl, makeCert, startTlsFront } from '../../../test/fakes/tls.js';
 
 const NO_OPENSSL = haveOpenssl() ? false : 'the openssl CLI is not installed';
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-pintest-'));
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wy-pintest-'));
 const certs = NO_OPENSSL ? {} : { a: makeCert(dir, 'a'), b: makeCert(dir, 'b') };
 
 /** A plain http server that answers a few routes; the TLS front forwards to it. */
@@ -69,7 +69,7 @@ test('probe: a self-signed hub is reported untrusted with its fingerprint, and n
   assert.equal(p.trusted, false);
   assert.equal(p.fingerprint, certs.a.fingerprint);
   assert.equal(p.reason, 'DEPTH_ZERO_SELF_SIGNED_CERT');
-  assert.match(p.subject, /CN=sy-test-a/);
+  assert.match(p.subject, /CN=wy-test-a/);
   assert.ok(p.valid_to);
   assert.equal(front.requests.length, 0, 'a probe is a handshake only');
   assert.deepEqual(await probe('http://127.0.0.1:1/'), { ok: false, error: 'not https' });
@@ -85,12 +85,12 @@ test('pinned fetch: the pinned certificate carries GET, POST, streams, redirects
   const base = async () => assert.fail('a pinned origin never reaches the normal fetch');
   const f = createPinnedFetch({ fetch: base, getPin: (o) => (o === origin ? certs.a.fingerprint : null) });
 
-  const r = await f(`${origin}/v1/x?q=1`, { headers: { authorization: 'Bearer sy_d_good', accept: 'application/json' }, redirect: 'manual' });
+  const r = await f(`${origin}/v1/x?q=1`, { headers: { authorization: 'Bearer wy_d_good', accept: 'application/json' }, redirect: 'manual' });
   assert.equal(r.status, 200);
   assert.equal(r.headers.get('x-two'), 'yes');
   assert.deepEqual(await r.json(), { ok: true, method: 'GET', body: '' });
   assert.equal(be.seen.at(-1).url, '/v1/x?q=1');
-  assert.equal(be.seen.at(-1).headers.authorization, 'Bearer sy_d_good');
+  assert.equal(be.seen.at(-1).headers.authorization, 'Bearer wy_d_good');
 
   const post = await f(`${origin}/v1/y`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"a":1}' });
   assert.deepEqual(await post.json(), { ok: true, method: 'POST', body: '{"a":1}' });
@@ -123,7 +123,7 @@ test('pinned fetch: another certificate is refused before the request (and its t
   assert.equal((await f(`${front.url}/v1/x`)).status, 200);
   front.use(certs.b);
   const before = front.requests.length;
-  await assert.rejects(f(`${front.url}/v1/x`, { headers: { authorization: 'Bearer sy_d_secret' } }), (e) => {
+  await assert.rejects(f(`${front.url}/v1/x`, { headers: { authorization: 'Bearer wy_d_secret' } }), (e) => {
     assert.ok(e instanceof CertificateChangedError);
     assert.equal(e.expected, certs.a.fingerprint);
     assert.equal(e.actual, certs.b.fingerprint);
@@ -131,7 +131,7 @@ test('pinned fetch: another certificate is refused before the request (and its t
     return true;
   });
   assert.equal(front.requests.length, before, 'no request reached the server');
-  assert.ok(be.seen.every((r) => r.headers.authorization !== 'Bearer sy_d_secret'), 'the token never left');
+  assert.ok(be.seen.every((r) => r.headers.authorization !== 'Bearer wy_d_secret'), 'the token never left');
   assert.deepEqual(errors.map(([o, e]) => [o, e.code]), [[front.url, 'WY_CERT_CHANGED']]);
   await front.close();
   await be.close();
@@ -184,7 +184,7 @@ test('the hub view’s verify proc: the pinned certificate only, for the pinned 
 });
 
 test('direct.json keeps the pins of https origins only, and drops bad entries', async () => {
-  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-pins-'));
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'wy-pins-'));
   const file = path.join(d, 'direct.json');
   const fp = 'AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89';
   const mk = () => createDirect({ fs: fsp, path, file, fetch: async () => assert.fail('no fetch'), clientName: 'x', version: '1', getAuth: () => null, active: () => false, log: { warn() {} } });

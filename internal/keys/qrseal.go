@@ -8,7 +8,7 @@ import (
 // SealKeyLen is the length of the QR's registration key k (keys.md 7).
 const SealKeyLen = 16
 
-const regAAD = "sy-reg-v1\n"
+const regAAD = "sy-reg-v1\n" // frozen: the phone seals with it; changing it breaks pairing with older apps
 
 // ErrSeal means keys_sealed did not open with this code's k and secret.
 var ErrSeal = errors.New("key registration invalid")

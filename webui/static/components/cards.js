@@ -72,7 +72,7 @@ export function needsCard(s, seatIdx, now) {
       h('span', { class: 'muted card-age' }, ago(s.state_since, now) || '–', h('span', { class: 'desk-only' }, ' waiting')),
       acts ? h('button', {
         type: 'button', class: 'menu-btn', 'aria-label': 'Seen and snooze', 'aria-expanded': String(open), 'data-key': `menu-${s.id}`,
-        onclick: () => { ui.menu = ui.menu === s.id ? null : s.id; window.dispatchEvent(new Event('sy-rerender')); },
+        onclick: () => { ui.menu = ui.menu === s.id ? null : s.id; window.dispatchEvent(new Event('wy-rerender')); },
       }, '⋯') : null),
     h('p', { class: `ask${mono ? ' mono' : ''}` }, askText(s, seatIdx, now) || 'No details were sent.'),
     h('div', { class: 'meta-line' }, dot(seat.colour), `${seat.label} · ${projectOf(s)}${s.machine_name ? ' · ' + s.machine_name : ''}`),

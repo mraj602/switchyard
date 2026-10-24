@@ -43,9 +43,27 @@ type Entry struct {
 	Hub       bool   `json:"hub,omitempty"` // this machine is the hub host (updated first)
 	OS        string `json:"os"`
 	Arch      string `json:"arch"`
-	SyVersion string `json:"sy_version"`
+	WyVersion string `json:"wy_version"`
 	AddedAt   string `json:"added_at"`
 	UpdatedAt string `json:"updated_at"`
+}
+
+// UnmarshalJSON reads wy_version, or sy_version, which a registry written before the rename
+// holds (legacy compat, rename.md 2.12).
+func (e *Entry) UnmarshalJSON(b []byte) error {
+	type plain Entry
+	var v struct {
+		plain
+		SyVersion string `json:"sy_version"` // rename:keep: legacy compat
+	}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	*e = Entry(v.plain)
+	if e.WyVersion == "" {
+		e.WyVersion = v.SyVersion
+	}
+	return nil
 }
 
 // Registry is <state>/machines.json.

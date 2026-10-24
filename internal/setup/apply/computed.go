@@ -71,7 +71,7 @@ func (r *runner) writeTree(a model.Action) error {
 		return err
 	}
 	defer os.RemoveAll(tmp)
-	if err := r.d.Plugins.WriteMarketplace(tmp, r.o.SyPath, r.o.SyVersion); err != nil {
+	if err := r.d.Plugins.WriteMarketplace(tmp, r.o.WyPath, r.o.WyVersion); err != nil {
 		return err
 	}
 	h, err := backup.TreeHash(tmp)

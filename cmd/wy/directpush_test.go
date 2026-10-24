@@ -55,13 +55,13 @@ func TestDirectPushOnStatusTestOff(t *testing.T) {
 		t.Fatalf("on without a topic: %d %s", code, errs)
 	}
 	// A topic as an argument is refused (it is the secret).
-	if code, _, _ := runDP(t, "", "direct-push", "on", "sy-topic"); code != 2 {
+	if code, _, _ := runDP(t, "", "direct-push", "on", "wy-topic"); code != 2 {
 		t.Fatalf("topic argument: %d", code)
 	}
 	if code, _, errs := runDP(t, `{"topic":"bad topic"}`, "direct-push", "on", "--secret-stdin"); code == 0 {
 		t.Fatalf("bad topic accepted: %s", errs)
 	}
-	code, out, errs := runDP(t, `{"topic":"sy-SecretTopic123","token":"tk_secret"}`, "direct-push", "on", "--secret-stdin",
+	code, out, errs := runDP(t, `{"topic":"wy-SecretTopic123","token":"tk_secret"}`, "direct-push", "on", "--secret-stdin",
 		"--server", ntfy.URL, "--private=false", "--after", "3m")
 	if code != 0 {
 		t.Fatalf("on: %d %s %s", code, out, errs)
@@ -105,7 +105,7 @@ func TestDirectPushOnStatusTestOff(t *testing.T) {
 		t.Fatalf("test: %d %s %s", code, out, errs)
 	}
 	mu.Lock()
-	if len(got) != 1 || got[0]["topic"] != "sy-SecretTopic123" || !strings.Contains(got[0]["message"].(string), "direct push test from") {
+	if len(got) != 1 || got[0]["topic"] != "wy-SecretTopic123" || !strings.Contains(got[0]["message"].(string), "direct push test from") {
 		t.Fatalf("test push: %+v", got)
 	}
 	mu.Unlock()

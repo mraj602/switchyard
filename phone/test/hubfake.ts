@@ -3,7 +3,7 @@
 import type { AppStateSource, Clock, FetchLike, KVStore, RequestInitLike, ResponseLike } from '../src/contract/platform';
 
 export const ORIGIN = 'https://hub.test.ts.net';
-export const TOKEN = 'sy_p_SECRETTOKEN0000000000000000000000000000000';
+export const TOKEN = 'wy_p_SECRETTOKEN0000000000000000000000000000000';
 
 export function response(status: number, body?: unknown, extra: Partial<ResponseLike> = {}): ResponseLike {
   const text = body === undefined ? '' : typeof body === 'string' ? body : JSON.stringify(body);

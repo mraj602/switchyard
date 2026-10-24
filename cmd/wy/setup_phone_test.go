@@ -71,7 +71,7 @@ func TestSetupHubJoinWithCode(t *testing.T) {
 		t.Errorf("phone line missing:\n%s", out)
 	}
 	found := false
-	_ = filepath.Walk(s.syHome, func(p string, fi os.FileInfo, err error) error {
+	_ = filepath.Walk(s.wyHome, func(p string, fi os.FileInfo, err error) error {
 		if err == nil && !fi.IsDir() && filepath.Base(p) == "token" {
 			b, _ := os.ReadFile(p)
 			found = strings.TrimSpace(string(b)) == goodToken

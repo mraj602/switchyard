@@ -97,7 +97,7 @@ func connectSandbox(t *testing.T, d paths.Dirs, url string, kv ...string) {
 	if err := f.Save(); err != nil {
 		t.Fatal(err)
 	}
-	if err := atomicfile.Write(filepath.Join(d.State.Path, client.TokenFile), []byte("sy_m_"+strings.Repeat("x", 43)+"\n"), 0o600); err != nil {
+	if err := atomicfile.Write(filepath.Join(d.State.Path, client.TokenFile), []byte("wy_m_"+strings.Repeat("x", 43)+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -198,7 +198,7 @@ func meScopes(t *testing.T, url, token string) []string {
 	return me.Device.Scopes
 }
 
-// token through a local hub (admin channel `local`) returns a working sy_d_ token; --code-stdin
+// token through a local hub (admin channel `local`) returns a working wy_d_ token; --code-stdin
 // claims a desktop code and refuses a phone code with exit 3; info sees a local hub.
 func TestDesktopTokenThroughLocalHub(t *testing.T) {
 	d := deskSandbox(t)
@@ -215,7 +215,7 @@ func TestDesktopTokenThroughLocalHub(t *testing.T) {
 
 	code, out, errb = runDesk(t, "", "token", "--json", "--name", "desk-test")
 	var tok desktop.Token
-	if code != 0 || json.Unmarshal([]byte(out), &tok) != nil || !strings.HasPrefix(tok.Token, "sy_d_") || tok.Hub.URL != hub.URL {
+	if code != 0 || json.Unmarshal([]byte(out), &tok) != nil || !strings.HasPrefix(tok.Token, "wy_d_") || tok.Hub.URL != hub.URL {
 		t.Fatalf("token: %d %s %s", code, out, errb)
 	}
 	if got := strings.Join(meScopes(t, hub.URL, tok.Token), ","); got != "write,read" {
@@ -239,7 +239,7 @@ func TestDesktopTokenThroughLocalHub(t *testing.T) {
 	}
 	desk := pair("desktop")
 	code, out, errb = runDesk(t, desk["code"].(string)+"\n", "token", "--code-stdin", "--json", "--name", "by-code")
-	if code != 0 || json.Unmarshal([]byte(out), &tok) != nil || !strings.HasPrefix(tok.Token, "sy_d_") {
+	if code != 0 || json.Unmarshal([]byte(out), &tok) != nil || !strings.HasPrefix(tok.Token, "wy_d_") {
 		t.Fatalf("token --code-stdin: %d %s %s", code, out, errb)
 	}
 	meScopes(t, hub.URL, tok.Token)
@@ -272,7 +272,7 @@ func TestDesktopPrefixAdminBatchModeNoSecretInArgv(t *testing.T) {
 	bin := t.TempDir()
 	rec := filepath.Join(bin, "argv.txt")
 	script := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> " + rec + "\ncase \"$*\" in\n" +
-		"  *token*create*) echo '{\"device\":\"dev_1\",\"token\":\"sy_d_SECRETSECRETSECRETSECRETSECRETSECRETSECRET1\",\"scopes\":[\"write\",\"read\"]}' ;;\n" +
+		"  *token*create*) echo '{\"device\":\"dev_1\",\"token\":\"wy_d_SECRETSECRETSECRETSECRETSECRETSECRETSECRET1\",\"scopes\":[\"write\",\"read\"]}' ;;\n" +
 		"  *owner-link*) echo '{\"id\":\"pc_1\",\"url\":\"https://hub.example.ts.net/#/owner?s=ONETIMESECRET\",\"secret\":\"ONETIMESECRET\",\"expires_at\":\"2026-10-13T10:00:00.000Z\"}' ;;\n" +
 		"esac\n"
 	if err := os.WriteFile(filepath.Join(bin, "ssh"), []byte(script), 0o755); err != nil {
@@ -282,7 +282,7 @@ func TestDesktopPrefixAdminBatchModeNoSecretInArgv(t *testing.T) {
 
 	// The name the app sends (hub/index.js pair): it must pass the ssh word check.
 	code, out, errb := runDesk(t, "", "token", "--json", "--name", "Watchyard-desktop-laptop")
-	if code != 0 || !strings.Contains(out, "sy_d_SECRET") {
+	if code != 0 || !strings.Contains(out, "wy_d_SECRET") {
 		t.Fatalf("token: %d %s %s", code, out, errb)
 	}
 	code, out, errb = runDesk(t, "", "owner-link", "--json")

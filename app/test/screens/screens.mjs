@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { sandbox, syBinary, startHub, launch, main, inTab, tabUrl, shellState, waitFor, sleep, freshFixture, REPO_DIR } from '../smoke/harness.mjs';
+import { sandbox, wyBinary, startHub, launch, main, inTab, tabUrl, shellState, waitFor, sleep, freshFixture, REPO_DIR } from '../smoke/harness.mjs';
 import { startFakeClaude, USAGE_DIR } from '../fakes/claude/server.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -153,7 +153,7 @@ async function shellSection(run, id) {
 
 async function phaseMain() {
   const sb = sandbox('screens');
-  const bin = syBinary(sb.root);
+  const bin = wyBinary(sb.root);
   const hub = await startHub(sb, bin);
   await seedHub(sb, hub, bin);
   const fixture = freshFixture(sb.root, { five: 42, week: 61 });
@@ -300,7 +300,7 @@ async function phaseMain() {
 
 async function phaseNotify() {
   const sb = sandbox('screens-notify');
-  const bin = syBinary(sb.root);
+  const bin = wyBinary(sb.root);
   const hub = await startHub(sb, bin);
   await seedHub(sb, hub, bin, 'sessions');
   const bus = process.env.DBUS_SESSION_BUS_ADDRESS;
@@ -337,11 +337,11 @@ async function phaseClaude() {
   let run = null;
   try {
     // No wy at all: the "wy missing" state, then a tab on the real claude.ai (nothing typed).
-    run = await launch(sb, { env: { WY_BIN: path.join(sb.root, 'no-such-sy') } });
+    run = await launch(sb, { env: { WY_BIN: path.join(sb.root, 'no-such-wy') } });
     await sleep(2500);
-    await shots(run, 'error-sy-missing');
+    await shots(run, 'error-wy-missing');
     await shellSection(run, 'hub');
-    await shots(run, 'error-sy-missing-settings', { themes: ['light'] });
+    await shots(run, 'error-wy-missing-settings', { themes: ['light'] });
     await shellSection(run, 'tabs');
     await shots(run, 'settings-tabs-empty', { themes: ['light', 'dark'] });
     const id = (await run.shell.evaluate(() => window.wy.addTab({ name: 'personal' }))).id;

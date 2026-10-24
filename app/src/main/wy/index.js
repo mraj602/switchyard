@@ -12,14 +12,14 @@ import { resolve } from './resolve.js';
 
 export { build } from './commands.js';
 
-const NO_SY = Object.freeze({ ok: false, exit: -1, stdout: '', error: 'wy not found: install it or run the Watchyard setup', code: 'no_sy' });
+const NO_WY = Object.freeze({ ok: false, exit: -1, stdout: '', error: 'wy not found: install it or run the Watchyard setup', code: 'no_wy' });
 const TOKEN_CODE_RE = /^[A-Za-z0-9_.-]{1,200}$/;
 
 /**
  * @param {{env: Record<string, string|undefined>, fs: object, path: object, platform: string,
- *          resourcesPath: string, minSy: string, log: object, syBin?: string|null,
+ *          resourcesPath: string, minWy: string, log: object, wyBin?: string|null,
  *          execFile?: Function, timers?: object}} deps
- *   syBin: WY_BIN, only when unpackaged (test-hooks.js). execFile: a test seam; by default this
+ *   wyBin: WY_BIN, only when unpackaged (test-hooks.js). execFile: a test seam; by default this
  *   module imports node:child_process itself (the lint allows it only under main/wy/).
  * @returns {{
  *   info(): Promise<object>,                       // wy desktop info --json (C4), or {ok: false, …}
@@ -55,7 +55,7 @@ export function create(deps) {
     if (found) return Promise.resolve(found);
     resolving ??= resolve({
       env: deps.env, fs: deps.fs, path: deps.path, platform: deps.platform, resourcesPath: deps.resourcesPath,
-      minSy: deps.minSy, syBin: deps.syBin ?? null, version: rawVersion,
+      minWy: deps.minWy, wyBin: deps.wyBin ?? null, version: rawVersion,
     })
       .then((r) => {
         found = r;
@@ -71,7 +71,7 @@ export function create(deps) {
     const spec = build(purpose, params); // throws for anything off the allow-list
     if (spec.stdin !== (stdin !== undefined)) throw new Error(`wy: ${purpose} ${spec.stdin ? 'needs' : 'takes no'} stdin`);
     const r = await resolved();
-    if (!r) return { ...NO_SY };
+    if (!r) return { ...NO_WY };
     return runner(r.bin, spec.argv, { stdin, timeout: spec.timeout });
   }
 

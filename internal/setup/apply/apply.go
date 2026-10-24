@@ -51,10 +51,10 @@ var ErrPrecondition = errors.New("setup: precondition changed")
 type Options struct {
 	StateDir  string
 	Command   string // recorded in the manifest
-	SyVersion string
+	WyVersion string
 	Machine   string
-	// SyPath is the absolute wy path baked into the marketplace plugin (write_tree).
-	SyPath string
+	// WyPath is the absolute wy path baked into the marketplace plugin (write_tree).
+	WyPath string
 	Now    func() time.Time
 
 	// Links is the detect-time link baseline guarded after every run action (7.5).
@@ -209,7 +209,7 @@ func (r *runner) run(ctx context.Context) (Result, error) {
 	}
 
 	set, err := backup.Create(r.o.StateDir, backup.Header{
-		Command: r.o.Command, SyVersion: r.o.SyVersion, Machine: r.o.Machine, PlanID: r.p.PlanID,
+		Command: r.o.Command, WyVersion: r.o.WyVersion, Machine: r.o.Machine, PlanID: r.p.PlanID,
 	}, r.now())
 	if err != nil {
 		return r.fail(ExitFailed, err)

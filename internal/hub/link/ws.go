@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,11 +41,12 @@ type conn struct {
 	word   string // the close, for link_state.last_close
 }
 
-// wantsSubprotocol reports whether the request offers sy-link.1.
+// wantsSubprotocol reports whether the request offers wy-link.1, or sy-link.1 of a device
+// from before the rename (legacy compat).
 func wantsSubprotocol(r *http.Request) bool {
 	for _, v := range r.Header.Values("Sec-WebSocket-Protocol") {
 		for _, p := range strings.Split(v, ",") {
-			if strings.TrimSpace(p) == link.Subprotocol {
+			if slices.Contains(link.Subprotocols, strings.TrimSpace(p)) {
 				return true
 			}
 		}
@@ -94,7 +96,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	var c *conn
 	var seen func()
 	ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		Subprotocols: []string{link.Subprotocol},
+		Subprotocols: link.Subprotocols, // the first the client offers in this order
 		OnPingReceived: func(context.Context, []byte) bool {
 			if seen != nil {
 				seen()

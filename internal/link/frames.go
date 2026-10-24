@@ -40,7 +40,7 @@ type Client struct {
 	App   string `json:"app,omitempty"`
 	Build string `json:"build,omitempty"`
 	SDK   int    `json:"sdk,omitempty"`
-	Sy    string `json:"sy,omitempty"`
+	Wy    string `json:"wy,omitempty"`
 	OS    string `json:"os,omitempty"`
 	PingS int    `json:"ping_s,omitempty"`
 }
@@ -132,6 +132,9 @@ func lines(parts ...string) []byte {
 	}
 	return b
 }
+
+// The "sy-link-v1" labels below are frozen: devices and hubs from before the rename sign and
+// verify them, so changing them would break every link and its test vectors (rename.md 2.12).
 
 // ChallengeInput is what the challenge signature covers (link.md 3.1).
 func ChallengeInput(hubFP, nonce string, exp int64) []byte {

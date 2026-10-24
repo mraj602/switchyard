@@ -16,8 +16,8 @@ import { AccountsMedium } from './ios/AccountsMedium';
 import { NeedsYouSmall } from './ios/NeedsYouSmall';
 import { ResetCountdown } from './ios/ResetCountdown';
 import { clearIos, endCountdown, resetAdapter, startCountdown, syncCountdown, updateTimelines } from './ios/adapter';
-import { SyLimits } from './android/SyLimits';
-import { SySessions } from './android/SySessions';
+import { WyLimits } from './android/WyLimits';
+import { WySessions } from './android/WySessions';
 import { clearAndroidWidgets, createTaskHandler, registerAndroidWidgets, updateAndroidWidgets } from './android/task-handler';
 
 const FIX = join(__dirname, '../test/fixtures/hub');
@@ -217,8 +217,8 @@ describe('Android widgets', () => {
   const info = (widgetName: string, height = 100) => ({ widgetName, widgetId: 1, height, width: 100, screenInfo: { screenHeightDp: 1, screenWidthDp: 1, density: 1, densityDpi: 1 } });
   const AGO = NOW + 3 * 60_000;
 
-  it('SySessions shows running, needs input and done, the needs-you highlight and "updated 3 min ago"', () => {
-    const tree = renderWidget(<SySessions {...androidProps(snapshot, AGO, 'UTC')} />);
+  it('WySessions shows running, needs input and done, the needs-you highlight and "updated 3 min ago"', () => {
+    const tree = renderWidget(<WySessions {...androidProps(snapshot, AGO, 'UTC')} />);
     expect(tree.type).toBe('Android.FlexWidget');
     expect(tree.props.clickActionData).toEqual({ uri: 'watchyard://sessions' });
     const t = aTexts(tree);
@@ -226,43 +226,43 @@ describe('Android widgets', () => {
     expect(uris(tree)).toEqual(expect.arrayContaining(['watchyard://sessions?filter=working', 'watchyard://now', 'watchyard://sessions?filter=done']));
   });
 
-  it('SySessions in private mode names no project, and has no highlight when nothing needs you', () => {
-    expect(aTexts(renderWidget(<SySessions {...androidProps(privateSnapshot, NOW)} />))).toContain('Needs you: 3 waiting');
+  it('WySessions in private mode names no project, and has no highlight when nothing needs you', () => {
+    expect(aTexts(renderWidget(<WySessions {...androidProps(privateSnapshot, NOW)} />))).toContain('Needs you: 3 waiting');
     const calm = { ...snapshot, needs_you: 0, top: null, counts: { working: 1, needs_you: 0, done: 2 } };
-    expect(aTexts(renderWidget(<SySessions {...androidProps(calm, NOW)} />)).join('|')).not.toContain('Needs you');
+    expect(aTexts(renderWidget(<WySessions {...androidProps(calm, NOW)} />)).join('|')).not.toContain('Needs you');
   });
 
-  it('SyLimits shows every account with its tighter window, % and reset time, and "updated 3 min ago"', () => {
-    const tree = renderWidget(<SyLimits {...androidProps(snapshot, AGO, 'UTC', 400)} />);
+  it('WyLimits shows every account with its tighter window, % and reset time, and "updated 3 min ago"', () => {
+    const tree = renderWidget(<WyLimits {...androidProps(snapshot, AGO, 'UTC', 400)} />);
     const t = aTexts(tree);
     expect(t).toEqual(expect.arrayContaining(['Watchyard · Limits', 'updated 3 min ago', '5 h', '7 d', 'personal', '62%', 'resets 08:07', 'work', 'client', '100%', 'resets 06:36', 'research']));
     expect(uris(tree)).toContain('watchyard://accounts?seat=seat_client');
   });
 
-  it('SyLimits draws only the rows that fit the height', () => {
-    const rows = (h: number) => aTexts(renderWidget(<SyLimits {...androidProps(snapshot, NOW, 'UTC', h)} />)).filter((x) => x.endsWith('%'));
+  it('WyLimits draws only the rows that fit the height', () => {
+    const rows = (h: number) => aTexts(renderWidget(<WyLimits {...androidProps(snapshot, NOW, 'UTC', h)} />)).filter((x) => x.endsWith('%'));
     expect(rows(400)).toHaveLength(4);
     expect(rows(104)).toHaveLength(2);
     expect(rows(40)).toHaveLength(1);
   });
 
-  it('SyLimits shows the 7 d window for every account when toggled, with its reset time', () => {
-    const t = aTexts(renderWidget(<SyLimits {...androidProps(snapshot, NOW, 'UTC', 400, undefined, undefined, '7 d')} />));
+  it('WyLimits shows the 7 d window for every account when toggled, with its reset time', () => {
+    const t = aTexts(renderWidget(<WyLimits {...androidProps(snapshot, NOW, 'UTC', 400, undefined, undefined, '7 d')} />));
     expect(t).toEqual(expect.arrayContaining(['personal', '48%', 'resets Fri 15:27']));
     expect(t.filter((x) => x.startsWith('resets ') || x === 'not started').length).toBe(4);
   });
 
-  it('SyLimits shows a window past its reset as 0% "reset", and an idle account as 0% not started', () => {
+  it('WyLimits shows a window past its reset as 0% "reset", and an idle account as 0% not started', () => {
     const past = { id: 'p', label: 'claude-2', colour: '#654321', five_hour: { pct: 90, resets_at: '2026-10-13T06:36:00.000Z' }, seven_day: { pct: 0, resets_at: '2026-10-13T06:36:00.000Z' } };
-    const t = aTexts(renderWidget(<SyLimits {...androidProps({ ...snapshot, seats: [past] }, Date.parse('2026-10-13T06:40:00.000Z'), 'UTC', 400)} />));
+    const t = aTexts(renderWidget(<WyLimits {...androidProps({ ...snapshot, seats: [past] }, Date.parse('2026-10-13T06:40:00.000Z'), 'UTC', 400)} />));
     expect(t).toEqual(expect.arrayContaining(['claude-2', '0%', 'reset at 06:36']));
     const idle = { ...snapshot, seats: [{ id: 'i', label: 'claude-5', colour: '#123456', five_hour: null, seven_day: null }] };
-    const it = aTexts(renderWidget(<SyLimits {...androidProps(idle, NOW, 'UTC', 400)} />));
+    const it = aTexts(renderWidget(<WyLimits {...androidProps(idle, NOW, 'UTC', 400)} />));
     expect(it).toEqual(expect.arrayContaining(['claude-5', '0%', 'not started']));
   });
 
   it('both widgets say "Open Watchyard once to load" only without a snapshot, and tap opens Now', () => {
-    for (const C of [SyLimits, SySessions]) {
+    for (const C of [WyLimits, WySessions]) {
       const none = renderWidget(<C {...androidProps(null, NOW)} />);
       expect(aTexts(none)).toContain('Open Watchyard once to load');
       expect(none.props.clickActionData).toEqual({ uri: 'watchyard://now' });
@@ -275,11 +275,11 @@ describe('Android widgets', () => {
     const handler = createTaskHandler({ store, now: () => NOW, tz: 'UTC' });
     const rendered: React.ReactElement[] = [];
     const render = (w: unknown) => void rendered.push(w as React.ReactElement);
-    await handler({ widgetInfo: info('SySessions'), widgetAction: 'WIDGET_UPDATE', renderWidget: render } as never);
+    await handler({ widgetInfo: info('WySessions'), widgetAction: 'WIDGET_UPDATE', renderWidget: render } as never);
     expect(aTexts(renderWidget(rendered[0]!))).toContain('Running');
-    await handler({ widgetInfo: info('SyLimits', 400), widgetAction: 'WIDGET_ADDED', renderWidget: render } as never);
+    await handler({ widgetInfo: info('WyLimits', 400), widgetAction: 'WIDGET_ADDED', renderWidget: render } as never);
     expect(aTexts(renderWidget(rendered[1]!))).toContain('work');
-    await handler({ widgetInfo: info('SyLimits', 40), widgetAction: 'WIDGET_RESIZED', renderWidget: render } as never);
+    await handler({ widgetInfo: info('WyLimits', 40), widgetAction: 'WIDGET_RESIZED', renderWidget: render } as never);
     expect(aTexts(renderWidget(rendered[2]!)).filter((x) => x.endsWith('%'))).toHaveLength(1);
   });
 
@@ -287,7 +287,7 @@ describe('Android widgets', () => {
     for (const store of [memory(), memory('{"v":1}')]) {
       const handler = createTaskHandler({ store, now: () => NOW });
       const rendered: React.ReactElement[] = [];
-      await handler({ widgetInfo: info('SySessions'), widgetAction: 'WIDGET_UPDATE', renderWidget: (w: unknown) => void rendered.push(w as React.ReactElement) } as never);
+      await handler({ widgetInfo: info('WySessions'), widgetAction: 'WIDGET_UPDATE', renderWidget: (w: unknown) => void rendered.push(w as React.ReactElement) } as never);
       expect(aTexts(renderWidget(rendered[0]!))).toContain('Open Watchyard once to load');
     }
   });
@@ -295,7 +295,7 @@ describe('Android widgets', () => {
   it('the task handler ignores clicks, deletes and unknown widgets (including the removed ones)', async () => {
     const handler = createTaskHandler({ store: memory(JSON.stringify(snapshot)), now: () => NOW });
     const render = jest.fn();
-    for (const [name, action] of [['SySessions', 'WIDGET_CLICK'], ['SyLimits', 'WIDGET_DELETED'], ['SyAccounts', 'WIDGET_UPDATE'], ['Other', 'WIDGET_UPDATE']] as const) {
+    for (const [name, action] of [['WySessions', 'WIDGET_CLICK'], ['WyLimits', 'WIDGET_DELETED'], ['WyAccounts', 'WIDGET_UPDATE'], ['Other', 'WIDGET_UPDATE']] as const) {
       await handler({ widgetInfo: info(name), widgetAction: action, renderWidget: render } as never);
     }
     expect(render).not.toHaveBeenCalled();
@@ -322,7 +322,7 @@ describe('Android widgets', () => {
     const store = memory();
     await updateAndroidWidgets(snapshot, { store, now: () => NOW, tz: 'UTC' });
     expect(JSON.parse(store.m.get('wy.widget.v1')!)).toEqual(snapshot);
-    expect(callsOf('androidWidget.requestWidgetUpdate').map((c) => (c.args[0] as { widgetName: string }).widgetName)).toEqual(['SyLimits', 'SySessions', 'SyNeeds', 'SyRing', 'SyNextReset', 'SyMachines']);
+    expect(callsOf('androidWidget.requestWidgetUpdate').map((c) => (c.args[0] as { widgetName: string }).widgetName)).toEqual(['WyLimits', 'WySessions', 'WyNeeds', 'WyRing', 'WyNextReset', 'WyMachines']);
     await clearAndroidWidgets({ store, now: () => NOW });
     expect(store.m.size).toBe(0);
     expect(callsOf('androidWidget.requestWidgetUpdate')).toHaveLength(12);

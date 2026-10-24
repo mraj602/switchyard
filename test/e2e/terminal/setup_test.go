@@ -226,7 +226,7 @@ func TestE9WarpTabs(t *testing.T) {
 	for _, tb := range tabs {
 		path := filepath.Join(l.tabsDir(), "watchyard-"+tb.label+".toml")
 		b := readFile(path)
-		if !strings.HasPrefix(b, "# sy-warp-tab v1 slot="+tb.slot+" label="+tb.label+" (") {
+		if !strings.HasPrefix(b, "# wy-warp-tab v1 slot="+tb.slot+" label="+tb.label+" (") {
 			t.Errorf("%s header:\n%s", path, b)
 		}
 		if m := colourLine.FindStringSubmatch(b); m == nil || m[1] != tb.colour {
@@ -270,7 +270,7 @@ func TestE9WarpTabs(t *testing.T) {
 
 	// Edit one by hand; off removes the others and says so.
 	personal := filepath.Join(l.tabsDir(), "watchyard-personal.toml")
-	edited := "# sy-warp-tab v1 slot=~/.claude-3 label=personal (mine now)\nname = \"mine\"\n"
+	edited := "# wy-warp-tab v1 slot=~/.claude-3 label=personal (mine now)\nname = \"mine\"\n"
 	writeFile(t, personal, edited, 0o644)
 	off := l.must("term", "warp", "off", "--yes")
 	if !strings.Contains(off, "watchyard-personal.toml was edited") {
@@ -308,7 +308,7 @@ func TestE10Uninstall(t *testing.T) {
 		t.Fatal("no plugin runs logged")
 	}
 	_ = os.Remove(l.wrapLog)
-	claudeLog := filepath.Join(l.syHome, "claude.log")
+	claudeLog := filepath.Join(l.wyHome, "claude.log")
 	_ = os.Remove(claudeLog)
 
 	out := l.must("uninstall", "--yes")

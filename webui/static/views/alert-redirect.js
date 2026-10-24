@@ -17,7 +17,7 @@ export async function load({ route }) {
   } catch (e) {
     if (e.name === 'AuthError') return;
     st.error = e.status === 404 ? 'That alert no longer exists.' : e.message;
-    window.dispatchEvent(new Event('sy-rerender'));
+    window.dispatchEvent(new Event('wy-rerender'));
   }
 }
 

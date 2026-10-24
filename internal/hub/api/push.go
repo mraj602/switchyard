@@ -587,7 +587,7 @@ func (s *Server) testTarget(w http.ResponseWriter, r *http.Request, lim *testLim
 	}
 	msg := model.Message{
 		Payload: model.Payload{V: model.PayloadVersion, Type: model.TypeTest, Title: "Watchyard",
-			Body: "Test push from your hub", Tag: "sy-test", URL: "/#/", Tap: model.TapAuto, TS: model.TimeOf(now)},
+			Body: "Test push from your hub", Tag: "wy-test", URL: "/#/", Tap: model.TapAuto, TS: model.TimeOf(now)},
 		TTL: time.Minute, Urgency: "high", Priority: 3, HubURL: s.hubURL(r),
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)

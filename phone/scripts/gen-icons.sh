@@ -13,7 +13,7 @@
 # mark.png                 192 x 192 gold mark on transparent, tightly cropped: the logo on the
 #                          app's own screens (src/components/logo.tsx)
 #
-# The Android splash screen reuses the adaptive foreground on the ink colour (with-sy-native.js).
+# The Android splash screen reuses the adaptive foreground on the ink colour (with-wy-native.js).
 #
 # The same art as scripts/icons/icon.svg (the board and desktop app). Renderer, first one found:
 # rsvg-convert, or ImageMagick (`magick` / `convert`) with its RSVG delegate.

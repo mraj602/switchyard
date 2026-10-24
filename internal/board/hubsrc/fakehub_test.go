@@ -48,7 +48,7 @@ type fakeStream struct {
 func (s *fakeStream) close() { s.once.Do(func() { close(s.done) }) }
 
 func newFakeHub(t *testing.T) *fakeHub {
-	h := &fakeHub{t: t, token: "sy_d_s3cret", hello: true}
+	h := &fakeHub{t: t, token: "wy_d_s3cret", hello: true}
 	h.seats = []map[string]any{
 		{"id": "s_work", "label": "work", "colour": "#f59e0b", "hidden": false, "windows": []any{
 			map[string]any{"key": "five_hour", "used_pct": 41.0, "resets_at": "2099-01-01T15:10:00.000Z"},

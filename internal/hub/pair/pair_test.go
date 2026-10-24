@@ -344,7 +344,7 @@ func TestClaimFields(t *testing.T) {
 	} {
 		c := f.code("phone")
 		r := claimOK(t, f, "1.1.1.1", ClaimRequest{Code: spell(c.Digits), ExpectKind: "phone"})
-		if r.Device.Kind != "phone" || !strings.HasPrefix(r.Token, "sy_p_") || r.Device.CreatedBy != "pair:"+c.ID {
+		if r.Device.Kind != "phone" || !strings.HasPrefix(r.Token, "wy_p_") || r.Device.CreatedBy != "pair:"+c.ID {
 			t.Errorf("claim result %+v", r.Device)
 		}
 		if got := strings.Join(r.Device.Scopes, ","); got != "read,push" {
@@ -665,7 +665,7 @@ func TestOwnerSignIn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(c.Token, "sy_o_") || !auth.LooksLikeToken(c.Token) || d.Kind != "browser" ||
+	if !strings.HasPrefix(c.Token, "wy_o_") || !auth.LooksLikeToken(c.Token) || d.Kind != "browser" ||
 		strings.Join(d.Scopes, ",") != "owner,read,push" || d.CreatedBy != "owner-link:"+l.ID ||
 		d.ExpiresAt != t0.Add(30*24*time.Hour).UnixMilli() {
 		t.Errorf("owner session %+v (token %s)", d, c.Token[:5])

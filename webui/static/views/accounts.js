@@ -17,7 +17,7 @@ import { toast } from '../components/ui.js';
 // Owner edit of a seat's label and colour (desktop.md C10): PATCH /v1/accounts/{seat}. The
 // hub keeps a UI label over any label `wy` sends from a folder.
 const LABEL_RE = /^[a-z0-9][a-z0-9-]{0,23}$/;
-const again = () => window.dispatchEvent(new Event('sy-rerender'));
+const again = () => window.dispatchEvent(new Event('wy-rerender'));
 const edit = { id: '', label: '', colour: '', clearColour: false, error: '', busy: false };
 
 function startEdit(seat, colour) {
@@ -157,7 +157,7 @@ const grip = (seat, name) => h('button', { type: 'button', class: 'seat-grip', '
 // ---- which rows are open ---------------------------------------------------------------------
 // Several rows can be open; the open ones are remembered in this browser (localStorage, which may
 // be missing or blocked: then rows start closed and stay as clicked).
-const OPEN_KEY = 'sy-accounts-open';
+const OPEN_KEY = 'wy-accounts-open';
 const open = new Set((() => {
   try { const v = JSON.parse(localStorage.getItem(OPEN_KEY) || '[]'); return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []; } catch (_) { return []; }
 })());

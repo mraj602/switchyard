@@ -1,11 +1,11 @@
 // The link (phone.md P6.3, P6.7, P11, P13; push.md 13-14) on the JS side: the
-// registration (the prefs PATCH only), the glue driving the sy-link module, the widgets merging
+// registration (the prefs PATCH only), the glue driving the wy-link module, the widgets merging
 // the link's refresh frames, the words, the maker guides and Settings → Notifications. The
 // module is the recording fake of test/fakes.ts (`linkState`, `emitLink`).
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import * as ExpoNotifications from '../modules/sy-notify';
+import * as ExpoNotifications from '../modules/wy-notify';
 import { Linking } from 'react-native';
-import * as SyLink from '../modules/sy-link';
+import * as WyLink from '../modules/wy-link';
 import type { Device, Overview, Seat } from '../src/contract/api';
 import type { LinkState } from '../src/contract/link';
 import type { AppInfo } from '../src/contract/platform';
@@ -108,7 +108,7 @@ function platform(over: Partial<GluePlatform> = {}): GluePlatform {
     startCountdown: jest.fn(async () => {}),
     clearIos: jest.fn(async () => {}),
     clearAndroidWidgets: jest.fn(async () => {}),
-    link: SyLink,
+    link: WyLink,
     ...over,
   };
 }
@@ -117,7 +117,7 @@ const client = (snoozeMin = 20) =>
   fakeClient({ rules: jest.fn(async () => ({ ...fx.rules, settings: { ...fx.rules.settings, snooze_min: snoozeMin } })) }) as unknown as HubClient;
 
 const configure = () =>
-  SyLink.configure({ origin: 'https://hub.example.ts.net', device: 'dev_phone', urls: ['wss://hub.example.ts.net/v1/link'], pingS: 180, hubKey: { pub: 'P', fp: 'f'.repeat(24) }, reg: 'qr' });
+  WyLink.configure({ origin: 'https://hub.example.ts.net', device: 'dev_phone', urls: ['wss://hub.example.ts.net/v1/link'], pingS: 180, hubKey: { pub: 'P', fp: 'f'.repeat(24) }, reg: 'qr' });
 
 describe('the glue with the link', () => {
   it('on pairing: registers, sends snooze_min and starts the link', async () => {
@@ -128,7 +128,7 @@ describe('the glue with the link', () => {
     expect(callsOf('link.setSnoozeMinutes').map((c) => c.args[0])).toEqual([20]);
     expect(callsOf('link.start')).toHaveLength(1);
     expect(glue.view().pushState).toBe('registered');
-    expect(glue.link).toBe(SyLink);
+    expect(glue.link).toBe(WyLink);
   });
 
   it('on start: starts the link only while instant delivery is on', async () => {
@@ -177,7 +177,7 @@ describe('the glue with the link', () => {
   });
 
   it('systemLink: the module only on Android', () => {
-    expect(systemLink({ ...APP, platform: 'android' })).toBe(SyLink);
+    expect(systemLink({ ...APP, platform: 'android' })).toBe(WyLink);
     expect(systemLink({ ...APP, platform: 'ios' })).toBeNull();
     linkState.available = false;
     expect(systemLink({ ...APP, platform: 'android' })).toBeNull();
@@ -227,7 +227,7 @@ describe('applyLinkRefresh', () => {
     const linkRefresh = jest.fn(async () => ({ v: 1 as const, needs_you: 7, seats: [], ts: new Date(NOW + 1000).toISOString() }));
     const rendered: unknown[] = [];
     const handler = createTaskHandler({ store, now: () => NOW + 1000, linkRefresh });
-    await handler({ widgetInfo: { widgetName: 'SySessions' }, widgetAction: 'WIDGET_UPDATE', renderWidget: (t: unknown) => rendered.push(t) } as never);
+    await handler({ widgetInfo: { widgetName: 'WySessions' }, widgetAction: 'WIDGET_UPDATE', renderWidget: (t: unknown) => rendered.push(t) } as never);
     expect(linkRefresh).toHaveBeenCalled();
     expect(JSON.stringify((rendered[0] as { props: unknown }).props)).toContain('7');
   });
@@ -290,7 +290,7 @@ describe('Settings → Notifications', () => {
     const h = makeHarness({
       client: fakeClient({ deviceSelf: jest.fn(async () => linkDevice()) }),
       ...setup,
-      api: { link: SyLink, app: { ...LINK_APP, maker: 'samsung' }, ...setup.api },
+      api: { link: WyLink, app: { ...LINK_APP, maker: 'samsung' }, ...setup.api },
     });
     await render(<NotifySettingsScreen />, { wrapper: h.Wrapper });
     await act(async () => {
@@ -427,7 +427,7 @@ describe('Settings → Notifications', () => {
   });
 
   it('Settings links to it, and offers no test push of its own', async () => {
-    const h = makeHarness({ api: { link: SyLink, app: LINK_APP } });
+    const h = makeHarness({ api: { link: WyLink, app: LINK_APP } });
     await render(<SettingsScreen />, { wrapper: h.Wrapper });
     await act(async () => {
       await flush(10);

@@ -85,12 +85,12 @@ func (d *Data) deviceFixtures(now time.Time) {
 	}
 
 	// ---- devices and targets
-	lap := newDevice(now, devLaptop, "machine", "laptop", "sy_m_…aB3d", []string{"write"}, 20*24*hour, "pair:pc_01JA0001")
+	lap := newDevice(now, devLaptop, "machine", "laptop", "wy_m_…aB3d", []string{"write"}, 20*24*hour, "pair:pc_01JA0001")
 	lap["machine"] = "m_laptop"
-	gpu := newDevice(now, devGPU, "machine", "gpu-box", "sy_m_…q9Zx", []string{"write"}, 12*24*hour, "pair:pc_01JA0002")
+	gpu := newDevice(now, devGPU, "machine", "gpu-box", "wy_m_…q9Zx", []string{"write"}, 12*24*hour, "pair:pc_01JA0002")
 	gpu["machine"] = "m_gpu"
-	android := newDevice(now, devAndroid, "phone", "Phone X · Chrome", "sy_p_…k3Qz", []string{"read", "push"}, 6*24*hour, "pair:pc_01JA0003")
-	ipad := newDevice(now, devIPad, "phone", "iPad · Safari", "sy_p_…m7Lw", []string{"read", "push"}, 3*24*hour, "pair:pc_01JA0004")
+	android := newDevice(now, devAndroid, "phone", "Phone X · Chrome", "wy_p_…k3Qz", []string{"read", "push"}, 6*24*hour, "pair:pc_01JA0003")
+	ipad := newDevice(now, devIPad, "phone", "iPad · Safari", "wy_p_…m7Lw", []string{"read", "push"}, 3*24*hour, "pair:pc_01JA0004")
 	ipad["last_used_at"] = ago(30 * hour)
 	d.Devices = []M{lap, gpu, android, ipad}
 

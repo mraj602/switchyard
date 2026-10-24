@@ -16,11 +16,11 @@ import (
 	"time"
 )
 
-// Tokens and secrets of the mock. Cookie `sy_session` holds one of the three
+// Tokens and secrets of the mock. Cookie `wy_session` holds one of the three
 // tokens (DefaultToken is the plain board login: read only).
 const (
-	PhoneToken  = "sy_p_devphone00000000000000000000000000000000"
-	OwnerToken  = "sy_o_devowner00000000000000000000000000000000"
+	PhoneToken  = "wy_p_devphone00000000000000000000000000000000"
+	OwnerToken  = "wy_o_devowner00000000000000000000000000000000"
 	PairSecret  = "ZGV2c2VydmVyLXBhaXItc2VjcjE"
 	PairCode    = "482913"
 	OwnerSecret = "ZGV2c2VydmVyLW93bmVyLXNlYzE"
@@ -209,13 +209,13 @@ func (s *Server) ensureDevice(c *caller) M {
 	var d M
 	switch c.kind {
 	case "phone":
-		d = newDevice(now, id, "phone", "phone "+now.Format("2006-01-02"), "sy_p_…dEv1", []string{"read", "push"}, 0, "pair:pc_dev1")
+		d = newDevice(now, id, "phone", "phone "+now.Format("2006-01-02"), "wy_p_…dEv1", []string{"read", "push"}, 0, "pair:pc_dev1")
 	case "owner":
-		d = newDevice(now, id, "browser", "Chrome · owner session", "sy_o_…dEv2", []string{"owner", "read", "push"}, 0, "owner-link:pc_dev0")
+		d = newDevice(now, id, "browser", "Chrome · owner session", "wy_o_…dEv2", []string{"owner", "read", "push"}, 0, "owner-link:pc_dev0")
 		d["owner_session"] = true
 		d["expires_at"] = ts(now.Add(30 * 24 * time.Hour))
 	default:
-		d = newDevice(now, id, "browser", "Board · browser", "sy_b_…dEv3", []string{"read"}, 0, "login:dev")
+		d = newDevice(now, id, "browser", "Board · browser", "wy_b_…dEv3", []string{"read"}, 0, "login:dev")
 	}
 	s.data.Devices = append(s.data.Devices, d)
 	return d
@@ -877,7 +877,7 @@ func randomTopic() string {
 	for i := range b {
 		b[i] = base62[int(b[i])%len(base62)]
 	}
-	return "sy-" + string(b)
+	return "wy-" + string(b)
 }
 
 var topicRe = regexp.MustCompile(`^[-_A-Za-z0-9]{1,64}$`)

@@ -72,9 +72,9 @@ func newFakeHome(t *testing.T, settings string) fakeEnv {
 	write(t, filepath.Join(home, ".claude-2", "sessions", "1.abc.key"), "SECRET")
 	st := t.TempDir()
 	return fakeEnv{home: home, dirs: paths.Dirs{
-		Config: paths.Dir{Path: filepath.Join(st, "config"), Source: paths.SourceSYHome, Var: "WY_HOME"},
-		State:  paths.Dir{Path: filepath.Join(st, "state"), Source: paths.SourceSYHome, Var: "WY_HOME"},
-		Data:   paths.Dir{Path: filepath.Join(st, "data"), Source: paths.SourceSYHome, Var: "WY_HOME"},
+		Config: paths.Dir{Path: filepath.Join(st, "config"), Source: paths.SourceWYHome, Var: "WY_HOME"},
+		State:  paths.Dir{Path: filepath.Join(st, "state"), Source: paths.SourceWYHome, Var: "WY_HOME"},
+		Data:   paths.Dir{Path: filepath.Join(st, "data"), Source: paths.SourceWYHome, Var: "WY_HOME"},
 	}}
 }
 

@@ -119,7 +119,7 @@ func TestDirectPushCheck(t *testing.T) {
 	if err := os.MkdirAll(st, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := directpush.SaveSecret(st, directpush.Secret{Topic: "sy-0123456789abcdef0123456789abcdef"}); err != nil {
+	if err := directpush.SaveSecret(st, directpush.Secret{Topic: "wy-0123456789abcdef0123456789abcdef"}); err != nil {
 		t.Fatal(err)
 	}
 	if c := pcheck(t, runMachine(t, e, cfg), "direct push"); c.Level != Warn || !strings.Contains(c.Detail, "no policy") {
@@ -133,7 +133,7 @@ func TestDirectPushCheck(t *testing.T) {
 	if c.Level != OK || !strings.Contains(c.Detail, "ntfy.sh") || !strings.Contains(c.Detail, "policy 2h") {
 		t.Errorf("fresh: %+v", c)
 	}
-	if strings.Contains(c.Detail, "sy-0123") {
+	if strings.Contains(c.Detail, "wy-0123") {
 		t.Error("doctor printed the topic")
 	}
 	if err := directpush.SavePolicy(st, directpush.DefaultPolicy(), now.Add(-3*24*time.Hour)); err != nil {

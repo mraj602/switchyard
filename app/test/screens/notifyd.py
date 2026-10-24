@@ -28,7 +28,7 @@ class Notifications(dbus.service.Object):
 
     @dbus.service.method("org.freedesktop.Notifications", in_signature="", out_signature="ssss")
     def GetServerInformation(self):
-        return ("sy-fake-notifyd", "watchyard", "1", "1.2")
+        return ("wy-fake-notifyd", "watchyard", "1", "1.2")
 
     @dbus.service.method("org.freedesktop.Notifications", in_signature="susssasa{sv}i", out_signature="u")
     def Notify(self, app_name, replaces_id, app_icon, summary, body, actions, hints, timeout):

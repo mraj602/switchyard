@@ -47,7 +47,7 @@ func SymlinksAllowed(dir string) bool {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return false
 	}
-	l := filepath.Join(dir, ".sy-symlink-probe-"+randHex())
+	l := filepath.Join(dir, ".wy-symlink-probe-"+randHex())
 	if err := os.Symlink(dir, l); err != nil {
 		return false
 	}

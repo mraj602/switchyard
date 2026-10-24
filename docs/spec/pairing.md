@@ -10,7 +10,7 @@ Status: spec v1. Implemented in `internal/hub/pair` (codes, claim, rate limits, 
 | Without pairing | With pairing |
 | --- | --- |
 | Devices exist only through `wy hub token create` on the hub machine. | A device can also be made by claiming a one-time **pairing code** (any kind). |
-| The board signs in by pasting a token; its cookie is a read-only `browser` device. | Unchanged, plus: an **owner session** (`sy_o_`) from a one-time sign-in link, needed for everything that changes the hub (pairing, devices, rules, channels). |
+| The board signs in by pasting a token; its cookie is a read-only `browser` device. | Unchanged, plus: an **owner session** (`wy_o_`) from a one-time sign-in link, needed for everything that changes the hub (pairing, devices, rules, channels). |
 | No device ever expires. | `device.expires_at` (schema v3): owner sessions expire after 30 days. Other devices still never expire. |
 | `pair_code` table is a placeholder. | Recreated in schema v3 with its final shape (push.md section 9). |
 
@@ -160,7 +160,7 @@ offers **Test push** (push.md). Closing the dialog does not cancel the code;
 | `name` | 1–60 characters after trimming; control characters removed. A code made with a `name` (`wy hub pair --name`) names the device whatever the claimer sends; otherwise this `name`, else `"<kind> <yyyy-mm-dd>"`. The web app sends a name prefilled with a guess from the user agent ("iPhone · Safari", "Pixel 9 · Chrome"): the typed-code form has it as an editable field, and a QR link claims at once with the guess and lets the person change it on the Paired screen (5.1). |
 | `machine` | Required for `machine` and `desktop` codes (400 `bad_request` "machine is required" without consuming the code); must match the record envelope pattern. Ignored for other kinds. |
 | `expect_kind` | Optional. When it differs from the code's kind the reply is 409 `conflict` and the code is **not** consumed (`wy connect` sends `machine`; the web app sends `phone` or `browser`). |
-| `cookie` | Only for `phone` and `browser` codes. When true the token is not returned in the body; it is set as the `sy_session` cookie instead (3.2). |
+| `cookie` | Only for `phone` and `browser` codes. When true the token is not returned in the body; it is set as the `wy_session` cookie instead (3.2). |
 | `client` | Optional, e.g. `wy/0.4.0`, `pwa/3f9c01ab`. Stored in `device.created_by` detail for the Devices list. |
 
 Steps, in one write transaction:
@@ -192,7 +192,7 @@ gets 401 (step 2).
 
 ### 3.2 Cookie mode (the web app)
 
-The phone's token lives only in the `sy_session` cookie, as the board's does (api.yaml
+The phone's token lives only in the `wy_session` cookie, as the board's does (api.yaml
 `/v1/session/login`), so no token is ever in JavaScript, `localStorage` or the service
 worker's caches:
 
@@ -267,9 +267,9 @@ wy hub owner-link [--url U] [--ttl 10m] [--json]
 - The link is a `pair_code` row of kind `owner` with a secret and no digits, same hashing and
   lifetime rules as section 2.
 - The board's `#/owner` route posts `POST /v1/session/owner {"secret": "…"}`. The hub
-  makes a `browser` device with scopes `["owner", "read", "push"]`, token prefix `sy_o_`,
+  makes a `browser` device with scopes `["owner", "read", "push"]`, token prefix `wy_o_`,
   `expires_at` = now + 30 days, `created_by = "owner-link:<pair_code id>"`, name from the
-  user agent, and sets it as the `sy_session` cookie (3.2 rules, `Max-Age` 30 days). The
+  user agent, and sets it as the `wy_session` cookie (3.2 rules, `Max-Age` 30 days). The
   reply is `204`.
 - **Sliding renewal.** An owner session that authenticates a request in its last 7 days
   (`auth.OwnerRenewWithin`) gets `expires_at` = now + 30 days, and a cookie request gets

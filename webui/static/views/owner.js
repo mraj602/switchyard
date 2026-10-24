@@ -10,7 +10,7 @@ import { inApp } from '../store.js';
 import { clock as clockOf, lifetime } from '../format.js';
 
 const st = { phase: 'idle', error: '' };
-const again = () => window.dispatchEvent(new Event('sy-rerender'));
+const again = () => window.dispatchEvent(new Event('wy-rerender'));
 // The secret this view already sent. It leaves the address bar at once, so a second load of
 // the same visit (the stripped #/owner, or a repeated render) shows that result, not a
 // second POST; a different secret (a fresh link pasted into this tab) is tried.

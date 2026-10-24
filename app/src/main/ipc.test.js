@@ -98,7 +98,7 @@ test('an IPC call from an account tab, the hub view, a subframe or another page 
   await assert.rejects(e.ipcMain._invoke('tab:add', tab, { name: 'x' }), /refused/);
   assert.equal(warnings.filter((w) => w.includes(`webContents ${tab.id}`)).length, 1, 'logged once per sender');
 
-  const hub = new e.WebContentsView({ webPreferences: { partition: 'persist:sy-hub' } }).webContents;
+  const hub = new e.WebContentsView({ webPreferences: { partition: 'persist:wy-hub' } }).webContents;
   hub._setURL('app://shell/index.html'); // even a hub view pretending to be the shell
   await assert.rejects(e.ipcMain._invoke('tab:add', hub, { name: 'x' }), /refused/);
 

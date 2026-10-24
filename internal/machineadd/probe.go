@@ -35,8 +35,8 @@ const preProbeScript = `echo "home=$HOME"; s=${SHELL:-sh}; echo "shell=$s"; echo
 	`c=$("$s" -lc "command -v claude" 2>/dev/null | tail -n 1); echo "claude=$c"; ` +
 	`if [ -n "$c" ]; then echo "claudev=$("$c" --version 2>/dev/null | head -n 1)"; fi; ` +
 	`if [ -x .local/bin/wy ]; then echo "wy=$(.local/bin/wy version --short 2>/dev/null)"; ` +
-	`if command -v sha256sum >/dev/null 2>&1; then echo "sysha=$(sha256sum < .local/bin/wy)"; ` +
-	`elif command -v shasum >/dev/null 2>&1; then echo "sysha=$(shasum -a 256 < .local/bin/wy)"; fi; fi; ` +
+	`if command -v sha256sum >/dev/null 2>&1; then echo "wysha=$(sha256sum < .local/bin/wy)"; ` +
+	`elif command -v shasum >/dev/null 2>&1; then echo "wysha=$(shasum -a 256 < .local/bin/wy)"; fi; fi; ` +
 	`if [ "$(uname -s)" = Darwin ]; then echo "rosetta=$(sysctl -n sysctl.proc_translated 2>/dev/null)"; fi; ` +
 	`for f in "$1"/ssh_host_*_key.pub; do if [ -r "$f" ]; then echo "hostkey=$(cat "$f")"; fi; done; echo end=1`
 
@@ -47,8 +47,8 @@ type PreProbe struct {
 	SSHVersion    string   `json:"ssh_version"`
 	Claude        string   `json:"claude,omitempty"`
 	ClaudeVersion string   `json:"claude_version,omitempty"`
-	Sy            string   `json:"sy,omitempty"` // installed wy version, "" when none
-	SySHA256      string   `json:"sy_sha256,omitempty"`
+	Wy            string   `json:"wy,omitempty"` // installed wy version, "" when none
+	WySHA256      string   `json:"wy_sha256,omitempty"`
 	Rosetta       bool     `json:"rosetta,omitempty"`
 	HostKeys      []string `json:"host_keys,omitempty"`
 }
@@ -59,7 +59,7 @@ func parsePreProbe(out []byte) (PreProbe, error) {
 		return PreProbe{}, errors.New("the remote probe did not finish (is the login shell POSIX-like enough to run sh?)")
 	}
 	p := PreProbe{Home: kv["home"], Shell: kv["shell"], SSHVersion: kv["sshv"], Claude: kv["claude"],
-		ClaudeVersion: kv["claudev"], Sy: kv["wy"], SySHA256: strings.ToLower(firstField(kv["sysha"])), Rosetta: kv["rosetta"] == "1"}
+		ClaudeVersion: kv["claudev"], Wy: kv["wy"], WySHA256: strings.ToLower(firstField(kv["wysha"])), Rosetta: kv["rosetta"] == "1"}
 	for _, k := range parseKVAll(out, "hostkey") {
 		if f := strings.Fields(k); len(f) >= 2 {
 			p.HostKeys = append(p.HostKeys, f[0]+" "+f[1])
@@ -76,7 +76,7 @@ type ProbeReport struct {
 	Name     string        `json:"name"`
 	OS       string        `json:"os"`
 	Arch     string        `json:"arch"`
-	Sy       string        `json:"sy"`
+	Wy       string        `json:"wy"`
 	Home     string        `json:"home"`
 	State    string        `json:"state"`
 	Shell    string        `json:"shell,omitempty"`
@@ -184,7 +184,7 @@ func Probe(ctx context.Context, o ProbeOptions) (ProbeReport, error) {
 	if err != nil {
 		return ProbeReport{}, err
 	}
-	r := ProbeReport{V: 1, Machine: m.ID, Name: m.Name, OS: runtime.GOOS, Arch: runtime.GOARCH, Sy: version.Version,
+	r := ProbeReport{V: 1, Machine: m.ID, Name: m.Name, OS: runtime.GOOS, Arch: runtime.GOARCH, Wy: version.Version,
 		Home: o.Home, State: o.StateDir, Shell: o.Getenv("SHELL"), Folders: []ProbeFolder{}, Free: []int{}}
 	if out, err := o.Run(ctx, "ssh", "-V"); err == nil || len(out) > 0 {
 		r.SSH = firstLine(out)

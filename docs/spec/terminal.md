@@ -177,7 +177,7 @@ Rules, all in Go and table-tested:
   `plugins/watchyard-pane/` next to `plugins/watchyard/` (the marketplace manifest lists
   both; the id is `pluginmkt.PaneID = watchyard-pane@wy-local`), sets its version, and passes
   every file through `pluginmkt/pane.go`'s `paneFile`, which replaces the placeholder
-  `"__SY_PATH__"` in `register.tsx` with the absolute path of `wy`, as it already does for
+  `"__WY_PATH__"` in `register.tsx` with the absolute path of `wy`, as it already does for
   hook commands. Writing the pane into the marketplace installs nothing: only
   `wy term setup --pane` runs `claude plugin install watchyard-pane@wy-local`.
 - **Skeleton.** `register.tsx` and `types/index.d.ts` are placeholders that register
@@ -186,7 +186,7 @@ Rules, all in Go and table-tested:
   not of the marketplace). Both are replaced when the pane is implemented.
 - **Lifecycle.**
   - On `session.start`, it registers the `/board` command and spawns
-    `[SY, "board", "--follow", "--ndjson", "--session", <session id>]` with
+    `[WY, "board", "--follow", "--ndjson", "--session", <session id>]` with
     `$.process.spawn`.
   - Each line is parsed into one atom (`View`). A line that is not valid JSON or has
     `v != 1` is dropped and counted.
@@ -197,7 +197,7 @@ Rules, all in Go and table-tested:
     toggles it at any width.
 - **Pane (`ui.render` `Pane`).** The same blocks as the compact layout, sized to
   `e.props.bodyColumns`, with each row a `Button` (`plain`).
-  - Pressing a row with `can_focus` runs `[SY, "term", "focus", "--session", id]` through
+  - Pressing a row with `can_focus` runs `[WY, "term", "focus", "--session", id]` through
     `$.process.run`.
   - A second key, the row's `c` hotkey, calls `$.ui.copy` with `resume`.
   - `remote_url` is a `Link` only when it is `https://claude.ai/…`.
@@ -214,7 +214,7 @@ Rules, all in Go and table-tested:
   `"types ./types/index.d.ts declares state: …"`). `pane-check.sh` parses those two lines.
   - Hooks: `session.start`, `session.end`, `command.run`, `ui.render` (Pane, AbovePrompt)
     and `ui.press`.
-  - Calls: `$.process.spawn` / `$.process.run` with `argv[0] === SY`, `$.ui.*`,
+  - Calls: `$.process.spawn` / `$.process.run` with `argv[0] === WY`, `$.ui.*`,
     `$.command.register`, `$.clock.*` and `$.state`.
   - Anything under `$.prompt`, `$.tool`, `$.model`, `$.agent`, `$.http`, `$.session.append`
     or `$.fs.write`, and any `tool.call` / `prompt.*` hook, fails the test.
@@ -287,7 +287,7 @@ default is stable.
 File `watchyard-<label>.toml` (label already `[a-z0-9-]`, setup.md 3), mode 0644:
 
 ```toml
-# sy-warp-tab v1 slot=~/.claude-2 label=work (written by wy term warp on; wy term warp off removes it)
+# wy-warp-tab v1 slot=~/.claude-2 label=work (written by wy term warp on; wy term warp off removes it)
 name = "Watchyard · work"
 title = "work"
 color = "yellow"
@@ -298,6 +298,8 @@ type = "terminal"
 commands = ["/home/u/.local/bin/claude-2"]
 ```
 
+- **Marker.** The first line marks the file as ours; `# sy-warp-tab v1`, written before the
+  rename, is recognised too (rename.md 2.12).
 - **Colour.** The seat colour (hub label/colour if paired, else `slots.colours`) maps to the
   nearest of `red, green, yellow, blue, magenta, cyan` by OKLab distance. `black` and `white`
   are never used. The seventh account repeats a colour.
@@ -315,7 +317,8 @@ commands = ["/home/u/.local/bin/claude-2"]
 
 - **Running ssh.** `wy ssh <args>` execs the `ssh` on `PATH` (or `WY_SSH_COMMAND`, as
   `internal/sshx`), with `-o SendEnv=LC_SY_FOCUS -o SendEnv=LC_SY_HOST` put before the
-  person's args. Nothing else is added.
+  person's args. Nothing else is added. The variable names keep the name from before the
+  rename: a server's `AcceptEnv LC_SY_*` would drop new ones (rename.md 2.12).
 - **Environment.** `LC_SY_FOCUS` = `LC_SY_FOCUS` if set (a nested hop), else
   `WARP_FOCUS_URL`, kept only if it passes T7. `LC_SY_HOST` = this machine's id. With
   neither, it is plain `ssh`.

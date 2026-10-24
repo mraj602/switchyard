@@ -131,7 +131,7 @@ test('VAPID key helpers round-trip', async () => {
 
 test('ntfyLink', async () => {
   const { ntfyLink } = await mod('platform.js');
-  assert.equal(ntfyLink('https://ntfy.sh', 'sy-abc'), 'ntfy://ntfy.sh/sy-abc');
+  assert.equal(ntfyLink('https://ntfy.sh', 'wy-abc'), 'ntfy://ntfy.sh/wy-abc');
   assert.equal(ntfyLink('not a url', 'x'), '');
   assert.equal(ntfyLink('https://ntfy.sh', 'a/b?c'), 'ntfy://ntfy.sh/a%2Fb%3Fc');
 });

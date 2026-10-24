@@ -144,7 +144,7 @@ func TestRenderGolden(t *testing.T) {
 	if err := Check(s); err != nil {
 		t.Fatal(err)
 	}
-	want := `# sy-warp-tab v1 slot=~/.claude-2 label=work (written by wy term warp on; wy term warp off removes it)
+	want := `# wy-warp-tab v1 slot=~/.claude-2 label=work (written by wy term warp on; wy term warp off removes it)
 name = "Watchyard · work"
 title = "work"
 color = "yellow"
@@ -196,13 +196,25 @@ func TestCheckAndMarker(t *testing.T) {
 			t.Errorf("%s refused: %v", c, err)
 		}
 	}
-	for _, b := range []string{"", "name = \"x\"\n", "# sy-warp-tab v2 slot=~ label=x (\n", "x\n# sy-warp-tab v1 slot=~ label=x (\n"} {
+	for _, b := range []string{"", "name = \"x\"\n", "# wy-warp-tab v2 slot=~ label=x (\n", "x\n# wy-warp-tab v1 slot=~ label=x (\n"} {
 		if _, ok := ParseMarker([]byte(b)); ok {
 			t.Errorf("marker found in %q", b)
 		}
 	}
 	if s := tomlString("a\"b\\c\x01"); s != `"a\"b\\c\u0001"` {
 		t.Errorf("tomlString = %s", s)
+	}
+}
+
+// Legacy compat: a tab config written before the rename starts with sy-warp-tab v1 and is
+// still wy's.
+func TestParseLegacyMarker(t *testing.T) {
+	info, ok := ParseMarker([]byte("# sy-warp-tab v1 slot=~/.claude-2 label=work (written by sy term warp on; sy term warp off removes it)\nname = \"x\"\n"))
+	if !ok || info.Slot != "~/.claude-2" || info.Label != "work" {
+		t.Errorf("legacy marker: %+v %v", info, ok)
+	}
+	if _, ok := ParseMarker([]byte("# xy-warp-tab v1 slot=~ label=x (\n")); ok {
+		t.Error("another prefix accepted")
 	}
 }
 

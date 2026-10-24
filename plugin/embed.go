@@ -35,7 +35,7 @@ func FS() fs.FS { return sub(content, Name) }
 
 // PaneFS returns the pane mod's tree rooted at its folder: ".claude-plugin/plugin.json",
 // "hooks/hooks.json" (modules only), "hooks/register.tsx", "types/index.d.ts" and its tests.
-// register.tsx holds the placeholder "__SY_PATH__", which internal/setup/pluginmkt replaces
+// register.tsx holds the placeholder "__WY_PATH__", which internal/setup/pluginmkt replaces
 // with the absolute path of wy when it writes the copy.
 func PaneFS() fs.FS { return sub(paneContent, PaneName) }
 

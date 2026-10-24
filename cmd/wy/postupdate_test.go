@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -176,5 +177,137 @@ func TestPostUpdatePluginMovesLegacyPlugin(t *testing.T) {
 	// The next update is an ordinary one.
 	if s, err := postUpdatePlugin(ctx, "1.0.1"); err != nil || strings.Contains(s, "moved") {
 		t.Errorf("second run: %q %v", s, err)
+	}
+}
+
+// Legacy compat (rename.md 2.13): a unit written for sy sets SY_STATE_DIR; WY_STATE_DIR finds it.
+func TestLegacyEnvLookupLiteral(t *testing.T) {
+	m := map[string]string{"SY_STATE_DIR": "/old", "WY_HOME": "/h"} // rename:keep
+	if got := legacyEnvLookup(m, "WY_STATE_DIR"); got != "/old" {
+		t.Errorf("WY_STATE_DIR = %q", got)
+	}
+	if got := legacyEnvLookup(m, "WY_HOME"); got != "/h" {
+		t.Errorf("WY_HOME = %q", got)
+	}
+	m["WY_STATE_DIR"] = "/new"
+	if got := legacyEnvLookup(m, "WY_STATE_DIR"); got != "/new" {
+		t.Errorf("both: %q", got)
+	}
+}
+
+// rename.md 2.4: a move that uninstalled the old plugin and then failed to install the
+// current one is finished by the next run (install, not update); a failed uninstall leaves the
+// marketplace as it was.
+func TestPostUpdatePluginRecoversHalfMove(t *testing.T) {
+	defer brand.SetLegacyForTest("oldname", "Oldname")()
+	defer brand.SetLegacyCLIForTest(brand.CLI)()
+	legacy := brand.LegacyPluginIDs()
+	root := t.TempDir()
+	t.Setenv("WY_HOME", filepath.Join(root, "wy"))
+	t.Setenv("WY_CONFIG_DIR", "")
+	t.Setenv("WY_STATE_DIR", "")
+	t.Setenv("WY_DATA_DIR", "")
+	d, err := paths.Resolve(paths.FromOS())
+	if err != nil {
+		t.Fatal(err)
+	}
+	home := filepath.Join(root, "home")
+	f := claudecli.NewFake()
+	e := &setupEnv{home: home, dirs: d, wy: "/usr/local/bin/wy", goos: "linux",
+		getenv: func(string) string { return "" }, runner: f}
+	old := postUpdateEnv
+	postUpdateEnv = func() (*setupEnv, error) { return e, nil }
+	defer func() { postUpdateEnv = old }()
+	ctx := context.Background()
+	mkt := filepath.Join(d.State.Path, "plugin", "marketplace")
+	claudeDir := filepath.Join(home, ".claude")
+	fo := claudecli.Folder{Dir: claudeDir, Unset: true}
+	if err := os.MkdirAll(claudeDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := pluginmkt.New(f).WriteMarketplace(mkt, e.wy, "0.9.0"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.PluginMarketplaceAdd(ctx, fo, mkt); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.PluginInstall(ctx, fo, legacy[0]); err != nil {
+		t.Fatal(err)
+	}
+	if err := ledger.Write(d.State.Path, model.Ledger{Plugin: &model.LedgerPlugin{Marketplace: mkt, ID: legacy[0],
+		Roots: []string{filepath.Join(claudeDir, "plugins")}}}); err != nil {
+		t.Fatal(err)
+	}
+	stamp := func() string {
+		b, _ := os.ReadFile(filepath.Join(mkt, ".claude-plugin", "marketplace.json"))
+		return string(b)
+	}
+
+	// The uninstall fails: nothing rewritten, an error that says to run again.
+	before := stamp()
+	f.FailOn("PluginUninstall", errors.New("boom"))
+	if _, err := postUpdatePlugin(ctx, "1.0.0"); err == nil || !strings.Contains(err.Error(), "post-update") {
+		t.Fatalf("failed uninstall: %v", err)
+	}
+	if stamp() != before {
+		t.Error("marketplace rewritten after a failed uninstall")
+	}
+	f.FailOn("PluginUninstall", nil)
+
+	// The uninstall works, the install fails: the old plugin is gone, the new one missing.
+	f.FailOn("PluginInstall", errors.New("boom"))
+	if _, err := postUpdatePlugin(ctx, "1.0.0"); err == nil {
+		t.Fatal("install failure not reported")
+	}
+	f.FailOn("PluginInstall", nil)
+	if got := f.Installed(claudeDir); len(got) != 0 {
+		t.Fatalf("installed after the half move: %v", got)
+	}
+	// The next run installs it instead of updating a plugin that is not there.
+	nUpd := len(f.CallsTo("PluginUpdate"))
+	if s, err := postUpdatePlugin(ctx, "1.0.0"); err != nil || !strings.Contains(s, "moved") {
+		t.Fatalf("recovery run: %q %v", s, err)
+	}
+	if got := f.Installed(claudeDir); len(got) != 1 || got[0] != "watchyard@wy-local" {
+		t.Errorf("installed: %v", got)
+	}
+	if n := len(f.CallsTo("PluginUpdate")); n != nUpd {
+		t.Errorf("plugin update called on a missing plugin")
+	}
+}
+
+// rename.md 2.3: on Windows the task of the old name is not dropped silently: the summary
+// carries the commands that replace it.
+func TestPostUpdateTimerWindowsLegacyTask(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("WY_HOME", filepath.Join(root, "wy"))
+	t.Setenv("WY_CONFIG_DIR", "")
+	t.Setenv("WY_STATE_DIR", "")
+	t.Setenv("WY_DATA_DIR", "")
+	d, err := paths.Resolve(paths.FromOS())
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := &setupEnv{home: filepath.Join(root, "home"), dirs: d, wy: `C:\wy\wy.exe`, goos: "windows",
+		getenv: func(string) string { return "" }, runner: claudecli.NewFake()}
+	old := postUpdateEnv
+	postUpdateEnv = func() (*setupEnv, error) { return e, nil }
+	defer func() { postUpdateEnv = old }()
+	if s, err := postUpdateTimer(context.Background(), "1.0.0"); err != nil || s != "unchanged (windows)" {
+		t.Fatalf("no legacy task: %q %v", s, err)
+	}
+	if err := os.MkdirAll(d.State.Path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	legacyXML := filepath.Join(d.State.Path, "switchyard-flush.task.xml") // rename:keep
+	if err := os.WriteFile(legacyXML, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := postUpdateTimer(context.Background(), "1.0.0")
+	if err != nil || !strings.Contains(s, `schtasks /Delete /TN "Switchyard Flush" /F`) || !strings.Contains(s, `schtasks /Create /TN "Watchyard Flush"`) { // rename:keep
+		t.Fatalf("legacy task: %q %v", s, err)
+	}
+	if _, err := os.Stat(legacyXML); !os.IsNotExist(err) {
+		t.Errorf("legacy task file kept: %v", err)
 	}
 }

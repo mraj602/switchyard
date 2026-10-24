@@ -8,18 +8,22 @@ revoked on its own, without touching any other device.
 ## 1. Format
 
 ```
-sy_<k>_<43 base62 characters>
+wy_<k>_<43 base62 characters>
 ```
 
 | Part | Meaning |
 | --- | --- |
-| `sy_` | Fixed prefix, so secret scanners and `grep` can find leaked tokens. |
+| `wy_` | Fixed prefix, so secret scanners and `grep` can find leaked tokens. |
 | `<k>` | One letter for the device kind: `m` machine, `d` desktop, `p` phone, `b` browser, `o` owner session. |
 | `_` | Separator. |
 | 43 base62 characters | 32 random bytes from the OS cryptographic source, encoded big-endian in base62 (`0-9A-Za-z`), left-padded with `0` to 43 characters. |
 
-Example shape: `sy_m_4fQx0Lr2…` (48 characters in total). Base62 has no `-` or `_`, so a
+Example shape: `wy_m_4fQx0Lr2…` (48 characters in total). Base62 has no `-` or `_`, so a
 double click selects the whole token and the kind letter can always be parsed.
+
+Tokens made before the rename start `sy_` (`sy_o_` for an owner session). They keep working
+unchanged: the hub stores a hash of the whole token, and every check of the shape accepts
+both prefixes (rename.md 2.12). New tokens are always `wy_`.
 
 The kind letter is a hint for people and for `wy doctor`. The hub never trusts it: scopes
 come from the `device` row.
@@ -28,10 +32,10 @@ come from the `device` row.
 
 - The hub stores `device.token_hash` = SHA-256 of the full token string (including the
   prefix), as 32 raw bytes, with a unique index. Lookup is one indexed read.
-- Exception, owner sessions (`sy_o_`, pairing.md 4): `token_hash` = HMAC-SHA256(`pair_pepper`,
+- Exception, owner sessions (`wy_o_`, pairing.md 4): `token_hash` = HMAC-SHA256(`pair_pepper`,
   `"token:"` ‖ token), with the pairing pepper that lives outside the database (pairing.md 3).
-  A `sy_o_` token is looked up only by that hash, and a device with the `owner` scope (or
-  `created_by` `owner-link:…`) is accepted only through a `sy_o_` token. So write access to
+  A `wy_o_` token is looked up only by that hash, and a device with the `owner` scope (or
+  `created_by` `owner-link:…`) is accepted only through a `wy_o_` token. So write access to
   `hub.db` alone cannot mint an owner session (keys.md 5.4): a row it writes either has a
   plain hash (refused for the owner scope) or needs the pepper. Owner sessions made before this
   rule are revoked by migration 7.
@@ -39,7 +43,7 @@ come from the `device` row.
   brute-forced. (A slow hash is used only for the owner password.)
 - Comparison is done by looking up the hash, so no timing-sensitive string compare is
   needed.
-- `device.token_hint` = kind prefix + `…` + last 4 characters (`sy_m_…k3Qz`), for lists.
+- `device.token_hint` = kind prefix + `…` + last 4 characters (`wy_m_…k3Qz`), for lists.
 - The token is shown once, when created. It cannot be recovered; a lost token is replaced.
 
 On a client the token lives in `<state>/token`, mode `0600`, one line, no trailing data
@@ -50,11 +54,11 @@ commands, environment variables of Claude Code, or records.
 
 | Device kind | Token | Scopes | Can |
 | --- | --- | --- | --- |
-| machine | `sy_m_` | `write` | `POST /v1/ingest` for its own machine id only. Also, by design (keys.md 3.3, peers.md 5.4): propose an owner key (`POST /v1/keys/owner`; it stays pending until an owner confirms its fingerprint, at most one pending, deleted after 24 hours), and narrow the peer matrix or pause peers (`PUT /v1/peers/matrix`, `POST /v1/peers/pause`; widening and resuming need the owner). |
-| desktop | `sy_d_` | `write`, `read` | Ingest for its own machine id (web usage); every read endpoint and `/v1/stream`. |
-| phone | `sy_p_` | `read`, `push` | Every read endpoint and `/v1/stream`; register push targets; snooze/seen alerts. |
-| browser | `sy_b_` | `read`, `push` | As phone; for the installed web app on a computer. |
-| owner session | `sy_o_` | `owner`, `read`, `push` | Everything, including devices, rules and pairing codes. A `browser` device from `wy hub owner-link`, 30 days, cookie only (pairing.md 4). |
+| machine | `wy_m_` | `write` | `POST /v1/ingest` for its own machine id only. Also, by design (keys.md 3.3, peers.md 5.4): propose an owner key (`POST /v1/keys/owner`; it stays pending until an owner confirms its fingerprint, at most one pending, deleted after 24 hours), and narrow the peer matrix or pause peers (`PUT /v1/peers/matrix`, `POST /v1/peers/pause`; widening and resuming need the owner). |
+| desktop | `wy_d_` | `write`, `read` | Ingest for its own machine id (web usage); every read endpoint and `/v1/stream`. |
+| phone | `wy_p_` | `read`, `push` | Every read endpoint and `/v1/stream`; register push targets; snooze/seen alerts. |
+| browser | `wy_b_` | `read`, `push` | As phone; for the installed web app on a computer. |
+| owner session | `wy_o_` | `owner`, `read`, `push` | Everything, including devices, rules and pairing codes. A `browser` device from `wy hub owner-link`, 30 days, cookie only (pairing.md 4). |
 
 Scope checks per endpoint are in [api.yaml](api.yaml) (`x-scopes`). A request whose token is
 unknown or revoked gets `401`; a valid token without the scope gets `403`. Both bodies are
@@ -83,7 +87,7 @@ wy hub token create --kind machine|desktop|phone|browser --name <name> [--machin
     Creates a device and prints its token once.
     --machine is required for machine and desktop (the machine row is created if missing,
     named after --name).
-    --json prints {"device": "dev_…", "token": "sy_m_…", "scopes": [...]}.
+    --json prints {"device": "dev_…", "token": "wy_m_…", "scopes": [...]}.
 
 wy hub token list [--all] [--json]
     Devices: id, kind, name, machine, hint, scopes, created, last used, revoked.
@@ -114,6 +118,6 @@ In merged mode `wy setup` creates the local machine's device itself.
 Superseded by [pairing.md](pairing.md): codes are 6 digits plus a 128-bit QR secret, hashed
 with a pepper kept outside the database, valid 10 minutes, single use, at most 5 live;
 `POST /v1/pair/claim` with per-IP and hub-wide limits on typed codes; the QR is an `https://`
-URL (`<hub>/#/pair?s=…&c=…`), not JSON. Owner sessions (`sy_o_`) are `browser` devices with
+URL (`<hub>/#/pair?s=…&c=…`), not JSON. Owner sessions (`wy_o_`) are `browser` devices with
 scopes `owner`, `read`, `push`, made from a one-time link (`wy hub owner-link`) and expiring
 after 30 days (`device.expires_at`, schema v3).

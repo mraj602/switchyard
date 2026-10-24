@@ -38,13 +38,13 @@ func TestWriteConfigGeneratesTheDocumentedBlock(t *testing.T) {
 	}
 	cfg, _ := os.ReadFile(filepath.Join(dir, "ssh_config"))
 	for _, want := range []string{
-		"Host sy-pt_01JA\n  HostName gpu-box.example.ts.net\n  Port 22\n  User me\n  HostKeyAlias sy-pt_01JA\n",
+		"Host wy-pt_01JA\n  HostName gpu-box.example.ts.net\n  Port 22\n  User me\n  HostKeyAlias wy-pt_01JA\n",
 		"  UserKnownHostsFile " + filepath.Join(dir, "known_hosts") + "\n",
 		"  GlobalKnownHostsFile /dev/null\n  StrictHostKeyChecking yes\n  UpdateHostKeys no\n",
 		"  IdentityFile " + filepath.Join(dir, "id_ed25519") + "\n  IdentitiesOnly yes\n  IdentityAgent none\n  BatchMode yes\n",
 		"  ForwardAgent no\n  ForwardX11 no\n  ClearAllForwardings yes\n  RequestTTY no\n  ControlMaster no\n  ControlPath none\n",
 		"  ConnectTimeout 10\n  ServerAliveInterval 15\n  ServerAliveCountMax 2\n  LogLevel ERROR\n",
-		"Host sy-pt_01JB\n  HostName 10.0.0.7\n  Port 2222\n",
+		"Host wy-pt_01JB\n  HostName 10.0.0.7\n  Port 2222\n",
 	} {
 		if !strings.Contains(string(cfg), want) {
 			t.Fatalf("ssh_config misses %q:\n%s", want, cfg)
@@ -58,12 +58,12 @@ func TestWriteConfigGeneratesTheDocumentedBlock(t *testing.T) {
 		t.Fatal("host key checking turned off")
 	}
 	kh, _ := os.ReadFile(filepath.Join(dir, "known_hosts"))
-	for _, want := range []string{"sy-pt_01JA " + hostKeyA + "\n", "sy-pt_01JB " + hostKeyA + "\n", "sy-pt_01JB " + hostKeyB + "\n", "[sy-pt_01JB]:2222 " + hostKeyB + "\n"} {
+	for _, want := range []string{"wy-pt_01JA " + hostKeyA + "\n", "wy-pt_01JB " + hostKeyA + "\n", "wy-pt_01JB " + hostKeyB + "\n", "[wy-pt_01JB]:2222 " + hostKeyB + "\n"} {
 		if !strings.Contains(string(kh), want) {
 			t.Fatalf("known_hosts misses %q:\n%s", want, kh)
 		}
 	}
-	if strings.Contains(string(kh), "[sy-pt_01JA]") {
+	if strings.Contains(string(kh), "[wy-pt_01JA]") {
 		t.Fatal("default port gets no bracket form")
 	}
 	for _, f := range []string{"ssh_config", "known_hosts"} {
@@ -89,7 +89,7 @@ func TestWriteConfigRefusesInjection(t *testing.T) {
 		{ID: "pt_4", Host: "good", Port: 22, User: "me", Jump: "a b"},
 		{ID: "pt_5", Host: "good", Port: 22, User: "-oBad"},
 		{ID: "pt_6", Host: "good", Port: 0, User: "me"},
-		{ID: "pt_7", Host: "good", Port: 22, User: "me", RemoteSy: "wy; rm -rf /"},
+		{ID: "pt_7", Host: "good", Port: 22, User: "me", RemoteWy: "wy; rm -rf /"},
 	}
 	for _, tg := range bad {
 		if err := pull.ValidateTarget(tg); err == nil {
@@ -103,7 +103,7 @@ func TestWriteConfigRefusesInjection(t *testing.T) {
 		t.Fatal("want the bad targets reported")
 	}
 	cfg, _ := os.ReadFile(filepath.Join(dir, "ssh_config"))
-	if strings.Contains(string(cfg), "evil") || !strings.Contains(string(cfg), "Host sy-pt_ok") {
+	if strings.Contains(string(cfg), "evil") || !strings.Contains(string(cfg), "Host wy-pt_ok") {
 		t.Fatalf("ssh_config:\n%s", cfg)
 	}
 }

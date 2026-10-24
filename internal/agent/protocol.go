@@ -101,8 +101,8 @@ func MaxSocketPath(goos string) int {
 
 // SocketPath is the control socket (peers.md 2.3): $XDG_RUNTIME_DIR/wy/agent.sock on Linux,
 // <state>/agent/agent.sock on macOS. When that path is longer than the OS allows (a deep
-// state folder, a long $XDG_RUNTIME_DIR), it falls back to $TMPDIR/sy-<uid>/agent.sock, and
-// to /tmp/sy-<uid>/agent.sock when even that is too long. The fallback folder is 0700 and
+// state folder, a long $XDG_RUNTIME_DIR), it falls back to $TMPDIR/wy-<uid>/agent.sock, and
+// to /tmp/wy-<uid>/agent.sock when even that is too long. The fallback folder is 0700 and
 // the server checks it (listen). The agent and every client call this with the same inputs,
 // so they agree on the path.
 func SocketPath(goos, runtime, state string) string {
@@ -123,7 +123,7 @@ func socketPath(goos, runtime, state, tmp string, uid int) string {
 	if len(p) <= max {
 		return p
 	}
-	dir := fmt.Sprintf("sy-%d", uid)
+	dir := fmt.Sprintf("wy-%d", uid)
 	if q := filepath.Join(tmp, dir, "agent.sock"); len(q) <= max {
 		return q
 	}

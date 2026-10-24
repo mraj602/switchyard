@@ -11,7 +11,7 @@
 //   handshake presented exactly the pinned certificate: no byte of the request (and so no
 //   bearer token) is written before that check. Any other origin goes to the normal fetch,
 //   with normal validation.
-// - installVerifyProc: the hub view's partition (persist:sy-hub) accepts exactly the pinned
+// - installVerifyProc: the hub view's partition (persist:wy-hub) accepts exactly the pinned
 //   certificate for the pinned host and refuses any other certificate for that host;
 //   everything else keeps Chromium's own verdict. Chromium's verify proc names the host, not
 //   the port, so in the view the pin binds the host (the certificate itself is still exact).
@@ -297,7 +297,7 @@ export function createPinnedFetch(deps) {
  * The hub partition's certificate check (Electron's session.setCertificateVerifyProc). For a
  * host with a pin: the pinned certificate is accepted (0), any other is refused (-2) and
  * reported. Any other host keeps Chromium's verdict (-3).
- * @param {object} session  electron session of persist:sy-hub
+ * @param {object} session  electron session of persist:wy-hub
  * @param {{pins: () => {origin: string, sha256: string}[], onMismatch?: (origin: string, expected: string, actual: string|null) => void,
  *          log?: object}} deps
  */

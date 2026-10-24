@@ -1,6 +1,6 @@
 # Android app end to end (`make e2e-android`)
 
-The phone app (`phone/`, with its `sy-link` module) on the Android emulator against a real
+The phone app (`phone/`, with its `wy-link` module) on the Android emulator against a real
 `wy hub serve` on this host. It is never part of `make check`; it skips (exit 0, `SKIP: ...`)
 without the SDK, the AVD, `/dev/kvm`, python3 or an APK it can build.
 
@@ -19,8 +19,8 @@ The whole run takes about 8 minutes once the APK exists.
 | --- | --- |
 | 1 | the APK installs, `POST_NOTIFICATIONS` is granted, the app starts from its bundled JS |
 | 2 | `watchyard://pair?u=&s=&c=&h=&k=` (the QR's secret, code, hub fingerprint, seal key) opens a card that claims nothing until tapped; the tap pairs; the hub has `keys.reg = qr` and a `link` push target |
-| 3 | `SyLinkService` is a foreground service, the hub sees the link connected, the persistent notification says "Connected to hub" |
-| 4 | a fake machine (`fakemachine`) posts a hook record, the alert engine fires "asked", the notification arrives on `sy_needs_you` with Open / Snooze 15 min / Seen; Seen and Snooze from the shade reach the hub; the hub's "send test notification" arrives on `sy_test` |
+| 3 | `WyLinkService` is a foreground service, the hub sees the link connected, the persistent notification says "Connected to hub" |
+| 4 | a fake machine (`fakemachine`) posts a hook record, the alert engine fires "asked", the notification arrives on `wy_needs_you` with Open / Snooze 15 min / Seen; Seen and Snooze from the shade reach the hub; the hub's "send test notification" arrives on `wy_test` |
 | 5 | hub restart: the phone reconnects, a new alert is delivered |
 | 6 | airplane mode: the phone reports Reconnecting, an alert raised offline is held, the hub restarts meanwhile, airplane off: reconnect and replay |
 | 7 | `am force-stop`: the service stays down (Android blocks every restart); opening the app restarts it and the alert queued meanwhile replays |

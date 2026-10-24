@@ -201,7 +201,7 @@ func (a *adder) linkKeys(ctx context.Context) error {
 // remoteDevice runs `wy keys device --json [--renew]` on the remote (through the forward, so
 // it can ask the hub for its device id).
 func (a *adder) remoteDevice(ctx context.Context, renew bool) (DeviceReport, error) {
-	words := []string{RemoteSy, "keys", "device", "--json"}
+	words := []string{RemoteWy, "keys", "device", "--json"}
 	if renew {
 		words = append(words, "--renew")
 	}
@@ -228,7 +228,7 @@ func (a *adder) pinRemote(ctx context.Context, h Handoff) (PinReport, error) {
 	if err != nil {
 		return PinReport{}, err
 	}
-	res, err := a.r.run(ctx, []string{RemoteSy, "keys", "pin-ssh", "--json"}, in)
+	res, err := a.r.run(ctx, []string{RemoteWy, "keys", "pin-ssh", "--json"}, in)
 	if err != nil {
 		return PinReport{}, exitf(ExitFailed, "%v", err)
 	}

@@ -161,7 +161,7 @@ async function boardFlow(sizeName, w, hgt) {
   // A pasted owner link for another hub is refused with the other origin named.
   await page.type('[data-key=owner-link-input]', 'https://other.example/#/owner?s=abcdefghijklmnopqrstuv');
   // A redraw (a data or PWA update) must not rebuild the sign-in page and drop what was typed.
-  await page.evaluate(() => window.dispatchEvent(new Event('sy-rerender')));
+  await page.evaluate(() => window.dispatchEvent(new Event('wy-rerender')));
   if (!(await page.$eval('[data-key=owner-link-input]', (e) => e.value))) fail(page.tag('a redraw dropped the typed owner link'));
   await page.click('[data-key=owner-link-open]');
   await page.waitForFunction(() => /not this hub/.test((document.querySelector('[data-key=owner-link-error]:not([hidden])') || {}).textContent || ''), { timeout: 10000 })
@@ -171,7 +171,7 @@ async function boardFlow(sizeName, w, hgt) {
   await shot(page, `${sizeName}-login`);
   await page.click('[data-key=token-login] summary');
   await page.waitForSelector('#token', { visible: true });
-  await page.type('#token', 'sy_b_wrong');
+  await page.type('#token', 'wy_b_wrong');
   await page.click('.login-token button[type=submit]');
   await page.waitForSelector('.login-token .form-error:not([hidden])');
   await page.evaluate(() => { document.getElementById('token').value = ''; });
@@ -219,7 +219,7 @@ async function phoneFlow(sizeName, w, hgt) {
   const addr = await page.evaluate(() => location.hash);
   if (/s=|c=/.test(addr)) fail(page.tag(`pairing left the secret in the address bar: ${addr}`));
   await shot(page, `${sizeName}-pair-done`);
-  if (!(await page.cookies()).some((c) => c.name === 'sy_session')) fail(page.tag('claim did not set the sy_session cookie'));
+  if (!(await page.cookies()).some((c) => c.name === 'wy_session')) fail(page.tag('claim did not set the wy_session cookie'));
   // The name is editable once paired (two Android phones both guess "Phone X · Chrome").
   const typed = `Phone X · Chrome (${sizeName})`;
   await page.$eval('[data-key=paired-name]', (e) => { e.value = ''; e.dispatchEvent(new Event('input')); });
@@ -402,7 +402,7 @@ const waitSide = async (page, want, what, timeout = 4000) => !(await sideShown(p
 // ---- the Accounts list: compact rows, expand in place, expand all, signed out, most room ----------
 async function accountsFlow(page, sizeName) {
   const t = (m) => page.tag(`accounts: ${m}`);
-  await page.evaluate(() => { try { localStorage.removeItem('sy-accounts-open'); } catch (_) {} });
+  await page.evaluate(() => { try { localStorage.removeItem('wy-accounts-open'); } catch (_) {} });
   await visit(page, sizeName, 'o-accounts-collapsed', '#/accounts', '.acct');
   const rows = await page.$$eval('.acct', (els) => els.map((e) => ({ id: e.id, h: Math.round(e.getBoundingClientRect().height), meters: e.querySelectorAll('.acct-row .meter').length,
     win: (e.querySelector('.acct-win') || {}).textContent || '', pct: (e.querySelector('.acct-pct') || {}).textContent || '', details: e.querySelectorAll('.acct-detail').length })));
@@ -924,12 +924,12 @@ async function pwaFlow() {
   // worker controls the page after one reload; the shell cache exists
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.reload({ waitUntil: 'networkidle2' });
-  await page.waitForSelector('.needs-card', { timeout: 8000 }).catch(async () => { fail('after SW reload: ' + await page.evaluate(() => document.body.innerText.slice(0, 60) + ' | ' + location.href) + ' ' + trace.join('; ') + ' cookies=' + (await page.cookies()).map((c) => c.name) + ' st=' + await page.evaluate(() => JSON.stringify({ u: __sy.store.unauthorized, e: __sy.store.error, me: !!__sy.store.me })) + ' me=' + await page.evaluate(async () => { const r = await fetch('/v1/me'); return r.status + ' ' + (await r.text()).slice(0, 120); })); });
+  await page.waitForSelector('.needs-card', { timeout: 8000 }).catch(async () => { fail('after SW reload: ' + await page.evaluate(() => document.body.innerText.slice(0, 60) + ' | ' + location.href) + ' ' + trace.join('; ') + ' cookies=' + (await page.cookies()).map((c) => c.name) + ' st=' + await page.evaluate(() => JSON.stringify({ u: __wy.store.unauthorized, e: __wy.store.error, me: !!__wy.store.me })) + ' me=' + await page.evaluate(async () => { const r = await fetch('/v1/me'); return r.status + ' ' + (await r.text()).slice(0, 120); })); });
   const ctl = await page.evaluate(() => !!navigator.serviceWorker.controller);
   if (!ctl) fail('service worker does not control the page after a reload');
   const keys = await page.evaluate(() => caches.keys());
-  if (!keys.some((k) => k.startsWith('sy-shell-'))) fail(`no shell cache: ${keys}`);
-  if (!keys.includes('sy-data')) fail(`no data cache: ${keys}`);
+  if (!keys.some((k) => k.startsWith('wy-shell-'))) fail(`no shell cache: ${keys}`);
+  if (!keys.includes('wy-data')) fail(`no data cache: ${keys}`);
   const build0 = await page.evaluate(() => new Promise((res) => { navigator.serviceWorker.addEventListener('message', (e) => e.data.type === 'build' && res(e.data.build)); navigator.serviceWorker.controller.postMessage({ type: 'build' }); }));
 
   // offline: the last known state with the banner, controls off
@@ -943,7 +943,7 @@ async function pwaFlow() {
   await page.setOfflineMode(true);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.banner-offline', { timeout: 15000 }).catch(() => fail('no offline banner after an offline reload'));
-  await page.waitForSelector('.needs-card', { timeout: 15000 }).catch(async () => fail('Now did not render from the stored copy while offline: ' + await page.evaluate(() => location.hash + ' ' + document.body.innerText.slice(0, 300) + JSON.stringify(window.__sy.store.error)).catch(String)));
+  await page.waitForSelector('.needs-card', { timeout: 15000 }).catch(async () => fail('Now did not render from the stored copy while offline: ' + await page.evaluate(() => location.hash + ' ' + document.body.innerText.slice(0, 300) + JSON.stringify(window.__wy.store.error)).catch(String)));
   const bannerText = await page.$eval('.banner-offline', (e) => e.textContent).catch(() => '');
   if (!/Offline · showing \d\d:\d\d/.test(bannerText)) fail(`offline banner text: ${bannerText}`);
   await shot(page, 'phone-offline');
@@ -951,7 +951,7 @@ async function pwaFlow() {
   for (const t of browser.targets().filter((x) => x.type() === 'service_worker')) { const c = await t.createCDPSession(); await c.send('Network.enable'); await c.send('Network.emulateNetworkConditions', cond(false)).catch(() => {}); }
   await page.setOfflineMode(false);
   page.expectOffline = false;
-  try { await page.waitForFunction(() => !document.querySelector('.banner-offline'), { timeout: 30000 }); } catch (e) { fail('offline banner stayed after coming back online: ' + await page.evaluate(async () => { const r = await fetch('/v1/overview'); return r.status + ' ' + r.headers.get('x-sy-cached-at') + ' ' + JSON.stringify(window.__sy.store.live); }).catch(String)); }
+  try { await page.waitForFunction(() => !document.querySelector('.banner-offline'), { timeout: 30000 }); } catch (e) { fail('offline banner stayed after coming back online: ' + await page.evaluate(async () => { const r = await fetch('/v1/overview'); return r.status + ' ' + r.headers.get('x-wy-cached-at') + ' ' + JSON.stringify(window.__wy.store.live); }).catch(String)); }
 
   // notifications: turn on from Settings
   await page.evaluate(() => { location.hash = '#/more/settings'; });
@@ -975,11 +975,11 @@ async function pwaFlow() {
   if (!reg) fail('no service worker registration seen over CDP');
   else {
     await page.evaluate(() => { window.__badges = []; });
-    const payload = { v: 1, type: 'alert', alert: 'al_x', alerts: ['al_x'], trigger: 'asked', title: 'work · api · asked a question', body: 'Should I also update the migration?', tag: 'sy-s-smoke', url: '/#/sessions/' + ASKED, tap: 'session', session: ASKED, needs_you: 3, actions: { snooze: 'a1.dev.snooze', seen: 'a1.dev.seen' }, private: false, ts: new Date().toISOString() };
+    const payload = { v: 1, type: 'alert', alert: 'al_x', alerts: ['al_x'], trigger: 'asked', title: 'work · api · asked a question', body: 'Should I also update the migration?', tag: 'wy-s-smoke', url: '/#/sessions/' + ASKED, tap: 'session', session: ASKED, needs_you: 3, actions: { snooze: 'a1.dev.snooze', seen: 'a1.dev.seen' }, private: false, ts: new Date().toISOString() };
     await cdp.send('ServiceWorker.deliverPushMessage', { origin: BASE, registrationId: reg.registrationId, data: JSON.stringify(payload) });
     await sleep(800);
     const shown = await page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => ({ title: n.title, tag: n.tag, actions: (n.actions || []).map((a) => a.action) })));
-    const n = shown.find((x) => x.tag === 'sy-s-smoke');
+    const n = shown.find((x) => x.tag === 'wy-s-smoke');
     if (!n) fail(`pushed notification not shown: ${JSON.stringify(shown)}`);
     else {
       if (n.title !== payload.title) fail(`notification title ${n.title}`);
@@ -1045,7 +1045,7 @@ async function pwaFlow() {
   try { await ipage.waitForSelector('.steps', { timeout: 5000 }); } catch (e) { fail('iPhone pairing did not show the install steps'); }
   const digits = await ipage.$eval('[data-key=pair-digits]', (e) => e.textContent).catch(() => '');
   if (digits.trim() !== '482-913') fail(`iPhone pair digits: ${digits}`);
-  if ((await ipage.cookies()).some((c) => c.name === 'sy_session')) fail('iPhone Safari path claimed the code');
+  if ((await ipage.cookies()).some((c) => c.name === 'wy_session')) fail('iPhone Safari path claimed the code');
   await shot(ipage, 'phone-pair-ios');
   // The installed app (standalone) has no secret: typed code.
   // The installed app opens standalone (iOS reports navigator.standalone) with no secret in the link.

@@ -74,5 +74,20 @@ The first public version. Everything below is new.
   itself does, instead of the full build number. claude.ai's Claude Code section kept asking to
   verify the device again, because the string was unusual and changed with every Electron update.
 
+### Renamed from Switchyard (`sy`)
+
+- Every name is now Watchyard and `wy`: tokens (`wy_…`), the board cookie (`wy_session`), the
+  link subprotocol (`wy-link.1`), JSON version keys (`wy`, `wy_version`), recovery codes
+  (`WYR1-…`), file markers, ingest headers (`X-Wy-Backlog…`), encrypted exports (`.wyx`) and
+  internal names. Devices paired and files written by the first 1.0.0 build keep working: the
+  old forms are still accepted, and `wy` also sends what an older hub reads. Signed labels, two
+  database columns and the `LC_SY_*` SSH variables keep their old names on purpose
+  (docs/spec/rename.md 2.12).
+- Also carried over: `SY_*` environment variables (read as `WY_*`), Docker `.env` files with
+  `SY_*` names, a status line still wrapped by `sy`, `sy.old` for `wy update --rollback`, and
+  a plugin move that failed half-way. `wy doctor` names system units of the old name, which
+  are moved by hand (scripts/rename/RUNBOOK.md); on Windows the update prints the commands that
+  replace the old scheduled task.
+
 [Unreleased]: https://github.com/mraj602/watchyard/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/mraj602/watchyard/releases/tag/v1.0.0

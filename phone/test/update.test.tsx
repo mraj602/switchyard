@@ -3,7 +3,7 @@
 // test/fakes.ts (`linkState.update`, `installResult`, ...); the real checks (checksum, signing
 // key) are Kotlin's and tested there.
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import * as SyLink from '../modules/sy-link';
+import * as WyLink from '../modules/wy-link';
 import SettingsScreen from '../src/components/screens/SettingsScreen';
 import type { UpdateInfo } from '../src/contract/link';
 import type { Clock, KVStore } from '../src/contract/platform';
@@ -40,8 +40,8 @@ function fakeClock(start = 1_000_000): Clock & { t: number } {
 function make(over: { build?: number; hub?: { origin: string; token: string } | null } = {}) {
   const kv = memoryKV();
   const clock = fakeClock();
-  const hub = over.hub === undefined ? { origin: 'https://hub.example.ts.net', token: 'sy_p_secrettoken' } : over.hub;
-  const u = createUpdater({ link: SyLink, loadHub: async () => hub, kv, clock, installedBuild: over.build ?? 800 });
+  const hub = over.hub === undefined ? { origin: 'https://hub.example.ts.net', token: 'wy_p_secrettoken' } : over.hub;
+  const u = createUpdater({ link: WyLink, loadHub: async () => hub, kv, clock, installedBuild: over.build ?? 800 });
   return { u, kv, clock };
 }
 
@@ -139,11 +139,11 @@ describe('updater', () => {
     linkState.update = INFO;
     const a = make();
     await a.u.check();
-    const again = createUpdater({ link: SyLink, loadHub: async () => null, kv: a.kv, clock: a.clock, installedBuild: 800 });
+    const again = createUpdater({ link: WyLink, loadHub: async () => null, kv: a.kv, clock: a.clock, installedBuild: 800 });
     await again.load();
     expect(again.view().phase).toBe('available');
     expect(again.view().info?.version).toBe('0.9.0');
-    const installed = createUpdater({ link: SyLink, loadHub: async () => null, kv: a.kv, clock: a.clock, installedBuild: 900 });
+    const installed = createUpdater({ link: WyLink, loadHub: async () => null, kv: a.kv, clock: a.clock, installedBuild: 900 });
     await installed.load();
     expect(installed.view().info).toBeNull();
     expect(installed.view().phase).toBe('idle');
@@ -156,8 +156,8 @@ describe('updater', () => {
     const a = make();
     await a.u.check();
     linkState.hubAuth = false; // the process restarted
-    const hub = { origin: 'https://hub.example.ts.net', token: 'sy_p_secrettoken' };
-    const again = createUpdater({ link: SyLink, loadHub: async () => hub, kv: a.kv, clock: a.clock, installedBuild: 800 });
+    const hub = { origin: 'https://hub.example.ts.net', token: 'wy_p_secrettoken' };
+    const again = createUpdater({ link: WyLink, loadHub: async () => hub, kv: a.kv, clock: a.clock, installedBuild: 800 });
     await again.load();
     await again.checkIfDue(); // checked less than a day ago: nothing
     expect(callsOf('link.checkUpdate')).toHaveLength(1);

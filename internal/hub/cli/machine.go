@@ -51,7 +51,7 @@ func Machine(args []string, stdout, stderr io.Writer) error {
 	fmt.Fprintf(stdout, "%s  %s\n", m.ID, m.Name)
 	fmt.Fprintf(stdout, "  os/arch     %s/%s\n", str(m.OS), str(m.Arch))
 	fmt.Fprintf(stdout, "  reach       %s\n", str(m.Reach))
-	fmt.Fprintf(stdout, "  wy          %s (%s)\n", str(m.SyVersion), m.VersionStatus)
+	fmt.Fprintf(stdout, "  wy          %s (%s)\n", str(m.WyVersion), m.VersionStatus)
 	fmt.Fprintf(stdout, "  last seen   %s\n", ms(int64(m.LastSeen)))
 	fmt.Fprintf(stdout, "  last record %s\n", ms(int64(m.LastRecord)))
 	backlog := "-"

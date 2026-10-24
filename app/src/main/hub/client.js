@@ -12,15 +12,15 @@ export const isLoopbackHost = (h) => {
 };
 
 /**
- * May the app talk to this hub URL? https always; http for loopback, or when `reportedBySy`
+ * May the app talk to this hub URL? https always; http for loopback, or when `reportedByWy`
  * (wy itself accepted the URL, e.g. with --insecure-lan).
  */
-export function hubUrlAllowed(url, reportedBySy = false) {
+export function hubUrlAllowed(url, reportedByWy = false) {
   const n = normalizeHubUrl(url);
   if (!n) return false;
   const u = new URL(n);
   if (u.protocol === 'https:') return true;
-  return isLoopbackHost(u.hostname) || reportedBySy === true;
+  return isLoopbackHost(u.hostname) || reportedByWy === true;
 }
 
 /** Join a hub base URL and an absolute API path; null when the result leaves the hub's origin. */
@@ -61,7 +61,7 @@ async function readCapped(res, max) {
 
 /**
  * @param {{fetch: typeof fetch, getAuth: () => ({url: string, token: string}|null),
- *          reportedBySy?: () => boolean, timeoutMs?: number, maxBytes?: number}} deps
+ *          reportedByWy?: () => boolean, timeoutMs?: number, maxBytes?: number}} deps
  * @returns {{request(method: string, path: string, opts?: {body?: object, query?: object}):
  *            Promise<{ok: boolean, status: number, data?: any, error?: string}>,
  *            get(path: string, query?: object): Promise<{ok: boolean, status: number, data?: any, error?: string}>}}
@@ -73,7 +73,7 @@ export function createClient(deps) {
   async function request(method, path, opts = {}) {
     const auth = deps.getAuth();
     if (!auth) return { ok: false, status: 0, error: 'not paired' };
-    if (!hubUrlAllowed(auth.url, deps.reportedBySy?.() ?? false)) return { ok: false, status: 0, error: 'hub URL not allowed' };
+    if (!hubUrlAllowed(auth.url, deps.reportedByWy?.() ?? false)) return { ok: false, status: 0, error: 'hub URL not allowed' };
     const url = hubUrl(auth.url, path, opts.query);
     if (!url) return { ok: false, status: 0, error: 'bad request path' };
     const headers = { authorization: `Bearer ${auth.token}`, accept: 'application/json' };

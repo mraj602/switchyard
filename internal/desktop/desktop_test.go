@@ -112,7 +112,7 @@ func connect(t *testing.T, e *Env, url string) {
 	t.Helper()
 	e.Config = config.Defaults()
 	e.Config.Hub.URL = url
-	if err := os.WriteFile(filepath.Join(e.Dirs.State.Path, "token"), []byte("sy_m_x\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(e.Dirs.State.Path, "token"), []byte("wy_m_x\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -239,7 +239,7 @@ func codeOf(err error) int {
 func TestTokenThroughAdminChannel(t *testing.T) {
 	e := sandboxEnv(t)
 	connect(t, &e, "https://hub.example.ts.net")
-	a := &fakeAdmin{out: `{"device":"dev_01JA","token":"sy_d_` + strings.Repeat("A", 43) + `","scopes":["write","read"]}` + "\n", name: "ssh hub-host wy"}
+	a := &fakeAdmin{out: `{"device":"dev_01JA","token":"wy_d_` + strings.Repeat("A", 43) + `","scopes":["write","read"]}` + "\n", name: "ssh hub-host wy"}
 	e.Admin = a
 	tok, err := RunToken(context.Background(), e, TokenOptions{Name: "my-laptop"})
 	if err != nil {
@@ -256,7 +256,7 @@ func TestTokenThroughAdminChannel(t *testing.T) {
 	if strings.Contains(joined, tok.Token) {
 		t.Fatal("the token is in argv")
 	}
-	tok.Token = "sy_d_TOKEN"
+	tok.Token = "wy_d_TOKEN"
 	golden(t, "token.golden", tok)
 }
 
@@ -299,7 +299,7 @@ func TestTokenCodeStdinClaims(t *testing.T) {
 			_, _ = w.Write([]byte(`{"error":"nope","code":"conflict"}`))
 			return
 		}
-		_, _ = w.Write([]byte(`{"device":"dev_01JA","kind":"desktop","name":"x","scopes":["write","read"],"token":"sy_d_` +
+		_, _ = w.Write([]byte(`{"device":"dev_01JA","kind":"desktop","name":"x","scopes":["write","read"],"token":"wy_d_` +
 			strings.Repeat("B", 43) + `","machine":"m_x","hub":{"url":"https://hub.example.ts.net","version":"0.6.0"}}`))
 	}))
 	t.Cleanup(srv.Close)
@@ -315,7 +315,7 @@ func TestTokenCodeStdinClaims(t *testing.T) {
 		if body["expect_kind"] != "desktop" || body[c.field] != strings.SplitN(c.in, "\n", 2)[0] || !strings.HasPrefix(body["machine"].(string), "m_") {
 			t.Fatalf("claim body %v", body)
 		}
-		if tok.Device != "dev_01JA" || !strings.HasPrefix(tok.Token, "sy_d_") || tok.Hub.URL != srv.URL || len(tok.Scopes) != 2 {
+		if tok.Device != "dev_01JA" || !strings.HasPrefix(tok.Token, "wy_d_") || tok.Hub.URL != srv.URL || len(tok.Scopes) != 2 {
 			t.Fatalf("%+v", tok)
 		}
 	}
@@ -437,7 +437,7 @@ func TestInfoJSONHasNoSecrets(t *testing.T) {
 	e.Service = &fakeCtl{}
 	info, _ := RunInfo(context.Background(), e)
 	b, _ := json.Marshal(info)
-	if bytes.Contains(b, []byte("sy_m_")) {
+	if bytes.Contains(b, []byte("wy_m_")) {
 		t.Fatalf("token in info: %s", b)
 	}
 }
@@ -452,7 +452,7 @@ func fakeSSH(t *testing.T) string {
 	bin := t.TempDir()
 	rec := filepath.Join(bin, "argv.txt")
 	script := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> " + rec + "\ncase \"$*\" in\n" +
-		"  *token*create*) echo '{\"device\":\"dev_1\",\"token\":\"sy_d_" + strings.Repeat("A", 43) + "\",\"scopes\":[\"write\",\"read\"]}' ;;\n" +
+		"  *token*create*) echo '{\"device\":\"dev_1\",\"token\":\"wy_d_" + strings.Repeat("A", 43) + "\",\"scopes\":[\"write\",\"read\"]}' ;;\n" +
 		"  *) echo 'unexpected' >&2; exit 9 ;;\n" +
 		"esac\n"
 	if err := os.WriteFile(filepath.Join(bin, "ssh"), []byte(script), 0o755); err != nil {
@@ -478,7 +478,7 @@ func TestTokenThroughSSHPrefixAdmin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("pairing through ssh: %v", err)
 	}
-	if tok.Device != "dev_1" || !strings.HasPrefix(tok.Token, "sy_d_") {
+	if tok.Device != "dev_1" || !strings.HasPrefix(tok.Token, "wy_d_") {
 		t.Fatalf("%+v", tok)
 	}
 	argv, err := os.ReadFile(rec)

@@ -160,7 +160,7 @@ func Backoff(failures int, r float64) time.Duration {
 
 type flusher struct {
 	FlushOptions
-	cl       *Client // o.Client with the X-Sy-Backlog-Oldest header added
+	cl       *Client // o.Client with the X-Wy-Backlog-Oldest header added
 	cur      outbox.Cursor
 	res      FlushResult
 	failures int
@@ -430,7 +430,7 @@ func (f *flusher) run(ctx context.Context, deadline time.Time) {
 	}
 }
 
-// estimateBacklog keeps a rough count of queued records for the X-Sy-Backlog header.
+// estimateBacklog keeps a rough count of queued records for the X-Wy-Backlog header.
 func (f *flusher) estimateBacklog(b *outbox.Batch) {
 	if f.backlog >= 0 && b.More {
 		return

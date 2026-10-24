@@ -206,7 +206,7 @@ func TestServiceWorkerAssetsMatchEmbeddedFiles(t *testing.T) {
 		t.Errorf("ASSETS differs from the embedded files: missing %v, not embedded %v", missing, extra)
 	}
 	if !strings.Contains(src, buildPlaceholder) {
-		t.Error("sw.js lacks the __SY_BUILD__ placeholder")
+		t.Error("sw.js lacks the __WY_BUILD__ placeholder")
 	}
 }
 
@@ -286,13 +286,13 @@ func TestHandlerHeadersAndMethods(t *testing.T) {
 
 func TestBuildHashChangesWithAnyFile(t *testing.T) {
 	mk := func(js string) fstest.MapFS {
-		return fstest.MapFS{"index.html": {Data: []byte("<html>")}, "sw.js": {Data: []byte("v=__SY_BUILD__")}, "app.js": {Data: []byte(js)}}
+		return fstest.MapFS{"index.html": {Data: []byte("<html>")}, "sw.js": {Data: []byte("v=__WY_BUILD__")}, "app.js": {Data: []byte(js)}}
 	}
 	a, b := BuildHash(mk("1")), BuildHash(mk("2"))
 	if a == b || a != BuildHash(mk("1")) {
 		t.Errorf("hash not stable/sensitive: %s %s", a, b)
 	}
-	renamed := fstest.MapFS{"index.html": {Data: []byte("<html>")}, "sw.js": {Data: []byte("v=__SY_BUILD__")}, "other.js": {Data: []byte("1")}}
+	renamed := fstest.MapFS{"index.html": {Data: []byte("<html>")}, "sw.js": {Data: []byte("v=__WY_BUILD__")}, "other.js": {Data: []byte("1")}}
 	if BuildHash(renamed) == a {
 		t.Error("renaming a file keeps the hash")
 	}

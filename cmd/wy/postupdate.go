@@ -96,17 +96,32 @@ func postUpdatePlugin(ctx context.Context, _ string) (string, error) {
 		}
 		moved[root] = ids
 	}
+	if len(failed) > 0 {
+		// The marketplace is not rewritten while a root may still hold a plugin of the old name
+		// that points into it; a root already cleared gets the current plugin on the next run
+		// (MissingCurrent below).
+		return "", fmt.Errorf("%s (the marketplace was left as it was; run `%s update --post-update %s` again)",
+			strings.Join(failed, "; "), brand.CLI, version.Version)
+	}
 	if err := inst.WriteMarketplace(mkt, e.wy, version.Version); err != nil {
 		return "", fmt.Errorf("rewrite %s: %w", mkt, err)
 	}
 	nMoved := 0
 	for _, root := range led.Plugin.Roots {
+		owner := pluginRootOwner(e.home, root)
+		ids := moved[root]
 		var err error
-		if ids := moved[root]; len(ids) > 0 {
-			err = inst.InstallCurrent(ctx, pluginRootOwner(e.home, root), mkt, ids)
+		if len(ids) == 0 {
+			// An earlier run removed the old plugin here but did not install the current one.
+			ids, err = inst.MissingCurrent(ctx, owner)
+		}
+		switch {
+		case err != nil:
+		case len(ids) > 0:
+			err = inst.InstallCurrent(ctx, owner, mkt, ids)
 			nMoved++
-		} else {
-			err = inst.Update(ctx, pluginRootOwner(e.home, root))
+		default:
+			err = inst.Update(ctx, owner)
 		}
 		if err != nil {
 			failed = append(failed, root+": "+err.Error())
@@ -161,6 +176,19 @@ func postUpdateTimer(_ context.Context, _ string) (string, error) {
 		want[filepath.Join(dir, timer.SystemdName+".timer")] = []byte(timer.SystemdTimer())
 	case "darwin":
 		want[timer.LaunchAgentPath(te)] = []byte(timer.LaunchdPlist(te))
+	case "windows":
+		if legacy == "" {
+			return "unchanged (windows)", nil
+		}
+		// The task of the old name keeps running the old command (a copy of wy, rename.md
+		// 2.13) until it is replaced by hand: wy never creates or deletes tasks itself, so
+		// the commands go in the summary instead of being dropped.
+		var out bytes.Buffer
+		te.Out = &out
+		if _, err := timer.Install(te); err != nil {
+			return "", err
+		}
+		return "task file moved to the current name; finish by hand: " + strings.Join(strings.Fields(out.String()), " "), nil
 	default:
 		return "unchanged (" + e.goos + ")", nil
 	}
@@ -313,10 +341,13 @@ func postUpdateDoctor(ctx context.Context, _ string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	rep := doctor.Run(ctx, doctor.Options{Home: e.home, Dirs: e.dirs, Getenv: e.getenv, Environ: os.Environ()})
+	rep := doctor.Run(ctx, doctor.Options{Home: e.home, Dirs: e.dirs, Getenv: e.getenv, Environ: os.Environ(), SystemUnitDir: doctor.SystemUnitDir()})
 	s := fmt.Sprintf("wy doctor: %d ok, %d warn, %d fail", rep.OK, rep.Warn, rep.Fail)
 	if rep.Warn > 0 || rep.Fail > 0 {
 		s += " (run wy doctor)"
+	}
+	if u := doctor.LegacySystemUnits(doctor.SystemUnitDir()); len(u) > 0 {
+		s += "; system units from before the rename, not moved: " + strings.Join(u, ", ") + " (RUNBOOK step 6)"
 	}
 	return s, nil
 }

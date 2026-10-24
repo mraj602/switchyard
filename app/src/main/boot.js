@@ -114,7 +114,7 @@ function withTimeout(p, ms) {
  * @param {object} electron  the electron module (or test/fakes/electron.js's `electron`)
  * @param {{modules?: object, env?: object, fs?: object, path?: object, log?: object, os?: object,
  *          testHooks?: (app: object) => Promise<object|null>, argv?: string[], fetch?: Function,
- *          platform?: string, minSy?: string, stdout?: {write: Function}, stderr?: {write: Function}}} [opts]
+ *          platform?: string, minWy?: string, stdout?: {write: Function}, stderr?: {write: Function}}} [opts]
  * @returns {Promise<object>} the created modules by name, plus `shutdown()`; `stopped: true`
  *   when this launch handed over to another instance (or applied --autostart) and quits
  */
@@ -197,7 +197,7 @@ export async function boot(electron, opts = {}) {
 
   made.wy = m.wy.create({
     env, fs, path, log, platform, resourcesPath: process.resourcesPath ?? '',
-    minSy: opts.minSy ?? '0.6.0', syBin: testHooks?.syBin?.(env) ?? null,
+    minWy: opts.minWy ?? '0.6.0', wyBin: testHooks?.wyBin?.(env) ?? null,
   });
   made.hub = m.hub.create({
     electron, wy: made.wy, security: made.security, bus, ipc: made.ipc, fs, path, log, platform,

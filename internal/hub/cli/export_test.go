@@ -32,7 +32,7 @@ func TestExportImportUnfreezeCLI(t *testing.T) {
 
 	pass := filepath.Join(t.TempDir(), "pass")
 	os.WriteFile(pass, []byte("hunter2 hunter2\n"), 0o600)
-	arch := filepath.Join(t.TempDir(), "x", "hub.syx")
+	arch := filepath.Join(t.TempDir(), "x", "hub.wyx")
 	out, err = run(t, "export", "--db", srcDB, "--out", arch, "--moved-to", "https://new.example", "--passphrase-file", pass, "--json")
 	if err != nil {
 		t.Fatal(out, err)
@@ -120,7 +120,7 @@ func TestImportRefusesLiveHubAddress(t *testing.T) {
 	defer s.Close()
 	addr := strings.TrimPrefix(s.URL, "http://")
 	t.Setenv("WY_STATE_DIR", t.TempDir())
-	f := filepath.Join(t.TempDir(), "x.syx")
+	f := filepath.Join(t.TempDir(), "x.wyx")
 	os.WriteFile(f, []byte("x"), 0o600)
 	_, err := run(t, "import", f, "--db", filepath.Join(t.TempDir(), "hub.db"), "--listen", addr, "--yes")
 	if err == nil || !strings.Contains(err.Error(), "stop the hub first") {

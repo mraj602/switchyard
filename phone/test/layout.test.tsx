@@ -27,7 +27,7 @@ jest.mock('../src/lib/notify', () => ({
 }));
 jest.mock('../src/lib/links', () => ({ routeToHref: (r: { name: string }) => `/${r.name}` }));
 
-const stored = { origin: 'https://hub.test.ts.net', token: 'sy_p_T', device: 'd', name: 'n', paired_at: 't' };
+const stored = { origin: 'https://hub.test.ts.net', token: 'wy_p_T', device: 'd', name: 'n', paired_at: 't' };
 
 async function mountLayout() {
   const RootLayout = (jest.requireActual('../app/_layout') as { default: () => React.JSX.Element }).default;

@@ -371,7 +371,7 @@ type MachineView struct {
 	Name         string     `json:"name"`
 	OS           *string    `json:"os"`
 	Arch         *string    `json:"arch"`
-	SyVersion    *string    `json:"sy_version"`
+	WyVersion    *string    `json:"wy_version"`
 	LastSeen     Time       `json:"last_seen"`
 	LastRecord   Time       `json:"last_record"`
 	Backlog      *int64     `json:"backlog"`

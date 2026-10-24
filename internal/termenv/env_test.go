@@ -46,9 +46,9 @@ func TestFakeLayouts(t *testing.T) {
 }
 
 func TestFromOSHasTheProcessOS(t *testing.T) {
-	t.Setenv("XDG_DATA_HOME", "/tmp/sy-termenv-test")
+	t.Setenv("XDG_DATA_HOME", "/tmp/wy-termenv-test")
 	e := FromOS()
-	if e.GOOS != runtime.GOOS || e.Getenv == nil || e.XDGDataHome != "/tmp/sy-termenv-test" {
+	if e.GOOS != runtime.GOOS || e.Getenv == nil || e.XDGDataHome != "/tmp/wy-termenv-test" {
 		t.Fatalf("%+v", e)
 	}
 }

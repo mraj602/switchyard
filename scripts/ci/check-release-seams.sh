@@ -41,19 +41,19 @@ build() { # build <out> [tags]
 has() { grep -aqF -- "$2" "$1"; }
 
 echo "release-check: building the test-seam binary (positive control)"
-build "$tmp/sy-seams" fakeclock,fakeopen,peerstest
+build "$tmp/wy-seams" fakeclock,fakeopen,peerstest
 for m in "${markers[@]}"; do
-  if ! has "$tmp/sy-seams" "$m"; then
+  if ! has "$tmp/wy-seams" "$m"; then
     echo "release-check: FAIL: the control build lacks '$m'; the check would prove nothing" >&2
     exit 1
   fi
 done
 
 echo "release-check: building the release binary"
-build "$tmp/sy-release"
+build "$tmp/wy-release"
 bad=0
 for m in "${markers[@]}"; do
-  if has "$tmp/sy-release" "$m"; then
+  if has "$tmp/wy-release" "$m"; then
     echo "release-check: FAIL: the release binary contains '$m'" >&2
     bad=1
   fi

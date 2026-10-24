@@ -11,7 +11,7 @@ import (
 // The example of push.md 6.5 (values shortened where the spec elides them).
 const payloadExample = `{"v":1,"type":"alert","alert":"al_01JA3B","alerts":["al_01JA3B"],"trigger":"asked",` +
 	`"title":"work · api · asked a question","body":"Should I also update the migration?",` +
-	`"tag":"sy-s-c41e0000-0000-4000-8000-000000000003",` +
+	`"tag":"wy-s-c41e0000-0000-4000-8000-000000000003",` +
 	`"url":"/#/sessions/c41e0000-0000-4000-8000-000000000003?alert=al_01JA3B",` +
 	`"remote_url":"https://claude.ai/code/session_","tap":"auto",` +
 	`"session":"c41e0000-0000-4000-8000-000000000003","needs_you":3,` +
@@ -21,7 +21,7 @@ func TestPayloadMarshalsToSpecExample(t *testing.T) {
 	p := Payload{
 		V: PayloadVersion, Type: TypeAlert, Alert: "al_01JA3B", Alerts: []string{"al_01JA3B"},
 		Trigger: TriggerAsked, Title: "work · api · asked a question", Body: "Should I also update the migration?",
-		Tag:       "sy-s-c41e0000-0000-4000-8000-000000000003",
+		Tag:       "wy-s-c41e0000-0000-4000-8000-000000000003",
 		URL:       "/#/sessions/c41e0000-0000-4000-8000-000000000003?alert=al_01JA3B",
 		RemoteURL: "https://claude.ai/code/session_", Tap: TapAuto,
 		Session: "c41e0000-0000-4000-8000-000000000003", NeedsYou: 3,
@@ -42,7 +42,7 @@ func TestPayloadMarshalsToSpecExample(t *testing.T) {
 }
 
 func TestPayloadOmitsAbsentFields(t *testing.T) {
-	b, _ := json.Marshal(Payload{V: 1, Type: TypeTest, Title: "t", Tag: "sy-test", URL: "/#/", Tap: "auto"})
+	b, _ := json.Marshal(Payload{V: 1, Type: TypeTest, Title: "t", Tag: "wy-test", URL: "/#/", Tap: "auto"})
 	for _, k := range []string{`"alert"`, `"alerts"`, `"actions"`, `"remote_url"`, `"session"`} {
 		if strings.Contains(string(b), k) {
 			t.Errorf("%s present in %s", k, b)

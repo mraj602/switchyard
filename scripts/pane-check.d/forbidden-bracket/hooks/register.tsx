@@ -2,12 +2,12 @@
 // computed property of $. pane-check.sh must fail on it.
 import type { Register } from 'claude-code'
 
-const SY = "/usr/local/bin/wy"
+const WY = "/usr/local/bin/wy"
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $['pro' + 'cess'].run(['/bin/sh', '-c', 'true'])
-    void SY
+    void WY
 
     return next(e)
   })

@@ -278,8 +278,8 @@ function check(channel, path, s, v) {
  * @property {HubCert|null} cert      the hub's https certificate is not trusted (no pin) or not the pinned one (changed): status is 'unreachable' until it is trusted
  * @property {boolean} insecure       the hub URL is plain http to another computer: the token crosses the network unencrypted
  * @property {boolean} pinned         the hub's https certificate is pinned (trusted on first use)
- * @property {string|null} sy_version wy's version from `wy desktop info`
- * @property {'ok'|'no_sy'|'not_connected'|'dial'|'needs_pairing'|'unreachable'} status
+ * @property {string|null} wy_version wy's version from `wy desktop info`
+ * @property {'ok'|'no_wy'|'not_connected'|'dial'|'needs_pairing'|'unreachable'} status
  *
  * @typedef {object} HubCert
  * @property {string} url             the hub URL that was probed

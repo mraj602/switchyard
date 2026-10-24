@@ -14,26 +14,31 @@ import (
 
 // authorized_keys for pull mode (machines.md 3.4, remote side):
 //
-//	restrict,command="/home/me/.local/bin/wy outbox drain --stdio" ssh-ed25519 AAAA… watchyard-pull@hub-host sy-pull:pt_01JA…
+//	restrict,command="/home/me/.local/bin/wy outbox drain --stdio" ssh-ed25519 AAAA… watchyard-pull@hub-host wy-pull:pt_01JA…
 //
-// The trailing `sy-pull:<target id>` finds the line again. A line with the same key (or the
+// The trailing `wy-pull:<target id>` finds the line again. A line with the same key (or the
 // same marker) is replaced; any other line is never touched, byte for byte.
 
 // LegacyRestrict replaces `restrict` on OpenSSH before 7.2.
 const LegacyRestrict = "no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty,no-user-rc"
 
-// PullMarker is the comment that marks a target's line.
-func PullMarker(target string) string { return "sy-pull:" + target }
+// PullMarker is the comment that marks a target's line. LegacyPullMarker is the one lines
+// written before the rename carry: still found, replaced and removed, never written (legacy
+// compat).
+func PullMarker(target string) string { return "wy-pull:" + target }
+
+// LegacyPullMarker is the marker before the rename (legacy compat).
+func LegacyPullMarker(target string) string { return "sy-pull:" + target } // rename:keep
 
 var (
 	targetRe = regexp.MustCompile(`^pt_[0-9A-Za-z]{1,64}$`)
 	cidrRe   = regexp.MustCompile(`^[0-9A-Fa-f:.,/*?]+$`)
 	keyType  = regexp.MustCompile(`^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp(256|384|521)|sk-ssh-ed25519@openssh\.com|sk-ecdsa-sha2-nistp256@openssh\.com)$`)
 	b64Re    = regexp.MustCompile(`^[A-Za-z0-9+/]+={0,2}$`)
-	// syPathRe is what may stand in the forced command: sshd runs command= through the
+	// wyPathRe is what may stand in the forced command: sshd runs command= through the
 	// user's login shell with -c, so a shell metacharacter in the path would run something
 	// else.
-	syPathRe = regexp.MustCompile(`^[A-Za-z0-9_./-]+$`)
+	wyPathRe = regexp.MustCompile(`^[A-Za-z0-9_./-]+$`)
 )
 
 // PullKeyLine builds the authorized_keys line. pub is the hub's public key line ("<type>
@@ -46,7 +51,7 @@ func PullKeyLine(pub, wy, target, from string, restrict bool) (line string, key 
 	if !targetRe.MatchString(target) {
 		return "", "", fmt.Errorf("--target: %q is not a pull target id (pt_...)", target)
 	}
-	if !filepath.IsAbs(wy) || !syPathRe.MatchString(wy) {
+	if !filepath.IsAbs(wy) || !wyPathRe.MatchString(wy) {
 		return "", "", fmt.Errorf("the wy path %q cannot go in a forced command", wy)
 	}
 	if from != "" && !cidrRe.MatchString(from) {
@@ -63,7 +68,7 @@ func PullKeyLine(pub, wy, target, from string, restrict bool) (line string, key 
 	comment := ""
 	if len(f) >= 3 {
 		c := strings.Join(f[2:], " ")
-		if !strings.HasPrefix(c, "sy-pull:") {
+		if !strings.HasPrefix(c, "wy-pull:") && !strings.HasPrefix(c, "sy-pull:") { // rename:keep: legacy compat
 			comment = " " + strings.Fields(c)[0]
 		}
 	}
@@ -71,27 +76,30 @@ func PullKeyLine(pub, wy, target, from string, restrict bool) (line string, key 
 	return opts + " " + key + comment + " " + PullMarker(target), key, nil
 }
 
-// lineMatches: the line holds key (anywhere as type+blob) or ends with the marker.
-func lineMatches(line, key, marker string) bool {
+// lineMatches: the line holds key (anywhere as type+blob) or ends with the target's marker
+// (PullMarker, or LegacyPullMarker: legacy compat).
+func lineMatches(line, key, target string) bool {
 	t := strings.TrimSpace(line)
 	if t == "" || strings.HasPrefix(t, "#") {
 		return false
 	}
-	if marker != "" && (strings.HasSuffix(t, " "+marker) || t == marker) {
-		return true
+	for _, marker := range []string{PullMarker(target), LegacyPullMarker(target)} {
+		if strings.HasSuffix(t, " "+marker) || t == marker {
+			return true
+		}
 	}
 	return key != "" && strings.Contains(" "+t+" ", " "+key+" ")
 }
 
 // AuthorizePull adds or replaces the hub's line in <home>/.ssh/authorized_keys. Running it
 // twice leaves one line. The file keeps its mode (0600 when created) and ~/.ssh is 0700
-// when created. A copy of the previous file is kept as authorized_keys.sy-bak.
+// when created. A copy of the previous file is kept as authorized_keys.wy-bak.
 func AuthorizePull(home, line, key, target string) (changed bool, err error) {
 	return editAuthorizedKeys(home, func(lines []string) []string {
 		var out []string
 		placed := false
 		for _, l := range lines {
-			if lineMatches(l, key, PullMarker(target)) {
+			if lineMatches(l, key, target) {
 				if !placed {
 					out = append(out, line)
 					placed = true
@@ -112,7 +120,7 @@ func RemovePull(home, target string) (bool, error) {
 	return editAuthorizedKeys(home, func(lines []string) []string {
 		var out []string
 		for _, l := range lines {
-			if !lineMatches(l, "", PullMarker(target)) {
+			if !lineMatches(l, "", target) {
 				out = append(out, l)
 			}
 		}
@@ -158,7 +166,7 @@ func editAuthorizedKeys(home string, edit func([]string) []string) (bool, error)
 		if fi, err := os.Stat(p); err == nil {
 			mode = fi.Mode().Perm()
 		}
-		if err := atomicfile.Write(p+".sy-bak", cur, 0o600); err != nil {
+		if err := atomicfile.Write(p+".wy-bak", cur, 0o600); err != nil {
 			return false, err
 		}
 	}

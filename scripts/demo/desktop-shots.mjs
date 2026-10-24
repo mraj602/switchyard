@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const H = path.resolve(here, '../../app/test/smoke/harness.mjs');
-const { sandbox, syBinary, startHub, launch, main, inTab, tabUrl, shellState, waitFor, sleep, freshFixture, REPO_DIR } = await import(H);
+const { sandbox, wyBinary, startHub, launch, main, inTab, tabUrl, shellState, waitFor, sleep, freshFixture, REPO_DIR } = await import(H);
 const { startFakeClaude, USAGE_DIR } = await import(path.resolve(here, '../../app/test/fakes/claude/server.js'));
 const OUT = path.resolve(process.argv[2] || 'desktop-out');
 fs.mkdirSync(OUT, { recursive: true });
@@ -23,7 +23,7 @@ const grab = (name) => {
 };
 
 const sb = sandbox('shots');
-const bin = syBinary(sb.root);
+const bin = wyBinary(sb.root);
 const hub = await startHub(sb, bin);
 const seedBin = path.join(sb.root, 'seed');
 const b = spawnSync(process.env.GO || 'go', ['build', '-o', seedBin, './test/e2e/android/seed'], { cwd: REPO_DIR, stdio: 'inherit', env: { ...process.env, CGO_ENABLED: '0' } });

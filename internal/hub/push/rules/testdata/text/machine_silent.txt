@@ -1,4 +1,4 @@
 title: old-vps silent for 1 h
 body: 3 live sessions · last record 13:02
 url: /#/machines?machine=m-old
-tag: sy-m-m-old
+tag: wy-m-m-old

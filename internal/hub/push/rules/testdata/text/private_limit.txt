@@ -1,4 +1,4 @@
 title: Watchyard
 body: An account is near its limit
 url: /#/alerts/al_2
-tag: sy-l-seat-client-five_hour
+tag: wy-l-seat-client-five_hour

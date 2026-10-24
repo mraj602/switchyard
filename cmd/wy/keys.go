@@ -958,7 +958,7 @@ func keysRecover(env keysEnv, args []string) error {
 		return err
 	}
 	defer t.Close()
-	code, err := t.Password("Recovery code (SYR1-…): ")
+	code, err := t.Password("Recovery code (WYR1-…): ")
 	if err != nil {
 		return err
 	}

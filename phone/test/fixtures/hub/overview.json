@@ -55,7 +55,7 @@
           "seat": null
         }
       ],
-      "sy_version": "0.5.0",
+      "wy_version": "0.5.0",
       "timer_ok": true,
       "version_status": "same"
     },
@@ -94,7 +94,7 @@
           "seat": "seat_personal"
         }
       ],
-      "sy_version": "0.4.2",
+      "wy_version": "0.4.2",
       "timer_ok": true,
       "version_status": "older"
     },
@@ -145,7 +145,7 @@
           "seat": "seat_personal"
         }
       ],
-      "sy_version": "0.4.0",
+      "wy_version": "0.4.0",
       "timer_ok": false,
       "version_status": "older"
     },
@@ -178,7 +178,7 @@
       "record_v": 2,
       "silent": false,
       "slots": [],
-      "sy_version": "0.6.0",
+      "wy_version": "0.6.0",
       "timer_ok": true,
       "version_status": "newer"
     }

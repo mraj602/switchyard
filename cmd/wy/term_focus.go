@@ -90,7 +90,7 @@ func runTermFocus(args []string, stdout, stderr io.Writer) error {
 		return exitWith(exitFocusNone, errors.New("not a Warp focus URL"))
 	}
 
-	log, closeLog := focusSyLog(env)
+	log, closeLog := focusWyLog(env)
 	defer closeLog()
 	if err := focusOpener(env, log).Open(ctx, target); err != nil {
 		return exitWith(exitFocusOpen, err)
@@ -222,7 +222,7 @@ func hubSessionFocus(ctx context.Context, st focusState, id string) (string, err
 		return "", err
 	}
 	req.Header.Set("Authorization", "Bearer "+tok.Token)
-	req.Header.Set("User-Agent", "sy-board")
+	req.Header.Set("User-Agent", "wy-board")
 	hc := &http.Client{Transport: tr, Timeout: 10 * time.Second,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	resp, err := hc.Do(req)
@@ -248,9 +248,9 @@ func hubSessionFocus(ctx context.Context, st focusState, id string) (string, err
 	return *s.FocusURL, nil
 }
 
-// focusSyLog opens <state>/logs/wy.log for the opener's stderr; when it cannot, the
+// focusWyLog opens <state>/logs/wy.log for the opener's stderr; when it cannot, the
 // opener's stderr is dropped.
-func focusSyLog(env termenv.Env) (io.Writer, func()) {
+func focusWyLog(env termenv.Env) (io.Writer, func()) {
 	dirs, err := paths.Resolve(paths.Env{GOOS: env.GOOS, Home: env.Home, Getenv: env.Lookup, Exists: paths.StatExists})
 	if err != nil {
 		return nil, func() {}

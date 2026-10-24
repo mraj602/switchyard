@@ -25,7 +25,7 @@ const (
 	MinPassphrase = 12
 	// maxIter bounds what a damaged or hostile file can make us compute.
 	maxIter   = 50_000_000
-	ownerAAD  = "sy-owner-v1\n"
+	ownerAAD  = "sy-owner-v1\n" // frozen: changing it would make existing owner key files unreadable
 	kdfPBKDF2 = "pbkdf2-sha256"
 )
 
@@ -33,7 +33,7 @@ const (
 var (
 	ErrShortPassphrase = fmt.Errorf("the passphrase must be at least %d characters (four or more random words are best)", MinPassphrase)
 	ErrWrongPassphrase = errors.New("wrong passphrase (or the file was changed)")
-	ErrRecoveryCode    = errors.New("that is not a recovery code (SYR1-…)")
+	ErrRecoveryCode    = errors.New("that is not a recovery code (WYR1-…)")
 	ErrRecoveryCheck   = errors.New("the recovery code has a typo: its check group does not match")
 )
 
@@ -185,11 +185,13 @@ func WriteSealedOwner(path string, s SealedOwner) error {
 // ---- recovery code (keys.md 3.2) ----
 
 const (
-	recoveryPrefix = "SYR1-"
-	recoverySalt   = "sy-owner-v1"
-	recoveryInfo   = "ed25519 seed"
-	recoveryCheck  = "sy-recovery-v1"
-	recoveryChars  = 52 // base32 of 32 bytes, unpadded
+	recoveryPrefix = "WYR1-"
+	// frozen: recoverySalt and recoveryCheck derive the key and check of recovery codes already
+	// written down; changing them would invalidate those codes.
+	recoverySalt  = "sy-owner-v1"
+	recoveryInfo  = "ed25519 seed"
+	recoveryCheck = "sy-recovery-v1"
+	recoveryChars = 52 // base32 of 32 bytes, unpadded
 )
 
 // NewRecoverySecret draws the 32-byte secret R the owner key is made from.
@@ -209,7 +211,7 @@ func recoveryCheckGroup(r [32]byte) string {
 	return b32.EncodeToString(h[:])[:4]
 }
 
-// RecoveryCode is "SYR1-" + base32(R) in groups of 4 + "-" + the 4-character check.
+// RecoveryCode is "WYR1-" + base32(R) in groups of 4 + "-" + the 4-character check.
 func RecoveryCode(r [32]byte) string {
 	enc := b32.EncodeToString(r[:])
 	var groups []string
@@ -220,11 +222,14 @@ func RecoveryCode(r [32]byte) string {
 }
 
 // ParseRecoveryCode reads a recovery code typed back: any case, spaces and dashes ignored,
-// 0 read as O, 1 as I and 8 as B. A wrong check group is ErrRecoveryCheck.
+// 0 read as O, 1 as I and 8 as B. A wrong check group is ErrRecoveryCheck. Codes printed
+// before the rename start SYR1- (legacy compat): same R, same check, still read.
 func ParseRecoveryCode(s string) ([32]byte, error) {
 	var r [32]byte
 	s = strings.ToUpper(strings.NewReplacer(" ", "", "-", "", "\t", "").Replace(s))
-	if !strings.HasPrefix(s, "SYR1") && !strings.HasPrefix(s, "SYRI") {
+	switch s[:min(4, len(s))] {
+	case "WYR1", "WYRI", "SYR1", "SYRI": // SYR: legacy compat // rename:keep
+	default:
 		return r, ErrRecoveryCode
 	}
 	s = strings.NewReplacer("0", "O", "1", "I", "8", "B").Replace(s[4:])

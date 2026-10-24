@@ -102,7 +102,7 @@ func readPassphrase(file string, confirm bool, stderr io.Writer) (string, error)
 // [--passphrase-file f] [--json]` (machines.md 8.1).
 func Export(args []string, stdout, stderr io.Writer) error {
 	fs, db := newFlags("export", stderr)
-	out := fs.String("out", "", "archive file (default <data>/exports/hub-<UTC time>.syx)")
+	out := fs.String("out", "", "archive file (default <data>/exports/hub-<UTC time>.wyx)")
 	movedTo := fs.String("moved-to", "", "the new hub's address, recorded in the freeze")
 	noFreeze := fs.Bool("no-freeze", false, "copy only: do not freeze the hub (not a move)")
 	encrypt := fs.Bool("encrypt", false, "encrypt the archive with a passphrase")
@@ -145,7 +145,7 @@ func Export(args []string, stdout, stderr io.Writer) error {
 	defer st.Close()
 	target := *out
 	if target == "" {
-		target = filepath.Join(filepath.Dir(dbp), "exports", "hub-"+time.Now().UTC().Format("20060102T150405Z")+".syx")
+		target = filepath.Join(filepath.Dir(dbp), "exports", "hub-"+time.Now().UTC().Format("20060102T150405Z")+".wyx")
 	}
 	sd, err := stateDir()
 	if err != nil {
@@ -156,7 +156,7 @@ func Export(args []string, stdout, stderr io.Writer) error {
 		pd = filepath.Join(sd, "pull")
 	}
 	res, err := st.Export(ctx, store.ExportOptions{Out: target, StateDir: sd, PullDir: pd, MovedTo: *movedTo, NoFreeze: *noFreeze,
-		Passphrase: pass, SyVersion: version.Version})
+		Passphrase: pass, WyVersion: version.Version})
 	if err != nil {
 		if ctx.Err() != nil {
 			fmt.Fprintln(stderr, "export interrupted: the snapshot was removed and a hub this export froze was unfrozen.")
@@ -244,7 +244,7 @@ func Import(args []string, stdout, stderr io.Writer) error {
 	ictx, istop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer istop()
 	res, err := store.Import(ictx, store.ImportOptions{File: file, Passphrase: pass, DBPath: dbp, StateDir: sd, PullDir: *pullDirFlag,
-		PublicURL: pub, SyVersion: version.Version, Log: logger})
+		PublicURL: pub, WyVersion: version.Version, Log: logger})
 	var ne *store.NonEmptyError
 	if errors.As(err, &ne) || errors.Is(err, store.ErrHubRunning) {
 		return &RefusedError{Err: err}

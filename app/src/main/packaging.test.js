@@ -1,5 +1,5 @@
 // Packaging checks that need no Electron binary: electron-builder.yml, the afterPack
-// fuses and scripts/fetch-sy.mjs helpers. (The packed asar contents and the real fuse read
+// fuses and scripts/fetch-wy.mjs helpers. (The packed asar contents and the real fuse read
 // are checked against the built package by the e2e job.)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,7 +7,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { resolveTarget, ldflags, sumFor } from '../../scripts/fetch-sy.mjs';
+import { resolveTarget, ldflags, sumFor } from '../../scripts/fetch-wy.mjs';
 
 const require = createRequire(import.meta.url);
 const appDir = fileURLToPath(new URL('../../', import.meta.url));
@@ -91,7 +91,7 @@ test('after-pack finds the executable on each platform', () => {
   assert.equal(p('win32'), path.join('/o', 'Watchyard.exe'));
 });
 
-test('fetch-sy: target names, ldflags, checksums', () => {
+test('fetch-wy: target names, ldflags, checksums', () => {
   assert.deepEqual(resolveTarget('linux', 'x64'), { builderOs: 'linux', goos: 'linux', builderArch: 'x64', goarch: 'amd64', bin: 'wy' });
   assert.equal(resolveTarget('darwin', 'arm64').builderOs, 'mac');
   assert.equal(resolveTarget('win', 'amd64').bin, 'wy.exe');
@@ -106,5 +106,5 @@ test('fetch-sy: target names, ldflags, checksums', () => {
   );
   const h = 'a'.repeat(64);
   assert.equal(sumFor(`${h}  wy_0.6.0_linux_amd64.tar.gz\n`, 'wy_0.6.0_linux_amd64.tar.gz'), h);
-  assert.equal(sumFor(`${h}  other\n`, 'sy_x'), null);
+  assert.equal(sumFor(`${h}  other\n`, 'wy_x'), null);
 });

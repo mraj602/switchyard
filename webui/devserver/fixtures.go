@@ -143,7 +143,7 @@ func Fixtures(now time.Time) *Data {
 	d.Sessions = []M{asked, perm, limited, work1, p1, work2, p2, done1, p3, unattr, stale, gone}
 
 	d.Machines = []M{
-		{"id": "m_laptop", "name": "laptop", "os": "Fedora 44", "arch": "amd64", "sy_version": "0.2.0", "last_seen": ago(8 * time.Second), "last_record": ago(8 * time.Second),
+		{"id": "m_laptop", "name": "laptop", "os": "Fedora 44", "arch": "amd64", "wy_version": "0.2.0", "last_seen": ago(8 * time.Second), "last_record": ago(8 * time.Second),
 			"backlog": 0, "silent": false, "live_sessions": 9,
 			"slots": []M{
 				{"folder": "~/.claude", "launcher": "claude", "seat": "seat_personal", "logged_in": true, "claude_version": "2.1.296"},
@@ -151,13 +151,13 @@ func Fixtures(now time.Time) *Data {
 				{"folder": "~/.claude-3", "launcher": "claude-3", "seat": "seat_client", "logged_in": true, "claude_version": "2.1.296"},
 				{"folder": "~/.claude-4", "launcher": nil, "seat": nil, "logged_in": false, "claude_version": nil},
 			}},
-		{"id": "m_gpu", "name": "gpu-box", "os": "Ubuntu 24.04", "arch": "amd64", "sy_version": "0.2.0", "last_seen": ago(31 * time.Second), "last_record": ago(31 * time.Second),
+		{"id": "m_gpu", "name": "gpu-box", "os": "Ubuntu 24.04", "arch": "amd64", "wy_version": "0.2.0", "last_seen": ago(31 * time.Second), "last_record": ago(31 * time.Second),
 			"backlog": 3, "silent": false, "live_sessions": 5,
 			"slots": []M{
 				{"folder": "~/.claude", "launcher": "claude", "seat": "seat_work", "logged_in": true, "claude_version": "2.1.290"},
 				{"folder": "~/.claude-2", "launcher": "claude-2", "seat": "seat_personal", "logged_in": true, "claude_version": "2.1.290"},
 			}},
-		{"id": "m_vps", "name": "old-vps", "os": "Debian 12", "arch": "arm64", "sy_version": "0.1.9", "last_seen": ago(3 * hour), "last_record": ago(3 * hour),
+		{"id": "m_vps", "name": "old-vps", "os": "Debian 12", "arch": "arm64", "wy_version": "0.1.9", "last_seen": ago(3 * hour), "last_record": ago(3 * hour),
 			"backlog": 212, "silent": true, "live_sessions": 1,
 			"slots": []M{{"folder": "~/.claude", "launcher": "claude", "seat": "seat_personal", "logged_in": true, "claude_version": "2.1.280"}}},
 	}

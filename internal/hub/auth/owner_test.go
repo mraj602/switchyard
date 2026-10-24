@@ -60,7 +60,7 @@ func ownerSession(t *testing.T, st *store.Store) Created {
 func TestOwnerSessionShapeScopesAndExpiry(t *testing.T) {
 	a, st, clk := newAuth(t)
 	c := ownerSession(t, st)
-	if !strings.HasPrefix(c.Token, "sy_o_") || !LooksLikeToken(c.Token) {
+	if !strings.HasPrefix(c.Token, "wy_o_") || !LooksLikeToken(c.Token) {
 		t.Fatalf("token %q", c.Token[:6])
 	}
 	if got := strings.Join(c.Device.Scopes, ","); got != "owner,read,push" || c.Device.Kind != "browser" {
@@ -136,7 +136,9 @@ func TestLogoutRevokesTheCookiesDeviceOnly(t *testing.T) {
 		if (err == ErrUnauthorized) != tc.revoke {
 			t.Errorf("%s: revoked=%v, want %v", name, err == ErrUnauthorized, tc.revoke)
 		}
-		if ck := rec.Result().Cookies(); len(ck) != 1 || ck[0].MaxAge >= 0 {
+		// wy_session, and the legacy sy_session (rename.md 2.12).
+		if ck := rec.Result().Cookies(); len(ck) != 2 || ck[0].Name != "wy_session" || ck[0].MaxAge >= 0 ||
+			ck[1].Name != "sy_session" || ck[1].MaxAge >= 0 { // rename:keep
 			t.Errorf("%s: cookie not cleared", name)
 		}
 	}
@@ -376,7 +378,7 @@ func TestRevokeCascadeDeletesTargetsAndCancelsDeliveries(t *testing.T) {
 			`INSERT INTO alert (id, episode, trigger, status, created_at, facts, updated_at) VALUES ('al_1', 'e1', 'asked', 'fired', 1, '{}', 1)`,
 			`INSERT INTO push_target (id, kind, device_id, endpoint, created_at, updated_at) VALUES ('pt_a', 'webpush', '` + phone.Device.ID + `', 'https://push.example/a', 1, 1)`,
 			`INSERT INTO push_target (id, kind, device_id, endpoint, created_at, updated_at) VALUES ('pt_b', 'webpush', '` + other.Device.ID + `', 'https://push.example/b', 1, 1)`,
-			`INSERT INTO push_target (id, kind, device_id, endpoint, created_at, updated_at) VALUES ('pt_c', 'ntfy', NULL, 'https://ntfy.sh/sy-x', 1, 1)`,
+			`INSERT INTO push_target (id, kind, device_id, endpoint, created_at, updated_at) VALUES ('pt_c', 'ntfy', NULL, 'https://ntfy.sh/wy-x', 1, 1)`,
 			`INSERT INTO delivery (alert_id, target_id, target_kind, fire, status, next_at, created_at, updated_at) VALUES ('al_1', 'pt_a', 'webpush', 1, 'pending', 5, 1, 1)`,
 			`INSERT INTO delivery (alert_id, target_id, target_kind, fire, status, next_at, created_at, updated_at) VALUES ('al_1', 'pt_a', 'webpush', 2, 'held', 6, 1, 1)`,
 			`INSERT INTO delivery (alert_id, target_id, target_kind, fire, status, created_at, updated_at) VALUES ('al_1', 'pt_a', 'webpush', 3, 'sent', 1, 1)`,
@@ -441,7 +443,7 @@ func TestOwnerTokenHashNeedsPepper(t *testing.T) {
 	if _, err := st.DeviceDetailByHash(ctx, Hash(o.Token)); err == nil {
 		t.Fatal("owner token stored as plain SHA-256")
 	}
-	// Rows a writer inserts: a sy_o_ token with a plain hash, and a sy_b_ token on a device
+	// Rows a writer inserts: a wy_o_ token with a plain hash, and a wy_b_ token on a device
 	// with the owner scope.
 	tokO, _ := NewToken("owner")
 	tokB, _ := NewToken("browser")

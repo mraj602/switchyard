@@ -17,7 +17,7 @@ func TestUnpackReadsLegacyKind(t *testing.T) {
 	defer brand.SetLegacyForTest("oldname", "Oldname")()
 	write := func(kind string) string {
 		b, _ := json.Marshal(Manifest{Format: ManifestFormat, Kind: kind, Schema: 1})
-		path := filepath.Join(t.TempDir(), "x.syx")
+		path := filepath.Join(t.TempDir(), "x.wyx")
 		f, err := os.Create(path)
 		if err != nil {
 			t.Fatal(err)

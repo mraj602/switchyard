@@ -83,7 +83,7 @@ func link(path, target, kind string) error {
 		}
 		return atomicfile.Write(path, b, 0o644)
 	}
-	tmp := path + ".sy-tmp"
+	tmp := path + ".wy-tmp"
 	_ = os.Remove(tmp)
 	if err := os.Symlink(target, tmp); err != nil {
 		return err
@@ -311,7 +311,7 @@ type Plugins struct {
 var _ model.PluginInstaller = (*Plugins)(nil)
 
 // WriteMarketplace writes dir/.claude-plugin/marketplace.json and plugins/watchyard/x.
-func (p *Plugins) WriteMarketplace(dir, syPath, version string) error {
+func (p *Plugins) WriteMarketplace(dir, wyPath, version string) error {
 	return p.run(func() error {
 		if _, err := os.Lstat(dir); err == nil {
 			return fmt.Errorf("fakes: %s exists", dir)
@@ -320,7 +320,7 @@ func (p *Plugins) WriteMarketplace(dir, syPath, version string) error {
 		_ = os.RemoveAll(tmp)
 		for rel, body := range map[string]string{
 			".claude-plugin/marketplace.json": `{"name":"wy-local","version":"` + version + `"}`,
-			"plugins/watchyard/hooks.json":    `{"sy":"` + syPath + `"}`,
+			"plugins/watchyard/hooks.json":    `{"wy":"` + wyPath + `"}`,
 		} {
 			if err := os.MkdirAll(filepath.Dir(filepath.Join(tmp, rel)), 0o755); err != nil {
 				return err

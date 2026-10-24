@@ -101,7 +101,7 @@ test('boot creates the modules in START_ORDER, with paths, security, schemes, ip
 test('boot wires the deps each module asked for', async () => {
   const { at, handlers } = await run({}, {
     env: { WY_APP_TEST_CLAUDE_ORIGIN: 'http://127.0.0.1:9', WY_APP_TEST_CADENCE_MS: '2000', HOME: '/h' },
-    testHooks: async () => ({ claudeOrigin: () => 'http://127.0.0.1:9', cadenceMs: () => 2000, syBin: () => '/x/wy', userData: () => null }),
+    testHooks: async () => ({ claudeOrigin: () => 'http://127.0.0.1:9', cadenceMs: () => 2000, wyBin: () => '/x/wy', userData: () => null }),
   });
   assert.equal(at('security').deps.claudeOrigin, 'http://127.0.0.1:9');
   assert.equal(typeof at('store').deps.toast, 'function');
@@ -113,7 +113,7 @@ test('boot wires the deps each module asked for', async () => {
   assert.equal(at('tabs').deps.claudeOrigin, 'http://127.0.0.1:9');
   assert.equal(at('usage').deps.claudeOrigin, 'http://127.0.0.1:9');
   assert.equal(at('usage').deps.cadenceMs, 2000);
-  assert.equal(at('wy').deps.syBin, '/x/wy');
+  assert.equal(at('wy').deps.wyBin, '/x/wy');
   assert.ok(at('state').deps.hub && at('state').deps.store);
   assert.match(at('tray').deps.assetsDir, /assets$/);
   const menu = at('menu').deps;
@@ -191,9 +191,9 @@ test('only main/index.js imports electron, and only main/wy/ imports child_proce
 test('fake electron: safeStorage, ipcMain, protocol, sessions and recording', async () => {
   const a = fakeElectron({ safeStorageKey: 'k1' });
   const b = fakeElectron({ safeStorageKey: 'k2' });
-  const enc = a.electron.safeStorage.encryptString('{"token":"sy_d_x"}');
-  assert.equal(a.electron.safeStorage.decryptString(enc), '{"token":"sy_d_x"}');
-  assert.ok(!enc.toString('latin1').includes('sy_d_x'));
+  const enc = a.electron.safeStorage.encryptString('{"token":"wy_d_x"}');
+  assert.equal(a.electron.safeStorage.decryptString(enc), '{"token":"wy_d_x"}');
+  assert.ok(!enc.toString('latin1').includes('wy_d_x'));
   assert.throws(() => b.electron.safeStorage.decryptString(enc), /decrypt/);
   assert.equal(fakeElectron({ platform: 'linux', storageBackend: 'basic_text' }).electron.safeStorage.getSelectedStorageBackend(), 'basic_text');
 
@@ -208,11 +208,11 @@ test('fake electron: safeStorage, ipcMain, protocol, sessions and recording', as
   protocol.handle('app', (req) => new Response(new URL(req.url).pathname, { status: 200 }));
   assert.equal(await (await protocol._request('app://shell/index.html')).text(), '/index.html');
 
-  const s = session.fromPartition('persist:sy-hub');
+  const s = session.fromPartition('persist:wy-hub');
   s.setPermissionRequestHandler((wc, perm, cb) => cb(perm === 'clipboard-sanitized-write'));
   assert.equal(await s.requestPermission('clipboard-sanitized-write'), true);
   assert.equal(await s.requestPermission('geolocation'), false);
-  await s.cookies.set({ url: 'https://hub.example', name: 'sy_session', value: 'v' });
+  await s.cookies.set({ url: 'https://hub.example', name: 'wy_session', value: 'v' });
   assert.equal((await s.cookies.get({ url: 'https://hub.example' })).length, 1);
   assert.equal((await session.fromPartition('persist:other').cookies.get({})).length, 0);
 

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -100,7 +101,7 @@ func TestReportGolden(t *testing.T) { // setup.md 6.3
 
 func TestManifestGolden(t *testing.T) { // setup.md 7.2
 	m := Manifest{
-		V: 1, ID: "20261012T173000Z", Command: "wy setup --yes --hub later", SyVersion: "0.3.0",
+		V: 1, ID: "20261012T173000Z", Command: "wy setup --yes --hub later", WyVersion: "0.3.0",
 		Machine: "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K", PlanID: "p_9c41e0a7d2b3",
 		StartedAt: "2026-10-12T17:30:00.120Z", FinishedAt: "2026-10-12T17:30:04.880Z",
 		Status: StatusApplied,
@@ -180,7 +181,7 @@ func TestStateExtrasRoundTrip(t *testing.T) {
 	st := State{
 		Claude: ClaudeInfo{Path: "~/.local/bin/claude", Version: "2.1.296"},
 		Hub:    HubState{URL: &url, Healthy: true},
-		Home:   "/home/u", Sy: "/home/u/.local/bin/wy",
+		Home:   "/home/u", Wy: "/home/u/.local/bin/wy",
 		SettingsTargets: []SettingsTarget{{Path: "/home/u/.claude/settings.json", Exists: true,
 			Folders: []string{"~/.claude"}, EnvKeys: []string{"FOO"},
 			StatusLine: &StatusLine{Type: "command", Command: "x"}}},
@@ -307,5 +308,17 @@ func TestUnimplementedStubs(t *testing.T) {
 	}
 	if _, err := (UnimplementedConnector{}).Connect(t.Context(), ConnectRequest{}); err != ErrNotImplemented {
 		t.Fatal(err)
+	}
+}
+
+// Legacy compat: a manifest written before the rename holds sy_version; it is read as
+// WyVersion. New manifests write wy_version.
+func TestManifestLegacyVersionKey(t *testing.T) {
+	var m Manifest
+	if err := json.Unmarshal([]byte(`{"v":1,"id":"x","sy_version":"0.9.0","entries":[]}`), &m); err != nil || m.WyVersion != "0.9.0" {
+		t.Fatalf("legacy manifest: %+v %v", m, err)
+	}
+	if b, _ := json.Marshal(Manifest{V: 1, WyVersion: "1.0.0"}); !strings.Contains(string(b), `"wy_version":"1.0.0"`) || strings.Contains(string(b), "sy_version") {
+		t.Fatalf("written: %s", b)
 	}
 }

@@ -44,8 +44,8 @@ test('record ids are ULIDs in time order; completeRecord fills v, id and ts only
   assert.deepEqual(completeRecord({ v: 1, id: 'X', ts: 'T', kind: 'k' }), { v: 1, id: 'X', ts: 'T', kind: 'k' });
 });
 
-function setup({ fetch, auth = { url: 'https://hub.example.com', token: 'sy_d_x' }, active = true, onUnauthorized } = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-direct-'));
+function setup({ fetch, auth = { url: 'https://hub.example.com', token: 'wy_d_x' }, active = true, onUnauthorized } = {}) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wy-direct-'));
   const calls = [];
   const f = fetch ?? (async (url, init) => {
     calls.push([url, init]);
@@ -70,7 +70,7 @@ test('the machine id and the hub address survive a restart; the id is made once'
 });
 
 test('claim posts what wy desktop token posts, and maps the failures to words', async () => {
-  let reply = { status: 200, body: { device: 'dev_1', token: 'sy_d_new', kind: 'desktop', scopes: ['read', 'write'] } };
+  let reply = { status: 200, body: { device: 'dev_1', token: 'wy_d_new', kind: 'desktop', scopes: ['read', 'write'] } };
   const seen = [];
   const { d } = setup({
     fetch: async (url, init) => {
@@ -79,7 +79,7 @@ test('claim posts what wy desktop token posts, and maps the failures to words', 
     },
   });
   const ok = await d.claim({ url: 'https://hub.example.com', code: '123-456', name: 'Watchyard-desktop-box' });
-  assert.deepEqual(ok, { ok: true, device: 'dev_1', token: 'sy_d_new' });
+  assert.deepEqual(ok, { ok: true, device: 'dev_1', token: 'wy_d_new' });
   assert.equal(seen[0][0], 'https://hub.example.com/v1/pair/claim');
   assert.equal(seen[0][1].method, 'POST');
   assert.equal(seen[0][1].headers.authorization, undefined);
@@ -94,7 +94,7 @@ test('claim posts what wy desktop token posts, and maps the failures to words', 
   assert.match((await d.claim({ url: 'https://hub.example.com', code: '111222', name: 'n' })).error, /Too many/);
   reply = { status: 503, body: {} };
   assert.match((await d.claim({ url: 'https://hub.example.com', code: '111222', name: 'n' })).error, /not reachable/);
-  reply = { status: 200, body: { device: 'dev_2', token: 'sy_o_x', kind: 'phone' } };
+  reply = { status: 200, body: { device: 'dev_2', token: 'wy_o_x', kind: 'phone' } };
   assert.match((await d.claim({ url: 'https://hub.example.com', code: '111222', name: 'n' })).error, /not a desktop/);
 });
 
@@ -106,7 +106,7 @@ test('the outbox: records are queued on disk, sent as one batch with the token, 
   await d.flushNow();
   assert.equal(calls.length, 1);
   assert.equal(calls[0][0], 'https://hub.example.com/v1/ingest');
-  assert.equal(calls[0][1].headers.authorization, 'Bearer sy_d_x');
+  assert.equal(calls[0][1].headers.authorization, 'Bearer wy_d_x');
   const body = JSON.parse(calls[0][1].body);
   assert.equal(body.v, 1);
   assert.equal(body.client, 'watchyard-desktop/9.9.9');

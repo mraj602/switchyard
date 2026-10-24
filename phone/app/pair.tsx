@@ -3,14 +3,14 @@
 // token in the keychain through the state layer; then go to Now. `pairWith` resolves only after
 // the integration's onPaired (src/lib/integrate: GET /v1/rules, the notifications prompt and
 // registration, P6.3), so this is the one navigation and Now comes after the prompt (P2). A
-// second pairing asks "Unpair from <host>?" first. The scanner is the sy-scan module's full-screen
+// second pairing asks "Unpair from <host>?" first. The scanner is the wy-scan module's full-screen
 // zxing view: "Scan QR code" opens it (asking for the camera first) and its text comes back here.
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as SyScan from '../modules/sy-scan';
-import type { CameraPermission } from '../modules/sy-scan';
+import * as WyScan from '../modules/wy-scan';
+import type { CameraPermission } from '../modules/wy-scan';
 import { Logo } from '../src/components/logo';
 import { claim, ClaimError, claimMessage, hostOf, networkKind, pairInputMessage, parsePairInput } from '../src/lib/pair';
 import type { PairInput } from '../src/lib/pair';
@@ -41,7 +41,7 @@ export default function PairScreen() {
 
   useEffect(() => {
     let live = true;
-    SyScan.cameraPermission().then(
+    WyScan.cameraPermission().then(
       (p) => live && setPermission(p),
       () => {},
     );
@@ -149,7 +149,7 @@ export default function PairScreen() {
     scanning.current = true;
     setError(null);
     try {
-      const r = await SyScan.scanQr('Scan the QR code from Add phone');
+      const r = await WyScan.scanQr('Scan the QR code from Add phone');
       if (r.status === 'denied') setPermission({ granted: false, canAskAgain: r.canAskAgain });
       else if (r.status === 'scanned' || r.status === 'cancelled') setPermission({ granted: true, canAskAgain: true });
       if (r.status === 'scanned') onScanned(r.text);

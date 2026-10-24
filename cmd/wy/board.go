@@ -309,7 +309,7 @@ func openRemoteURL(ctx context.Context, url string) error {
 		return errors.New("only https://claude.ai/ links are opened")
 	}
 	env := focusEnv()
-	log, closeLog := focusSyLog(env)
+	log, closeLog := focusWyLog(env)
 	defer closeLog()
 	return focusOpener(env, log).Open(ctx, url)
 }

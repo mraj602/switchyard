@@ -16,7 +16,7 @@ import { day, clock, agoLabel, humanKey, plural, deviceLabel } from '../format.j
 import { notifNote, ownerHow } from '../components/notif-note.js';
 
 const st = { self: null, push: null, config: null, hub: null, devices: null, test: null, ntfy: null, busy: false, updateNote: '', error: null };
-const again = () => window.dispatchEvent(new Event('sy-rerender'));
+const again = () => window.dispatchEvent(new Event('wy-rerender'));
 
 const mobile = () => isMobile(navigator.userAgent, navigator.maxTouchPoints, navigator.platform);
 const thisOne = () => notifNote({ app: inApp(), mobile: mobile() }).who;

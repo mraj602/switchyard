@@ -1,19 +1,19 @@
 // Watchyard service worker (pwa.md 4 and 5). A classic script, scope "/".
 //
-// - App shell: precached on install, served cache-first. The hub replaces __SY_BUILD__
+// - App shell: precached on install, served cache-first. The hub replaces __WY_BUILD__
 //   with a hash of every embedded file, so any change to the app changes this file and the
 //   browser installs a new worker.
-// - Last known data: GETs of the read API are network first and kept in `sy-data`; when
-//   the hub cannot be reached the stored copy is returned with `X-Sy-Cached-At`.
+// - Last known data: GETs of the read API are network first and kept in `wy-data`; when
+//   the hub cannot be reached the stored copy is returned with `X-Wy-Cached-At`.
 // - A new worker waits until the page asks it to take over (no skipWaiting on its own), so
 //   a running page never mixes old and new files.
 // - Push display, notification buttons and taps, and re-subscribing.
 
 importScripts('sw-lib.js');
 
-const BUILD = '__SY_BUILD__';
-const SHELL = SyLib.shellCacheName(BUILD);
-const DATA = SyLib.DATA_CACHE;
+const BUILD = '__WY_BUILD__';
+const SHELL = WyLib.shellCacheName(BUILD);
+const DATA = WyLib.DATA_CACHE;
 
 // Every embedded file except this one and the tests (a Go test keeps this list in sync).
 const ASSETS = [
@@ -107,7 +107,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     for (const name of await caches.keys()) {
-      if (!SyLib.isCurrentCache(name, BUILD)) await caches.delete(name);
+      if (!WyLib.isCurrentCache(name, BUILD)) await caches.delete(name);
     }
     await self.clients.claim();
   })());
@@ -128,11 +128,11 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;
   if (url.pathname.startsWith('/v1/stream') || url.pathname.startsWith('/v1/actions/')) return;
 
-  if (req.mode === 'navigate' || SyLib.isNavigation(req.url)) {
-    if (SyLib.isNavigation(req.url)) event.respondWith(navigation(req));
+  if (req.mode === 'navigate' || WyLib.isNavigation(req.url)) {
+    if (WyLib.isNavigation(req.url)) event.respondWith(navigation(req));
     return;
   }
-  if (SyLib.isDataRequest(req.url, req.method)) { event.respondWith(data(req, event)); return; }
+  if (WyLib.isDataRequest(req.url, req.method)) { event.respondWith(data(req, event)); return; }
   if (url.pathname.startsWith('/v1/') || url.pathname === '/health') return;
   event.respondWith(shell(req));
 });
@@ -159,11 +159,11 @@ async function shell(req) {
 // Keeps a copy of a good response with the time it was stored.
 async function store(req, res) {
   const headers = new Headers(res.headers);
-  headers.set('X-Sy-Cached-At', String(Date.now()));
+  headers.set('X-Wy-Cached-At', String(Date.now()));
   const copy = new Response(await res.clone().blob(), { status: res.status, statusText: res.statusText, headers });
   const cache = await caches.open(DATA);
   await cache.put(req.url, copy);
-  const evict = SyLib.sessionsToEvict((await cache.keys()).map((r) => r.url));
+  const evict = WyLib.sessionsToEvict((await cache.keys()).map((r) => r.url));
   await Promise.all(evict.map((u) => cache.delete(u)));
 }
 
@@ -188,10 +188,10 @@ self.addEventListener('push', (event) => {
   event.waitUntil((async () => {
     let text = '';
     try { text = event.data ? event.data.text() : ''; } catch (_) { /* unreadable */ }
-    const p = SyLib.parsePayload(text);
-    await self.registration.showNotification(p.title, SyLib.notificationOptions(p, ''));
+    const p = WyLib.parsePayload(text);
+    await self.registration.showNotification(p.title, WyLib.notificationOptions(p, ''));
     if (self.navigator && self.navigator.setAppBadge && Number.isInteger(p.needs_you)) {
-      try { await self.navigator.setAppBadge(SyLib.badgeCount(p)); } catch (_) { /* badges are optional; 0 clears */ }
+      try { await self.navigator.setAppBadge(WyLib.badgeCount(p)); } catch (_) { /* badges are optional; 0 clears */ }
     }
     for (const c of await self.clients.matchAll({ type: 'window', includeUncontrolled: true })) {
       c.postMessage({ type: 'push', payload: p });
@@ -217,25 +217,25 @@ async function openRoute(url) {
   const mine = wins.find((c) => new URL(c.url).origin === self.location.origin);
   if (mine) {
     await mine.focus();
-    mine.postMessage({ type: 'route', hash: SyLib.hashOf(url) });
+    mine.postMessage({ type: 'route', hash: WyLib.hashOf(url) });
     return;
   }
   await self.clients.openWindow(url);
 }
 
 self.addEventListener('notificationclick', (event) => {
-  const p = (event.notification.data && typeof event.notification.data === 'object') ? event.notification.data : SyLib.parsePayload('');
+  const p = (event.notification.data && typeof event.notification.data === 'object') ? event.notification.data : WyLib.parsePayload('');
   event.notification.close();
   event.waitUntil((async () => {
     if (event.action === 'snooze' || event.action === 'seen') {
-      const token = SyLib.actionToken(p, event.action);
+      const token = WyLib.actionToken(p, event.action);
       if (!token) return;
       try {
         await fetch(`/v1/actions/${token}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
       } catch (_) { /* hub unreachable: the alert is simply not snoozed */ }
       return;
     }
-    const target = SyLib.chooseTarget(p, SyLib.needsProbe(p) ? await reachable() : true);
+    const target = WyLib.chooseTarget(p, WyLib.needsProbe(p) ? await reachable() : true);
     if (target.kind === 'claude') await self.clients.openWindow(target.url);
     else await openRoute(target.url);
   })());
@@ -252,7 +252,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
       if (!sub) return;
       await fetch('/v1/push/targets', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(SyLib.targetBody(sub)),
+        body: JSON.stringify(WyLib.targetBody(sub)),
       });
     } catch (_) { /* the app repeats this at its next start */ }
   })());

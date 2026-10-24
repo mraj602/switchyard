@@ -32,6 +32,10 @@
 --   * `owner_id` is on the tables a future shared hub could partition.
 --     It is always 'owner' on a single-user hub.
 --   * Driver: modernc.org/sqlite (pure Go, no cgo). Needs SQLite >= 3.37 for STRICT.
+--   * Names from before the rename stay (rename.md 2.12): the columns `sy_version` and
+--     `pull_target.remote_sy`, and the `sy_`/`sy-` examples in comments inside a table, are
+--     in the table text the migrations stored; renaming them is a migration an older hub
+--     refuses to run on after a rollback. Code maps `sy_version` to `wy_version` in the API.
 --
 -- Groups: meta, identity, access, activity, usage, alerts, keys and link, peers.
 

@@ -22,7 +22,7 @@ export function haveOpenssl() {
 }
 
 /** A self-signed EC certificate for 127.0.0.1 and localhost, valid for 2 days. */
-export function makeCert(dir, name, { cn = `sy-test-${name}` } = {}) {
+export function makeCert(dir, name, { cn = `wy-test-${name}` } = {}) {
   const key = path.join(dir, `${name}.key`);
   const cert = path.join(dir, `${name}.crt`);
   const r = spawnSync('openssl', [

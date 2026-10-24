@@ -9,11 +9,11 @@ import { validateWidgetSnapshot } from '../src/contract/validate';
 import { androidProps, buildSnapshot, limitRows } from '../src/lib/widget';
 import { windowChoice, dropRingSeat, machineGrid, machineRows, needsRows, nextRefreshAt, nextResetModel, resetClock, ringModel, ringSeat, ringSvg, setRingSeat, shortAge } from '../src/lib/widget/extra';
 import { createTaskHandler } from '../widgets/android/task-handler';
-import { SyLimits } from '../widgets/android/SyLimits';
-import { SyMachines } from '../widgets/android/SyMachines';
-import { SyNeeds } from '../widgets/android/SyNeeds';
-import { SyNextReset } from '../widgets/android/SyNextReset';
-import { SyRing } from '../widgets/android/SyRing';
+import { WyLimits } from '../widgets/android/WyLimits';
+import { WyMachines } from '../widgets/android/WyMachines';
+import { WyNeeds } from '../widgets/android/WyNeeds';
+import { WyNextReset } from '../widgets/android/WyNextReset';
+import { WyRing } from '../widgets/android/WyRing';
 import { allOf, renderWidget } from './render-widget';
 
 const FIX = join(__dirname, 'fixtures/hub');
@@ -131,47 +131,47 @@ describe('helpers', () => {
   });
 });
 
-describe('SyNeeds', () => {
+describe('WyNeeds', () => {
   it('no snapshot: open the app', () => {
-    expect(texts(<SyNeeds {...androidProps(null, NOW)} />)).toContain('Open Watchyard once to load');
+    expect(texts(<WyNeeds {...androidProps(null, NOW)} />)).toContain('Open Watchyard once to load');
   });
   it('normal: header with the count, rows, one tap target each', () => {
     const s = snap();
-    const t = texts(<SyNeeds {...androidProps(s, NOW + MIN)} />);
+    const t = texts(<WyNeeds {...androidProps(s, NOW + MIN)} />);
     expect(t[0]).toBe('Watchyard · Needs you');
     expect(t[1]).toBe(`${s.counts!.needs_you} waiting`);
     expect(t.some((x) => /· (asked|needs permission|failed)$/.test(x))).toBe(true);
-    expect(uris(<SyNeeds {...androidProps(s, NOW)} />).filter((u) => u.startsWith('watchyard://sessions/'))).toHaveLength(needsRows(s, NOW).length);
+    expect(uris(<WyNeeds {...androidProps(s, NOW)} />).filter((u) => u.startsWith('watchyard://sessions/'))).toHaveLength(needsRows(s, NOW).length);
   });
   it('many: at most 3 rows; a short widget shows fewer', () => {
     const base = snap().needs_list![0]!;
     const four = snap({ needs_you: 9, counts: { working: 0, needs_you: 9, done: 0 }, needs_list: [0, 1, 2].map((i) => ({ ...base, id: `s${i}`, since: iso(NOW - i * MIN) })) });
     expect(needsRows(four, NOW).map((r) => r.id)).toEqual(['s2', 's1', 's0']);
-    expect(texts(<SyNeeds {...androidProps(four, NOW, undefined, 200)} />).filter((x) => x.includes('·')).length).toBe(1 + 3);
-    expect(texts(<SyNeeds {...androidProps(four, NOW, undefined, 80)} />).filter((x) => x.includes('·')).length).toBe(1 + 1);
+    expect(texts(<WyNeeds {...androidProps(four, NOW, undefined, 200)} />).filter((x) => x.includes('·')).length).toBe(1 + 3);
+    expect(texts(<WyNeeds {...androidProps(four, NOW, undefined, 80)} />).filter((x) => x.includes('·')).length).toBe(1 + 1);
   });
   it('empty: Nothing needs you', () => {
-    const t = texts(<SyNeeds {...androidProps(snap({ needs_you: 0, counts: { working: 1, needs_you: 0, done: 0 }, needs_list: [], top: null }), NOW)} />);
+    const t = texts(<WyNeeds {...androidProps(snap({ needs_you: 0, counts: { working: 1, needs_you: 0, done: 0 }, needs_list: [], top: null }), NOW)} />);
     expect(t).toContain('Nothing needs you');
     expect(t[0]).toBe('Watchyard · Needs you');
     expect(t[1]).toBe('all clear');
   });
   it('private: the count without a list', () => {
-    const t = texts(<SyNeeds {...androidProps(buildSnapshot(overview, accounts, NOW, { ...PREFS, private: true }), NOW)} />);
+    const t = texts(<WyNeeds {...androidProps(buildSnapshot(overview, accounts, NOW, { ...PREFS, private: true }), NOW)} />);
     expect(t.join('|')).toContain('waiting');
     expect(t).toContain('Open Watchyard to see which');
   });
 });
 
-describe('SyRing', () => {
+describe('WyRing', () => {
   it('no snapshot / unknown account', () => {
-    expect(texts(<SyRing {...androidProps(null, NOW)} />)).toContain('Open Watchyard once to load');
-    expect(texts(<SyRing {...androidProps(snap(), NOW, undefined, undefined, undefined, 'gone')} />).join(' ')).toContain('Reconfigure');
+    expect(texts(<WyRing {...androidProps(null, NOW)} />)).toContain('Open Watchyard once to load');
+    expect(texts(<WyRing {...androidProps(snap(), NOW, undefined, undefined, undefined, 'gone')} />).join(' ')).toContain('Reconfigure');
   });
   it('normal: label, %, window, reset clock, tap opens that account', () => {
     const s = snap();
     const id = s.seats[0]!.id;
-    const el = <SyRing {...androidProps(s, NOW, 'UTC', undefined, undefined, id)} />;
+    const el = <WyRing {...androidProps(s, NOW, 'UTC', undefined, undefined, id)} />;
     const t = texts(el);
     expect(t).toContain(s.seats[0]!.label);
     expect(t.some((x) => /^\d+ %$/.test(x))).toBe(true);
@@ -182,7 +182,7 @@ describe('SyRing', () => {
   });
   it('idle: 0 % and not started', () => {
     const idle = snap({ seats: [{ id: 'i', label: 'idle', colour: '#222222', five_hour: { pct: 0, resets_at: null } }] });
-    const t = texts(<SyRing {...androidProps(idle, NOW, undefined, undefined, undefined, 'i')} />);
+    const t = texts(<WyRing {...androidProps(idle, NOW, undefined, undefined, undefined, 'i')} />);
     expect(t).toContain('0 %');
     expect(t).toContain('not started');
   });
@@ -194,7 +194,7 @@ describe('SyRing', () => {
     const out: unknown[] = [];
     const alarm = jest.fn(async () => {});
     const h = createTaskHandler({ store, now: () => NOW, alarm });
-    const info = { widgetName: 'SyRing', widgetId: 42, width: 150, height: 150 };
+    const info = { widgetName: 'WyRing', widgetId: 42, width: 150, height: 150 };
     await h({ widgetInfo: info, widgetAction: 'WIDGET_UPDATE', renderWidget: (t: unknown) => out.push(t) } as never);
     expect((out[0] as { props: { seat: string } }).props.seat).toBe(s.seats[1]!.id);
     expect(alarm).toHaveBeenCalledWith(nextRefreshAt(s, NOW));
@@ -203,31 +203,31 @@ describe('SyRing', () => {
   });
 });
 
-describe('SyNextReset', () => {
+describe('WyNextReset', () => {
   it('no snapshot', () => {
-    expect(texts(<SyNextReset {...androidProps(null, NOW)} />)).toContain('Open Watchyard once to load');
+    expect(texts(<WyNextReset {...androidProps(null, NOW)} />)).toContain('Open Watchyard once to load');
   });
   it('normal: seat, window and the time; taps Accounts', () => {
     const s = snap();
     const n = nextResetModel(s, NOW, 'UTC')!;
-    const el = <SyNextReset {...androidProps(s, NOW, 'UTC')} />;
+    const el = <WyNextReset {...androidProps(s, NOW, 'UTC')} />;
     expect(texts(el)).toEqual(['Watchyard · Next reset', n.at, `  ${n.seat} · ${n.window}`]);
-    expect(texts(<SyNextReset {...androidProps(s, NOW, 'UTC', 40, 110)} />)[0]).toBe('Watchyard');
+    expect(texts(<WyNextReset {...androidProps(s, NOW, 'UTC', 40, 110)} />)[0]).toBe('Watchyard');
     expect(uris(el)).toContain('watchyard://accounts');
   });
   it('nothing ahead (all idle or passed)', () => {
-    const t = texts(<SyNextReset {...androidProps(snap({ seats: [{ id: 'i', label: 'i', colour: '#222222', five_hour: { pct: 0, resets_at: null } }] }), NOW)} />);
+    const t = texts(<WyNextReset {...androidProps(snap({ seats: [{ id: 'i', label: 'i', colour: '#222222', five_hour: { pct: 0, resets_at: null } }] }), NOW)} />);
     expect(t).toEqual(['Watchyard · Next reset', 'None ahead']);
   });
 });
 
-describe('SyMachines', () => {
+describe('WyMachines', () => {
   const ms = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `m${i}`, name: `box-${i}`, online: i !== 1, live: i === 0 ? 2 : 0, last_seen: iso(NOW - H) }));
   it('no snapshot', () => {
-    expect(texts(<SyMachines {...androidProps(null, NOW)} />)).toContain('Open Watchyard once to load');
+    expect(texts(<WyMachines {...androidProps(null, NOW)} />)).toContain('Open Watchyard once to load');
   });
   it('normal: header, live and silent notes, taps Machines', () => {
-    const el = <SyMachines {...androidProps(snap({ machines: ms(3) }), NOW, undefined, 70, 320)} />;
+    const el = <WyMachines {...androidProps(snap({ machines: ms(3) }), NOW, undefined, 70, 320)} />;
     const t = texts(el);
     expect(t).toContain('Machines · 2 of 3 online');
     expect(t[0]).toBe('Watchyard');
@@ -237,21 +237,21 @@ describe('SyMachines', () => {
   });
   it('many: a narrow 4x1 shows what fits; a tall one shows all 6', () => {
     const s = snap({ machines: ms(6) });
-    expect(allOf(renderWidget(<SyMachines {...androidProps(s, NOW, undefined, 70, 320)} />), 'Android.TextWidget').filter((n) => String(n.props.text).startsWith('box-'))).toHaveLength(2);
-    expect(allOf(renderWidget(<SyMachines {...androidProps(s, NOW, undefined, 200, 320)} />), 'Android.TextWidget').filter((n) => String(n.props.text).startsWith('box-'))).toHaveLength(6);
+    expect(allOf(renderWidget(<WyMachines {...androidProps(s, NOW, undefined, 70, 320)} />), 'Android.TextWidget').filter((n) => String(n.props.text).startsWith('box-'))).toHaveLength(2);
+    expect(allOf(renderWidget(<WyMachines {...androidProps(s, NOW, undefined, 200, 320)} />), 'Android.TextWidget').filter((n) => String(n.props.text).startsWith('box-'))).toHaveLength(6);
   });
   it('empty', () => {
-    expect(texts(<SyMachines {...androidProps(snap({ machines: [] }), NOW)} />)).toContain('No machines yet');
+    expect(texts(<WyMachines {...androidProps(snap({ machines: [] }), NOW)} />)).toContain('No machines yet');
   });
 });
 
 describe('brand header and the 5 h | 7 d toggle', () => {
   const all = [
-    ['SyLimits', (p: ReturnType<typeof androidProps>) => <SyLimits {...p} />],
-    ['SyRing', (p: ReturnType<typeof androidProps>) => <SyRing {...p} />],
-    ['SyNeeds', (p: ReturnType<typeof androidProps>) => <SyNeeds {...p} />],
-    ['SyNextReset', (p: ReturnType<typeof androidProps>) => <SyNextReset {...p} />],
-    ['SyMachines', (p: ReturnType<typeof androidProps>) => <SyMachines {...p} />],
+    ['WyLimits', (p: ReturnType<typeof androidProps>) => <WyLimits {...p} />],
+    ['WyRing', (p: ReturnType<typeof androidProps>) => <WyRing {...p} />],
+    ['WyNeeds', (p: ReturnType<typeof androidProps>) => <WyNeeds {...p} />],
+    ['WyNextReset', (p: ReturnType<typeof androidProps>) => <WyNextReset {...p} />],
+    ['WyMachines', (p: ReturnType<typeof androidProps>) => <WyMachines {...p} />],
   ] as const;
   it.each(all)('%s draws the mark and the word Watchyard, with and without a snapshot', (_n, make) => {
     for (const s of [null, snap()]) {
@@ -262,7 +262,7 @@ describe('brand header and the 5 h | 7 d toggle', () => {
   });
 
   it('the toggle has a 5 h and a 7 d segment, the selected one highlighted', () => {
-    const tree = renderWidget(<SyLimits {...androidProps(snap(), NOW, 'UTC', 300, undefined, undefined, '7 d')} />);
+    const tree = renderWidget(<WyLimits {...androidProps(snap(), NOW, 'UTC', 300, undefined, undefined, '7 d')} />);
     const segs = [tree, ...tree.queryAll(() => true)].filter((n) => n.props.clickAction === 'WY_TOGGLE_WINDOW');
     expect(segs.map((n) => (n.props.clickActionData as { window: string }).window)).toEqual(['5 h', '7 d']);
     expect(segs.map((n) => n.props.style as { backgroundColor: string }).map((s) => s.backgroundColor)).toEqual(['#2A2E32', '#E8B04B']);
@@ -284,7 +284,7 @@ describe('brand header and the 5 h | 7 d toggle', () => {
     await store.setItem('wy.widget.v1', JSON.stringify(s));
     const out: { props: { win?: string } }[] = [];
     const h = createTaskHandler({ store, now: () => NOW });
-    const info = { widgetName: 'SyLimits', widgetId: 9, width: 300, height: 300 };
+    const info = { widgetName: 'WyLimits', widgetId: 9, width: 300, height: 300 };
     const call = (widgetAction: string, extra: object = {}) => h({ widgetInfo: info, widgetAction, renderWidget: (t: unknown) => out.push(t as never), ...extra } as never);
     await call('WIDGET_UPDATE');
     expect(out.pop()!.props.win).toBe('5 h');
@@ -303,10 +303,10 @@ describe('brand header and the 5 h | 7 d toggle', () => {
   });
 });
 
-describe('SyLimits idle', () => {
+describe('WyLimits idle', () => {
   it('shows an idle seat as 0% not started', () => {
     const idle = snap({ seats: [{ id: 'i', label: 'idle', colour: '#222222', five_hour: { pct: 0, resets_at: null } }] });
-    const t = texts(<SyLimits {...androidProps(idle, NOW)} />);
+    const t = texts(<WyLimits {...androidProps(idle, NOW)} />);
     expect(t).toContain('0%');
     expect(t).toContain('not started');
   });

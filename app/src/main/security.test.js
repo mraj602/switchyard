@@ -44,15 +44,15 @@ test('webPreferences: the baseline for every kind, no overrides, preload only fo
   assert.deepEqual({ ...shell, preload: undefined }, { ...SAFE_WEB_PREFERENCES, preload: undefined });
   assert.equal(shell.preload, '/app/src/preload/shell.cjs');
   assert.deepEqual(sec.webPreferences('tab', TAB), { ...SAFE_WEB_PREFERENCES, ...TAB });
-  assert.equal(sec.webPreferences('hub').partition, 'persist:sy-hub');
+  assert.equal(sec.webPreferences('hub').partition, 'persist:wy-hub');
   assert.throws(() => sec.webPreferences('tab', { ...TAB, preload: '/x.cjs' }), /only the shell/);
   assert.throws(() => sec.webPreferences('hub', { preload: '/x.cjs' }), /only the shell/);
   assert.throws(() => sec.webPreferences('tab', { ...TAB, sandbox: false }), /fixed/);
   assert.throws(() => sec.webPreferences('tab', { ...TAB, nodeIntegration: true }), /fixed/);
   assert.throws(() => sec.webPreferences('tab', { ...TAB, experimentalFeatures: true }), /not allowed/);
-  assert.throws(() => sec.webPreferences('tab', { partition: 'persist:sy-hub' }), /persist:tab-/);
+  assert.throws(() => sec.webPreferences('tab', { partition: 'persist:wy-hub' }), /persist:tab-/);
   assert.throws(() => sec.webPreferences('tab', {}), /persist:tab-/);
-  assert.throws(() => sec.webPreferences('hub', { partition: 'persist:tab-t_9c1e5f0a7b2d4e68' }), /sy-hub/);
+  assert.throws(() => sec.webPreferences('hub', { partition: 'persist:tab-t_9c1e5f0a7b2d4e68' }), /wy-hub/);
   assert.throws(() => sec.webPreferences('shell', { partition: 'persist:x' }), /default session/);
   assert.throws(() => sec.webPreferences('other'), /unknown view kind/);
 });
@@ -258,7 +258,7 @@ test('permissions: only the table is allowed, per session kind', async () => {
   const { sec, e } = setup();
   const sessions = {
     tab: e.session.fromPartition(TAB.partition),
-    hub: e.session.fromPartition('persist:sy-hub'),
+    hub: e.session.fromPartition('persist:wy-hub'),
     shell: e.session.defaultSession,
   };
   for (const [kind, s] of Object.entries(sessions)) sec.guardSession(s, kind);
@@ -286,7 +286,7 @@ test('permissions: only the table is allowed, per session kind', async () => {
 
 test('devices and display media are always denied', () => {
   const { sec, e } = setup();
-  for (const [kind, s] of [['tab', e.session.fromPartition(TAB.partition)], ['hub', e.session.fromPartition('persist:sy-hub')], ['shell', e.session.defaultSession]]) {
+  for (const [kind, s] of [['tab', e.session.fromPartition(TAB.partition)], ['hub', e.session.fromPartition('persist:wy-hub')], ['shell', e.session.defaultSession]]) {
     sec.guardSession(s, kind);
     assert.equal(s.handlers.devicePermission({ deviceType: 'usb', origin: 'https://claude.ai' }), false);
     let args = null;
@@ -298,7 +298,7 @@ test('devices and display media are always denied', () => {
 
 test('downloads: tabs keep the default dialog, the hub and the shell cancel', () => {
   const { sec, e } = setup();
-  const kinds = [['tab', e.session.fromPartition(TAB.partition)], ['hub', e.session.fromPartition('persist:sy-hub')], ['shell', e.session.defaultSession]];
+  const kinds = [['tab', e.session.fromPartition(TAB.partition)], ['hub', e.session.fromPartition('persist:wy-hub')], ['shell', e.session.defaultSession]];
   for (const [kind, s] of kinds) {
     sec.guardSession(s, kind);
     let prevented = false;

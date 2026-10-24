@@ -81,7 +81,7 @@ func TestOwnerLinksAPI(t *testing.T) {
 		t.Fatalf("sign-in: %d %s", r.code, r.body)
 	}
 	other := sessionCookie(t, r).Value
-	if other == owner || !strings.HasPrefix(other, "sy_o_") {
+	if other == owner || !strings.HasPrefix(other, "wy_o_") {
 		t.Fatal("no new owner session")
 	}
 	me := h.call("GET", "/v1/me", nil, opts{cookie: other}).json(t)

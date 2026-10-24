@@ -54,7 +54,7 @@ func TestHeartbeatKeepsReachAndBacklogAge(t *testing.T) {
 	n := func(v int64) *int64 { return &v }
 
 	// An old-style heartbeat leaves the new columns NULL and held 0.
-	beat(Heartbeat{LastSeen: 2000, Backlog: n(0), SyVersion: "0.4.2"})
+	beat(Heartbeat{LastSeen: 2000, Backlog: n(0), WyVersion: "0.4.2"})
 	r := readMachine(t, s, m)
 	if r.reach.Valid || r.held != 0 || r.backlogOldest.Valid {
 		t.Fatalf("after a heartbeat with nothing to say: %+v", r)

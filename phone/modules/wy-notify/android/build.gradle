@@ -1,0 +1,25 @@
+// wy-notify: the app's notification plumbing (docs/spec/phone.md P6.1, P6.3, P6.6): channels,
+// the Android 13 POST_NOTIFICATIONS prompt, the launcher badge and dismissals, on the platform's
+// own APIs. It replaces expo-notifications, whose firebase-messaging dependency put Google's
+// proprietary classes in the APK. Dependencies: androidx.core, and ShortcutBadger (Apache-2.0)
+// for the launcher badge, as expo-notifications used it.
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'dev.watchyard'
+version = '0.1.0'
+
+android {
+  namespace 'dev.watchyard.notify'
+  defaultConfig {
+    versionCode 1
+    versionName '0.1.0'
+  }
+}
+
+dependencies {
+  implementation 'androidx.core:core-ktx:1.17.0'
+  implementation 'me.leolin:ShortcutBadger:1.1.22@aar'
+}

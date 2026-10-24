@@ -1,5 +1,5 @@
 @echo off
-rem sy-launcher v1 slot=~/.claude-2 label=work
+rem wy-launcher v1 slot=~/.claude-2 label=work
 rem Claude Code as ~/.claude-2. Written by wy setup; wy uninstall removes it.
 @set "CLAUDE_CONFIG_DIR=%USERPROFILE%\.claude-2"
 @claude %*

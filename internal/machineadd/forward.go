@@ -98,14 +98,14 @@ var nameSafe = regexp.MustCompile(`[^A-Za-z0-9._-]`)
 func (f Forward) Block() string {
 	name := nameSafe.ReplaceAllString(f.Name, "_")
 	var b strings.Builder
-	fmt.Fprintf(&b, "# sy-forward v1 machine=%s name=%s (wy machine add; wy machine remove undoes it)\n", f.Machine, name)
+	fmt.Fprintf(&b, "# wy-forward v1 machine=%s name=%s (wy machine add; wy machine remove undoes it)\n", f.Machine, name)
 	fmt.Fprintf(&b, "Host %s\n", f.Host)
 	fmt.Fprintf(&b, "  RemoteForward %s %s\n", f.Listen(), f.Target)
 	if f.Socket != "" {
 		b.WriteString("  StreamLocalBindMask 0177\n")
 	}
 	b.WriteString("  ExitOnForwardFailure no\n  ServerAliveInterval 30\n  ServerAliveCountMax 3\n")
-	fmt.Fprintf(&b, "# end sy-forward %s\n", name)
+	fmt.Fprintf(&b, "# end wy-forward %s\n", name)
 	return b.String()
 }
 
@@ -148,15 +148,28 @@ func Adopted(c sshx.Config, target, socket string) (port int, ok bool) {
 	return 0, false
 }
 
+// forwardTags are the block markers: wy-forward, and the sy-forward of a block written before
+// the rename (legacy compat: still found and removed, never written).
+var forwardTags = []string{"wy-forward", "sy-forward"} // rename:keep
+
 // blockRange finds the block of a machine: its start, its end and whether it exists.
 func blockRange(content []byte, machine string) (int, int, bool) {
-	head := []byte("# sy-forward v1 machine=" + machine + " ")
+	for _, tag := range forwardTags {
+		if i, end, ok := blockRangeTag(content, machine, tag); ok {
+			return i, end, true
+		}
+	}
+	return 0, 0, false
+}
+
+func blockRangeTag(content []byte, machine, tag string) (int, int, bool) {
+	head := []byte("# " + tag + " v1 machine=" + machine + " ")
 	i := bytes.Index(content, head)
 	if i < 0 || (i > 0 && content[i-1] != '\n') {
 		return 0, 0, false
 	}
 	rest := content[i:]
-	j := bytes.Index(rest, []byte("\n# end sy-forward "))
+	j := bytes.Index(rest, []byte("\n# end "+tag+" "))
 	if j < 0 {
 		return 0, 0, false
 	}
@@ -276,7 +289,7 @@ func lockWait(stateDir string) (func(), error) {
 // journalLocked runs fn with the paths journaled as write_file entries of a new backup set
 // (command goes in the manifest); the caller holds setup.lock. A failing fn rolls the set back.
 func journalLocked(stateDir, command string, now time.Time, paths []string, fn func() error) (string, error) {
-	set, err := backup.Create(stateDir, backup.Header{Command: command, SyVersion: version.Version}, now)
+	set, err := backup.Create(stateDir, backup.Header{Command: command, WyVersion: version.Version}, now)
 	if err != nil {
 		return "", err
 	}

@@ -1,5 +1,5 @@
 // The in-app updater's state machine (phone.md P16.3): check at most once a day (and on demand),
-// remember what was found, install through the sy-link module. The checksum and signing-key
+// remember what was found, install through the wy-link module. The checksum and signing-key
 // checks are the module's; this file only drives it and never sees the APK or the token beyond
 // handing the paired hub's token to checkUpdate.
 import type { UpdateInfo, UpdateLink } from '../../contract/link';
@@ -44,7 +44,7 @@ export interface UpdaterDeps {
 
 export const REFUSED_TEXT = 'The update was refused: it did not match its checksum or is not signed by your key. Nothing was installed.';
 
-const errText = (e: unknown): string => (e instanceof Error ? e.message.replace(/^sy-link:\s*/, '') : 'failed');
+const errText = (e: unknown): string => (e instanceof Error ? e.message.replace(/^wy-link:\s*/, '') : 'failed');
 
 export function createUpdater(d: UpdaterDeps): Updater {
   let view: UpdateView = { phase: 'idle', info: null, checkedAt: null, message: null };

@@ -76,7 +76,7 @@ func TestConnectKeepToken(t *testing.T) {
 	if err := f.Save(); err != nil {
 		t.Fatal(err)
 	}
-	other := "sy_m_ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
+	other := "wy_m_ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
 	atomicfile.Write(filepath.Join(st, client.TokenFile), []byte(other+"\n"), 0o600)
 	var out, errb bytes.Buffer
 	err := connect(context.Background(), deps, []string{newURL, "--keep-token", "--no-timer", "--insecure-lan"}, &out, &errb)

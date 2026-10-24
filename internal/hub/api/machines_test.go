@@ -63,7 +63,7 @@ func ownerToken(t *testing.T, h *hub) string {
 func machineInfoRec(t *testing.T, machine string) []byte {
 	t.Helper()
 	r, err := record.NewMachineInfo(record.Meta{Machine: machine, Client: "wy/0.5.0", Now: time.Now()}, record.MachineInfoPayload{
-		OS: "linux", Arch: "arm64", Sy: "0.5.0", RecordV: 1, Reach: record.ReachForward,
+		OS: "linux", Arch: "arm64", Wy: "0.5.0", RecordV: 1, Reach: record.ReachForward,
 		DirectPush: record.DirectPushState{Enabled: true, Private: true},
 	})
 	if err != nil {
@@ -223,7 +223,7 @@ func TestIngestFrozenOverHTTP(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	code, body := h.do("POST", "/v1/ingest", tok, batch(machineInfoRec(t, h.machine)), "X-Sy-Backlog-Oldest", "2026-10-12T08:00:00Z")
+	code, body := h.do("POST", "/v1/ingest", tok, batch(machineInfoRec(t, h.machine)), "X-Wy-Backlog-Oldest", "2026-10-12T08:00:00Z")
 	var e struct {
 		Code string `json:"code"`
 	}
@@ -245,12 +245,12 @@ func TestIngestFrozenOverHTTP(t *testing.T) {
 	}
 }
 
-// X-Sy-Backlog-Oldest fills backlog_oldest.
+// X-Wy-Backlog-Oldest fills backlog_oldest.
 func TestIngestBacklogOldest(t *testing.T) {
 	h := startHub(t, "")
 	tok := h.token("machine")
 	owner := ownerToken(t, h)
-	code, body := h.do("POST", "/v1/ingest", tok, batch(machineInfoRec(t, h.machine)), "X-Sy-Backlog", "900", "X-Sy-Backlog-Oldest", "2026-10-12T08:00:00Z")
+	code, body := h.do("POST", "/v1/ingest", tok, batch(machineInfoRec(t, h.machine)), "X-Wy-Backlog", "900", "X-Wy-Backlog-Oldest", "2026-10-12T08:00:00Z")
 	if code != 200 {
 		t.Fatalf("%d %s", code, body)
 	}
@@ -271,7 +271,7 @@ func TestIngestBacklogOldest(t *testing.T) {
 		t.Fatalf("%s", body)
 	}
 	// The last batch of a flush (backlog = its own size) leaves nothing queued.
-	if code, body := h.do("POST", "/v1/ingest", tok, batch(machineInfoRec(t, h.machine)), "X-Sy-Backlog", "1"); code != 200 {
+	if code, body := h.do("POST", "/v1/ingest", tok, batch(machineInfoRec(t, h.machine)), "X-Wy-Backlog", "1"); code != 200 {
 		t.Fatalf("%d %s", code, body)
 	}
 	_, body = h.do("GET", "/v1/machines", owner, nil)

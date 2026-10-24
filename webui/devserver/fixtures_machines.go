@@ -34,23 +34,23 @@ func (d *Data) machineFixtures(now time.Time) {
 			}
 		}
 	}
-	set("m_laptop", M{"sy_version": "0.5.0", "version_status": "same", "reach": "direct", "linger": nil})
-	set("m_gpu", M{"sy_version": "0.4.2", "version_status": "older", "reach": "forward", "backlog": 1240,
+	set("m_laptop", M{"wy_version": "0.5.0", "version_status": "same", "reach": "direct", "linger": nil})
+	set("m_gpu", M{"wy_version": "0.4.2", "version_status": "older", "reach": "forward", "backlog": 1240,
 		"backlog_oldest": ago(3 * hour), "backlog_at": ago(30 * time.Second), "direct_push": true, "linger": true})
-	set("m_vps", M{"sy_version": "0.4.0", "version_status": "older", "reach": "pull", "backlog_oldest": ago(3 * hour), "backlog_at": ago(3 * hour),
+	set("m_vps", M{"wy_version": "0.4.0", "version_status": "older", "reach": "pull", "backlog_oldest": ago(3 * hour), "backlog_at": ago(3 * hour),
 		"timer_ok": false, "linger": false,
 		"pull": pull("old-vps", "me@old-vps", "failing", ago(1*min), ago(3*hour), "ssh: connect to host old-vps port 22: Connection timed out", in(1*min)),
 		"alert": M{"id": "al_silent_vps", "trigger": "machine_silent", "status": "fired", "reason": nil, "due_at": ago(165 * min),
 			"fired_at": ago(165 * min), "fire_count": 1, "snoozed_until": nil, "seen_at": nil}})
 
-	oci := M{"id": "m_cloud", "name": "cloud-box", "os": "Ubuntu 24.04", "arch": "arm64", "sy_version": "0.6.0", "version_status": "newer",
+	oci := M{"id": "m_cloud", "name": "cloud-box", "os": "Ubuntu 24.04", "arch": "arm64", "wy_version": "0.6.0", "version_status": "newer",
 		"last_seen": ago(40 * time.Second), "last_record": ago(40 * time.Second), "backlog": 37, "backlog_oldest": ago(20 * min), "backlog_at": ago(40 * time.Second),
 		"silent": false, "live_sessions": 0, "reach": "pull", "record_v": 2, "held": 37, "direct_push": false, "timer_ok": true, "linger": true,
 		"pull":  pull("cloud-box", "admin@cloud-box", "ok", ago(40*time.Second), ago(40*time.Second), nil, in(20*time.Second)),
 		"alert": nil, "slots": []M{}}
 	d.Machines = append(d.Machines, oci)
 
-	removed := M{"id": "m_scratch", "name": "scratch-vm", "os": "Debian 12", "arch": "amd64", "sy_version": "0.3.1", "version_status": "older",
+	removed := M{"id": "m_scratch", "name": "scratch-vm", "os": "Debian 12", "arch": "amd64", "wy_version": "0.3.1", "version_status": "older",
 		"last_seen": ago(48 * hour), "last_record": ago(48 * hour), "backlog": nil, "silent": false, "live_sessions": 0, "reach": "forward",
 		"record_v": 1, "held": 0, "direct_push": false, "timer_ok": nil, "linger": nil, "pull": nil, "alert": nil, "slots": []M{},
 		"removed_at": ago(24 * hour)}
@@ -86,7 +86,7 @@ func (d *Data) machineFixtures(now time.Time) {
 		if st == "disabled" || st == "frozen" {
 			p["next_at"] = nil
 		}
-		m := M{"id": "m_" + name, "name": name, "os": "Debian 12", "arch": "amd64", "sy_version": "0.5.0", "version_status": "same",
+		m := M{"id": "m_" + name, "name": name, "os": "Debian 12", "arch": "amd64", "wy_version": "0.5.0", "version_status": "same",
 			"last_seen": ago(2 * min), "last_record": ago(2 * min), "backlog": 0, "silent": false, "live_sessions": 0, "reach": "pull",
 			"record_v": 1, "held": 0, "direct_push": false, "timer_ok": true, "linger": true, "pull": p, "alert": nil, "slots": []M{}}
 		d.StateMachines = append(d.StateMachines, m)

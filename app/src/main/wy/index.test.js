@@ -7,18 +7,18 @@ import path from 'node:path';
 import { create } from './index.js';
 import { cleanEnv } from './env.js';
 import { parseVersion, versionAtLeast } from './resolve.js';
-import { syExecFile, writeFakeSy } from '../../../test/fakes/hub.js';
+import { wyExecFile, writeFakeWy } from '../../../test/fakes/hub.js';
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'sy-wpc-'));
+const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'wy-wpc-'));
 const silent = { warn() {}, error() {}, debug() {}, info() {} };
-const INFO = JSON.stringify({ v: 1, 'sy': '0.6.0', machine: { id: 'm_1', name: 'laptop' }, hub: { url: 'http://127.0.0.1:8787', connected: true, reachable: true, version: '0.6.0', local: true, dial: null, service: 'running' }, admin: 'local', outbox: { pending: 0, last_error: null } });
+const INFO = JSON.stringify({ v: 1, wy: '0.6.0', machine: { id: 'm_1', name: 'laptop' }, hub: { url: 'http://127.0.0.1:8787', connected: true, reachable: true, version: '0.6.0', local: true, dial: null, service: 'running' }, admin: 'local', outbox: { pending: 0, last_error: null } });
 
 function make(dir, over = {}) {
-  const fake = writeFakeSy(dir, { '--version': { stdout: 'wy 0.6.1\n' }, ...(over.map ?? {}) });
+  const fake = writeFakeWy(dir, { '--version': { stdout: 'wy 0.6.1\n' }, ...(over.map ?? {}) });
   const wy = create({
     env: { HOME: dir, PATH: '/nonexistent', ...(over.env ?? {}) }, fs: fsp, path, platform: process.platform,
-    resourcesPath: over.resourcesPath ?? '', minSy: '0.6.0', log: silent, syBin: over.syBin === undefined ? fake.bin : over.syBin,
-    timers: over.timers, execFile: syExecFile,
+    resourcesPath: over.resourcesPath ?? '', minWy: '0.6.0', log: silent, wyBin: over.wyBin === undefined ? fake.bin : over.wyBin,
+    timers: over.timers, execFile: wyExecFile,
   });
   return { fake, wy };
 }
@@ -97,7 +97,7 @@ test('append: JSON lines on stdin, one id per record, ids counted', async () => 
 
 test('token: the code travels on stdin only, never in argv; the result is the C4 JSON', async () => {
   const dir = tmp();
-  const TOKEN = { device: 'dev_1', token: 'sy_d_secret', scopes: ['write', 'read'], hub: { url: 'http://127.0.0.1:8787' } };
+  const TOKEN = { device: 'dev_1', token: 'wy_d_secret', scopes: ['write', 'read'], hub: { url: 'http://127.0.0.1:8787' } };
   const { wy, fake } = make(dir, {
     map: {
       'desktop token --json --name Watchyard-desktop --code-stdin': { stdout: JSON.stringify(TOKEN) },
@@ -106,7 +106,7 @@ test('token: the code travels on stdin only, never in argv; the result is the C4
   });
   const withCode = await wy.token({ code: '123-456', name: 'Watchyard-desktop' });
   assert.equal(withCode.ok, true);
-  assert.equal(withCode.token, 'sy_d_secret');
+  assert.equal(withCode.token, 'wy_d_secret');
   const c1 = fake.calls().at(-1);
   assert.equal(c1.stdin, '123-456\n');
   assert.ok(c1.argv.includes('--code-stdin'));
@@ -119,7 +119,7 @@ test('token: the code travels on stdin only, never in argv; the result is the C4
   assert.ok(!c2.argv.includes('--code-stdin'));
 
   // no secret in any argv of any call
-  for (const c of fake.calls()) assert.ok(!c.argv.join(' ').includes('sy_d_'));
+  for (const c of fake.calls()) assert.ok(!c.argv.join(' ').includes('wy_d_'));
 
   const badCode = await wy.token({ code: '12 3;rm', name: 'x' });
   assert.equal(badCode.ok, false);
@@ -182,35 +182,35 @@ test('resolution: WY_BIN, then PATH or ~/.local/bin if new enough, else the bund
 
   // PATH: too old, so the bundled copy
   const b = tmp();
-  const old = writeFakeSy(path.join(b, 'bin'), { '--version': { stdout: 'wy 0.5.9' } });
-  const bundled = writeFakeSy(path.join(b, 'res', 'wy'), { '--version': { stdout: 'x' } });
-  const sy1 = create({ env: { HOME: b, PATH: path.dirname(old.bin) }, fs: fsp, path, platform: process.platform, execFile: syExecFile, resourcesPath: path.join(b, 'res'), minSy: '0.6.0', log: silent });
+  const old = writeFakeWy(path.join(b, 'bin'), { '--version': { stdout: 'wy 0.5.9' } });
+  const bundled = writeFakeWy(path.join(b, 'res', 'wy'), { '--version': { stdout: 'x' } });
+  const sy1 = create({ env: { HOME: b, PATH: path.dirname(old.bin) }, fs: fsp, path, platform: process.platform, execFile: wyExecFile, resourcesPath: path.join(b, 'res'), minWy: '0.6.0', log: silent });
   const r1 = await sy1.resolved();
   assert.equal(r1.source, 'bundled');
   assert.equal(r1.bin, bundled.bin);
 
   // PATH: new enough wins over bundled
   old.script({ '--version': { stdout: 'wy 0.6.0' } });
-  const sy2 = create({ env: { HOME: b, PATH: path.dirname(old.bin) }, fs: fsp, path, platform: process.platform, execFile: syExecFile, resourcesPath: path.join(b, 'res'), minSy: '0.6.0', log: silent });
+  const sy2 = create({ env: { HOME: b, PATH: path.dirname(old.bin) }, fs: fsp, path, platform: process.platform, execFile: wyExecFile, resourcesPath: path.join(b, 'res'), minWy: '0.6.0', log: silent });
   assert.equal((await sy2.resolved()).source, 'path');
 
   // ~/.local/bin after PATH
   const c = tmp();
-  writeFakeSy(path.join(c, '.local', 'bin'), { '--version': { stdout: 'wy 0.7.0' } });
-  const sy3 = create({ env: { HOME: c, PATH: '/nonexistent' }, fs: fsp, path, platform: process.platform, execFile: syExecFile, resourcesPath: '', minSy: '0.6.0', log: silent });
+  writeFakeWy(path.join(c, '.local', 'bin'), { '--version': { stdout: 'wy 0.7.0' } });
+  const sy3 = create({ env: { HOME: c, PATH: '/nonexistent' }, fs: fsp, path, platform: process.platform, execFile: wyExecFile, resourcesPath: '', minWy: '0.6.0', log: silent });
   assert.equal((await sy3.resolved()).source, 'local');
 
   // nothing at all: every call says so, without throwing
-  const sy4 = create({ env: { HOME: tmp(), PATH: '/nonexistent' }, fs: fsp, path, platform: process.platform, execFile: syExecFile, resourcesPath: '/nonexistent', minSy: '0.6.0', log: silent });
+  const sy4 = create({ env: { HOME: tmp(), PATH: '/nonexistent' }, fs: fsp, path, platform: process.platform, execFile: wyExecFile, resourcesPath: '/nonexistent', minWy: '0.6.0', log: silent });
   assert.equal(await sy4.resolved(), null);
   const r = await sy4.info();
   assert.equal(r.ok, false);
-  assert.equal(r.code, 'no_sy');
+  assert.equal(r.code, 'no_wy');
 });
 
 test('execFile seam: ENOENT, timeouts and the stdout cap are reported, not thrown', async () => {
   const mk = (err, out = '', errOut = '') => create({
-    env: {}, fs: fsp, path, platform: 'linux', resourcesPath: '', minSy: '0.6.0', log: silent, syBin: process.execPath,
+    env: {}, fs: fsp, path, platform: 'linux', resourcesPath: '', minWy: '0.6.0', log: silent, wyBin: process.execPath,
     execFile: (_bin, _argv, opts, cb) => {
       assert.equal(opts.shell, false);
       assert.equal(opts.maxBuffer, 1024 * 1024);
@@ -231,7 +231,7 @@ test('execFile seam: ENOENT, timeouts and the stdout cap are reported, not throw
 test('timeouts per purpose reach execFile', async () => {
   const seen = {};
   const wy = create({
-    env: {}, fs: fsp, path, platform: 'linux', resourcesPath: '', minSy: '0.6.0', log: silent, syBin: process.execPath,
+    env: {}, fs: fsp, path, platform: 'linux', resourcesPath: '', minWy: '0.6.0', log: silent, wyBin: process.execPath,
     execFile: (_b, argv, opts, cb) => {
       seen[argv.join(' ')] = opts.timeout;
       queueMicrotask(() => cb(null, '{}', ''));

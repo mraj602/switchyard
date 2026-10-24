@@ -18,9 +18,9 @@ if (platform !== 'android' && platform !== 'ios') {
 }
 
 const SKIP = new Set(['node_modules', 'android', 'ios', '.expo', '.git', 'coverage', 'dist']);
-const work = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-prebuild-'));
+const work = fs.mkdtempSync(path.join(os.tmpdir(), 'wy-prebuild-'));
 const app = path.join(work, 'phone');
-// Top-level only: the local modules keep their own android/ sources (modules/sy-link/android),
+// Top-level only: the local modules keep their own android/ sources (modules/wy-link/android),
 // minus their build outputs.
 const MODULE_SKIP = new Set(['build', '.cxx', '.gradle']);
 fs.cpSync(phone, app, {
@@ -69,9 +69,9 @@ try {
     for (const name of widgetNames) check(receivers.some((r) => r.includes(`.widget.${name}"`)), `widget receiver ${name}`);
     check(/<application[^>]*android:allowBackup="false"/.test(manifest), 'allowBackup="false"');
     check(!/<application[^>]*android:usesCleartextTraffic="true"/.test(manifest), 'no cleartext in release');
-    check(/<application[^>]*android:dataExtractionRules="@xml\/sy_data_extraction_rules"/.test(manifest), 'dataExtractionRules set');
-    check(/<application[^>]*android:fullBackupContent="@xml\/sy_backup_rules"/.test(manifest), 'fullBackupContent set');
-    for (const f of ['sy_data_extraction_rules.xml', 'sy_backup_rules.xml']) {
+    check(/<application[^>]*android:dataExtractionRules="@xml\/wy_data_extraction_rules"/.test(manifest), 'dataExtractionRules set');
+    check(/<application[^>]*android:fullBackupContent="@xml\/wy_backup_rules"/.test(manifest), 'fullBackupContent set');
+    for (const f of ['wy_data_extraction_rules.xml', 'wy_backup_rules.xml']) {
       const p = path.join(app, 'android', 'app', 'src', 'main', 'res', 'xml', f);
       check(fs.existsSync(p) && !/<include/.test(fs.readFileSync(p, 'utf8')) && fs.readFileSync(p, 'utf8').includes('<exclude domain="sharedpref" path="." />'), `${f} excludes everything`);
     }
@@ -79,15 +79,15 @@ try {
     const infos = xml.filter((f) => fs.readFileSync(f, 'utf8').includes('<appwidget-provider'));
     check(infos.length === widgetNames.length, `${widgetNames.length} appwidget-provider infos (found ${infos.length})`);
     check(!fs.existsSync(path.join(app, 'android', 'android')), 'no doubled android/android path');
-    // Widget taps open links with an explicit intent (with-sy-native.js patches the providers).
+    // Widget taps open links with an explicit intent (with-wy-native.js patches the providers).
     const providers = findFiles(path.join(app, 'android', 'app', 'src', 'main', 'java'), /\.java$/).filter((f) => fs.readFileSync(f, 'utf8').includes('extends RNWidgetProvider'));
     check(providers.length === widgetNames.length, `${widgetNames.length} widget provider classes (found ${providers.length})`);
     check(providers.every((f) => fs.readFileSync(f, 'utf8').includes('WidgetOpen.handle(context, intent)')), 'every widget provider hands taps to WidgetOpen (explicit intents)');
-    // The link build (P13, push.md 14.2). The sy-link module's own manifest is merged
+    // The link build (P13, push.md 14.2). The wy-link module's own manifest is merged
     // by Gradle, so its entries are read there; the app's must carry no FCM entry.
-    const link = fs.readFileSync(path.join(app, 'modules', 'sy-link', 'android', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
+    const link = fs.readFileSync(path.join(app, 'modules', 'wy-link', 'android', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
     const both = manifest + link;
-    check(/<service[^>]*SyLinkService[^>]*android:foregroundServiceType="specialUse"/.test(link), 'sy-link service with foregroundServiceType specialUse');
+    check(/<service[^>]*WyLinkService[^>]*android:foregroundServiceType="specialUse"/.test(link), 'wy-link service with foregroundServiceType specialUse');
     check(/android\.app\.PROPERTY_SPECIAL_USE_FGS_SUBTYPE/.test(link), 'specialUse subtype property');
     check(both.includes('android.permission.FOREGROUND_SERVICE_SPECIAL_USE'), 'FOREGROUND_SERVICE_SPECIAL_USE permission');
     check(both.includes('android.permission.RECEIVE_BOOT_COMPLETED'), 'RECEIVE_BOOT_COMPLETED permission');
@@ -100,7 +100,7 @@ try {
     for (const dep of ['expo-notifications', 'expo-camera', 'expo-application']) {
       check(!(dep in { ...pkg.dependencies, ...pkg.devDependencies }), `no ${dep} dependency`);
     }
-    for (const mod of ['sy-notify', 'sy-scan']) {
+    for (const mod of ['wy-notify', 'wy-scan']) {
       check(fs.existsSync(path.join(app, 'modules', mod, 'android', 'build.gradle')), `local module ${mod} present`);
     }
     let staticOk = true;
@@ -116,17 +116,17 @@ try {
     const props = read('android', 'gradle.properties');
     const minSdk = /android\.minSdkVersion=(\d+)/.exec(props);
     check(!!minSdk && Number(minSdk[1]) >= 31, `minSdkVersion 31 (found ${minSdk ? minSdk[1] : 'none'})`);
-    // The notification glyphs ship from the sy-link module's res (autolinked into the app).
+    // The notification glyphs ship from the wy-link module's res (autolinked into the app).
     const kinds = ['connection', 'needs_you', 'failed', 'limit', 'reset', 'machine', 'summary', 'generic'];
-    const missing = kinds.filter((k) => !fs.existsSync(path.join(app, 'modules', 'sy-link', 'android', 'src', 'main', 'res', 'drawable', `sy_notify_${k}.xml`)));
-    check(missing.length === 0, `sy-link notification icons present${missing.length ? ` (missing ${missing.join(', ')})` : ''}`);
+    const missing = kinds.filter((k) => !fs.existsSync(path.join(app, 'modules', 'wy-link', 'android', 'src', 'main', 'res', 'drawable', `wy_notify_${k}.xml`)));
+    check(missing.length === 0, `wy-link notification icons present${missing.length ? ` (missing ${missing.join(', ')})` : ''}`);
   } else {
     const plists = findFiles(path.join(app, 'ios'), /^Info\.plist$/);
     const mainPlist = plists.find((f) => !/Widget|Extension|ExpoWidgetsTarget/i.test(path.relative(path.join(app, 'ios'), f)));
     const plist = mainPlist ? fs.readFileSync(mainPlist, 'utf8') : '';
     check(Boolean(mainPlist), 'app Info.plist');
     check(/<key>NSSupportsLiveActivities<\/key>\s*<true\/>/.test(plist), 'NSSupportsLiveActivities');
-    // The QR scanner (modules/sy-scan) is Android only: the iOS app asks for no camera.
+    // The QR scanner (modules/wy-scan) is Android only: the iOS app asks for no camera.
     check(!plist.includes('<key>NSCameraUsageDescription</key>'), 'no NSCameraUsageDescription (no scanner on iOS)');
     check(/<key>CFBundleURLSchemes<\/key>\s*<array>[\s\S]*?<string>watchyard<\/string>/.test(plist), 'watchyard URL scheme');
     const ents = findFiles(path.join(app, 'ios'), /\.entitlements$/);

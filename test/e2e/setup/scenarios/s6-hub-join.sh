@@ -13,11 +13,11 @@
 # ---- the hub, in its own home ----
 HUBH=$WY_E2E_TMP/hub/home
 mkdir -p "$HUBH"
-install_sy "$HUBH"
+install_wy "$HUBH"
 H=$HUBH
 PORT=$(python3 -I -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
 URL=http://127.0.0.1:$PORT
-sy_bg "$WY_E2E_TMP/hub.pid" "$WY_E2E_TMP/hub.out" hub serve --listen "127.0.0.1:$PORT"
+wy_bg "$WY_E2E_TMP/hub.pid" "$WY_E2E_TMP/hub.out" hub serve --listen "127.0.0.1:$PORT"
 trap 'kill "$(cat "$WY_E2E_TMP/hub.pid")" 2>/dev/null; cleanup' EXIT
 i=0
 until curl -fs "$URL/health" >/dev/null 2>&1; do
@@ -28,7 +28,7 @@ pass "hub serving on $URL"
 
 # ---- the machine ----
 H=$(new_home join laptop)
-install_sy "$H"
+install_wy "$H"
 P=$H/.claude
 snap "$H" "$WY_E2E_TMP/before.json" -claude-json
 cp "$P/settings.json" "$WY_E2E_TMP/settings.before.json"
@@ -43,7 +43,7 @@ printf '%s\n' "$TOKEN" > "$WY_E2E_TMP/token"
 H=$WY_E2E_TMP/join/home
 
 # Join with the token from stdin.
-sy_in "$WY_E2E_TMP/token" setup --yes --json --hub "join:$URL" --token-stdin
+wy_in "$WY_E2E_TMP/token" setup --yes --json --hub "join:$URL" --token-stdin
 assert_rc "setup --hub join" 0 $rc
 assert_eq "applied" applied "$(jget "$OUT" 'd["mode"]')"
 S=$H/.local/state/watchyard
@@ -60,7 +60,7 @@ wy doctor --json
 assert_eq "doctor: no hub failure" 0 "$(grep -cE '"name": "hub"' "$OUT")"
 
 # A second run is idempotent.
-sy_in "$WY_E2E_TMP/token" setup --yes --json --hub "join:$URL" --token-stdin
+wy_in "$WY_E2E_TMP/token" setup --yes --json --hub "join:$URL" --token-stdin
 assert_rc "rerun" 0 $rc
 assert_eq "rerun: 0 changes" 0 "$(jget "$OUT" 'd["summary"]["changes"]')"
 

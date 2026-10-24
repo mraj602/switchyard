@@ -1,5 +1,5 @@
-// The sy-link module's JS API (push.md 14.8) as src/lib sees it: src/lib may not import the
-// module (P1), so these mirror phone/modules/sy-link/src/SyLink.types.ts, and
+// The wy-link module's JS API (push.md 14.8) as src/lib sees it: src/lib may not import the
+// module (P1), so these mirror phone/modules/wy-link/src/WyLink.types.ts, and
 // test/link-contract.test.ts checks that both stay assignable to each other.
 
 import type { SignedDoc } from './api';
@@ -90,5 +90,5 @@ export interface LinkLike extends ClaimLink, UpdateLink {
 }
 
 /** configure()'s rejection codes (the native module's CodedException codes). */
-export const LINK_ERR_HUB_KEY = 'ERR_SY_HUB_KEY';
-export const LINK_ERR_TAMPERED = 'ERR_SY_TAMPERED';
+export const LINK_ERR_HUB_KEY = 'ERR_WY_HUB_KEY';
+export const LINK_ERR_TAMPERED = 'ERR_WY_TAMPERED';

@@ -40,7 +40,7 @@ export function expose(env) {
 }
 
 /** WY_BIN: an absolute path to the wy binary to run instead of the resolved one. */
-export function syBin(env) {
+export function wyBin(env) {
   const v = env?.[TEST_ENV.WY_BIN];
   if (!v) return null;
   if (!isAbsolute(v)) throw new Error(`${TEST_ENV.WY_BIN} must be an absolute path`);

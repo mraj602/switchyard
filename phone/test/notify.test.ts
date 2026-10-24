@@ -1,4 +1,4 @@
-import * as ExpoNotifications from '../modules/sy-notify';
+import * as ExpoNotifications from '../modules/wy-notify';
 import type { AppInfo, Clock, FetchLike, RequestInitLike } from '../src/contract/platform';
 import {
   actOnToken,
@@ -82,7 +82,7 @@ describe('channels and categories', () => {
   it('creates the four Android channels with the mapped importance, and no channels on iOS', async () => {
     await setupChannelsAndCategories(N, 'android', 15);
     const ch = callsOf('notifications.setNotificationChannelAsync');
-    expect(ch.map((c) => c.args[0])).toEqual(['sy_needs_you', 'sy_limits', 'sy_machines', 'sy_test']);
+    expect(ch.map((c) => c.args[0])).toEqual(['wy_needs_you', 'wy_limits', 'wy_machines', 'wy_test']);
     const imp = ExpoNotifications.AndroidImportance;
     expect(ch.map((c) => (c.args[1] as { importance: number }).importance)).toEqual([imp.HIGH, imp.DEFAULT, imp.LOW, imp.DEFAULT]);
     expect(ch.map((c) => (c.args[1] as { name: string }).name)).toEqual(['Needs you', 'Limits', 'Machines', 'Test']);
@@ -92,12 +92,12 @@ describe('channels and categories', () => {
     expect(callsOf('notifications.setNotificationChannelAsync')).toHaveLength(0);
   });
 
-  it('has one category, sy_alert, without - or : and three actions with the P6.2 options', async () => {
+  it('has one category, wy_alert, without - or : and three actions with the P6.2 options', async () => {
     await setupChannelsAndCategories(N, 'ios', 30);
     const cats = callsOf('notifications.setNotificationCategoryAsync');
     expect(cats).toHaveLength(1);
     const [id, actions] = cats[0]!.args as [string, { identifier: string; buttonTitle: string; options: unknown }[]];
-    expect(id).toBe('sy_alert');
+    expect(id).toBe('wy_alert');
     expect(id).not.toMatch(/[-:]/);
     expect(actions).toEqual([
       { identifier: 'open', buttonTitle: 'Open', options: { opensAppToForeground: true } },

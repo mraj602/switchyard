@@ -161,16 +161,16 @@ sequenceDiagram
 1. On the old hub, freeze it and write an encrypted archive:
 
    ```sh
-   wy hub export --moved-to https://hub.example.ts.net --encrypt --out ~/hub.syx
+   wy hub export --moved-to https://hub.example.ts.net --encrypt --out ~/hub.wyx
    ```
 
    From now on it answers 503 to new records. Machines keep them in their outbox.
-2. Copy `~/hub.syx` to the new machine (for example with `scp`). It holds every token hash and
+2. Copy `~/hub.wyx` to the new machine (for example with `scp`). It holds every token hash and
    key: treat it like a password.
 3. On the new machine, with `wy` installed and no hub running yet:
 
    ```sh
-   wy hub import ~/hub.syx --public-url https://hub.example.ts.net
+   wy hub import ~/hub.wyx --public-url https://hub.example.ts.net
    ```
 
 4. Start the hub there as a service ([install.md](install.md)), and put HTTPS in front of it.
@@ -186,7 +186,7 @@ sequenceDiagram
    wy connect https://hub.example.ts.net --keep-token
    ```
 
-6. Check `wy doctor` on each machine and the board at the new address. Delete `~/hub.syx`.
+6. Check `wy doctor` on each machine and the board at the new address. Delete `~/hub.wyx`.
 
 Tokens keep working. Phones keep working if the public URL stayed the same; otherwise pair them
 again. `wy doctor` on a machine whose hub is frozen prints the exact `wy connect ... --keep-token`

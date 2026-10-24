@@ -176,7 +176,7 @@ The desktop app's Hub tab shows this same page.
   line), where Claude Code is signed in or out per machine, details (plan, organisation, email,
   extra usage and spend, open sessions, "claude.ai usage read N min ago") and, for the owner, **Edit
   label and colour**. Several rows can be open; the open rows are kept per browser in
-  `localStorage` (`sy-accounts-open`, optional). **Expand all / Collapse all** sits at the top.
+  `localStorage` (`wy-accounts-open`, optional). **Expand all / Collapse all** sits at the top.
 - Below the list one muted line: "The bar shows the tighter of the 5 h and 7 d limits. Select an
   account for everything else."
 - **Most room right now** ("Most room right now: claude-2 (5 h 0% · 7 d 3%)"): among non-hidden
@@ -253,7 +253,7 @@ app targets), scope `/`. Logic that can be tested without a browser lives in `/s
 loaded with `importScripts` and also loaded by `node --test` through `vm`
 (`webui/static/sw-lib.test.cjs`).
 
-**Versioning.** `sw.js` contains the literal `__SY_BUILD__`. `webui.Handler()`
+**Versioning.** `sw.js` contains the literal `__WY_BUILD__`. `webui.Handler()`
 (`webui/serve.go`) replaces it, when serving, with the first 12 hex digits of SHA-256 over
 all embedded file names and contents (computed once at start), and serves it with
 `Content-Type: text/javascript` and `Cache-Control: no-cache`. Any change to any file
@@ -264,18 +264,18 @@ therefore changes `sw.js`, which is how browsers notice an update. `/health` gai
 
 | Requests | Strategy | Cache |
 | --- | --- | --- |
-| App shell: every file in `ASSETS` (a constant list in `sw.js`; a Go test checks it equals the embedded files minus tests and dev files) | Precached on `install`; served cache-first | `sy-shell-<build>` |
+| App shell: every file in `ASSETS` (a constant list in `sw.js`; a Go test checks it equals the embedded files minus tests and dev files) | Precached on `install`; served cache-first | `wy-shell-<build>` |
 | Navigations (`/`, `/index.html`) | Network first, 4 s timeout, then the cached `index.html` | shell |
-| `GET` of `/v1/me`, `/v1/overview`, `/v1/sessions`, `/v1/sessions/<id>` (last 20), `/v1/accounts`, `/v1/machines`, `/v1/alerts`, `/v1/rules`, `/v1/devices/self`, `/v1/push/config` | Network first, 6 s timeout; a 200 is stored; on failure the stored copy is returned with header `X-Sy-Cached-At: <ms>`; nothing stored → 503 JSON | `sy-data` |
+| `GET` of `/v1/me`, `/v1/overview`, `/v1/sessions`, `/v1/sessions/<id>` (last 20), `/v1/accounts`, `/v1/machines`, `/v1/alerts`, `/v1/rules`, `/v1/devices/self`, `/v1/push/config` | Network first, 6 s timeout; a 200 is stored; on failure the stored copy is returned with header `X-Wy-Cached-At: <ms>`; nothing stored → 503 JSON | `wy-data` |
 | `/v1/stream`, every non-GET, `/v1/actions/*`, cross-origin | Not intercepted (`respondWith` is not called) | — |
 
-- `api.js` sees `X-Sy-Cached-At` and sets `store.offline = {since}`; the shell shows
+- `api.js` sees `X-Wy-Cached-At` and sets `store.offline = {since}`; the shell shows
   "Offline · showing 14:02" and disables Seen/Snooze/test buttons. The stream's existing
   backoff keeps retrying; on the first success the banner goes and everything refetches.
 - A 401 from any API call makes the page post `{type: "clear-data"}` to the worker, which
-  deletes `sy-data`; unpair and logout do the same. Cached data is the only copy of hub data
+  deletes `wy-data`; unpair and logout do the same. Cached data is the only copy of hub data
   on the phone, and it holds no token.
-- `activate` deletes caches whose names are not the current shell or `sy-data`, then
+- `activate` deletes caches whose names are not the current shell or `wy-data`, then
   `clients.claim()`, so the first visit is already offline-capable.
 
 **Update flow.**
@@ -416,7 +416,7 @@ standalone)')` and `navigator.standalone` for "already installed").
     empty;
   - the worker registers and controls the page after one reload; `caches.keys()` has the
     shell cache;
-  - offline: `page.setOfflineMode(true)` then reload → Now renders from `sy-data` with the
+  - offline: `page.setOfflineMode(true)` then reload → Now renders from `wy-data` with the
     offline banner; back online → banner gone;
   - update: the devserver switches to another build hash → "Update ready" → click →
     reloaded page runs the new build;

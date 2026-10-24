@@ -23,7 +23,7 @@ func testPepperPath(t *testing.T) string {
 	return api.PairPepperPath
 }
 
-// ownerSessionToken makes an owner session as `wy hub owner-link` does: a sy_o_ token whose
+// ownerSessionToken makes an owner session as `wy hub owner-link` does: a wy_o_ token whose
 // hash is keyed with the pairing pepper.
 func ownerSessionToken(t *testing.T, st *store.Store) auth.Created {
 	t.Helper()

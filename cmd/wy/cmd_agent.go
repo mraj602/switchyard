@@ -58,7 +58,7 @@ var (
 		if u, err := user.Current(); err == nil {
 			uname = u.Username
 		}
-		return service.Env{GOOS: runtime.GOOS, Home: pe.Home, UID: os.Getuid(), User: uname, SyPath: wy,
+		return service.Env{GOOS: runtime.GOOS, Home: pe.Home, UID: os.Getuid(), User: uname, WyPath: wy,
 			StateDir: d.State.Path, Getenv: os.Getenv, Runner: timer.ExecRunner{}, Out: stderr}, nil
 	}
 	// agentContext is the context of `wy agent run`: cancelled by SIGINT or SIGTERM.

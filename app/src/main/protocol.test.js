@@ -34,7 +34,7 @@ test('mapping: shared/<p> → src/shared, everything else → src/renderer, / �
   assert.equal(p.resolve('app://shell').file, path.join(SRC, 'renderer', 'index.html'));
   assert.equal(p.resolve('app://shell/app.js?x=1#y').file, path.join(SRC, 'renderer', 'app.js'));
   assert.equal(p.resolve('app://shell/shared/ipc.js').file, path.join(SRC, 'shared', 'ipc.js'));
-  assert.equal(p.resolve('app://shell/dev/mock-sy.js').file, path.join(SRC, 'renderer', 'dev', 'mock-sy.js'));
+  assert.equal(p.resolve('app://shell/dev/mock-wy.js').file, path.join(SRC, 'renderer', 'dev', 'mock-wy.js'));
   assert.equal(p.resolve('app://shell/a%20b.css').file, path.join(SRC, 'renderer', 'a b.css'));
 });
 
@@ -109,7 +109,7 @@ test('shared modules are served as JavaScript; a missing file is 404; non-GET is
 });
 
 test('a symlink that leaves the root is refused', async (t) => {
-  const dir = await fs.mkdtemp(path.join(tmpdir(), 'sy-proto-'));
+  const dir = await fs.mkdtemp(path.join(tmpdir(), 'wy-proto-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   await fs.mkdir(path.join(dir, 'renderer'));
   await fs.mkdir(path.join(dir, 'shared'));

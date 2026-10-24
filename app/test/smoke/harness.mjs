@@ -67,7 +67,7 @@ const BAD_HOME_PREFIXES = () => {
  * @param {string} name
  */
 export function sandbox(name) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), `sy-${name}-`));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), `wy-${name}-`));
   const home = path.join(root, 'home');
   const userData = path.join(root, 'ud');
   for (const d of [home, userData, path.join(root, 'run')]) fs.mkdirSync(d, { recursive: true, mode: 0o700 });
@@ -94,7 +94,7 @@ export function sandbox(name) {
 }
 
 /** The wy binary: WY_BIN when set, else a `go build` of ../cmd/wy into dir. */
-export function syBinary(dir) {
+export function wyBinary(dir) {
   if (process.env.WY_BIN) return process.env.WY_BIN;
   const out = path.join(dir, process.platform === 'win32' ? 'wy.exe' : 'wy');
   const r = spawnSync(process.env.GO || 'go', ['build', '-o', out, './cmd/wy'], {
@@ -105,7 +105,7 @@ export function syBinary(dir) {
 }
 
 /** Runs wy in the sandbox; resolves {code, stdout, stderr}. */
-export function runSy(sb, bin, args, { stdin, timeout = 60_000, env = {} } = {}) {
+export function runWy(sb, bin, args, { stdin, timeout = 60_000, env = {} } = {}) {
   return new Promise((resolve, reject) => {
     const p = spawn(bin, args, { env: { ...sb.env, ...env }, stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = '';
@@ -122,8 +122,8 @@ export function runSy(sb, bin, args, { stdin, timeout = 60_000, env = {} } = {})
   });
 }
 
-async function syJson(sb, bin, args, opts) {
-  const r = await runSy(sb, bin, args, opts);
+async function wyJson(sb, bin, args, opts) {
+  const r = await runWy(sb, bin, args, opts);
   if (r.code !== 0) throw new Error(`wy ${args.join(' ')}: exit ${r.code}: ${r.stderr}`);
   return JSON.parse(r.stdout);
 }
@@ -138,11 +138,11 @@ export async function startHub(sb, bin) {
   const log = fs.openSync(path.join(sb.root, 'hub.log'), 'a');
   const proc = spawn(bin, ['hub', 'serve', '--listen', `127.0.0.1:${port}`, '--no-pull'], { env: sb.env, stdio: ['ignore', log, log] });
   await waitFor(async () => (await fetch(`${url}/health`)).ok, 20_000, 'the hub to answer /health');
-  const code = (await syJson(sb, bin, ['hub', 'pair', '--kind', 'machine', '--url', url, '--json'])).code;
-  const c = await runSy(sb, bin, ['connect', url, '--code-stdin', '--no-timer'], { stdin: `${code}\n` });
+  const code = (await wyJson(sb, bin, ['hub', 'pair', '--kind', 'machine', '--url', url, '--json'])).code;
+  const c = await runWy(sb, bin, ['connect', url, '--code-stdin', '--no-timer'], { stdin: `${code}\n` });
   if (c.code !== 0) throw new Error(`wy connect: ${c.stderr}`);
   // A reader for the test itself (a desktop device of its own).
-  const reader = (await syJson(sb, bin, ['desktop', 'token', '--json', '--name', 'smoke-reader'])).token;
+  const reader = (await wyJson(sb, bin, ['desktop', 'token', '--json', '--name', 'smoke-reader'])).token;
   const hub = {
     url,
     port,
@@ -155,7 +155,7 @@ export async function startHub(sb, bin) {
     },
     /** An owner cookie for the test (wy desktop owner-link → POST /v1/session/owner). */
     async ownerCookie() {
-      const link = await syJson(sb, bin, ['desktop', 'owner-link', '--json']);
+      const link = await wyJson(sb, bin, ['desktop', 'owner-link', '--json']);
       const secret = new URL(link.url.replace('#/owner?', 'owner?')).searchParams.get('s');
       const r = await fetch(`${url}/v1/session/owner`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ secret, name: 'smoke owner' }),
@@ -171,12 +171,12 @@ export async function startHub(sb, bin) {
       if (!r.ok) throw new Error(`${method} ${p}: ${r.status} ${text}`);
       return text ? JSON.parse(text) : null;
     },
-    wy: (args, opts) => runSy(sb, bin, args, opts),
+    wy: (args, opts) => runWy(sb, bin, args, opts),
     async outboxBytes() {
-      return (await syJson(sb, bin, ['outbox', 'stat', '--json'])).bytes ?? 0;
+      return (await wyJson(sb, bin, ['outbox', 'stat', '--json'])).bytes ?? 0;
     },
     async outboxDir() {
-      return (await syJson(sb, bin, ['outbox', 'stat', '--json'])).dir;
+      return (await wyJson(sb, bin, ['outbox', 'stat', '--json'])).dir;
     },
     stop: () =>
       new Promise((resolve) => {

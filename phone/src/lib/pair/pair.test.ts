@@ -126,7 +126,7 @@ describe('parsePairInput', () => {
 });
 
 describe('claim', () => {
-  const ok = { device: 'dev_phone', kind: 'phone', name: 'Pixel 9 · app', scopes: ['read', 'push'], token: 'sy_p_TOKENVALUE', hub: { url: 'https://hub.test.ts.net' } };
+  const ok = { device: 'dev_phone', kind: 'phone', name: 'Pixel 9 · app', scopes: ['read', 'push'], token: 'wy_p_TOKENVALUE', hub: { url: 'https://hub.test.ts.net' } };
 
   it('sends the P2 body and keeps origin, token, device and name', async () => {
     const clock = manualClock();
@@ -146,7 +146,7 @@ describe('claim', () => {
     });
     expect(hub).toEqual({
       origin: 'https://hub.test.ts.net',
-      token: 'sy_p_TOKENVALUE',
+      token: 'wy_p_TOKENVALUE',
       device: 'dev_phone',
       name: 'Pixel 9 · app',
       paired_at: new Date(clock.now()).toISOString(),
@@ -233,7 +233,7 @@ describe('claim', () => {
 
   it('accepts a /health that answers with an error status (a 503 hub is still that hub)', async () => {
     const f = fakeFetch((url) => (url.endsWith('/health') ? response(503, { ok: false }) : response(200, ok)));
-    await expect(claim({ fetch: f, clock: manualClock(), app }, { origin: 'https://hub.test.ts.net', code: '482913' })).resolves.toMatchObject({ token: 'sy_p_TOKENVALUE' });
+    await expect(claim({ fetch: f, clock: manualClock(), app }, { origin: 'https://hub.test.ts.net', code: '482913' })).resolves.toMatchObject({ token: 'wy_p_TOKENVALUE' });
   });
 
   it('keeps no token from a claim answer that was redirected or is a 3xx', async () => {
@@ -274,7 +274,7 @@ describe('claim with link keys (keys.md 7, P2 "Keys in the claim")', () => {
     kind: 'phone',
     name: 'Pixel 9 · app',
     scopes: ['read', 'push'],
-    token: 'sy_p_TOKENVALUE',
+    token: 'wy_p_TOKENVALUE',
     hub: {},
     hub_key: { alg: 'ed25519', pub: 'SFVCUFVC', fp: H },
     owner_key: null,
@@ -302,7 +302,7 @@ describe('claim with link keys (keys.md 7, P2 "Keys in the claim")', () => {
     };
   };
   const route = (r: unknown) => (url: string) => (url.endsWith('/v1/pair/claim') ? response(200, r) : response(200, {}));
-  const old = { device: 'dev_phone', kind: 'phone', name: 'n', scopes: [], token: 'sy_p_T', hub: {} };
+  const old = { device: 'dev_phone', kind: 'phone', name: 'n', scopes: [], token: 'wy_p_T', hub: {} };
 
   it('parses h and k from the QR and refuses damaged ones', () => {
     expect(parsePairInput(`https://hub.test.ts.net/#/pair?s=${S}&c=482913&h=${H.toUpperCase()}&k=${K}`, prod)).toEqual({
@@ -333,7 +333,7 @@ describe('claim with link keys (keys.md 7, P2 "Keys in the claim")', () => {
       cert,
       qrFp: H,
     });
-    expect(hub.token).toBe('sy_p_TOKENVALUE');
+    expect(hub.token).toBe('wy_p_TOKENVALUE');
   });
 
   it('sends the keys in the clear with a typed code (reg tofu)', async () => {
@@ -366,8 +366,8 @@ describe('claim with link keys (keys.md 7, P2 "Keys in the claim")', () => {
     ['reg tofu after a sealed claim', reply({ reg: 'tofu' }), null, 'tampered', TAMPERED],
     ['a reply with the keys stripped', reply({ hub_key: undefined, cert: undefined, reg: undefined }), null, 'tampered', TAMPERED],
     ['no certificate', reply({ cert: undefined }), null, 'tampered', TAMPERED],
-    ['a certificate configure() refuses', reply(), 'ERR_SY_TAMPERED', 'tampered', TAMPERED],
-    ['a hub key configure() refuses', reply(), 'ERR_SY_HUB_KEY', 'hub_key', HUB_KEY],
+    ['a certificate configure() refuses', reply(), 'ERR_WY_TAMPERED', 'tampered', TAMPERED],
+    ['a hub key configure() refuses', reply(), 'ERR_WY_HUB_KEY', 'hub_key', HUB_KEY],
   ])('refuses %s and deletes the new device with its token', async (_n, r, code, reason, message) => {
     const link = fakeLink(code);
     const f = fakeFetch(route(r));
@@ -375,15 +375,15 @@ describe('claim with link keys (keys.md 7, P2 "Keys in the claim")', () => {
     expect(err).toBeInstanceOf(ClaimError);
     expect(err.reason).toBe(reason);
     expect(err.message).toBe(message);
-    expect(err.message).not.toContain('sy_p_TOKENVALUE');
+    expect(err.message).not.toContain('wy_p_TOKENVALUE');
     const d = deletes(f);
     expect(d).toHaveLength(1);
-    expect(d[0]!.init.headers?.Authorization).toBe('Bearer sy_p_TOKENVALUE');
+    expect(d[0]!.init.headers?.Authorization).toBe('Bearer wy_p_TOKENVALUE');
     expect(d[0]!.init.redirect).toBe('error');
   });
 
   it('pairs without a link when configure fails for another reason', async () => {
-    const link = fakeLink('ERR_SY_CONFIG');
+    const link = fakeLink('ERR_WY_CONFIG');
     const f = fakeFetch(route(reply({ reg: 'tofu' })));
     await expect(claim({ fetch: f, clock: manualClock(), app, link }, { origin: 'https://hub.test.ts.net', code: '482913' })).resolves.toMatchObject({ device: 'dev_phone' });
     expect(deletes(f)).toHaveLength(0);

@@ -1,15 +1,15 @@
 // Jest setup (phone.md P1): every native module the app uses is a small
 // recording fake from test/fakes.ts, and the network is off.
 
-jest.mock('../modules/sy-notify', () => jest.requireActual('./fakes').notifications);
+jest.mock('../modules/wy-notify', () => jest.requireActual('./fakes').notifications);
 jest.mock('expo-secure-store', () => jest.requireActual('./fakes').secureStore);
-jest.mock('../modules/sy-scan', () => jest.requireActual('./fakes').syScan);
+jest.mock('../modules/wy-scan', () => jest.requireActual('./fakes').wyScan);
 jest.mock('expo-widgets', () => jest.requireActual('./fakes').widgets);
 jest.mock('@expo/ui/swift-ui', () => jest.requireActual('./fakes').swiftUI);
 jest.mock('@expo/ui/swift-ui/modifiers', () => jest.requireActual('./fakes').swiftUIModifiers);
 jest.mock('react-native-android-widget', () => jest.requireActual('./fakes').androidWidget);
-jest.mock('../modules/sy-link', () => jest.requireActual('./fakes').syLink);
-jest.mock('../modules/sy-tabs', () => jest.requireActual('./fakes').syTabs);
+jest.mock('../modules/wy-link', () => jest.requireActual('./fakes').wyLink);
+jest.mock('../modules/wy-tabs', () => jest.requireActual('./fakes').wyTabs);
 jest.mock('@react-native-async-storage/async-storage', () =>
   jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );

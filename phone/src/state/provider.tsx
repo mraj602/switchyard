@@ -28,9 +28,9 @@ export interface ProviderDeps {
   clock: Clock;
   appState: AppStateSource;
   app: AppInfo;
-  /** modules/sy-notify (dismissing a notification after Snooze or Seen, P6.4). */
+  /** modules/wy-notify (dismissing a notification after Snooze or Seen, P6.4). */
   notifications: NotificationsLike;
-  /** The sy-link module (Android): the claim carries keys (P2). */
+  /** The wy-link module (Android): the claim carries keys (P2). */
   link?: ClaimLink | null;
 }
 

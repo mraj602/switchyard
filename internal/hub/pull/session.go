@@ -228,7 +228,7 @@ func (s *Session) Serve(ctx context.Context, t store.PullTarget, in io.Reader, o
 	// hello alone, push.md 3.1) and a freeze committed since the check above still refuses.
 	bkHello := hello.Backlog
 	if err := s.Ingester.Contact(ctx, dev, ingest.Contact{Backlog: &bkHello, BacklogOldest: oldestMS,
-		Reach: ReachPull, SyVersion: hello.Sy, RecordV: hello.RecordV}); err != nil {
+		Reach: ReachPull, WyVersion: hello.Wy, RecordV: hello.RecordV}); err != nil {
 		if errors.Is(err, ingest.ErrFrozen) {
 			return refuse(drainproto.RefuseFrozen, "the hub is frozen for a move")
 		}
@@ -285,9 +285,9 @@ func (s *Session) Serve(ctx context.Context, t store.PullTarget, in io.Reader, o
 			if len(v.Records) > start.MaxRecords || v.RecordBytes() > start.MaxBytes {
 				return fail(fmt.Errorf("%w: batch over the limits in start", drainproto.ErrProtocol))
 			}
-			body := buildBody(hello.Sy, v.Records)
+			body := buildBody(hello.Wy, v.Records)
 			// Hub rule 3: backlog is the remote's more-adjusted count (this batch included,
-			// as X-Sy-Backlog), its age the oldest ts of the batch while more is queued.
+			// as X-Wy-Backlog), its age the oldest ts of the batch while more is queued.
 			bk := max(remaining, int64(len(v.Records)))
 			opt := ingest.Options{Backlog: &bk, More: v.More, Reach: ReachPull}
 			if v.More {
@@ -423,10 +423,10 @@ func onlyMismatch(rs []ingest.Rejected) bool {
 }
 
 // buildBody makes the ingest batch for the records, copying every record byte for byte.
-func buildBody(syVersion string, recs []json.RawMessage) []byte {
+func buildBody(wyVersion string, recs []json.RawMessage) []byte {
 	var b bytes.Buffer
 	b.WriteString(`{"v":1,"client":`)
-	cl, _ := json.Marshal("wy/" + syVersion)
+	cl, _ := json.Marshal("wy/" + wyVersion)
 	b.Write(cl)
 	b.WriteString(`,"records":[`)
 	for i, r := range recs {

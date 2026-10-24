@@ -64,12 +64,12 @@ type HubInfo struct {
 
 // Options are what one ingest call knows besides the body.
 type Options struct {
-	// Backlog is X-Sy-Backlog (nil = not sent), or the drain's more-adjusted count.
+	// Backlog is X-Wy-Backlog (nil = not sent), or the drain's more-adjusted count.
 	Backlog *int64
-	// BacklogOldest is X-Sy-Backlog-Oldest or the drain hello's `oldest`, client ms; 0 = none.
+	// BacklogOldest is X-Wy-Backlog-Oldest or the drain hello's `oldest`, client ms; 0 = none.
 	BacklogOldest int64
 	// More: the client said more records are queued after this batch (a drain batch's
-	// `more`). An upload whose X-Sy-Backlog is above its record count counts too.
+	// `more`). An upload whose X-Wy-Backlog is above its record count counts too.
 	More bool
 	// Reach is set by the hub's own pull ("pull"); "" keeps the stored value.
 	Reach string
@@ -81,7 +81,7 @@ type Contact struct {
 	Backlog       *int64
 	BacklogOldest int64  // client ms, 0 = none
 	Reach         string // "pull" for the hub's pull
-	SyVersion     string // "0.5.0", "" = unknown
+	WyVersion     string // "0.5.0", "" = unknown
 	RecordV       int    // highest record v the machine writes, 0 = unknown
 }
 
@@ -173,7 +173,7 @@ type pending struct {
 	tsT time.Time
 }
 
-// Ingest handles one batch from device dev. backlog is the X-Sy-Backlog header (nil if
+// Ingest handles one batch from device dev. backlog is the X-Wy-Backlog header (nil if
 // absent). Typed-table errors never fail a record: they are kept in record.type_error.
 func (g *Ingester) Ingest(ctx context.Context, dev store.Device, body []byte, backlog *int64) (Reply, error) {
 	return g.IngestWith(ctx, dev, body, Options{Backlog: backlog})
@@ -294,7 +294,7 @@ func (g *Ingester) IngestWith(ctx context.Context, dev store.Device, body []byte
 				ver = m[1]
 			}
 			if err := tx.MachineHeartbeat(store.Heartbeat{Machine: dev.MachineID, LastSeen: now.UnixMilli(),
-				LastRecord: newest, Backlog: backlog, SyVersion: ver, Reach: opt.Reach, BacklogOldest: opt.BacklogOldest}); err != nil {
+				LastRecord: newest, Backlog: backlog, WyVersion: ver, Reach: opt.Reach, BacklogOldest: opt.BacklogOldest}); err != nil {
 				return err
 			}
 			ch.Machines[dev.MachineID] = true
@@ -333,7 +333,7 @@ func (g *Ingester) Contact(ctx context.Context, dev store.Device, c Contact) err
 			return err
 		}
 		if err := tx.MachineHeartbeat(store.Heartbeat{Machine: dev.MachineID, LastSeen: now, Backlog: c.Backlog,
-			SyVersion: c.SyVersion, Reach: c.Reach, BacklogOldest: c.BacklogOldest}); err != nil {
+			WyVersion: c.WyVersion, Reach: c.Reach, BacklogOldest: c.BacklogOldest}); err != nil {
 			return err
 		}
 		if c.RecordV > 0 {
@@ -451,12 +451,12 @@ func (g *Ingester) Handler() http.Handler {
 			return
 		}
 		var opt Options
-		if h := r.Header.Get("X-Sy-Backlog"); h != "" {
+		if h := headerOrLegacy(r, "X-Wy-Backlog", "X-Sy-Backlog"); h != "" { // rename:keep
 			if v, err := strconv.ParseInt(h, 10, 64); err == nil && v >= 0 {
 				opt.Backlog = &v
 			}
 		}
-		if h := r.Header.Get("X-Sy-Backlog-Oldest"); h != "" {
+		if h := headerOrLegacy(r, "X-Wy-Backlog-Oldest", "X-Sy-Backlog-Oldest"); h != "" { // rename:keep
 			if t, err := time.Parse(time.RFC3339Nano, h); err == nil {
 				opt.BacklogOldest = t.UnixMilli()
 			}
@@ -491,4 +491,13 @@ func (g *Ingester) Handler() http.Handler {
 		w.Header().Set("Cache-Control", "no-store")
 		_ = json.NewEncoder(w).Encode(reply)
 	})
+}
+
+// headerOrLegacy is header name, or legacy when name is absent. Legacy compat: a machine
+// older than the rename sends the backlog headers as X-Sy-* (rename.md 2.12).
+func headerOrLegacy(r *http.Request, name, legacy string) string {
+	if v := r.Header.Get(name); v != "" {
+		return v
+	}
+	return r.Header.Get(legacy)
 }

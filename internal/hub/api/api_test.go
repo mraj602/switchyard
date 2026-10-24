@@ -333,7 +333,7 @@ func TestScopes(t *testing.T) {
 		{"desktop reads", "GET", "/v1/sessions", desktop, nil, 200},
 		{"phone reads", "GET", "/v1/overview", phone, nil, 200},
 		{"no token", "GET", "/v1/overview", "", nil, 401},
-		{"bad token", "POST", "/v1/ingest", "sy_m_" + strings.Repeat("0", 43), batch(rec), 401},
+		{"bad token", "POST", "/v1/ingest", "wy_m_" + strings.Repeat("0", 43), batch(rec), 401},
 		{"garbage token", "GET", "/v1/machines", "hello", nil, 401},
 		// wy connect checks a token with an empty batch: 400 means the token is good.
 		{"empty batch", "POST", "/v1/ingest", machine, batch(), 400},
@@ -364,7 +364,7 @@ func TestScopes(t *testing.T) {
 func TestBoardLoginCookie(t *testing.T) {
 	h := startHub(t, "")
 	phone := h.token("phone")
-	code, _ := h.do("POST", "/v1/session/login", "", []byte(`{"token":"sy_p_nope"}`), "Content-Type", "application/json")
+	code, _ := h.do("POST", "/v1/session/login", "", []byte(`{"token":"wy_p_nope"}`), "Content-Type", "application/json")
 	if code != 401 {
 		t.Fatalf("bad login: %d", code)
 	}

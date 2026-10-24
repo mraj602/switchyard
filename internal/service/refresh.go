@@ -129,7 +129,7 @@ func (s *Service) migrate(ctx context.Context, spec model.ServiceSpec, old strin
 	return res, nil
 }
 
-// currentEnvNames renames the variables of the command's old name (WY_HOME, ...) in a legacy
+// currentEnvNames renames the variables of the command's old name (SY_HOME, ...) in a legacy
 // unit's environment to the current prefix (rename.md 2.13).
 func currentEnvNames(env [][2]string) [][2]string {
 	op := brand.OldEnvPrefix()

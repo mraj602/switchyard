@@ -15,7 +15,7 @@ import (
 )
 
 // CookieName is the session cookie the board relies on (see POST /v1/session/login).
-const CookieName = "sy_session"
+const CookieName = "wy_session"
 
 // Options configure a mock hub.
 type Options struct {
@@ -32,7 +32,7 @@ type Options struct {
 const HubVersion = "0.5.0"
 
 // DefaultToken is accepted by the login page of a mock hub.
-const DefaultToken = "sy_b_devtoken0000000000000000000000000000000000"
+const DefaultToken = "wy_b_devtoken0000000000000000000000000000000000"
 
 // Server is the mock hub. Use Handler to serve it.
 type Server struct {

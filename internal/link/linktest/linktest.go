@@ -103,7 +103,7 @@ func (d *Device) Hello(c link.Challenge) (link.Hello, error) {
 	if err := link.CheckChallenge(c, d.HubPub); err != nil || c.Hub != d.HubFP {
 		return link.Hello{}, fmt.Errorf("challenge: %w", link.ErrSignature)
 	}
-	client := link.Client{Kind: "agent", Sy: "test", OS: "linux"}
+	client := link.Client{Kind: "agent", Wy: "test", OS: "linux"}
 	if d.Kind == "phone" {
 		client = link.Client{Kind: "android", App: "test", SDK: 35}
 	}

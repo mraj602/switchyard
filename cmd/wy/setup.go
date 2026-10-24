@@ -567,11 +567,12 @@ func hasOp(p model.Plan, op model.Op) bool {
 	return false
 }
 
-// redactArgs keeps the command recorded in the manifest free of tokens.
+// redactArgs keeps the command recorded in the manifest free of tokens (wy_ tokens, and the
+// sy_ ones made before the rename: legacy compat).
 func redactArgs(args []string) []string {
 	out := make([]string, len(args))
 	for i, a := range args {
-		if strings.HasPrefix(a, "sy_") || (i > 0 && (args[i-1] == "--code" || args[i-1] == "--token")) {
+		if strings.HasPrefix(a, "wy_") || strings.HasPrefix(a, "sy_") || (i > 0 && (args[i-1] == "--code" || args[i-1] == "--token")) {
 			a = "<redacted>"
 		}
 		out[i] = a
@@ -694,7 +695,7 @@ func isLoopbackURL(raw string) bool {
 }
 
 func (e *setupEnv) doctorReport(ctx context.Context) doctor.Report {
-	return doctor.Run(ctx, doctor.Options{Home: e.home, Dirs: e.dirs, Getenv: e.getenv, Environ: os.Environ()})
+	return doctor.Run(ctx, doctor.Options{Home: e.home, Dirs: e.dirs, Getenv: e.getenv, Environ: os.Environ(), SystemUnitDir: doctor.SystemUnitDir()})
 }
 
 // runLogins hands the terminal to `claude auth login` for each folder (8.2).

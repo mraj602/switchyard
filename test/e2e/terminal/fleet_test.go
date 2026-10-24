@@ -65,7 +65,7 @@ func (h *hubProc) ownerGet(path string, v any) {
 		}
 		resp.Body.Close()
 		for _, c := range resp.Cookies() {
-			if c.Name == "sy_session" {
+			if c.Name == "wy_session" {
 				h.cookie = c.Name + "=" + c.Value
 			}
 		}

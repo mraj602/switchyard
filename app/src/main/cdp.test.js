@@ -23,7 +23,7 @@ test('packaged: each remote debugging switch is refused, in argv or on the comma
 
 test('the build-time flag (watchyard.allowCdp) allows them; unpackaged runs are never refused', () => {
   const argv = ['x', '--remote-debugging-port=9222'];
-  assert.equal(refusedCdpSwitch({ isPackaged: true, hasSwitch: none, argv, pkg: { watchyard: { minSy: '0.6.0', allowCdp: true } } }), null);
+  assert.equal(refusedCdpSwitch({ isPackaged: true, hasSwitch: none, argv, pkg: { watchyard: { minWy: '0.6.0', allowCdp: true } } }), null);
   assert.equal(refusedCdpSwitch({ isPackaged: true, hasSwitch: none, argv, pkg: { watchyard: { allowCdp: 'true' } } }), null);
   for (const pkg of [null, {}, { watchyard: {} }, { watchyard: { allowCdp: false } }, { watchyard: { allowCdp: 1 } }, { allowCdp: true }]) {
     assert.equal(refusedCdpSwitch({ isPackaged: true, hasSwitch: none, argv, pkg }), 'remote-debugging-port', JSON.stringify(pkg));

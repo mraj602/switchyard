@@ -5,7 +5,7 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as SecureStore from 'expo-secure-store';
 import { AppState, Platform } from 'react-native';
-import * as SyLink from '../../modules/sy-link';
+import * as WyLink from '../../modules/wy-link';
 import type { LinkLike } from '../contract/link';
 import type { AppInfo, AppStateSource, Clock, FetchLike, KVStore } from '../contract/platform';
 import { createSecureHub, secureOptions } from '../lib/secure';
@@ -55,14 +55,14 @@ export function systemSecureHub(): SecureHub {
 
 export const systemCache: KVStore = AsyncStorage;
 
-/** The sy-link module (push.md 14.8) on Android; null elsewhere (iOS, Expo Go, no native module). */
+/** The wy-link module (push.md 14.8) on Android; null elsewhere (iOS, Expo Go, no native module). */
 export function systemLink(app: AppInfo): LinkLike | null {
-  return app.platform === 'android' && SyLink.available ? SyLink : null;
+  return app.platform === 'android' && WyLink.available ? WyLink : null;
 }
 
-/** The widgets' reset alarm (sy-link `scheduleWidgetRefresh`, phone.md P11) on Android; null elsewhere or without the module. */
+/** The widgets' reset alarm (wy-link `scheduleWidgetRefresh`, phone.md P11) on Android; null elsewhere or without the module. */
 export function systemWidgetAlarm(app: AppInfo): ((atMs: number) => Promise<void>) | null {
-  return app.platform === 'android' && SyLink.available ? (atMs) => SyLink.scheduleWidgetRefresh(atMs) : null;
+  return app.platform === 'android' && WyLink.available ? (atMs) => WyLink.scheduleWidgetRefresh(atMs) : null;
 }
 
 export const systemFetch: FetchLike = (url, init) => fetch(url, init as RequestInit) as unknown as ReturnType<FetchLike>;

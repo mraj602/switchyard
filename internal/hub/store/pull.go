@@ -34,7 +34,7 @@ type PullTarget struct {
 	Port      int
 	User      string
 	Jump      string
-	RemoteSy  string
+	RemoteWy  string
 	HostKeys  []string
 	IntervalS int
 	Enabled   bool
@@ -55,7 +55,7 @@ func scanPull(sc interface{ Scan(...any) error }) (PullTarget, error) {
 	var t PullTarget
 	var keys string
 	var en int
-	err := sc.Scan(&t.ID, &t.Name, &t.MachineID, &t.DeviceID, &t.Host, &t.Port, &t.User, &t.Jump, &t.RemoteSy,
+	err := sc.Scan(&t.ID, &t.Name, &t.MachineID, &t.DeviceID, &t.Host, &t.Port, &t.User, &t.Jump, &t.RemoteWy,
 		&keys, &t.IntervalS, &en, &t.State, &t.CreatedAt, &t.LastTryAt, &t.LastOKAt, &t.LastError, &t.FailCount, &t.NextAt)
 	if err != nil {
 		return t, err
@@ -153,8 +153,8 @@ func (s *Store) AddPullTarget(ctx context.Context, t PullTarget) (PullTarget, er
 		if t.IntervalS == 0 {
 			t.IntervalS = 60
 		}
-		if t.RemoteSy == "" {
-			t.RemoteSy = ".local/bin/wy"
+		if t.RemoteWy == "" {
+			t.RemoteWy = ".local/bin/wy"
 		}
 		t.State, t.Enabled, t.NextAt = PullStateNew, true, tx.NowMS()
 		if t.HostKeys == nil {
@@ -177,7 +177,7 @@ func (s *Store) AddPullTarget(ctx context.Context, t PullTarget) (PullTarget, er
 		keys, _ := json.Marshal(t.HostKeys)
 		_, err := tx.exec(`INSERT INTO pull_target (id, name, machine_id, device_id, host, port, user, jump, remote_sy, host_keys,
 			interval_s, enabled, state, created_at, next_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'new', ?, ?)`,
-			t.ID, t.Name, nullStr(t.MachineID), nullStr(t.DeviceID), t.Host, t.Port, t.User, nullStr(t.Jump), t.RemoteSy,
+			t.ID, t.Name, nullStr(t.MachineID), nullStr(t.DeviceID), t.Host, t.Port, t.User, nullStr(t.Jump), t.RemoteWy,
 			string(keys), t.IntervalS, t.CreatedAt, t.NextAt)
 		if err != nil {
 			if strings.Contains(err.Error(), "UNIQUE") {
@@ -362,7 +362,7 @@ func (s *Store) RemovePullTarget(ctx context.Context, id string, revoke bool) er
 // PullHello is what a drain hello tells the hub (machines.md 3.5 hub rule 2).
 type PullHello struct {
 	Machine       string
-	SyVersion     string
+	WyVersion     string
 	Backlog       int64
 	BacklogOldest int64 // ms, 0 = none
 	RecordV       int
@@ -375,7 +375,7 @@ func (s *Store) PullHeartbeat(ctx context.Context, h PullHello) error {
 	return s.Write(ctx, func(tx *Tx) error {
 		now := tx.NowMS()
 		bk := h.Backlog
-		if err := tx.MachineHeartbeat(Heartbeat{Machine: h.Machine, LastSeen: now, Backlog: &bk, SyVersion: h.SyVersion,
+		if err := tx.MachineHeartbeat(Heartbeat{Machine: h.Machine, LastSeen: now, Backlog: &bk, WyVersion: h.WyVersion,
 			Reach: "pull", BacklogOldest: h.BacklogOldest}); err != nil {
 			return err
 		}

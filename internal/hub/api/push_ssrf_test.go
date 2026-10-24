@@ -31,7 +31,7 @@ func TestDeviceNtfyTargetIsDialGuardedAndTestHasNoBody(t *testing.T) {
 	r := newPushRig(t, true)
 	r.nt.Script(ntfytest.Reply{Status: 403, Body: `{"internal_secret":"s3cr3t-admin-data"}`})
 	tg, err := r.st.UpsertTarget(context.Background(), model.Target{Kind: model.KindNtfy, DeviceID: r.deviceID(r.phone), Name: "x",
-		Endpoint: r.nt.URL() + "/sy-topic", Secret: "attacker"})
+		Endpoint: r.nt.URL() + "/wy-topic", Secret: "attacker"})
 	if err != nil {
 		t.Fatal(err)
 	}

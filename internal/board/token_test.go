@@ -14,7 +14,7 @@ func TestTokenRoundTripMode0600(t *testing.T) {
 	if _, err := LoadToken(dir, "https://hub.example"); err != ErrNoToken {
 		t.Fatalf("empty state: %v", err)
 	}
-	if err := SaveToken(dir, Token{URL: "https://hub.example", Device: "dev_1", Token: "sy_d_secret"}); err != nil {
+	if err := SaveToken(dir, Token{URL: "https://hub.example", Device: "dev_1", Token: "wy_d_secret"}); err != nil {
 		t.Fatal(err)
 	}
 	if runtime.GOOS != "windows" {
@@ -31,7 +31,7 @@ func TestTokenRoundTripMode0600(t *testing.T) {
 		}
 	}
 	got, err := LoadToken(dir, "https://HUB.example/")
-	if err != nil || got.Token != "sy_d_secret" || got.Device != "dev_1" || got.V != 1 {
+	if err != nil || got.Token != "wy_d_secret" || got.Device != "dev_1" || got.V != 1 {
 		t.Fatalf("load: %+v %v", got, err)
 	}
 }
@@ -63,7 +63,7 @@ func TestTokenCorruptFileIsDropped(t *testing.T) {
 }
 
 func TestTokenNeverFormatsItsSecret(t *testing.T) {
-	tok := Token{URL: "https://a.example", Device: "dev_1", Token: "sy_d_topsecret"}
+	tok := Token{URL: "https://a.example", Device: "dev_1", Token: "wy_d_topsecret"}
 	for _, f := range []string{"%v", "%+v", "%#v", "%s"} {
 		if s := fmt.Sprintf(f, tok); strings.Contains(s, "topsecret") {
 			t.Errorf("%s leaks the token: %s", f, s)

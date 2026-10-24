@@ -112,7 +112,7 @@ export default function AccountsScreen({ seat: focus }: { seat?: string }) {
             setFixing(null);
             signOutTab(fixSeat.id).then(
               () => go.tab(fixSeat.id, TAB_LOGIN),
-              (e: unknown) => toast.show((e as { code?: string }).code === 'ERR_SY_TABS_IN_USE' ? 'Close the tab first, then try again' : 'Could not clear the tab'),
+              (e: unknown) => toast.show((e as { code?: string }).code === 'ERR_WY_TABS_IN_USE' ? 'Close the tab first, then try again' : 'Could not clear the tab'),
             );
           }}
           onUse={(other) => {

@@ -38,8 +38,8 @@ func TestPaneEmbed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(reg), `"__SY_PATH__"`) {
-		t.Error("register.tsx has no __SY_PATH__ placeholder for pluginmkt to rewrite")
+	if !strings.Contains(string(reg), `"__WY_PATH__"`) {
+		t.Error("register.tsx has no __WY_PATH__ placeholder for pluginmkt to rewrite")
 	}
 	if pj.Types != "" {
 		if _, err := fs.Stat(fsys, strings.TrimPrefix(pj.Types, "./")); err != nil {

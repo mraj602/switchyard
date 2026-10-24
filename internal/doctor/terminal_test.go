@@ -20,7 +20,7 @@ import (
 
 const (
 	testHub     = "https://hub.example"
-	testToken   = "sy_d_SECRETSECRETSECRET"
+	testToken   = "wy_d_SECRETSECRETSECRET"
 	testMachine = "m_01ARZ3NDEKTSV4RRFFQ69G5FAV"
 )
 

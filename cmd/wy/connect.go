@@ -56,7 +56,7 @@ func realConnectDeps() (connectDeps, error) {
 	}
 	return connectDeps{
 		timer: timer.Env{
-			GOOS: runtime.GOOS, Home: home, UID: os.Getuid(), User: uname, SyPath: wy,
+			GOOS: runtime.GOOS, Home: home, UID: os.Getuid(), User: uname, WyPath: wy,
 			StateDir: d.State.Path, Getenv: os.Getenv, Runner: timer.ExecRunner{},
 		},
 		stdin: os.Stdin,
@@ -82,7 +82,8 @@ func runDisconnect(args []string, stdout, stderr io.Writer) error {
 	return disconnect(deps, args, stdout, stderr)
 }
 
-var tokenShape = regexp.MustCompile(`^sy_[mdpbo]_[0-9A-Za-z]{43}$`)
+// tokenShape: wy_ tokens, and the sy_ ones made before the rename (legacy compat).
+var tokenShape = regexp.MustCompile(`^[ws]y_[mdpbo]_[0-9A-Za-z]{43}$`)
 
 // pairSecretShape is a pairing secret (16 bytes, base64url, 22 characters; pairing.md 1); a
 // typed code is digits with optional separators.
@@ -183,7 +184,7 @@ func connect(ctx context.Context, deps connectDeps, args []string, stdout, stder
 		return errors.New("the token is empty or contains whitespace")
 	}
 	if *code == "" && !tokenShape.MatchString(tok) {
-		fmt.Fprintln(stderr, "wy connect: warning: that does not look like a Watchyard token (sy_<kind>_<43 characters>)")
+		fmt.Fprintln(stderr, "wy connect: warning: that does not look like a Watchyard token (wy_<kind>_<43 characters>)")
 	}
 
 	url, warn, err := client.CheckURL(pos[0], *insecure)

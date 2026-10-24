@@ -283,12 +283,12 @@ func TestSocketPathLengthRule(t *testing.T) {
 		if p := socketPath(goos, "/run/user/7", "/s", "/tmp", 7); len(p) > max {
 			t.Errorf("%s short: %d bytes", goos, len(p))
 		}
-		// Long inputs fall back to <tmp>/sy-<uid>/agent.sock.
-		if p := socketPath(goos, long, long, "/var/folders/ab/cd/T", 501); p != "/var/folders/ab/cd/T/sy-501/agent.sock" {
+		// Long inputs fall back to <tmp>/wy-<uid>/agent.sock.
+		if p := socketPath(goos, long, long, "/var/folders/ab/cd/T", 501); p != "/var/folders/ab/cd/T/wy-501/agent.sock" {
 			t.Errorf("%s long: %q", goos, p)
 		}
 		// A long temp dir falls back to /tmp.
-		if p := socketPath(goos, long, long, long, 501); p != "/tmp/sy-501/agent.sock" || len(p) > max {
+		if p := socketPath(goos, long, long, long, 501); p != "/tmp/wy-501/agent.sock" || len(p) > max {
 			t.Errorf("%s long tmp: %q", goos, p)
 		}
 	}
@@ -297,7 +297,7 @@ func TestSocketPathLengthRule(t *testing.T) {
 	if p := socketPath("darwin", "", state, "/t", 1); p != state+"/agent/agent.sock" || len(p) != 103 {
 		t.Errorf("boundary: %d %q", len(p), p)
 	}
-	if p := socketPath("darwin", "", state+"b", "/t", 1); p != "/t/sy-1/agent.sock" {
+	if p := socketPath("darwin", "", state+"b", "/t", 1); p != "/t/wy-1/agent.sock" {
 		t.Errorf("over boundary: %q", p)
 	}
 }

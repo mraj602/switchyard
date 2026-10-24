@@ -37,7 +37,7 @@ const exitOpenNoTab = 4
 // <state>/logs/wy.log. Tests replace it.
 var newOpener = func(e *setupEnv) termctl.Opener {
 	env := e.termEnv()
-	log, _ := focusSyLog(env) // closed at exit: wy open ends right after the open
+	log, _ := focusWyLog(env) // closed at exit: wy open ends right after the open
 	return termctl.NewOpener(env, log)
 }
 

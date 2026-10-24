@@ -118,10 +118,10 @@ jobs:
           cache-dependency-path: app/package-lock.json
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y rpm xvfb
-      # fetch-sy builds the bundled wy for this runner's OS and arch before electron-builder runs.
+      # fetch-wy builds the bundled wy for this runner's OS and arch before electron-builder runs.
       # The release build: no watchyard.allowCdp, so the packaged app refuses remote debugging
       # switches (desktop.md C2). The e2e job below makes its own build with the flag.
-      - run: cd app && npm ci && node scripts/fetch-sy.mjs auto auto && npm run dist -- --publish never
+      - run: cd app && npm ci && node scripts/fetch-wy.mjs auto auto && npm run dist -- --publish never
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: app-${{ matrix.os }}
@@ -157,7 +157,7 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
       - run: sudo apt-get update && sudo apt-get install -y xvfb
-      - run: cd app && npm ci && node scripts/fetch-sy.mjs auto auto && scripts/dist-e2e.sh
+      - run: cd app && npm ci && node scripts/fetch-wy.mjs auto auto && scripts/dist-e2e.sh
       - run: |
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           xvfb-run -a --server-args="-screen 0 1440x940x24" node --test app/test/e2e/*.test.mjs

@@ -114,7 +114,7 @@ H6=$(new_home replace fresh)
 cat > "$H6/.local/bin/wy" <<EOF
 #!/bin/sh
 sleep 2
-echo finished > "$WY_E2E_TMP/old-sy-done"
+echo finished > "$WY_E2E_TMP/old-wy-done"
 EOF
 chmod 0755 "$H6/.local/bin/wy"
 "$H6/.local/bin/wy" &
@@ -124,7 +124,7 @@ run_install "$H6" --no-setup
 assert_rc "replace a running wy" 0 $rc
 assert_contains "wy was replaced by the release binary" "$VER" "$("$H6/.local/bin/wy" --version 2>&1)"
 wait $oldpid || true
-assert_file "$WY_E2E_TMP/old-sy-done" "the old process finished"
+assert_file "$WY_E2E_TMP/old-wy-done" "the old process finished"
 
 # 7. The same with the real wy: a `wy hook` waiting for its payload on stdin keeps running
 # from the replaced inode and finishes normally.

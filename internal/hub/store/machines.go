@@ -332,7 +332,7 @@ func (s *Store) MachineList(ctx context.Context, q MachineQuery, now time.Time) 
 			rows.Close()
 			return nil, err
 		}
-		m.OS, m.Arch, m.SyVersion, m.Reach = ns(osv), ns(arch), ns(ver), ns(reach)
+		m.OS, m.Arch, m.WyVersion, m.Reach = ns(osv), ns(arch), ns(ver), ns(reach)
 		m.LastSeen, m.LastRecord = Time(lastSeen), Time(lastRec)
 		m.BacklogOldest, m.BacklogAt, m.RemovedAt = Time(oldest), Time(backlogAt), Time(removed)
 		if backlog.Valid {

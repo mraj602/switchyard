@@ -317,14 +317,14 @@ func TestAddNtfyTarget(t *testing.T) {
 	// A phone's topic on ntfy.sh: generated, private by default, belongs to the phone; the token is never echoed.
 	got := r.json("POST", "/v1/push/targets", r.phone, map[string]any{"kind": "ntfy", "token": "tk_supersecret"}, 201)
 	topic, _ := got["topic"].(string)
-	if !strings.HasPrefix(topic, "sy-") || len(topic) != 27 || got["server"] != "https://ntfy.sh" || got["token_set"] != true ||
+	if !strings.HasPrefix(topic, "wy-") || len(topic) != 27 || got["server"] != "https://ntfy.sh" || got["token_set"] != true ||
 		got["device"] != r.deviceID(r.phone) || got["endpoint_host"] != "ntfy.sh" || got["endpoint"] != "https://ntfy.sh/"+topic {
 		t.Fatalf("%v", got)
 	}
 	if p := got["prefs"].(map[string]any); p["private"] != true {
 		t.Fatalf("ntfy.sh target not private by default: %v", got["prefs"])
 	}
-	if !strings.HasPrefix(got["name"].(string), "ntfy.sh/sy-") {
+	if !strings.HasPrefix(got["name"].(string), "ntfy.sh/wy-") {
 		t.Fatalf("name %v", got["name"])
 	}
 	for _, path := range []string{"/v1/push/targets"} {
@@ -455,7 +455,7 @@ func TestTestPushWebPushRateLimitAndResults(t *testing.T) {
 		t.Fatalf("%+v", rec)
 	}
 	var p model.Payload
-	if err := json.Unmarshal(rec[0].Plain, &p); err != nil || p.Type != "test" || p.Tag != "sy-test" || p.Title == "" ||
+	if err := json.Unmarshal(rec[0].Plain, &p); err != nil || p.Type != "test" || p.Tag != "wy-test" || p.Title == "" ||
 		p.Actions != nil || rec[0].Header.Get("Ttl") != "60" || rec[0].Header.Get("Urgency") != "high" {
 		t.Fatalf("%s %v %v", rec[0].Plain, err, rec[0].Header)
 	}

@@ -1,4 +1,4 @@
-// Words for the sy-link state (phone.md P6.7, push.md 14.4, 14.7). Pure: the screen passes the
+// Words for the wy-link state (phone.md P6.7, push.md 14.4, 14.7). Pure: the screen passes the
 // LinkState and the clock.
 import type { LinkState } from '../../contract/link';
 

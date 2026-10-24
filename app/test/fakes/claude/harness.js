@@ -35,7 +35,7 @@ export const tabRecord = (id, over = {}) => ({
 });
 
 /** wy: append(records) records every batch, returns ids unless `appendResult` says otherwise. */
-export function fakeSy(opts = {}) {
+export function fakeWy(opts = {}) {
   const wy = {
     appended: [],
     batches: [],

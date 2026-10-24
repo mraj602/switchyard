@@ -225,7 +225,7 @@ func (h *harness) addDevice(name, prefs string) string {
 		p = prefs
 	}
 	h.exec(`INSERT INTO device (id, kind, name, token_hash, token_hint, scopes, created_at, created_by, prefs)
-		VALUES (?, 'phone', ?, ?, 'sy_p_…x', '["read","push"]', ?, 'test', ?)`, id, name, sum[:], T0.UnixMilli(), p)
+		VALUES (?, 'phone', ?, ?, 'wy_p_…x', '["read","push"]', ?, 'test', ?)`, id, name, sum[:], T0.UnixMilli(), p)
 	return id
 }
 
@@ -234,7 +234,7 @@ func (h *harness) addTarget(device, kind, prefs string) string {
 	id := store.NewID("pt_", T0)
 	endpoint := "https://fcm.googleapis.com/fcm/send/" + id
 	if kind == model.KindNtfy {
-		endpoint = "https://ntfy.example.net/sy-" + id
+		endpoint = "https://ntfy.example.net/wy-" + id
 	}
 	var dev, p any
 	if device != "" {

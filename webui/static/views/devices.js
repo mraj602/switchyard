@@ -13,7 +13,7 @@ import { listDevices, patchDevice, revokeDevice, testTarget, makePairCode, makeO
 import { agoLabel, day, dateTime, clock, deviceLabel } from '../format.js';
 
 const st = { devices: null, error: null, dialog: null, results: {} };
-const again = () => window.dispatchEvent(new Event('sy-rerender'));
+const again = () => window.dispatchEvent(new Event('wy-rerender'));
 
 const KINDS = ['phone', 'machine', 'desktop', 'owner'];
 const TITLE = { phone: 'Add a phone', machine: 'Add a machine', desktop: 'Add the desktop app', owner: 'Make another device owner' };

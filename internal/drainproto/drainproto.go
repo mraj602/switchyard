@@ -111,7 +111,7 @@ type Hello struct {
 	Proto   int     `json:"proto"`
 	Machine string  `json:"machine"`
 	Name    string  `json:"name"`
-	Sy      string  `json:"sy"`       // wy version
+	Wy      string  `json:"wy"`       // wy version ("sy" from a remote older than the rename)
 	OS      string  `json:"os"`       // GOOS
 	Arch    string  `json:"arch"`     // GOARCH
 	RecordV int     `json:"record_v"` // highest record v this wy writes
@@ -176,8 +176,26 @@ type Done struct {
 type Bye struct{}
 
 // Type implements Frame.
-func (Busy) Type() string   { return TBusy }
-func (Hello) Type() string  { return THello }
+func (Busy) Type() string  { return TBusy }
+func (Hello) Type() string { return THello }
+
+// UnmarshalJSON reads the version from "wy", or from "sy", which a remote older than the
+// rename sends (legacy compat, rename.md 2.12).
+func (h *Hello) UnmarshalJSON(b []byte) error {
+	type plain Hello
+	var v struct {
+		plain
+		Sy string `json:"sy"` // rename:keep: legacy compat
+	}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	*h = Hello(v.plain)
+	if h.Wy == "" {
+		h.Wy = v.Sy
+	}
+	return nil
+}
 func (Start) Type() string  { return TStart }
 func (Refuse) Type() string { return TRefuse }
 func (Batch) Type() string  { return TBatch }

@@ -5,4 +5,4 @@ work · infra — asked
 work · docs — asked
 +2 more
 url: /#/
-tag: sy-summary
+tag: wy-summary

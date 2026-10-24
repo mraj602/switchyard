@@ -9,7 +9,7 @@ import { create, emptyState } from './store.js';
 const quiet = { warn() {} };
 
 async function tmp(t) {
-  const dir = await fs.mkdtemp(path.join(tmpdir(), 'sy-store-'));
+  const dir = await fs.mkdtemp(path.join(tmpdir(), 'wy-store-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   return { dir, file: path.join(dir, 'ud', 'app-state.json') };
 }

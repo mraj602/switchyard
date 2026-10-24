@@ -37,7 +37,7 @@ func tgzOf(t *testing.T, name string, data []byte) []byte {
 
 func sha(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:]) }
 
-func fakeSy(version string, schema int) []byte {
+func fakeWy(version string, schema int) []byte {
 	return []byte(fmt.Sprintf("#!/bin/sh\ncase \"$1 $2\" in\n\"version --short\") echo %s;;\n\"hub schema\") echo %d;;\nesac\n", version, schema))
 }
 
@@ -69,7 +69,7 @@ func testEnv(t *testing.T, cur string, srv *httptest.Server) (updateEnv, string)
 	dir := t.TempDir()
 	exe := filepath.Join(dir, "bin", "wy")
 	os.MkdirAll(filepath.Dir(exe), 0o755)
-	os.WriteFile(exe, fakeSy(cur, 4), 0o755)
+	os.WriteFile(exe, fakeWy(cur, 4), 0o755)
 	env := map[string]string{}
 	if srv != nil {
 		env["WY_INSTALL_BASE_URL"] = srv.URL
@@ -94,7 +94,7 @@ func codeOf(err error) int {
 }
 
 func TestUpdateCommandHappyPathJSON(t *testing.T) {
-	srv := releaseServer(t, map[string][]byte{"0.0.1-e2e": fakeSy("0.0.1-e2e", 4)})
+	srv := releaseServer(t, map[string][]byte{"0.0.1-e2e": fakeWy("0.0.1-e2e", 4)})
 	env, exe := testEnv(t, "0.0.0-e2e", srv)
 	var postOld string
 	env.postUpdate = func(_ context.Context, bin, old string, _, _ io.Writer) error { postOld = old; return nil }
@@ -109,7 +109,7 @@ func TestUpdateCommandHappyPathJSON(t *testing.T) {
 	if postOld != "0.0.0-e2e" {
 		t.Errorf("post-update not run with the old version: %q", postOld)
 	}
-	if b, _ := os.ReadFile(exe); !bytes.Equal(b, fakeSy("0.0.1-e2e", 4)) {
+	if b, _ := os.ReadFile(exe); !bytes.Equal(b, fakeWy("0.0.1-e2e", 4)) {
 		t.Error("not replaced")
 	}
 	// again: current
@@ -123,14 +123,14 @@ func TestUpdateCommandHappyPathJSON(t *testing.T) {
 	if err := updateMain(context.Background(), env, []string{"--rollback", "--json"}, &out, &errb); err != nil || !strings.Contains(out.String(), "rolled_back") {
 		t.Fatal(out.String(), err, errb.String())
 	}
-	if b, _ := os.ReadFile(exe); !bytes.Equal(b, fakeSy("0.0.0-e2e", 4)) {
+	if b, _ := os.ReadFile(exe); !bytes.Equal(b, fakeWy("0.0.0-e2e", 4)) {
 		t.Error("rollback did not restore")
 	}
 }
 
 func TestUpdateCommandExitCodes(t *testing.T) {
 	ctx := context.Background()
-	srv := releaseServer(t, map[string][]byte{"0.0.1-e2e": fakeSy("0.0.1-e2e", 4)})
+	srv := releaseServer(t, map[string][]byte{"0.0.1-e2e": fakeWy("0.0.1-e2e", 4)})
 	env, exe := testEnv(t, "0.0.0-e2e", srv)
 	before, _ := os.ReadFile(exe)
 	run := func(e updateEnv, args ...string) (error, string) {
@@ -209,7 +209,7 @@ func TestUpdateCommandExitCodes(t *testing.T) {
 }
 
 func TestUpdateCheckAndPostUpdate(t *testing.T) {
-	srv := releaseServer(t, map[string][]byte{"0.5.0": fakeSy("0.5.0", 4)})
+	srv := releaseServer(t, map[string][]byte{"0.5.0": fakeWy("0.5.0", 4)})
 	env, exe := testEnv(t, "0.4.2", srv)
 	before, _ := os.ReadFile(exe)
 	var out, errb bytes.Buffer
@@ -248,7 +248,7 @@ func (f *fleetRemote) Push(context.Context, update.FleetMachine, string, string)
 }
 
 func TestUpdateMachinesFleet(t *testing.T) {
-	srv := releaseServer(t, map[string][]byte{"0.5.0": fakeSy("0.5.0", 4)})
+	srv := releaseServer(t, map[string][]byte{"0.5.0": fakeWy("0.5.0", 4)})
 	env, _ := testEnv(t, "0.4.2", srv)
 	env.postUpdate = func(context.Context, string, string, io.Writer, io.Writer) error { return nil }
 	fr := &fleetRemote{}
@@ -288,7 +288,7 @@ func TestRealBinariesUpdate(t *testing.T) {
 	}
 	dir := t.TempDir()
 	build := func(v string) []byte {
-		out := filepath.Join(dir, "sy-"+v)
+		out := filepath.Join(dir, "wy-"+v)
 		cmd := exec.Command("go", "build", "-trimpath", "-ldflags", "-X github.com/mraj602/watchyard/internal/version.Version="+v, "-o", out, ".")
 		cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
 		if b, err := cmd.CombinedOutput(); err != nil {
@@ -337,7 +337,7 @@ func fakeGH(t *testing.T, code int) string {
 // By default `wy update` verifies the build attestation when gh is installed, fails when that
 // check fails, and says plainly when it could not check (checksum only).
 func TestUpdateAttestationDefault(t *testing.T) {
-	srv := releaseServer(t, map[string][]byte{"0.5.0": fakeSy("0.5.0", 4)})
+	srv := releaseServer(t, map[string][]byte{"0.5.0": fakeWy("0.5.0", 4)})
 	run := func(env updateEnv, args ...string) (error, string, string) {
 		var out, errb bytes.Buffer
 		err := updateMain(context.Background(), env, append(args, "--yes"), &out, &errb)

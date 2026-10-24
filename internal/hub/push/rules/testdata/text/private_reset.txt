@@ -1,4 +1,4 @@
 title: Watchyard
 body: A limit has reset
 url: /#/alerts/al_2
-tag: sy-r-seat-client-five_hour
+tag: wy-r-seat-client-five_hour

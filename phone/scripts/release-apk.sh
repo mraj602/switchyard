@@ -5,7 +5,7 @@
 # outside the repository. Nothing is uploaded, tagged or installed.
 #
 # Signing input, from your shell or from a properties file outside the repo
-# (WY_ANDROID_SIGNING_PROPERTIES=/path/outside/repo/sy-signing.properties with the keys
+# (WY_ANDROID_SIGNING_PROPERTIES=/path/outside/repo/wy-signing.properties with the keys
 # storeFile, keyAlias, storePassword, keyPassword); an environment variable wins:
 #   WY_ANDROID_KEYSTORE  WY_ANDROID_KEY_ALIAS  WY_ANDROID_KEYSTORE_PASSWORD  [WY_ANDROID_KEY_PASSWORD]
 # Without them the build refuses to start. Passwords are passed to Gradle and keytool through
@@ -77,7 +77,7 @@ export WY_APP_VARIANT=production
 if [ -z "${WY_SKIP_PREBUILD:-}" ]; then
   npx expo prebuild --platform android --no-install --clean
 fi
-(cd android && ./gradlew --no-daemon -I "$phone/scripts/sy-release-signing.init.gradle" ${WY_GRADLE_ARGS:-} :app:assembleRelease)
+(cd android && ./gradlew --no-daemon -I "$phone/scripts/wy-release-signing.init.gradle" ${WY_GRADLE_ARGS:-} :app:assembleRelease)
 
 built="$phone/android/app/build/outputs/apk/release/app-release.apk"
 [ -f "$built" ] || die "Gradle did not produce $built"

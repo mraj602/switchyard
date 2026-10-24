@@ -63,7 +63,7 @@ func TestHubLockStopsSecondServeAndImport(t *testing.T) {
 	if _, err := run(t, "serve", "--db", db, "--listen", "127.0.0.1:0"); !errors.Is(err, hublock.ErrHeld) {
 		t.Fatalf("second serve: %v", err)
 	}
-	f := filepath.Join(t.TempDir(), "x.syx")
+	f := filepath.Join(t.TempDir(), "x.wyx")
 	os.WriteFile(f, []byte("x"), 0o600)
 	_, err = run(t, "import", f, "--db", db, "--yes", "--listen", "127.0.0.1:1") // not the real hub's 8787
 	var re *RefusedError

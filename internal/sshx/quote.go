@@ -48,7 +48,7 @@ func LintScript(s string) error {
 	return nil
 }
 
-// Script is the remote words of `sh -c '<script>' sy-remote <args...>`: a fixed POSIX
+// Script is the remote words of `sh -c '<script>' wy-remote <args...>`: a fixed POSIX
 // script run by sh whatever the login shell is, with plain-word arguments ($1, $2, ...).
 func Script(script string, args ...string) ([]string, error) {
 	if err := LintScript(script); err != nil {
@@ -59,7 +59,7 @@ func Script(script string, args ...string) ([]string, error) {
 			return nil, err
 		}
 	}
-	return append([]string{"sh", "-c", script, "sy-remote"}, args...), nil
+	return append([]string{"sh", "-c", script, "wy-remote"}, args...), nil
 }
 
 // checkRemote validates the remote words of a call: each is either a plain word or fixed

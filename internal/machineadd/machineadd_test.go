@@ -38,9 +38,9 @@ const (
 	testMID    = "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K"
 )
 
-// fakeSy is the "wy" machine add copies over in tests: a shell script that answers the
+// fakeWy is the "wy" machine add copies over in tests: a shell script that answers the
 // commands machine add runs and records what it got.
-const fakeSy = `#!/bin/sh
+const fakeWy = `#!/bin/sh
 case "$1" in
 version) echo "${WY_FAKE_REMOTE_VERSION:-0.0.0-dev}";;
 machine)
@@ -127,7 +127,7 @@ func newWorld(t *testing.T) *world {
 	w := &world{t: t, fake: sshxtest.New(t), home: t.TempDir(), state: t.TempDir(), now: time.Now()}
 	w.remote = w.fake.RemoteHome(testHost)
 	w.bin = filepath.Join(t.TempDir(), "wy")
-	if err := os.WriteFile(w.bin, []byte(fakeSy), 0o755); err != nil {
+	if err := os.WriteFile(w.bin, []byte(fakeWy), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	w.admin = &fakeAdmin{answer: hubAnswers(w.now)}
@@ -171,7 +171,7 @@ func TestAddDirect(t *testing.T) {
 		t.Fatalf("summary %+v", sum)
 	}
 	got, _ := os.ReadFile(filepath.Join(w.remote, ".local/bin/wy"))
-	if string(got) != fakeSy {
+	if string(got) != fakeWy {
 		t.Fatalf("remote wy not the copied file")
 	}
 	if fi, _ := os.Stat(filepath.Join(w.remote, ".local/bin/wy")); fi.Mode().Perm()&0o100 == 0 {
@@ -436,8 +436,8 @@ func TestPushHashMismatchReplacesNothing(t *testing.T) {
 	}
 	// The real script on the fake remote: verified and moved.
 	w.fake.Rules()
-	p, err := r.push(context.Background(), w.bin, "update", "sy-1.2.3", "")
-	if err != nil || !p.Verified || p.Path != filepath.Join(w.remote, ".local/state/watchyard/update/sy-1.2.3") {
+	p, err := r.push(context.Background(), w.bin, "update", "wy-1.2.3", "")
+	if err != nil || !p.Verified || p.Path != filepath.Join(w.remote, ".local/state/watchyard/update/wy-1.2.3") {
 		t.Fatalf("push %+v %v", p, err)
 	}
 	ents, _ := os.ReadDir(filepath.Join(w.remote, ".local/state/watchyard/update"))
@@ -454,12 +454,12 @@ func TestFleetRemote(t *testing.T) {
 	if err != nil || goos == "" || goarch == "" {
 		t.Fatalf("platform %s %s %v", goos, goarch, err)
 	}
-	p, err := fr.Push(context.Background(), m, w.bin, "sy-new")
-	if err != nil || !strings.HasSuffix(p, "/sy-new") {
+	p, err := fr.Push(context.Background(), m, w.bin, "wy-new")
+	if err != nil || !strings.HasSuffix(p, "/wy-new") {
 		t.Fatalf("push %q %v", p, err)
 	}
 	out, code, err := fr.Run(context.Background(), m, []string{"cat", p})
-	if err != nil || code != 0 || out != fakeSy {
+	if err != nil || code != 0 || out != fakeWy {
 		t.Fatalf("run %q %d %v", out, code, err)
 	}
 	reg := mustReg(t, w.state)
@@ -588,7 +588,7 @@ func TestAuthorizePullTwiceOneLine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `restrict,from="10.0.0.0/8",command="/home/me/.local/bin/wy outbox drain --stdio" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHub watchyard-pull@hub sy-pull:pt_01ABC`
+	want := `restrict,from="10.0.0.0/8",command="/home/me/.local/bin/wy outbox drain --stdio" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHub watchyard-pull@hub wy-pull:pt_01ABC`
 	if line != want {
 		t.Fatalf("line\n%s\nwant\n%s", line, want)
 	}
@@ -735,10 +735,10 @@ func TestRegistry(t *testing.T) {
 func TestRepointAndList(t *testing.T) {
 	w := newWorld(t)
 	os.MkdirAll(filepath.Join(w.remote, ".local/bin"), 0o755)
-	os.WriteFile(filepath.Join(w.remote, ".local/bin/wy"), []byte(fakeSy), 0o755)
+	os.WriteFile(filepath.Join(w.remote, ".local/bin/wy"), []byte(fakeWy), 0o755)
 	other := w.fake.RemoteHome("nas")
 	os.MkdirAll(filepath.Join(other, ".local/bin"), 0o755)
-	os.WriteFile(filepath.Join(other, ".local/bin/wy"), []byte(fakeSy), 0o755)
+	os.WriteFile(filepath.Join(other, ".local/bin/wy"), []byte(fakeWy), 0o755)
 	os.WriteFile(filepath.Join(other, "connect.exit"), []byte("1"), 0o644)
 	r := mustReg(t, w.state)
 	r.Upsert(Entry{Name: "gpu-box", Machine: testMID, SSH: testHost, Reach: ReachDirect, HubURL: "https://old"}, w.now)
@@ -826,9 +826,9 @@ func TestProbe(t *testing.T) {
 }
 
 func TestParsePreProbe(t *testing.T) {
-	out := "home=/home/me\nshell=/bin/bash\nclaude=/home/me/.local/bin/claude\nwy=0.4.0\nsysha=ABCDEF  -\nhostkey=ssh-ed25519 AAAA root@x\nhostkey=ecdsa-sha2-nistp256 BBBB\nend=1\n"
+	out := "home=/home/me\nshell=/bin/bash\nclaude=/home/me/.local/bin/claude\nwy=0.4.0\nwysha=ABCDEF  -\nhostkey=ssh-ed25519 AAAA root@x\nhostkey=ecdsa-sha2-nistp256 BBBB\nend=1\n"
 	p, err := parsePreProbe([]byte(out))
-	if err != nil || p.Sy != "0.4.0" || p.SySHA256 != "abcdef" || len(p.HostKeys) != 2 || p.HostKeys[0] != "ssh-ed25519 AAAA" {
+	if err != nil || p.Wy != "0.4.0" || p.WySHA256 != "abcdef" || len(p.HostKeys) != 2 || p.HostKeys[0] != "ssh-ed25519 AAAA" {
 		t.Fatalf("%+v %v", p, err)
 	}
 	if _, err := parsePreProbe([]byte("home=/x\n")); err == nil {

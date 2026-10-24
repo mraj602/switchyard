@@ -17,7 +17,7 @@
 const puppeteer = require('puppeteer-core');
 const path = require('path');
 const HUB = process.env.HUB || 'http://127.0.0.1:8788';
-const OUT = process.env.OUT || path.join(require('os').tmpdir(), 'sy-demo');
+const OUT = process.env.OUT || path.join(require('os').tmpdir(), 'wy-demo');
 const fs = require('fs');
 fs.mkdirSync(path.join(OUT, 'frames'), { recursive: true });
 const FPS = 12; let n = 0;

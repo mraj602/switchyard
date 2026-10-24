@@ -3,7 +3,7 @@
 // modules and renders the screens' `HubApiProvider` from `useHub()`: the provider is the one
 // source of truth, and the screens' `HubApi` is derived from it here.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Notifications from '../../modules/sy-notify';
+import * as Notifications from '../../modules/wy-notify';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import { HubApiProvider, type HubApi } from '../components/hub-api';
@@ -88,7 +88,7 @@ export function HubGlue({ glue, clock = systemClock, children }: { glue: Glue; c
     glue.setContext({ me, origin, client, kick: () => void refresh(), reloadMe: () => void reloadMe() });
   }, [glue, me, origin, client, refresh, reloadMe]);
 
-  // The updater (phone.md P16.3): only where the sy-link module is (Android).
+  // The updater (phone.md P16.3): only where the wy-link module is (Android).
   const appBuild = Number(hub.claimDeps.app.build) || 0;
   const updater = useMemo(
     () =>

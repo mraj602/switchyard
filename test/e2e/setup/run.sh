@@ -137,7 +137,7 @@ case $mode in
 		out=$src/dist/e2e-$distro
 		rm -rf "$out"
 		build "$out" linux "$arch"
-		image=sy-e2e-$distro
+		image=wy-e2e-$distro
 		"$engine" build -q -f "$here/Containerfile.$distro" -t "$image" "$here" >/dev/null
 		# label=disable: no SELinux relabelling of the real checkout; both mounts read-only.
 		status=0

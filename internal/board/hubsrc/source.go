@@ -481,7 +481,7 @@ func (s *Source) get(ctx context.Context, p string, into any) error {
 
 func (s *Source) auth(req *http.Request) {
 	req.Header.Set("Authorization", "Bearer "+s.o.Token)
-	req.Header.Set("User-Agent", "sy-board")
+	req.Header.Set("User-Agent", "wy-board")
 }
 
 func statusErr(resp *http.Response) error {

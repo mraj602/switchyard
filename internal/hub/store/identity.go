@@ -29,8 +29,8 @@ type Heartbeat struct {
 	Machine    string
 	LastSeen   int64  // hub receive time
 	LastRecord int64  // newest client ts in the batch, 0 = none
-	Backlog    *int64 // X-Sy-Backlog, nil = not sent
-	SyVersion  string // from the batch's client "wy/x.y.z", "" = unknown
+	Backlog    *int64 // X-Wy-Backlog, nil = not sent
+	WyVersion  string // from the batch's client "wy/x.y.z", "" = unknown
 
 	// machines.md 3.4, 6.1.
 	Reach         string // "direct", "forward", "pull"; "" = not said, keeps the stored value
@@ -52,7 +52,7 @@ func (tx *Tx) MachineHeartbeat(h Heartbeat) error {
 		backlog_oldest = CASE WHEN ? THEN ? ELSE backlog_oldest END,
 		backlog_at = CASE WHEN ? THEN ? ELSE backlog_at END
 		WHERE id = ?`,
-		h.LastSeen, h.LastRecord, nullInt(h.LastRecord), h.Backlog, nullStr(h.SyVersion), nullStr(h.Reach),
+		h.LastSeen, h.LastRecord, nullInt(h.LastRecord), h.Backlog, nullStr(h.WyVersion), nullStr(h.Reach),
 		reported, nullInt(h.BacklogOldest), reported, h.LastSeen, h.Machine)
 	return err
 }

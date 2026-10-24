@@ -201,8 +201,8 @@ func pullAdd(stdin io.Reader, args []string, stdout, stderr io.Writer) error {
 	}
 	t := store.PullTarget{Name: name, MachineID: *machine, Host: host, Port: *port, User: user,
 		IntervalS: int(*interval / time.Second)}
-	if t.RemoteSy == "" {
-		t.RemoteSy = ".local/bin/wy"
+	if t.RemoteWy == "" {
+		t.RemoteWy = ".local/bin/wy"
 	}
 	if err := pull.ValidateTarget(t); err != nil {
 		return err
@@ -235,7 +235,7 @@ func pullAdd(stdin io.Reader, args []string, stdout, stderr io.Writer) error {
 		return json.NewEncoder(stdout).Encode(map[string]any{"target": added.ID, "name": added.Name, "public_key": pub})
 	}
 	fmt.Fprintf(stdout, "Added pull target %s (%s).\nAdd this line to ~/.ssh/authorized_keys on the server (wy machine add does it for you):\n\n"+
-		"  restrict,command=\"<path to wy> outbox drain --stdio\" %s sy-pull:%s\n", added.Name, added.ID, pub, added.ID)
+		"  restrict,command=\"<path to wy> outbox drain --stdio\" %s wy-pull:%s\n", added.Name, added.ID, pub, added.ID)
 	return nil
 }
 

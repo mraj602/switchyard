@@ -19,7 +19,7 @@ func TestOpenPathWithURICharacters(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "hub.db")); err != nil {
 		t.Fatal(err)
 	}
-	out := filepath.Join(t.TempDir(), "x.syx")
+	out := filepath.Join(t.TempDir(), "x.wyx")
 	if _, err := s.Export(context.Background(), ExportOptions{Out: out, NoFreeze: true}); err != nil {
 		t.Fatal(err)
 	}

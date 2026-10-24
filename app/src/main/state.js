@@ -25,7 +25,7 @@ const SEAT_ID_RE = new RegExp(SEAT_ID_PATTERN);
 
 const READINGS = new Set([READING_ON, READING_OFF, READING_NEVER_ASKED]);
 const READ_STATES = new Set(['idle', 'reading', 'retrying', 'stopped', 'off']);
-const HUB_STATUSES = new Set(['ok', 'no_sy', 'not_connected', 'dial', 'needs_pairing', 'unreachable']);
+const HUB_STATUSES = new Set(['ok', 'no_wy', 'not_connected', 'dial', 'needs_pairing', 'unreachable']);
 const SERVICES = new Set(['running', 'stopped', 'missing']);
 
 const str = (v, max = 500) => (typeof v === 'string' ? v.slice(0, max) : null);
@@ -36,9 +36,9 @@ const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 export function defaultHub() {
   return {
     url: null, connected: false, reachable: false, paired: false, owner: false, version: null,
-    local: false, service: null, admin: null, needs_you: 0, status: 'no_sy', storage_backend: null, error: null,
+    local: false, service: null, admin: null, needs_you: 0, status: 'no_wy', storage_backend: null, error: null,
     removed: false, board_blocked: false, direct: false, owner_until: null, last_seen: null, machine: '',
-    cert: null, insecure: false, pinned: false, sy_version: null,
+    cert: null, insecure: false, pinned: false, wy_version: null,
   };
 }
 
@@ -168,7 +168,7 @@ function hubState(h, needsYou) {
     d.service = SERVICES.has(h.service) ? h.service : null;
     d.admin = str(h.admin, 500);
     d.needs_you = Number.isSafeInteger(h.needs_you) && h.needs_you >= 0 ? h.needs_you : 0;
-    d.status = HUB_STATUSES.has(h.status) ? h.status : 'no_sy';
+    d.status = HUB_STATUSES.has(h.status) ? h.status : 'no_wy';
     d.storage_backend = str(h.storage_backend, 40);
     d.error = str(h.error, 500);
     d.removed = bool(h.removed);
@@ -180,7 +180,7 @@ function hubState(h, needsYou) {
     d.cert = cleanCert(h.cert);
     d.insecure = bool(h.insecure);
     d.pinned = bool(h.pinned);
-    d.sy_version = str(h.sy_version, 64);
+    d.wy_version = str(h.wy_version, 64);
   }
   if (needsYou && Number.isSafeInteger(needsYou.count) && needsYou.count >= 0) d.needs_you = needsYou.count;
   return d;
@@ -188,7 +188,7 @@ function hubState(h, needsYou) {
 
 /** UpdateNotice (shared/ipc.js) without the URL, which main alone opens (app:open-release). */
 function updateState(app, h) {
-  const n = updateNotice({ app, hub: h?.version, wy: h?.sy_version });
+  const n = updateNotice({ app, hub: h?.version, wy: h?.wy_version });
   return n ? { kind: n.kind, app: n.app, version: n.version, from: n.from } : null;
 }
 

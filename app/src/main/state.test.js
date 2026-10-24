@@ -78,13 +78,13 @@ test('the hub certificate, the http warning and the update notice are copied fie
   const fp = 'AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89';
   const { bus, st } = setup({ about: { app: '0.6.0', electron: '1', chrome: '1', platform: 'x' } });
   bus.emit('hub', {
-    status: 'unreachable', url: 'https://hub.lan:8443', version: '0.7.0', sy_version: '0.6.0', insecure: false, pinned: true,
+    status: 'unreachable', url: 'https://hub.lan:8443', version: '0.7.0', wy_version: '0.6.0', insecure: false, pinned: true,
     cert: { url: 'https://hub.lan:8443', origin: 'https://hub.lan:8443', fingerprint: fp, pinned: 'nope', changed: true, trusted: false, reason: 'X', subject: 'CN=a', issuer: 'CN=a', valid_to: 'y', pem: 'leak' },
   });
   const s = st.snapshot();
   assert.deepEqual(s.hub.cert, { url: 'https://hub.lan:8443', origin: 'https://hub.lan:8443', fingerprint: fp, pinned: null, changed: true, trusted: false, reason: 'X', subject: 'CN=a', issuer: 'CN=a', valid_to: 'y' });
   assert.equal(s.hub.pinned, true);
-  assert.equal(s.hub.sy_version, '0.6.0');
+  assert.equal(s.hub.wy_version, '0.6.0');
   assert.deepEqual(s.update, { kind: 'update', app: '0.6.0', version: '0.7.0', from: 'hub' });
   bus.emit('hub', { status: 'ok', url: 'http://192.168.1.5:8787', insecure: true, version: '0.6.0', cert: { fingerprint: 'bad' } });
   assert.equal(st.snapshot().hub.insecure, true);
@@ -143,7 +143,7 @@ test('needs_warning and read_state rules', () => {
 
 test('hub state is copied field by field; needs_you from its own event; tokens never pass', () => {
   const { bus, st } = setup();
-  bus.emit('hub', { url: 'http://127.0.0.1:8787', connected: true, reachable: true, paired: true, owner: false, version: '0.6.0', local: true, service: 'running', admin: 'local', needs_you: 1, status: 'ok', token: 'sy_d_secret' });
+  bus.emit('hub', { url: 'http://127.0.0.1:8787', connected: true, reachable: true, paired: true, owner: false, version: '0.6.0', local: true, service: 'running', admin: 'local', needs_you: 1, status: 'ok', token: 'wy_d_secret' });
   assert.equal(st.snapshot().hub.needs_you, 1);
   bus.emit('needs_you', { count: 3, sessions: [] });
   const hub = st.snapshot().hub;
@@ -151,11 +151,11 @@ test('hub state is copied field by field; needs_you from its own event; tokens n
   assert.equal(hub.service, 'running');
   assert.equal(hub.storage_backend, null);
   assert.equal(hub.error, null);
-  bus.emit('hub', { status: 'no_sy', storage_backend: 'basic_text', error: 'wy was not found' });
+  bus.emit('hub', { status: 'no_wy', storage_backend: 'basic_text', error: 'wy was not found' });
   assert.equal(st.snapshot().hub.error, 'wy was not found');
   assert.equal(st.snapshot().hub.storage_backend, 'basic_text');
   assert.equal(st.snapshot().settings.storage_backend, 'basic_text', 'before the settings event, from the hub');
-  assert.equal(JSON.stringify(st.snapshot()).includes('sy_d_'), false);
+  assert.equal(JSON.stringify(st.snapshot()).includes('wy_d_'), false);
 });
 
 test('settings: E events win; before that the stored settings', () => {

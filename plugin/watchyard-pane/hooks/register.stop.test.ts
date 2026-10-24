@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
 import { STREAM } from './fixtures'
-import { SY } from './register'
+import { WY } from './register'
 
 // The engine beneath the plugin: session.id answers the ids in order, config answers true.
 function base(on: On, ids: string[]): void {
@@ -40,12 +40,12 @@ test('/clear restarts the follower under the new session id', async ($, on) => {
   await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
   await clock.settle()
   expect(argvs.length).toBe(1)
-  expect(argvs[0]).toEqual([SY, 'board', '--follow', '--ndjson', '--session', 'old'])
+  expect(argvs[0]).toEqual([WY, 'board', '--follow', '--ndjson', '--session', 'old'])
 
   await $.session.end({ reason: 'clear', sessionId: 'old', resume: { id: 'old' } } as never)
   await clock.advance(500)
   expect(argvs.length).toBe(2)
-  expect(argvs[1]).toEqual([SY, 'board', '--follow', '--ndjson', '--session', 'new'])
+  expect(argvs[1]).toEqual([WY, 'board', '--follow', '--ndjson', '--session', 'new'])
 })
 
 test('session.end does not wait for the child to speak again', async ($, on) => {

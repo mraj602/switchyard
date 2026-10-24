@@ -296,7 +296,7 @@ func (tp *tplanner) needMarket(what string) error {
 // plugin gets this wy's hooks (the title entries, T6) and the pane is written next to it.
 func (tp *tplanner) addRefresh() {
 	dir := tp.marketDir()
-	sum := sha256.Sum256([]byte(MarketplaceName + "\x00" + tp.opt.Version + "\x00" + tp.st.Sy))
+	sum := sha256.Sum256([]byte(MarketplaceName + "\x00" + tp.opt.Version + "\x00" + tp.st.Wy))
 	tp.add(model.StepPlugin, model.Action{Op: model.OpWriteTree, Path: dir, ContentSHA256: hex.EncodeToString(sum[:]),
 		Note: fmt.Sprintf("watchyard %s (%s): refresh", tp.opt.Version, MarketplaceName),
 		Pre:  pres(preType(dir, model.TypeDir))})

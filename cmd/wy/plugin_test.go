@@ -91,7 +91,7 @@ func TestPluginHooksJSON(t *testing.T) {
 
 // The hook command from the plugin, run through sh with wy missing from PATH, must be
 // silent and exit 0.
-func TestPluginCommandWithoutSy(t *testing.T) {
+func TestPluginCommandWithoutWy(t *testing.T) {
 	if _, err := os.Stat("/bin/sh"); err != nil {
 		t.Skip("no sh")
 	}

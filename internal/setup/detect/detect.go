@@ -52,9 +52,9 @@ type Deps struct {
 	Claude claudecli.Runner
 	// ConfigDir and StateDir are paths.Dirs.Config.Path and paths.Dirs.State.Path.
 	ConfigDir, StateDir string
-	// Sy is the absolute path of the wy binary that will be baked into hooks and the status
+	// Wy is the absolute path of the wy binary that will be baked into hooks and the status
 	// line; empty = os.Executable.
-	Sy string
+	Wy string
 	// Primary is the --primary choice ("~" form or absolute); empty = share.primary of
 	// config.toml, else ~/.claude. It must equal Choices.Primary given to the planner.
 	Primary string
@@ -101,13 +101,13 @@ func Detect(ctx context.Context, d Deps) (model.State, error) {
 	if d.LookPath == nil {
 		d.LookPath = exec.LookPath
 	}
-	if d.Sy == "" {
-		d.Sy, _ = os.Executable()
+	if d.Wy == "" {
+		d.Wy, _ = os.Executable()
 	}
 	x := &detector{Deps: d, home: filepath.Clean(d.Home), fsys: d.FS}
 	x.st.Home = x.home
 	x.st.OS = d.GOOS
-	x.st.Sy = d.Sy
+	x.st.Wy = d.Wy
 	x.st.StateDir = d.StateDir
 	x.st.ConfigDir = d.ConfigDir
 	return x.run(ctx)
@@ -421,7 +421,7 @@ func healthy(ctx context.Context, url string) bool {
 }
 
 func probeSymlinks() bool {
-	dir, err := os.MkdirTemp("", "sy-symlink-probe")
+	dir, err := os.MkdirTemp("", "wy-symlink-probe")
 	if err != nil {
 		return false
 	}

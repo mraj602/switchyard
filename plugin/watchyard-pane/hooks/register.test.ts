@@ -3,7 +3,7 @@ import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
 import { STREAM } from './fixtures'
-import { PANE, SY } from './register'
+import { PANE, WY } from './register'
 
 const PLUGIN = 'watchyard-pane'
 const SURFACES = ['terminal', 'desktop'] as const
@@ -76,7 +76,7 @@ for (const surface of SURFACES) {
     await start($, surface)
     await clock.settle()
     expect(spawns.length).toBe(1)
-    expect(spawns[0]?.argv.slice(0, 5)).toEqual([SY, 'board', '--follow', '--ndjson', '--session'])
+    expect(spawns[0]?.argv.slice(0, 5)).toEqual([WY, 'board', '--follow', '--ndjson', '--session'])
 
     let pane = await $.ui.mount({ plugin: PLUGIN, surface, component: 'Pane', props: paneProps, requestId: PANE })
     const rowKeys = async () => (await pane.findAll({ type: 'Button' })).map(b => b.key ?? '').filter(k => k.startsWith('row:')).map(k => k.slice(4))
@@ -144,7 +144,7 @@ for (const surface of SURFACES) {
     const focusable = Object.values(view.rows).find((r: any) => r.can_focus) as { id: string; resume: string }
     const before = runs.length
     await pane.press({ key: `row:${focusable.id}` })
-    expect(runs.slice(before)).toEqual([[SY, 'term', 'focus', '--session', focusable.id]])
+    expect(runs.slice(before)).toEqual([[WY, 'term', 'focus', '--session', focusable.id]])
 
     // A row that cannot be focused runs nothing.
     const stuck = Object.values(view.rows).find((r: any) => !r.can_focus) as { id: string }

@@ -516,7 +516,7 @@ func machineList(ctx context.Context, e *machineEnv, args []string, stdout, stde
 		} else if r.HubErr != "" {
 			seen = "?"
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", r.Name, r.SSH, r.Reach, r.SyVersion, seen, backlog)
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", r.Name, r.SSH, r.Reach, r.WyVersion, seen, backlog)
 	}
 	return tw.Flush()
 }

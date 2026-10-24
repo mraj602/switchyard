@@ -7,14 +7,14 @@
 <title>Watchyard (dev, mock wy)</title>
 <link rel="icon" href="data:,">
 <!-- No CSP meta here: Chromium logs an error for frame-ancestors in a meta, and the app:// handler
-     (or the dev server) sends the CSP as a header anyway. Development page (excluded from the package): the real renderer against dev/mock-sy.js.
+     (or the dev server) sends the CSP as a header anyway. Development page (excluded from the package): the real renderer against dev/mock-wy.js.
      Serve src/ with any static server (python3 -m http.server -d app/src) and open
-     /renderer/dev/index.html?scenario=default|empty|no_sy|needs_pairing|stopped|warning|owner
+     /renderer/dev/index.html?scenario=default|empty|no_wy|needs_pairing|stopped|warning|owner
      &view=hub|settings|<tab id>. Under app://shell/ it is app://shell/dev/index.html. -->
 <link rel="stylesheet" href="../styles/tokens.css">
 <link rel="stylesheet" href="../styles/app.css">
 <link rel="stylesheet" href="dev.css">
-<script type="module" src="mock-sy.js"></script>
+<script type="module" src="mock-wy.js"></script>
 <script type="module" src="../app.js"></script>
 </head>
 <body>

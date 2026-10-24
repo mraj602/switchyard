@@ -7,7 +7,7 @@
 
 # ---- after S2 ----
 H=$(new_home laptop laptop)
-install_sy "$H"
+install_wy "$H"
 P=$H/.claude
 cp "$P/settings.json" "$WY_E2E_TMP/settings.before.json"
 links_of "$H" > "$WY_E2E_TMP/links.before"
@@ -41,7 +41,7 @@ assert_rc "second uninstall" 0 $rc
 
 # ---- after S1 ----
 H=$(new_home fresh fresh)
-install_sy "$H"
+install_wy "$H"
 mkdir -p "$H/.config/watchyard"
 printf '{"theme": "electron"}\n' > "$H/.config/watchyard/config.json"
 EJ=$(sha "$H/.config/watchyard/config.json")

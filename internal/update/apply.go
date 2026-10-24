@@ -499,7 +499,7 @@ func Rollback(ctx context.Context, o Options) (Result, error) {
 		return Result{}, err
 	}
 	defer unlock()
-	old := o.Exe + ".old"
+	old := rollbackSource(o.Exe)
 	if _, err := os.Stat(old); err != nil {
 		return Result{}, fail(ExitFailed, "there is no %s to roll back to", old)
 	}
@@ -515,6 +515,26 @@ func Rollback(ctx context.Context, o Options) (Result, error) {
 		return Result{}, err
 	}
 	return Result{Status: "rolled_back", From: o.Current, To: got, Path: o.Exe, OldKept: old}, nil
+}
+
+// rollbackSource is <exe>.old, or, when there is none and exe has the command's current name,
+// the <old cli>.old an update from before the rename kept next to it (legacy compat,
+// rename.md 2.13). The binary that was running then becomes that file.
+func rollbackSource(exe string) string {
+	old := exe + ".old"
+	if _, err := os.Stat(old); err == nil || !brand.CLIRenamed() {
+		return old
+	}
+	base := filepath.Base(exe)
+	ext := strings.TrimPrefix(base, brand.CLI)
+	if ext == base || (ext != "" && ext != ".exe") {
+		return old
+	}
+	legacy := filepath.Join(filepath.Dir(exe), brand.OldCLI()+ext+".old")
+	if _, err := os.Stat(legacy); err == nil {
+		return legacy
+	}
+	return old
 }
 
 // ---- replacing the binary ----

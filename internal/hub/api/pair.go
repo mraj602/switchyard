@@ -144,11 +144,11 @@ func pairFail(w http.ResponseWriter, err error) {
 // pairDesktopVia is the desktop device whose board session sends this request (its cookie), or
 // nil: an owner link opened in the desktop app's Hub view stays tied to that app.
 func pairDesktopVia(r *http.Request, s *Server) *store.Device {
-	c, err := r.Cookie(auth.CookieName)
-	if err != nil {
+	v, ok := auth.SessionCookieValue(r)
+	if !ok {
 		return nil
 	}
-	d, err := s.Auth.Lookup(r.Context(), c.Value)
+	d, err := s.Auth.Lookup(r.Context(), v)
 	if err != nil || !auth.IsSessionDevice(d) {
 		return nil
 	}
@@ -174,8 +174,8 @@ func pairViaDevice(ctx context.Context, s *Server, d store.Device) *store.Device
 // pairDropSession revokes the session behind the request's cookie when it is a board or
 // owner session: a new cookie replaces it, as on logout.
 func pairDropSession(r *http.Request, s *Server) {
-	if c, err := r.Cookie(auth.CookieName); err == nil {
-		if d, err := s.Auth.Lookup(r.Context(), c.Value); err == nil && auth.IsSessionDevice(d) {
+	if v, ok := auth.SessionCookieValue(r); ok {
+		if d, err := s.Auth.Lookup(r.Context(), v); err == nil && auth.IsSessionDevice(d) {
 			_ = auth.Revoke(r.Context(), s.Store(), d.ID)
 		}
 	}

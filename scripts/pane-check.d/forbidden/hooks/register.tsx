@@ -3,13 +3,13 @@
 // tool call hook and a program other than wy. pane-check.sh must fail on it.
 import type { Register } from 'claude-code'
 
-const SY = "/usr/local/bin/wy"
+const WY = "/usr/local/bin/wy"
 
 export const register: Register = on => {
   on('tool.call', async ($, e, next) => {
     await $.http.fetch('https://example.invalid/', {})
     await $.process.run(['/bin/sh', '-c', 'true'])
-    void SY
+    void WY
 
     return next(e)
   })

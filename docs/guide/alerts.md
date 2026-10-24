@@ -10,12 +10,12 @@ fires an alert, where it goes and how to tune it. The full rules are in
 ```mermaid
 sequenceDiagram
     participant CC as Claude Code session
-    participant SY as wy hook (machine)
+    participant WY as wy hook (machine)
     participant OB as Outbox (machine)
     participant HUB as Hub
     participant PH as Android app / web app
-    CC->>SY: Notification hook (permission prompt)
-    SY->>OB: append one record
+    CC->>WY: Notification hook (permission prompt)
+    WY->>OB: append one record
     OB->>HUB: wy flush (POST /v1/ingest)
     HUB->>HUB: session state = needs_permission
     HUB->>HUB: alert due 30 s later (rule delay)
@@ -126,7 +126,7 @@ On iOS the notification has no action buttons; Snooze and Seen are inside the ap
 ntfy suits machines and phones where you already use the ntfy app.
 
 1. Signed in as owner, open Settings on the board and add an ntfy target. Leave the topic
-   empty and the hub makes a long random one (`sy-` and 24 characters).
+   empty and the hub makes a long random one (`wy-` and 24 characters).
 2. Subscribe to that server and topic in the ntfy app.
 3. Set the hub's public URL first; without it ntfy alerts have no link and no Snooze or Seen
    buttons.
@@ -185,7 +185,7 @@ heard from it.
 
 ```sh
 wy direct-push on --server https://ntfy.sh --after 2m --secret-stdin
-# stdin: {"topic": "sy-...", "token": "tk_..."}   (token optional)
+# stdin: {"topic": "wy-...", "token": "tk_..."}   (token optional)
 wy direct-push test        # sends a test message
 wy direct-push status
 wy direct-push off
@@ -195,7 +195,7 @@ Use the same topic as a hub ntfy target so your phone already listens. The topic
 stdin (or prompted at a terminal) and stored in the state folder with mode 0600; it never goes
 on the command line. When the hub catches up it sees that the push was already sent and does
 not repeat it. Only ntfy works this way: Web Push and the Android link need keys that stay on
-the hub. Details: [machines.md, section 5](../spec/machines.md#5-direct-ntfy-from-sy).
+the hub. Details: [machines.md, section 5](../spec/machines.md#5-direct-ntfy-from-wy).
 
 ## Checking delivery
 

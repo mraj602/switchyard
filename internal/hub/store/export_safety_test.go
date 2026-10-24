@@ -31,8 +31,8 @@ func TestExportSnapshotIsPrivateInDataDir(t *testing.T) {
 		}
 	}
 	t.Cleanup(func() { exportWorkHook = nil })
-	out := filepath.Join(outDir, "hub.syx")
-	if _, err := s.Export(ctx, ExportOptions{Out: out, StateDir: state(t), Passphrase: "pw", SyVersion: "t"}); err != nil {
+	out := filepath.Join(outDir, "hub.wyx")
+	if _, err := s.Export(ctx, ExportOptions{Out: out, StateDir: state(t), Passphrase: "pw", WyVersion: "t"}); err != nil {
 		t.Fatal(err)
 	}
 	if filepath.Dir(work) != dataDir {
@@ -42,7 +42,7 @@ func TestExportSnapshotIsPrivateInDataDir(t *testing.T) {
 		t.Fatal("snapshot folder left behind")
 	}
 	ents, _ := os.ReadDir(outDir)
-	if len(ents) != 1 || ents[0].Name() != "hub.syx" {
+	if len(ents) != 1 || ents[0].Name() != "hub.wyx" {
 		t.Fatalf("out folder holds %v", ents)
 	}
 }
@@ -52,7 +52,7 @@ func TestExportFailsWithoutPepperAndUnfreezes(t *testing.T) {
 	ctx := context.Background()
 	s := openTest(t, t.TempDir())
 	st := t.TempDir() // no pair_pepper
-	_, err := s.Export(ctx, ExportOptions{Out: filepath.Join(t.TempDir(), "x.syx"), StateDir: st, SyVersion: "t"})
+	_, err := s.Export(ctx, ExportOptions{Out: filepath.Join(t.TempDir(), "x.wyx"), StateDir: st, WyVersion: "t"})
 	if err == nil || !strings.Contains(err.Error(), "pair_pepper") {
 		t.Fatalf("err = %v", err)
 	}
@@ -69,7 +69,7 @@ func TestExportCancelledUnfreezesAndCleansUp(t *testing.T) {
 	var work string
 	exportWorkHook = func(w string) { work = w; cancel() }
 	t.Cleanup(func() { exportWorkHook = nil })
-	_, err := s.Export(ctx, ExportOptions{Out: filepath.Join(t.TempDir(), "x.syx"), StateDir: state(t), SyVersion: "t"})
+	_, err := s.Export(ctx, ExportOptions{Out: filepath.Join(t.TempDir(), "x.wyx"), StateDir: state(t), WyVersion: "t"})
 	if err == nil {
 		t.Fatal("export of a cancelled context succeeded")
 	}
@@ -90,8 +90,8 @@ func TestExportImportHonourPullDir(t *testing.T) {
 	os.WriteFile(filepath.Join(sd, "hub_sign.key"), []byte("hk"), 0o600)
 	pd := t.TempDir()
 	os.WriteFile(filepath.Join(pd, "id_ed25519"), []byte("KEY"), 0o600)
-	out := filepath.Join(t.TempDir(), "h.syx")
-	if _, err := src.Export(ctx, ExportOptions{Out: out, StateDir: sd, PullDir: pd, NoFreeze: true, SyVersion: "t"}); err != nil {
+	out := filepath.Join(t.TempDir(), "h.wyx")
+	if _, err := src.Export(ctx, ExportOptions{Out: out, StateDir: sd, PullDir: pd, NoFreeze: true, WyVersion: "t"}); err != nil {
 		t.Fatal(err)
 	}
 	dstData, dstState, dstPull := t.TempDir(), t.TempDir(), t.TempDir()
@@ -110,8 +110,8 @@ func TestExportImportHonourPullDir(t *testing.T) {
 func TestImportRefusesWhileHubLockHeld(t *testing.T) {
 	ctx := context.Background()
 	src := openTest(t, t.TempDir())
-	out := filepath.Join(t.TempDir(), "h.syx")
-	if _, err := src.Export(ctx, ExportOptions{Out: out, StateDir: state(t), NoFreeze: true, SyVersion: "t"}); err != nil {
+	out := filepath.Join(t.TempDir(), "h.wyx")
+	if _, err := src.Export(ctx, ExportOptions{Out: out, StateDir: state(t), NoFreeze: true, WyVersion: "t"}); err != nil {
 		t.Fatal(err)
 	}
 	data := t.TempDir()
@@ -134,8 +134,8 @@ func TestImportRollsBackOnFailure(t *testing.T) {
 	ctx := context.Background()
 	src := openTest(t, t.TempDir())
 	seedDevice(t, src)
-	out := filepath.Join(t.TempDir(), "h.syx")
-	if _, err := src.Export(ctx, ExportOptions{Out: out, StateDir: state(t), NoFreeze: true, SyVersion: "t"}); err != nil {
+	out := filepath.Join(t.TempDir(), "h.wyx")
+	if _, err := src.Export(ctx, ExportOptions{Out: out, StateDir: state(t), NoFreeze: true, WyVersion: "t"}); err != nil {
 		t.Fatal(err)
 	}
 	data, sd := t.TempDir(), t.TempDir()

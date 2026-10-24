@@ -1,8 +1,8 @@
 // Settings → Claude tabs (phone.md P17.3): one row per tab profile with "Sign out (clear this
-// tab)", which deletes the seat's WebView profile. Android builds with the sy-tabs module only.
+// tab)", which deletes the seat's WebView profile. Android builds with the wy-tabs module only.
 import { useCallback, useEffect, useState } from 'react';
 import { Alert as RNAlert, Text, View } from 'react-native';
-import * as SyTabs from '../../modules/sy-tabs';
+import * as WyTabs from '../../modules/wy-tabs';
 import { SIGN_IN_NOTE, TAB_PRIVACY_NOTE, tabRows } from '../lib/tabs';
 import { useHubApi } from './hub-api';
 import { signOutTab } from './tab-memo';
@@ -17,13 +17,13 @@ export function ClaudeTabsSection({ toast }: { toast: (m: string) => void }) {
   const [profiles, setProfiles] = useState<string[] | null>(null);
 
   const load = useCallback(() => {
-    SyTabs.listProfiles().then(setProfiles, () => setProfiles([]));
+    WyTabs.listProfiles().then(setProfiles, () => setProfiles([]));
   }, []);
   useEffect(() => {
     if (supported) load();
   }, [supported, load]);
 
-  if (!SyTabs.available || supported === null) return null;
+  if (!WyTabs.available || supported === null) return null;
   const seats = api.data.accounts.length ? api.data.accounts : api.data.overview?.seats ?? [];
   const rows = tabRows(profiles ?? [], seats);
 
@@ -39,7 +39,7 @@ export function ClaudeTabsSection({ toast }: { toast: (m: string) => void }) {
               toast('Signed out');
               load();
             },
-            (e: unknown) => toast((e as { code?: string }).code === 'ERR_SY_TABS_IN_USE' ? 'Close the tab first, then try again' : 'Could not clear the tab'),
+            (e: unknown) => toast((e as { code?: string }).code === 'ERR_WY_TABS_IN_USE' ? 'Close the tab first, then try again' : 'Could not clear the tab'),
           ),
       },
     ]);

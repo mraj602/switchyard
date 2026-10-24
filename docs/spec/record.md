@@ -513,6 +513,7 @@ leaves it out never renames the machine.
 | --- | --- | --- | --- |
 | `os`, `arch` | string | yes | `runtime.GOOS`, `runtime.GOARCH`. |
 | `wy` | string | yes | `wy` version. |
+| `sy` | string | no | The same version under the name before the rename. `wy` writes both, because a hub older than the rename requires `sy`; the hub reads `sy` when `wy` is absent (a machine older than the rename). Legacy compat, rename.md 2.12. |
 | `record_v` | integer | yes | Highest record `v` this `wy` writes. |
 | `reach` | string | yes | `direct`, `forward` or `pull` (`hub.reach`); `none` without a hub. |
 | `dial` | string | no | `tcp` or `unix` when `hub.dial` is set (never the address itself). |

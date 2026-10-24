@@ -81,7 +81,7 @@ func TestUnpackRefusesMemberLargerThanManifest(t *testing.T) {
 	m := Manifest{Format: ManifestFormat, Kind: ManifestKind, Schema: 1,
 		Files: []ManifestFile{{Path: memberDB, Size: 10, SHA256: "x"}}}
 	mb, _ := json.Marshal(m)
-	path := filepath.Join(t.TempDir(), "bomb.syx")
+	path := filepath.Join(t.TempDir(), "bomb.wyx")
 	f, err := os.Create(path)
 	if err != nil {
 		t.Fatal(err)

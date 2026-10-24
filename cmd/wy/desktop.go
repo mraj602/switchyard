@@ -149,7 +149,7 @@ func osDesktopEnv() (desktop.Env, error) {
 	if u, err := user.Current(); err == nil {
 		uname = u.Username
 	}
-	svc := service.New(service.Env{GOOS: runtime.GOOS, Home: me.home, UID: os.Getuid(), User: uname, SyPath: me.exe,
+	svc := service.New(service.Env{GOOS: runtime.GOOS, Home: me.home, UID: os.Getuid(), User: uname, WyPath: me.exe,
 		StateDir: me.dirs.State.Path, Getenv: me.getenv, Runner: timer.ExecRunner{}})
 	env := desktop.Env{Dirs: me.dirs, Config: cfg, Admin: admin, AdminName: adminName, AdminErr: adminErr, Service: svc,
 		GOOS: runtime.GOOS, Stdin: desktopStdin}

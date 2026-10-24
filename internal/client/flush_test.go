@@ -47,6 +47,8 @@ type fakeHub struct {
 	gzipped  int
 	plain    int
 	backlogs []string
+	// legacyBacklogs: the same header under its name before the rename, for an older hub.
+	legacyBacklogs []string
 
 	script   func(n int, ids []string) hubMode // nil: always OK
 	reject   map[string]string                 // id -> reason, answered as rejected
@@ -117,7 +119,8 @@ func (h *fakeHub) serve(w http.ResponseWriter, r *http.Request) {
 	} else {
 		h.plain++
 	}
-	h.backlogs = append(h.backlogs, r.Header.Get("X-Sy-Backlog"))
+	h.backlogs = append(h.backlogs, r.Header.Get("X-Wy-Backlog"))
+	h.legacyBacklogs = append(h.legacyBacklogs, r.Header.Get("X-Sy-Backlog")) // rename:keep
 	mode := modeOK
 	if h.script != nil {
 		mode = h.script(n, ids)
@@ -553,6 +556,10 @@ func TestBatchLimits(t *testing.T) {
 	// The backlog header is sent and counts down.
 	if len(h.backlogs) != 3 || h.backlogs[0] == "" {
 		t.Fatalf("backlog headers: %v", h.backlogs)
+	}
+	// Legacy compat: also sent as X-Sy-Backlog, all a hub older than the rename reads.
+	if fmt.Sprint(h.legacyBacklogs) != fmt.Sprint(h.backlogs) {
+		t.Fatalf("legacy backlog headers %v, want %v", h.legacyBacklogs, h.backlogs)
 	}
 }
 

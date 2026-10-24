@@ -10,7 +10,7 @@
 
 MS="python3 -I $E2E/lib/mcpspan.py"
 H=$(new_home mcp mcp)
-install_sy "$H"
+install_wy "$H"
 STATE=$H/.local/state/watchyard
 F1=$H/.claude.json F2=$H/.claude-2/.claude.json F3=$H/.claude-3/.claude.json
 SECRETS=$WY_E2E_TMP/secrets

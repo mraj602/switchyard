@@ -15,7 +15,7 @@ function setup({ sessionFetch } = {}) {
     window: { addView() {}, removeView() {}, select() {}, setViewHidden() {} },
     log,
     base: () => BASE,
-    auth: () => ({ url: BASE, token: 'sy_d_good' }),
+    auth: () => ({ url: BASE, token: 'wy_d_good' }),
     onSessionLink() {},
     onOwner() {},
     onLoginRefused() {},
@@ -80,4 +80,13 @@ test('the view dropped while a re-login or a load awaits: no null dereference', 
   }
   assert.equal(unhandled, null, String(unhandled?.stack ?? ''));
   assert.equal(fake.callsOf('webContents.reload').length, 0);
+});
+
+// Legacy compat: a board session from before the rename lives in sy_session; the hub still reads it.
+test('a board cookie of either name counts as a session', async () => {
+  for (const name of ['wy_session', 'sy_session', 'other']) { // rename:keep
+    const { v, fake } = setup();
+    await fake.electron.session.fromPartition('persist:wy-hub').cookies.set({ url: BASE, name, value: 'v' });
+    assert.equal(await v.hasCookie(), name !== 'other', name);
+  }
 });

@@ -60,7 +60,7 @@ func TestNoIngestInBoardSources(t *testing.T) {
 		ast.Inspect(f, func(n ast.Node) bool {
 			switch x := n.(type) {
 			case *ast.BasicLit:
-				if x.Kind == token.STRING && (strings.Contains(x.Value, "/v1/ingest") || strings.Contains(x.Value, "X-Sy-Backlog")) {
+				if x.Kind == token.STRING && (strings.Contains(x.Value, "/v1/ingest") || strings.Contains(x.Value, "X-Wy-Backlog")) {
 					t.Errorf("%s uses %s: the board never posts records", rel, x.Value)
 				}
 			case *ast.SelectorExpr:

@@ -104,7 +104,7 @@ func TestRecordKeepsRawBody(t *testing.T) {
 	mustExec(`INSERT OR IGNORE INTO owner (id, created_at) VALUES ('owner', 0)`)
 	mustExec(`INSERT INTO machine (id, name, first_seen) VALUES ('m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K', 'laptop', 0)`)
 	mustExec(`INSERT INTO device (id, kind, name, machine_id, token_hash, token_hint, scopes, created_at, created_by)
-	          VALUES ('dev_1', 'desktop', 'laptop', 'm_01JA2W5N0G8H3Q7S2V6X9Y1Z4K', randomblob(32), 'sy_d_…abcd', '["write","read"]', 0, 'test')`)
+	          VALUES ('dev_1', 'desktop', 'laptop', 'm_01JA2W5N0G8H3Q7S2V6X9Y1Z4K', randomblob(32), 'wy_d_…abcd', '["write","read"]', 0, 'test')`)
 	body := `{"v":1,"id":"01JA2XQ8R7Y5V0Z6M3K1T9B4CD","kind":"web_usage","ts":"2026-10-11T14:05:00.120Z","payload":{"usage":{"iguana_necktie":{"utilization":3},"brand_new_field":[1,2]}}}`
 	mustExec(`INSERT INTO record (id, device_id, machine_id, kind, v, ts, received_at, body)
 	          VALUES ('01JA2XQ8R7Y5V0Z6M3K1T9B4CD', 'dev_1', 'm_01JA2W5N0G8H3Q7S2V6X9Y1Z4K', 'web_usage', 1, 0, 0, ?)`, body)
@@ -278,7 +278,7 @@ func TestSchemaV5BackfillsLookSrc(t *testing.T) {
 const v5Push = `INSERT OR IGNORE INTO owner (id, created_at) VALUES ('owner', 0);
 INSERT INTO push_target (id, kind, device_id, name, endpoint, keys, created_at, updated_at) VALUES
   ('pt_web', 'webpush', NULL, 'iPhone · Safari', 'https://web.push.apple.com/x', '{"p256dh":"p","auth":"a"}', 1, 1),
-  ('pt_ntfy', 'ntfy', NULL, 'ntfy.sh/sy-x', 'https://ntfy.sh/sy-x', NULL, 1, 1);
+  ('pt_ntfy', 'ntfy', NULL, 'ntfy.sh/wy-x', 'https://ntfy.sh/wy-x', NULL, 1, 1);
 INSERT INTO alert (id, episode, trigger, status, created_at, updated_at) VALUES ('al_1', 'ep1', 'asked', 'fired', 1, 1);
 INSERT INTO delivery (alert_id, target_id, target_kind, fire, status, tries, created_at, updated_at) VALUES
   ('al_1', 'pt_web', 'webpush', 1, 'sent', 1, 1, 2),
@@ -343,7 +343,7 @@ func TestSchemaV8LinkKeepsTargets(t *testing.T) {
 		}
 	}
 	mustExec(`INSERT INTO device (id, kind, name, token_hash, token_hint, scopes, created_at, created_by)
-	          VALUES ('dev_p', 'phone', 'Pixel · app', randomblob(32), 'sy_p_…abcd', '["read","push"]', 0, 'test')`)
+	          VALUES ('dev_p', 'phone', 'Pixel · app', randomblob(32), 'wy_p_…abcd', '["read","push"]', 0, 'test')`)
 	mustExec(`INSERT INTO push_target (id, kind, device_id, endpoint, keys, created_at, updated_at)
 	          VALUES ('pt_link', 'link', 'dev_p', 'link:dev_p', '{"p256dh":"p","auth":"a"}', 4, 4)`)
 	refused("unknown channel kind", `INSERT INTO push_target (id, kind, endpoint, created_at, updated_at) VALUES ('pt_x', 'carrier', 'x', 5, 5)`)
@@ -357,7 +357,7 @@ func TestSchemaV8LinkKeepsTargets(t *testing.T) {
 	mustExec(`INSERT INTO owner_key (fp, pub, body, self_sig, state, proposed_by, created_at) VALUES ('e', randomblob(32), x'7b7d', randomblob(64), 'pending', 'dev_p', 1)`)
 	mustExec(`INSERT INTO link_state (device_id) VALUES ('dev_p')`)
 	mustExec(`INSERT INTO link_queue (device_id, seq, type, tag, body, sig, exp, created_at)
-	          VALUES ('dev_p', 1, 'alert', 'sy-s-1', x'00', randomblob(64), 10, 1)`)
+	          VALUES ('dev_p', 1, 'alert', 'wy-s-1', x'00', randomblob(64), 10, 1)`)
 	refused("unknown link frame type", `INSERT INTO link_queue (device_id, seq, type, body, sig, exp, created_at)
 	          VALUES ('dev_p', 2, 'chat', x'00', randomblob(64), 10, 1)`)
 	refused("link tag with a newline", `INSERT INTO link_queue (device_id, seq, type, tag, body, sig, exp, created_at)
@@ -381,7 +381,7 @@ func TestSchemaV10KeepsLinkQueue(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "hub.db")
 	seedAt(t, 9, path,
 		`INSERT INTO device (id, kind, name, token_hash, token_hint, scopes, created_at, created_by)
-		 VALUES ('dev_m', 'phone', 'Pixel · app', randomblob(32), 'sy_p_…abcd', '["read","push"]', 0, 'test')`,
+		 VALUES ('dev_m', 'phone', 'Pixel · app', randomblob(32), 'wy_p_…abcd', '["read","push"]', 0, 'test')`,
 		`INSERT INTO link_queue (device_id, seq, type, tag, body, sig, exp, ref, created_at)
 		 VALUES ('dev_m', 1, 'peer_msg', '', x'0102', randomblob(64), 10, 'pm:m1', 1),
 		        ('dev_m', 2, 'matrix', 'matrix', x'03', randomblob(64), 20, NULL, 2)`)
@@ -430,7 +430,7 @@ func TestSchemaV11DropsExpo(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "hub.db")
 	seedAt(t, 10, path, v5Push,
 		`INSERT INTO device (id, kind, name, token_hash, token_hint, scopes, created_at, created_by)
-		 VALUES ('dev_p', 'phone', 'Pixel · app', randomblob(32), 'sy_p_…abcd', '["read","push"]', 0, 'test')`,
+		 VALUES ('dev_p', 'phone', 'Pixel · app', randomblob(32), 'wy_p_…abcd', '["read","push"]', 0, 'test')`,
 		`INSERT INTO push_target (id, kind, device_id, endpoint, meta, created_at, updated_at, fail_count, last_error)
 		 VALUES ('pt_expo', 'expo', 'dev_p', 'ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]', '{"platform":"android"}', 3, 3, 2, 'HTTP 500'),
 		        ('pt_link', 'link', 'dev_p', 'link:dev_p', NULL, 4, 4, 0, NULL)`,

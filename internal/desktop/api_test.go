@@ -13,15 +13,15 @@ func TestC4ShapesRoundTrip(t *testing.T) {
 		v   any
 		doc string
 	}{
-		"info": {new(Info), `{"v": 1, "sy": "0.6.0", "machine": {"id": "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K", "name": "laptop"},
+		"info": {new(Info), `{"v": 1, "wy": "0.6.0", "machine": {"id": "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K", "name": "laptop"},
 			"hub": {"url": "http://127.0.0.1:8787", "connected": true, "reachable": true, "version": "0.6.0",
 			        "local": true, "dial": null, "service": "running"},
 			"admin": "local", "admin_error": null, "outbox": {"pending": 3, "last_error": null}}`},
-		"info not connected": {new(Info), `{"v": 1, "sy": "0.6.0", "machine": {"id": "m_x", "name": "laptop"},
+		"info not connected": {new(Info), `{"v": 1, "wy": "0.6.0", "machine": {"id": "m_x", "name": "laptop"},
 			"hub": {"url": null, "connected": false, "reachable": false, "version": null,
 			        "local": false, "dial": null, "service": null},
 			"admin": null, "admin_error": null, "outbox": {"pending": 0, "last_error": "hub unreachable"}}`},
-		"token": {new(Token), `{"device": "dev_01JA", "token": "sy_d_abc", "scopes": ["write", "read"],
+		"token": {new(Token), `{"device": "dev_01JA", "token": "wy_d_abc", "scopes": ["write", "read"],
 			"hub": {"url": "https://hub.example.ts.net"}}`},
 		"owner-link": {new(OwnerLink), `{"url": "https://hub.example.ts.net/#/owner?s=abc", "expires_at": "2026-10-13T10:00:00.000Z"}`},
 		"hub":        {new(HubService), `{"service": "missing", "unit": "watchyard-hub.service", "health": false}`},

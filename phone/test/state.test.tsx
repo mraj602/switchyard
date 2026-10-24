@@ -2,7 +2,7 @@
 // notification bridge (decisions through performDecision). All offline. Seen and Snooze
 // are the screens' (src/components/alert-actions.tsx, test/screens.test.tsx).
 import { act, render } from '@testing-library/react-native';
-import * as Notifications from '../modules/sy-notify';
+import * as Notifications from '../modules/wy-notify';
 import { CACHE_KEY, KEYCHAIN_ACCESSIBLE, SECURE_HUB_KEY, SECURE_REVOKE_KEY, WIDGET_KEY } from '../src/contract/constants';
 import type { Overview } from '../src/contract/api';
 import { createMemorySecureStore, createSecureHub, secureOptions } from '../src/lib/secure';
@@ -303,7 +303,7 @@ describe('pairing and unpairing', () => {
     stateHooks.onPaired = () => {
       deletesAtOnPaired = deletes(h.fetch).length;
     };
-    const fresh: StoredHub = { ...stored, token: 'sy_p_NEWTOKEN', paired_at: '2026-10-14T00:00:00.000Z' };
+    const fresh: StoredHub = { ...stored, token: 'wy_p_NEWTOKEN', paired_at: '2026-10-14T00:00:00.000Z' };
     await act(async () => {
       await h.api().pairWith(fresh);
       await flush(60);
@@ -353,7 +353,7 @@ describe('a stale 401', () => {
   it('a 401 from the old client after "Unpair and pair" does not clear the new pairing', async () => {
     const h = await mount({ paired: true });
     const oldClient = h.api().client!;
-    const fresh: StoredHub = { ...stored, origin: 'https://new.ts.net', token: 'sy_p_NEWTOKEN' };
+    const fresh: StoredHub = { ...stored, origin: 'https://new.ts.net', token: 'wy_p_NEWTOKEN' };
     await act(async () => {
       await h.api().unpair();
       await h.api().pairWith(fresh);

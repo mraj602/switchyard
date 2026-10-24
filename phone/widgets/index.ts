@@ -12,5 +12,5 @@ export * from './android/task-handler';
 export { NeedsYouSmall } from './ios/NeedsYouSmall';
 export { AccountsMedium } from './ios/AccountsMedium';
 export { ResetCountdown } from './ios/ResetCountdown';
-export { SyLimits } from './android/SyLimits';
-export { SySessions } from './android/SySessions';
+export { WyLimits } from './android/WyLimits';
+export { WySessions } from './android/WySessions';

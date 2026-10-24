@@ -17,7 +17,7 @@ const DefaultServer = "https://ntfy.sh"
 
 const base62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
-// NewTopic makes a topic name: "sy-" + 24 base62 characters, about 143 bits (push.md 7.1).
+// NewTopic makes a topic name: "wy-" + 24 base62 characters, about 143 bits (push.md 7.1).
 // On ntfy.sh the name is the only secret, so it comes from crypto/rand without modulo bias.
 func NewTopic() (string, error) {
 	const n = 24
@@ -33,7 +33,7 @@ func NewTopic() (string, error) {
 			}
 		}
 	}
-	return "sy-" + string(out), nil
+	return "wy-" + string(out), nil
 }
 
 var topicRE = regexp.MustCompile(`^[-_A-Za-z0-9]{1,64}$`)

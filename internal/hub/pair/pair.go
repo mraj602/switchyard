@@ -287,7 +287,7 @@ func (s *Service) mac(prefix, value string) ([]byte, error) {
 }
 
 // Pepper returns the pairing pepper (made at first use). The authenticator keys the hash
-// of sy_o_ tokens with it (auth.OwnerHash).
+// of wy_o_ tokens with it (auth.OwnerHash).
 func (s *Service) Pepper() ([]byte, error) { return s.key() }
 
 // SealKey is the QR's k: HMAC-SHA256(pepper, "seal:" + secret)[0:16] (keys.md 7). It is
@@ -833,7 +833,7 @@ func (s *Service) Claim(ctx context.Context, ip string, req ClaimRequest) (Claim
 }
 
 // OwnerSignIn swaps an owner link's secret for an owner session: a browser device with
-// scopes owner, read and push, a sy_o_ token and a 30 day expiry (pairing.md 4). The
+// scopes owner, read and push, a wy_o_ token and a 30 day expiry (pairing.md 4). The
 // caller sets the cookie. Errors as Claim; a secret of any other kind of code is ErrInvalid
 // and the code is left alone.
 func (s *Service) OwnerSignIn(ctx context.Context, ip, secret, name string) (auth.Created, error) {

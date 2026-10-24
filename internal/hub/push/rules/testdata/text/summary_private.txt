@@ -1,4 +1,4 @@
 title: Watchyard
 body: 3 sessions need you
 url: /#/
-tag: sy-summary
+tag: wy-summary

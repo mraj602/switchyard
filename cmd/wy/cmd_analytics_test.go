@@ -12,7 +12,7 @@ import (
 	"github.com/mraj602/watchyard/internal/board"
 )
 
-const anReadToken = "sy_d_" + "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+const anReadToken = "wy_d_" + "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
 
 var anReplies = map[string]string{
 	"daily": `{"report":"daily","from":"2026-10-14","to":"2026-10-15","tz":"Asia/Kolkata","seat":null,

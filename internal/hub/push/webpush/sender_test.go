@@ -49,7 +49,7 @@ func msg() model.Message {
 		Payload: model.Payload{
 			V: 1, Type: model.TypeAlert, Alert: "al_1", Alerts: []string{"al_1"}, Trigger: model.TriggerAsked,
 			Title: "work · api · asked a question", Body: "Should I also update the migration?",
-			Tag: "sy-s-c41e", URL: "/#/sessions/c41e?alert=al_1", Tap: "auto", NeedsYou: 3,
+			Tag: "wy-s-c41e", URL: "/#/sessions/c41e?alert=al_1", Tap: "auto", NeedsYou: 3,
 			Actions: &model.Actions{Snooze: "a1.x", Seen: "a1.y"},
 		},
 		TTL: 6 * time.Hour, Urgency: "high",
@@ -84,7 +84,7 @@ func TestSendRoundTrip(t *testing.T) {
 	h := g.Header
 	for k, want := range map[string]string{
 		"Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream",
-		"Ttl": "21600", "Urgency": "high", "Topic": webpush.Topic("sy-s-c41e"),
+		"Ttl": "21600", "Urgency": "high", "Topic": webpush.Topic("wy-s-c41e"),
 	} {
 		if h.Get(k) != want {
 			t.Errorf("%s = %q, want %q", k, h.Get(k), want)

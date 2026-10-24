@@ -77,7 +77,7 @@ func newRig(t *testing.T) *rig {
 		Config: cfg, Client: "wy/0.5.0-test", Now: func() time.Time { return r.now }}
 	r.ob = outbox.New(r.o.OutboxDir)
 	r.ob.Now, r.ob.NoFsync = r.o.Now, true
-	if err := SaveSecret(state, Secret{Topic: "sy-test-topic", Token: "tk_abc"}); err != nil {
+	if err := SaveSecret(state, Secret{Topic: "wy-test-topic", Token: "tk_abc"}); err != nil {
 		t.Fatal(err)
 	}
 	return r
@@ -171,7 +171,7 @@ func TestCheckSendsOnceWhenHubUnreachable(t *testing.T) {
 		t.Fatalf("%+v", res)
 	}
 	m := r.ntfy.msgs()
-	if len(m) != 1 || m[0].Topic != "sy-test-topic" || m[0].Title != "work · api · asked a question · direct" ||
+	if len(m) != 1 || m[0].Topic != "wy-test-topic" || m[0].Title != "work · api · asked a question · direct" ||
 		m[0].Message != "Should I also update the migration?" || m[0].Priority != 4 || m[0].Tags[0] != "question" {
 		t.Fatalf("message %+v", m)
 	}
@@ -441,7 +441,7 @@ func TestSecret(t *testing.T) {
 			t.Errorf("accepted %+v", bad)
 		}
 	}
-	if err := SaveSecret(dir, Secret{Topic: "sy-abc_DEF-123"}); err != nil {
+	if err := SaveSecret(dir, Secret{Topic: "wy-abc_DEF-123"}); err != nil {
 		t.Fatal(err)
 	}
 	if fi, _ := os.Stat(SecretPath(dir)); fi.Mode().Perm() != 0o600 && !isWindows() {

@@ -215,7 +215,7 @@ func (e *setupEnv) termFacts(st model.State, c model.TermChoices) (plan.TermFact
 
 // marketCurrent reports whether the marketplace at dir holds exactly what this wy writes.
 func (e *setupEnv) marketCurrent(dir string) bool {
-	tmp, err := os.MkdirTemp("", "sy-market-")
+	tmp, err := os.MkdirTemp("", "wy-market-")
 	if err != nil {
 		return false
 	}
@@ -585,13 +585,13 @@ type termStatusReport struct {
 		SideEffects string `json:"side_effects,omitempty"`
 	} `json:"titles"`
 	Pane struct {
-		BySy          bool   `json:"by_sy"`
+		ByWy          bool   `json:"by_wy"`
 		ClaudeVersion string `json:"claude_version"`
 		Minimum       string `json:"minimum"`
 		VersionOK     bool   `json:"version_ok"`
 	} `json:"pane"`
 	WarpPlugin struct {
-		BySy   bool   `json:"by_sy"`
+		ByWy   bool   `json:"by_wy"`
 		Ref    string `json:"ref,omitempty"`
 		Commit string `json:"commit,omitempty"`
 		JQ     bool   `json:"jq"`
@@ -619,11 +619,11 @@ func termStatus(ctx context.Context, e *setupEnv, f termFlags) error {
 	if r.Titles.On {
 		r.Titles.SideEffects = plan.TitleSideEffects
 	}
-	r.Pane.BySy = led.Pane != nil
+	r.Pane.ByWy = led.Pane != nil
 	r.Pane.ClaudeVersion, r.Pane.Minimum = st.Claude.Version, plan.PaneMinClaude
 	r.Pane.VersionOK = st.Claude.Version != "" && !plan.VersionLess(st.Claude.Version, plan.PaneMinClaude)
 	if w := led.WarpPlugin; w != nil {
-		r.WarpPlugin.BySy, r.WarpPlugin.Ref, r.WarpPlugin.Commit = true, w.Ref, w.Commit
+		r.WarpPlugin.ByWy, r.WarpPlugin.Ref, r.WarpPlugin.Commit = true, w.Ref, w.Commit
 	}
 	r.WarpPlugin.JQ = facts.JQ
 	for _, t := range st.SettingsTargets {
@@ -669,9 +669,9 @@ func termStatus(ctx context.Context, e *setupEnv, f termFlags) error {
 	if ver == "" {
 		ver = "not found"
 	}
-	fmt.Fprintf(w, "Pane         %s (Claude Code %s, mod minimum %s)\n", onOff(r.Pane.BySy), ver, r.Pane.Minimum)
-	wp := onOff(r.WarpPlugin.BySy)
-	if r.WarpPlugin.BySy {
+	fmt.Fprintf(w, "Pane         %s (Claude Code %s, mod minimum %s)\n", onOff(r.Pane.ByWy), ver, r.Pane.Minimum)
+	wp := onOff(r.WarpPlugin.ByWy)
+	if r.WarpPlugin.ByWy {
 		wp += " (" + plan.WarpSource
 		if r.WarpPlugin.Commit != "" {
 			wp += " at " + r.WarpPlugin.Commit[:min(12, len(r.WarpPlugin.Commit))]

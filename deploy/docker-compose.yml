@@ -23,12 +23,12 @@ services:
     container_name: watchyard-hub
     restart: unless-stopped
     ports:
-      - "${WY_BIND:-127.0.0.1}:${WY_PORT:-8787}:8787"
+      - "${WY_BIND:-${SY_BIND:-127.0.0.1}}:${WY_PORT:-${SY_PORT:-8787}}:8787" # rename:keep: SY_* from an .env written before the rename
     volumes:
       - hub-data:/data
     # WY_PUBLIC_URL (in .env) is the https address phones open, e.g. the
     # https://<name>.<tailnet>.ts.net of `tailscale serve --bg 8787` (deploy/README.md C).
-    command: ["hub", "serve", "--listen", "0.0.0.0:8787", "--insecure-lan", "--trusted-proxy", "${WY_TRUSTED_PROXY:-172.16.0.0/12}", "--public-url", "${WY_PUBLIC_URL:-}"]
+    command: ["hub", "serve", "--listen", "0.0.0.0:8787", "--insecure-lan", "--trusted-proxy", "${WY_TRUSTED_PROXY:-${SY_TRUSTED_PROXY:-172.16.0.0/12}}", "--public-url", "${WY_PUBLIC_URL:-${SY_PUBLIC_URL:-}}"] # rename:keep: SY_* as above
     # Published ports reach the container from the Docker bridge gateway, so the hub trusts
     # X-Forwarded-For/-Proto from Docker's default bridge ranges (172.16.0.0/12). Set
     # WY_TRUSTED_PROXY if your Docker uses other ranges (docker network inspect).

@@ -37,7 +37,7 @@ files:
   - "!src/renderer/dev/**"
   - "!src/main/test-hooks.js"
 
-# The bundled `wy` (scripts/fetch-sy.mjs fills resources/wy/<os>-<arch>/) lands at
+# The bundled `wy` (scripts/fetch-wy.mjs fills resources/wy/<os>-<arch>/) lands at
 # <resources>/wy/wy[.exe], outside the asar so it can be executed.
 extraResources:
   - from: resources/wy/${os}-${arch}/

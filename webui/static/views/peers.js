@@ -17,7 +17,7 @@ import {
 } from '../components/peers-fmt.js';
 
 const st = { matrix: null, audit: null, messages: null, error: null, pick: null, busy: false, turns: null, noLimit: null };
-const again = () => window.dispatchEvent(new Event('sy-rerender'));
+const again = () => window.dispatchEvent(new Event('wy-rerender'));
 
 export async function load() {
   st.error = null;

@@ -1,6 +1,9 @@
 package brand
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestNames(t *testing.T) {
 	for _, s := range []string{Slug, LegacySlug} {
@@ -56,5 +59,25 @@ func TestMigrateEnv(t *testing.T) {
 	MigrateEnv(env, set)
 	if len(got) != 1 || got[EnvPrefix+"HOME"] != "/h" {
 		t.Fatalf("got %v", got)
+	}
+}
+
+// The prefix is the upper-cased command name: "wy_HOME" would never be read.
+func TestEnvPrefixLiteral(t *testing.T) {
+	if EnvPrefix != "WY_" || EnvPrefix != strings.ToUpper(CLI)+"_" {
+		t.Fatalf("EnvPrefix = %q", EnvPrefix)
+	}
+	if got := OldEnvPrefix(); got != "SY_" { // rename:keep
+		t.Fatalf("OldEnvPrefix = %q", got)
+	}
+}
+
+// Legacy compat (rename.md 2.13): SY_* variables are copied to WY_* unless already set.
+func TestMigrateEnvLiteral(t *testing.T) {
+	env := []string{"SY_HOME=/h", "SY_STATE_DIR=/old", "WY_STATE_DIR=/new", "PATH=/usr/bin"} // rename:keep
+	got := map[string]string{}
+	set := MigrateEnv(env, func(k, v string) error { got[k] = v; return nil })
+	if len(set) != 1 || set[0] != "WY_HOME" || len(got) != 1 || got["WY_HOME"] != "/h" {
+		t.Fatalf("set %v, got %v", set, got)
 	}
 }

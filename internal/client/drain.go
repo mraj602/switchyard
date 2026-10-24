@@ -28,8 +28,8 @@ type DrainOptions struct {
 	Machine string // machine id
 	Name    string // machine name
 
-	// SyVersion, OS, Arch default to this binary's.
-	SyVersion, OS, Arch string
+	// WyVersion, OS, Arch default to this binary's.
+	WyVersion, OS, Arch string
 	// RecordV is the highest record v this wy writes; default record MaxVersion (1).
 	RecordV int
 
@@ -78,8 +78,8 @@ func Drain(ctx context.Context, in io.Reader, out io.Writer, o DrainOptions) Dra
 	if o.Logf == nil {
 		o.Logf = func(string, ...any) {}
 	}
-	if o.SyVersion == "" {
-		o.SyVersion = version.Version
+	if o.WyVersion == "" {
+		o.WyVersion = version.Version
 	}
 	if o.OS == "" {
 		o.OS = runtime.GOOS
@@ -240,7 +240,7 @@ func (d *drainer) run(ctx context.Context) {
 		d.res.Err = err
 		return
 	}
-	hello := drainproto.Hello{Proto: drainproto.Proto, Machine: d.Machine, Name: d.Name, Sy: d.SyVersion,
+	hello := drainproto.Hello{Proto: drainproto.Proto, Machine: d.Machine, Name: d.Name, Wy: d.WyVersion,
 		OS: d.OS, Arch: d.Arch, RecordV: d.RecordV, Backlog: n}
 	if oldest != "" {
 		hello.Oldest = &oldest

@@ -27,7 +27,7 @@ func newFreshTermHome(t *testing.T) *termHome {
 // claude runs the wrapper claude (and so fakeclaude) as the person would, as ~/.claude.
 func (th *termHome) claude(t *testing.T, args ...string) {
 	t.Helper()
-	cmd := exec.Command(filepath.Join(th.syHome, "wrapbin", "claude"), args...)
+	cmd := exec.Command(filepath.Join(th.wyHome, "wrapbin", "claude"), args...)
 	cmd.Env = th.env
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("claude %v: %v\n%s", args, err, out)
@@ -64,22 +64,22 @@ func warpCommitOf(t *testing.T, th *termHome) string {
 // new one.
 func TestTermWarpCommitDrift(t *testing.T) {
 	th := newFreshTermHome(t)
-	git := filepath.Join(th.syHome, "warp-src", ".git")
+	git := filepath.Join(th.wyHome, "warp-src", ".git")
 	a, b := strings.Repeat("a", 40), strings.Repeat("b", 40)
 	writeFile(t, filepath.Join(git, "HEAD"), a+"\n")
-	th.mustSy(t, "term", "setup", "--warp-plugin", "--yes")
+	th.mustWy(t, "term", "setup", "--warp-plugin", "--yes")
 	if c := warpCommitOf(t, th); c != a {
 		t.Fatalf("commit after on: %q", c)
 	}
 	writeFile(t, filepath.Join(git, "HEAD"), b+"\n")
-	if out := th.mustSy(t, "term", "setup", "--warp-plugin", "--yes"); !strings.Contains(out, "0 changes") {
+	if out := th.mustWy(t, "term", "setup", "--warp-plugin", "--yes"); !strings.Contains(out, "0 changes") {
 		t.Fatalf("second on:\n%s", out)
 	}
-	th.mustSy(t, "term", "titles", "on", "--yes")
+	th.mustWy(t, "term", "titles", "on", "--yes")
 	if c := warpCommitOf(t, th); c != a {
 		t.Fatalf("the recorded commit moved without --accept-update: %q", c)
 	}
-	if out := th.mustSy(t, "term", "setup", "--accept-update", "--yes"); !strings.Contains(out, "Accepted Warp's plugin checkout at "+b) {
+	if out := th.mustWy(t, "term", "setup", "--accept-update", "--yes"); !strings.Contains(out, "Accepted Warp's plugin checkout at "+b) {
 		t.Errorf("accept:\n%s", out)
 	}
 	if c := warpCommitOf(t, th); c != b {
@@ -124,7 +124,7 @@ func TestTermPaneOwnMarketplace(t *testing.T) {
 	on := func() {
 		t.Helper()
 		_ = os.Remove(th.wrapLog)
-		th.mustSy(t, "term", "setup", "--pane", "--yes")
+		th.mustWy(t, "term", "setup", "--pane", "--yes")
 		if runs := strings.Join(th.runs(t), "\n"); !strings.Contains(runs, "plugin marketplace add ") {
 			t.Fatalf("no marketplace add:\n%s", runs)
 		}
@@ -144,12 +144,12 @@ func TestTermPaneOwnMarketplace(t *testing.T) {
 	}
 
 	on()
-	th.mustSy(t, "setup", "--undo", "--yes")
+	th.mustWy(t, "setup", "--undo", "--yes")
 	testtree.Equal(t, tree0, testtree.Take(t, th.root, snapOpts))
 
 	on()
 	_ = os.Remove(th.wrapLog)
-	th.mustSy(t, "term", "off", "--yes")
+	th.mustWy(t, "term", "off", "--yes")
 	if runs := strings.Join(th.runs(t), "\n"); !strings.Contains(runs, "plugin marketplace remove wy-local") {
 		t.Errorf("off runs:\n%s", runs)
 	}
@@ -160,7 +160,7 @@ func TestTermPaneOwnMarketplace(t *testing.T) {
 	}
 
 	on()
-	th.mustSy(t, "uninstall", "--yes")
+	th.mustWy(t, "uninstall", "--yes")
 	gone("uninstall")
 	sameRegistries("uninstall")
 }
@@ -195,19 +195,19 @@ func TestTermTitlesOffRestoresValue(t *testing.T) {
 		_ = json.Unmarshal(b, &s)
 		return s.Env[ledger.TitleEnvKey]
 	}
-	th.mustSy(t, "term", "titles", "on", "--yes")
+	th.mustWy(t, "term", "titles", "on", "--yes")
 	if v := value(); v != "1" {
 		t.Fatalf("on: %v", v)
 	}
-	off := th.mustSy(t, "term", "titles", "off", "--yes")
+	off := th.mustWy(t, "term", "titles", "off", "--yes")
 	if v := value(); v != "0" {
 		t.Fatalf("off left %v, want the person's \"0\":\n%s", v, off)
 	}
-	th.mustSy(t, "setup", "--undo", "--yes")
+	th.mustWy(t, "setup", "--undo", "--yes")
 	if v := value(); v != "1" {
 		t.Fatalf("undo of off: %v", v)
 	}
-	th.mustSy(t, "term", "titles", "off", "--yes")
+	th.mustWy(t, "term", "titles", "off", "--yes")
 	if v := value(); v != "0" {
 		t.Fatalf("off after the undo: %v", v)
 	}
@@ -217,7 +217,7 @@ func TestTermTitlesOffRestoresValue(t *testing.T) {
 // with a warning (as wy uninstall does).
 func TestTermOffWithoutClaude(t *testing.T) {
 	th := newFreshTermHome(t)
-	th.mustSy(t, "term", "setup", "--pane", "--titles", "--yes")
+	th.mustWy(t, "term", "setup", "--pane", "--titles", "--yes")
 	th.setenv("PATH=/usr/bin:/bin")
 	if err := os.Remove(th.h.Abs(".local/bin/claude")); err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)

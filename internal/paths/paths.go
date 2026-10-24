@@ -29,7 +29,7 @@ type Source string
 
 const (
 	SourceDirEnv  Source = "env"     // WY_CONFIG_DIR / WY_STATE_DIR / WY_DATA_DIR (Dir.Var names it)
-	SourceSYHome  Source = "WY_HOME" // $WY_HOME/<role>
+	SourceWYHome  Source = "WY_HOME" // $WY_HOME/<role>
 	SourceXDG     Source = "xdg"     // $XDG_*_HOME/watchyard (Dir.Var names it)
 	SourceDefault Source = "default" // the per-OS default
 )
@@ -54,7 +54,7 @@ func (d Dir) Describe() string {
 
 func (d Dir) describe() string {
 	switch d.Source {
-	case SourceDirEnv, SourceXDG, SourceSYHome:
+	case SourceDirEnv, SourceXDG, SourceWYHome:
 		return d.Var
 	}
 	if d.Var != "" {
@@ -130,7 +130,7 @@ func resolveOne(e Env, get func(string) string, win bool, role, dirVar, xdgVar, 
 		if !isAbs(win, v) {
 			return Dir{}, fmt.Errorf("WY_HOME must be an absolute path, got %q", v)
 		}
-		return Dir{Path: join(win, v, role), Source: SourceSYHome, Var: "WY_HOME"}, nil
+		return Dir{Path: join(win, v, role), Source: SourceWYHome, Var: "WY_HOME"}, nil
 	}
 	if win {
 		if base := get("LOCALAPPDATA"); base != "" && isAbs(true, base) {

@@ -92,7 +92,7 @@ both enforce it.
 
 - Certificate errors are never overridden (no `certificate-error` handler). The one
   certificate decision the app makes is the hub pin of C6: `main/hub/pin.js` installs a
-  `setCertificateVerifyProc` on the hub view's session `persist:sy-hub` only, and the lint
+  `setCertificateVerifyProc` on the hub view's session `persist:wy-hub` only, and the lint
   allows that call in that file only. Account tabs, the shell and every other origin use
   Chromium's normal validation.
   Downloads from account tabs go through the default save dialog; downloads from the hub view
@@ -235,13 +235,13 @@ channel refuses) is 1 with its own message.
 
 ```
 wy desktop info --json
-{"v": 1, "sy": "0.6.0", "machine": {"id": "m_…", "name": "laptop"},
+{"v": 1, "wy": "0.6.0", "machine": {"id": "m_…", "name": "laptop"},
  "hub": {"url": "http://127.0.0.1:8787", "connected": true, "reachable": true, "version": "0.6.0",
          "local": true, "dial": null, "service": "running"},
  "admin": "local", "admin_error": null, "outbox": {"pending": 3, "last_error": null}}
 
 wy desktop token [--code-stdin] [--name N] --json
-{"device": "dev_…", "token": "sy_d_…", "scopes": ["write", "read"], "hub": {"url": "…"}}
+{"device": "dev_…", "token": "wy_d_…", "scopes": ["write", "read"], "hub": {"url": "…"}}
 
 wy desktop owner-link --json
 {"url": "https://hub…/#/owner?s=…", "expires_at": "…"}
@@ -428,13 +428,14 @@ account in a hidden or background start until the window is shown.
 
 ## C7. Hub view
 
-- A `WebContentsView` with the session `persist:sy-hub` and the hub's URL. It is created when
+- A `WebContentsView` with the session `persist:wy-hub` and the hub's URL. It is created when
   first selected and kept afterwards.
 - Board sign-in: before the first load, and whenever the view lands on `#/login` or `#/pair`,
-  main calls `session.fromPartition('persist:sy-hub').fetch(<hub>/v1/session/login, {method:
+  main calls `session.fromPartition('persist:wy-hub').fetch(<hub>/v1/session/login, {method:
   'POST', body: {token}, headers: {'content-type': 'application/json'}})`. The cookie is then
   set in that partition, the token never enters the page, and the cookie is read-only
-  (api.yaml).
+  (api.yaml). A `sy_session` cookie from before the rename counts as a session too; the folder
+  of the partition `persist:sy-hub` is moved to `persist:wy-hub`'s at start (rename.md 2.9).
 - Owner sign-in: `wy desktop owner-link --json` → `loadURL(<link>)`. The board's `#/owner`
   route does the rest. When the 30-day owner session expires, the board drops back to its
   read cookie on the next login, and Settings shows "Sign in as owner".
@@ -509,7 +510,8 @@ account in a hidden or background start until the window is shown.
     closed, tray.
   - **Hub settings** links: Machines, Alerts and rules, Devices, Phone pairing, the hub's own
     Settings. Each opens the Hub view at its route (pwa.md 3).
-  - **About:** this app's version, wy's (`wy desktop info` → `wy`), the hub's, Electron,
+  - **About:** this app's version, wy's (`wy desktop info` → `wy`, or `sy` from a `wy` older than the
+    rename), the hub's, Electron,
     Chromium and the platform.
 - Update notice (`shared/version.js`): the app asks no update server and calls no third party.
   It compares its own version with wy's and the hub's (both already known from `wy desktop
@@ -572,8 +574,8 @@ Watchyard menu: Hub, Account 1…9, Refresh usage, Run at login, Keep running, Q
 ## C11. Running `wy`
 
 - Resolution: `WY_BIN` (unpackaged only), else `wy` on `PATH` and then `~/.local/bin/wy`
-  (`%USERPROFILE%\.local\bin\wy.exe`), if `wy --version` is ≥ the app's `minSy` (package.json
-  `watchyard.minSy`, `0.6.0`). Otherwise the bundled copy at
+  (`%USERPROFILE%\.local\bin\wy.exe`), if `wy --version` is ≥ the app's `minWy` (package.json
+  `watchyard.minWy`, `0.6.0`). Otherwise the bundled copy at
   `process.resourcesPath/wy/wy[.exe]`. The bundled copy is never installed onto `PATH`.
 - `child_process.execFile` (never a shell), with these environment changes: drop
   `ELECTRON_*`, `NODE_OPTIONS`, `NODE_*` and `WY_APP_*`; keep `HOME`, `PATH`, `WY_*` and the
@@ -637,7 +639,7 @@ the fakes of `app/test/fakes/electron.js`.
 - Targets (`app/electron-builder.yml`): Linux AppImage, deb and rpm; macOS dmg; Windows NSIS
   installer. File names are `Watchyard-<version>-<os>-<arch>.<ext>`. Nothing is signed or
   notarized (no paid certificates), and the app has no updater.
-- The bundled `wy` is built, not downloaded: `scripts/fetch-sy.mjs <os> <arch>` runs
+- The bundled `wy` is built, not downloaded: `scripts/fetch-wy.mjs <os> <arch>` runs
   `go build ./cmd/wy` on the checkout with `CGO_ENABLED=0`, `-trimpath` and the ldflags of
   `scripts/release/build.sh` (`Version` from `WY_VERSION`, else `app/package.json`; `Commit` is
   `git rev-parse --short HEAD`). It is placed in `resources/wy/<os>-<arch>/`.

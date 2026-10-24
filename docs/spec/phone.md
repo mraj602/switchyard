@@ -19,7 +19,7 @@ Section numbers start at P1; P8 to P10 (the hub side) were push.md 12, which
 is removed; the hub side of widget refresh is push.md 13.5.
 
 **Notifications.** Android only. Native notifications
-come over the app's own link to the hub (push.md 13, the `sy-link` module of push.md 14); the
+come over the app's own link to the hub (push.md 13, the `wy-link` module of push.md 14); the
 app uses no push service, Expo's, Google's or any other. P2 adds keys to the claim, P6.3
 registers nothing with the hub (the link target comes from pairing), P6.7 is the Settings →
 Notifications screen, P13 has no EAS or Firebase config, no proprietary Google code and
@@ -65,10 +65,10 @@ phone/
   widgets/ios/              expo-widgets components ('widget' directive): NeedsYouSmall,
                             AccountsMedium, ResetCountdown (Live Activity)
   widgets/android/          react-native-android-widget components + task handler
-  plugins/                  local config plugins (with-sy-native.js)
-  modules/                  local Expo modules, Android only: sy-link (the link, push.md 14),
-                            sy-tabs (P17), sy-notify (channels, permission, badge, dismissals;
-                            P6) and sy-scan (the pairing QR scanner, P2)
+  plugins/                  local config plugins (with-wy-native.js)
+  modules/                  local Expo modules, Android only: wy-link (the link, push.md 14),
+                            wy-tabs (P17), wy-notify (channels, permission, badge, dismissals;
+                            P6) and wy-scan (the pairing QR scanner, P2)
   scripts/                  check-no-secrets.mjs, check-no-google.mjs, prebuild-check.mjs,
                             dump-fixtures.sh
   test/                     setup.ts (installs the mocks), fakes.ts (recording fakes of the
@@ -116,12 +116,12 @@ No `expo-updates` (no over-the-air updates: decision in "Defaults").
 No proprietary Google code ships (P13): `expo-notifications` (it links `firebase-messaging`),
 `expo-camera`'s barcode scanner (Play services code scanner and ML Kit) and `expo-application`
 (Play Install Referrer) are not dependencies. Their parts the app used are the local modules
-`sy-notify` and `sy-scan`, whose native dependencies are pinned in their `build.gradle`:
+`wy-notify` and `wy-scan`, whose native dependencies are pinned in their `build.gradle`:
 
 | Module | Native dependency | Version | License |
 | --- | --- | --- | --- |
-| `sy-notify` | `me.leolin:ShortcutBadger` (the launcher badge, as expo-notifications used it) | 1.1.22 | Apache-2.0 |
-| `sy-scan` | `com.journeyapps:zxing-android-embedded` (with `com.google.zxing:core` 3.4.1) | 4.3.0 | Apache-2.0 |
+| `wy-notify` | `me.leolin:ShortcutBadger` (the launcher badge, as expo-notifications used it) | 1.1.22 | Apache-2.0 |
+| `wy-scan` | `com.journeyapps:zxing-android-embedded` (with `com.google.zxing:core` 3.4.1) | 4.3.0 | Apache-2.0 |
 
 Check it with `make phone-check` (`npm ci`, `tsc`, `eslint`, `jest --ci`, the secrets check and
 both prebuild checks). `npm ci` prints peer-override warnings (`react-native-worklets`, the
@@ -129,7 +129,7 @@ optional React 19.3 peers); they are expected and do not fail the install.
 
 ## P2. Pairing
 
-- **Scan.** The Pair screen's **Scan QR code** calls `sy-scan`'s `scanQr(prompt)`: it asks
+- **Scan.** The Pair screen's **Scan QR code** calls `wy-scan`'s `scanQr(prompt)`: it asks
   for the camera when needed (the button reads **Allow camera** until it is granted, and the
   box says "Camera access is off in system settings." once Android will not ask again), then
   opens ZXing's full-screen scanner (`zxing-android-embedded`, portrait, QR codes only, no
@@ -161,17 +161,17 @@ optional React 19.3 peers); they are expected and do not fail the install.
   `{origin, token, device, name}` (P3). The error mapping follows pairing.md 3: 401 →
   "Invalid or expired code", 409 → "That code is for a \<kind>, not a phone", 429 → "Too many
   tries, wait 10 minutes", network → "Can't reach \<host>. Is Tailscale on?"
-- **Keys in the claim.** Before claiming, the app calls `SyLink.prepareKeys()` (push.md
+- **Keys in the claim.** Before claiming, the app calls `WyLink.prepareKeys()` (push.md
   14.3). With `k` from the QR it sends `keys_sealed` (keys.md 7.1); with a typed code, `keys`
   in the clear (never with a QR secret: the hub refuses that). The reply's `hub_key.fp` must
   equal `h` when the QR had one, else the app refuses: "This hub's key does not match the QR
   code". It then makes keys.md 7.3's checks (certificate signed by `hub_key`, holding its own
   keys, `reg = qr` after a sealed claim) and on any mismatch deletes the new device and
   refuses. On success it calls
-  `SyLink.configure({origin, device, urls: link.urls, pingS: link.ping_s, hubKey, reg, cert,
-  qrFp: h})`, which makes the certificate checks natively and rejects `ERR_SY_HUB_KEY` /
-  `ERR_SY_TAMPERED` (push.md 14.8), then `SyLink.start()` (from the glue's `onPaired`).
-  As built: the QR's `k` is sealed by `SyLink.sealKeys(k, secret)`; a QR with a secret but no
+  `WyLink.configure({origin, device, urls: link.urls, pingS: link.ping_s, hubKey, reg, cert,
+  qrFp: h})`, which makes the certificate checks natively and rejects `ERR_WY_HUB_KEY` /
+  `ERR_WY_TAMPERED` (push.md 14.8), then `WyLink.start()` (from the glue's `onPaired`).
+  As built: the QR's `k` is sealed by `WyLink.sealKeys(k, secret)`; a QR with a secret but no
   `k` (a hub without the link) sends no keys at all; a damaged `h` or `k` is refused like a damaged
   secret. A sealed claim whose reply has no `hub_key` or `cert` is refused as tampered; a
   typed-code claim to a hub without the link (no `hub_key`) pairs without instant delivery. A
@@ -264,7 +264,7 @@ on a shared table.
 ## P5. Data refresh
 
 - Foreground (`AppState` `active`): poll every 15 s, plus at once on foreground, on a
-  received push and after a Seen or Snooze. Background: no polling; the `sy-link` module's `refresh` frames
+  received push and after a Seen or Snooze. Background: no polling; the `wy-link` module's `refresh` frames
   (P6.5) update the widgets.
 - The last good replies go to AsyncStorage key `wy.cache.v1` (no token, no secret). When the
   hub cannot be reached, the screens show them under "Offline · showing 14:02", and Seen,
@@ -289,21 +289,21 @@ the permission prompt only once a channel exists):
 
 | Channel id | Name | Importance | Used for |
 | --- | --- | --- | --- |
-| `sy_needs_you` | Needs you | HIGH | `needs_permission`, `asked`, `failed`, summaries |
-| `sy_limits` | Limits | DEFAULT | `limit_80`, `limit_95`, `reset` |
-| `sy_machines` | Machines | LOW | `machine_silent` |
-| `sy_test` | Test | DEFAULT | test pushes |
-| `sy_connection` | Connection (always on) | MIN | The link service's persistent notification (push.md 14.4) |
+| `wy_needs_you` | Needs you | HIGH | `needs_permission`, `asked`, `failed`, summaries |
+| `wy_limits` | Limits | DEFAULT | `limit_80`, `limit_95`, `reset` |
+| `wy_machines` | Machines | LOW | `machine_silent` |
+| `wy_test` | Test | DEFAULT | test pushes |
+| `wy_connection` | Connection (always on) | MIN | The link service's persistent notification (push.md 14.4) |
 
-The `sy-link` module creates the same channels natively (it posts link notifications itself),
+The `wy-link` module creates the same channels natively (it posts link notifications itself),
 with the same ids, so either side may create them first. A channel that already exists keeps
 its importance and every setting the user changed; the module re-creates it under the same id
 only to bring its name up to date (Android applies just the name and description), so the
-rename of `sy_connection` from "Connection" to "Connection (always on)" reaches existing installs.
+rename of `wy_connection` from "Connection" to "Connection (always on)" reaches existing installs.
 
-**P6.1a Notification icons** (the `sy-link` module's own notes; direction A, "the mark with a
+**P6.1a Notification icons** (the `wy-link` module's own notes; direction A, "the mark with a
 corner badge"). Every small icon is the Watchyard double chevron with a kind badge in the
-top-right corner, one white filled path as a 24 dp vector (`sy_notify_<kind>.xml` in the
+top-right corner, one white filled path as a 24 dp vector (`wy_notify_<kind>.xml` in the
 module's `res/drawable`, so it ships through autolinking and survives `expo prebuild`). The
 alert colour behind it is the brand gold `#E8B04B`; the always-on connection note is grey
 `#8A9099`.
@@ -327,7 +327,7 @@ kind). The connection note has no large icon. The app's JS posts no notification
 
 | Category | Actions (`identifier` · `buttonTitle` · options) | Used when |
 | --- | --- | --- |
-| `sy_alert` | `open` · "Open" · `opensAppToForeground: true`; `snooze` · "Snooze 15 min" · `opensAppToForeground: false`; `seen` · "Seen" · `opensAppToForeground: false` | The payload has `actions` |
+| `wy_alert` | `open` · "Open" · `opensAppToForeground: true`; `snooze` · "Snooze 15 min" · `opensAppToForeground: false`; `seen` · "Seen" · `opensAppToForeground: false` | The payload has `actions` |
 | none | Tap only | Summaries, `test`, private pushes still have actions (tokens reveal nothing) |
 
 The Snooze title uses `snooze_min` from `GET /v1/rules` (`settings.snooze_min`; a phone
@@ -337,7 +337,7 @@ on iOS while the app is killed is **unverified**. If it does not, one constant,
 opens briefly, acts and shows a toast.
 
 **P6.3 Registration.** The app registers no push target: the `link` target comes from pairing
-(push.md 13.7). On start `sy-notify` creates the channels (P6.1) and asks for the
+(push.md 13.7). On start `wy-notify` creates the channels (P6.1) and asks for the
 permission (`requestPermissionsAsync`: Android 13's POST_NOTIFICATIONS prompt through Expo's
 permissions manager, on Android 12 whether notifications are on; anything but granted →
 Settings shows "Blocked in system settings"), then `PATCH /v1/devices/self {prefs: {tz, widgets: true}}`. `widgets: true` goes only
@@ -357,7 +357,7 @@ An act goes only to the hub that sent the notification. The payload has no hub i
 today, so the app drops (and dismisses) an act on a notification the OS delivered before the
 current pairing was made (`notification.date` against `paired_at`, both on the phone's
 clock); when a payload names an `origin`, an act whose origin is not the paired one is
-dropped too. Each notification's Snooze or Seen runs once: the `sy-link` module's action handling and
+dropped too. Each notification's Snooze or Seen runs once: the `wy-link` module's action handling and
 the response listener share the AsyncStorage key `wy.acted.v1` (`"<id>|<action>"`, the last
 50, never a token).
 
@@ -365,7 +365,7 @@ the response listener share the AsyncStorage key `wy.acted.v1` (`"<id>|<action>"
 version that reads "Watchyard" and "Open Watchyard to see this", so a locked phone shows no
 project, account or machine name (the persistent connection note and the "stopped" note too).
 
-**Native taps.** The notifications the `sy-link` module posts itself carry their own content
+**Native taps.** The notifications the `wy-link` module posts itself carry their own content
 intent: an `ACTION_VIEW` of `Payloads.appLink(url)` (the payload's route as `watchyard://…`, Now
 when it has none or it is refused) aimed at the app's launcher activity by component name, or
 the Claude link when `tap` says so. The persistent connection notification and the "stopped"
@@ -376,18 +376,18 @@ no tap leads to a settings page except that button. `test/links.test.ts` checks 
 these links resolves to the item or Now; the JUnit `FramesTest` checks the native side's link.
 
 `initNotifications` (src/lib/notify) is called at module scope in `app/_layout.tsx` with
-`sy-notify`. On Android no notification response reaches JS: every notification is sy-link's,
-its tap and **Open** are the intents above and Snooze and Seen run in sy-link's
-`ActionReceiver`. So `sy-notify` has no response listeners and `getLastNotificationResponseAsync()`
+`wy-notify`. On Android no notification response reaches JS: every notification is wy-link's,
+its tap and **Open** are the intents above and Snooze and Seen run in wy-link's
+`ActionReceiver`. So `wy-notify` has no response listeners and `getLastNotificationResponseAsync()`
 is always null; `decideResponse` and `performDecision` stay platform-neutral (and tested) for a
 notifications object that has them.
 
-**P6.5 Link frames:** there is no JS background task and no silent push. The `sy-link` module
+**P6.5 Link frames:** there is no JS background task and no silent push. The `wy-link` module
 handles link frames, `refresh` frames (push.md 13.5) and actions natively (push.md 14.5, 14.6) and
 emits `refresh` to JS when the app is running; JS then rebuilds the widget timeline, updates the
 Live Activity and sets the badge from `needs_you`. Action handling is P6.4's `act`.
 
-**P6.6 Badge:** set after each refresh with `setBadgeCountAsync(needs_you)` (`sy-notify`:
+**P6.6 Badge:** set after each refresh with `setBadgeCountAsync(needs_you)` (`wy-notify`:
 ShortcutBadger on launchers that support it; 0 clears the badge and, as expo-notifications did,
 cancels the app's notifications).
 
@@ -397,7 +397,7 @@ button in Settings' Notifications card):
 
 | Row | Content | Action |
 | --- | --- | --- |
-| **Instant delivery** | Switch, on by default after pairing. Below it: "Keeps a connection to your hub. Uses a small, constant notification." | On: `SyLink.start()` and `PATCH /v1/push/targets/{link id} {enabled: true}`. Off: `SyLink.stop()` (15-minute checks, push.md 14.9) and the target stays enabled. |
+| **Instant delivery** | Switch, on by default after pairing. Below it: "Keeps a connection to your hub. Uses a small, constant notification." | On: `WyLink.start()` and `PATCH /v1/push/targets/{link id} {enabled: true}`. Off: `WyLink.stop()` (15-minute checks, push.md 14.9) and the target stays enabled. |
 | Connection | `LinkState.status` in words: "Connected · 2 h 14 min · WebSocket", "Reconnecting · next try in 20 s", "Not connected: hub unreachable", "Removed from hub". The last error (close code word or network class). Received / rejected counts. | **Reconnect now** |
 | Battery | "Battery optimisation: off (good)" or "on: notifications may be late". | **Fix**: `requestBatteryExemption()`; then the maker guide |
 | Phone-maker guide | Shown when the exemption is on or `Build.MANUFACTURER` is in the table below. One short paragraph per maker. | **Open settings**: `openBatterySettings()` |
@@ -492,28 +492,28 @@ then gets the 401 that shows Pair, P3).
   The app calls `updateTimeline(entries)` after every refresh. Widget components are pure
   props → `@expo/ui/swift-ui` trees, with no hooks or state (an expo-widgets rule).
 - **Android** (`react-native-android-widget`), six widgets, all resizable except the ring (`resizeMode: horizontal|vertical`),
-  `updatePeriodMillis: 1800000` (the library's minimum). They replace the earlier `SyNeedsYou`
-  (2×2) and `SyAccounts` (4×2); iOS keeps `NeedsYouSmall` and `AccountsMedium`.
-  - `SyLimits` (target 4×3): every visible account (up to 8) in Accounts order, each as its
+  `updatePeriodMillis: 1800000` (the library's minimum). They replace the earlier `WyNeedsYou`
+  (2×2) and `WyAccounts` (4×2); iOS keeps `NeedsYouSmall` and `AccountsMedium`.
+  - `WyLimits` (target 4×3): every visible account (up to 8) in Accounts order, each as its
     colour, the tighter of 5 h and 7 d (`tighterWindow`, a tie shows 7 d) as a bar and %, and
     that window's reset as a clock time ("5 h · 17:00"). An account with no reading, or a
     window whose reset has passed, reads 0% ("idle" / "reset"). It draws as many rows as the
     height allows (`rowsThatFit`, about 30 dp a row). A row opens `watchyard://accounts?seat=<id>`,
     the rest `watchyard://accounts`.
-  - `SySessions` (target 3×2): **Running** (`counts.working`), **Needs input**
+  - `WySessions` (target 3×2): **Running** (`counts.working`), **Needs input**
     (`counts.needs_you`: needs_permission, asked, failed) and **Done** (`counts.done`), as the
     Sessions screen's filters count them, and, when something needs you, a highlight line
     ("Needs you: api · asked"; no project in private mode). A cell opens Sessions with its
     filter (`?filter=working`, `?filter=done`); Needs input and the highlight open Now; the
     rest opens Sessions.
   - Four more widgets (same dark card, drawn from the same snapshot, no network):
-    - `SyNeeds` (4×2, resizable): header "Needs you · N waiting" (N = `counts.needs_you`), then the
+    - `WyNeeds` (4×2, resizable): header "Needs you · N waiting" (N = `counts.needs_you`), then the
       top 3 waiting sessions oldest first from `needs_list`: account colour dot, "account ·
       project · state" (asked, needs permission, failed) and its age ("4 min"). A row opens
       `watchyard://sessions/<id>`; the rest opens Now. Nothing waiting: "Nothing needs you".
       Private mode: `needs_list` is empty, so it shows the count and "Open Watchyard to see
       which".
-    - `SyRing` (2×2, `widgetFeatures: 'reconfigurable'`): one account, picked on the widget's
+    - `WyRing` (2×2, `widgetFeatures: 'reconfigurable'`): one account, picked on the widget's
       configuration screen (`RingConfig`, registered with `registerWidgetConfigurationScreen`;
       Android opens it on placement and from Reconfigure). The pick is stored per widget id
       under `wy.widget.ring.v1` ({widgetId: seatId}, never a secret; dropped on
@@ -522,16 +522,16 @@ then gets the 401 that shows Pair, P3).
       "resets 15:48", "reset at 10:10" or, for an idle account, "0 %" and "not started". Tap:
       Accounts with that seat open (`?seat=`). An account that no longer exists asks to
       Reconfigure.
-    - `SyNextReset` (2×1, resizable wider): "Next reset · claude-2 · 5 h" and the soonest reset
+    - `WyNextReset` (2×1, resizable wider): "Next reset · claude-2 · 5 h" and the soonest reset
       across accounts as a clock time ("15:48", "Thu 09:00" when not today). Idle windows (no
       reset time) are ignored. Tap: Accounts.
-    - `SyMachines` (4×1, resizable): header "Machines · 2 of 3 online", each machine with an
+    - `WyMachines` (4×1, resizable): header "Machines · 2 of 3 online", each machine with an
       online dot and "2 live", "idle" or "silent 1 h" (age of `last_seen`); as many per line
       as the width fits (about 104 dp each) and as many lines as the height fits. Tap: Machines.
     - **No ticking countdown.** react-native-android-widget draws RemoteViews from a fixed set
       of widgets and has no Chronometer or timer view, and a widget cannot redraw itself every
       second. So the reset is shown as a clock time, and an alarm redraws the widgets when it
-      passes: after every render the handler asks the sy-link module `scheduleWidgetRefresh(at)`
+      passes: after every render the handler asks the wy-link module `scheduleWidgetRefresh(at)`
       for the soonest reset still ahead plus 5 s (`nextRefreshAt`); `WidgetTick.kt` sets one
       `AlarmManager.setAndAllowWhileIdle` alarm (rough: it may be minutes late, and it needs no
       exact-alarm permission) whose receiver sends `ACTION_APPWIDGET_UPDATE` to every widget of
@@ -548,7 +548,7 @@ then gets the 401 that shows Pair, P3).
     gold double-chevron mark (`assets/src/mark.svg`, inline in `widgets/android/Brand.tsx`,
     drawn with `SvgWidget`) and "Watchyard", or "Watchyard · Limits" / "· Sessions" / "·
     Needs you" where there is room; the 2×1 and 2×2 widgets show the mark and "Watchyard"
-    only. `SyLimits` and `SyRing` have a tappable **5 h | 7 d** segmented toggle in the header
+    only. `WyLimits` and `WyRing` have a tappable **5 h | 7 d** segmented toggle in the header
     (default 5 h): the widget then shows that window's % and reset words for every account (the
     ring: for its account), "resets 15:48" or, when idle, "0% · not started" (`windowRows`,
     from `windows.ts` `shownUse` and `resetWords`; an account without that window reads
@@ -557,7 +557,7 @@ then gets the 401 that shows Pair, P3).
     `WY_TOGGLE_WINDOW` with `{window}`: the task handler gets `WIDGET_CLICK`, stores it and calls
     `renderWidget` with no app start; any other tap is an `OPEN_URI`, opened by an explicit intent (P13).
   - **Previews.** `app.config.ts` gives each widget `previewImage` (`assets/widget-previews/
-    sy-*.png`, 2× PNG, under 40 KB each). They are rendered from an HTML replica of each
+    wy-*.png`, 2× PNG, under 40 KB each). They are rendered from an HTML replica of each
     widget's layout with sample data at the widget's dp size
     (`scripts/gen-widget-previews.py`: headless Chrome, no sandbox, transparent corners); keep
     the replica in step with the widgets by hand. The library has no `previewLayout`.
@@ -576,7 +576,7 @@ then gets the 401 that shows Pair, P3).
     resize; the widget never calls the hub. It is registered in `phone/index.js`, the app's
     entry (`package.json` `main`), because Android runs a widget update in a headless JS task
     with no screen: a handler registered in `app/_layout.tsx` is not there when the app is not
-    open. The app calls `requestWidgetUpdate` after each refresh; the sy-link service redraws
+    open. The app calls `requestWidgetUpdate` after each refresh; the wy-link service redraws
     on a `refresh` frame; otherwise the 30-minute period redraws (no network), so "updated N
     min ago" can lag by up to 30 min between refreshes. There is no background fetch.
     Android shows reset as a clock time, not a ticking timer (the library has no timer view; see the reset alarm above).
@@ -627,16 +627,16 @@ then gets the 401 that shows Pair, P3).
   `expo-build-properties`; 31 in the Android build below).
 - Android `permissions: [POST_NOTIFICATIONS, CAMERA]` and `blockedPermissions:
   [RECORD_AUDIO, SYSTEM_ALERT_WINDOW, READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE]`.
-  Both are listed so the prebuilt manifest shows them (`sy-notify` and `sy-scan` also declare
+  Both are listed so the prebuilt manifest shows them (`wy-notify` and `wy-scan` also declare
   them, merged only at Gradle time).
 - Plugins: `expo-router`; `expo-secure-store`; `expo-widgets` (`groupIdentifier: group.<WY_APP_ID>`, `bundleIdentifier:
   <WY_APP_ID>.widgets` for the extension, the two widgets, `enablePushNotifications: false`,
   `enableAndroid: false`); `react-native-android-widget` (the two widgets);
-  `./plugins/with-sy-native.js`.
-- `with-sy-native.js` (ours) sets:
+  `./plugins/with-wy-native.js`.
+- `with-wy-native.js` (ours) sets:
   - iOS `NSSupportsLiveActivities: true`;
   - Android `allowBackup="false"`, plus `dataExtractionRules` and `fullBackupContent`
-    (`res/xml/sy_data_extraction_rules.xml`, `sy_backup_rules.xml`) that exclude every backup
+    (`res/xml/wy_data_extraction_rules.xml`, `wy_backup_rules.xml`) that exclude every backup
     domain from cloud backup and from device-to-device transfer;
   - the widget providers that `react-native-android-widget` writes get an `onReceive` that hands
     an `OPEN_URI` tap to `dev.watchyard.link.WidgetOpen` first, which starts the app's own
@@ -657,20 +657,20 @@ profiles, no `extra.eas.projectId`, no `googleServicesFile` and no push credenti
 
 - Android `minSdkVersion` **31** (push.md 14.2: Keystore key agreement), `targetSdkVersion`
   the SDK 57 default.
-- The `sy-link` module adds its permissions and components through its own
+- The `wy-link` module adds its permissions and components through its own
   `AndroidManifest.xml` (push.md 14.2); P13's `permissions` list stays as it is.
   `prebuild-check.mjs android` also asserts the `specialUse` service, its subtype property,
   `RECEIVE_BOOT_COMPLETED`, `REQUEST_INSTALL_PACKAGES`, that no
   `com.google.firebase` / `google-services` entry is present, that `expo-notifications`,
   `expo-camera` and `expo-application` are not dependencies, and runs
   `check-no-google.mjs static`. The module's manifest is merged
-  by Gradle, not by prebuild, so the check reads it from `modules/sy-link` (and copies the
+  by Gradle, not by prebuild, so the check reads it from `modules/wy-link` (and copies the
   local modules' `android/` sources into its temporary tree).
 - **No proprietary Google code.** No Firebase, Google Play services, ML Kit, Play Install
   Referrer or other closed Google/Play library is in the APK, so it can go to F-Droid and
   IzzyOnDroid (android.md). `expo-notifications` (its Kotlin links `firebase-messaging`, and
-  with it the Firebase, datatransport and installations classes) is replaced by `sy-notify`;
-  `expo-camera`'s scanner (`play-services-code-scanner`, ML Kit) by `sy-scan`; and
+  with it the Firebase, datatransport and installations classes) is replaced by `wy-notify`;
+  `expo-camera`'s scanner (`play-services-code-scanner`, ML Kit) by `wy-scan`; and
   `expo-application` (Play Install Referrer) by the app config `expo-constants` embeds.
   `scripts/check-no-google.mjs` enforces it in three ways: `static` (every installed package's
   and local module's `build.gradle`, test, androidTest and debug-only lines aside; run by
@@ -684,7 +684,7 @@ profiles, no `extra.eas.projectId`, no `googleServicesFile` and no push credenti
   source and allowed.) `expo-dev-launcher` declares the Play services code scanner as
   `debugOnly`: it is in debug builds, never in a release.
 - There is no background notification task: there are no silent pushes.
-- The glue uses the `sy-link` module only on Android, when the module is present (`systemLink`).
+- The glue uses the `wy-link` module only on Android, when the module is present (`systemLink`).
 - **Build:** `make phone-apk-release` (run it by hand): `expo prebuild --platform
   android --clean` with `WY_APP_VARIANT=production`, then `./gradlew
   assembleRelease` in `phone/android`. Output `phone/dist/watchyard-<version>.apk`, its
@@ -695,7 +695,7 @@ profiles, no `extra.eas.projectId`, no `googleServicesFile` and no push credenti
   `WY_ANDROID_KEYSTORE_PASSWORD` (and `WY_ANDROID_KEY_PASSWORD` when it differs), or the same
   four values as `storeFile`, `keyAlias`, `storePassword`, `keyPassword` in a properties file
   named by `WY_ANDROID_SIGNING_PROPERTIES` (also outside the repo; an environment variable
-  wins). The passwords reach Gradle (`scripts/sy-release-signing.init.gradle`, an init script,
+  wins). The passwords reach Gradle (`scripts/wy-release-signing.init.gradle`, an init script,
   because `expo prebuild --clean` regenerates `android/`) and keytool only through the
   environment, are never printed and never written into `phone/`. `check-no-secrets.mjs`
   already refuses keystores in the tree. Keep two offline copies: losing it means every phone
@@ -714,10 +714,10 @@ profiles, no `extra.eas.projectId`, no `googleServicesFile` and no push credenti
 
 ## P14. Tests and fixtures
 
-- `test/with-sy-native.test.ts` unit-tests the plugin's Gradle edit (`alignWorkVersions`:
+- `test/with-wy-native.test.ts` unit-tests the plugin's Gradle edit (`alignWorkVersions`:
   forces the `androidx.work` group, idempotent). `make phone-android-debug` is the real proof.
-- `test/setup.ts` (jest `setupFilesAfterEnv`) replaces `modules/sy-notify`,
-  `expo-secure-store`, `modules/sy-scan`, `modules/sy-link`, `modules/sy-tabs`, `expo-widgets`, `@expo/ui/swift-ui` (and `/modifiers`),
+- `test/setup.ts` (jest `setupFilesAfterEnv`) replaces `modules/wy-notify`,
+  `expo-secure-store`, `modules/wy-scan`, `modules/wy-link`, `modules/wy-tabs`, `expo-widgets`, `@expo/ui/swift-ui` (and `/modifiers`),
   `react-native-android-widget`, `expo-task-manager` and AsyncStorage with the recording fakes
   of `test/fakes.ts`, makes global `fetch` reject, and resets every fake before each test.
   Tests script the fakes through their exported state (`notificationsState.permission`,
@@ -760,7 +760,7 @@ pins of P1:
 
 | # | Fact | Result |
 | --- | --- | --- |
-| 1 | `expo prebuild --platform android --no-install --clean` succeeds with every P13 plugin; the manifest has `POST_NOTIFICATIONS`, the `watchyard` intent filter, two `AppWidgetProvider` receivers (`.widget.SySessions`, `.widget.SyLimits`) and `allowBackup="false"` | **Checked.** Needed one change: POST_NOTIFICATIONS is only merged from expo-notifications' library manifest at Gradle time, so P13 now lists it in `android.permissions`. Two `appwidget-provider` XML files are generated; react-native-android-widget's plugin writes to the right path (no doubled `android/android`). Cleartext is off in release. |
+| 1 | `expo prebuild --platform android --no-install --clean` succeeds with every P13 plugin; the manifest has `POST_NOTIFICATIONS`, the `watchyard` intent filter, two `AppWidgetProvider` receivers (`.widget.WySessions`, `.widget.WyLimits`) and `allowBackup="false"` | **Checked.** Needed one change: POST_NOTIFICATIONS is only merged from expo-notifications' library manifest at Gradle time, so P13 now lists it in `android.permissions`. Two `appwidget-provider` XML files are generated; react-native-android-widget's plugin writes to the right path (no doubled `android/android`). Cleartext is off in release. |
 | 2 | `expo prebuild --platform ios --no-install --clean` succeeds on Linux, with `Info.plist`, entitlements and the widget extension target | **Checked.** `ios/ExpoWidgetsTarget/` holds `NeedsYouSmall.swift`, `AccountsMedium.swift`, `index.swift` (the bundle, which includes `WidgetLiveActivity()`), `Info.plist` and its entitlements. The App Group is on the app and the extension, `aps-environment` on the app, the app-extension target is in `project.pbxproj`, and every target is iOS 16.4. Pods are not installed (`--no-install`), so this proves config, not compilation (the native compile is not covered). The iOS prebuild check stays in `make phone-check` and CI's `check` job. |
 | 3 | `expo-widgets@57.0.22` and `react-native-android-widget@0.22.1` coexist | **Checked.** Both plugins run in the same config without duplicate keys; each platform's prebuild generates its own widget set and the other plugin leaves it alone (`expo-widgets` has `enableAndroid: false`). No fallback needed. |
 | 4 | `jest-expo` renders `@expo/ui/swift-ui` widget trees through the mock | **Checked**, with `test/render-widget.ts` rather than RNTL's `render` (P14). `test/widget-mock.test.tsx` renders a `VStack` with a timer `Text` and an Android `FlexWidget`. |
@@ -814,11 +814,11 @@ The app is sideloaded (no store), so it updates itself, with your confirmation e
 
 ### P16.3 In the app
 
-- `SyLink.checkUpdate(origin, token)` at most once a day (and from **Check for update**):
+- `WyLink.checkUpdate(origin, token)` at most once a day (and from **Check for update**):
   first the hub (`GET /v1/app/android`), then, if the hub has none or is unreachable, GitHub
   directly (the same release filter as P16.2). An update is offered when `build` is higher
   than the installed `versionCode` and `min_sdk` fits.
-  `origin` must be the paired hub's stored origin (`ERR_SY_UPDATE` otherwise), so the bearer
+  `origin` must be the paired hub's stored origin (`ERR_WY_UPDATE` otherwise), so the bearer
   token can go nowhere else; with no stored hub the check uses GitHub only.
 - The app (`src/lib/update`) calls it on start when paired and at most every 24 hours, and the
   offer is remembered until installed. A failed check does not count as a check.
@@ -847,9 +847,9 @@ session's Remote Control link in its seat's tab. Watchyard asks claude.ai only f
 account id in the tab, as the desktop does (desktop.md C5, P17.7); it never reads the tabs'
 chats, page content, cookies, storage or usage, and sends nothing from them to the hub.
 
-### P17.1 The `sy-tabs` module
+### P17.1 The `wy-tabs` module
 
-A local Expo module, `phone/modules/sy-tabs` (Kotlin, `dev.watchyard.tabs`), with one
+A local Expo module, `phone/modules/wy-tabs` (Kotlin, `dev.watchyard.tabs`), with one
 dependency, `androidx.webkit:webkit` (the profile API).
 
 | JS | Native |
@@ -857,14 +857,14 @@ dependency, `androidx.webkit:webkit` (the profile API).
 | `available` | The module is in this build (Android) |
 | `isSupported(): Promise<boolean>` | `WebViewFeature.isFeatureSupported(MULTI_PROFILE)` (WebView 110 or later) |
 | `listProfiles(): Promise<string[]>` | The seat ids of `ProfileStore.getAllProfileNames()` that are tab profiles |
-| `deleteProfile(seat): Promise<boolean>` | `ProfileStore.deleteProfile(name)`: cookies, storage and cache of that tab. Rejects `ERR_SY_TABS_IN_USE` while the tab is open, `ERR_SY_TABS_SEAT` on a bad seat id. WebView keeps the profile of a tab that was open in this process "in use" even after the tab is closed and its WebView destroyed, so `deleteProfile` then wipes its cookies and storage, hides it from `listProfiles` and deletes it for real at the next app start (before any WebView exists); opening the tab again cancels that |
-| `moveProfile(from, to): Promise<boolean>` | P17.7 "Use this tab for … instead": the profile `from` has becomes `to`'s (a `moves` entry in the module's preferences; the profile, its sign-in and cookies are not touched, read or copied). Rejects `ERR_SY_TABS_TAKEN` when `to` has a tab, `ERR_SY_TABS_NONE` when `from` has none, `ERR_SY_TABS_IN_USE` while that tab is open, `ERR_SY_TABS_SEAT` on a bad seat id |
+| `deleteProfile(seat): Promise<boolean>` | `ProfileStore.deleteProfile(name)`: cookies, storage and cache of that tab. Rejects `ERR_WY_TABS_IN_USE` while the tab is open, `ERR_WY_TABS_SEAT` on a bad seat id. WebView keeps the profile of a tab that was open in this process "in use" even after the tab is closed and its WebView destroyed, so `deleteProfile` then wipes its cookies and storage, hides it from `listProfiles` and deletes it for real at the next app start (before any WebView exists); opening the tab again cancels that |
+| `moveProfile(from, to): Promise<boolean>` | P17.7 "Use this tab for … instead": the profile `from` has becomes `to`'s (a `moves` entry in the module's preferences; the profile, its sign-in and cookies are not touched, read or copied). Rejects `ERR_WY_TABS_TAKEN` when `to` has a tab, `ERR_WY_TABS_NONE` when `from` has none, `ERR_WY_TABS_IN_USE` while that tab is open, `ERR_WY_TABS_SEAT` on a bad seat id |
 | `<TabView seat url onTabState>` | A `WebView` bound with `WebViewCompat.setProfile` to the seat's profile (made on first use) before anything loads, then `loadUrl(url)` |
 
-- **Profile name:** `sy-tab-` + the hub seat id (`^seat_[0-9A-HJKMNP-TV-Z]{26}$`), never an
+- **Profile name:** `wy-tab-` + the hub seat id (`^seat_[0-9A-HJKMNP-TV-Z]{26}$`), never an
   email or label. Other names (and `Default`) are never listed or deleted. A profile belongs
   to the seat it was moved to (`moves`), else to the seat its name carries; a seat whose own
-  name was moved away gets `sy-tab-<seat>.<n>` (the first free `n`) for its next tab. Deleting
+  name was moved away gets `wy-tab-<seat>.<n>` (the first free `n`) for its next tab. Deleting
   a moved profile drops its `moves` entry.
 - **`onTabState`** `{state, url?, status?, height?, code?, reason?, account?}`: `loading` (main frame started), `loaded`
   (main frame finished, `height` = content height 3 s later), `http` (main-frame HTTP error,

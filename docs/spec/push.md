@@ -1,7 +1,7 @@
 # Alerts and pushes
 
 Status: spec v1; section 12 is a tombstone (the Expo channel, removed in schema v11); sections 13 (the link
-channel) and 14 (the Android `sy-link` module) describe the Android path. Implemented in `internal/hub/push/...` (rules, engine, channels),
+channel) and 14 (the Android `wy-link` module) describe the Android path. Implemented in `internal/hub/push/...` (rules, engine, channels),
 `internal/hub/store` (alerts, rules, targets), `internal/hub/api` (handlers). The web app
 side (service worker, permission, subscription) is in [pwa.md](pwa.md); pairing and devices
 in [pairing.md](pairing.md).
@@ -121,7 +121,7 @@ record that entered the state (states.md: the fold uses record times, not the hu
   scheduler finds an alert, a snooze or a retry more than `max_age_s` overdue (after a hub
   restart or a suspended laptop): it is not pushed.
 - **Catch-up hold** (machines.md 5.5). A session alert created already overdue
-  (`due <= now`) from a batch whose machine reported more records queued (`X-Sy-Backlog`
+  (`due <= now`) from a batch whose machine reported more records queued (`X-Wy-Backlog`
   above the batch size, or a drain batch with `more`) gets `due = now + 10 s`; at fire time it
   (like any pending session alert of that machine) is postponed by 10 s more while that
   machine's latest heartbeat (at most 10 s old) still reports a backlog, for at most 2 minutes
@@ -370,7 +370,7 @@ expired. For each target, with its effective prefs (5.4):
 
 - **Batch.** Session alerts (`needs_permission`, `asked`, `failed`) due within `batch_s` of
   each other and going to the same target are sent as one push: title "3 sessions need you",
-  body up to four lines `work · api — asked`, tag `sy-summary`, deep link `/#/`. Their
+  body up to four lines `work · api — asked`, tag `wy-summary`, deep link `/#/`. Their
   deliveries share one `batch` id. Limit, reset and silence alerts are never merged.
 - **Flood cap.** At most `flood.max` pushes per target per `flood.per_s`. Further deliveries
   are `held` (`flood`) and go out as one summary when the window frees. This protects a phone
@@ -613,7 +613,7 @@ holds the Go type.
   "trigger": "asked",
   "title": "work · api · asked a question",
   "body": "Should I also update the migration?",
-  "tag": "sy-s-c41e0000-0000-4000-8000-000000000003",
+  "tag": "wy-s-c41e0000-0000-4000-8000-000000000003",
   "url": "/#/sessions/c41e0000-0000-4000-8000-000000000003?alert=al_01JA3B…",
   "remote_url": "https://claude.ai/code/session_…",
   "tap": "auto",
@@ -629,7 +629,7 @@ holds the Go type.
 | --- | --- |
 | `type` | `alert`, `summary` or `test`; `refresh` only in a link `refresh` frame (13.5: never shown, not this object's other fields). |
 | `alert` / `alerts` | The alert (for `summary`: the first) and the alerts in the push, at most 20 ids: a larger summary lists the first ones (and fewer if the payload would not fit 3 000 bytes); the app refetches the list. |
-| `tag` | Notification tag: `sy-s-<session>`, `sy-l-<seat>-<window>`, `sy-r-<seat>-<window>`, `sy-m-<machine>`, `sy-summary`, `sy-test`. The same tag replaces the earlier notification. |
+| `tag` | Notification tag: `wy-s-<session>`, `wy-l-<seat>-<window>`, `wy-r-<seat>-<window>`, `wy-m-<machine>`, `wy-summary`, `wy-test`. The same tag replaces the earlier notification. |
 | `url` | Deep link, relative to the hub origin. Private: `/#/alerts/<alert>`. Summary: `/#/`. |
 | `remote_url` | The session's Remote Control link, when known (5.8), also in private mode (the payload is encrypted; it is never displayed). |
 | `tap` | The device's `prefs.tap`. |
@@ -670,7 +670,7 @@ An ntfy target is `{server, topic, token?, name?, private?}`:
   owner's own targets (`device_id` NULL) may reach any address; neither follows redirects.
 - A device may hold at most **10** push targets of any kind (409 `conflict` on the 11th;
   re-adding one of its own is not a new target).
-- `topic`: when omitted the hub makes one: `sy-` + 24 base62 characters (about 143 bits).
+- `topic`: when omitted the hub makes one: `wy-` + 24 base62 characters (about 143 bits).
   Topics on ntfy.sh are readable by anyone who knows the name, so the name is the secret
   and is shown only to the owner and the device that made it.
 - `token`: optional ntfy access token (`tk_…`), sent as `Authorization: Bearer`; stored in
@@ -691,7 +691,7 @@ UTF-8 titles intact:
 
 ```json
 {
-  "topic": "sy-4fQx0Lr2…",
+  "topic": "wy-4fQx0Lr2…",
   "title": "work · api · asked a question",
   "message": "Should I also update the migration?",
   "priority": 4,
@@ -833,7 +833,7 @@ CREATE TABLE push_target (
   id            TEXT    NOT NULL PRIMARY KEY,      -- 'pt_' + ULID
   kind          TEXT    NOT NULL REFERENCES channel(kind),
   device_id     TEXT    REFERENCES device(id),     -- NULL: an ntfy topic added by the owner for the hub
-  name          TEXT,                               -- "iPhone · Safari", "ntfy.sh/sy-4fQx…"
+  name          TEXT,                               -- "iPhone · Safari", "ntfy.sh/wy-4fQx…"
   endpoint      TEXT    NOT NULL,                   -- webpush: endpoint URL; ntfy: server URL + '/' + topic
   keys          TEXT    CHECK (keys IS NULL OR json_valid(keys)),     -- webpush: {"p256dh": "…", "auth": "…"} base64url
   secret        TEXT,                               -- ntfy access token; never returned by the API
@@ -1214,9 +1214,9 @@ enabled; `delivery.delivered_at INTEGER` is added.
 - `delivered_at` is set on ack, not on enqueue; the missed-alert query uses it.
 - The widget refresher sends to link targets only, at most one frame per `refresh_min`.
 
-## 14. The Android `sy-link` module
+## 14. The Android `wy-link` module
 
-A local Expo module in `phone/modules/sy-link` (Kotlin, `expo-modules-core`), autolinked by the
+A local Expo module in `phone/modules/wy-link` (Kotlin, `expo-modules-core`), autolinked by the
 app. It owns everything that must run without the React Native runtime: the foreground service,
 the link client, the Keystore keys, notifications and their actions, the watchdog and the
 updater (phone.md P16). JavaScript only configures it and reads its state.
@@ -1224,16 +1224,16 @@ updater (phone.md P16). JavaScript only configures it and reads its state.
 ### 14.1 Layout
 
 ```
-phone/modules/sy-link/
-  expo-module.config.json      {"platforms":["android"],"android":{"modules":["dev.watchyard.link.SyLinkModule"]}}
-  index.ts                     the JS API (14.8); every function rejects "sy-link: Android only" elsewhere
-  src/SyLink.types.ts
+phone/modules/wy-link/
+  expo-module.config.json      {"platforms":["android"],"android":{"modules":["dev.watchyard.link.WyLinkModule"]}}
+  index.ts                     the JS API (14.8); every function rejects "wy-link: Android only" elsewhere
+  src/WyLink.types.ts
   android/build.gradle         okhttp (the version React Native already ships), androidx.work, androidx.core,
                                com.google.crypto.tink:tink-android (Ed25519 verification only)
   android/src/main/AndroidManifest.xml
   android/src/main/java/dev/watchyard/link/
-    SyLinkModule.kt            Expo module: functions and events
-    SyLinkService.kt           foreground service (specialUse)
+    WyLinkModule.kt            Expo module: functions and events
+    WyLinkService.kt           foreground service (specialUse)
     LinkClient.kt              OkHttp WebSocket and long-poll, login, acks, backoff
     Frames.kt                  parsing, hub signature checks, seq bookkeeping
     Crypto.kt                  Keystore keys, RFC 8291 decryption, login signature
@@ -1275,7 +1275,7 @@ dependency; ECDH, HKDF and AES-GCM come from the platform.
 <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32"/>
 <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
 <application>
-  <service android:name=".SyLinkService" android:exported="false"
+  <service android:name=".WyLinkService" android:exported="false"
            android:foregroundServiceType="specialUse">
     <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
               android:value="Keeps an encrypted connection to the user's own self-hosted server to receive its notifications; no push service is used."/>
@@ -1308,7 +1308,7 @@ receiver start the service (allowed from an exact alarm) or tell a running one t
 - **Starting in the foreground, per API level.** API 34+: `startForeground(id, n,
   FOREGROUND_SERVICE_TYPE_SPECIAL_USE)`. API 31–33: the two-argument `startForeground(id, n)`
   (those releases do not know `specialUse`, and have no `dataSync` cap either). One helper,
-  `SyLinkService.goForeground()`, with a test per branch.
+  `WyLinkService.goForeground()`, with a test per branch.
 - **Background starts (API 31+).** Android 12 forbids starting a foreground service from the
   background except in listed cases. The ones this design uses: `BOOT_COMPLETED` and
   `MY_PACKAGE_REPLACED`; the app being exempt from battery optimisation; an exact alarm
@@ -1327,8 +1327,8 @@ Made by `prepareKeys()` before the claim (phone.md P2):
 
 | Alias | Spec | Use |
 | --- | --- | --- |
-| `sy_link_sign` | EC P-256, `PURPOSE_SIGN`, SHA-256, not exportable | The login signature (link.md 3.2), ECDSA DER |
-| `sy_link_agree` | EC P-256, `PURPOSE_AGREE_KEY`, not exportable | RFC 8291's ECDH with the frame's `as_public` (`KeyAgreement.getInstance("ECDH", "AndroidKeyStore")`) |
+| `wy_link_sign` | EC P-256, `PURPOSE_SIGN`, SHA-256, not exportable | The login signature (link.md 3.2), ECDSA DER |
+| `wy_link_agree` | EC P-256, `PURPOSE_AGREE_KEY`, not exportable | RFC 8291's ECDH with the frame's `as_public` (`KeyAgreement.getInstance("ECDH", "AndroidKeyStore")`) |
 
 - StrongBox when present (`setIsStrongBoxBacked(true)`, retried without it), no user
   authentication: the service must work while the phone is locked after its first unlock.
@@ -1337,7 +1337,7 @@ Made by `prepareKeys()` before the claim (phone.md P2):
 - `prepareKeys()` returns `{sign: {alg: "p256", pub}, box: {alg: "p256", pub}, auth}` (b64u) for
   the claim. The auth secret leaves the phone only in that claim (sealed by the QR, keys.md 7.1)
   and is never shown. It is kept in `Store` as it is, not wrapped by another Keystore key: on
-  its own it opens nothing (RFC 8291 also needs the non-exportable `sy_link_agree`), so a
+  its own it opens nothing (RFC 8291 also needs the non-exportable `wy_link_agree`), so a
   wrapping key would add an alias and no protection.
 - Unpair (phone.md P3) calls `reset()`: the two aliases, the pins and the module's storage are
   deleted.
@@ -1347,9 +1347,9 @@ Made by `prepareKeys()` before the claim (phone.md P2):
 | Concern | Design |
 | --- | --- |
 | Start | `start()` from JS after pairing and on each app start while instant delivery is on; `BootReceiver` (boot, app update); the watchdog. `startForegroundService`, then `goForeground()` (14.2) within 5 s. |
-| Persistent notification | Channel `sy_connection` (name "Connection (always on)", importance MIN, no badge, no sound; small icon `sy_notify_connection`, grey, no large icon, phone.md P6.1a): "Connected to hub · 2 min", "Reconnecting… (next try in 20 s)", "Not connected: \<reason>". Tapping it opens Now (`watchyard://now`), like any other notification, never a settings page; its **Settings** button opens Settings → Notifications (`watchyard://settings/notifications`, phone.md P7). Every notification the module posts has a content intent that names the app's launcher activity, so a tap always starts the app (a notification with none makes Samsung open the app's notification settings). It can be hidden in Android's settings. |
-| Connection | OkHttp `WebSocket` to the first working `urls` entry, subprotocol `sy-link.1`, `pingInterval` = `ping_s` (default 180; Settings allows 300–600 on the tailnet), read timeout 0, connect timeout 15 s. `ping_s` is the claim reply's (or `setPingInterval`'s); the `welcome`'s `ping_s` is not applied over the phone's own choice. Long-poll (link.md 2.1) after 3 failed handshakes while `GET /health` answers; while on long-poll the WebSocket is tried again every 30 min. In long-poll mode, pending actions (14.6) go in the `up` frames of the poll requests. |
-| Login | link.md 3: the challenge's hub signature and fingerprint are checked against the pin from pairing (`h=`); `hello` is signed with `sy_link_sign`. |
+| Persistent notification | Channel `wy_connection` (name "Connection (always on)", importance MIN, no badge, no sound; small icon `wy_notify_connection`, grey, no large icon, phone.md P6.1a): "Connected to hub · 2 min", "Reconnecting… (next try in 20 s)", "Not connected: \<reason>". Tapping it opens Now (`watchyard://now`), like any other notification, never a settings page; its **Settings** button opens Settings → Notifications (`watchyard://settings/notifications`, phone.md P7). Every notification the module posts has a content intent that names the app's launcher activity, so a tap always starts the app (a notification with none makes Samsung open the app's notification settings). It can be hidden in Android's settings. |
+| Connection | OkHttp `WebSocket` to the first working `urls` entry, subprotocols `wy-link.1, sy-link.1` (the second for a hub from before the rename, link.md 2), `pingInterval` = `ping_s` (default 180; Settings allows 300–600 on the tailnet), read timeout 0, connect timeout 15 s. `ping_s` is the claim reply's (or `setPingInterval`'s); the `welcome`'s `ping_s` is not applied over the phone's own choice. Long-poll (link.md 2.1) after 3 failed handshakes while `GET /health` answers; while on long-poll the WebSocket is tried again every 30 min. In long-poll mode, pending actions (14.6) go in the `up` frames of the poll requests. |
+| Login | link.md 3: the challenge's hub signature and fingerprint are checked against the pin from pairing (`h=`); `hello` is signed with `wy_link_sign`. |
 | Reconnect | 1, 2, 5, 10, 20, 30, 60 s, then 120 s, each ±20 % jitter; reset after a connection that lasted 60 s. `registerDefaultNetworkCallback`: a new default network (Wi-Fi ↔ mobile, a VPN such as Tailscale coming up) reconnects at once with the backoff reset. |
 | Close codes | link.md 8. **4403**: stop the service and the watchdog, post "This phone was removed from the hub", emit `revoked` (JS shows Pair). **4426**: stop, emit `upgrade` (the updater checks). **4409**: this connection only; the newer connection is normally this same client's, so nothing reconnects at once, but a retry is still scheduled after 120 s as a safety net (a superseding connection that then died would otherwise leave the phone offline). **4401** and **4400** three times in a row: stop with status `error`. **4429** and **4503**: retry after 60 s. |
 | Doze | The app asks once for the battery-optimisation exemption (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`), with the maker guide (phone.md P6.7). Reconnect timers longer than 10 s use `AlarmManager.setExactAndAllowWhileIdle` when exempt and `canScheduleExactAlarms()` (14.2), a coroutine delay otherwise. |
@@ -1368,7 +1368,7 @@ Per frame, under the wake lock:
 2. Decrypt (RFC 8291) and parse; failure → `reject` as in step 1.
 3. Act:
    - `alert` with `type` `alert`, `summary` or `test`: post on the channel of phone.md P6.1 for
-     the trigger (`sy_test` for tests). **Notification id** = the first 4 bytes of SHA-256(tag)
+     the trigger (`wy_test` for tests). **Notification id** = the first 4 bytes of SHA-256(tag)
      read **big-endian** as a signed int (`ByteBuffer.getInt`, Java's default), so a new alert
      with the same tag replaces the old one and the tag's `dismiss` cancels it. Group `wy`.
      Buttons when `actions` is present: Open (the app at `url`), "Snooze \<n> min", "Seen"
@@ -1420,7 +1420,7 @@ handler of phone.md P6.4 is not involved for link notifications.
 ### 14.8 JS API
 
 ```ts
-// phone/modules/sy-link/index.ts
+// phone/modules/wy-link/index.ts
 export type SignedDoc = { type: string; body: string; sigs: { by: string; fp?: string; sig: string }[] };
 export type LinkConfig = {
   origin: string; device: string; urls: string[]; pingS: number;
@@ -1459,7 +1459,7 @@ export function setSnoozeMinutes(minutes: number): Promise<void>;  // the hub's 
 export function getRefresh(): Promise<LinkRefresh | null>;    // the newest refresh frame, for the widgets
 export function requestBatteryExemption(): Promise<boolean>;  // system dialog; resolves with the new state
 export function openBatterySettings(): Promise<void>;         // the maker's screen when known, else Android's
-export function sendLocalTest(): Promise<void>;               // a local notification on sy_test, no hub
+export function sendLocalTest(): Promise<void>;               // a local notification on wy_test, no hub
 export function reset(): Promise<void>;                       // unpair: keys, pins and storage deleted
 export function addListener(event: "state", cb: (s: LinkState) => void): Subscription;
 export function addListener(event: "refresh" | "revoked" | "upgrade", cb: () => void): Subscription;
@@ -1474,13 +1474,13 @@ export function installUpdate(info: UpdateInfo): Promise<"started" | "refused">;
 secret, which never leaves the module except inside that seal or the clear `keys` of a typed
 code. `configure` makes keys.md 7.3's certificate check natively (the app's JS has no Ed25519):
 the hub signature with `hubKey`, the device and hub in the body, the phone's own keys, `reg =
-qr` and `hubKey.fp = qrFp` when `qrFp` is given. It rejects with code `ERR_SY_HUB_KEY` (the key
-is not the QR's) or `ERR_SY_TAMPERED` (anything else), and other codes (`ERR_SY_CONFIG`) for a
+qr` and `hubKey.fp = qrFp` when `qrFp` is given. It rejects with code `ERR_WY_HUB_KEY` (the key
+is not the QR's) or `ERR_WY_TAMPERED` (anything else), and other codes (`ERR_WY_CONFIG`) for a
 bad argument.
 
 `checkUpdate(origin, token)` (phone.md P16.3) asks the hub (`GET <origin>/v1/app/android`
 with the device token), then GitHub when the hub has no release or cannot be reached; it
-resolves `null` when nothing newer fits this phone and rejects with `ERR_SY_UPDATE` (message
+resolves `null` when nothing newer fits this phone and rejects with `ERR_WY_UPDATE` (message
 without any token) when neither is reachable. It does not throttle: the once-a-day rule lives
 in the app (`src/lib/update`). `installUpdate(info)` downloads, requires the file's SHA-256 to
 equal `info.sha256`, requires the APK's signing certificate (`GET_SIGNING_CERTIFICATES` on the
@@ -1489,12 +1489,12 @@ at a higher versionCode, then commits a `PackageInstaller` session; it resolves 
 (Android asks the user to confirm) or `"refused"` (the file is deleted). A hub download needs
 the device token, which `installUpdate` does not receive: the module keeps the `(origin,
 token)` of the last `checkUpdate` that found a hub release in memory only, sends the token
-solely to that origin, and rejects with `ERR_SY_UPDATE` ("check for updates first") when
+solely to that origin, and rejects with `ERR_WY_UPDATE` ("check for updates first") when
 there is none (after a process restart). `REQUEST_INSTALL_PACKAGES` is declared in the module
 manifest (14.2).
 
-The jest fake (`test/fakes.ts`) gains a recording `sy-link` fake with scriptable state
-(`linkState`, `emitLink`); `test/setup.ts` mocks `modules/sy-link` with it, and
+The jest fake (`test/fakes.ts`) gains a recording `wy-link` fake with scriptable state
+(`linkState`, `emitLink`); `test/setup.ts` mocks `modules/wy-link` with it, and
 `test/link-contract.test.ts` keeps `src/contract/link.ts` (the mirror `src/lib` uses, P1)
 equal to the module's types.
 

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -32,7 +33,7 @@ func seedDevice(t *testing.T, s *Store) {
 			return err
 		}
 		_, err := tx.exec(`INSERT INTO device (id, kind, name, machine_id, token_hash, token_hint, scopes, created_at, created_by)
-			VALUES ('dev_1', 'machine', 'laptop', 'm_1', ?, 'sy_m_…abcd', '["write"]', 1, 'cli')`, bytes.Repeat([]byte{7}, 32))
+			VALUES ('dev_1', 'machine', 'laptop', 'm_1', ?, 'wy_m_…abcd', '["write"]', 1, 'cli')`, bytes.Repeat([]byte{7}, 32))
 		return err
 	})
 	if err != nil {
@@ -74,8 +75,8 @@ func TestExportImportRoundTrip(t *testing.T) {
 	src.Write(ctx, func(tx *Tx) error {
 		return tx.PutAlertSetting(AlertKeyPublicURL, []byte(`"https://old.example"`), 1)
 	})
-	out := filepath.Join(t.TempDir(), "exports", "hub.syx")
-	res, err := src.Export(ctx, ExportOptions{Out: out, StateDir: state(t), MovedTo: "https://new.example", SyVersion: "0.5.0"})
+	out := filepath.Join(t.TempDir(), "exports", "hub.wyx")
+	res, err := src.Export(ctx, ExportOptions{Out: out, StateDir: state(t), MovedTo: "https://new.example", WyVersion: "0.5.0"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +101,7 @@ func TestExportImportRoundTrip(t *testing.T) {
 	dst := t.TempDir()
 	dstState := t.TempDir()
 	os.WriteFile(filepath.Join(dstState, "pair_pepper"), []byte("other"), 0o600)
-	ir, err := Import(ctx, ImportOptions{File: out, DBPath: filepath.Join(dst, "hub.db"), StateDir: dstState, SyVersion: "0.5.1"})
+	ir, err := Import(ctx, ImportOptions{File: out, DBPath: filepath.Join(dst, "hub.db"), StateDir: dstState, WyVersion: "0.5.1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +153,7 @@ func TestImportRefusesEachNonEmptyTable(t *testing.T) {
 	ctx := context.Background()
 	src := openTest(t, t.TempDir())
 	seedDevice(t, src)
-	out := filepath.Join(t.TempDir(), "x.syx")
+	out := filepath.Join(t.TempDir(), "x.wyx")
 	if _, err := src.Export(ctx, ExportOptions{Out: out, NoFreeze: true}); err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +211,7 @@ func TestImportRefusesEachNonEmptyTable(t *testing.T) {
 func TestImportRefusesRunningHub(t *testing.T) {
 	ctx := context.Background()
 	src := openTest(t, t.TempDir())
-	out := filepath.Join(t.TempDir(), "x.syx")
+	out := filepath.Join(t.TempDir(), "x.wyx")
 	if _, err := src.Export(ctx, ExportOptions{Out: out, NoFreeze: true}); err != nil {
 		t.Fatal(err)
 	}
@@ -231,7 +232,7 @@ func TestEncryptedRoundTripFlipAndTruncate(t *testing.T) {
 	ctx := context.Background()
 	src := openTest(t, t.TempDir())
 	seedDevice(t, src)
-	out := filepath.Join(t.TempDir(), "enc.syx")
+	out := filepath.Join(t.TempDir(), "enc.wyx")
 	res, err := src.Export(ctx, ExportOptions{Out: out, NoFreeze: true, Passphrase: "correct horse", StateDir: state(t)})
 	if err != nil || !res.Encrypted {
 		t.Fatal(err)
@@ -249,36 +250,36 @@ func TestEncryptedRoundTripFlipAndTruncate(t *testing.T) {
 		_, err := Import(ctx, ImportOptions{File: p, Passphrase: pass, DBPath: filepath.Join(t.TempDir(), "hub.db"), StateDir: t.TempDir()})
 		return err
 	}
-	if err := imp("ok.syx", raw, "correct horse"); err != nil {
+	if err := imp("ok.wyx", raw, "correct horse"); err != nil {
 		t.Fatalf("round trip: %v", err)
 	}
-	if err := imp("nopass.syx", raw, ""); !errors.Is(err, ErrNeedPassphrase) {
+	if err := imp("nopass.wyx", raw, ""); !errors.Is(err, ErrNeedPassphrase) {
 		t.Errorf("no passphrase: %v", err)
 	}
-	if err := imp("wrong.syx", raw, "battery staple"); !errors.Is(err, ErrWrongPassphrase) {
+	if err := imp("wrong.wyx", raw, "battery staple"); !errors.Is(err, ErrWrongPassphrase) {
 		t.Errorf("wrong passphrase: %v", err)
 	}
 	for _, off := range []int{20, 40, len(raw) / 2, len(raw) - 1} {
 		c := append([]byte{}, raw...)
 		c[off] ^= 1
-		if err := imp("flip.syx", c, "correct horse"); err == nil {
+		if err := imp("flip.wyx", c, "correct horse"); err == nil {
 			t.Errorf("flipped byte at %d accepted", off)
 		}
 	}
 	for _, n := range []int{len(raw) - 1, len(raw) - 20, len(raw) / 2, 34, 10} {
-		if err := imp("trunc.syx", raw[:n], "correct horse"); err == nil {
+		if err := imp("trunc.wyx", raw[:n], "correct horse"); err == nil {
 			t.Errorf("truncated to %d accepted", n)
 		}
 	}
 	// a truncation exactly on a chunk boundary (drop the last chunk) must fail too
-	if len(raw) > 34+4+syxeChunk+syxeTag+4 {
-		first := 34 + 4 + syxeChunk + syxeTag
-		if err := imp("boundary.syx", raw[:first], "correct horse"); err == nil {
+	if len(raw) > 34+4+wyxeChunk+wyxeTag+4 {
+		first := 34 + 4 + wyxeChunk + wyxeTag
+		if err := imp("boundary.wyx", raw[:first], "correct horse"); err == nil {
 			t.Error("chunk-boundary truncation accepted")
 		}
 	}
 	// appended junk fails
-	if err := imp("extra.syx", append(append([]byte{}, raw...), 1, 2, 3, 4, 5), "correct horse"); err == nil {
+	if err := imp("extra.wyx", append(append([]byte{}, raw...), 1, 2, 3, 4, 5), "correct horse"); err == nil {
 		t.Error("trailing bytes accepted")
 	}
 }
@@ -287,13 +288,13 @@ func TestPlainArchiveTamperAndTruncate(t *testing.T) {
 	ctx := context.Background()
 	src := openTest(t, t.TempDir())
 	seedDevice(t, src)
-	out := filepath.Join(t.TempDir(), "p.syx")
+	out := filepath.Join(t.TempDir(), "p.wyx")
 	if _, err := src.Export(ctx, ExportOptions{Out: out, NoFreeze: true}); err != nil {
 		t.Fatal(err)
 	}
 	raw, _ := os.ReadFile(out)
 	try := func(data []byte) error {
-		p := filepath.Join(t.TempDir(), "x.syx")
+		p := filepath.Join(t.TempDir(), "x.wyx")
 		os.WriteFile(p, data, 0o600)
 		_, err := Import(ctx, ImportOptions{File: p, DBPath: filepath.Join(t.TempDir(), "hub.db"), StateDir: t.TempDir()})
 		return err
@@ -316,7 +317,7 @@ func TestPlainArchiveTamperAndTruncate(t *testing.T) {
 func TestImportRefusesNewerSchema(t *testing.T) {
 	ctx := context.Background()
 	src := openTest(t, t.TempDir())
-	out := filepath.Join(t.TempDir(), "x.syx")
+	out := filepath.Join(t.TempDir(), "x.wyx")
 	if _, err := src.Export(ctx, ExportOptions{Out: out, NoFreeze: true}); err != nil {
 		t.Fatal(err)
 	}
@@ -337,7 +338,7 @@ func TestImportRefusesNewerSchema(t *testing.T) {
 	if err := writeMembers(&buf, members); err != nil {
 		t.Fatal(err)
 	}
-	p := filepath.Join(t.TempDir(), "future.syx")
+	p := filepath.Join(t.TempDir(), "future.wyx")
 	os.WriteFile(p, buf.Bytes(), 0o600)
 	_, err = Import(ctx, ImportOptions{File: p, DBPath: filepath.Join(t.TempDir(), "hub.db"), StateDir: t.TempDir()})
 	if err == nil || !bytes.Contains([]byte(err.Error()), []byte("update wy here first")) {
@@ -382,7 +383,7 @@ func TestExportUnderConcurrentIngest(t *testing.T) {
 		}(g)
 	}
 	time.Sleep(50 * time.Millisecond)
-	out := filepath.Join(t.TempDir(), "c.syx")
+	out := filepath.Join(t.TempDir(), "c.wyx")
 	if _, err := s.Export(ctx, ExportOptions{Out: out}); err != nil {
 		t.Fatal(err)
 	}
@@ -425,7 +426,7 @@ func TestFreezeUnfreeze(t *testing.T) {
 		t.Fatal(was, err)
 	}
 	// a failing export (output exists) does not freeze at all; one failing later unfreezes
-	out := filepath.Join(t.TempDir(), "o.syx")
+	out := filepath.Join(t.TempDir(), "o.wyx")
 	os.WriteFile(out, nil, 0o600)
 	if _, err := s.Export(ctx, ExportOptions{Out: out}); err == nil {
 		t.Fatal("export over an existing file")
@@ -433,7 +434,7 @@ func TestFreezeUnfreeze(t *testing.T) {
 	if f, _ := s.Frozen(ctx); f != nil {
 		t.Error("frozen by a refused export")
 	}
-	bad := filepath.Join(t.TempDir(), "o2.syx")
+	bad := filepath.Join(t.TempDir(), "o2.wyx")
 	if _, err := s.Export(ctx, ExportOptions{Out: bad}); err != nil {
 		t.Fatalf("no state folder given is fine: %v", err)
 	}
@@ -448,3 +449,14 @@ func TestFreezeUnfreeze(t *testing.T) {
 }
 
 func mustJSON(v any) []byte { b, _ := json.Marshal(v); return b }
+
+// Legacy compat (rename.md 2.6): an export made before the rename names its version "sy".
+func TestManifestLegacyVersionKey(t *testing.T) {
+	var m Manifest
+	if err := json.Unmarshal([]byte(`{"format":1,"kind":"switchyard-hub-export","sy":"0.9.0","schema":4}`), &m); err != nil || m.Wy != "0.9.0" || m.Schema != 4 {
+		t.Fatalf("legacy manifest: %+v %v", m, err)
+	}
+	if b, _ := json.Marshal(Manifest{Format: 1, Wy: "1.0.0"}); !strings.Contains(string(b), `"wy":"1.0.0"`) || strings.Contains(string(b), `"sy"`) {
+		t.Fatalf("written: %s", b)
+	}
+}

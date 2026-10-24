@@ -5,7 +5,7 @@ import { httpsUrl, seatName } from '../format';
 
 /** A hub seat id (identity.md 1). Mirrors TabPolicy.kt. */
 export const SEAT_RE = /^seat_[0-9A-HJKMNP-TV-Z]{26}$/;
-export const PROFILE_PREFIX = 'sy-tab-';
+export const PROFILE_PREFIX = 'wy-tab-';
 export const TAB_HOME = 'https://claude.ai/';
 /** A refusal answer may still turn into a page (Cloudflare's challenge starts with a 403). */
 export const REFUSAL_GRACE_MS = 10_000;
@@ -45,7 +45,7 @@ export function openTarget(
   return { kind: 'tab', seat: session.seat, url };
 }
 
-/** The module's tab event (modules/sy-tabs TabEvent) plus when the screen got it. */
+/** The module's tab event (modules/wy-tabs TabEvent) plus when the screen got it. */
 export type TabEventAt = {
   state: 'loading' | 'loaded' | 'http' | 'error' | 'crashed' | 'download' | 'external' | 'url' | 'account';
   url?: string;

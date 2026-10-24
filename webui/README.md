@@ -22,9 +22,9 @@ hash (update banner), `POST /_dev/reset`, `POST /_dev/promote`.
   `scripts/icons/gen.sh` (rsvg-convert, else ImageMagick with the RSVG delegate, else
   node + puppeteer-core); sources are `scripts/icons/icon.svg` and `badge.svg`.
 - `sw.js` (classic script) + `sw-lib.js`: shell cache-first, navigations and data GETs
-  network-first with a stored copy (`X-Sy-Cached-At`), push display, notification clicks,
+  network-first with a stored copy (`X-Wy-Cached-At`), push display, notification clicks,
   `pushsubscriptionchange`. A new worker waits until the page asks (`skip-waiting`).
-- `webui.Handler` replaces `__SY_BUILD__` in sw.js with a hash of all embedded files. A Go
+- `webui.Handler` replaces `__WY_BUILD__` in sw.js with a hash of all embedded files. A Go
   test keeps the `ASSETS` list in sw.js equal to the embedded files: regenerate the list
   when adding or removing a static file.
 - Every state-changing request sends `Content-Type: application/json` (the hub's CSRF rule

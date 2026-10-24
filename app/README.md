@@ -18,7 +18,7 @@ npm start              # electron .
 ```
 
 The app runs `wy` for everything that touches the hub: `WY_BIN` (unpackaged only), else `wy`
-on `PATH` or `~/.local/bin/wy` when it is at least `watchyard.minSy` (package.json), else the
+on `PATH` or `~/.local/bin/wy` when it is at least `watchyard.minWy` (package.json), else the
 copy bundled in the package. Without `wy` the account tabs still work and the Hub view says
 how to set it up (`wy setup`).
 
@@ -35,7 +35,7 @@ does not contain):
 
 The renderer's dev page runs the real renderer against a mock `wy`, in any browser:
 `python3 -m http.server -d app/src`, then open
-`/renderer/dev/index.html?scenario=default|empty|no_sy|needs_pairing|stopped|warning|owner`.
+`/renderer/dev/index.html?scenario=default|empty|no_wy|needs_pairing|stopped|warning|owner`.
 
 Layout: `src/main/` (main process; `boot.js` wires the modules in `START_ORDER`, each module
 exports `create(deps)` and gets Electron and Node as arguments; only `main/index.js` imports
@@ -75,11 +75,11 @@ CI: `.github/workflows/app.yml` (unit tests on Linux, macOS and Windows; smoke; 
 ## Package
 
 ```
-node scripts/fetch-sy.mjs auto auto      # builds the bundled wy into resources/wy/<os>-<arch>/
+node scripts/fetch-wy.mjs auto auto      # builds the bundled wy into resources/wy/<os>-<arch>/
 npm run dist:linux                       # or dist:mac, dist:win; output in dist/
 ```
 
-`fetch-sy.mjs <os> <arch> --from <dir>` copies a release build instead (checked against its
+`fetch-wy.mjs <os> <arch> --from <dir>` copies a release build instead (checked against its
 `SHA256SUMS`). Packages are never signed and never published (`electron-builder.yml`,
 `publish: null`); signing is a manual step. `build/after-pack.cjs` flips the Electron fuses
 (desktop.md C2). Linux targets: AppImage, deb, rpm.
@@ -95,7 +95,7 @@ Details and the tests that hold them: desktop.md C2 (baseline), C3 (IPC), C6 (to
   style, no network); only files under `src/renderer/` and `src/shared/` are served.
 - Account tabs live in their own `persist:tab-<id>` sessions, may navigate only to claude.ai
   and its sign-in hops over `https:`, and send other links to the system browser. The Hub view
-  (`persist:sy-hub`) may navigate only to the hub's origin. Permissions are deny by default.
+  (`persist:wy-hub`) may navigate only to the hub's origin. Permissions are deny by default.
 - Usage is read in the main process, through the tab's own session, only after you accept the
   warning for that tab, and stops at once when you turn it off or claude.ai answers 429.
 - The hub token comes from `wy desktop token`, is stored encrypted with `safeStorage` in

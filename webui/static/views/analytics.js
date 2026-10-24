@@ -16,7 +16,7 @@ import {
 const RANGES = [7, 30, 90];
 const HITS_SHOWN = 5;
 const st = { days: 30, seat: '', data: null, error: null, loading: false, bar: null, allProjects: false, allHits: false };
-const again = () => window.dispatchEvent(new Event('sy-rerender'));
+const again = () => window.dispatchEvent(new Event('wy-rerender'));
 let gen = 0;
 
 export async function load() {

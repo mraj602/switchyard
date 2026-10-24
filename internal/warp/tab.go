@@ -18,7 +18,7 @@ import (
 
 // Marker starts the first line of every tab config wy writes (T8). A file without it is
 // never touched; a file with it whose hash differs from what wy wrote belongs to the person.
-const Marker = "# sy-warp-tab v1 "
+const Marker = "# wy-warp-tab v1 "
 
 // Prefix and Suffix make the file name of a tab config: watchyard-<label>.toml.
 const (
@@ -187,7 +187,7 @@ func unsafeInShell(cmd string) string {
 
 // Render returns the tab config of s (Check it first; Render itself never fails):
 //
-//	# sy-warp-tab v1 slot=~/.claude-2 label=work (written by wy term warp on; wy term warp off removes it)
+//	# wy-warp-tab v1 slot=~/.claude-2 label=work (written by wy term warp on; wy term warp off removes it)
 //	name = "Watchyard · work"
 //	title = "work"
 //	color = "yellow"
@@ -237,7 +237,9 @@ type Info struct {
 	Label string
 }
 
-var markerRE = regexp.MustCompile(`^# sy-warp-tab v1 slot=(.*) label=([a-z0-9][a-z0-9-]{0,23}) \(`)
+// markerRE also matches the sy-warp-tab v1 marker of a tab config written before the rename
+// (legacy compat): it is still recognised as wy's, never written.
+var markerRE = regexp.MustCompile(`^# [ws]y-warp-tab v1 slot=(.*) label=([a-z0-9][a-z0-9-]{0,23}) \(`)
 
 // ParseMarker reads the marker of a tab config (first line only).
 func ParseMarker(content []byte) (Info, bool) {

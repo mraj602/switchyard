@@ -22,10 +22,10 @@ import {
   width as cells,
 } from './model'
 
-// SY is the absolute path of wy; internal/setup/pluginmkt replaces the placeholder string
+// WY is the absolute path of wy; internal/setup/pluginmkt replaces the placeholder string
 // when it writes the marketplace copy (and refuses a path holding a quote, a backslash or a
 // line break).
-export const SY = "__SY_PATH__"
+export const WY = "__WY_PATH__"
 
 export const PANE = 'watchyard-board'
 const BACKOFF_FIRST_MS = 2_000
@@ -55,7 +55,7 @@ let lastStatus: string | undefined
 // config reads one boolean through wy; anything but "false" keeps the default (true).
 async function config($: Dollar, key: string): Promise<boolean> {
   try {
-    const out = await $.process.run([SY, 'config', 'get', key])
+    const out = await $.process.run([WY, 'config', 'get', key])
     return !(out.exitCode === 0 && out.stdout.trim() === 'false')
   } catch {
     return true
@@ -91,7 +91,7 @@ async function follow($: Dollar, sessionId: string, gen: number): Promise<void> 
     const split = new Splitter()
     try {
       const stream = $.process.spawn({
-        argv: [SY, 'board', '--follow', '--ndjson', '--session', sessionId],
+        argv: [WY, 'board', '--follow', '--ndjson', '--session', sessionId],
       })
       child = stream
       const stopped = new Promise<'stopped'>(resolve => {
@@ -210,7 +210,7 @@ export const register: Register = on => {
     const focus = (r: Row) => async () => {
       await update($, selected, () => r.id)
       if (r.can_focus) {
-        await $.process.run([SY, 'term', 'focus', '--session', r.id])
+        await $.process.run([WY, 'term', 'focus', '--session', r.id])
       } else {
         $.ui.toast(r.here ? 'Cannot bring that tab forward.' : `That session runs on ${r.machine_name}.`)
       }

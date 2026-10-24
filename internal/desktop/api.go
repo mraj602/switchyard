@@ -38,13 +38,13 @@ const AdminLocal = "local"
 
 // Info is `wy desktop info --json`.
 //
-//	{"v": 1, "sy": "0.6.0", "machine": {"id": "m_…", "name": "laptop"},
+//	{"v": 1, "wy": "0.6.0", "machine": {"id": "m_…", "name": "laptop"},
 //	 "hub": {"url": "http://127.0.0.1:8787", "connected": true, "reachable": true, "version": "0.6.0",
 //	         "local": true, "dial": null, "service": "running"},
 //	 "admin": "local", "admin_error": null, "outbox": {"pending": 3, "last_error": null}}
 type Info struct {
 	V       int         `json:"v"`
-	Sy      string      `json:"sy"`
+	Wy      string      `json:"wy"`
 	Machine InfoMachine `json:"machine"`
 	Hub     InfoHub     `json:"hub"`
 	// Admin is the admin channel of machines.md 4.4: AdminLocal, the machines.hub_admin
@@ -85,7 +85,7 @@ type InfoOutbox struct {
 // Token is `wy desktop token [--code-stdin] [--name N] --json`. The token is printed once and
 // never stored by wy.
 //
-//	{"device": "dev_…", "token": "sy_d_…", "scopes": ["write", "read"], "hub": {"url": "…"}}
+//	{"device": "dev_…", "token": "wy_d_…", "scopes": ["write", "read"], "hub": {"url": "…"}}
 type Token struct {
 	Device string   `json:"device"`
 	Token  string   `json:"token"`

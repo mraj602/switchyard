@@ -55,7 +55,7 @@ func (r resp) json(t *testing.T) map[string]any {
 // opts of pcall.
 type opts struct {
 	token  string // bearer
-	cookie string // sy_session
+	cookie string // wy_session
 	ctype  string // default application/json when there is a body
 	origin string
 	xff    string
@@ -163,7 +163,7 @@ func TestOwnerSignInFlow(t *testing.T) {
 		t.Fatalf("sign-in: %d %s", r.code, r.body)
 	}
 	c := sessionCookie(t, r)
-	if !strings.HasPrefix(c.Value, "sy_o_") || !c.HttpOnly || c.SameSite != http.SameSiteStrictMode || c.Path != "/" || c.MaxAge != 30*24*3600 {
+	if !strings.HasPrefix(c.Value, "wy_o_") || !c.HttpOnly || c.SameSite != http.SameSiteStrictMode || c.Path != "/" || c.MaxAge != 30*24*3600 {
 		t.Errorf("cookie %+v", c)
 	}
 	if c.Secure {
@@ -365,7 +365,7 @@ func TestClaimAPI(t *testing.T) {
 	if _, has := b["token"]; has || strings.Contains(string(r.body), c.Value) {
 		t.Errorf("cookie mode leaked the token in the body: %s", r.body)
 	}
-	if !strings.HasPrefix(c.Value, "sy_p_") || !c.HttpOnly || c.SameSite != http.SameSiteStrictMode || c.Path != "/" || c.MaxAge != 400*24*3600 {
+	if !strings.HasPrefix(c.Value, "wy_p_") || !c.HttpOnly || c.SameSite != http.SameSiteStrictMode || c.Path != "/" || c.MaxAge != 400*24*3600 {
 		t.Errorf("cookie %+v", c)
 	}
 	if fmt.Sprint(b["scopes"]) != "[read push]" || b["kind"] != "phone" || b["name"] != "iPhone · Safari" || b["hub"].(map[string]any)["url"] != pairHubURL {
@@ -413,7 +413,7 @@ func TestClaimAPI(t *testing.T) {
 	}
 	b = r.json(t)
 	tok, _ := b["token"].(string)
-	if !strings.HasPrefix(tok, "sy_m_") || b["machine"] != mid || fmt.Sprint(b["scopes"]) != "[write]" {
+	if !strings.HasPrefix(tok, "wy_m_") || b["machine"] != mid || fmt.Sprint(b["scopes"]) != "[write]" {
 		t.Errorf("machine reply %v", b)
 	}
 	if code, _ := h.do("GET", "/v1/overview", tok, nil); code != 403 {

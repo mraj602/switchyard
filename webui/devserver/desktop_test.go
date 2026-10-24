@@ -9,7 +9,7 @@ func TestPatchSeatMock(t *testing.T) {
 	phone := newClient(t, ts)
 	phone.cookie(PhoneToken)
 	plain := newClient(t, ts)
-	plain.cookie("sy_b_whatever")
+	plain.cookie("wy_b_whatever")
 
 	phone.want(403, "PATCH", "/v1/accounts/seat_work", M{"label": "x"})
 	owner.want(404, "PATCH", "/v1/accounts/seat_nope", M{"label": "x"})

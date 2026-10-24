@@ -84,6 +84,7 @@ func runDoctor(args []string, stdout, stderr io.Writer) error {
 	}
 	rep := doctor.Run(context.Background(), doctor.Options{
 		Home: pe.Home, Dirs: d, Getenv: os.Getenv, Environ: os.Environ(), Rebaseline: *rebase,
+		SystemUnitDir: doctor.SystemUnitDir(),
 	})
 	if *asJSON {
 		enc := json.NewEncoder(stdout)

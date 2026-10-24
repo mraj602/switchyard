@@ -1,7 +1,7 @@
 // Expo app config (docs/spec/phone.md P13). The self-hosted build: pushes arrive over the app's
 // own link to the hub (push.md 13-14), with no Firebase, no Google push service and no EAS
 // project. No proprietary Google code either (Firebase, Play services, ML Kit): notifications and
-// the QR scanner are the app's own modules (modules/sy-notify, modules/sy-scan), and
+// the QR scanner are the app's own modules (modules/wy-notify, modules/wy-scan), and
 // scripts/check-no-google.mjs fails the build on any of them. Reads only non-secret environment values:
 //   WY_APP_ID                bundle id and package name (default io.github.mraj602.watchyard,
 //                            or io.github.mraj602.watchyard.dev for a development build)
@@ -56,7 +56,7 @@ export const IOS_WIDGETS = [
 
 export const ANDROID_WIDGETS = [
   {
-    name: 'SySessions',
+    name: 'WySessions',
     label: 'Watchyard: sessions',
     description: 'Running, needs input and done, and what needs you',
     minWidth: '180dp',
@@ -65,10 +65,10 @@ export const ANDROID_WIDGETS = [
     targetCellHeight: 2,
     resizeMode: 'horizontal|vertical',
     updatePeriodMillis: 1800000,
-    ...(asset('assets/widget-previews/sy-sessions.png') ? { previewImage: './assets/widget-previews/sy-sessions.png' } : {}),
+    ...(asset('assets/widget-previews/wy-sessions.png') ? { previewImage: './assets/widget-previews/wy-sessions.png' } : {}),
   },
   {
-    name: 'SyLimits',
+    name: 'WyLimits',
     label: 'Watchyard: limits',
     description: 'Every account: the tighter of 5 h and 7 d, and when it resets',
     minWidth: '250dp',
@@ -77,10 +77,10 @@ export const ANDROID_WIDGETS = [
     targetCellHeight: 3,
     resizeMode: 'horizontal|vertical',
     updatePeriodMillis: 1800000,
-    ...(asset('assets/widget-previews/sy-limits.png') ? { previewImage: './assets/widget-previews/sy-limits.png' } : {}),
+    ...(asset('assets/widget-previews/wy-limits.png') ? { previewImage: './assets/widget-previews/wy-limits.png' } : {}),
   },
   {
-    name: 'SyNeeds',
+    name: 'WyNeeds',
     label: 'Watchyard: needs you',
     description: 'The sessions waiting on you, oldest first; tap one to open it',
     minWidth: '250dp',
@@ -89,10 +89,10 @@ export const ANDROID_WIDGETS = [
     targetCellHeight: 2,
     resizeMode: 'horizontal|vertical',
     updatePeriodMillis: 1800000,
-    ...(asset('assets/widget-previews/sy-needs.png') ? { previewImage: './assets/widget-previews/sy-needs.png' } : {}),
+    ...(asset('assets/widget-previews/wy-needs.png') ? { previewImage: './assets/widget-previews/wy-needs.png' } : {}),
   },
   {
-    name: 'SyRing',
+    name: 'WyRing',
     label: 'Watchyard: account ring',
     description: 'One account: the tighter of 5 h and 7 d as a ring, and when it resets',
     minWidth: '110dp',
@@ -103,10 +103,10 @@ export const ANDROID_WIDGETS = [
     // Android asks which account when it is placed, and again from Reconfigure.
     widgetFeatures: 'reconfigurable',
     updatePeriodMillis: 1800000,
-    ...(asset('assets/widget-previews/sy-ring.png') ? { previewImage: './assets/widget-previews/sy-ring.png' } : {}),
+    ...(asset('assets/widget-previews/wy-ring.png') ? { previewImage: './assets/widget-previews/wy-ring.png' } : {}),
   },
   {
-    name: 'SyNextReset',
+    name: 'WyNextReset',
     label: 'Watchyard: next reset',
     description: 'The soonest limit reset across your accounts',
     minWidth: '110dp',
@@ -115,10 +115,10 @@ export const ANDROID_WIDGETS = [
     targetCellHeight: 1,
     resizeMode: 'horizontal',
     updatePeriodMillis: 1800000,
-    ...(asset('assets/widget-previews/sy-next-reset.png') ? { previewImage: './assets/widget-previews/sy-next-reset.png' } : {}),
+    ...(asset('assets/widget-previews/wy-next-reset.png') ? { previewImage: './assets/widget-previews/wy-next-reset.png' } : {}),
   },
   {
-    name: 'SyMachines',
+    name: 'WyMachines',
     label: 'Watchyard: machines',
     description: 'Each machine online or silent, and how many sessions are live',
     minWidth: '250dp',
@@ -127,7 +127,7 @@ export const ANDROID_WIDGETS = [
     targetCellHeight: 1,
     resizeMode: 'horizontal|vertical',
     updatePeriodMillis: 1800000,
-    ...(asset('assets/widget-previews/sy-machines.png') ? { previewImage: './assets/widget-previews/sy-machines.png' } : {}),
+    ...(asset('assets/widget-previews/wy-machines.png') ? { previewImage: './assets/widget-previews/wy-machines.png' } : {}),
   },
 ] as const;
 
@@ -155,15 +155,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       package: APP_ID,
       versionCode: VERSION_CODE,
       // The launcher icon (phone/assets/src/*.svg, scripts/gen-icons.sh): the gold mark on ink,
-      // plus the Android 13 themed-icon layer. The splash reuses the foreground (with-sy-native.js).
+      // plus the Android 13 themed-icon layer. The splash reuses the foreground (with-wy-native.js).
       ...(foreground
         ? { adaptiveIcon: { foregroundImage: foreground, backgroundColor: BRAND_INK, ...(monochrome ? { monochromeImage: monochrome } : {}) } }
         : {}),
-      // Never back up the app's data (the keychain token, P3); with-sy-native.js also sets it and
+      // Never back up the app's data (the keychain token, P3); with-wy-native.js also sets it and
       // adds dataExtractionRules and fullBackupContent that exclude every domain from cloud
       // backup and device transfer.
       allowBackup: false,
-      // Listed explicitly so the prebuilt manifest shows them (modules/sy-notify and sy-scan also
+      // Listed explicitly so the prebuilt manifest shows them (modules/wy-notify and wy-scan also
       // merge them at Gradle time); nothing else is needed (P13).
       permissions: ['android.permission.POST_NOTIFICATIONS', 'android.permission.CAMERA'],
       blockedPermissions: [
@@ -200,9 +200,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           widgets: IOS_WIDGETS,
         },
       ],
-      // Order matters: Expo runs mods of the last-listed plugin first, and with-sy-native.js patches
+      // Order matters: Expo runs mods of the last-listed plugin first, and with-wy-native.js patches
       // the widget provider classes that react-native-android-widget writes, so it is listed first.
-      ['./plugins/with-sy-native.js', { development: DEV }],
+      ['./plugins/with-wy-native.js', { development: DEV }],
       ['react-native-android-widget', { widgets: ANDROID_WIDGETS }],
     ],
     experiments: { typedRoutes: false },

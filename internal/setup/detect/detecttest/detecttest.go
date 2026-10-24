@@ -61,7 +61,7 @@ func (h *Home) Deps() detect.Deps {
 		Claude:     h.Fake,
 		ConfigDir:  h.Abs(".config/watchyard"),
 		StateDir:   h.Abs(".local/state/watchyard"),
-		Sy:         h.Abs(".local/bin/wy"),
+		Wy:         h.Abs(".local/bin/wy"),
 		LookPath:   func(string) (string, error) { return h.Abs(".local/bin/claude"), nil },
 		ShellProbe: func(context.Context, []string) (string, error) { return "", nil },
 		HubProbe:   func(context.Context, string) model.HubState { return model.HubState{} },

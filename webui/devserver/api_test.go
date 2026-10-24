@@ -70,7 +70,7 @@ func (c *client) cookie(token string) {
 
 func newServer(t *testing.T, static ...fstest.MapFS) (*Server, *httptest.Server) {
 	t.Helper()
-	fsys := fstest.MapFS{"index.html": {Data: []byte("<html>")}, "sw.js": {Data: []byte("const B='__SY_BUILD__';")}}
+	fsys := fstest.MapFS{"index.html": {Data: []byte("<html>")}, "sw.js": {Data: []byte("const B='__WY_BUILD__';")}}
 	if len(static) > 0 {
 		fsys = static[0]
 	}
@@ -169,7 +169,7 @@ func TestClaimSetsPhoneCookie(t *testing.T) {
 	c.want(400, "POST", "/v1/pair/claim", M{})
 	c.want(409, "POST", "/v1/pair/claim", M{"secret": PairSecret, "expect_kind": "machine"})
 	code, _, hdr := c.do("POST", "/v1/pair/claim", M{"code": "482 913", "name": "iPhone · Safari", "cookie": true, "expect_kind": "phone"})
-	if code != 200 || !strings.Contains(hdr.Get("Set-Cookie"), "sy_session="+PhoneToken) || !strings.Contains(hdr.Get("Set-Cookie"), "HttpOnly") {
+	if code != 200 || !strings.Contains(hdr.Get("Set-Cookie"), "wy_session="+PhoneToken) || !strings.Contains(hdr.Get("Set-Cookie"), "HttpOnly") {
 		t.Fatalf("claim = %d, Set-Cookie %q", code, hdr.Get("Set-Cookie"))
 	}
 	me := c.want(200, "GET", "/v1/me", nil)
@@ -359,7 +359,7 @@ func TestDevicesAndSelfDelete(t *testing.T) {
 	phone.want(200, "POST", "/v1/push/targets/"+t1["id"].(string)+"/test", nil)
 	phone.want(429, "POST", "/v1/push/targets/"+t1["id"].(string)+"/test", nil)
 	nt := phone.want(201, "POST", "/v1/push/targets", M{"kind": "ntfy"})
-	if !strings.HasPrefix(nt["topic"].(string), "sy-") || len(nt["topic"].(string)) != 27 || nt["prefs"].(map[string]any)["private"] != true {
+	if !strings.HasPrefix(nt["topic"].(string), "wy-") || len(nt["topic"].(string)) != 27 || nt["prefs"].(map[string]any)["private"] != true {
 		t.Errorf("ntfy target = %v", nt)
 	}
 
@@ -460,7 +460,7 @@ func TestBuildHashSwitchAndHealth(t *testing.T) {
 		b, _ := io.ReadAll(res.Body)
 		return string(b)
 	}
-	want := webui.BuildHash(fstest.MapFS{"index.html": {Data: []byte("<html>")}, "sw.js": {Data: []byte("const B='__SY_BUILD__';")}})
+	want := webui.BuildHash(fstest.MapFS{"index.html": {Data: []byte("<html>")}, "sw.js": {Data: []byte("const B='__WY_BUILD__';")}})
 	if got := get("/sw.js"); got != "const B='"+want+"';" {
 		t.Errorf("sw.js = %q, want hash %s", got, want)
 	}

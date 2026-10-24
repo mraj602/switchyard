@@ -106,8 +106,8 @@ func TestTargetUpsertReviveAndResults(t *testing.T) {
 func TestTargetListPatchDeleteAndSecrets(t *testing.T) {
 	st, ctx := openTargets(t)
 	addDevice(t, st, ctx, "dev_1")
-	n1, _ := st.UpsertTarget(ctx, model.Target{Kind: "ntfy", Name: "hub", Endpoint: "https://ntfy.sh/sy-a", Secret: "tk_1", Prefs: &model.Prefs{Mute: []model.Trigger{"reset"}}})
-	n2, _ := st.UpsertTarget(ctx, model.Target{Kind: "ntfy", DeviceID: "dev_1", Endpoint: "https://ntfy.sh/sy-b"})
+	n1, _ := st.UpsertTarget(ctx, model.Target{Kind: "ntfy", Name: "hub", Endpoint: "https://ntfy.sh/wy-a", Secret: "tk_1", Prefs: &model.Prefs{Mute: []model.Trigger{"reset"}}})
+	n2, _ := st.UpsertTarget(ctx, model.Target{Kind: "ntfy", DeviceID: "dev_1", Endpoint: "https://ntfy.sh/wy-b"})
 	if n1.Secret != "tk_1" || n1.DeviceID != "" || n1.Prefs == nil || n1.Prefs.Mute[0] != "reset" {
 		t.Fatalf("%+v", n1)
 	}
@@ -116,10 +116,10 @@ func TestTargetListPatchDeleteAndSecrets(t *testing.T) {
 	if len(all) != 2 || len(mine) != 1 || mine[0].ID != n2.ID {
 		t.Fatalf("%d %d", len(all), len(mine))
 	}
-	if got, err := st.TargetByEndpoint(ctx, "ntfy", "https://ntfy.sh/sy-a"); err != nil || got.ID != n1.ID {
+	if got, err := st.TargetByEndpoint(ctx, "ntfy", "https://ntfy.sh/wy-a"); err != nil || got.ID != n1.ID {
 		t.Fatalf("%+v %v", got, err)
 	}
-	if _, err := st.TargetByEndpoint(ctx, "webpush", "https://ntfy.sh/sy-a"); !errors.Is(err, store.ErrNotFound) {
+	if _, err := st.TargetByEndpoint(ctx, "webpush", "https://ntfy.sh/wy-a"); !errors.Is(err, store.ErrNotFound) {
 		t.Fatal(err)
 	}
 	name, off := "New", false

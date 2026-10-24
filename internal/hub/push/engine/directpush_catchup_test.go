@@ -285,7 +285,7 @@ func TestCatchUpHoldCappedAtTwoMinutes(t *testing.T) {
 	}
 }
 
-// An upload whose X-Sy-Backlog is above its batch size counts as "more" (no drain flag).
+// An upload whose X-Wy-Backlog is above its batch size counts as "more" (no drain flag).
 func TestCatchUpHoldFromUploadBacklog(t *testing.T) {
 	h := newHarness(t)
 	h.advanceTo(5 * time.Minute)
@@ -402,7 +402,7 @@ func TestPullHelloRecoversSilentMachine(t *testing.T) {
 	h.advanceTo(61 * time.Minute)
 	h.expectSends(1)
 	silent := h.byTrigger(model.TriggerMachineSilent)[0]
-	if err := h.ing.Contact(h.ctx, h.dev, ingest.Contact{Reach: "pull", SyVersion: "0.5.0"}); err != nil {
+	if err := h.ing.Contact(h.ctx, h.dev, ingest.Contact{Reach: "pull", WyVersion: "0.5.0"}); err != nil {
 		t.Fatal(err)
 	}
 	h.eng.Sync()

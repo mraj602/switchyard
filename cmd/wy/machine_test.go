@@ -18,7 +18,7 @@ import (
 // operator is a temp home and WY_HOME for running the real wy as the operator, with the
 // fake ssh. Nothing of the person's own environment is passed on.
 type operator struct {
-	home, syHome string
+	home, wyHome string
 	fake         *sshxtest.Fake
 }
 
@@ -27,13 +27,13 @@ func newOperator(t *testing.T) *operator {
 	if _, err := exec.LookPath("sh"); err != nil {
 		t.Skip("needs sh")
 	}
-	return &operator{home: t.TempDir(), syHome: t.TempDir(), fake: sshxtest.New(t)}
+	return &operator{home: t.TempDir(), wyHome: t.TempDir(), fake: sshxtest.New(t)}
 }
 
 func (o *operator) run(t *testing.T, stdin string, args ...string) (string, string, int) {
 	t.Helper()
-	cmd := exec.Command(syBin, args...)
-	cmd.Env = []string{"HOME=" + o.home, "WY_HOME=" + o.syHome, "PATH=/usr/bin:/bin", "TERM=dumb", "WY_NO_SPAWN=1",
+	cmd := exec.Command(wyBin, args...)
+	cmd.Env = []string{"HOME=" + o.home, "WY_HOME=" + o.wyHome, "PATH=/usr/bin:/bin", "TERM=dumb", "WY_NO_SPAWN=1",
 		"WY_SSH_COMMAND=" + os.Getenv("WY_SSH_COMMAND"), "WY_FAKE_SSH_DIR=" + o.fake.Dir}
 	cmd.Dir = o.home
 	cmd.Stdin = strings.NewReader(stdin)
@@ -73,13 +73,13 @@ func (o *operator) remote(t *testing.T, host string, withClaude bool) string {
 	return h
 }
 
-func TestMachineAddEndToEndWithRealSy(t *testing.T) {
+func TestMachineAddEndToEndWithRealWy(t *testing.T) {
 	o := newOperator(t)
 	rh := o.remote(t, "me@gpu-box", true)
 	var got map[string]any
 	hub := claimHub(t, 200, &got)
 	out, errOut, code := o.run(t, "482-913\n", "machine", "add", "me@gpu-box", "--name", "gpu-box", "--reach", "direct", "--hub-url", hub.URL,
-		"--insecure-lan", "--binary", syBin, "--code-stdin", "--yes", "--json")
+		"--insecure-lan", "--binary", wyBin, "--code-stdin", "--yes", "--json")
 	if code != 0 {
 		t.Fatalf("exit %d\n%s\n%s", code, out, errOut)
 	}
@@ -124,7 +124,7 @@ func TestMachineAddNoClaudeExit7(t *testing.T) {
 	o.remote(t, "me@bare", false)
 	hub := claimHub(t, 200, &map[string]any{})
 	_, errOut, code := o.run(t, "482-913\n", "machine", "add", "me@bare", "--reach", "direct", "--hub-url", hub.URL,
-		"--insecure-lan", "--binary", syBin, "--code-stdin", "--yes")
+		"--insecure-lan", "--binary", wyBin, "--code-stdin", "--yes")
 	if code != 7 || !strings.Contains(errOut, "install Claude Code") {
 		t.Fatalf("exit %d\n%s", code, errOut)
 	}
@@ -157,7 +157,7 @@ func TestMachineRemoteSide(t *testing.T) {
 		}
 	}
 	b, _ := os.ReadFile(filepath.Join(o.home, ".ssh/authorized_keys"))
-	if strings.Count(string(b), "sy-pull:pt_01ABC") != 1 || !strings.Contains(string(b), `command="`) || !strings.Contains(string(b), `outbox drain --stdio"`) {
+	if strings.Count(string(b), "wy-pull:pt_01ABC") != 1 || !strings.Contains(string(b), `command="`) || !strings.Contains(string(b), `outbox drain --stdio"`) {
 		t.Fatalf("authorized_keys:\n%s", b)
 	}
 	if _, _, code := o.run(t, "", "machine", "authorize-pull", "--remove", "--target", "pt_01ABC"); code != 0 {

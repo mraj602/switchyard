@@ -113,7 +113,7 @@ test('hub banners and summaries', () => {
   // an ok hub with an error (a 403): shown, nothing to do about the token
   assert.deepEqual(hubBanner(hub({ error: 'forbidden (403)' })), { level: 'error', title: null, text: 'forbidden (403)', command: null, action: null });
   // no hub (no wy, or wy not connected): the Connect card, with the TARGET words and no terminal command
-  for (const status of ['no_sy', 'not_connected']) {
+  for (const status of ['no_wy', 'not_connected']) {
     const b = hubBanner(hub({ status, url: null }));
     assert.equal(b.title, 'Connect to a hub.');
     assert.equal(b.text, "Enter your hub's address. Account tabs work without a hub.");
@@ -151,7 +151,7 @@ test('hub banners and summaries', () => {
   assert.equal(hubChip(hub({ status: 'needs_pairing' })).text, 'Hub · Not paired');
   assert.equal(hubChip(hub({ status: 'needs_pairing', removed: true })).text, 'Hub · Removed');
   assert.equal(hubChip(hub({ status: 'unreachable' })).level, 'error');
-  assert.equal(hubChip(hub({ status: 'no_sy' })).text, 'Hub · Not connected');
+  assert.equal(hubChip(hub({ status: 'no_wy' })).text, 'Hub · Not connected');
   assert.deepEqual(ownerPill(hub()), { text: 'Read-only', owner: false });
   assert.match(ownerPill(hub({ owner: true, owner_until: '2026-11-14T10:00:00Z' })).text, /^Owner · until 14 Nov$/);
   assert.deepEqual(ownerPill(hub({ owner: true })), { text: 'Owner', owner: true });

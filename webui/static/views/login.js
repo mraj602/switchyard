@@ -16,7 +16,7 @@ function tokenForm(onLoggedIn) {
   const err = h('p', { class: 'form-error', role: 'alert', hidden: true });
   const input = h('input', {
     id: 'token', name: 'token', type: 'password', autocomplete: 'off', spellcheck: 'false',
-    required: true, 'aria-describedby': 'token-help', placeholder: 'sy_b_…',
+    required: true, 'aria-describedby': 'token-help', placeholder: 'wy_b_…',
     // An old error must not sit under a field that is being retyped (L2).
     oninput: () => { err.hidden = true; },
   });

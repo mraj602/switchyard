@@ -1,4 +1,4 @@
-// Pair screen (phone.md P2): scan (modules/sy-scan's fake), typed input, errors, confirm replace. Offline: the claim
+// Pair screen (phone.md P2): scan (modules/wy-scan's fake), typed input, errors, confirm replace. Offline: the claim
 // fetch is a fake and expo-router is mocked.
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { HubTestProvider } from '../src/state';
@@ -17,7 +17,7 @@ jest.mock('expo-router', () => ({
 }));
 
 const SECRET = 'Q2xhdWRlIGlzIG5vdCBoZXJl'.slice(0, 22);
-const claimOk = { device: 'dev_phone', kind: 'phone', name: 'Pixel · app', scopes: ['read', 'push'], token: 'sy_p_NEWTOKEN', hub: {} };
+const claimOk = { device: 'dev_phone', kind: 'phone', name: 'Pixel · app', scopes: ['read', 'push'], token: 'wy_p_NEWTOKEN', hub: {} };
 
 function renderPair(f: FakeFetch, value: Partial<HubState> = {}) {
   const pairWith = jest.fn(async () => {});
@@ -31,7 +31,7 @@ function renderPair(f: FakeFetch, value: Partial<HubState> = {}) {
   return { ui, pairWith, unpair };
 }
 
-/** The person taps Scan QR code and the scanner reads `data` (modules/sy-scan's fake). */
+/** The person taps Scan QR code and the scanner reads `data` (modules/wy-scan's fake). */
 async function scan(data: string) {
   scanState.results.push({ status: 'scanned', text: data });
   await fireEvent.press(screen.getByText('Scan QR code'));
@@ -60,7 +60,7 @@ describe('Pair screen', () => {
     expect(claims(f)).toHaveLength(1);
     expect(claims(f)[0]!.url).toBe('https://hub.example.ts.net/v1/pair/claim');
     expect(JSON.parse(claims(f)[0]!.init.body!)).toMatchObject({ secret: SECRET, expect_kind: 'phone', cookie: false, client: 'app/0.8.0+3' });
-    expect(pairWith).toHaveBeenCalledWith(expect.objectContaining({ origin: 'https://hub.example.ts.net', token: 'sy_p_NEWTOKEN', device: 'dev_phone' }));
+    expect(pairWith).toHaveBeenCalledWith(expect.objectContaining({ origin: 'https://hub.example.ts.net', token: 'wy_p_NEWTOKEN', device: 'dev_phone' }));
     expect(mockReplace).toHaveBeenCalledWith('/');
   });
 

@@ -116,7 +116,7 @@ jobs:
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y rpm
 
-      # fetch-sy (no --from) runs `go build ./cmd/wy` on this checkout with CGO_ENABLED=0,
+      # fetch-wy (no --from) runs `go build ./cmd/wy` on this checkout with CGO_ENABLED=0,
       # -trimpath and the ldflags of scripts/release/build.sh, with the version taken from the
       # tag (WY_VERSION), so the bundled wy is the wy of this commit and tag. Checked below.
       - name: Bundle wy from this commit
@@ -125,7 +125,7 @@ jobs:
           WY_VERSION: ${{ env.RELEASE_TAG }}
         run: |
           npm ci
-          node scripts/fetch-sy.mjs auto auto
+          node scripts/fetch-wy.mjs auto auto
           want="${RELEASE_TAG#v}"
           bin=$(find resources/wy -type f -name 'wy*')
           out=$("${bin}" --version)

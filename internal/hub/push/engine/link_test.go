@@ -183,7 +183,7 @@ func TestLinkDismissCollapsesUndeliveredAlert(t *testing.T) {
 func TestLinkSenderOutcomes(t *testing.T) {
 	r := newLinkRig(t)
 	s := pushlink.New(r.lk)
-	m := model.Message{Payload: model.Payload{V: 1, Type: model.TypeTest, Title: "t", Tag: "sy-test"}}
+	m := model.Message{Payload: model.Payload{V: 1, Type: model.TypeTest, Title: "t", Tag: "wy-test"}}
 	if res := s.Send(r.ctx, model.Target{Kind: model.KindLink, DeviceID: "dev_gone"}, m); res.Outcome != model.OutcomeGone {
 		t.Fatalf("no device: %+v", res)
 	}

@@ -55,18 +55,18 @@ test('backlog shows only when it piles up', () => {
 });
 
 test('version line: same, older, newer, held, unknown', () => {
-  assert.deepEqual({ ...M.versionLine({ sy_version: '0.5.0', version_status: 'same' }, '0.5.0') }, { text: '0.5.0 · same as hub', version: '0.5.0', note: 'same as hub', cls: '' });
-  assert.deepEqual({ ...M.versionLine({ sy_version: '0.4.2', version_status: 'older' }, '0.5.0') }, { text: '0.4.2 · older than hub 0.5.0', version: '0.4.2', note: 'older than hub 0.5.0', cls: 'warn' });
-  assert.equal(M.versionLine({ sy_version: '0.6.0', version_status: 'newer' }, '0.5.0').text, '0.6.0 · newer than hub 0.5.0');
-  const held = M.versionLine({ sy_version: '0.6.0', version_status: 'newer', held: 37 }, '0.5.0');
+  assert.deepEqual({ ...M.versionLine({ wy_version: '0.5.0', version_status: 'same' }, '0.5.0') }, { text: '0.5.0 · same as hub', version: '0.5.0', note: 'same as hub', cls: '' });
+  assert.deepEqual({ ...M.versionLine({ wy_version: '0.4.2', version_status: 'older' }, '0.5.0') }, { text: '0.4.2 · older than hub 0.5.0', version: '0.4.2', note: 'older than hub 0.5.0', cls: 'warn' });
+  assert.equal(M.versionLine({ wy_version: '0.6.0', version_status: 'newer' }, '0.5.0').text, '0.6.0 · newer than hub 0.5.0');
+  const held = M.versionLine({ wy_version: '0.6.0', version_status: 'newer', held: 37 }, '0.5.0');
   assert.equal(held.text, '0.6.0 · holding 37 updates because the hub is too old for them');
   assert.equal(held.version, '0.6.0');
   assert.equal(held.cls, 'bad');
-  assert.equal(M.versionLine({ sy_version: 'dev', version_status: 'unknown' }, '0.5.0').cls, '');
+  assert.equal(M.versionLine({ wy_version: 'dev', version_status: 'unknown' }, '0.5.0').cls, '');
   assert.equal(M.versionLine({}, '0.5.0').text, 'not reported');
   // M1: an equal string is the same version even when the hub said "unknown"
-  assert.equal(M.versionLine({ sy_version: '104cd7f', version_status: 'unknown' }, '104cd7f').text, '104cd7f · same as hub');
-  assert.equal(M.versionLine({ sy_version: 'dev', version_status: 'unknown' }, '0.5.0').text, 'dev');
+  assert.equal(M.versionLine({ wy_version: '104cd7f', version_status: 'unknown' }, '104cd7f').text, '104cd7f · same as hub');
+  assert.equal(M.versionLine({ wy_version: 'dev', version_status: 'unknown' }, '0.5.0').text, 'dev');
 });
 
 test('pull state per state; host key and refused cannot be pulled now', () => {

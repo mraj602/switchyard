@@ -165,7 +165,7 @@ func runScripted(t *testing.T, e *env, mutate func(*client.DrainOptions), hub fu
 	t.Helper()
 	r1, w1 := io.Pipe()
 	r2, w2 := io.Pipe()
-	dopts := client.DrainOptions{Outbox: e.ob, Machine: machineID, Name: "gpu-box", SyVersion: "0.5.0", Now: e.clk.Now,
+	dopts := client.DrainOptions{Outbox: e.ob, Machine: machineID, Name: "gpu-box", WyVersion: "0.5.0", Now: e.clk.Now,
 		StartTimeout: 2 * time.Second, AckTimeout: 2 * time.Second}
 	if mutate != nil {
 		mutate(&dopts)
@@ -496,7 +496,7 @@ func TestSessionRefusals(t *testing.T) {
 		done := make(chan pull.Result, 1)
 		go func() { done <- sess.Serve(ctx, e.target, r1, w2) }()
 		wr := drainproto.NewWriter(w1)
-		go func() { _ = wr.Write(drainproto.Hello{Proto: 2, Machine: machineID, Name: "x", Sy: "9"}) }()
+		go func() { _ = wr.Write(drainproto.Hello{Proto: 2, Machine: machineID, Name: "x", Wy: "9"}) }()
 		f, err := drainproto.NewReader(r2).Read()
 		if err != nil {
 			t.Fatal(err)

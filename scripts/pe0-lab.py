@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""PE0 lab helper (docs/TESTING.md, docs/spec/peers.md 13). Touches only /tmp/sy-lab and the registry file of one lab pid."""
+"""PE0 lab helper (docs/TESTING.md, docs/spec/peers.md 13). Touches only /tmp/wy-lab and the registry file of one lab pid."""
 import glob, json, os, socket, sys, uuid
 
-ROOT, SOCKS, WORK = "/tmp/sy-lab", "/tmp/sy-lab/socks/", "/tmp/sy-lab/work"
+ROOT, SOCKS, WORK = "/tmp/wy-lab", "/tmp/wy-lab/socks/", "/tmp/wy-lab/work"
 
 def die(msg):
     sys.exit("lab: refused: " + msg)
@@ -26,7 +26,7 @@ def cmd_info(pid):
     r = registry(pid)
     print(json.dumps({k: r.get(k) for k in ("pid", "name", "cwd", "sessionId", "messagingSocketPath", "status")}, indent=1))
 
-def cmd_frame(mode, session, text, frm="uds:/tmp/sy-lab/reply/r1.sock", hop=""):
+def cmd_frame(mode, session, text, frm="uds:/tmp/wy-lab/reply/r1.sock", hop=""):
     if mode == "plain":
         content = text
     else:

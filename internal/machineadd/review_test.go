@@ -92,7 +92,7 @@ func TestAddPullTargetByMachine(t *testing.T) {
 func TestRepointForwardMachine(t *testing.T) {
 	w := newWorld(t)
 	os.MkdirAll(filepath.Join(w.remote, ".local/bin"), 0o755)
-	os.WriteFile(filepath.Join(w.remote, ".local/bin/wy"), []byte(fakeSy), 0o755)
+	os.WriteFile(filepath.Join(w.remote, ".local/bin/wy"), []byte(fakeWy), 0o755)
 	f := Forward{Host: HostPattern(testHost), Machine: testMID, Name: "gpu-box", Port: 47830, Target: "old.example:443"}
 	res, err := WriteForward(w.home, w.state, f, "test", w.now)
 	if err != nil {
@@ -229,7 +229,7 @@ func TestRemoveForwardDoesNotRestoreOlderBlock(t *testing.T) {
 	if err != nil || !done {
 		t.Fatalf("remove %v %v", done, err)
 	}
-	if b, err := os.ReadFile(filepath.Join(home, ".ssh", ForwardConf)); err == nil && strings.Contains(string(b), "sy-forward") {
+	if b, err := os.ReadFile(filepath.Join(home, ".ssh", ForwardConf)); err == nil && strings.Contains(string(b), "wy-forward") {
 		t.Fatalf("undoing the second set brought the older block back:\n%s", b)
 	}
 }
@@ -344,7 +344,7 @@ func TestSymlinkedSSHFilesStaySymlinks(t *testing.T) {
 	if b, _ := os.ReadFile(filepath.Join(dots, "config")); !strings.HasPrefix(string(b), IncludeLine) {
 		t.Fatalf("the target of the config link was not updated: %q", b)
 	}
-	if b, _ := os.ReadFile(filepath.Join(dots, "authorized_keys")); !strings.Contains(string(b), "sy-pull:pt_01ABC") {
+	if b, _ := os.ReadFile(filepath.Join(dots, "authorized_keys")); !strings.Contains(string(b), "wy-pull:pt_01ABC") {
 		t.Fatalf("the target of the authorized_keys link was not updated: %q", b)
 	}
 	if fi, _ := os.Stat(filepath.Join(dots, "authorized_keys")); fi.Mode().Perm() != 0o600 {

@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TabView, type TabEvent } from '../../../modules/sy-tabs';
+import { TabView, type TabEvent } from '../../../modules/wy-tabs';
 import { seatIndex, seatName } from '../../lib/format';
 import { assessTab, claudeUrl, HINT_START, nextHint, nextMemo, showSignInHint, SIGN_IN_NOTE, TAB_HOME, validSeat, verdictText, type TabEventAt } from '../../lib/tabs';
 import { useHubApi } from '../hub-api';

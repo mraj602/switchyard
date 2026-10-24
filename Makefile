@@ -114,7 +114,7 @@ e2e-android:
 # and test alerts would pop up as real notifications. dbus-run-session gives the run its own
 # bus; without it (some CI images) the bus address points nowhere instead.
 NPM      ?= npm
-NOBUS    := $(shell command -v dbus-run-session >/dev/null 2>&1 && echo 'dbus-run-session --' || echo 'env DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent/sy-no-bus')
+NOBUS    := $(shell command -v dbus-run-session >/dev/null 2>&1 && echo 'dbus-run-session --' || echo 'env DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent/wy-no-bus')
 XVFB     := $(shell command -v xvfb-run >/dev/null 2>&1 && echo 'env -u WAYLAND_DISPLAY -u XDG_SESSION_TYPE xvfb-run -a --server-args="-screen 0 1440x940x24"')
 XVFB     := $(if $(XVFB),$(NOBUS) $(XVFB),$(NOBUS))
 
@@ -150,8 +150,8 @@ phone-apk-release:
 	cd phone && ./scripts/release-apk.sh
 
 app-smoke: app-deps
-	CGO_ENABLED=0 $(GO) build -o app/node_modules/.cache/sy-smoke/wy ./cmd/wy
-	cd app && WY_BIN="$$PWD/node_modules/.cache/sy-smoke/wy" $(XVFB) $(NPM) run smoke
+	CGO_ENABLED=0 $(GO) build -o app/node_modules/.cache/wy-smoke/wy ./cmd/wy
+	cd app && WY_BIN="$$PWD/node_modules/.cache/wy-smoke/wy" $(XVFB) $(NPM) run smoke
 
 # On Linux the deb and rpm targets run electron-builder's bundled fpm, whose Ruby needs
 # libcrypt.so.1 (Fedora 40+ ships only libcrypt.so.2 unless libxcrypt-compat is installed).
@@ -161,11 +161,11 @@ app-smoke: app-deps
 APP_DIST_LINUX ?= $(shell [ "$$(uname -s)" = Linux ] && ! { ldconfig -p 2>/dev/null | grep -q 'libcrypt\.so\.1 '; } && echo AppImage)
 app-dist: app-deps
 	$(if $(APP_DIST_LINUX),@echo "app-dist: Linux targets: $(APP_DIST_LINUX) (deb and rpm need libcrypt.so.1 for fpm: dnf install libxcrypt-compat)")
-	cd app && node scripts/fetch-sy.mjs auto auto && CSC_IDENTITY_AUTO_DISCOVERY=false $(NPM) run dist -- --publish never $(if $(APP_DIST_LINUX),--linux $(APP_DIST_LINUX))
+	cd app && node scripts/fetch-wy.mjs auto auto && CSC_IDENTITY_AUTO_DISCOVERY=false $(NPM) run dist -- --publish never $(if $(APP_DIST_LINUX),--linux $(APP_DIST_LINUX))
 
 # The e2e build bakes watchyard.allowCdp=true into the asar (desktop.md C2); app-dist never does.
 app-e2e: app-deps
-	cd app && node scripts/fetch-sy.mjs auto auto && scripts/dist-e2e.sh
+	cd app && node scripts/fetch-wy.mjs auto auto && scripts/dist-e2e.sh
 	cd app && $(XVFB) $(NPM) run e2e
 
 clean:

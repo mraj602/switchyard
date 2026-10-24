@@ -90,12 +90,12 @@ func shellQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''
 // `command -v wy >/dev/null 2>&1 && wy hook Stop || true` becomes
 // `[ -x '/home/u/.local/bin/wy' ] && '/home/u/.local/bin/wy' hook Stop || true`.
 // On Windows the path is written with forward slashes (hooks run under a POSIX shell).
-func HookCommand(cmd, syPath string) (string, error) {
+func HookCommand(cmd, wyPath string) (string, error) {
 	rest, ok := strings.CutPrefix(cmd, hookPrefix)
 	if !ok {
 		return "", fmt.Errorf("pluginmkt: unrecognised hook command %q", cmd)
 	}
-	p := syPath
+	p := wyPath
 	if runtime.GOOS == "windows" {
 		p = filepath.ToSlash(p)
 	}
@@ -105,7 +105,7 @@ func HookCommand(cmd, syPath string) (string, error) {
 
 // RewriteHooks returns hooksJSON with every hook command passed through HookCommand. Only
 // the command strings change: events, matchers, order and formatting stay byte for byte.
-func RewriteHooks(hooksJSON []byte, syPath string) ([]byte, error) {
+func RewriteHooks(hooksJSON []byte, wyPath string) ([]byte, error) {
 	var doc any
 	if err := json.Unmarshal(hooksJSON, &doc); err != nil {
 		return nil, fmt.Errorf("pluginmkt: hooks.json: %w", err)
@@ -136,7 +136,7 @@ func RewriteHooks(hooksJSON []byte, syPath string) ([]byte, error) {
 			continue
 		}
 		seen[c] = true
-		n, err := HookCommand(c, syPath)
+		n, err := HookCommand(c, wyPath)
 		if err != nil {
 			return nil, err
 		}
@@ -220,12 +220,12 @@ func manifestDescription(src fs.FS, def string) string {
 var ErrPathSeparator = errors.New("pluginmkt: path contains the PATH separator")
 
 // WriteMarketplace implements model.PluginInstaller.
-func (i *Installer) WriteMarketplace(dir, syPath, version string) error {
+func (i *Installer) WriteMarketplace(dir, wyPath, version string) error {
 	if !filepath.IsAbs(dir) {
 		return fmt.Errorf("pluginmkt: marketplace folder %q is not absolute", dir)
 	}
-	if !filepath.IsAbs(syPath) {
-		return fmt.Errorf("pluginmkt: wy path %q is not absolute", syPath)
+	if !filepath.IsAbs(wyPath) {
+		return fmt.Errorf("pluginmkt: wy path %q is not absolute", wyPath)
 	}
 	sep := string(os.PathListSeparator)
 	if runtime.GOOS == "windows" {
@@ -262,7 +262,7 @@ func (i *Installer) WriteMarketplace(dir, syPath, version string) error {
 	err = copyTree(src, filepath.Join(tmp, "plugins", PluginName), func(p string, data []byte) ([]byte, error) {
 		switch p {
 		case "hooks/hooks.json":
-			return RewriteHooks(data, syPath)
+			return RewriteHooks(data, wyPath)
 		case ".claude-plugin/plugin.json":
 			return setVersion(data, version), nil
 		}
@@ -275,7 +275,7 @@ func (i *Installer) WriteMarketplace(dir, syPath, version string) error {
 		if p == ".claude-plugin/plugin.json" {
 			return setVersion(data, version), nil
 		}
-		return paneFile(p, data, syPath) // pane.go: the __SY_PATH__ rewrite
+		return paneFile(p, data, wyPath) // pane.go: the __WY_PATH__ rewrite
 	})
 	if err != nil {
 		return cleanup(err)
@@ -463,6 +463,26 @@ func (i *Installer) RemoveLegacy(ctx context.Context, folder claudecli.Folder) (
 	}
 	sort.Strings(out)
 	return out, nil
+}
+
+// MissingCurrent returns the current plugin id when folder's plugin root has neither it nor a
+// legacy one installed: a move from the old name that uninstalled the legacy plugin and then
+// failed to install the current one (rename.md 2.4). Nil when there was no rename.
+func (i *Installer) MissingCurrent(ctx context.Context, folder claudecli.Folder) ([]string, error) {
+	legacy := LegacyIDs()
+	if legacy == nil {
+		return nil, nil
+	}
+	plugins, err := i.Runner.PluginList(ctx, folder)
+	if err != nil {
+		return nil, fmt.Errorf("claude plugin list: %w", err)
+	}
+	for _, p := range plugins {
+		if p.ID == PluginID || legacy[p.ID] == PluginID {
+			return nil, nil
+		}
+	}
+	return []string{PluginID}, nil
 }
 
 // InstallCurrent installs ids (from RemoveLegacy) from the rewritten marketplace at dir:

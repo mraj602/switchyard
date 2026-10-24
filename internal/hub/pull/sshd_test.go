@@ -106,7 +106,7 @@ func TestRealSSHDForcedCommandAndRestrict(t *testing.T) {
 		t.Fatal(err)
 	}
 	srv := startSSHD(t, func(forced string) string {
-		return fmt.Sprintf("restrict,command=%q %s sy-pull:pt_x\n", forced, pub)
+		return fmt.Sprintf("restrict,command=%q %s wy-pull:pt_x\n", forced, pub)
 	}, drain)
 
 	tg, err := e.st.AddPullTarget(ctx, store.PullTarget{Name: "local", Host: "127.0.0.1", Port: srv.port, User: u.Username,

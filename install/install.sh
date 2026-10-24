@@ -131,7 +131,7 @@ else
 fi
 
 # 5. Download into a private temp folder, removed on exit.
-tmp=$(mktemp -d "${TMPDIR:-/tmp}/sy-install.XXXXXX") || die 4 "cannot create a temp folder"
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/wy-install.XXXXXX") || die 4 "cannot create a temp folder"
 newfile=
 cleanup() {
 	[ -z "$newfile" ] || rm -f "$newfile"

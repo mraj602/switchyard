@@ -26,7 +26,7 @@ func TestPullTargetLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tg.State != PullStateNew || tg.Port != 22 || tg.IntervalS != 60 || tg.RemoteSy != ".local/bin/wy" || tg.DeviceID == "" {
+	if tg.State != PullStateNew || tg.Port != 22 || tg.IntervalS != 60 || tg.RemoteWy != ".local/bin/wy" || tg.DeviceID == "" {
 		t.Fatalf("%+v", tg)
 	}
 	// The pull device: kind machine, bound to the machine, created_by pull:<id>, scope write.
@@ -132,7 +132,7 @@ func TestBindPullTargetAndHeartbeat(t *testing.T) {
 	if _, err := s.BindPullTarget(ctx, tg.ID, "m_01JA2W5N0G8H3Q7S2V6X9Y1Z4Z", "x"); err == nil {
 		t.Fatal("bound to a second machine")
 	}
-	if err := s.PullHeartbeat(ctx, PullHello{Machine: pullMachine, SyVersion: "0.5.0", Backlog: 7, BacklogOldest: 1234, RecordV: 1}); err != nil {
+	if err := s.PullHeartbeat(ctx, PullHello{Machine: pullMachine, WyVersion: "0.5.0", Backlog: 7, BacklogOldest: 1234, RecordV: 1}); err != nil {
 		t.Fatal(err)
 	}
 	var reach string

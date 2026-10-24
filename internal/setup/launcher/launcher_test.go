@@ -57,10 +57,29 @@ func TestParseMarkerAndHash(t *testing.T) {
 	if info, ok := ParseMarker(Render("linux", Spec{Slot: "~/.claude-4"})); !ok || info.Label != "" {
 		t.Errorf("no label: %+v %v", info, ok)
 	}
-	for _, bad := range []string{"", "#!/bin/sh\n", "#!/bin/sh\n# something else\n", "# sy-launcher v1 slot=x\n#!/bin/sh\n", "#!/bin/sh\n# sy-launcher v10 slot=x\n"} {
+	for _, bad := range []string{"", "#!/bin/sh\n", "#!/bin/sh\n# something else\n", "# wy-launcher v1 slot=x\n#!/bin/sh\n", "#!/bin/sh\n# wy-launcher v10 slot=x\n"} {
 		if _, ok := ParseMarker([]byte(bad)); ok {
 			t.Errorf("ParseMarker(%q) ok", bad)
 		}
+	}
+}
+
+// Legacy compat: a launcher written before the rename carries sy-launcher v1; it is still ours.
+// New launchers carry wy-launcher v1.
+func TestParseLegacyMarker(t *testing.T) {
+	for _, c := range []string{
+		"#!/bin/sh\n# sy-launcher v1 slot=~/.claude-2 label=work\nexec claude\n",
+		"@echo off\r\nrem sy-launcher v1 slot=~/.claude-2 label=work\r\n",
+	} {
+		if info, ok := ParseMarker([]byte(c)); !ok || info.Slot != "~/.claude-2" || info.Label != "work" {
+			t.Errorf("ParseMarker(%q) = %+v %v", c, info, ok)
+		}
+	}
+	if _, ok := ParseMarker([]byte("#!/bin/sh\n# sy-launcher v10 slot=x\n")); ok {
+		t.Error("sy-launcher v10 accepted")
+	}
+	if b := Render("linux", Spec{Slot: "~/.claude-2"}); !strings.Contains(string(b), "# wy-launcher v1 ") || strings.Contains(string(b), "sy-launcher") {
+		t.Errorf("Render writes:\n%s", b)
 	}
 }
 

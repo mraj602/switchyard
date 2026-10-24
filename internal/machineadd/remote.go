@@ -18,9 +18,9 @@ import (
 	"github.com/mraj602/watchyard/internal/update"
 )
 
-// RemoteSy is the remote's wy relative to its home folder (ssh starts there): no remote
+// RemoteWy is the remote's wy relative to its home folder (ssh starts there): no remote
 // command depends on the remote PATH (machines.md 4.3).
-const RemoteSy = ".local/bin/wy"
+const RemoteWy = ".local/bin/wy"
 
 // Platform maps `uname -sm` to Go's goos/goarch. Windows-like systems are ErrWindows.
 func Platform(uname string) (goos, goarch string, err error) {

@@ -26,7 +26,7 @@ function NeedsYouSmall({ needsYou, resetsAt }: Props) {
   );
 }
 
-function SyNeedsYou({ needsYou }: Props) {
+function WyNeedsYou({ needsYou }: Props) {
   return (
     <FlexWidget style={{ height: 'match_parent', width: 'match_parent' }}>
       <TextWidget text={String(needsYou)} />
@@ -47,7 +47,7 @@ describe('widget component mocks', () => {
   });
 
   it('renders an android widget tree', () => {
-    const tree = renderWidget(<SyNeedsYou needsYou={3} resetsAt="2026-10-13T17:00:00.000Z" />);
+    const tree = renderWidget(<WyNeedsYou needsYou={3} resetsAt="2026-10-13T17:00:00.000Z" />);
     expect(tree.type).toBe('Android.FlexWidget');
     expect(allOf(tree, 'Android.TextWidget')[0]!.props.text).toBe('3');
   });

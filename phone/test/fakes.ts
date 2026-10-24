@@ -51,9 +51,9 @@ function hostModule(ns: string, extra: Record<string, unknown> = {}): Record<str
   });
 }
 
-// ---------------------------------------------------------------- sy-notify (modules/sy-notify)
+// ---------------------------------------------------------------- wy-notify (modules/wy-notify)
 // The module's calls plus the response listeners src/lib/notify can take (the real module has
-// none on Android: sy-link's notifications carry their own tap intents).
+// none on Android: wy-link's notifications carry their own tap intents).
 
 type Listener = (x: unknown) => void;
 
@@ -181,7 +181,7 @@ export const secureStore = {
   },
 };
 
-// ---------------------------------------------------------------- sy-scan (modules/sy-scan)
+// ---------------------------------------------------------------- wy-scan (modules/wy-scan)
 
 /**
  * `granted`/`canAskAgain`: the camera permission. `results`: what the next scans return, in
@@ -193,7 +193,7 @@ export const scanState = {
   results: [] as ({ status: 'scanned'; text: string } | { status: 'cancelled' } | { status: 'unavailable' })[],
 };
 
-export const syScan = {
+export const wyScan = {
   __esModule: true,
   available: true,
   async cameraPermission() {
@@ -315,10 +315,10 @@ export const androidWidget = hostModule('Android', {
   },
 });
 
-// ---------------------------------------------------------------- sy-link (push.md 14.8)
+// ---------------------------------------------------------------- wy-link (push.md 14.8)
 
-type LinkStateT = import('../modules/sy-link').LinkState;
-type LinkConfigT = import('../modules/sy-link').LinkConfig;
+type LinkStateT = import('../modules/wy-link').LinkState;
+type LinkConfigT = import('../modules/wy-link').LinkConfig;
 
 const linkInitial = (): LinkStateT => ({
   enabled: false,
@@ -337,7 +337,7 @@ const linkInitial = (): LinkStateT => ({
   checkCode: null,
 });
 
-/** Scriptable state of the sy-link fake; `emitLink` plays the native side's events. */
+/** Scriptable state of the wy-link fake; `emitLink` plays the native side's events. */
 export const linkState = {
   available: true,
   state: linkInitial(),
@@ -348,14 +348,14 @@ export const linkState = {
   },
   sealed: 'SEALEDKEYSFAKE',
   config: null as LinkConfigT | null,
-  /** A code configure() rejects with (ERR_SY_HUB_KEY, ERR_SY_TAMPERED, ...), or null. */
+  /** A code configure() rejects with (ERR_WY_HUB_KEY, ERR_WY_TAMPERED, ...), or null. */
   configureError: null as string | null,
   prepareError: false,
   /** What requestBatteryExemption() turns batteryExempt into. */
   exemptAfterRequest: true,
-  refresh: null as import('../modules/sy-link').LinkRefresh | null,
+  refresh: null as import('../modules/wy-link').LinkRefresh | null,
   /** What checkUpdate() finds (null: up to date), what it rejects with, and installUpdate()'s answer or rejection. */
-  update: null as import('../modules/sy-link').UpdateInfo | null,
+  update: null as import('../modules/wy-link').UpdateInfo | null,
   updateError: null as string | null,
   installResult: 'started' as 'started' | 'refused',
   installError: null as string | null,
@@ -371,15 +371,15 @@ export function emitLink(event: 'state' | 'refresh' | 'revoked' | 'upgrade', pay
 
 const codedError = (code: string, message: string) => Object.assign(new Error(message), { code });
 
-export const syLink = {
+export const wyLink = {
   __esModule: true,
   get available() {
     return linkState.available;
   },
-  CONFIGURE_ERRORS: { hubKey: 'ERR_SY_HUB_KEY', tampered: 'ERR_SY_TAMPERED' },
+  CONFIGURE_ERRORS: { hubKey: 'ERR_WY_HUB_KEY', tampered: 'ERR_WY_TAMPERED' },
   async prepareKeys() {
     rec('link.prepareKeys', []);
-    if (linkState.prepareError) throw codedError('ERR_SY_KEYS', 'sy-link: keystore');
+    if (linkState.prepareError) throw codedError('ERR_WY_KEYS', 'wy-link: keystore');
     return linkState.keys;
   },
   async sealKeys(k: string, secret: string) {
@@ -388,13 +388,13 @@ export const syLink = {
   },
   async configure(cfg: LinkConfigT) {
     rec('link.configure', [cfg]);
-    if (linkState.configureError) throw codedError(linkState.configureError, 'sy-link: refused');
+    if (linkState.configureError) throw codedError(linkState.configureError, 'wy-link: refused');
     linkState.config = cfg;
     linkState.state = { ...linkState.state, verified: cfg.reg, pingS: cfg.pingS, checkCode: 'k7q2-m4xa' };
   },
   async start() {
     rec('link.start', []);
-    if (!linkState.config) throw codedError('ERR_SY_NOT_CONFIGURED', 'sy-link: configure first');
+    if (!linkState.config) throw codedError('ERR_WY_NOT_CONFIGURED', 'wy-link: configure first');
     linkState.state = { ...linkState.state, enabled: true, status: 'connecting' };
   },
   async stop() {
@@ -410,7 +410,7 @@ export const syLink = {
   },
   async setPingInterval(seconds: number) {
     rec('link.setPingInterval', [seconds]);
-    if (seconds < 60 || seconds > 900) throw codedError('ERR_SY_RANGE', 'sy-link: range');
+    if (seconds < 60 || seconds > 900) throw codedError('ERR_WY_RANGE', 'wy-link: range');
     linkState.state = { ...linkState.state, pingS: seconds };
   },
   async setSnoozeMinutes(minutes: number) {
@@ -450,23 +450,23 @@ export const syLink = {
   async checkUpdate(origin: string, token: string) {
     // The token is a secret: only its presence is recorded.
     rec('link.checkUpdate', [origin, token ? '<token>' : '']);
-    if (linkState.updateError) throw codedError('ERR_SY_UPDATE', `sy-link: ${linkState.updateError}`);
+    if (linkState.updateError) throw codedError('ERR_WY_UPDATE', `wy-link: ${linkState.updateError}`);
     linkState.hubAuth = linkState.update?.source === 'hub';
     return linkState.update;
   },
   async installUpdate(info: { version: string; source?: string }) {
     rec('link.installUpdate', [info.version]);
-    if (info.source === 'hub' && !linkState.hubAuth) throw codedError('ERR_SY_UPDATE', 'sy-link: check for updates first');
-    if (linkState.installError) throw codedError('ERR_SY_UPDATE', `sy-link: ${linkState.installError}`);
+    if (info.source === 'hub' && !linkState.hubAuth) throw codedError('ERR_WY_UPDATE', 'wy-link: check for updates first');
+    if (linkState.installError) throw codedError('ERR_WY_UPDATE', `wy-link: ${linkState.installError}`);
     return linkState.installResult;
   },
 };
 
-// ---------------------------------------------------------------- sy-tabs (phone.md P17.1)
+// ---------------------------------------------------------------- wy-tabs (phone.md P17.1)
 
-type TabViewPropsT = import('../modules/sy-tabs').TabViewProps;
+type TabViewPropsT = import('../modules/wy-tabs').TabViewProps;
 
-/** Scriptable state of the sy-tabs fake; `tabsState.view` holds the last TabView's props. */
+/** Scriptable state of the wy-tabs fake; `tabsState.view` holds the last TabView's props. */
 export const tabsState = {
   available: true,
   supported: true,
@@ -476,7 +476,7 @@ export const tabsState = {
   view: null as TabViewPropsT | null,
 };
 
-export const syTabs = {
+export const wyTabs = {
   __esModule: true,
   get available() {
     return tabsState.available;
@@ -491,23 +491,23 @@ export const syTabs = {
   },
   async deleteProfile(seat: string) {
     rec('tabs.deleteProfile', [seat]);
-    if (tabsState.inUse.has(seat)) throw codedError('ERR_SY_TABS_IN_USE', 'sy-tabs: close the tab first');
+    if (tabsState.inUse.has(seat)) throw codedError('ERR_WY_TABS_IN_USE', 'wy-tabs: close the tab first');
     const had = tabsState.profiles.includes(seat);
     tabsState.profiles = tabsState.profiles.filter((x) => x !== seat);
     return had;
   },
   async moveProfile(from: string, to: string) {
     rec('tabs.moveProfile', [from, to]);
-    if (tabsState.inUse.has(from)) throw codedError('ERR_SY_TABS_IN_USE', 'sy-tabs: close the tab first');
-    if (!tabsState.profiles.includes(from)) throw codedError('ERR_SY_TABS_NONE', 'sy-tabs: that seat has no tab');
-    if (tabsState.profiles.includes(to)) throw codedError('ERR_SY_TABS_TAKEN', 'sy-tabs: the other seat has a tab already');
+    if (tabsState.inUse.has(from)) throw codedError('ERR_WY_TABS_IN_USE', 'wy-tabs: close the tab first');
+    if (!tabsState.profiles.includes(from)) throw codedError('ERR_WY_TABS_NONE', 'wy-tabs: that seat has no tab');
+    if (tabsState.profiles.includes(to)) throw codedError('ERR_WY_TABS_TAKEN', 'wy-tabs: the other seat has a tab already');
     tabsState.profiles = [...tabsState.profiles.filter((x) => x !== from), to];
     return true;
   },
   TabView(props: TabViewPropsT) {
     tabsState.view = props;
     if (!tabsState.profiles.includes(props.seat)) tabsState.profiles.push(props.seat);
-    return React.createElement('SyTabView', { testID: props.testID ?? 'tab-view', seat: props.seat, url: props.url });
+    return React.createElement('WyTabView', { testID: props.testID ?? 'tab-view', seat: props.seat, url: props.url });
   },
 };
 

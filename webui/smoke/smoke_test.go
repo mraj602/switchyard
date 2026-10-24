@@ -50,7 +50,7 @@ func TestBrowserSmoke(t *testing.T) {
 	if dbus, err := exec.LookPath("dbus-run-session"); err == nil {
 		cmd = exec.Command(dbus, "--", "node", "smoke.cjs")
 	} else {
-		env = append(env, "DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent/sy-no-bus")
+		env = append(env, "DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent/wy-no-bus")
 	}
 	cmd.Env = append(env, "NODE_PATH="+modules, "BASE_URL="+ts.URL, "TOKEN="+devserver.DefaultToken,
 		"PAIR_SECRET="+devserver.PairSecret, "PAIR_CODE="+devserver.PairCode, "OWNER_SECRET="+devserver.OwnerSecret, "EXPIRED_OWNER_SECRET="+devserver.ExpiredOwnerSecret, "OUT_DIR="+out)

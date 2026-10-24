@@ -34,15 +34,15 @@ run as a user service, is `journalctl --user -u watchyard-hub -n 100`.
 ### T0.1 Back up settings (not credentials)
 
 ```sh
-mkdir -p ~/sy-backup && for d in ~/.claude ~/.claude-[0-9]*; do
-  n=$(basename "$d"); mkdir -p ~/sy-backup/$n
-  for f in settings.json CLAUDE.md; do [ -e "$d/$f" ] && cp -L "$d/$f" ~/sy-backup/$n/; done
-done; ls -RA ~/sy-backup
+mkdir -p ~/wy-backup && for d in ~/.claude ~/.claude-[0-9]*; do
+  n=$(basename "$d"); mkdir -p ~/wy-backup/$n
+  for f in settings.json CLAUDE.md; do [ -e "$d/$f" ] && cp -L "$d/$f" ~/wy-backup/$n/; done
+done; ls -RA ~/wy-backup
 ```
 
 `cp -L` copies what a symlinked `settings.json` points at. **Pass:** one folder per config dir,
-no `.credentials.json` anywhere (`find ~/sy-backup -name '*.json' | grep -c credentials` prints 0).
-**Undo:** `rm -rf ~/sy-backup`. **Report:** nothing; just do not continue without it.
+no `.credentials.json` anywhere (`find ~/wy-backup -name '*.json' | grep -c credentials` prints 0).
+**Undo:** `rm -rf ~/wy-backup`. **Report:** nothing; just do not continue without it.
 
 ### T0.2 Build `wy`
 
@@ -190,10 +190,10 @@ Use a real move only after T3 works. Keep the archive private: it holds every to
 
 ```sh
 # on the laptop (freezes the old hub: it answers 503 to new records from now on)
-wy hub export --moved-to https://<worker>.<tailnet>.ts.net --encrypt --out ~/hub.syx
-scp ~/hub.syx <user@worker>:
+wy hub export --moved-to https://<worker>.<tailnet>.ts.net --encrypt --out ~/hub.wyx
+scp ~/hub.wyx <user@worker>:
 # on the worker (wy is installed from T3; start no hub before importing)
-wy hub import ~/hub.syx --public-url https://<worker>.<tailnet>.ts.net
+wy hub import ~/hub.wyx --public-url https://<worker>.<tailnet>.ts.net
 # then start its hub: copy deploy/systemd/watchyard-hub.service from this repo into
 # ~/.config/systemd/user/, add --public-url <the same address> to ExecStart, and
 systemctl --user daemon-reload && systemctl --user enable --now watchyard-hub
@@ -206,7 +206,7 @@ wy connect https://<worker>.<tailnet>.ts.net --keep-token        # on this machi
 **Pass:** the board at the new address has the old history, the laptop and worker report to it, and
 the old hub says it moved. Phones keep working if the public URL stayed the same, otherwise pair
 them again. **Undo:** on the old hub `wy hub unfreeze` and `wy connect <old url> --keep-token`
-everywhere. Delete `~/hub.syx` afterwards. **Report:** the import output, `wy doctor` on both
+everywhere. Delete `~/hub.wyx` afterwards. **Report:** the import output, `wy doctor` on both
 machines (a frozen hub prints the exact repoint line).
 
 When the worker is the hub and its sessions run as the hub's OS user, set `[peers]
@@ -356,7 +356,7 @@ Needs T2.3 (app installed and paired) and K1. In the app: Settings → Notificat
 
 **Undo:** switch Instant delivery off (checks every 15 minutes) or unpair. **Report:** the
 Notifications screen (screenshot), the board's delivery log row, the phone model and Android version,
-and `adb logcat -s SyLink` if you have it.
+and `adb logcat -s WyLink` if you have it.
 
 ### K7. The updater
 
@@ -378,22 +378,22 @@ This settles the things the peers design could only read from Claude Code's prog
 (peers.md 13, 14). It posts frames by hand to **throwaway** sessions. Do it after K3 works, once per
 Claude Code version you care about, and again after an update.
 
-Hard rules (peers.md 13.1): start every lab session yourself in `/tmp/sy-lab/work`, named `lab-...`,
-with `--messaging-socket-path /tmp/sy-lab/socks/<x>.sock`; never connect to, write to or list any socket
+Hard rules (peers.md 13.1): start every lab session yourself in `/tmp/wy-lab/work`, named `lab-...`,
+with `--messaging-socket-path /tmp/wy-lab/socks/<x>.sock`; never connect to, write to or list any socket
 in the real `cc-socks` folder; never post to a session you did not start for the lab; never open
 `sessions/*.key` or `.credentials.json`; do not run the lab in or from a session that matters.
-`scripts/pe0-lab.py` enforces the first three: it posts only to a socket under `/tmp/sy-lab/socks/`
-whose session's registry file has a `lab-` name and `/tmp/sy-lab/work` as its directory, and reads
+`scripts/pe0-lab.py` enforces the first three: it posts only to a socket under `/tmp/wy-lab/socks/`
+whose session's registry file has a `lab-` name and `/tmp/wy-lab/work` as its directory, and reads
 only that one registry file.
 
 Setup (two folders logged in to **different** accounts, started directly, not through a launcher):
 
 ```sh
-mkdir -p /tmp/sy-lab/{socks,work,reply}
-cd /tmp/sy-lab/work
-CLAUDE_CONFIG_DIR=~/.claude   claude --name lab-a --debug --messaging-socket-path /tmp/sy-lab/socks/a.sock
+mkdir -p /tmp/wy-lab/{socks,work,reply}
+cd /tmp/wy-lab/work
+CLAUDE_CONFIG_DIR=~/.claude   claude --name lab-a --debug --messaging-socket-path /tmp/wy-lab/socks/a.sock
 CLAUDE_CONFIG_DIR=~/.claude-2 claude --name lab-b --debug --permission-mode bypassPermissions \
-  --messaging-socket-path /tmp/sy-lab/socks/b.sock          # second terminal
+  --messaging-socket-path /tmp/wy-lab/socks/b.sock          # second terminal
 ```
 
 Helpers (run from the repo, in a third terminal; the pid comes from `pgrep -f 'name lab-a'`):
@@ -401,13 +401,13 @@ Helpers (run from the repo, in a third terminal; the pid comes from `pgrep -f 'n
 ```sh
 L=scripts/pe0-lab.py
 $L info <pid>                                   # session id and socket of a lab session
-$L frame <plain|bypass|prompting|none> <session id | -> "<text>" [<from> [<hop tokens>]] > /tmp/sy-lab/f.jsonl
-$L post /tmp/sy-lab/socks/a.sock /tmp/sy-lab/f.jsonl <pid>
-$L listen /tmp/sy-lab/reply/r1.sock             # a listener, for E10 and E11
+$L frame <plain|bypass|prompting|none> <session id | -> "<text>" [<from> [<hop tokens>]] > /tmp/wy-lab/f.jsonl
+$L post /tmp/wy-lab/socks/a.sock /tmp/wy-lab/f.jsonl <pid>
+$L listen /tmp/wy-lab/reply/r1.sock             # a listener, for E10 and E11
 ```
 
 `frame` builds the canonical wrapper of peers.md 8.5 (`bypass` and `prompting` set `from-mode`, `none`
-leaves it out, `plain` sends the bare text). The default `from` is `uds:/tmp/sy-lab/reply/r1.sock`.
+leaves it out, `plain` sends the bare text). The default `from` is `uds:/tmp/wy-lab/reply/r1.sock`.
 
 Record for each experiment: admitted, held with a dialog, refused or dropped; the `--debug` log's
 inbound lines and cause; latency; anything a listener captured.
@@ -421,18 +421,18 @@ inbound lines and cause; latency; anything a listener captured.
 | E5 | E3 with the **other** session's id | Dropped |
 | E6 | E3 posted from a detached process: `setsid python3 scripts/pe0-lab.py post ...` | Admitted |
 | E7 | E3 with 3 hop tokens (24 hex characters each, comma separated), then 30 | Admitted, then dropped |
-| E8 | A stdio MCP server in `/tmp/sy-lab/work/.mcp.json` that posts to its parent's socket | Admitted in bypass (needs you to write it; skip if you do not want the fallback) |
+| E8 | A stdio MCP server in `/tmp/wy-lab/work/.mcp.json` that posts to its parent's socket | Admitted in bypass (needs you to write it; skip if you do not want the fallback) |
 | E9 | `/peers` in lab-a and in lab-b | Neither lists the other |
 | E10 | After E3, ask lab-b to reply to the sender, with `listen` running on `r1.sock` | A frame arrives; keep it, it is the golden wrapper |
 | E11 | E2 with `from` a 16-hex-named socket in the lab socket folder, listener on it; deny the dialog | `held`, then `denied` receipts arrive |
-| E12 | A scratch `UserPromptSubmit` hook in `/tmp/sy-lab/work/.claude/settings.json` that logs the first 40 characters of the prompt; deliver to idle lab-a | Note whether it fires and what the prompt starts with |
+| E12 | A scratch `UserPromptSubmit` hook in `/tmp/wy-lab/work/.claude/settings.json` that logs the first 40 characters of the prompt; deliver to idle lab-a | Note whether it fires and what the prompt starts with |
 | E13 | 35 quick posts to lab-a; the same body twice in 30 s | Drops after about 30; the duplicate dropped |
 | E14 | A third lab session in bypass with `--settings '{"crossSessionInbound":"accept"}'`; do E2 | Admitted |
 | E15 | `claude -p --permission-mode bypassPermissions ...` as a lab session; E3 and E2 | E3 admitted; E2 held then expired |
 | E16 | E1-E4 on the worker, posting there (same recipe, a lab folder there) | Same outcomes |
 | E17 | E3 to a session whose registry file is gone (exit it first) | Connection refused |
 
-Cleanup: exit the lab sessions, `rm -rf /tmp/sy-lab`.
+Cleanup: exit the lab sessions, `rm -rf /tmp/wy-lab`.
 
 **Report:** the table filled in (outcome and cause per row), `claude --version`, the E10 frame (it has
 lab ids and paths only), and which rows differed from "Expect". The delivery mode follows peers.md
@@ -441,5 +441,5 @@ lab ids and paths only), and which rows differed from "Expect". The delivery mod
 ## Finishing
 
 When a stage passes, note the date and versions (`wy version`, `claude --version`, the app version)
-next to it. Leave the backup from T0.1 in place until you trust the setup; delete `~/hub.syx` as soon as
+next to it. Leave the backup from T0.1 in place until you trust the setup; delete `~/hub.wyx` as soon as
 T4 is done.

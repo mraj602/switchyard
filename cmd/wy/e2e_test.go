@@ -41,19 +41,19 @@ func TestE2EClaudeCode(t *testing.T) {
 
 	// A bin dir with only wy, first on PATH.
 	bin := t.TempDir()
-	data, err := os.ReadFile(syBin)
+	data, err := os.ReadFile(wyBin)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(bin, "wy"), data, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	syHome := t.TempDir()
+	wyHome := t.TempDir()
 	proj := t.TempDir()
 
 	env := append([]string{}, os.Environ()...)
 	env = setEnv(env, "PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-	env = setEnv(env, "WY_HOME", syHome)
+	env = setEnv(env, "WY_HOME", wyHome)
 	for _, k := range []string{"WY_STATE_DIR", "WY_CONFIG_DIR", "WY_DATA_DIR"} {
 		env = setEnv(env, k, "")
 	}
@@ -92,17 +92,17 @@ func TestE2EClaudeCode(t *testing.T) {
 	var recs []*record.Record
 	deadline := time.Now().Add(15 * time.Second) // async hooks can finish after claude exits
 	for {
-		recs = readOutbox(t, filepath.Join(syHome, "state", "outbox"))
+		recs = readOutbox(t, filepath.Join(wyHome, "state", "outbox"))
 		if missing(recs, want) == "" || time.Now().After(deadline) {
 			break
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
 	if m := missing(recs, want); m != "" {
-		t.Fatalf("no %s record; got events %v\nhook-errors.log: %s", m, eventNames(recs), readFile(filepath.Join(syHome, "state", "hook-errors.log")))
+		t.Fatalf("no %s record; got events %v\nhook-errors.log: %s", m, eventNames(recs), readFile(filepath.Join(wyHome, "state", "hook-errors.log")))
 	}
 
-	mb, err := os.ReadFile(filepath.Join(syHome, "state", "machine.json"))
+	mb, err := os.ReadFile(filepath.Join(wyHome, "state", "machine.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestE2EClaudeCode(t *testing.T) {
 		}
 	}
 	t.Logf("events in order: %v", eventNames(recs))
-	if log := readFile(filepath.Join(syHome, "state", "hook-errors.log")); log != "" {
+	if log := readFile(filepath.Join(wyHome, "state", "hook-errors.log")); log != "" {
 		t.Errorf("hook-errors.log is not empty:\n%s", log)
 	}
 }

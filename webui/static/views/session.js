@@ -16,7 +16,7 @@ export function load({ route }) {
   linked = null;
   if (route.id !== showAllFor) { showAll = false; showAllFor = route.id; }
   const id = route.query.get('alert');
-  if (id) getAlert(id).then((a) => { linked = a; window.dispatchEvent(new Event('sy-rerender')); }).catch(() => {});
+  if (id) getAlert(id).then((a) => { linked = a; window.dispatchEvent(new Event('wy-rerender')); }).catch(() => {});
   return openDetail(route.id);
 }
 
@@ -111,7 +111,7 @@ export function render({ store, route, now }) {
       h('section', { class: 'card', 'aria-labelledby': 'h-tl' },
         h('div', { class: 'block-head' }, h('h2', { id: 'h-tl' }, 'Timeline'),
           tl.length > events.length || showAll ? h('button', { type: 'button', class: 'linkish', 'data-key': 'tl-toggle',
-            onclick: () => { showAll = !showAll; window.dispatchEvent(new Event('sy-rerender')); } },
+            onclick: () => { showAll = !showAll; window.dispatchEvent(new Event('wy-rerender')); } },
             showAll ? 'State changes only' : `Show all ${tl.length} events`) : null),
         events.length === 0 ? h('p', { class: 'muted', 'data-key': noHooks ? 'no-hooks' : null }, noHooks
           ? 'This session started before Watchyard was set up, so the hub only sees that it is running: no messages or events. Start a new session, or resume this one (claude --resume), to see its timeline and last message.'

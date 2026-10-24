@@ -35,7 +35,7 @@ func golden(t *testing.T, name, got string) {
 func env(goos string) Env {
 	return Env{
 		GOOS: goos, Home: "/home/alice", UID: 1000, User: "alice",
-		SyPath: "/home/alice/.local/bin/wy", StateDir: "/home/alice/.local/state/watchyard",
+		WyPath: "/home/alice/.local/bin/wy", StateDir: "/home/alice/.local/state/watchyard",
 		Getenv: func(string) string { return "" },
 	}
 }
@@ -45,13 +45,13 @@ func TestGoldenUnits(t *testing.T) {
 	golden(t, "watchyard-flush.timer.golden", SystemdTimer())
 	golden(t, "com.watchyard.flush.plist.golden", LaunchdPlist(env("darwin")))
 	w := env("windows")
-	w.SyPath = `C:\Users\alice\AppData\Local\Programs\wy\wy.exe`
+	w.WyPath = `C:\Users\alice\AppData\Local\Programs\wy\wy.exe`
 	golden(t, "watchyard-flush.task.xml.golden", WindowsTaskXML(w))
 }
 
 func TestGoldenWithFolderOverrides(t *testing.T) {
 	e := env("linux")
-	e.SyPath = "/opt/my tools/wy"
+	e.WyPath = "/opt/my tools/wy"
 	vars := map[string]string{"WY_HOME": "/srv/wy home", "WY_STATE_DIR": "/srv/state"}
 	e.Getenv = func(k string) string { return vars[k] }
 	golden(t, "watchyard-flush.service.overrides.golden", SystemdService(e))

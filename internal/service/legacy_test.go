@@ -180,3 +180,17 @@ func TestInstallRemovesLegacyFirstAndUninstallRemovesBoth(t *testing.T) {
 		}
 	}
 }
+
+// Legacy compat (rename.md 2.13): a unit's SY_* variables get the WY_ prefix, upper case.
+func TestCurrentEnvNamesLiteral(t *testing.T) {
+	got := currentEnvNames([][2]string{{"SY_DATA_DIR", "/d"}, {"PATH", "/usr/bin"}, {"WY_X", "1"}}) // rename:keep
+	want := [][2]string{{"WY_DATA_DIR", "/d"}, {"PATH", "/usr/bin"}, {"WY_X", "1"}}
+	if len(got) != len(want) {
+		t.Fatalf("%v", got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+	}
+}

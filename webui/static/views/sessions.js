@@ -30,7 +30,7 @@ const FILTERS = [
 const GROUPS = { account: 'Account', machine: 'Machine', project: 'Project' };
 
 const ui = { history: false };
-const again = () => window.dispatchEvent(new Event('sy-rerender'));
+const again = () => window.dispatchEvent(new Event('wy-rerender'));
 
 function setQuery(route, patch) {
   const q = new URLSearchParams(route.query);

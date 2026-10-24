@@ -18,7 +18,7 @@ import (
 	"testing"
 )
 
-const marker = "-sy-fake-ssh"
+const marker = "-wy-fake-ssh"
 
 // envDir names the fake's folder in the fake process's environment.
 const envDir = "WY_FAKE_SSH_DIR"

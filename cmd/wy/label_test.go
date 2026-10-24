@@ -18,8 +18,8 @@ const evilLabel = "x/../../evil\ntouch /tmp/pwned"
 func TestConfigSetRejectsInvalidLabel(t *testing.T) {
 	h := detecttest.Laptop(t)
 	s := newSetupHome(t, h)
-	s.mustSy(t, "config", "set", "slots.labels.~/.claude-2", "work")
-	cfg := filepath.Join(s.syHome, "config", "config.toml")
+	s.mustWy(t, "config", "set", "slots.labels.~/.claude-2", "work")
+	cfg := filepath.Join(s.wyHome, "config", "config.toml")
 	before, err := os.ReadFile(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -43,10 +43,10 @@ func TestHandEditedInvalidLabelNoLauncherEscape(t *testing.T) {
 	h.B.File(".claude-2/.claude.json", `{}`, 0o600)
 	s := newSetupHome(t, h)
 	cfg := "version = 1\n[slots.labels]\n\"~/.claude-2\" = " + tomlString(evilLabel) + "\n"
-	if err := os.MkdirAll(filepath.Join(s.syHome, "config"), 0o700); err != nil {
+	if err := os.MkdirAll(filepath.Join(s.wyHome, "config"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(s.syHome, "config", "config.toml"), []byte(cfg), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(s.wyHome, "config", "config.toml"), []byte(cfg), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	out, errOut, code := s.wy(t, "", "setup", "--yes", "--hub", "later", "--named-launchers")
@@ -54,7 +54,7 @@ func TestHandEditedInvalidLabelNoLauncherEscape(t *testing.T) {
 		t.Fatalf("setup: exit %d\n%s\n%s", code, out, errOut)
 	}
 	// Nothing named "evil" anywhere near the home (the traversal target is its parent).
-	for _, root := range []string{filepath.Dir(h.Root), s.syHome} {
+	for _, root := range []string{filepath.Dir(h.Root), s.wyHome} {
 		ents, _ := os.ReadDir(root)
 		for _, e := range ents {
 			if strings.Contains(e.Name(), "evil") {

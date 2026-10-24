@@ -147,7 +147,8 @@ func (k *HubKey) Sign(d *keys.Doc) error { return d.Sign(keys.ByHub, k.priv) }
 
 // SignLink signs a link input (the challenge, welcome and frames, link.md 3.1, 4.3), which
 // the link package builds. Anything not starting "sy-link-v1" is refused, so this can never
-// make a document signature (keys.md 4.1's domain separation).
+// make a document signature (keys.md 4.1's domain separation). The label is frozen
+// (rename.md 2.12).
 func (k *HubKey) SignLink(input []byte) ([]byte, error) {
 	if !bytes.HasPrefix(input, []byte("sy-link-v1")) {
 		return nil, errors.New("hub key: SignLink only signs sy-link-v1 inputs")

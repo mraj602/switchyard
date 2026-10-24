@@ -21,7 +21,7 @@ func TestSetupTerminalFlag(t *testing.T) {
 	if _, _, code := th.wy(t, "", "setup", "--terminal", "tabs"); code != 2 {
 		t.Errorf("--terminal tabs: exit %d, want 2", code)
 	}
-	out := th.mustSy(t, "setup", "--yes", "--hub", "later", "--terminal", "titles,pane")
+	out := th.mustWy(t, "setup", "--yes", "--hub", "later", "--terminal", "titles,pane")
 	b, _ := os.ReadFile(th.h.Abs(".claude/settings.json"))
 	if !strings.Contains(string(b), `"CLAUDE_CODE_DISABLE_TERMINAL_TITLE": "1"`) {
 		t.Fatalf("settings:\n%s\n%s", b, out)
@@ -39,7 +39,7 @@ func TestSetupTerminalFlag(t *testing.T) {
 	if len(sets) != 1 {
 		t.Errorf("%d backup sets, want 1", len(sets))
 	}
-	th.mustSy(t, "setup", "--undo", "--yes")
+	th.mustWy(t, "setup", "--undo", "--yes")
 	testtree.Equal(t, tree0, testtree.Take(t, th.root, snapOpts))
 }
 
@@ -49,7 +49,7 @@ func TestTermTitlesRefreshesHooks(t *testing.T) {
 	mkt := filepath.Join(th.state(), "plugin", "marketplace")
 	writeFile(t, filepath.Join(mkt, "stale.txt"), "old")
 	_ = os.Remove(th.wrapLog)
-	th.mustSy(t, "term", "titles", "on", "--yes")
+	th.mustWy(t, "term", "titles", "on", "--yes")
 	joined := strings.Join(th.runs(t), "\n")
 	for _, w := range []string{"plugin marketplace update wy-local --json", "plugin update watchyard@wy-local --json"} {
 		if !strings.Contains(joined, w) {
@@ -62,7 +62,7 @@ func TestTermTitlesRefreshesHooks(t *testing.T) {
 	if lt := th.ledgerTerm(t); lt["titles"] == nil {
 		t.Fatalf("ledger %v", lt)
 	}
-	th.mustSy(t, "setup", "--undo", "--yes")
+	th.mustWy(t, "setup", "--undo", "--yes")
 	if lt := th.ledgerTerm(t); lt != nil {
 		t.Errorf("ledger after undo: %v", lt)
 	}
@@ -75,7 +75,7 @@ func TestTermTitlesRefreshesHooks(t *testing.T) {
 // nothing.
 func TestTermPaneRefusesOldClaude(t *testing.T) {
 	th := newTermHome(t, detecttest.Laptop(t))
-	wrap := filepath.Join(th.syHome, "wrapbin", "claude")
+	wrap := filepath.Join(th.wyHome, "wrapbin", "claude")
 	b, err := os.ReadFile(wrap)
 	if err != nil {
 		t.Fatal(err)
@@ -103,13 +103,13 @@ func TestUninstallRemovesTerminalPieces(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(folder), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	th.mustSy(t, "term", "setup", "--pane", "--warp-plugin", "--titles", "--warp-tabs", "--yes")
+	th.mustWy(t, "term", "setup", "--pane", "--warp-plugin", "--titles", "--warp-tabs", "--yes")
 	if lt := th.ledgerTerm(t); lt["pane"] == nil || lt["warp_plugin"] == nil || lt["titles"] == nil || lt["tabs"] == nil {
 		t.Fatalf("ledger %v", lt)
 	}
 	on := testtree.Take(t, th.root, snapOpts)
 	_ = os.Remove(th.wrapLog)
-	out := th.mustSy(t, "uninstall", "--yes")
+	out := th.mustWy(t, "uninstall", "--yes")
 	runs := th.runs(t)
 	joined := strings.Join(runs, "\n")
 	pane, mkt := -1, -1
@@ -134,7 +134,7 @@ func TestUninstallRemovesTerminalPieces(t *testing.T) {
 	if ents, _ := os.ReadDir(folder); len(ents) != 0 {
 		t.Errorf("tab configs left: %v", ents)
 	}
-	th.mustSy(t, "setup", "--undo", "--yes")
+	th.mustWy(t, "setup", "--undo", "--yes")
 	testtree.Equal(t, on, testtree.Take(t, th.root, snapOpts))
 	if lt := th.ledgerTerm(t); lt["pane"] == nil || lt["titles"] == nil {
 		t.Errorf("ledger after undo: %v", lt)

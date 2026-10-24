@@ -15,8 +15,23 @@ import (
 	"github.com/mraj602/watchyard/internal/hub/store"
 )
 
-// CookieName is the browser session cookie of the web board.
-const CookieName = "sy_session"
+// CookieName is the browser session cookie of the web board. LegacyCookieName is the one
+// releases before the rename set: still read (SessionCookieValue) and cleared, never set.
+const (
+	CookieName       = "wy_session"
+	LegacyCookieName = "sy_session" // rename:keep: legacy compat, cookies set before the rename
+)
+
+// SessionCookieValue is the board session cookie of r: wy_session, else the legacy
+// sy_session (legacy compat, rename.md 2.12).
+func SessionCookieValue(r *http.Request) (string, bool) {
+	for _, n := range []string{CookieName, LegacyCookieName} {
+		if c, err := r.Cookie(n); err == nil && c.Value != "" {
+			return c.Value, true
+		}
+	}
+	return "", false
+}
 
 // ErrUnauthorized means the token is missing, unknown or revoked.
 var ErrUnauthorized = errors.New("unauthorized")
@@ -31,7 +46,7 @@ type Authenticator struct {
 	// an Origin for cookie requests besides the request's own Host (pairing.md 3.2).
 	PublicURL func(ctx context.Context) string
 
-	// Pepper returns the pairing pepper, which keys the hash of sy_o_ tokens (OwnerHash).
+	// Pepper returns the pairing pepper, which keys the hash of wy_o_ tokens (OwnerHash).
 	// Nil: no owner session authenticates.
 	Pepper func() ([]byte, error)
 
@@ -73,7 +88,7 @@ func (a *Authenticator) LookupDetail(ctx context.Context, token string) (store.D
 	if errors.Is(err, store.ErrNotFound) || (err == nil && d.RevokedAt != 0) {
 		return store.DeviceDetail{}, ErrUnauthorized
 	}
-	// The owner scope only comes with a sy_o_ token whose hash needed the pepper: a row a
+	// The owner scope only comes with a wy_o_ token whose hash needed the pepper: a row a
 	// database writer gave the owner scope and a plain SHA-256 hash is refused (keys.md 5.4).
 	if err == nil && (d.HasScope("owner") || IsOwnerSession(d.Device)) != owner {
 		return store.DeviceDetail{}, ErrUnauthorized
@@ -156,7 +171,7 @@ const (
 
 type cookieKey struct{}
 
-// ViaCookie reports whether the request authenticated with the sy_session cookie.
+// ViaCookie reports whether the request authenticated with the wy_session cookie.
 func ViaCookie(ctx context.Context) bool {
 	v, _ := ctx.Value(cookieKey{}).(bool)
 	return v
@@ -202,8 +217,8 @@ func (a *Authenticator) Require(opt Options, scopes ...string) func(http.Handler
 			tok := bearer(r)
 			src := srcBearer
 			if tok == "" {
-				if c, err := r.Cookie(CookieName); err == nil {
-					tok = c.Value
+				if v, ok := SessionCookieValue(r); ok {
+					tok = v
 					src = srcCookie
 				}
 			}

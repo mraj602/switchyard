@@ -10,7 +10,7 @@
 //   hub.script.<name>                             // status overrides: stream401, stream403, login (status), overview (status)
 //   await hub.close()
 //
-//   const wy = await writeFakeSy(dir, {'desktop info --json': {stdout: '{...}'}})
+//   const wy = await writeFakeWy(dir, {'desktop info --json': {stdout: '{...}'}})
 //   wy.bin ; wy.calls() → [{argv, stdin, env}] ; wy.script(map)
 // The fake wy is a Node script run through its shebang; its answers come from script.json next
 // to it, keyed by the argv joined with spaces ({stdout, stderr, exit}), and every call is
@@ -49,7 +49,7 @@ export async function startFakeHub(initial = {}) {
         res.end(obj === undefined ? '' : JSON.stringify(obj));
       };
       const bearer = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1];
-      const authed = (bearer === 'sy_d_good' && !script.revokedSelf) || (req.headers.cookie ?? '').includes('sy_session=ok');
+      const authed = (bearer === 'wy_d_good' && !script.revokedSelf) || (req.headers.cookie ?? '').includes('wy_session=ok');
       const p = u.pathname;
       if (p === '/health') return json(200, { ok: true, version: '0.6.0' });
       if (p === '/v1/pair/claim' && req.method === 'POST') {
@@ -57,11 +57,11 @@ export async function startFakeHub(initial = {}) {
         const b = JSON.parse(body || '{}');
         if (!b.code && !b.secret) return json(400, { error: { message: 'no code' } });
         script.revokedSelf = false;
-        return json(200, { device: 'dev_direct', token: 'sy_d_good', kind: 'desktop', scopes: ['write', 'read'] });
+        return json(200, { device: 'dev_direct', token: 'wy_d_good', kind: 'desktop', scopes: ['write', 'read'] });
       }
       if (p === '/v1/session/login' && req.method === 'POST') {
         const status = script.login;
-        const headers = status === 204 && script.loginSetsCookie ? { 'set-cookie': 'sy_session=ok; Path=/; HttpOnly' } : {};
+        const headers = status === 204 && script.loginSetsCookie ? { 'set-cookie': 'wy_session=ok; Path=/; HttpOnly' } : {};
         return json(status, status === 204 ? undefined : { error: { message: 'no' } }, headers);
       }
       if (!authed) return json(401, { error: { message: 'unauthorized' } });
@@ -147,11 +147,11 @@ export async function startFakeHub(initial = {}) {
  * shebang (and refuses to exec a .cmd without a shell), so there the fake is run as
  * `node <fake> args`; elsewhere undefined, so the real execFile executes the shebang script.
  */
-export const syExecFile = process.platform === 'win32'
+export const wyExecFile = process.platform === 'win32'
   ? (file, args, opts, cb) => childProcess.execFile(process.execPath, [file, ...args], opts, cb)
   : undefined;
 
-export function writeFakeSy(dir, map = {}, name = 'wy') {
+export function writeFakeWy(dir, map = {}, name = 'wy') {
   fs.mkdirSync(dir, { recursive: true });
   // A real wy is wy.exe on Windows, and resolution looks for that name.
   const bin = path.join(dir, process.platform === 'win32' ? `${name}.exe` : name);

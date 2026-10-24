@@ -21,7 +21,7 @@ var ctx = context.Background()
 
 func simple(t *testing.T) (*testtree.Builder, apply.Options, apply.Deps) {
 	b := testtree.New(t, "")
-	o := apply.Options{StateDir: b.Abs("state"), Command: "t", SyVersion: "0.3.0", Machine: "m", SyPath: "/bin/wy"}
+	o := apply.Options{StateDir: b.Abs("state"), Command: "t", WyVersion: "0.3.0", Machine: "m", WyPath: "/bin/wy"}
 	d := apply.Deps{Sharer: &fakes.Sharer{}, Plugins: &fakes.Plugins{}, Contents: contents}
 	return b, o, d
 }

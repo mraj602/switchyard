@@ -47,7 +47,7 @@ var (
 	buildOnce sync.Once
 	buildErr  error
 	buildRoot string // temp folder holding the binaries
-	syBin     string // wy built with -tags fakeopen
+	wyBin     string // wy built with -tags fakeopen
 	fakeDir   string // folder holding fakeclaude as "claude"
 )
 
@@ -89,7 +89,7 @@ func need(t *testing.T) {
 			return
 		}
 		root := filepath.Dir(strings.TrimSpace(string(out)))
-		buildRoot, err = os.MkdirTemp("", "sy-e2e-term-")
+		buildRoot, err = os.MkdirTemp("", "wy-e2e-term-")
 		if err != nil {
 			buildErr = err
 			return
@@ -103,9 +103,9 @@ func need(t *testing.T) {
 			}
 			return nil
 		}
-		syBin = filepath.Join(buildRoot, "wy")
+		wyBin = filepath.Join(buildRoot, "wy")
 		fakeDir = filepath.Join(buildRoot, "fake")
-		if buildErr = build(syBin, "-tags", "fakeopen", "./cmd/wy"); buildErr != nil {
+		if buildErr = build(wyBin, "-tags", "fakeopen", "./cmd/wy"); buildErr != nil {
 			return
 		}
 		buildErr = build(filepath.Join(fakeDir, "claude"), "./test/e2e/setup/fakeclaude")
@@ -139,7 +139,7 @@ type machine struct {
 	t      *testing.T
 	name   string
 	home   string
-	syHome string
+	wyHome string
 	id     string // machine id, once known
 	// pathDirs come first on PATH, before /usr/bin:/bin.
 	pathDirs []string
@@ -151,7 +151,7 @@ func (m *machine) envFor(extra ...string) []string {
 	env := []string{
 		"PATH=" + strings.Join(append(append([]string{}, m.pathDirs...), "/usr/bin", "/bin"), ":"),
 		"HOME=" + m.home,
-		"WY_HOME=" + m.syHome,
+		"WY_HOME=" + m.wyHome,
 		"WY_NO_SPAWN=1",
 		"SHELL=/bin/sh",
 		"TERM=dumb",
@@ -190,7 +190,7 @@ type result struct {
 // run runs wy with stdin and extra environment.
 func (m *machine) run(stdin string, extra []string, args ...string) result {
 	m.t.Helper()
-	cmd := exec.Command(syBin, args...)
+	cmd := exec.Command(wyBin, args...)
 	cmd.Env = m.envFor(extra...)
 	cmd.Dir = m.home
 	cmd.Stdin = strings.NewReader(stdin)
@@ -271,10 +271,10 @@ func newLaptop(t *testing.T) *laptop {
 	// The fixture's ~/.local/bin/claude is an empty stub: make it fakeclaude.
 	writeFile(t, h.Abs(".local/bin/claude"), readFile(filepath.Join(fakeDir, "claude")), 0o755)
 
-	syHome := t.TempDir()
-	l := &laptop{h: h, wrapLog: filepath.Join(syHome, "wrap.log"), openLog: filepath.Join(syHome, "open.log")}
-	l.machine = &machine{t: t, name: "laptop", home: h.Root, syHome: syHome}
-	src := filepath.Join(syHome, "warp-src")
+	wyHome := t.TempDir()
+	l := &laptop{h: h, wrapLog: filepath.Join(wyHome, "wrap.log"), openLog: filepath.Join(wyHome, "open.log")}
+	l.machine = &machine{t: t, name: "laptop", home: h.Root, wyHome: wyHome}
+	src := filepath.Join(wyHome, "warp-src")
 	writeFile(t, filepath.Join(src, ".claude-plugin", "marketplace.json"),
 		`{"name":"claude-code-warp","owner":{"name":"warp"},"plugins":[{"name":"warp","source":"./plugins/warp"}]}`, 0o644)
 	writeFile(t, filepath.Join(src, "plugins", "warp", ".claude-plugin", "plugin.json"), `{"name":"warp","version":"1.0.0"}`, 0o644)
@@ -288,7 +288,7 @@ fi
 exec "`+fake+`" "$@"
 `, 0o755)
 	l.pathDirs = []string{h.Abs(".local/bin"), fakeDir}
-	l.extra = []string{"FAKE_CLAUDE_LOG=" + filepath.Join(syHome, "claude.log"), "WY_TEST_OPENER=" + l.openLog}
+	l.extra = []string{"FAKE_CLAUDE_LOG=" + filepath.Join(wyHome, "claude.log"), "WY_TEST_OPENER=" + l.openLog}
 	return l
 }
 
@@ -337,13 +337,13 @@ func newBox(t *testing.T, name string) *machine {
 	home := t.TempDir()
 	writeFile(t, filepath.Join(home, ".claude", "settings.json"), "{}\n", 0o644)
 	writeFile(t, filepath.Join(home, ".claude", ".claude.json"), `{"oauthAccount":{"emailAddress":"box@example.com"}}`, 0o600)
-	m := &machine{t: t, name: name, home: home, syHome: t.TempDir(), pathDirs: []string{fakeDir}}
-	m.extra = []string{"WY_TEST_OPENER=" + filepath.Join(m.syHome, "open.log")}
+	m := &machine{t: t, name: name, home: home, wyHome: t.TempDir(), pathDirs: []string{fakeDir}}
+	m.extra = []string{"WY_TEST_OPENER=" + filepath.Join(m.wyHome, "open.log")}
 	return m
 }
 
 // stateDir is <WY_HOME>/state.
-func (m *machine) stateDir() string { return filepath.Join(m.syHome, "state") }
+func (m *machine) stateDir() string { return filepath.Join(m.wyHome, "state") }
 
 // machineID asks `wy desktop info` for this machine's id.
 func (m *machine) machineID() string {
@@ -398,7 +398,7 @@ func startHub(t *testing.T, m *machine) *hubProc {
 
 func (h *hubProc) start() {
 	h.t.Helper()
-	cmd := exec.Command(syBin, "hub", "serve", "--listen", h.addr, "--public-url", publicURL, "--no-push", "--no-pull")
+	cmd := exec.Command(wyBin, "hub", "serve", "--listen", h.addr, "--public-url", publicURL, "--no-push", "--no-pull")
 	cmd.Env = h.m.envFor()
 	cmd.Dir = h.m.home
 	h.log = &syncBuf{}
@@ -644,7 +644,7 @@ type follower struct {
 func (m *machine) follow(extra ...string) *follower {
 	m.t.Helper()
 	f := &follower{t: m.t, errb: &syncBuf{}, done: make(chan struct{})}
-	cmd := exec.Command(syBin, append([]string{"board", "--follow", "--ndjson"}, extra...)...)
+	cmd := exec.Command(wyBin, append([]string{"board", "--follow", "--ndjson"}, extra...)...)
 	cmd.Env = m.envFor()
 	cmd.Dir = m.home
 	pr, pw := io.Pipe()

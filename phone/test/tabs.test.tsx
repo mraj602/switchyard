@@ -1,5 +1,5 @@
 // claude.ai account tabs (phone.md P17): the routing (session → seat → tab, and the browser
-// fallbacks), the load assessment, and the tab, Accounts and Settings screens on the sy-tabs fake.
+// fallbacks), the load assessment, and the tab, Accounts and Settings screens on the wy-tabs fake.
 import { Alert as RNAlert, Linking } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import ClaudeTabScreen from '../src/components/screens/ClaudeTabScreen';
@@ -34,7 +34,7 @@ describe('routing (P17.2)', () => {
   const on = { supported: true };
 
   it('names profiles by seat id only', () => {
-    expect(profileFor(A)).toBe(`sy-tab-${A}`);
+    expect(profileFor(A)).toBe(`wy-tab-${A}`);
     for (const bad of ['me@example.com', 'seat_work', '', null, `${A}x`, 'seat_01ja2w5n0g8h3q7s2v6x9y1z4a']) expect(profileFor(bad)).toBeNull();
   });
 

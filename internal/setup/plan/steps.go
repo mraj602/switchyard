@@ -18,7 +18,7 @@ func (p *planner) planStatusLine() error {
 	if p.c.NoStatusLine {
 		return nil
 	}
-	S := p.st.Sy
+	S := p.st.Wy
 	seen := map[string]bool{}
 	for _, n := range p.nodes {
 		t := p.finalTarget(n)

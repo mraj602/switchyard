@@ -60,7 +60,7 @@ func TestRefreshKeepsArgsRewritesOnlyOnChangeAndRestarts(t *testing.T) {
 	}
 
 	// Another binary path renders differently: rewritten with the same arguments.
-	s.Env.SyPath = "/opt/wy/bin/wy"
+	s.Env.WyPath = "/opt/wy/bin/wy"
 	r.calls = nil
 	res, err = s.Refresh(ctx, "watchyard-hub")
 	if err != nil || !res.Rewritten || !res.Restarted {

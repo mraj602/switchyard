@@ -11,7 +11,7 @@ const homes = [];
 after(() => Promise.all(homes.map((h) => fsp.rm(h, { recursive: true, force: true }))));
 
 async function setup(over = {}) {
-  const home = await fsp.mkdtemp(path.join(os.tmpdir(), 'sy-autostart-'));
+  const home = await fsp.mkdtemp(path.join(os.tmpdir(), 'wy-autostart-'));
   homes.push(home);
   const fake = fakeElectron({ platform: over.platform ?? 'linux', isPackaged: over.isPackaged ?? true });
   const a = create({

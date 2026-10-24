@@ -104,7 +104,7 @@ func TestScriptLint(t *testing.T) {
 		}
 	}
 	w, err := sshx.Script(`echo "$1"; echo $#`, "a=b")
-	if err != nil || len(w) != 5 || w[0] != "sh" || w[3] != "sy-remote" {
+	if err != nil || len(w) != 5 || w[0] != "sh" || w[3] != "wy-remote" {
 		t.Fatalf("Script: %q %v", w, err)
 	}
 	if _, err := sshx.Script("echo", "a b"); err == nil {
@@ -120,7 +120,7 @@ func TestQuotingSurvivesShells(t *testing.T) {
 		t.Fatal(err)
 	}
 	line := sshx.QuoteAll(script)
-	want := "[sy-remote][--hub-url][https://hub.ts.net:443/x][a=b,c][~/.claude-2][50%][m_01ABC@x+y]|"
+	want := "[wy-remote][--hub-url][https://hub.ts.net:443/x][a=b,c][~/.claude-2][50%][m_01ABC@x+y]|"
 	ran := 0
 	for _, sh := range []string{"bash", "dash", "zsh", "fish", "sh"} {
 		p, err := exec.LookPath(sh)

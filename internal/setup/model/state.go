@@ -13,8 +13,8 @@ type State struct {
 
 	Home string `json:"home,omitempty"` // absolute home folder
 	OS   string `json:"os,omitempty"`   // runtime.GOOS
-	// Sy is the absolute path of the wy binary that will be baked into hooks and the status line.
-	Sy string `json:"sy,omitempty"`
+	// Wy is the absolute path of the wy binary that will be baked into hooks and the status line.
+	Wy string `json:"wy,omitempty"`
 	// StateDir is <state> (paths.md); nothing is created there before apply.
 	StateDir string `json:"state_dir,omitempty"`
 	// ConfigDir is the folder holding config.toml (paths.md); the planner derives its path from it.
@@ -100,7 +100,7 @@ type Launcher struct {
 	Name   string `json:"name"` // "claude-2"
 	Kind   string `json:"kind"`
 	Path   string `json:"path,omitempty"`   // file or script path, "~" form
-	Ours   bool   `json:"ours,omitempty"`   // has the "# sy-launcher v1" marker
+	Ours   bool   `json:"ours,omitempty"`   // has the "# wy-launcher v1" marker
 	Hash   string `json:"sha256,omitempty"` // of the file, for "still ours"
 	Folder string `json:"folder,omitempty"` // folder it launches, "~" form, when known
 	// MentionsMCP is set when the launcher or a script it calls mentions mcpServers (hand-made sync).

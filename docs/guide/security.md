@@ -84,11 +84,11 @@ Every device has its own token; the hub stores only its hash and shows the token
 
 | Device | Prefix | Scopes | Can |
 | --- | --- | --- | --- |
-| Machine | `sy_m_` | write | Send records for its own machine id and its own sessions only. Cannot read anything. Can also propose an owner key (it does nothing until you confirm its fingerprint) and pause peer messaging or narrow who may message whom (it cannot widen or resume) |
-| Desktop app | `sy_d_` | write, read | Send web usage for its machine; read the board |
-| Phone (Android app, web app) | `sy_p_` | read, push | Read; register its own push targets; snooze and mark alerts seen |
-| Browser | `sy_b_` | read, push | As phone, for the web app on a computer |
-| Owner session | `sy_o_` | owner, read, push | Everything: devices, rules, pairing codes, matrix widening. Cookie only, 30 days, renewed when used |
+| Machine | `wy_m_` | write | Send records for its own machine id and its own sessions only. Cannot read anything. Can also propose an owner key (it does nothing until you confirm its fingerprint) and pause peer messaging or narrow who may message whom (it cannot widen or resume) |
+| Desktop app | `wy_d_` | write, read | Send web usage for its machine; read the board |
+| Phone (Android app, web app) | `wy_p_` | read, push | Read; register its own push targets; snooze and mark alerts seen |
+| Browser | `wy_b_` | read, push | As phone, for the web app on a computer |
+| Owner session | `wy_o_` | owner, read, push | Everything: devices, rules, pairing codes, matrix widening. Cookie only, 30 days, renewed when used |
 
 A stolen machine token can add fake records for that machine, pause peer messaging and file an
 owner-key proposal that you would have to confirm, but it reads nothing and cannot widen

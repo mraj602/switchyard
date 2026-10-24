@@ -61,7 +61,7 @@ func TestAgentRunServesPeers(t *testing.T) {
 	stop, logPath := startAgent(t, w)
 	defer stop()
 
-	code, out, errs := runPeersSy("peers", "send", "worker", "through the agent")
+	code, out, errs := runPeersWy("peers", "send", "worker", "through the agent")
 	if code != 0 || !strings.HasPrefix(out, "delivered to worker@personal.laptop (msg ") || errs != "" {
 		t.Fatalf("send: %d %q %q", code, out, errs)
 	}
@@ -78,15 +78,15 @@ func TestAgentRunServesPeers(t *testing.T) {
 	}
 
 	// Refusals come back as the same lines and exit codes.
-	if code, out, _ = runPeersSy("peers", "send", "nobody", "hi"); code != 7 {
+	if code, out, _ = runPeersWy("peers", "send", "nobody", "hi"); code != 7 {
 		t.Errorf("unknown target: %d %q", code, out)
 	}
-	if code, out, _ = runPeersSy("peers", "send", "worker", "ghp_"+strings.Repeat("a", 36)); code != 6 {
+	if code, out, _ = runPeersWy("peers", "send", "worker", "ghp_"+strings.Repeat("a", 36)); code != 6 {
 		t.Errorf("secret: %d %q", code, out)
 	}
 
 	// list goes through it as well.
-	if code, out, _ = runPeersSy("peers", "list", "--json"); code != 0 || !strings.Contains(out, "worker@personal.laptop") {
+	if code, out, _ = runPeersWy("peers", "list", "--json"); code != 0 || !strings.Contains(out, "worker@personal.laptop") {
 		t.Errorf("list: %d %q", code, out)
 	}
 
@@ -105,13 +105,13 @@ func TestAgentRunServesPeers(t *testing.T) {
 	oldSvc := agentServiceEnv
 	t.Cleanup(func() { agentServiceEnv = oldSvc })
 	agentServiceEnv = fakeServiceEnv(t, &recorder{})
-	if code, out, _ = runPeersSy("agent", "status"); code != 0 || !strings.Contains(out, "agent: running, pid") || !strings.Contains(out, "link none") {
+	if code, out, _ = runPeersWy("agent", "status"); code != 0 || !strings.Contains(out, "agent: running, pid") || !strings.Contains(out, "link none") {
 		t.Errorf("status: %d %q", code, out)
 	}
 
 	// Once the agent stops, send falls back to the direct path and still delivers.
 	stop()
-	code, out, _ = runPeersSy("peers", "send", "worker", "direct again")
+	code, out, _ = runPeersWy("peers", "send", "worker", "direct again")
 	if code != 0 || !strings.HasPrefix(out, "delivered to worker@personal.laptop") {
 		t.Errorf("fallback: %d %q", code, out)
 	}

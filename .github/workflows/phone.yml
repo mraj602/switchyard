@@ -105,7 +105,7 @@ jobs:
           cache-dependency-path: phone/package-lock.json
       - run: npm ci
       - run: npx expo prebuild --platform android --no-install --clean
-      - run: ./gradlew :app:assembleDebug :sy-link:testDebugUnitTest :sy-tabs:testDebugUnitTest --no-daemon
+      - run: ./gradlew :app:assembleDebug :wy-link:testDebugUnitTest :wy-tabs:testDebugUnitTest --no-daemon
         working-directory: phone/android
       - run: ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon
         working-directory: phone/android

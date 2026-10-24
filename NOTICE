@@ -46,9 +46,9 @@ dependency or an asset is added.
    @react-native-async-storage/async-storage, each under its own license (MIT for all of
    them at the pinned versions in phone/package.json), and the AndroidX and Kotlin
    libraries they pull in (Apache-2.0). Watchyard's own Android modules (phone/modules) add:
-   OkHttp and Tink (Apache-2.0) in sy-link; ShortcutBadger (Apache-2.0, Leo Lin) for the
-   launcher badge in sy-notify; and zxing-android-embedded (Apache-2.0, JourneyApps) with
-   ZXing core (Apache-2.0, ZXing authors) for the QR scanner in sy-scan. The APK contains no
+   OkHttp and Tink (Apache-2.0) in wy-link; ShortcutBadger (Apache-2.0, Leo Lin) for the
+   launcher badge in wy-notify; and zxing-android-embedded (Apache-2.0, JourneyApps) with
+   ZXing core (Apache-2.0, ZXing authors) for the QR scanner in wy-scan. The APK contains no
    proprietary Google code: no Firebase, Google Play services or ML Kit
    (phone/scripts/check-no-google.mjs, docs/spec/phone.md P13).
 

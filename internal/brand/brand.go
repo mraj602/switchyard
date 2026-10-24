@@ -32,7 +32,7 @@ const (
 // EnvPrefix is the prefix of the environment variables `wy` reads ("WY_"), and Marketplace
 // the name of the local Claude Code plugin marketplace `wy` writes ("wy-local").
 const (
-	EnvPrefix   = CLI + "_"
+	EnvPrefix   = "WY_" // strings.ToUpper(CLI) + "_"; a constant cannot call ToUpper (brand_test checks)
 	Marketplace = CLI + "-local"
 )
 
@@ -88,7 +88,7 @@ func SetLegacyCLIForTest(cli string) (restore func()) {
 	return func() { oldCLI = p }
 }
 
-// MigrateEnv copies every variable with the old prefix (WY_HOME, ...) to the current name
+// MigrateEnv copies every variable with the old prefix (SY_HOME, ...) to the current name
 // when that is not set, so units, launchers and shells written for the old command keep their
 // settings (docs/spec/rename.md 2.13). environ is os.Environ(); setenv is os.Setenv. It
 // returns the names it set.

@@ -43,7 +43,7 @@ export interface GluePlatform {
   startCountdown(props: LiveCountdownProps, seatId: string): Promise<unknown>;
   clearIos(now: number): Promise<void>;
   clearAndroidWidgets(): Promise<void>;
-  /** The sy-link module (Android; push.md 14.8): the app's only push path. Null elsewhere. */
+  /** The wy-link module (Android; push.md 14.8): the app's only push path. Null elsewhere. */
   link?: LinkLike | null;
 }
 
@@ -249,7 +249,7 @@ export function createGlue(p: GluePlatform): Glue {
   let gen = 0;
   let view: GlueView = { pushState, snoozeMin: DEFAULT_SNOOZE_MIN, autoCountdown };
   const subs = new Set<() => void>();
-  /** The sy-link module, when present (Android). */
+  /** The wy-link module, when present (Android). */
   const link = p.link ?? null;
   let snoozeSent: number | null = null;
   const sendSnooze = async () => {

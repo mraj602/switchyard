@@ -85,7 +85,7 @@ func TestPeersContextAtSessionStart(t *testing.T) {
 		}
 	}
 	// Nothing of this machine is in it: no account, no path, no hub key.
-	for _, bad := range []string{sandboxAccount, other, sb.home, "sy_", "sk-"} {
+	for _, bad := range []string{sandboxAccount, other, sb.home, "wy_", "sk-"} {
 		if strings.Contains(out, bad) {
 			t.Errorf("output holds %q", bad)
 		}

@@ -21,7 +21,9 @@ export const TAB_ID_RE = new RegExp(TAB_ID_PATTERN);
 /** Partition of an account tab: PARTITION_PREFIX + tab id. */
 export const TAB_PARTITION_PREFIX = 'persist:tab-';
 /** Partition of the hub view (C7). */
-export const HUB_PARTITION = 'persist:sy-hub';
+export const HUB_PARTITION = 'persist:wy-hub';
+/** Legacy compat: the hub view's partition before the rename; its folder moves to HUB_PARTITION's (paths.js). */
+export const LEGACY_HUB_PARTITION = 'persist:sy-hub'; // rename:keep
 /** Account tab name: 1 to 24 characters. */
 export const TAB_NAME_MAX = 24;
 

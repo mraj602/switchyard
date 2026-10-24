@@ -1,6 +1,6 @@
 {
   "device": "dev_01JA",
-  "token": "sy_d_TOKEN",
+  "token": "wy_d_TOKEN",
   "scopes": [
     "write",
     "read"

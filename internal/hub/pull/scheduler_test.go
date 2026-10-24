@@ -67,7 +67,7 @@ func drainStarter(log *starterLog, e *env, mutate func(*client.DrainOptions)) pu
 		log.add(argv)
 		r1, w1 := io.Pipe() // remote -> hub
 		r2, w2 := io.Pipe() // hub -> remote
-		o := client.DrainOptions{Outbox: e.ob, Machine: machineID, Name: "gpu-box", SyVersion: "0.5.0", Now: e.clk.Now}
+		o := client.DrainOptions{Outbox: e.ob, Machine: machineID, Name: "gpu-box", WyVersion: "0.5.0", Now: e.clk.Now}
 		if mutate != nil {
 			mutate(&o)
 		}
@@ -115,7 +115,7 @@ func TestSchedulerRunsDueTargetsOnInterval(t *testing.T) {
 		t.Fatalf("starter calls %d", log.n())
 	}
 	argv := log.calls[0]
-	want := []string{"-F", filepath.Join(e.dir, "ssh_config"), "-T", "sy-" + e.target.ID, ".local/bin/wy", "outbox", "drain", "--stdio"}
+	want := []string{"-F", filepath.Join(e.dir, "ssh_config"), "-T", "wy-" + e.target.ID, ".local/bin/wy", "outbox", "drain", "--stdio"}
 	if strings.Join(argv, "\x00") != strings.Join(want, "\x00") {
 		t.Fatalf("argv %q, want %q", argv, want)
 	}
@@ -483,7 +483,7 @@ func TestSchedulerWithFakeSSHProgram(t *testing.T) {
 	s.Tick(context.Background())
 	argv, _ := os.ReadFile(rec + ".argv")
 	got := strings.Split(strings.TrimSpace(string(argv)), "\n")
-	want := []string{"-F", filepath.Join(e.dir, "ssh_config"), "-T", "sy-" + e.target.ID, ".local/bin/wy", "outbox", "drain", "--stdio"}
+	want := []string{"-F", filepath.Join(e.dir, "ssh_config"), "-T", "wy-" + e.target.ID, ".local/bin/wy", "outbox", "drain", "--stdio"}
 	if strings.Join(got, "|") != strings.Join(want, "|") {
 		t.Fatalf("argv %q", got)
 	}
@@ -493,7 +493,7 @@ func TestSchedulerWithFakeSSHProgram(t *testing.T) {
 	}
 	// Nothing in argv looks like a secret: only fixed words, the config path and the alias.
 	for _, a := range got {
-		if strings.Contains(a, "sy_m_") || strings.Contains(a, "token") || strings.Contains(a, "BEGIN") {
+		if strings.Contains(a, "wy_m_") || strings.Contains(a, "token") || strings.Contains(a, "BEGIN") {
 			t.Fatalf("suspicious argv word %q", a)
 		}
 	}

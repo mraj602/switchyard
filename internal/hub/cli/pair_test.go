@@ -312,7 +312,7 @@ func TestOwnerLinkCommand(t *testing.T) {
 	st, _ := store.Open(context.Background(), db, store.Options{NoBackupBeforeMigrate: true})
 	defer st.Close()
 	c, err := pair.NewService(st, "").OwnerSignIn(context.Background(), "1.1.1.1", l.Secret, "")
-	if err != nil || !strings.HasPrefix(c.Token, "sy_o_") {
+	if err != nil || !strings.HasPrefix(c.Token, "wy_o_") {
 		t.Errorf("sign in with the link: %v", err)
 	}
 	out.Reset()

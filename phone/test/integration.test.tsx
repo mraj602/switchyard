@@ -4,7 +4,7 @@
 // fetch and every native module is a recording fake (test/fakes.ts).
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, render, screen } from '@testing-library/react-native';
-import * as Notifications from '../modules/sy-notify';
+import * as Notifications from '../modules/wy-notify';
 import { Platform } from 'react-native';
 import type { Me, Overview, Seat } from '../src/contract/api';
 import { KEYCHAIN_ACCESSIBLE, LOCAL_PREFS_KEY, WIDGET_KEY } from '../src/contract/constants';
@@ -255,7 +255,7 @@ describe('onPaired and start-up registration', () => {
     expect(firstChannel).toBeGreaterThanOrEqual(0);
     expect(firstChannel).toBeLessThan(idx('notifications.getPermissionsAsync'));
     expect(idx('notifications.getPermissionsAsync')).toBeLessThan(idx('notifications.setNotificationCategoryAsync'));
-    const actions = notificationsState.categories.get('sy_alert') as { buttonTitle: string }[];
+    const actions = notificationsState.categories.get('wy_alert') as { buttonTitle: string }[];
     expect(actions.map((a) => a.buttonTitle)).toEqual(['Open', 'Snooze 30 min', 'Seen']);
     // GET /v1/devices/self: the device's prefs, so widgets: true goes only on the first registration
     expect(hubCalls.map((c) => c.url.replace(ORIGIN, ''))).toEqual(['/v1/rules', '/v1/devices/self', '/v1/devices/self']);

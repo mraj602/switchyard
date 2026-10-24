@@ -77,15 +77,17 @@ are journaled in a setup backup set (setup.md 7), so `wy machine remove` and
 `wy setup --undo` take them out again.
 
 ```
-# sy-forward v1 machine=m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K name=gpu-box (wy machine add; wy machine remove undoes it)
+# wy-forward v1 machine=m_01JA2W5N0G8H3Q7S2V6X9Y1Z4K name=gpu-box (wy machine add; wy machine remove undoes it)
 Host gpu-box
   RemoteForward 127.0.0.1:47830 127.0.0.1:8787
   ExitOnForwardFailure no
   ServerAliveInterval 30
   ServerAliveCountMax 3
-# end sy-forward gpu-box
+# end wy-forward gpu-box
 ```
 
+- A block written before the rename (`# sy-forward v1` … `# end sy-forward`) is recognised the
+  same way, and replaced by a `wy-forward` block when the machine is added again (rename.md 2.12).
 - `Host` is exactly the host word the person typed in `wy machine add` (an alias from their own
   config works: OpenSSH merges every matching block, and `RemoteForward` accumulates).
 - The **target** (right side) is the hub as the operator reaches it: `127.0.0.1:8787` for a
@@ -151,16 +153,16 @@ no network connection of its own.
   pinned host keys, interval, the bound machine and its pull device.
 - **ssh config.** Before each run the hub writes `<state>/pull/ssh_config` and
   `<state>/pull/known_hosts` (0600) from the table, and runs
-  `ssh -F <state>/pull/ssh_config -T sy-<target id> .local/bin/wy outbox drain --stdio`
+  `ssh -F <state>/pull/ssh_config -T wy-<target id> .local/bin/wy outbox drain --stdio`
   (the remote command is ignored under the forced command and used only without one). The
   generated block, per target:
 
   ```
-  Host sy-pt_01JA…
+  Host wy-pt_01JA…
     HostName gpu-box.tailnet.ts.net
     Port 22
     User me
-    HostKeyAlias sy-pt_01JA…
+    HostKeyAlias wy-pt_01JA…
     UserKnownHostsFile <state>/pull/known_hosts
     GlobalKnownHostsFile /dev/null
     StrictHostKeyChecking yes
@@ -231,7 +233,7 @@ wy hub pull key [--json]                   Prints the hub's pull public key.
 adds the hub's key with `wy machine authorize-pull --key-stdin`:
 
 ```
-restrict,command="/home/me/.local/bin/wy outbox drain --stdio" ssh-ed25519 AAAA… watchyard-pull@hub sy-pull:pt_01JA…
+restrict,command="/home/me/.local/bin/wy outbox drain --stdio" ssh-ed25519 AAAA… watchyard-pull@hub wy-pull:pt_01JA…
 ```
 
 - `restrict` turns off port, agent and X11 forwarding, PTY allocation and `~/.ssh/rc`
@@ -242,8 +244,9 @@ restrict,command="/home/me/.local/bin/wy outbox drain --stdio" ssh-ed25519 AAAA�
   (`SSH_ORIGINAL_COMMAND` is set and ignored), reads only the outbox folder and writes only
   `cursor.json`, `flush.status.json`, `rejected.jsonl` and answered spill files.
 - `--pull-from <cidr,…>` adds `from="…"` (the hub's tailnet address, say).
-- The trailing comment `sy-pull:<target id>` is how `wy machine remove` and
-  `authorize-pull --remove` find the line. The file is edited with the same atomic,
+- The trailing comment `wy-pull:<target id>` is how `wy machine remove` and
+  `authorize-pull --remove` find the line; a line ending `sy-pull:<target id>` (written before
+  the rename) is found too, and replaced by the new form. The file is edited with the same atomic,
   backed-up write as setup (mode kept, `0600` if created, `~/.ssh` `0700`). A line with the
   same key and a different command is replaced; any other line is never touched.
 
@@ -315,7 +318,7 @@ unknown `t` is a protocol error.
    disabled or revoked, a frozen hub, a mismatch or such a bind; any other store error ends
    the session as a failed run and backs off.
 2. Count the `hello` as contact: machine heartbeat with `last_seen = now`, `backlog` and
-   `backlog_oldest` from `hello`, `sy_version`, `reach = 'pull'`, even when nothing follows.
+   `backlog_oldest` from `hello`, the version (column `sy_version`), `reach = 'pull'`, even when nothing follows.
 3. For each `batch`: ingest `{"v":1,"client":"wy/<hello.wy>","records":[…]}` with the pull
    device and `backlog` = the remote's `more`-adjusted count. Only **after** the ingest
    transaction committed, send `ack` with the ingest reply. A store error → `nack`, end the
@@ -471,7 +474,8 @@ idempotent: rerunning after a failure redoes only what is missing.
     reach only that machine's own sessions. Failures here do not undo the join; running the
     add again is idempotent (same keys, same pins).
 11. **Registry.** Write `{name, machine, ssh: host, reach, port?, pull_target?, os, arch,
-    sy_version, added_at, updated_at}` to `<state>/machines.json` (atomic, 0600).
+    wy_version, added_at, updated_at}` to `<state>/machines.json` (atomic, 0600). An entry
+    written before the rename has `sy_version`, which is read when `wy_version` is absent.
 
 Summary (screen `SetupDone` style): one line per step, then "gpu-box reports to
 https://hub.ts.net (direct). Next: `ssh gpu-box` and start Claude with `claude-2`."
@@ -488,7 +492,7 @@ failed; 7 Claude Code missing on the remote.
   so a remote login shell of `bash`, `zsh`, `fish` or `dash` reads them the same. No call
   depends on the remote PATH: `wy` is `.local/bin/wy` relative to the home folder (ssh
   starts there), and the probe resolves `claude` through `$SHELL -lc 'command -v claude'`.
-- Fixed scripts run as `sh -c '<script>' sy-remote <args…>`; scripts contain no `'`, `!` or
+- Fixed scripts run as `sh -c '<script>' wy-remote <args…>`; scripts contain no `'`, `!` or
   backquote, so `csh`-family login shells pass them through unharmed.
 - **No secret is ever an argument** (argv is visible to every user in `ps`): pairing codes and
   secrets, ntfy topics and tokens, and the pull public key (not secret, but uniform) travel on
@@ -632,7 +636,7 @@ reaches the hub (the record that entered the state is necessarily earlier in the
 
 **Catch-up hold** (push.md 3.3): when the hub creates a session alert whose due time
 has already passed and the batch came from a machine that reported more records queued
-(`X-Sy-Backlog` above the batch size, or a drain batch with `more`), `due` becomes `now + 10 s`,
+(`X-Wy-Backlog` above the batch size, or a drain batch with `more`), `due` becomes `now + 10 s`,
 and at fire time the scheduler postpones it by another 10 s while that machine's last
 heartbeat (≤ 10 s old) still reports a backlog, up to 2 minutes. That gives the machine's
 `direct_push` record, a few batches behind, time to arrive and mark the episode fired. The
@@ -651,11 +655,11 @@ skipped as stale. That is the only known duplicate path, and it needs a badly wr
 | `reach` | `direct` \| `forward` \| `pull` \| null | Last `machine_info.reach`, or `pull` after a pull |
 | `last_seen` | time | Unchanged: last request from it, **or the last drain `hello`** |
 | `last_record` | time | Unchanged |
-| `backlog` | integer \| null | Records still queued: `X-Sy-Backlog` or the drain `batch` count minus the batch's own records (they are answered by that ingest, so a flush that sent everything leaves 0), or drain `hello` |
-| `backlog_oldest` | time \| null | Ts of the oldest unanswered record: `X-Sy-Backlog-Oldest` (new, sent with `X-Sy-Backlog` when the backlog is more than one batch), drain `hello.oldest`, or `machine_info` |
+| `backlog` | integer \| null | Records still queued: `X-Wy-Backlog` or the drain `batch` count minus the batch's own records (they are answered by that ingest, so a flush that sent everything leaves 0), or drain `hello` |
+| `backlog_oldest` | time \| null | Ts of the oldest unanswered record: `X-Wy-Backlog-Oldest` (new, sent with `X-Wy-Backlog` when the backlog is more than one batch), drain `hello.oldest`, or `machine_info` |
 | `backlog_at` | time \| null | When `backlog` was reported |
-| `sy_version` | string \| null | Unchanged |
-| `version_status` | `same` \| `older` \| `newer` \| `unknown` | `sy_version` compared with the hub's version: the same string (after a leading `v` and `+build` are dropped) is `same`, so two builds of one untagged commit (`104cd7f`) match; otherwise by semver (pre-release, commit names and `dev` → `unknown`; `dev` never matches itself) |
+| `wy_version` | string \| null | Unchanged (column `sy_version`, rename.md 2.12) |
+| `version_status` | `same` \| `older` \| `newer` \| `unknown` | `wy_version` compared with the hub's version: the same string (after a leading `v` and `+build` are dropped) is `same`, so two builds of one untagged commit (`104cd7f`) match; otherwise by semver (pre-release, commit names and `dev` → `unknown`; `dev` never matches itself) |
 | `record_v` | integer \| null | Highest record `v` the machine writes (`machine_info`) |
 | `held` | integer | Records the machine holds back because the hub is too old (7.2), from `machine_info`; 0 normally |
 | `os`, `arch` | string \| null | Now filled, from `machine_info` |
@@ -697,7 +701,7 @@ Other contract changes, no new path:
 - `GET /health` gains `record_v_max` (integer), `batch_v` (integers), `drain_proto` (integer),
   `frozen` (`{since, moved_to}` or absent). Already in api.yaml (`Health`).
 - `POST /v1/ingest` replies gain `hub: {version, record_v_max}` (`IngestReply.hub`) and accept
-  the request header `X-Sy-Backlog-Oldest` (RFC 3339). While frozen (8.1) ingest answers `503`
+  the request header `X-Wy-Backlog-Oldest` (RFC 3339). While frozen (8.1) ingest answers `503`
   with `code: unavailable`, message "hub is frozen for a move", `Retry-After: 300`.
 
 ### 6.3 `machine_info` (record.md 4.8)
@@ -873,14 +877,14 @@ wy hub export [--out <file>] [--moved-to <url>] [--no-freeze] [--encrypt] [--pas
    pull host keys are in `pull_target`.) `<state>/hub_sign.key` is required in the
    same way (keys.md 3.4: without it every device must pair again); it goes into the archive
    as `state/hub_sign.key` and step 5 of the import writes it back like the pepper.
-4. **Archive** (`.syx`, mode 0600, folder 0700; default `<data>/exports/hub-<UTC time>.syx`):
+4. **Archive** (`.wyx`, `.syx` before the rename; any name is imported; mode 0600, folder 0700; default `<data>/exports/hub-<UTC time>.wyx`):
    a gzip-compressed tar with `manifest.json`, `hub.db`, `state/pair_pepper`,
    `state/pull/id_ed25519`, `state/pull/id_ed25519.pub`. Manifest:
-   `{"format": 1, "kind": "watchyard-hub-export", "sy": "0.5.0", "schema": 4, "exported_at",
+   `{"format": 1, "kind": "watchyard-hub-export", "wy": "0.5.0", "schema": 4, "exported_at",
    "frozen": true, "moved_to", "public_url", "counts": {"devices", "machines", "records",
    "sessions", "push_targets", "pull_targets"}, "files": [{"path", "size", "sha256"}]}`.
 5. `--encrypt`: the whole archive is encrypted with a passphrase read from the terminal twice
-   (or the first line of `--passphrase-file`; never an argument). Format: `SYXE` magic, `1`,
+   (or the first line of `--passphrase-file`; never an argument). Format: `SYXE` magic (frozen with `syxe1`, rename.md 2.12), `1`,
    KDF id `1` = PBKDF2-HMAC-SHA256 (`crypto/pbkdf2`), uint32 iterations (600 000), 16-byte
    salt, 8-byte nonce prefix; then chunks of up to 64 KiB, each `uint32 length ‖
    AES-256-GCM(key, nonce = prefix ‖ uint32 index, aad = "syxe1" ‖ index ‖ last-flag)`.

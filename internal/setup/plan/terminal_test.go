@@ -24,7 +24,7 @@ var updateGoldens = flag.Bool("update", false, "rewrite testdata/terminal golden
 func termState() model.State {
 	h := "/home/u"
 	return model.State{
-		Home: h, OS: "linux", Sy: h + "/.local/bin/wy",
+		Home: h, OS: "linux", Wy: h + "/.local/bin/wy",
 		StateDir: h + "/.local/state/watchyard", ConfigDir: h + "/.config/watchyard", ConfigPresent: true,
 		Claude: model.ClaudeInfo{Path: "~/.local/bin/claude", Version: "2.1.296"},
 		Folders: []model.Folder{

@@ -10,7 +10,7 @@ import { hubUrl, hubUrlAllowed } from './client.js';
 
 /**
  * @param {{fetch: typeof fetch, getAuth: () => ({url: string, token: string}|null),
- *          reportedBySy?: () => boolean,
+ *          reportedByWy?: () => boolean,
  *          onEvent: (type: string, data: any, id: string) => void,
  *          onReset: () => void, onUnauthorized: (status: number) => void,
  *          onForbidden?: (status: number) => void,
@@ -56,7 +56,7 @@ export function createStream(deps) {
   async function connect(gen) {
     if (!running || gen !== generation) return;
     const auth = deps.getAuth();
-    if (!auth || !hubUrlAllowed(auth.url, deps.reportedBySy?.() ?? false)) return scheduleReconnect(gen);
+    if (!auth || !hubUrlAllowed(auth.url, deps.reportedByWy?.() ?? false)) return scheduleReconnect(gen);
     const url = hubUrl(auth.url, '/v1/stream');
     if (!url) return scheduleReconnect(gen);
     const ctl = new AbortController();

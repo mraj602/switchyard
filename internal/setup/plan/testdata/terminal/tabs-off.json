@@ -1,5 +1,5 @@
 {
-  "plan_id": "p_777e0e231bd7",
+  "plan_id": "p_61198cd1a2a5",
   "actions": [
     {
       "id": "a1",
@@ -12,7 +12,7 @@
           "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-me.toml",
           "state": {
             "type": "file",
-            "sha256": "5d57fbbe167ce5671b4b4425b7f3d8483d3e63ce61929e93b8c3e1e9745bc6e5"
+            "sha256": "95e9a3f9a006fc4bd2ac997e9db8901309c5e7dda1bb46d183cfc94e16ca2273"
           }
         }
       ]
@@ -28,7 +28,7 @@
           "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-work.toml",
           "state": {
             "type": "file",
-            "sha256": "b32ad8f45f3e993ff1f254ee1a728955423cef613cfbe5104ea24f17e55a89d8"
+            "sha256": "652b88cb0e9b16c908490a7bbea72a2a50935e8160e82b0a3bb70c902a2b0474"
           }
         }
       ]
@@ -44,7 +44,7 @@
           "path": "/home/u/.local/share/warp-terminal/tab_configs/watchyard-claude-3.toml",
           "state": {
             "type": "file",
-            "sha256": "03a471b17393de4499c2ac087893af0aa10ff96ce3076379ba2a7b071cc396ee"
+            "sha256": "ffd1459d5acaa092a9cd2e3871f3a098750f379f3c825812c2071faacc20e9d1"
           }
         }
       ]

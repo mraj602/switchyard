@@ -207,7 +207,7 @@ const titleFixtureEvent = `{"session_id":"doctor-fixture","cwd":"/tmp/doctor-fix
 // runTitleFixture runs `wy hook --title Stop` in process against a throwaway state folder
 // (never the real one) and returns what it printed.
 func runTitleFixture() (string, error) {
-	tmp, err := os.MkdirTemp("", "sy-doctor-title-")
+	tmp, err := os.MkdirTemp("", "wy-doctor-title-")
 	if err != nil {
 		return "", err
 	}

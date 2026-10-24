@@ -9,19 +9,19 @@ import { fakeElectron } from '../../../test/fakes/electron.js';
 
 const silent = { warn() {}, error() {}, debug() {} };
 const setup = (opts = {}) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-tok-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wy-tok-'));
   const file = path.join(dir, 'hub-token.bin');
   const fake = fakeElectron(opts);
   const store = createTokenStore({ safeStorage: fake.electron.safeStorage, fs: fsp, path, file, log: silent, platform: 'linux' });
   return { dir, file, fake, store };
 };
-const REC = { url: 'http://127.0.0.1:8787', device: 'dev_1', token: 'sy_d_secret_token_value' };
+const REC = { url: 'http://127.0.0.1:8787', device: 'dev_1', token: 'wy_d_secret_token_value' };
 
 test('save then load: the file is encrypted, mode 0600, and holds no plain token', async () => {
   const { file, store } = setup();
   assert.equal(await store.save(REC), true);
   const raw = fs.readFileSync(file);
-  assert.ok(!raw.includes('sy_d_secret_token_value'));
+  assert.ok(!raw.includes('wy_d_secret_token_value'));
   assert.ok(!raw.includes('dev_1'));
   if (process.platform !== 'win32') assert.equal(fs.statSync(file).mode & 0o777, 0o600);
   assert.deepEqual(await store.load('http://127.0.0.1:8787/'), REC);
@@ -97,7 +97,7 @@ test('backend and availability: basic_text is reported on Linux only', () => {
 });
 
 test('basic_text: plain-text encryption is allowed first, so the token is written (as real Electron needs)', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-tok-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wy-tok-'));
   const file = path.join(dir, 'hub-token.bin');
   let plain = false;
   // Real Electron on basic_text: isEncryptionAvailable() is false until setUsePlainTextEncryption(true).

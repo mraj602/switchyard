@@ -29,15 +29,15 @@ type FleetMachine struct {
 	// OS and Arch are the remote's platform ("linux", "arm64"), used for the push path; empty
 	// means ask Remote.Platform.
 	OS, Arch string
-	// RemoteSy is the remote's wy path relative to its home ("" = ".local/bin/wy").
-	RemoteSy string
+	// RemoteWy is the remote's wy path relative to its home ("" = ".local/bin/wy").
+	RemoteWy string
 }
 
 func (m FleetMachine) wy() string {
-	if m.RemoteSy == "" {
+	if m.RemoteWy == "" {
 		return ".local/bin/wy"
 	}
-	return m.RemoteSy
+	return m.RemoteWy
 }
 
 // Registry lists the machines the operator added.
@@ -211,12 +211,12 @@ func updateOne(ctx context.Context, o FleetOptions, m FleetMachine) FleetResult 
 	rctx, rcancel := context.WithTimeout(ctx, remoteRunTimeout)
 	defer rcancel()
 	out, exit, err := o.Remote.Run(rctx, m, argv)
-	if err == nil && exit == 127 && m.RemoteSy == "" && brand.CLIRenamed() {
+	if err == nil && exit == 127 && m.RemoteWy == "" && brand.CLIRenamed() {
 		// A machine still on a release from before the command's rename has only the old
 		// binary; it updates itself to this release, whose post-update step renames it
 		// (docs/spec/rename.md 2.13).
-		m.RemoteSy = ".local/bin/" + brand.OldCLI()
-		argv[0] = m.RemoteSy
+		m.RemoteWy = ".local/bin/" + brand.OldCLI()
+		argv[0] = m.RemoteWy
 		out, exit, err = o.Remote.Run(rctx, m, argv)
 	}
 	if err != nil {
@@ -236,7 +236,7 @@ func updateOne(ctx context.Context, o FleetOptions, m FleetMachine) FleetResult 
 		}
 		return res
 	case ExitDownload:
-		if brand.CLIRenamed() && m.RemoteSy == ".local/bin/"+brand.OldCLI() {
+		if brand.CLIRenamed() && m.RemoteWy == ".local/bin/"+brand.OldCLI() {
 			res.Outcome, res.Error = "failed", "push path: the machine still has "+brand.OldCLI()+
 				" from before the rename and cannot reach GitHub; run its update once with --from-file and the "+
 				brand.OldCLI()+"_ archive of this release (docs/spec/rename.md 2.13)"

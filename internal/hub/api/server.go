@@ -112,7 +112,7 @@ func New(cfg Config) *Server {
 	}
 	s.Auth = auth.New(cfg.Store)
 	s.Auth.Now = cfg.Now
-	// sy_o_ token hashes are keyed with the pairing pepper (tokens.md 2); read at first use.
+	// wy_o_ token hashes are keyed with the pairing pepper (tokens.md 2); read at first use.
 	s.Auth.Pepper = func() ([]byte, error) { return pairService(s).Pepper() }
 	s.Broker = events.New(cfg.Now)
 	s.Ingest = &ingest.Ingester{Store: cfg.Store, Now: cfg.Now, OnChange: s.onChange}

@@ -61,7 +61,8 @@ type Envelope struct {
 }
 
 // PeerSealInfo is HPKE's info for a peer body: "sy-peer-v1\n" ‖ msg ‖ "\n" ‖ from.device ‖
-// "\n" ‖ to.device (peers.md 8.2).
+// "\n" ‖ to.device (peers.md 8.2). The label is frozen: machines from before the rename
+// open these bodies.
 func PeerSealInfo(msg, fromDevice, toDevice string) []byte {
 	return []byte("sy-peer-v1\n" + msg + "\n" + fromDevice + "\n" + toDevice)
 }

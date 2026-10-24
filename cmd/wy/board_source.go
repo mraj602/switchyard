@@ -125,7 +125,7 @@ func probeBoardHub(ctx context.Context, hubURL, token string, tr http.RoundTripp
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("User-Agent", "sy-board")
+	req.Header.Set("User-Agent", "wy-board")
 	hc := &http.Client{Transport: tr, Timeout: 10 * time.Second,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	resp, err := hc.Do(req)

@@ -37,7 +37,7 @@ func (f *fakeTTY) next(prompt string) (string, error) {
 	a := f.answers[0]
 	f.answers = f.answers[1:]
 	if a == "<code-groups>" { // the last two groups of the code printed so far
-		m := regexp.MustCompile(`SYR1-[A-Z0-9-]+`).FindString(f.printed.String())
+		m := regexp.MustCompile(`WYR1-[A-Z0-9-]+`).FindString(f.printed.String())
 		g := strings.Split(m, "-")
 		a = strings.Join(g[len(g)-2:], "-")
 	}
@@ -146,7 +146,7 @@ func TestKeysInitCertifyPasswdRevoke(t *testing.T) {
 	}
 	// init: the recovery code goes to the terminal only, the proposal is pending.
 	fp := r.initOwner()
-	if !strings.Contains(r.tty.printed.String(), "SYR1-") || strings.Contains(r.out.String(), "SYR1-") {
+	if !strings.Contains(r.tty.printed.String(), "WYR1-") || strings.Contains(r.out.String(), "WYR1-") {
 		t.Fatal("the recovery code must be printed on the terminal only")
 	}
 	if !strings.Contains(r.out.String(), "confirm-owner "+fp) {
@@ -284,7 +284,7 @@ func TestKeysRecoverTrustOwnerAndMerged(t *testing.T) {
 	r := newKeysRig(t)
 	ctx := context.Background()
 	fp := r.initOwner()
-	code := regexp.MustCompile(`SYR1-[A-Z0-9-]+`).FindString(r.tty.printed.String())
+	code := regexp.MustCompile(`WYR1-[A-Z0-9-]+`).FindString(r.tty.printed.String())
 	if code == "" {
 		t.Fatal("no code printed")
 	}
@@ -304,7 +304,7 @@ func TestKeysRecoverTrustOwnerAndMerged(t *testing.T) {
 	if err := r.run([]string{keys.RecoveryCode(other)}, "recover"); err == nil || !strings.Contains(err.Error(), "pins") {
 		t.Fatalf("other code: %v", err)
 	}
-	if err := r.run([]string{"SYR1-NOPE"}, "recover"); err == nil {
+	if err := r.run([]string{"WYR1-NOPE"}, "recover"); err == nil {
 		t.Fatal("garbage code accepted")
 	}
 

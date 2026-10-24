@@ -8,7 +8,7 @@ import (
 // TestMain points the state folder at a temp dir for every test, so no test reads or makes
 // the real pair_pepper or hub_sign.key. Tests that need their own call t.Setenv.
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "sy-hub-cli-test-")
+	dir, err := os.MkdirTemp("", "wy-hub-cli-test-")
 	if err != nil {
 		panic(err)
 	}

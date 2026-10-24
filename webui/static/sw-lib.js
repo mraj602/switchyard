@@ -1,7 +1,7 @@
 // Logic of the service worker that needs no browser: which requests are cached data, how a
 // push payload becomes a notification, where a tap goes. A classic script: sw.js loads it
 // with importScripts, and webui/static/sw-lib.test.cjs loads it into a node `vm` context.
-// Everything is exposed as one global, SyLib.
+// Everything is exposed as one global, WyLib.
 
 (function (root) {
   'use strict';
@@ -46,15 +46,15 @@
     return p === '/' || p === '/index.html';
   };
 
-  const shellCacheName = (build) => `sy-shell-${build}`;
-  const DATA_CACHE = 'sy-data';
+  const shellCacheName = (build) => `wy-shell-${build}`;
+  const DATA_CACHE = 'wy-data';
   const isCurrentCache = (name, build) => name === shellCacheName(build) || name === DATA_CACHE;
 
   // ---- push payloads (push.md 6.5) ------------------------------------------------------
 
   const FALLBACK = Object.freeze({
     v: 1, type: 'alert', title: 'Watchyard · something needs you', body: 'Open the app to see what.',
-    tag: 'sy-fallback', url: '/#/', tap: 'session', needs_you: null, actions: null,
+    tag: 'wy-fallback', url: '/#/', tap: 'session', needs_you: null, actions: null,
   });
 
   // Never throws: a payload that is missing, not JSON or not an object is shown as a
@@ -131,7 +131,7 @@
     return body;
   }
 
-  root.SyLib = {
+  root.WyLib = {
     DATA_CACHE, SESSION_KEEP,
     isDataRequest, isSessionDetail, sessionsToEvict, isNavigation, shellCacheName, isCurrentCache,
     parsePayload, notificationOptions, badgeCount, hasActions,

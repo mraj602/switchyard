@@ -219,7 +219,7 @@ func TestDowngradeRefusedUnlessAllowed(t *testing.T) {
 
 func TestPackageManagerRefused(t *testing.T) {
 	for _, p := range []string{"/opt/homebrew/Cellar/wy/1/bin/wy", "/usr/local/Cellar/wy/1/bin/wy", "/home/linuxbrew/.linuxbrew/bin/wy",
-		"/nix/store/abc-sy/bin/wy", "/usr/bin/wy", "/usr/sbin/wy", `C:\Users\a\AppData\Local\Microsoft\WinGet\Packages\x\wy.exe`} {
+		"/nix/store/abc-wy/bin/wy", "/usr/bin/wy", "/usr/sbin/wy", `C:\Users\a\AppData\Local\Microsoft\WinGet\Packages\x\wy.exe`} {
 		if _, owned := PackageManager(p); !owned {
 			t.Errorf("%s should be refused", p)
 		}
@@ -503,5 +503,29 @@ func TestPostUpdateSteps(t *testing.T) {
 	rs := RunPostUpdate(context.Background(), "0.4.2")
 	if len(rs) != 2 || rs[0].Detail != "ok" || rs[1].Error != "boom 0.4.2" || !PostUpdateFailed(rs) {
 		t.Fatalf("%+v", rs)
+	}
+}
+
+// Legacy compat (rename.md 2.13): an `sy update` from before the rename kept sy.old next to
+// the binary; `wy update --rollback` swaps that in when there is no wy.old.
+func TestRollbackFindsLegacyOld(t *testing.T) {
+	dir := t.TempDir()
+	exe := filepath.Join(dir, "wy")
+	for _, n := range []string{"wy", "sy.old"} { // rename:keep
+		if err := os.WriteFile(filepath.Join(dir, n), []byte(n), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := rollbackSource(exe); got != filepath.Join(dir, "sy.old") { // rename:keep
+		t.Fatalf("got %s", got)
+	}
+	if got := rollbackSource(filepath.Join(dir, "other")); got != filepath.Join(dir, "other.old") {
+		t.Fatalf("other name: %s", got)
+	}
+	if err := os.WriteFile(exe+".old", []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := rollbackSource(exe); got != filepath.Join(dir, "wy.old") {
+		t.Fatalf("wy.old wins: %s", got)
 	}
 }

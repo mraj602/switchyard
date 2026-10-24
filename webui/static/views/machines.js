@@ -12,7 +12,7 @@ import { reachChip, statusOf, backlogText, versionLine, pullLine, sortMachines, 
 
 const fmt = { ago, agoLabel, clock };
 const enc = encodeURIComponent;
-const again = () => window.dispatchEvent(new Event('sy-rerender'));
+const again = () => window.dispatchEvent(new Event('wy-rerender'));
 
 // Removed machines are fetched only when asked for (GET /v1/machines?all=true).
 const ui = { showRemoved: false, removed: [], busy: {} };

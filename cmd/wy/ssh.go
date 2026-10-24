@@ -103,7 +103,7 @@ func runSSH(args []string, stdout, stderr io.Writer) error {
 func sshChildEnv(base []string, env termenv.Env) []string {
 	out := make([]string, 0, len(base)+2)
 	for _, kv := range base {
-		if isSYForwardVar(kv, env.GOOS) {
+		if isLCForwardVar(kv, env.GOOS) {
 			continue
 		}
 		out = append(out, kv)
@@ -132,9 +132,9 @@ func sshChildEnv(base []string, env termenv.Env) []string {
 
 var machineIDRe = regexp.MustCompile(`^m_[0-9A-HJKMNP-TV-Z]{26}$`)
 
-// isSYForwardVar reports whether kv ("NAME=value") is LC_SY_FOCUS or LC_SY_HOST. Windows
+// isLCForwardVar reports whether kv ("NAME=value") is LC_SY_FOCUS or LC_SY_HOST. Windows
 // environment names are case-insensitive, so the match is too there.
-func isSYForwardVar(kv, goos string) bool {
+func isLCForwardVar(kv, goos string) bool {
 	name, _, _ := strings.Cut(kv, "=")
 	if goos == "windows" {
 		name = strings.ToUpper(name)

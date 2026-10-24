@@ -242,7 +242,7 @@ export function hubBanner(hub, now = Date.now()) {
       }
       // e.g. a 403 from the hub: shown, but the token is kept (only a 401 means it is dead)
       return hub.error ? { level: 'error', title: null, text: hub.error, command: null, action: null } : null;
-    case 'no_sy':
+    case 'no_wy':
     case 'not_connected':
       return { level: 'info', title: 'Connect to a hub.', text: "Enter your hub's address. Account tabs work without a hub.", command: null, action: 'connect' };
     case 'dial':
@@ -351,7 +351,7 @@ export function hubSummary(hub) {
   switch (hub.status) {
     // "v0.6.0", but a dev build's version is the word "dev": no "vdev".
     case 'ok': return hub.version ? `Connected · ${/^\d/.test(hub.version) ? 'v' : ''}${hub.version}` : 'Connected';
-    case 'no_sy': return 'Not connected';
+    case 'no_wy': return 'Not connected';
     case 'not_connected': return 'Not connected';
     case 'dial': return 'Forward mode (unsupported)';
     case 'needs_pairing': return hub.removed ? 'Removed from the hub' : 'Needs pairing';

@@ -658,7 +658,7 @@ func accountRemove(ctx context.Context, e *setupEnv, f accountFlags) error {
 		return err
 	}
 	set, err := backup.Create(e.dirs.State.Path, backup.Header{Command: "wy account remove " + fo.Folder,
-		SyVersion: version.Version, Machine: m.ID}, time.Now())
+		WyVersion: version.Version, Machine: m.ID}, time.Now())
 	if err != nil {
 		return err
 	}

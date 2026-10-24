@@ -56,9 +56,9 @@ func newTermHome(t *testing.T, h *detecttest.Home) *termHome {
 func newTermHomeWith(t *testing.T, h *detecttest.Home, setup ...string) *termHome {
 	t.Helper()
 	s := newSetupHome(t, h)
-	th := &termHome{setupHome: s, h: h, wrapLog: filepath.Join(s.syHome, "wrap.log"), openLog: filepath.Join(s.syHome, "open.log")}
-	bin := filepath.Join(s.syHome, "wrapbin")
-	src := filepath.Join(s.syHome, "warp-src")
+	th := &termHome{setupHome: s, h: h, wrapLog: filepath.Join(s.wyHome, "wrap.log"), openLog: filepath.Join(s.wyHome, "open.log")}
+	bin := filepath.Join(s.wyHome, "wrapbin")
+	src := filepath.Join(s.wyHome, "warp-src")
 	writeFile(t, filepath.Join(src, ".claude-plugin", "marketplace.json"),
 		`{"name":"claude-code-warp","owner":{"name":"warp"},"plugins":[{"name":"warp","source":"./plugins/warp"}]}`)
 	writeFile(t, filepath.Join(src, "plugins", "warp", ".claude-plugin", "plugin.json"), `{"name":"warp","version":"1.0.0"}`)
@@ -163,13 +163,13 @@ func TestTermUsage(t *testing.T) {
 // tree; the shared settings links stay links.
 func TestTermTitlesOnOffUndo(t *testing.T) {
 	th := newTermHome(t, detecttest.Laptop(t))
-	before := parentSnap(t, th.root, th.syHome)
+	before := parentSnap(t, th.root, th.wyHome)
 	tree0 := testtree.Take(t, th.root, snapOpts)
 	links0 := links(t, th.root)
 	if len(links0) == 0 {
 		t.Fatal("the fixture should share settings by links")
 	}
-	out := th.mustSy(t, "term", "titles", "on", "--yes")
+	out := th.mustWy(t, "term", "titles", "on", "--yes")
 	if !strings.Contains(out, "CLAUDE_CODE_DISABLE_TERMINAL_TITLE") {
 		t.Errorf("on:\n%s", out)
 	}
@@ -181,7 +181,7 @@ func TestTermTitlesOnOffUndo(t *testing.T) {
 		t.Fatalf("ledger %v", lt)
 	}
 	sets, _ := os.ReadDir(filepath.Join(th.state(), "backup"))
-	out = th.mustSy(t, "term", "titles", "on", "--yes", "--json")
+	out = th.mustWy(t, "term", "titles", "on", "--yes", "--json")
 	var p struct {
 		Summary struct {
 			Changes int `json:"changes"`
@@ -194,32 +194,32 @@ func TestTermTitlesOnOffUndo(t *testing.T) {
 	if again, _ := os.ReadDir(filepath.Join(th.state(), "backup")); len(again) != len(sets) {
 		t.Errorf("second on made a backup set")
 	}
-	if !strings.Contains(th.mustSy(t, "term", "titles", "on", "--yes"), "0 changes") {
+	if !strings.Contains(th.mustWy(t, "term", "titles", "on", "--yes"), "0 changes") {
 		t.Errorf("text second on does not say 0 changes")
 	}
 	if got := links(t, th.root); len(got) != len(links0) {
 		t.Fatalf("links changed: %v", got)
 	}
-	th.mustSy(t, "setup", "--undo", "--yes")
+	th.mustWy(t, "setup", "--undo", "--yes")
 	testtree.Equal(t, tree0, testtree.Take(t, th.root, snapOpts))
 	if lt := th.ledgerTerm(t); lt != nil {
 		t.Errorf("ledger after undo: %v", lt)
 	}
 
-	th.mustSy(t, "term", "titles", "on", "--yes")
+	th.mustWy(t, "term", "titles", "on", "--yes")
 	on := testtree.Take(t, th.root, snapOpts)
-	th.mustSy(t, "term", "titles", "off", "--yes")
+	th.mustWy(t, "term", "titles", "off", "--yes")
 	b, _ = os.ReadFile(th.h.Abs(".claude/settings.json"))
 	if strings.Contains(string(b), "CLAUDE_CODE_DISABLE_TERMINAL_TITLE") {
 		t.Fatalf("off left the key:\n%s", b)
 	}
-	th.mustSy(t, "setup", "--undo", "--yes")
+	th.mustWy(t, "setup", "--undo", "--yes")
 	testtree.Equal(t, on, testtree.Take(t, th.root, snapOpts))
-	th.mustSy(t, "term", "off", "--yes")
+	th.mustWy(t, "term", "off", "--yes")
 	if got := links(t, th.root); len(got) != len(links0) {
 		t.Fatalf("links changed: %v", got)
 	}
-	if after := parentSnap(t, th.root, th.syHome); strings.Join(after, "\n") != strings.Join(before, "\n") {
+	if after := parentSnap(t, th.root, th.wyHome); strings.Join(after, "\n") != strings.Join(before, "\n") {
 		t.Errorf("something was written next to the temp roots:\n%v\n%v", before, after)
 	}
 }
@@ -232,7 +232,7 @@ func TestTermPluginsOnUndoOff(t *testing.T) {
 	th := newTermHome(t, h)
 	tree0 := testtree.Take(t, th.root, snapOpts)
 	_ = os.Remove(th.wrapLog)
-	out := th.mustSy(t, "term", "setup", "--pane", "--warp-plugin", "--yes")
+	out := th.mustWy(t, "term", "setup", "--pane", "--warp-plugin", "--yes")
 	if !strings.Contains(out, "branch main") {
 		t.Errorf("no branch warning:\n%s", out)
 	}
@@ -264,16 +264,16 @@ func TestTermPluginsOnUndoOff(t *testing.T) {
 	if wp := lt["warp_plugin"].(map[string]any); wp["ref"] != "main" {
 		t.Errorf("warp plugin %v", wp)
 	}
-	st := th.mustSy(t, "term", "status")
+	st := th.mustWy(t, "term", "status")
 	if !strings.Contains(st, "Pane         on") || !strings.Contains(st, "Warp plugin  on") {
 		t.Errorf("status:\n%s", st)
 	}
-	th.mustSy(t, "setup", "--undo", "--yes")
+	th.mustWy(t, "setup", "--undo", "--yes")
 	testtree.Equal(t, tree0, testtree.Take(t, th.root, snapOpts))
 
-	th.mustSy(t, "term", "setup", "--pane", "--warp-plugin", "--yes")
+	th.mustWy(t, "term", "setup", "--pane", "--warp-plugin", "--yes")
 	_ = os.Remove(th.wrapLog)
-	th.mustSy(t, "term", "off", "--yes")
+	th.mustWy(t, "term", "off", "--yes")
 	joined := strings.Join(th.runs(t), "\n")
 	for _, w := range []string{"plugin uninstall watchyard-pane@wy-local", "plugin uninstall warp@claude-code-warp", "plugin marketplace remove claude-code-warp"} {
 		if !strings.Contains(joined, w) {
@@ -293,7 +293,7 @@ func TestTermWarpTabsAndOpen(t *testing.T) {
 	h.B.File(".claude-2/.claude.json", `{}`, 0o600)
 	h.B.File(".claude-3/.claude.json", `{}`, 0o600)
 	th := newTermHome(t, h)
-	before := parentSnap(t, th.root, th.syHome)
+	before := parentSnap(t, th.root, th.wyHome)
 	_, errOut, code := th.wy(t, "", "term", "warp", "on", "--yes")
 	if code != 4 || !strings.Contains(errOut, "Warp not found") {
 		t.Fatalf("no Warp: exit %d %s", code, errOut)
@@ -304,29 +304,29 @@ func TestTermWarpTabsAndOpen(t *testing.T) {
 	}
 	theirs := filepath.Join(folder, "watchyard-x.toml")
 	tree0 := testtree.Take(t, th.root, snapOpts)
-	out := th.mustSy(t, "term", "warp", "on", "--yes")
+	out := th.mustWy(t, "term", "warp", "on", "--yes")
 	work := filepath.Join(folder, "watchyard-claude-2.toml")
 	b, err := os.ReadFile(work)
-	if err != nil || !strings.HasPrefix(string(b), "# sy-warp-tab v1 slot=~/.claude-2 label=claude-2 (") ||
+	if err != nil || !strings.HasPrefix(string(b), "# wy-warp-tab v1 slot=~/.claude-2 label=claude-2 (") ||
 		!strings.Contains(string(b), `commands = ["`+h.Abs(".local/bin/claude-2")+`"]`) {
 		t.Fatalf("tab config %v:\n%s\n%s", err, b, out)
 	}
-	th.mustSy(t, "setup", "--undo", "--yes")
+	th.mustWy(t, "setup", "--undo", "--yes")
 	testtree.Equal(t, tree0, testtree.Take(t, th.root, snapOpts))
 
 	writeFile(t, theirs, "name = \"mine\"\n")
-	th.mustSy(t, "term", "warp", "on", "--yes")
-	if again := th.mustSy(t, "term", "warp", "on", "--yes"); !strings.Contains(again, "0 changes") {
+	th.mustWy(t, "term", "warp", "on", "--yes")
+	if again := th.mustWy(t, "term", "warp", "on", "--yes"); !strings.Contains(again, "0 changes") {
 		t.Errorf("second on:\n%s", again)
 	}
-	st := th.mustSy(t, "term", "status")
+	st := th.mustWy(t, "term", "status")
 	if !strings.Contains(st, "claude-2     ours") || !strings.Contains(st, "x            not-ours") {
 		t.Errorf("status:\n%s", st)
 	}
 
 	// wy open: in Warp, the opener gets the URI; outside, the launcher runs (fake: prints argv).
 	th.setenv("TERM_PROGRAM=WarpTerminal")
-	out = th.mustSy(t, "open", "claude-2")
+	out = th.mustWy(t, "open", "claude-2")
 	if ob, _ := os.ReadFile(th.openLog); strings.TrimSpace(string(ob)) != "warp://tab_config/watchyard-claude-2" {
 		t.Fatalf("opener got %q\n%s", ob, out)
 	}
@@ -342,7 +342,7 @@ func TestTermWarpTabsAndOpen(t *testing.T) {
 		t.Errorf("outside Warp: exit %d %q", code, out)
 	}
 	_ = os.Remove(th.openLog)
-	list := th.mustSy(t, "open")
+	list := th.mustWy(t, "open")
 	for _, l := range []string{"claude-2", "claude-3", "~/.claude-2"} {
 		if !strings.Contains(list, l) {
 			t.Errorf("list misses %s:\n%s", l, list)
@@ -354,7 +354,7 @@ func TestTermWarpTabsAndOpen(t *testing.T) {
 			Label string `json:"label"`
 		} `json:"accounts"`
 	}
-	if err := json.Unmarshal([]byte(th.mustSy(t, "open", "--json")), &lj); err != nil || lj.V != 1 || len(lj.Accounts) != 3 {
+	if err := json.Unmarshal([]byte(th.mustWy(t, "open", "--json")), &lj); err != nil || lj.V != 1 || len(lj.Accounts) != 3 {
 		t.Errorf("list json %v %+v", err, lj)
 	}
 	if _, err := os.Stat(th.openLog); err == nil {
@@ -365,9 +365,9 @@ func TestTermWarpTabsAndOpen(t *testing.T) {
 	}
 
 	// The person edits one; off leaves it and says so, and leaves theirs alone.
-	edited := "# sy-warp-tab v1 slot=~/.claude-2 label=claude-2 (mine now)\nname = \"edited\"\n"
+	edited := "# wy-warp-tab v1 slot=~/.claude-2 label=claude-2 (mine now)\nname = \"edited\"\n"
 	writeFile(t, work, edited)
-	out = th.mustSy(t, "term", "warp", "off", "--yes")
+	out = th.mustWy(t, "term", "warp", "off", "--yes")
 	if !strings.Contains(out, "watchyard-claude-2.toml was edited") {
 		t.Errorf("off did not report the edited file:\n%s", out)
 	}
@@ -384,7 +384,7 @@ func TestTermWarpTabsAndOpen(t *testing.T) {
 	if _, errOut, code := th.wy(t, "", "open", "claude-3"); code != 4 || !strings.Contains(errOut, "wy term warp on") {
 		t.Errorf("open without a tab config: exit %d %s", code, errOut)
 	}
-	if after := parentSnap(t, th.root, th.syHome); strings.Join(after, "\n") != strings.Join(before, "\n") {
+	if after := parentSnap(t, th.root, th.wyHome); strings.Join(after, "\n") != strings.Join(before, "\n") {
 		t.Errorf("something was written next to the temp roots:\n%v\n%v", before, after)
 	}
 }

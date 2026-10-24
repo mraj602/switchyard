@@ -308,7 +308,7 @@ func (c *Client) session(ctx context.Context) (int, error) {
 	c.setStatus("connecting", "")
 	dctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	ws, _, err := websocket.Dial(dctx, c.cfg.URL, &websocket.DialOptions{HTTPClient: c.cfg.HTTP,
-		Subprotocols: []string{link.Subprotocol}})
+		Subprotocols: link.Subprotocols})
 	cancel()
 	if err != nil {
 		return -1, err
@@ -329,7 +329,7 @@ func (c *Client) session(ctx context.Context) (int, error) {
 	}
 	st := c.readState()
 	pingS := int(c.cfg.PingEvery / time.Second)
-	client := link.Client{Kind: "agent", Sy: c.cfg.Version, OS: runtime.GOOS}
+	client := link.Client{Kind: "agent", Wy: c.cfg.Version, OS: runtime.GOOS}
 	if pingS >= 60 {
 		client.PingS = pingS
 	}

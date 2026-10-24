@@ -47,7 +47,7 @@ var errBusy = errors.New("too many spent challenges")
 // add to it.
 func (h *Hub) nonceMAC(rnd []byte, exp int64) []byte {
 	m := hmac.New(sha256.New, h.nonceKey)
-	m.Write([]byte("sy-link-nonce\x00"))
+	m.Write([]byte("wy-link-nonce\x00"))
 	m.Write(rnd)
 	fmt.Fprintf(m, "\x00%d", exp)
 	return m.Sum(nil)[:16]

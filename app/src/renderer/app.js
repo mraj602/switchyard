@@ -940,7 +940,7 @@ export function start({ wy, root }) {
     return section('about', 'About', null,
       h('div', { class: 'card card-pad' }, h('dl', { class: 'kv', fk: 'about' },
         h('dt', { text: 'Watchyard Desktop' }), h('dd', { text: a.app || '–' }),
-        h('dt', { text: 'wy' }), h('dd', { text: state.hub?.sy_version || '–' }),
+        h('dt', { text: 'wy' }), h('dd', { text: state.hub?.wy_version || '–' }),
         h('dt', { text: 'Hub' }), h('dd', { text: state.hub?.version || '–' }),
         h('dt', { text: 'Electron' }), h('dd', { text: a.electron || '–' }),
         h('dt', { text: 'Chromium' }), h('dd', { text: a.chrome || '–' }),
@@ -1219,7 +1219,7 @@ export function start({ wy, root }) {
   return { get state() { return state; } };
 }
 
-// The shell page starts itself (the dev page loads mock-sy.js first, which defines window.wy).
+// The shell page starts itself (the dev page loads mock-wy.js first, which defines window.wy).
 if (typeof document !== 'undefined' && typeof window !== 'undefined' && window.wy) {
   const mount = () => start({ wy: window.wy, root: document.getElementById('app') });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);

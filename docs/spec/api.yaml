@@ -73,7 +73,7 @@ paths:
       summary: Swap a token for a session cookie (web board)
       description: |
         The web board's login page posts a pasted token here. If it is a valid, unrevoked
-        token with the `read` scope, the hub answers `204` and sets the cookie `sy_session`
+        token with the `read` scope, the hub answers `204` and sets the cookie `wy_session`
         (`HttpOnly`, `SameSite=Strict`, `Path=/`, `Secure` when served over TLS, 30 days).
         The cookie holds a new token of its own: a `browser` device with the `read` scope
         only, recorded as made from the pasted token's device. Afterwards the read
@@ -96,7 +96,7 @@ paths:
               required: [token]
               properties:
                 token: {type: string}
-            example: {token: "sy_b_4fQx0Lr2..."}
+            example: {token: "wy_b_4fQx0Lr2..."}
       responses:
         "204": {description: Signed in; cookie set.}
         "400": {$ref: "#/components/responses/BadRequest"}
@@ -549,7 +549,7 @@ paths:
           read or write timeout, each write has its own 30-second deadline.
         - The live status of a client is the stream's alone: a failed read (a 404 for a
           deleted session) says nothing about it.
-        - The token goes in the `Authorization` header or the `sy_session` cookie (see
+        - The token goes in the `Authorization` header or the `wy_session` cookie (see
           `/v1/session/login`), never in the URL: `?token=` is not accepted.
         - `focus_url` in `session` events is sent only to desktop devices on the same
           machine as the terminal (record.md 3.3).
@@ -690,7 +690,7 @@ paths:
         The secret comes from `wy hub owner-link`, from `POST /v1/owner-links` on an owner
         device, or from the first-start link of `wy hub serve` (pairing.md 4.1). On success the
         hub makes a `browser` device with scopes `owner`, `read`, `push`, expiring in 30 days,
-        and sets it as the `sy_session` cookie. Used in its last 7 days, the session slides to
+        and sets it as the `wy_session` cookie. Used in its last 7 days, the session slides to
         30 days from then (pairing.md 4). A refused secret is `401` with `code` = `link_used`,
         `link_expired`, `link_cancelled` or `link_unknown`, `at` and `ttl_s` (pairing.md 4). Rate
         limited as `/v1/pair/claim`.
@@ -853,7 +853,7 @@ paths:
         pairing.md 3. No token: the code or secret is the credential. Unknown, used, cancelled
         and expired codes all get the same `401`. `expect_kind` mismatch: `409`, the code
         stays live. With `cookie: true` (phone and browser codes only) the token is set as the
-        `sy_session` cookie and left out of the body.
+        `wy_session` cookie and left out of the body.
       security: []
       x-scopes: []
       requestBody:
@@ -1371,9 +1371,9 @@ paths:
     get:
       tags: [link]
       operationId: link
-      summary: The device link (WebSocket, subprotocol sy-link.1)
+      summary: The device link (WebSocket, subprotocol wy-link.1)
       description: |
-        link.md. A WebSocket upgrade with `Sec-WebSocket-Protocol: sy-link.1`. No bearer:
+        link.md. A WebSocket upgrade with `Sec-WebSocket-Protocol: wy-link.1`. No bearer:
         the device logs in with a signed `hello` answering the hub's `challenge` (link.md 3).
         Frames, acks, close codes: link.md 4-8. `Origin`, when sent, must be the hub's own.
       security: []
@@ -1886,14 +1886,15 @@ components:
     bearer:
       type: http
       scheme: bearer
-      bearerFormat: "sy_<kind>_<43 base62> (tokens.md)"
+      bearerFormat: "wy_<kind>_<43 base62> (tokens.md)"
     cookie:
       type: apiKey
       in: cookie
-      name: sy_session
+      name: wy_session
       description: |
-        The web app's cookie (board login, phone pairing in cookie mode, owner session). A
-        cookie request that changes state must send `Content-Type: application/json` and, if
+        The web app's cookie (board login, phone pairing in cookie mode, owner session). The
+        hub also reads `sy_session`, the name before the rename, when `wy_session` is absent,
+        and logout clears both (rename.md 2.12). A cookie request that changes state must send `Content-Type: application/json` and, if
         it sends `Origin`, the hub's own origin (pairing.md 3.2).
 
   responses:
@@ -2278,7 +2279,7 @@ components:
         name: {type: string, description: "The owner's rename on the board, or the machine's own name once `wy machine rename` changes it (machine_info.name, record.md 4.8)."}
         os: {type: [string, "null"]}
         arch: {type: [string, "null"]}
-        sy_version: {type: [string, "null"]}
+        wy_version: {type: [string, "null"], description: "The machine's wy version (stored in the column sy_version, rename.md 2.12)."}
         last_seen: {type: [string, "null"], format: date-time}
         last_record: {type: [string, "null"], format: date-time}
         backlog: {type: [integer, "null"]}
@@ -2293,7 +2294,7 @@ components:
         version_status:
           type: string
           enum: [same, older, newer, unknown]
-          description: "sy_version compared with the hub's version."
+          description: "wy_version compared with the hub's version."
         record_v: {type: [integer, "null"], description: "Highest record v the machine writes."}
         held: {type: integer, description: "Records held back because the hub is too old (machines.md 7.2)."}
         direct_push: {type: boolean, description: "Direct ntfy is on (machines.md 5)."}
@@ -2754,7 +2755,7 @@ components:
         name: {type: string, maxLength: 60}
         machine: {type: string, description: Required for machine and desktop codes.}
         expect_kind: {type: string, enum: [machine, desktop, phone, browser]}
-        cookie: {type: boolean, default: false, description: "Phone and browser codes: set the sy_session cookie instead of returning the token."}
+        cookie: {type: boolean, default: false, description: "Phone and browser codes: set the wy_session cookie instead of returning the token."}
         client: {type: string}
         keys: {$ref: "#/components/schemas/DeviceKeysNew"}
         keys_sealed:
@@ -2806,7 +2807,7 @@ components:
         id: {type: string}
         kind: {type: string, enum: [machine, desktop, phone, browser]}
         name: {type: string}
-        hint: {type: string, description: "sy_p_…k3Qz"}
+        hint: {type: string, description: "wy_p_…k3Qz"}
         scopes:
           type: array
           items: {type: string}

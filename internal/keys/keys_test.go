@@ -34,7 +34,7 @@ func TestFingerprint(t *testing.T) {
 func TestRecoveryCode(t *testing.T) {
 	r := goldenR()
 	code := RecoveryCode(r)
-	if !strings.HasPrefix(code, "SYR1-") || len(code) != 5+52+12+1+4 {
+	if !strings.HasPrefix(code, "WYR1-") || len(code) != 5+52+12+1+4 {
 		t.Fatalf("code shape %q (%d)", code, len(code))
 	}
 	// Round trip: code -> R -> seed -> the same public key.
@@ -71,6 +71,10 @@ func TestRecoveryCode(t *testing.T) {
 	}
 	other := r
 	other[0] ^= 1
+	// Legacy compat: a code printed before the rename starts SYR1-; same R, same check group.
+	if got, err := ParseRecoveryCode("SYR1-" + strings.TrimPrefix(code, "WYR1-")); err != nil || got != r {
+		t.Fatalf("legacy SYR1 code: %v", err)
+	}
 	if RecoveryCode(other) == code {
 		t.Fatal("different R, same code")
 	}

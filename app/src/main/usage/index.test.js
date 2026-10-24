@@ -5,7 +5,7 @@ import { create } from './index.js';
 import { fakeElectron } from '../../../test/fakes/electron.js';
 import { fakeBrowser, signInFake } from '../../../test/fakes/claude/browser.js';
 import { fakeClock } from '../../../test/fakes/claude/clock.js';
-import { fakeIpc, fakeSy, memStore, newBus, silentLog, sleep, tabRecord, waitFor } from '../../../test/fakes/claude/harness.js';
+import { fakeIpc, fakeWy, memStore, newBus, silentLog, sleep, tabRecord, waitFor } from '../../../test/fakes/claude/harness.js';
 import { startFakeClaude, uuidOf } from '../../../test/fakes/claude/server.js';
 import { TAB_ID_RE, WARNING_VERSION } from '../../shared/constants.js';
 
@@ -32,7 +32,7 @@ async function rig({ tabs = [tabRecord(TAB)], url = '/new', loggedIn = true, cad
   }
   const store = memStore(tabs);
   const bus = newBus();
-  const wy = fakeSy();
+  const wy = fakeWy();
   const ipc = fakeIpc();
   const clock = fakeClock();
   const tabsApi = {

@@ -71,7 +71,7 @@ func (r *rec) lines() []string {
 func envFor(goos, home string, r Runner) Env {
 	return Env{
 		GOOS: goos, Home: home, UID: 1000, User: "alice",
-		SyPath: "/home/alice/.local/bin/wy", StateDir: filepath.Join(home, "state"),
+		WyPath: "/home/alice/.local/bin/wy", StateDir: filepath.Join(home, "state"),
 		Getenv: func(string) string { return "" }, Runner: r,
 	}
 }
@@ -84,7 +84,7 @@ func TestGolden(t *testing.T) {
 	golden(t, "watchyard-hub.service.golden", SystemdUnit(e, sp))
 	golden(t, "com.watchyard.hub.plist.golden", LaunchdPlist(envFor("darwin", "/Users/alice", nil), sp))
 	w := envFor("windows", `C:\Users\alice`, nil)
-	w.SyPath = `C:\Users\alice\.local\bin\wy.exe`
+	w.WyPath = `C:\Users\alice\.local\bin\wy.exe`
 	w.StateDir = `C:\Users\alice\AppData\Local\watchyard`
 	golden(t, "watchyard-hub.task.xml.golden", WindowsTaskXML(w, sp))
 	e.Getenv = func(k string) string {
@@ -275,7 +275,7 @@ func TestValidation(t *testing.T) {
 		t.Fatal("bad name accepted")
 	}
 	e := envFor("linux", t.TempDir(), &rec{})
-	e.SyPath = "wy"
+	e.WyPath = "wy"
 	if err := New(e).Install(context.Background(), spec); err == nil {
 		t.Fatal("relative wy accepted")
 	}
@@ -315,7 +315,7 @@ func TestSystemdQuoteControlChars(t *testing.T) {
 		}
 		return ""
 	}
-	e.SyPath = "/home/alice/bin/wy\r\nUser=root"
+	e.WyPath = "/home/alice/bin/wy\r\nUser=root"
 	for _, l := range strings.Split(SystemdUnit(e, sp), "\n") {
 		if strings.HasPrefix(l, "ExecStartPre") || strings.HasPrefix(l, "User=") || strings.Contains(l, "\r") {
 			t.Errorf("injected line %q", l)

@@ -184,7 +184,7 @@ func RunInfo(ctx context.Context, e Env) (Info, error) {
 	}
 	hubURL := e.Config.Hub.URL
 	_, tokErr := client.ReadToken(e.Dirs.State.Path)
-	info := Info{V: InfoV, Sy: e.version(), Machine: InfoMachine{ID: m.ID, Name: m.Name}}
+	info := Info{V: InfoV, Wy: e.version(), Machine: InfoMachine{ID: m.ID, Name: m.Name}}
 	info.Hub = InfoHub{URL: strp(hubURL), Connected: hubURL != "" && tokErr == nil, Dial: strp(e.Config.Hub.Dial)}
 	if v, ok := e.healthRetry(ctx, InfoHealthTimeout); ok {
 		info.Hub.Reachable = true

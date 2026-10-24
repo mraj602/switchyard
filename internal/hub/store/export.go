@@ -24,7 +24,7 @@ import (
 )
 
 // Moving the hub (docs/spec/machines.md 8): freeze, snapshot, archive, import. The wire
-// format of encrypted archives is in export_syxe.go.
+// format of encrypted archives is in export_wyxe.go.
 
 // Setting keys of machines.md 8 (mirrored in internal/hub/api as SettingFrozen/SettingImported;
 // the store cannot import api).
@@ -161,7 +161,7 @@ type ManifestFile struct {
 type Manifest struct {
 	Format     int            `json:"format"`
 	Kind       string         `json:"kind"`
-	Sy         string         `json:"sy"`
+	Wy         string         `json:"wy"` // "sy" in an export made before the rename
 	Schema     int            `json:"schema"`
 	ExportedAt string         `json:"exported_at"`
 	Frozen     bool           `json:"frozen"`
@@ -169,6 +169,24 @@ type Manifest struct {
 	PublicURL  string         `json:"public_url"`
 	Counts     ExportCounts   `json:"counts"`
 	Files      []ManifestFile `json:"files"`
+}
+
+// UnmarshalJSON reads the version from "wy", or from "sy", which an export made before the
+// rename holds (legacy compat, rename.md 2.6).
+func (m *Manifest) UnmarshalJSON(b []byte) error {
+	type plain Manifest
+	var v struct {
+		plain
+		Sy string `json:"sy"` // rename:keep: legacy compat
+	}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	*m = Manifest(v.plain)
+	if m.Wy == "" {
+		m.Wy = v.Sy
+	}
+	return nil
 }
 
 // ExportOptions configures Export.
@@ -182,10 +200,10 @@ type ExportOptions struct {
 	MovedTo           string
 	// NoFreeze exports a copy that is not a move.
 	NoFreeze bool
-	// Passphrase, when not empty, encrypts the archive (export_syxe.go).
+	// Passphrase, when not empty, encrypts the archive (export_wyxe.go).
 	Passphrase string
-	// SyVersion goes in the manifest.
-	SyVersion string
+	// WyVersion goes in the manifest.
+	WyVersion string
 }
 
 // ExportResult says what was written.
@@ -393,7 +411,7 @@ func (s *Store) Export(ctx context.Context, o ExportOptions) (res ExportResult, 
 	if err != nil {
 		return res, err
 	}
-	m := Manifest{Format: ManifestFormat, Kind: ManifestKind, Sy: o.SyVersion, Schema: int(schema.Int64),
+	m := Manifest{Format: ManifestFormat, Kind: ManifestKind, Wy: o.WyVersion, Schema: int(schema.Int64),
 		ExportedAt: s.Now().UTC().Format(time.RFC3339), PublicURL: pub, Counts: counts,
 		Files: []ManifestFile{{Path: memberDB, Size: size, SHA256: sum}}}
 	if frozen != nil {
@@ -424,9 +442,9 @@ func (s *Store) Export(ctx context.Context, o ExportOptions) (res ExportResult, 
 	}
 	defer os.Remove(part)
 	var w io.Writer = f
-	var enc *syxeWriter
+	var enc *wyxeWriter
 	if o.Passphrase != "" {
-		if enc, err = newSyxeWriter(f, o.Passphrase); err != nil {
+		if enc, err = newWyxeWriter(f, o.Passphrase); err != nil {
 			f.Close()
 			return res, err
 		}
@@ -512,7 +530,7 @@ func IsEncryptedExport(path string) (bool, error) {
 	if _, err := io.ReadFull(f, m[:]); err != nil {
 		return false, nil
 	}
-	return string(m[:]) == syxeMagic, nil
+	return string(m[:]) == wyxeMagic, nil
 }
 
 // maxStateFileBytes bounds the small state members (pairing pepper, signing and pull keys).
@@ -536,11 +554,11 @@ func unpack(path, passphrase, dir string) (Manifest, error) {
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return m, err
 	}
-	if string(magic[:]) == syxeMagic {
+	if string(magic[:]) == wyxeMagic {
 		if passphrase == "" {
 			return m, ErrNeedPassphrase
 		}
-		r, err := newSyxeReader(f, passphrase)
+		r, err := newWyxeReader(f, passphrase)
 		if err != nil {
 			return m, err
 		}
@@ -743,7 +761,7 @@ type ImportOptions struct {
 	DBPath, StateDir, PullDir string
 	// PublicURL replaces the exported hub.public_url when not empty.
 	PublicURL string
-	SyVersion string
+	WyVersion string
 	Log       func(format string, args ...any)
 	// Now is the clock (tests).
 	Now func() time.Time
@@ -943,7 +961,7 @@ func prepareImported(ctx context.Context, path string, o ImportOptions, m Manife
 			res.PublicURL, res.URLChanged = o.PublicURL, o.PublicURL != m.PublicURL
 		}
 		imp, _ := json.Marshal(map[string]string{"exported_at": m.ExportedAt,
-			"imported_at": now().UTC().Format(time.RFC3339), "sy": o.SyVersion})
+			"imported_at": now().UTC().Format(time.RFC3339), "wy": o.WyVersion})
 		return tx.PutAlertSetting(SettingImported, imp, tx.NowMS())
 	})
 }

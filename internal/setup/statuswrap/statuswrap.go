@@ -15,19 +15,19 @@ import (
 )
 
 // Wrap returns the command to store in settings for status line command cmd and the
-// absolute path syPath of wy. An empty cmd gives the bare `S statusline`. A cmd that is
+// absolute path wyPath of wy. An empty cmd gives the bare `S statusline`. A cmd that is
 // already ours is returned with only the path to wy replaced (idempotent, never nested).
-func Wrap(cmd, syPath string) string {
+func Wrap(cmd, wyPath string) string {
 	if words, ok := parseOurs(cmd); ok {
 		if len(words) == 4 {
-			return build(syPath, &words[3])
+			return build(wyPath, &words[3])
 		}
-		return build(syPath, nil)
+		return build(wyPath, nil)
 	}
 	if strings.TrimSpace(cmd) == "" {
-		return build(syPath, nil)
+		return build(wyPath, nil)
 	}
-	return build(syPath, &cmd)
+	return build(wyPath, &cmd)
 }
 
 // Unwrap returns the original command of a wrapped status line (`S statusline --wrap 'C'`).
@@ -46,8 +46,8 @@ func IsOurs(cmd string) bool {
 	return ok
 }
 
-func build(syPath string, wrapped *string) string {
-	s := quoteIfNeeded(syPath) + " statusline"
+func build(wyPath string, wrapped *string) string {
+	s := quoteIfNeeded(wyPath) + " statusline"
 	if wrapped != nil {
 		s += " --wrap " + Quote(*wrapped)
 	}

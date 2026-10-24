@@ -30,16 +30,18 @@ func SecureRequest(r *http.Request) bool {
 	return false
 }
 
-// SessionCookie is the sy_session cookie: HttpOnly, SameSite=Strict, Path=/, Secure when
+// SessionCookie is the wy_session cookie: HttpOnly, SameSite=Strict, Path=/, Secure when
 // the request came over https (a Secure cookie would be dropped on plain http).
 func SessionCookie(r *http.Request, token string, maxAge time.Duration) *http.Cookie {
 	return &http.Cookie{Name: CookieName, Value: token, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode,
 		Secure: SecureRequest(r), MaxAge: int(maxAge.Seconds())}
 }
 
-// ClearCookie clears the sy_session cookie.
+// ClearCookie clears the wy_session cookie, and the legacy sy_session one (legacy compat).
 func ClearCookie(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{Name: CookieName, Value: "", Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: -1})
+	for _, n := range []string{CookieName, LegacyCookieName} {
+		http.SetCookie(w, &http.Cookie{Name: n, Value: "", Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: -1})
+	}
 }
 
 // IsSessionDevice reports whether d is a cookie session that logout revokes: made by a
@@ -51,7 +53,7 @@ func IsSessionDevice(d store.Device) bool {
 // LoginHandler is POST /v1/session/login with {"token": "..."}. A valid token holding the
 // read scope is exchanged for a new browser device (scopes ["read"] only, created_by
 // "login:<device id>") whose own token goes into the HttpOnly, SameSite=Strict cookie
-// sy_session. The pasted token is never stored in the browser, the cookie can only read
+// wy_session. The pasted token is never stored in the browser, the cookie can only read
 // (even when a desktop token was pasted), and revoking the pasted device revokes the
 // session too. A desktop device keeps one board session: its Hub view is one cookie jar, so a
 // new login revokes the sessions it made before (in the same transaction), and an app that
@@ -134,8 +136,8 @@ func SignOutRevokes(d store.Device) bool {
 // SameSite=Strict already keeps the cookie off cross-site requests).
 func (a *Authenticator) LogoutHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if c, err := r.Cookie(CookieName); err == nil && a.SameOrigin(r) {
-			if d, err := a.Lookup(r.Context(), c.Value); err == nil && SignOutRevokes(d) {
+		if v, ok := SessionCookieValue(r); ok && a.SameOrigin(r) {
+			if d, err := a.Lookup(r.Context(), v); err == nil && SignOutRevokes(d) {
 				_ = Revoke(r.Context(), a.Store, d.ID)
 			}
 		}

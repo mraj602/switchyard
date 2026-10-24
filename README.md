@@ -59,12 +59,12 @@ The Android app (Now and Accounts) and the board in a terminal (`wy board`):
 Android home-screen widgets (rendered previews from the app):
 
 <p>
-  <img src="phone/assets/widget-previews/sy-limits.png" alt="Limits widget: four accounts with 5-hour usage bars and reset times" width="420">
-  <img src="phone/assets/widget-previews/sy-ring.png" alt="Ring widget: one account's tighter window as a ring" width="160">
+  <img src="phone/assets/widget-previews/wy-limits.png" alt="Limits widget: four accounts with 5-hour usage bars and reset times" width="420">
+  <img src="phone/assets/widget-previews/wy-ring.png" alt="Ring widget: one account's tighter window as a ring" width="160">
 </p>
 <p>
-  <img src="phone/assets/widget-previews/sy-needs.png" alt="Needs-you widget: the sessions waiting for you" width="420">
-  <img src="phone/assets/widget-previews/sy-sessions.png" alt="Sessions widget: running, needs input and done counts" width="320">
+  <img src="phone/assets/widget-previews/wy-needs.png" alt="Needs-you widget: the sessions waiting for you" width="420">
+  <img src="phone/assets/widget-previews/wy-sessions.png" alt="Sessions widget: running, needs input and done counts" width="320">
 </p>
 
 ## How it works
@@ -73,11 +73,11 @@ Android home-screen widgets (rendered previews from the app):
 flowchart LR
   subgraph M["Each machine"]
     CC["Claude Code sessions<br/>(one config folder per account)"]
-    SY["wy hook / wy statusline<br/>outbox on disk"]
-    CC -- "hooks, status line" --> SY
+    WY["wy hook / wy statusline<br/>outbox on disk"]
+    CC -- "hooks, status line" --> WY
   end
-  D["Desktop app<br/>(claude.ai tabs, optional)"] -- "usage records via wy" --> SY
-  SY -- "HTTPS, every minute<br/>and after each hook" --> H["Hub: wy hub serve<br/>SQLite, states, usage, alerts"]
+  D["Desktop app<br/>(claude.ai tabs, optional)"] -- "usage records via wy" --> WY
+  WY -- "HTTPS, every minute<br/>and after each hook" --> H["Hub: wy hub serve<br/>SQLite, states, usage, alerts"]
   H --> B["Board in a browser<br/>and in the terminal"]
   H -- "own encrypted link" --> A["Android app<br/>notifications, widgets"]
   H -- "Web Push / ntfy" --> P["Other phones"]

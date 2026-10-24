@@ -172,7 +172,7 @@ func (c *Client) Health(ctx context.Context) (Health, error) {
 }
 
 // Ingest uploads records (each one a complete JSON object, sent as stored) in one batch.
-// backlog is the number of records still queued locally, sent as X-Sy-Backlog (negative
+// backlog is the number of records still queued locally, sent as X-Wy-Backlog (and X-Wy-Backlog) (negative
 // means unknown). A non-200 answer is returned as *StatusError.
 func (c *Client) Ingest(ctx context.Context, records [][]byte, backlog int) (*IngestReply, error) {
 	var buf bytes.Buffer
@@ -207,7 +207,8 @@ func (c *Client) Ingest(ctx context.Context, records [][]byte, backlog int) (*In
 		req.Header.Set("Content-Encoding", encoding)
 	}
 	if backlog >= 0 {
-		req.Header.Set("X-Sy-Backlog", strconv.Itoa(backlog))
+		req.Header.Set(BacklogHeader, strconv.Itoa(backlog))
+		req.Header.Set(LegacyBacklogHeader, strconv.Itoa(backlog))
 	}
 	resp, err := c.http().Do(req)
 	if err != nil {

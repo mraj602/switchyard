@@ -13,4 +13,4 @@
 services:
   hub:
     ports: !override
-      - "${WY_BIND:?set WY_BIND to the Tailscale IPv4 address}:${WY_PORT:-8787}:8787"
+      - "${WY_BIND:-${SY_BIND:?set WY_BIND to the Tailscale IPv4 address}}:${WY_PORT:-${SY_PORT:-8787}}:8787" # rename:keep: SY_* from an .env written before the rename

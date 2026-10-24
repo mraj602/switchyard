@@ -45,8 +45,8 @@ var OwnerSessionScopes = []string{"owner", "read", "push"}
 // OwnerSessionAge is how long an owner session lives (pairing.md 4).
 const OwnerSessionAge = 30 * 24 * time.Hour
 
-// NewToken makes sy_<k>_<43 base62>: 32 random bytes, big-endian base62, left-padded. kind
-// is a device kind, or "owner" for the sy_o_ token of an owner session.
+// NewToken makes wy_<k>_<43 base62>: 32 random bytes, big-endian base62, left-padded. kind
+// is a device kind, or "owner" for the wy_o_ token of an owner session.
 func NewToken(kind string) (string, error) {
 	letter := ""
 	if kind == "owner" {
@@ -74,8 +74,16 @@ func NewToken(kind string) (string, error) {
 	for i, j := 0, len(digits)-1; i < j; i, j = i+1, j-1 {
 		digits[i], digits[j] = digits[j], digits[i]
 	}
-	return "sy_" + letter + "_" + string(digits), nil
+	return TokenPrefix + letter + "_" + string(digits), nil
 }
+
+// TokenPrefix starts every token the hub makes (tokens.md 1). LegacyTokenPrefix started the
+// tokens of releases before the rename; the hub stores only hashes of the full string, so
+// those tokens keep authenticating unchanged (rename.md 2.12).
+const (
+	TokenPrefix       = "wy_"
+	LegacyTokenPrefix = "sy_" // rename:keep: legacy compat, tokens issued before the rename
+)
 
 // Hash is SHA-256 of the full token string (tokens.md 2).
 func Hash(token string) []byte {
@@ -83,9 +91,9 @@ func Hash(token string) []byte {
 	return h[:]
 }
 
-// OwnerHash is the stored hash of an owner session's sy_o_ token: HMAC-SHA256(pepper,
+// OwnerHash is the stored hash of an owner session's wy_o_ token: HMAC-SHA256(pepper,
 // "token:" + token), with the pairing pepper (tokens.md 2, keys.md 5.4). Without the pepper
-// file a database writer cannot make a row that a sy_o_ token of its choosing matches.
+// file a database writer cannot make a row that a wy_o_ token of its choosing matches.
 func OwnerHash(pepper []byte, token string) []byte {
 	h := hmac.New(sha256.New, pepper)
 	h.Write([]byte("token:"))
@@ -93,8 +101,11 @@ func OwnerHash(pepper []byte, token string) []byte {
 	return h.Sum(nil)
 }
 
-// IsOwnerToken reports whether a token has the sy_o_ prefix of an owner session.
-func IsOwnerToken(token string) bool { return strings.HasPrefix(token, "sy_o_") }
+// IsOwnerToken reports whether a token has the wy_o_ prefix of an owner session (or the
+// sy_o_ prefix of one made before the rename: legacy compat).
+func IsOwnerToken(token string) bool {
+	return strings.HasPrefix(token, TokenPrefix+"o_") || strings.HasPrefix(token, LegacyTokenPrefix+"o_")
+}
 
 // Hint is the display form: kind prefix + "…" + last 4 characters.
 func Hint(token string) string {
@@ -104,9 +115,10 @@ func Hint(token string) string {
 	return token[:5] + "…" + token[len(token)-4:]
 }
 
-// LooksLikeToken checks the shape sy_<k>_<43 base62> (48 characters).
+// LooksLikeToken checks the shape wy_<k>_<43 base62> (48 characters). The sy_ prefix of
+// tokens made before the rename is accepted too (legacy compat).
 func LooksLikeToken(s string) bool {
-	if len(s) != 48 || !strings.HasPrefix(s, "sy_") || s[4] != '_' {
+	if len(s) != 48 || !(strings.HasPrefix(s, TokenPrefix) || strings.HasPrefix(s, LegacyTokenPrefix)) || s[4] != '_' {
 		return false
 	}
 	for _, c := range s[5:] {
@@ -124,7 +136,7 @@ type CreateRequest struct {
 	Parent              string   // board sessions: the device whose token was pasted; must not be revoked
 	Scopes              []string // narrower than the kind's (board sessions); nil = the kind's
 	// Owner makes an owner session instead: a browser device with scopes owner, read and
-	// push, a sy_o_ token and Expires (default OwnerSessionAge). Kind must be "browser".
+	// push, a wy_o_ token and Expires (default OwnerSessionAge). Kind must be "browser".
 	Owner   bool
 	Expires time.Duration
 	// Pepper is the pairing pepper; required with Owner (the token hash is OwnerHash).

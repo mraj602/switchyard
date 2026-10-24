@@ -14,7 +14,7 @@ import {
 } from '../components/keys-fmt.js';
 
 const st = { info: null, names: null, error: null, busy: false };
-const again = () => window.dispatchEvent(new Event('sy-rerender'));
+const again = () => window.dispatchEvent(new Event('wy-rerender'));
 
 export async function load() {
   st.error = null;

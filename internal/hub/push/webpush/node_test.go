@@ -108,14 +108,14 @@ func TestHTTPECEDecryptsOurBodies(t *testing.T) {
 	priv, _ := ecdh.P256().GenerateKey(rand.Reader)
 	auth := make([]byte, 16)
 	_, _ = rand.Read(auth)
-	p := model.Payload{V: 1, Type: model.TypeTest, Title: "Test", Body: "Watchyard test push", Tag: "sy-test", URL: "/#/", Tap: "auto"}
+	p := model.Payload{V: 1, Type: model.TypeTest, Title: "Test", Body: "Watchyard test push", Tag: "wy-test", URL: "/#/", Tap: "auto"}
 	plain, _ := json.Marshal(p)
 	body, err := webpush.Encrypt(rand.Reader, plain, priv.PublicKey().Bytes(), auth, webpush.PadMultiple)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var back model.Payload
-	if err := json.Unmarshal(decrypt(body, priv, auth), &back); err != nil || back.Title != "Test" || back.Tag != "sy-test" {
+	if err := json.Unmarshal(decrypt(body, priv, auth), &back); err != nil || back.Title != "Test" || back.Tag != "wy-test" {
 		t.Fatalf("payload: %v %+v", err, back)
 	}
 }

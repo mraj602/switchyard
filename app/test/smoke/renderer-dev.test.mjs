@@ -1,5 +1,5 @@
 // Electron smoke S12 (docs/spec/desktop.md C8): the renderer's dev page (renderer/dev/index.html, the
-// real renderer against dev/mock-sy.js) loaded in Electron under app://shell/ at 1440×940 and
+// real renderer against dev/mock-wy.js) loaded in Electron under app://shell/ at 1440×940 and
 // 720×500, with no console errors; screenshots are saved as artifacts.
 
 import { test } from 'node:test';
@@ -9,15 +9,15 @@ import path from 'node:path';
 import { sandbox, launch, waitFor, outDir, sleep } from './harness.mjs';
 
 const SIZES = [[1440, 940], [720, 500]];
-const SCENARIOS = ['default', 'empty', 'no_sy', 'needs_pairing', 'stopped', 'warning', 'removed', 'direct_pairing', 'unreachable', 'board_blocked', 'owner', 'missing', 'wrong'];
+const SCENARIOS = ['default', 'empty', 'no_wy', 'needs_pairing', 'stopped', 'warning', 'removed', 'direct_pairing', 'unreachable', 'board_blocked', 'owner', 'missing', 'wrong'];
 // the Hub tab's own cards (and the read-only strip) are what these scenarios are about
-const HUB_VIEW = new Set(['no_sy', 'needs_pairing', 'removed', 'direct_pairing', 'unreachable', 'board_blocked', 'default', 'owner', 'missing']);
+const HUB_VIEW = new Set(['no_wy', 'needs_pairing', 'removed', 'direct_pairing', 'unreachable', 'board_blocked', 'default', 'owner', 'missing']);
 
 test('S12 renderer dev page at 1440×940 and 720×500', { timeout: 5 * 60_000 }, async (t) => {
   const sb = sandbox('s12');
   const out = outDir(sb.root);
-  // No wy at all: the app shows its no-sy banner; the dev page does not need it.
-  const run = await launch(sb, { env: { WY_BIN: path.join(sb.root, 'no-such-sy') } });
+  // No wy at all: the app shows its no-wy banner; the dev page does not need it.
+  const run = await launch(sb, { env: { WY_BIN: path.join(sb.root, 'no-such-wy') } });
   t.after(async () => {
     await run.close();
     if (!process.env.WY_SMOKE_KEEP) sb.cleanup();
@@ -42,7 +42,7 @@ test('S12 renderer dev page at 1440×940 and 720×500', { timeout: 5 * 60_000 },
         // the Hub tab states of the target: the card text, never the board's login wording
         const text = await page.evaluate(() => document.getElementById('content').innerText);
         const want = {
-          no_sy: /Connect to a hub\./, needs_pairing: /Pair this computer\./, removed: /This computer was removed from the hub\./,
+          no_wy: /Connect to a hub\./, needs_pairing: /Pair this computer\./, removed: /This computer was removed from the hub\./,
           direct_pairing: /Pair this computer\./, unreachable: /Can't reach the hub\./, board_blocked: /could not be signed in/, default: /Read-only\. Sign in as owner/,
           missing: /claude-6 and claude-7 have no tab here\. Add tabs/,
         }[scenario];

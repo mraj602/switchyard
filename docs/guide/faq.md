@@ -100,7 +100,7 @@ From [GitHub Releases](https://github.com/mraj602/watchyard/releases). Each `vX.
 has `wy` archives with `SHA256SUMS`, the install scripts, the desktop packages with
 `SHA256SUMS-desktop`, and build attestations. The Android APK is in a separate `phone-v*`
 release, signed with the maintainer's key. The one-line install is in
-[install.md](install.md#1-install-sy). You can still build everything from source.
+[install.md](install.md#1-install-wy). You can still build everything from source.
 
 ## Where do I ask questions or report bugs?
 

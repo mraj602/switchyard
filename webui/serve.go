@@ -15,7 +15,7 @@ import (
 )
 
 // buildPlaceholder is the literal in sw.js that the handler replaces with the build hash.
-const buildPlaceholder = "__SY_BUILD__"
+const buildPlaceholder = "__WY_BUILD__"
 
 // BuildHash is the first 12 hex digits of SHA-256 over every file name and content in
 // fsys (sorted by path). Any change to any file changes it, which is how a service worker

@@ -141,7 +141,7 @@ func get(ctx context.Context, c *http.Client, rawurl string, max int64, w io.Wri
 	if err != nil {
 		return fail(ExitDownload, "download failed: %v", err)
 	}
-	req.Header.Set("User-Agent", "sy-update")
+	req.Header.Set("User-Agent", "wy-update")
 	resp, err := c.Do(req)
 	if err != nil {
 		return fail(ExitDownload, "download failed: %s: %v", rawurl, err)
@@ -405,7 +405,7 @@ func Extract(a Archive) (binPath string, sha256sum string, err error) {
 		return "", "", fail(ExitFailed, "%v", err)
 	}
 	bin := BinaryName(a.GOOS)
-	tmp, err := os.CreateTemp(dir, ".sy-*")
+	tmp, err := os.CreateTemp(dir, ".wy-*")
 	if err != nil {
 		return "", "", fail(ExitFailed, "%v", err)
 	}

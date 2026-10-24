@@ -69,7 +69,7 @@ Electron would otherwise derive `Watchyard` from `productName`. `WY_APP_USER_DAT
   `config.toml` or any `wy` folder itself.
 - If `wy` creates the folder, it uses mode `0700`, as Electron does.
 
-Why not a separate name such as `~/.config/watchyard-sy` or `~/.config/wy`: the
+Why not a separate name such as `~/.config/watchyard-wy` or `~/.config/wy`: the
 docs all say `~/.config/watchyard/config.toml`; `wy` is a short, generic
 name likely to clash with other tools. The rules above make sharing the folder harmless:
 there is no file-name overlap and `wy` never deletes the folder.
@@ -148,11 +148,11 @@ one folder.
 <data>/                        mode 0700, hub only
   hub.db, hub.db-wal, hub.db-shm
   backups/hub-<UTC time>.db    wy hub backup
-  exports/hub-<UTC time>.syx   wy hub export, mode 0600 (machines.md 8.1)
+  exports/hub-<UTC time>.wyx   wy hub export, mode 0600 (machines.md 8.1)
   app/android/                 mirrored phone release: current and previous APK + manifest (phone.md P16.2)
 ```
 
-Runtime sockets (Linux, `$XDG_RUNTIME_DIR`): `wy/agent.sock` and `wy/r/<16 hex>.sock`, folders The agent socket falls back to `$TMPDIR/sy-<uid>/agent.sock` when the path would exceed the sun_path limit (103 bytes macOS, 107 Linux).
+Runtime sockets (Linux, `$XDG_RUNTIME_DIR`): `wy/agent.sock` and `wy/r/<16 hex>.sock`, folders The agent socket falls back to `$TMPDIR/wy-<uid>/agent.sock` when the path would exceed the sun_path limit (103 bytes macOS, 107 Linux).
 0700, sockets 0600 (peers.md 2.3, 8.6). `wy` reads, never writes, each slot's
 `<config>/sessions/<pid>.json` and never opens `sessions/*.key` (identity.md 4).
 

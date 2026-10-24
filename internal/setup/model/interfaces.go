@@ -100,8 +100,8 @@ type MCPSkip struct {
 type PluginInstaller interface {
 	// WriteMarketplace writes <dir> (the marketplace tree: .claude-plugin/marketplace.json
 	// "wy-local" and plugins/watchyard) from the embedded plugin with hook commands rewritten
-	// to the absolute syPath, into a temp folder then renamed over dir.
-	WriteMarketplace(dir, syPath, version string) error
+	// to the absolute wyPath, into a temp folder then renamed over dir.
+	WriteMarketplace(dir, wyPath, version string) error
 	// Install runs `marketplace add <dir>` then `install watchyard@wy-local` as folder.
 	Install(ctx context.Context, folder claudecli.Folder, marketplaceDir string) error
 	// Enable enables watchyard@wy-local in folder's settings target (shared root, own settings).

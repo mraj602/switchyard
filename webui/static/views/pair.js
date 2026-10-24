@@ -13,7 +13,7 @@ const st = { phase: 'idle', error: '', name: '', devName: '', nameNote: '', secr
 let stream = null;
 let scanTimer = null;
 let ctxRef = null;
-const again = () => window.dispatchEvent(new Event('sy-rerender'));
+const again = () => window.dispatchEvent(new Event('wy-rerender'));
 
 const ua = () => navigator.userAgent;
 const ios = () => isIOS(ua(), navigator.maxTouchPoints, navigator.platform);

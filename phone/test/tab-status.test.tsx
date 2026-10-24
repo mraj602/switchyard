@@ -1,6 +1,6 @@
 // Which account is signed in where (phone.md P17.7): the URL and account rules, the
 // memo of each tab's last visit, the Accounts card lines and actions, and the Fix this tab sheet
-// on the sy-tabs fake.
+// on the wy-tabs fake.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import AccountsScreen from '../src/components/screens/AccountsScreen';
