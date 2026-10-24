@@ -48,10 +48,10 @@ release.
    The certificate's `SHA-256 digest` must be:
 
    ```
-   0b715b03eb515301851200431ff21a5114f51d97d615812f6554e46dd644eddd
+   a9e68504609ac2be216a35d787bb3e9d23b5fc66b9c4d939af2678e04724c89f
    ```
 
-   which `keytool` shows as `0B:71:5B:03:EB:51:53:01:85:12:00:43:1F:F2:1A:51:14:F5:1D:97:D6:15:81:2F:65:54:E4:6D:D6:44:ED:DD`. The same value is in every release note. If it
+   which `keytool` shows as `A9:E6:85:04:60:9A:C2:BE:21:6A:35:D7:87:BB:3E:9D:23:B5:FC:66:B9:C4:D9:39:AF:26:78:E0:47:24:C8:9F`. The same value is in every release note. If it
    differs, do not install the APK. The fingerprint never changes between releases.
 
 The same release has `manifest.json`, which the app's updater reads. You do not need it to

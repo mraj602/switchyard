@@ -168,7 +168,7 @@ Releases are on [GitHub Releases](https://github.com/mraj602/watchyard/releases)
 
 The Android APK is a separate release, `phone-vX.Y.Z`; the newest is
 [Android 1.0.0](https://github.com/mraj602/watchyard/releases/tag/phone-v1.0.0). The maintainer signs it with their own
-key, whose certificate's SHA-256 fingerprint is `0b715b03eb515301851200431ff21a5114f51d97d615812f6554e46dd644eddd`
+key, whose certificate's SHA-256 fingerprint is `a9e68504609ac2be216a35d787bb3e9d23b5fc66b9c4d939af2678e04724c89f`
 ([Android guide](docs/guide/android.md#verify-the-apk)).
 
 Install `wy` on Linux or macOS with the one-liner in the [Quickstart](#quickstart). Add
